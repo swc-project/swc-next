@@ -426,14 +426,14 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
         };
     }
 
-    let traverse = generate_traverse(schema, false);
-    let traverse_mut = generate_traverse(schema, true);
+    let traverse = generate_traverse(schema);
+    let traverse_mut = generate_traverse_mut(schema);
 
     let output = quote! {
             #![allow(unused, clippy::useless_conversion, clippy::single_match)]
             use crate::*;
             use oxc_index::Idx;
-        use crate::visit::{TraverseCtx, TraverseMutCtx};
+        use crate::visit::{TraverseCtx, TraverseMutCtx, traverse_mut_slot};
 
             pub trait Visit<'a> {
                 #visit_functions
@@ -474,26 +474,13 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
     .into()
 }
 
-fn generate_traverse(schema: &Schema, mutable: bool) -> TokenStream {
-    let (trait_name, with_trait, with_fn, ctx_ty, walk_prefix, docs) = if mutable {
-        (
-            format_ident!("TraverseMut"),
-            format_ident!("TraverseMutWith"),
-            format_ident!("traverse_mut_with"),
-            format_ident!("TraverseMutCtx"),
-            "walk_mut",
-            "Hooks invoked before and after each concrete node, with mutable AST access.",
-        )
-    } else {
-        (
-            format_ident!("Traverse"),
-            format_ident!("TraverseWith"),
-            format_ident!("traverse_with"),
-            format_ident!("TraverseCtx"),
-            "walk",
-            "Hooks invoked before and after each concrete node, with immutable AST access.",
-        )
-    };
+fn generate_traverse(schema: &Schema) -> TokenStream {
+    let trait_name = format_ident!("Traverse");
+    let with_trait = format_ident!("TraverseWith");
+    let with_fn = format_ident!("traverse_with");
+    let ctx_ty = format_ident!("TraverseCtx");
+    let walk_prefix = "walk";
+    let docs = "Hooks invoked before and after each concrete node, with immutable AST access.";
     let mut hooks = TokenStream::new();
     let mut impls = TokenStream::new();
     let mut walks = TokenStream::new();
@@ -757,6 +744,224 @@ fn traverse_child(
             }
         }
         AstType::Primitive(_) => TokenStream::new(),
+    }
+}
+
+fn generate_traverse_mut(schema: &Schema) -> TokenStream {
+    let mut hooks = TokenStream::new();
+    let mut impls = TokenStream::new();
+    let mut walks = TokenStream::new();
+    for (type_id, ty) in schema.types.iter_enumerated() {
+        if !should_visit_type(type_id, schema) {
+            continue;
+        }
+        let ty_ident = ty.repr_ident(schema);
+        let body = match ty {
+            AstType::Struct(_) | AstType::Enum(_) => {
+                let name = ty.name().to_case(Case::Snake);
+                let enter = format_ident!("enter_{name}");
+                let exit = format_ident!("exit_{name}");
+                let walk = format_ident!("walk_mut_{name}");
+                hooks.extend(quote! {
+                    #[inline]
+                    fn #enter(&mut self, node: #ty_ident, ctx: &mut TraverseMutCtx<'_, 'a, State>) -> TraverseAction<#ty_ident> {
+                        TraverseAction::Continue
+                    }
+                    #[inline]
+                    fn #exit(&mut self, node: #ty_ident, ctx: &mut TraverseMutCtx<'_, 'a, State>) -> TraverseAction<#ty_ident> {
+                        TraverseAction::Continue
+                    }
+                });
+                let children = match ty {
+                    AstType::Struct(node) => {
+                        let mut fields = TokenStream::new();
+                        for field in &node.fields {
+                            if !should_visit_type(field.type_id, schema) {
+                                continue;
+                            }
+                            let getter = safe_ident(&field.name.to_case(Case::Snake));
+                            let setter = format_ident!("set_{}", field.name.to_case(Case::Snake));
+                            fields.extend(quote! {
+                                if traverse_mut_slot(
+                                    node.#getter(ctx.ast), traverser, ctx,
+                                    |ctx, replacement| node.#setter(ctx.ast, replacement),
+                                ) {
+                                    break 'children true;
+                                }
+                            });
+                        }
+                        if fields.is_empty() {
+                            quote!(false)
+                        } else {
+                            quote! {
+                                'children: {
+                                    #fields
+                                    false
+                                }
+                            }
+                        }
+                    }
+                    AstType::Enum(node) => {
+                        let dispatch = generate_mut_enum_dispatch(node, schema);
+                        quote! {
+                            match #dispatch {
+                                std::ops::ControlFlow::Continue(stopped) => stopped,
+                                std::ops::ControlFlow::Break(action) => return std::ops::ControlFlow::Break(action),
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                walks.extend(quote! {
+                    #[inline]
+                    fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+                        node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+                    ) -> std::ops::ControlFlow<TraverseAction<#ty_ident>, bool> {
+                        match traverser.#enter(node, ctx) {
+                            TraverseAction::Continue => {},
+                            action => return std::ops::ControlFlow::Break(action),
+                        }
+                        let stopped = #children;
+                        match traverser.#exit(node, ctx) {
+                            TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+                            action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+                        }
+                    }
+                });
+                quote! {
+                    let original = self.node_id();
+                    traverser.enter_node(original, ctx);
+                    let action = #walk(self, traverser, ctx);
+                    traverser.exit_node(original, ctx);
+                    match action {
+                        std::ops::ControlFlow::Continue(false)
+                        | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                        std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+                        std::ops::ControlFlow::Break(action) => action,
+                    }
+                }
+            }
+            AstType::Option(_) => quote! {
+                match self {
+                    Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+                    None => TraverseAction::Continue,
+                }
+            },
+            AstType::SubRange(_) => quote! {
+                for slot in self.iter() {
+                    if traverse_mut_slot(
+                        ctx.ast.get_node_in_sub_range(slot), traverser, ctx,
+                        |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+                    ) {
+                        return TraverseAction::Stop;
+                    }
+                }
+                TraverseAction::Continue
+            },
+            AstType::Primitive(_) => unreachable!(),
+        };
+        impls.extend(quote! {
+            impl<'a, State> TraverseMutWith<'a, State> for #ty_ident {
+                #[inline]
+                fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+                    self, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+                ) -> TraverseAction<Self> { #body }
+            }
+        });
+    }
+    quote! {
+        /// Mutable enter/exit traversal with typed, parent-applied replacements.
+        ///
+        /// Enter and exit hooks return TraverseAction. Skip ends the current
+        /// node's remaining typed callbacks; in enter it also skips children.
+        /// Stop also stops remaining children and siblings. Replacements end
+        /// the old node's typed callbacks. The parent attaches the replacement
+        /// before restarting its enter hooks for ReplaceContinue; ReplaceSkip
+        /// attaches without visiting it, and ReplaceStop attaches then stops.
+        /// A descendant stop still allows ancestor exit hooks, but Continue
+        /// cannot cancel the stop. Enum hooks describe the same node, so a
+        /// skip, stop or replacement from an inner hook ends its remaining hooks.
+        /// Untyped node hooks always enclose the visit and return no action.
+        /// Use a union hook such as exit_expr for changes between node kinds.
+        /// Prepare semantic information before returning newly generated nodes.
+        pub trait TraverseMut<'a, State = ()> {
+            #[inline]
+            fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+            #[inline]
+            fn exit_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+            #hooks
+        }
+
+        /// Returns the disposition of the current node to its owning slot.
+        /// Parents attach replacements before revisiting for ReplaceContinue.
+        /// A direct root caller must do the same through its root setter.
+        /// Skip is consumed at the node boundary and returned as Continue.
+        pub trait TraverseMutWith<'a, State = ()>: Sized {
+            fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+                self, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+            ) -> TraverseAction<Self>;
+        }
+        #impls
+        #walks
+    }
+}
+
+fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) -> TokenStream {
+    let outer = format_ident!("{}", node.name);
+    let mut arms = TokenStream::new();
+    let mut seen = HashSet::new();
+    for variant in &node.variants {
+        let Some(type_id) = variant.type_id else {
+            continue;
+        };
+        let ty = &schema.types[type_id];
+        let inner = ty.repr_ident(schema);
+        let variant_name = format_ident!("{}", variant.name);
+        let walk = format_ident!("walk_mut_{}", ty.name().to_case(Case::Snake));
+        let dispatch = quote!(#walk(#inner(node.0), traverser, ctx).map_break(|action| action.map(#outer::#variant_name)));
+        let mut kinds = Vec::new();
+        for kind in concrete_node_kinds(type_id, schema) {
+            if !seen.insert(kind.clone()) {
+                continue;
+            }
+            let concrete = format_ident!("{kind}");
+            if node.name == "ExportDefaultDeclarationKind"
+                && variant.name == "Expr"
+                && matches!(kind.as_str(), "Function" | "Class")
+            {
+                let concrete_walk = format_ident!("walk_mut_{}", kind.to_case(Case::Snake));
+                let (getter, declaration) = if kind == "Function" {
+                    (
+                        format_ident!("function_type"),
+                        quote!(FunctionType::FunctionDeclaration),
+                    )
+                } else {
+                    (
+                        format_ident!("class_type"),
+                        quote!(ClassType::ClassDeclaration),
+                    )
+                };
+                arms.extend(quote! {
+                    NodeKind::#concrete => {
+                        let concrete = #concrete(node.0);
+                        if concrete.#getter(ctx.ast) == #declaration {
+                            #concrete_walk(concrete, traverser, ctx).map_break(|action| action.map(#outer::#concrete))
+                        } else { #dispatch }
+                    }
+                });
+            } else {
+                kinds.push(concrete);
+            }
+        }
+        if !kinds.is_empty() {
+            arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
+        }
+    }
+    quote! {
+        match ctx.ast.node_kind(node.node_id()) {
+            #arms
+            _ => unreachable!("invalid node kind for traversal union"),
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 mod static_blocks;
 
-use swc_next_ecma_ast::{Class, ClassBody};
+use swc_next_ecma_ast::{Class, ClassBody, Expr, TraverseAction};
 
 use crate::{TransformFeatureFlags, context::Mutation};
 
@@ -31,12 +31,17 @@ impl ES2022 {
         }
     }
 
-    pub(crate) fn exit_class<'a>(&mut self, class: Class, ctx: &mut Mutation<'_, '_, 'a>) {
+    pub(crate) fn exit_class<'a>(
+        &mut self,
+        class: Class,
+        ctx: &mut Mutation<'_, '_, 'a>,
+    ) -> TraverseAction<Expr> {
         if self
             .features
             .contains(TransformFeatureFlags::ES2022_STATIC_BLOCKS)
         {
-            self.static_blocks.exit_class(class, ctx);
+            return self.static_blocks.exit_class(class, ctx);
         }
+        TraverseAction::Continue
     }
 }

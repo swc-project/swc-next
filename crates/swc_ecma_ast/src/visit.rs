@@ -6,6 +6,84 @@ use crate::{
     UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 
+/// Controls the current node's enter or exit phase.
+///
+/// `Skip` ends the remaining typed hooks for this visit; in enter it also skips
+/// children and exit. `Stop` additionally stops the enclosing traversal.
+/// Replacements end the old node's visit and are attached by the parent before
+/// optionally visiting the new node from enter.
+#[must_use]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum TraverseAction<T> {
+    #[default]
+    Continue,
+    Skip,
+    Stop,
+    ReplaceContinue(T),
+    ReplaceSkip(T),
+    ReplaceStop(T),
+}
+
+impl<T> TraverseAction<T> {
+    /// Lift a replacement into its containing field or variant type.
+    #[inline]
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> TraverseAction<U> {
+        match self {
+            Self::Continue => TraverseAction::Continue,
+            Self::Skip => TraverseAction::Skip,
+            Self::Stop => TraverseAction::Stop,
+            Self::ReplaceContinue(node) => TraverseAction::ReplaceContinue(f(node)),
+            Self::ReplaceSkip(node) => TraverseAction::ReplaceSkip(f(node)),
+            Self::ReplaceStop(node) => TraverseAction::ReplaceStop(f(node)),
+        }
+    }
+
+    /// Preserve a descendant's stop while allowing an ancestor exit to replace
+    /// its node. The replacement is attached, but it must not be revisited.
+    #[inline]
+    pub(crate) fn stop(self) -> Self {
+        match self {
+            Self::ReplaceContinue(node) | Self::ReplaceSkip(node) | Self::ReplaceStop(node) => {
+                Self::ReplaceStop(node)
+            }
+            Self::Continue | Self::Skip | Self::Stop => Self::Stop,
+        }
+    }
+}
+
+/// Attach replacements before visiting them, and consume local skips without
+/// propagating them to the owning node. Only a stop escapes the child slot.
+#[inline]
+pub(crate) fn traverse_mut_slot<'a, State, N, V>(
+    mut node: N,
+    traverser: &mut V,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    mut attach: impl FnMut(&mut TraverseMutCtx<'_, 'a, State>, N),
+) -> bool
+where
+    N: Copy + crate::TraverseMutWith<'a, State>,
+    V: ?Sized + crate::TraverseMut<'a, State>,
+{
+    loop {
+        match node.traverse_mut_with(traverser, ctx) {
+            TraverseAction::Continue | TraverseAction::Skip => return false,
+            TraverseAction::Stop => return true,
+            TraverseAction::ReplaceContinue(replacement) => {
+                attach(ctx, replacement);
+                node = replacement;
+            }
+            TraverseAction::ReplaceSkip(replacement) => {
+                attach(ctx, replacement);
+                return false;
+            }
+            TraverseAction::ReplaceStop(replacement) => {
+                attach(ctx, replacement);
+                return true;
+            }
+        }
+    }
+}
+
 /// Shared AST and mutable user state passed to every [`crate::Traverse`] hook.
 ///
 /// AST mutation requires [`TraverseMutCtx`]:

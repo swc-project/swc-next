@@ -34,7 +34,7 @@ pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
 pub use strings::{AstUtf8, AstWtf8};
 pub use syntax::*;
-pub use visit::{TraverseCtx, TraverseMutCtx};
+pub use visit::{TraverseAction, TraverseCtx, TraverseMutCtx};
 
 use swc_next_allocator::multi_index_vec;
 

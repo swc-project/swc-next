@@ -88,12 +88,37 @@ flattens associative containers, so building Semantic afterward records the fina
 scope owners and export expression roots directly.
 
 The statement queue defers attachment to AST lists, not binding allocation or
-reference registration. Ordinary replacements happen during the visitor. Flush
-is per destination container; it is not one global replay of all AST mutations.
+reference registration. Mutable enter and exit hooks return `TraverseAction<T>`:
+`Continue`, `Skip`, `Stop`, `ReplaceContinue(T)`, `ReplaceSkip(T)`, or
+`ReplaceStop(T)`. Untyped `enter_node`/`exit_node` hooks
+return no action and always enclose each visit, including skipped, stopped, or
+replaced visits, so path bookkeeping does not depend on typed exit hooks.
+
+`Skip` ends the current node's remaining typed hooks, while siblings continue.
+In enter it also skips children and exit; in exit the children were already
+visited. `Stop` also stops remaining fields and list entries and propagates
+outward. Already entered ancestors still run their exit hooks; `Continue` cannot
+cancel a descendant's stop. If an ancestor exit requests a replacement while
+unwinding a stop, the parent attaches it without revisiting it. Enum and concrete
+hooks for the same node are one visit: a skip, stop, or replacement returned by
+an inner hook ends that node's remaining hooks, rather than being merged with
+an outer exit action.
+
+All replacement variants end the old node's visit. The parent applies the typed
+replacement before processing its disposition: `ReplaceContinue` restarts the
+replacement from enter, `ReplaceSkip` continues with the next sibling, and
+`ReplaceStop` stops. Returning a replacement always applies it, even when its
+NodeId is unchanged. Return `Continue` to keep traversing the current node.
+Scalar fields, optional fields, and list slots share the same attachment loop.
+`TraverseMutWith` returns `TraverseAction<Self>` as the disposition for its
+owning slot, consuming a local `Skip` as `Continue`. A direct root caller must
+attach returned replacements through the root setter and restart traversal for
+`ReplaceContinue`. Flush is per destination container, not one global replay of
+all AST mutations.
 
 `push_container` and `unshift_container` currently support `ClassBody.body`.
 They edit the logical member list returned by `container_class_body` in
-transformer state, including pending insertions. `container_write_back` attaches
+transformer state, including pending insertions. `container_flush` attaches
 the list with one `add_sub_range` call and releases the cached handles. Unedited
 lists keep their original ranges, and repeated write-back without further edits
 does nothing. The class-body entry callback writes back before the generic
@@ -147,9 +172,18 @@ belongs to TransformAnalysis's separate per-class collision domains.
 - `generate_binding` returns a `GeneratedBinding` containing its declaration and
   symbol. Register it on first use, then reuse it through `generated_bindings`.
   Use `add_scope_node` to create or transfer a scope owner.
-- `wrap_current_expr` retains the old expression as a direct child. Property
-  initializer and computed-key wrappers preserve their original expressions
-  through the same validation contract.
+- Return `ReplaceContinue`, `ReplaceSkip`, or `ReplaceStop` from enter or exit
+  to edit the current attachment. Prepare the replacement's nodes,
+  scopes, bindings and references before returning it; traversal only applies
+  the typed AST edge and does not allocate semantic identities. Static-block
+  lowering returns `(class, call)` as `TraverseAction::ReplaceContinue` from
+  `exit_expr`, preserving the original class's NodeId and semantic identities
+  inside the sequence, with new nodes evaluated in the class's outside scope.
+  Class declarations use `exit_decl`; the default-export kind hook forwards
+  default-exported class declarations there because its Class variant bypasses
+  the Decl traversal hook.
+  Concrete hooks return their concrete type; use a union hook for replacements
+  between different node kinds. Untyped hooks only maintain traversal state.
 - `filter_map_class_elements` distinguishes `Unchanged`, `Update`, and `Delete`.
   It compacts node-ID slots in place and synchronizes each edit. Materialize or
   move retained contents before deleting their old class-element attachment.
@@ -190,7 +224,7 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Generated-name collision domains | [crates/swc_ecma_transformer/src/used_names.rs](../crates/swc_ecma_transformer/src/used_names.rs) |
 | Post-transform semantic invariant checks | [crates/swc_ecma_transformer/src/context/invariants.rs](../crates/swc_ecma_transformer/src/context/invariants.rs) |
 | Allocation and registration | [crates/swc_ecma_transformer/src/context/construction.rs](../crates/swc_ecma_transformer/src/context/construction.rs) |
-| Expression replacement contracts | [crates/swc_ecma_transformer/src/context/expressions.rs](../crates/swc_ecma_transformer/src/context/expressions.rs) |
+| Typed traversal actions and parent write-back | [crates/swc_ecma_ast/src/visit.rs](../crates/swc_ecma_ast/src/visit.rs), [tasks/ast_tools/src/generator/ast_visitor.rs](../tasks/ast_tools/src/generator/ast_visitor.rs) |
 | Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |
 | Deferred statement attachment | [crates/swc_ecma_transformer/src/context/statement_injector.rs](../crates/swc_ecma_transformer/src/context/statement_injector.rs) |
 | External helper cache and kinds | [crates/swc_ecma_transformer/src/helpers.rs](../crates/swc_ecma_transformer/src/helpers.rs) |

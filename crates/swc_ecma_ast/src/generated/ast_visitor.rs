@@ -1,5 +1,5 @@
 #![allow(unused, clippy::useless_conversion, clippy::single_match)]
-use crate::visit::{TraverseCtx, TraverseMutCtx};
+use crate::visit::{TraverseCtx, TraverseMutCtx, traverse_mut_slot};
 use crate::*;
 use oxc_index::Idx;
 pub trait Visit<'a> {
@@ -25771,2594 +25771,3460 @@ fn walk_jsx_spread_child<'a, State, T: ?Sized + Traverse<'a, State>>(
     }
     traverser.exit_jsx_spread_child(node, ctx);
 }
-///Hooks invoked before and after each concrete node, with mutable AST access.
-/// Children are always traversed between the enter and exit hooks.
-/// Enum hooks follow the field and variant types along the traversal path.
-/// Each node's enter/exit hooks enclose its enum and concrete hooks, even
-/// when nested enums describe the same node. Direct traversal uses the
-/// same ordering for the root node.
+/// Mutable enter/exit traversal with typed, parent-applied replacements.
+///
+/// Enter and exit hooks return TraverseAction. Skip ends the current
+/// node's remaining typed callbacks; in enter it also skips children.
+/// Stop also stops remaining children and siblings. Replacements end
+/// the old node's typed callbacks. The parent attaches the replacement
+/// before restarting its enter hooks for ReplaceContinue; ReplaceSkip
+/// attaches without visiting it, and ReplaceStop attaches then stops.
+/// A descendant stop still allows ancestor exit hooks, but Continue
+/// cannot cancel the stop. Enum hooks describe the same node, so a
+/// skip, stop or replacement from an inner hook ends its remaining hooks.
+/// Untyped node hooks always enclose the visit and return no action.
+/// Use a union hook such as exit_expr for changes between node kinds.
+/// Prepare semantic information before returning newly generated nodes.
 pub trait TraverseMut<'a, State = ()> {
     #[inline]
-    fn enter_node(&mut self, node_id: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
     #[inline]
-    fn exit_node(&mut self, node_id: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
     #[inline]
-    fn enter_program(&mut self, node: Program, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_program(
+        &mut self,
+        node: Program,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Program> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_program(&mut self, node: Program, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_program(
+        &mut self,
+        node: Program,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Program> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_stmt(&mut self, node: Stmt, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_stmt(
+        &mut self,
+        node: Stmt,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Stmt> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_stmt(&mut self, node: Stmt, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_stmt(
+        &mut self,
+        node: Stmt,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Stmt> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_decl(&mut self, node: Decl, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_decl(
+        &mut self,
+        node: Decl,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Decl> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_decl(&mut self, node: Decl, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_decl(
+        &mut self,
+        node: Decl,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Decl> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_expr(&mut self, node: Expr, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_expr(
+        &mut self,
+        node: Expr,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Expr> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_expr(&mut self, node: Expr, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_expr(
+        &mut self,
+        node: Expr,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Expr> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_binding_pattern(
         &mut self,
         node: BindingPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_binding_pattern(
         &mut self,
         node: BindingPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_assignment_target(
         &mut self,
         node: AssignmentTarget,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentTarget> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_assignment_target(
         &mut self,
         node: AssignmentTarget,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentTarget> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_simple_assignment_target(
         &mut self,
         node: SimpleAssignmentTarget,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SimpleAssignmentTarget> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_simple_assignment_target(
         &mut self,
         node: SimpleAssignmentTarget,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SimpleAssignmentTarget> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_property_key(&mut self, node: PropertyKey, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_property_key(
+        &mut self,
+        node: PropertyKey,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<PropertyKey> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_property_key(&mut self, node: PropertyKey, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_property_key(
+        &mut self,
+        node: PropertyKey,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<PropertyKey> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_module_export_name(
         &mut self,
         node: ModuleExportName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ModuleExportName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_module_export_name(
         &mut self,
         node: ModuleExportName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ModuleExportName> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_argument(&mut self, node: Argument, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_argument(
+        &mut self,
+        node: Argument,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Argument> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_argument(&mut self, node: Argument, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_argument(
+        &mut self,
+        node: Argument,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Argument> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_object_property_kind(
         &mut self,
         node: ObjectPropertyKind,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectPropertyKind> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_object_property_kind(
         &mut self,
         node: ObjectPropertyKind,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectPropertyKind> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_for_statement_init(
         &mut self,
         node: ForStatementInit,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForStatementInit> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_for_statement_init(
         &mut self,
         node: ForStatementInit,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForStatementInit> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_for_statement_left(
         &mut self,
         node: ForStatementLeft,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForStatementLeft> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_for_statement_left(
         &mut self,
         node: ForStatementLeft,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForStatementLeft> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_arrow_function_body(
         &mut self,
         node: ArrowFunctionBody,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrowFunctionBody> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_arrow_function_body(
         &mut self,
         node: ArrowFunctionBody,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrowFunctionBody> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_formal_parameter_item(
         &mut self,
         node: FormalParameterItem,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterItem> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_formal_parameter_item(
         &mut self,
         node: FormalParameterItem,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterItem> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_formal_parameter_pattern(
         &mut self,
         node: FormalParameterPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_formal_parameter_pattern(
         &mut self,
         node: FormalParameterPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterPattern> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_class_element(&mut self, node: ClassElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_class_element(
+        &mut self,
+        node: ClassElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ClassElement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_class_element(&mut self, node: ClassElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_class_element(
+        &mut self,
+        node: ClassElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ClassElement> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_import_declaration_specifier(
         &mut self,
         node: ImportDeclarationSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDeclarationSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_declaration_specifier(
         &mut self,
         node: ImportDeclarationSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDeclarationSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_export_default_declaration_kind(
         &mut self,
         node: ExportDefaultDeclarationKind,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportDefaultDeclarationKind> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_export_default_declaration_kind(
         &mut self,
         node: ExportDefaultDeclarationKind,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportDefaultDeclarationKind> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_super(&mut self, node: Super, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_super(
+        &mut self,
+        node: Super,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Super> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_super(&mut self, node: Super, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_super(
+        &mut self,
+        node: Super,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Super> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_this_expression(
         &mut self,
         node: ThisExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ThisExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_this_expression(
         &mut self,
         node: ThisExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ThisExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_string_literal(
         &mut self,
         node: StringLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<StringLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_string_literal(
         &mut self,
         node: StringLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<StringLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_numeric_literal(
         &mut self,
         node: NumericLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<NumericLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_numeric_literal(
         &mut self,
         node: NumericLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<NumericLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_big_int_literal(
         &mut self,
         node: BigIntLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BigIntLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_big_int_literal(
         &mut self,
         node: BigIntLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BigIntLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_boolean_literal(
         &mut self,
         node: BooleanLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BooleanLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_boolean_literal(
         &mut self,
         node: BooleanLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BooleanLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_null_literal(
+        &mut self,
+        node: NullLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<NullLiteral> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_null_literal(&mut self, node: NullLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_null_literal(
+        &mut self,
+        node: NullLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<NullLiteral> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_reg_exp_literal(
         &mut self,
         node: RegExpLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<RegExpLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_reg_exp_literal(
         &mut self,
         node: RegExpLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<RegExpLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_template_literal(
         &mut self,
         node: TemplateLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TemplateLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_template_literal(
         &mut self,
         node: TemplateLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TemplateLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_template_element(
         &mut self,
         node: TemplateElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TemplateElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_template_element(
         &mut self,
         node: TemplateElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TemplateElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_identifier_reference(
         &mut self,
         node: IdentifierReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<IdentifierReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_identifier_reference(
         &mut self,
         node: IdentifierReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<IdentifierReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_private_identifier(
         &mut self,
         node: PrivateIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<PrivateIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_private_identifier(
         &mut self,
         node: PrivateIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<PrivateIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_binding_identifier(
         &mut self,
         node: BindingIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_binding_identifier(
         &mut self,
         node: BindingIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_identifier_name(
         &mut self,
         node: IdentifierName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<IdentifierName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_identifier_name(
         &mut self,
         node: IdentifierName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<IdentifierName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_label_identifier(
         &mut self,
         node: LabelIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LabelIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_label_identifier(
         &mut self,
         node: LabelIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LabelIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_assignment_pattern(
         &mut self,
         node: AssignmentPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_assignment_pattern(
         &mut self,
         node: AssignmentPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_binding_rest_element(
         &mut self,
         node: BindingRestElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingRestElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_binding_rest_element(
         &mut self,
         node: BindingRestElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingRestElement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_array_pattern(&mut self, node: ArrayPattern, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_array_pattern(
+        &mut self,
+        node: ArrayPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ArrayPattern> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_array_pattern(&mut self, node: ArrayPattern, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_array_pattern(
+        &mut self,
+        node: ArrayPattern,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ArrayPattern> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_object_pattern(
         &mut self,
         node: ObjectPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_object_pattern(
         &mut self,
         node: ObjectPattern,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectPattern> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_binding_property(
         &mut self,
         node: BindingProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_binding_property(
         &mut self,
         node: BindingProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BindingProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_binary_expression(
         &mut self,
         node: BinaryExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BinaryExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_binary_expression(
         &mut self,
         node: BinaryExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BinaryExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_logical_expression(
         &mut self,
         node: LogicalExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LogicalExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_logical_expression(
         &mut self,
         node: LogicalExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LogicalExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_conditional_expression(
         &mut self,
         node: ConditionalExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ConditionalExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_conditional_expression(
         &mut self,
         node: ConditionalExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ConditionalExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_unary_expression(
         &mut self,
         node: UnaryExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<UnaryExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_unary_expression(
         &mut self,
         node: UnaryExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<UnaryExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_update_expression(
         &mut self,
         node: UpdateExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<UpdateExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_update_expression(
         &mut self,
         node: UpdateExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<UpdateExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_assignment_expression(
         &mut self,
         node: AssignmentExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_assignment_expression(
         &mut self,
         node: AssignmentExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AssignmentExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_variable_declaration(
         &mut self,
         node: VariableDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<VariableDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_variable_declaration(
         &mut self,
         node: VariableDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<VariableDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_variable_declarator(
         &mut self,
         node: VariableDeclarator,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<VariableDeclarator> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_variable_declarator(
         &mut self,
         node: VariableDeclarator,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<VariableDeclarator> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_if_statement(&mut self, node: IfStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_if_statement(
+        &mut self,
+        node: IfStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<IfStatement> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_if_statement(&mut self, node: IfStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_if_statement(
+        &mut self,
+        node: IfStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<IfStatement> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_switch_statement(
         &mut self,
         node: SwitchStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SwitchStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_switch_statement(
         &mut self,
         node: SwitchStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SwitchStatement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_switch_case(&mut self, node: SwitchCase, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn exit_switch_case(&mut self, node: SwitchCase, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn enter_for_statement(&mut self, node: ForStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_switch_case(
+        &mut self,
+        node: SwitchCase,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<SwitchCase> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_for_statement(&mut self, node: ForStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_switch_case(
+        &mut self,
+        node: SwitchCase,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<SwitchCase> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn enter_for_statement(
+        &mut self,
+        node: ForStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ForStatement> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn exit_for_statement(
+        &mut self,
+        node: ForStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ForStatement> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_for_in_statement(
         &mut self,
         node: ForInStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForInStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_for_in_statement(
         &mut self,
         node: ForInStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForInStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_for_of_statement(
         &mut self,
         node: ForOfStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForOfStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_for_of_statement(
         &mut self,
         node: ForOfStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ForOfStatement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_try_statement(&mut self, node: TryStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_try_statement(
+        &mut self,
+        node: TryStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TryStatement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_try_statement(&mut self, node: TryStatement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_try_statement(
+        &mut self,
+        node: TryStatement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TryStatement> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_catch_clause(&mut self, node: CatchClause, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_catch_clause(
+        &mut self,
+        node: CatchClause,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<CatchClause> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_catch_clause(&mut self, node: CatchClause, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_catch_clause(
+        &mut self,
+        node: CatchClause,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<CatchClause> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_break_statement(
         &mut self,
         node: BreakStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BreakStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_break_statement(
         &mut self,
         node: BreakStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BreakStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_continue_statement(
         &mut self,
         node: ContinueStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ContinueStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_continue_statement(
         &mut self,
         node: ContinueStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ContinueStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_labeled_statement(
         &mut self,
         node: LabeledStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LabeledStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_labeled_statement(
         &mut self,
         node: LabeledStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<LabeledStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_expression_statement(
         &mut self,
         node: ExpressionStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExpressionStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_expression_statement(
         &mut self,
         node: ExpressionStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExpressionStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_return_statement(
         &mut self,
         node: ReturnStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ReturnStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_return_statement(
         &mut self,
         node: ReturnStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ReturnStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_throw_statement(
         &mut self,
         node: ThrowStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ThrowStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_throw_statement(
         &mut self,
         node: ThrowStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ThrowStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_debugger_statement(
         &mut self,
         node: DebuggerStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<DebuggerStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_debugger_statement(
         &mut self,
         node: DebuggerStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<DebuggerStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_empty_statement(
         &mut self,
         node: EmptyStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<EmptyStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_empty_statement(
         &mut self,
         node: EmptyStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<EmptyStatement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_directive(&mut self, node: Directive, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_directive(
+        &mut self,
+        node: Directive,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Directive> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_directive(&mut self, node: Directive, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_directive(
+        &mut self,
+        node: Directive,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Directive> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_decorator(&mut self, node: Decorator, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_decorator(
+        &mut self,
+        node: Decorator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Decorator> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_decorator(&mut self, node: Decorator, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_decorator(
+        &mut self,
+        node: Decorator,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Decorator> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_class(&mut self, node: Class, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_class(
+        &mut self,
+        node: Class,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Class> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_class(&mut self, node: Class, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_class(
+        &mut self,
+        node: Class,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Class> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_class_body(&mut self, node: ClassBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_class_body(
+        &mut self,
+        node: ClassBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ClassBody> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_class_body(&mut self, node: ClassBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_class_body(
+        &mut self,
+        node: ClassBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<ClassBody> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_method_definition(
         &mut self,
         node: MethodDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<MethodDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_method_definition(
         &mut self,
         node: MethodDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<MethodDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_property_definition(
         &mut self,
         node: PropertyDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<PropertyDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_property_definition(
         &mut self,
         node: PropertyDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<PropertyDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn exit_static_block(&mut self, node: StaticBlock, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn enter_function(&mut self, node: Function, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn exit_function(&mut self, node: Function, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
-    #[inline]
-    fn enter_function_body(&mut self, node: FunctionBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_static_block(
+        &mut self,
+        node: StaticBlock,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<StaticBlock> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_function_body(&mut self, node: FunctionBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_static_block(
+        &mut self,
+        node: StaticBlock,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<StaticBlock> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn enter_function(
+        &mut self,
+        node: Function,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Function> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn exit_function(
+        &mut self,
+        node: Function,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Function> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn enter_function_body(
+        &mut self,
+        node: FunctionBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<FunctionBody> {
+        TraverseAction::Continue
+    }
+    #[inline]
+    fn exit_function_body(
+        &mut self,
+        node: FunctionBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<FunctionBody> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_block_statement(
         &mut self,
         node: BlockStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BlockStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_block_statement(
         &mut self,
         node: BlockStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<BlockStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_while_statement(
         &mut self,
         node: WhileStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<WhileStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_while_statement(
         &mut self,
         node: WhileStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<WhileStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_do_while_statement(
         &mut self,
         node: DoWhileStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<DoWhileStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_do_while_statement(
         &mut self,
         node: DoWhileStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<DoWhileStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_with_statement(
         &mut self,
         node: WithStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<WithStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_with_statement(
         &mut self,
         node: WithStatement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<WithStatement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_formal_parameters(
         &mut self,
         node: FormalParameters,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameters> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_formal_parameters(
         &mut self,
         node: FormalParameters,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameters> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_formal_parameter(
         &mut self,
         node: FormalParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_formal_parameter(
         &mut self,
         node: FormalParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_formal_parameter_rest(
         &mut self,
         node: FormalParameterRest,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterRest> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_formal_parameter_rest(
         &mut self,
         node: FormalParameterRest,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<FormalParameterRest> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_array_expression(
         &mut self,
         node: ArrayExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrayExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_array_expression(
         &mut self,
         node: ArrayExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrayExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_object_expression(
         &mut self,
         node: ObjectExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_object_expression(
         &mut self,
         node: ObjectExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_spread_element(
         &mut self,
         node: SpreadElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SpreadElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_spread_element(
         &mut self,
         node: SpreadElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SpreadElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_object_property(
         &mut self,
         node: ObjectProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_object_property(
         &mut self,
         node: ObjectProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ObjectProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_parenthesized_expression(
         &mut self,
         node: ParenthesizedExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ParenthesizedExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_parenthesized_expression(
         &mut self,
         node: ParenthesizedExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ParenthesizedExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_arrow_function_expression(
         &mut self,
         node: ArrowFunctionExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrowFunctionExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_arrow_function_expression(
         &mut self,
         node: ArrowFunctionExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ArrowFunctionExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_sequence_expression(
         &mut self,
         node: SequenceExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SequenceExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_sequence_expression(
         &mut self,
         node: SequenceExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<SequenceExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_member_expression(
         &mut self,
         node: MemberExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<MemberExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_member_expression(
         &mut self,
         node: MemberExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<MemberExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_call_expression(
         &mut self,
         node: CallExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<CallExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_call_expression(
         &mut self,
         node: CallExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<CallExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_chain_expression(
         &mut self,
         node: ChainExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ChainExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_chain_expression(
         &mut self,
         node: ChainExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ChainExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_tagged_template_expression(
         &mut self,
         node: TaggedTemplateExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TaggedTemplateExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_tagged_template_expression(
         &mut self,
         node: TaggedTemplateExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TaggedTemplateExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_new_expression(
         &mut self,
         node: NewExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<NewExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_new_expression(
         &mut self,
         node: NewExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<NewExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_await_expression(
         &mut self,
         node: AwaitExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AwaitExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_await_expression(
         &mut self,
         node: AwaitExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<AwaitExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_yield_expression(
         &mut self,
         node: YieldExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<YieldExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_yield_expression(
         &mut self,
         node: YieldExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<YieldExpression> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_meta_property(&mut self, node: MetaProperty, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_meta_property(
+        &mut self,
+        node: MetaProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<MetaProperty> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_meta_property(&mut self, node: MetaProperty, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_meta_property(
+        &mut self,
+        node: MetaProperty,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<MetaProperty> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_import_expression(
         &mut self,
         node: ImportExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_expression(
         &mut self,
         node: ImportExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_import_declaration(
         &mut self,
         node: ImportDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_declaration(
         &mut self,
         node: ImportDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_import_specifier(
         &mut self,
         node: ImportSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_specifier(
         &mut self,
         node: ImportSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_import_default_specifier(
         &mut self,
         node: ImportDefaultSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDefaultSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_default_specifier(
         &mut self,
         node: ImportDefaultSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportDefaultSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_import_namespace_specifier(
         &mut self,
         node: ImportNamespaceSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportNamespaceSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_namespace_specifier(
         &mut self,
         node: ImportNamespaceSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportNamespaceSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_import_attribute(
         &mut self,
         node: ImportAttribute,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportAttribute> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_import_attribute(
         &mut self,
         node: ImportAttribute,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ImportAttribute> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_export_named_declaration(
         &mut self,
         node: ExportNamedDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportNamedDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_export_named_declaration(
         &mut self,
         node: ExportNamedDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportNamedDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_export_default_declaration(
         &mut self,
         node: ExportDefaultDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportDefaultDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_export_default_declaration(
         &mut self,
         node: ExportDefaultDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportDefaultDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_export_all_declaration(
         &mut self,
         node: ExportAllDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportAllDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_export_all_declaration(
         &mut self,
         node: ExportAllDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportAllDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_export_specifier(
         &mut self,
         node: ExportSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_export_specifier(
         &mut self,
         node: ExportSpecifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<ExportSpecifier> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_hashbang(
+        &mut self,
+        node: Hashbang,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Hashbang> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_hashbang(&mut self, node: Hashbang, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_hashbang(
+        &mut self,
+        node: Hashbang,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Hashbang> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_ts_type(&mut self, node: TsType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_type(
+        &mut self,
+        node: TsType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_type(&mut self, node: TsType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_type(
+        &mut self,
+        node: TsType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_ts_type_name(&mut self, node: TsTypeName, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_type_name(
+        &mut self,
+        node: TsTypeName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTypeName> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_type_name(&mut self, node: TsTypeName, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_type_name(
+        &mut self,
+        node: TsTypeName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTypeName> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_qualified_name_left(
         &mut self,
         node: TsQualifiedNameLeft,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsQualifiedNameLeft> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_qualified_name_left(
         &mut self,
         node: TsQualifiedNameLeft,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsQualifiedNameLeft> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_import_type_qualifier(
         &mut self,
         node: TsImportTypeQualifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsImportTypeQualifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_import_type_qualifier(
         &mut self,
         node: TsImportTypeQualifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsImportTypeQualifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_query_expr_name(
         &mut self,
         node: TsTypeQueryExprName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeQueryExprName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_query_expr_name(
         &mut self,
         node: TsTypeQueryExprName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeQueryExprName> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_literal(&mut self, node: TsLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_literal(
+        &mut self,
+        node: TsLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsLiteral> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_literal(&mut self, node: TsLiteral, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_literal(
+        &mut self,
+        node: TsLiteral,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsLiteral> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_tuple_element(
         &mut self,
         node: TsTupleElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTupleElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_tuple_element(
         &mut self,
         node: TsTupleElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTupleElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_element(
         &mut self,
         node: TsTypeElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_element(
         &mut self,
         node: TsTypeElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_predicate_name(
         &mut self,
         node: TsTypePredicateName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypePredicateName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_predicate_name(
         &mut self,
         node: TsTypePredicateName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypePredicateName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_enum_member_name(
         &mut self,
         node: TsEnumMemberName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsEnumMemberName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_enum_member_name(
         &mut self,
         node: TsEnumMemberName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsEnumMemberName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_module_name(
         &mut self,
         node: TsModuleName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleName> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_module_name(&mut self, node: TsModuleName, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_module_name(
+        &mut self,
+        node: TsModuleName,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsModuleName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_module_body(
         &mut self,
         node: TsModuleBody,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleBody> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_module_body(&mut self, node: TsModuleBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_module_body(
+        &mut self,
+        node: TsModuleBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsModuleBody> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_module_reference(
         &mut self,
         node: TsModuleReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_module_reference(
         &mut self,
         node: TsModuleReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleReference> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_function(&mut self, node: TsFunction, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_function(
+        &mut self,
+        node: TsFunction,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsFunction> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_function(&mut self, node: TsFunction, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_function(
+        &mut self,
+        node: TsFunction,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsFunction> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_method_definition(
         &mut self,
         node: TsMethodDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsMethodDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_method_definition(
         &mut self,
         node: TsMethodDefinition,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsMethodDefinition> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_annotation(
         &mut self,
         node: TsTypeAnnotation,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAnnotation> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_annotation(
         &mut self,
         node: TsTypeAnnotation,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAnnotation> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_any_keyword(
         &mut self,
         node: TsAnyKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsAnyKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_any_keyword(&mut self, node: TsAnyKeyword, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_any_keyword(
+        &mut self,
+        node: TsAnyKeyword,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsAnyKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_unknown_keyword(
         &mut self,
         node: TsUnknownKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsUnknownKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_unknown_keyword(
         &mut self,
         node: TsUnknownKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsUnknownKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_never_keyword(
         &mut self,
         node: TsNeverKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNeverKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_never_keyword(
         &mut self,
         node: TsNeverKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNeverKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_void_keyword(
         &mut self,
         node: TsVoidKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsVoidKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_void_keyword(
         &mut self,
         node: TsVoidKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsVoidKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_null_keyword(
         &mut self,
         node: TsNullKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNullKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_null_keyword(
         &mut self,
         node: TsNullKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNullKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_undefined_keyword(
         &mut self,
         node: TsUndefinedKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsUndefinedKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_undefined_keyword(
         &mut self,
         node: TsUndefinedKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsUndefinedKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_string_keyword(
         &mut self,
         node: TsStringKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsStringKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_string_keyword(
         &mut self,
         node: TsStringKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsStringKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_number_keyword(
         &mut self,
         node: TsNumberKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNumberKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_number_keyword(
         &mut self,
         node: TsNumberKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNumberKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_big_int_keyword(
         &mut self,
         node: TsBigIntKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsBigIntKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_big_int_keyword(
         &mut self,
         node: TsBigIntKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsBigIntKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_boolean_keyword(
         &mut self,
         node: TsBooleanKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsBooleanKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_boolean_keyword(
         &mut self,
         node: TsBooleanKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsBooleanKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_symbol_keyword(
         &mut self,
         node: TsSymbolKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsSymbolKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_symbol_keyword(
         &mut self,
         node: TsSymbolKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsSymbolKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_object_keyword(
         &mut self,
         node: TsObjectKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsObjectKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_object_keyword(
         &mut self,
         node: TsObjectKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsObjectKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_intrinsic_keyword(
         &mut self,
         node: TsIntrinsicKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIntrinsicKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_intrinsic_keyword(
         &mut self,
         node: TsIntrinsicKeyword,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIntrinsicKeyword> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_this_type(&mut self, node: TsThisType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_this_type(
+        &mut self,
+        node: TsThisType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsThisType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_this_type(&mut self, node: TsThisType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_this_type(
+        &mut self,
+        node: TsThisType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsThisType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_type_reference(
         &mut self,
         node: TsTypeReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_reference(
         &mut self,
         node: TsTypeReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_qualified_name(
         &mut self,
         node: TsQualifiedName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsQualifiedName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_qualified_name(
         &mut self,
         node: TsQualifiedName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsQualifiedName> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_type_query(&mut self, node: TsTypeQuery, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_type_query(
+        &mut self,
+        node: TsTypeQuery,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTypeQuery> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_type_query(&mut self, node: TsTypeQuery, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_type_query(
+        &mut self,
+        node: TsTypeQuery,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTypeQuery> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_import_type(
         &mut self,
         node: TsImportType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsImportType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_import_type(&mut self, node: TsImportType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_import_type(
+        &mut self,
+        node: TsImportType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsImportType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_parameter(
         &mut self,
         node: TsTypeParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_parameter(
         &mut self,
         node: TsTypeParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_parameter_declaration(
         &mut self,
         node: TsTypeParameterDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameterDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_parameter_declaration(
         &mut self,
         node: TsTypeParameterDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameterDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_parameter_instantiation(
         &mut self,
         node: TsTypeParameterInstantiation,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameterInstantiation> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_parameter_instantiation(
         &mut self,
         node: TsTypeParameterInstantiation,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeParameterInstantiation> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_literal_type(
         &mut self,
         node: TsLiteralType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsLiteralType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_literal_type(
         &mut self,
         node: TsLiteralType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsLiteralType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_template_literal_type(
         &mut self,
         node: TsTemplateLiteralType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTemplateLiteralType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_template_literal_type(
         &mut self,
         node: TsTemplateLiteralType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTemplateLiteralType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_array_type(&mut self, node: TsArrayType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_array_type(
+        &mut self,
+        node: TsArrayType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsArrayType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_array_type(&mut self, node: TsArrayType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_array_type(
+        &mut self,
+        node: TsArrayType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsArrayType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_indexed_access_type(
         &mut self,
         node: TsIndexedAccessType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexedAccessType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_indexed_access_type(
         &mut self,
         node: TsIndexedAccessType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexedAccessType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_tuple_type(&mut self, node: TsTupleType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_tuple_type(
+        &mut self,
+        node: TsTupleType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTupleType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_tuple_type(&mut self, node: TsTupleType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_tuple_type(
+        &mut self,
+        node: TsTupleType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsTupleType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_named_tuple_member(
         &mut self,
         node: TsNamedTupleMember,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNamedTupleMember> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_named_tuple_member(
         &mut self,
         node: TsNamedTupleMember,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNamedTupleMember> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_optional_type(
         &mut self,
         node: TsOptionalType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsOptionalType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_optional_type(
         &mut self,
         node: TsOptionalType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsOptionalType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_rest_type(&mut self, node: TsRestType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_rest_type(
+        &mut self,
+        node: TsRestType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsRestType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_rest_type(&mut self, node: TsRestType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_rest_type(
+        &mut self,
+        node: TsRestType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsRestType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_js_doc_nullable_type(
         &mut self,
         node: TsJsDocNullableType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocNullableType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_js_doc_nullable_type(
         &mut self,
         node: TsJsDocNullableType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocNullableType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_js_doc_non_nullable_type(
         &mut self,
         node: TsJsDocNonNullableType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocNonNullableType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_js_doc_non_nullable_type(
         &mut self,
         node: TsJsDocNonNullableType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocNonNullableType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_js_doc_unknown_type(
         &mut self,
         node: TsJsDocUnknownType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocUnknownType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_js_doc_unknown_type(
         &mut self,
         node: TsJsDocUnknownType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsJsDocUnknownType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_union_type(&mut self, node: TsUnionType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_union_type(
+        &mut self,
+        node: TsUnionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsUnionType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_union_type(&mut self, node: TsUnionType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_union_type(
+        &mut self,
+        node: TsUnionType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsUnionType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_intersection_type(
         &mut self,
         node: TsIntersectionType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIntersectionType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_intersection_type(
         &mut self,
         node: TsIntersectionType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIntersectionType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_conditional_type(
         &mut self,
         node: TsConditionalType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConditionalType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_conditional_type(
         &mut self,
         node: TsConditionalType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConditionalType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_infer_type(&mut self, node: TsInferType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_infer_type(
+        &mut self,
+        node: TsInferType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsInferType> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_infer_type(&mut self, node: TsInferType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_infer_type(
+        &mut self,
+        node: TsInferType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsInferType> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_type_operator(
         &mut self,
         node: TsTypeOperator,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeOperator> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_operator(
         &mut self,
         node: TsTypeOperator,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeOperator> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_parenthesized_type(
         &mut self,
         node: TsParenthesizedType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsParenthesizedType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_parenthesized_type(
         &mut self,
         node: TsParenthesizedType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsParenthesizedType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_function_type(
         &mut self,
         node: TsFunctionType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsFunctionType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_function_type(
         &mut self,
         node: TsFunctionType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsFunctionType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_constructor_type(
         &mut self,
         node: TsConstructorType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConstructorType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_constructor_type(
         &mut self,
         node: TsConstructorType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConstructorType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_predicate(
         &mut self,
         node: TsTypePredicate,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypePredicate> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_predicate(
         &mut self,
         node: TsTypePredicate,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypePredicate> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_literal(
         &mut self,
         node: TsTypeLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_literal(
         &mut self,
         node: TsTypeLiteral,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeLiteral> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_mapped_type(
         &mut self,
         node: TsMappedType,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsMappedType> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_mapped_type(&mut self, node: TsMappedType, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_mapped_type(
+        &mut self,
+        node: TsMappedType,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsMappedType> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_property_signature(
         &mut self,
         node: TsPropertySignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsPropertySignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_property_signature(
         &mut self,
         node: TsPropertySignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsPropertySignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_method_signature(
         &mut self,
         node: TsMethodSignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsMethodSignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_method_signature(
         &mut self,
         node: TsMethodSignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsMethodSignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_call_signature_declaration(
         &mut self,
         node: TsCallSignatureDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsCallSignatureDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_call_signature_declaration(
         &mut self,
         node: TsCallSignatureDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsCallSignatureDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_construct_signature_declaration(
         &mut self,
         node: TsConstructSignatureDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConstructSignatureDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_construct_signature_declaration(
         &mut self,
         node: TsConstructSignatureDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsConstructSignatureDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_index_signature(
         &mut self,
         node: TsIndexSignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexSignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_index_signature(
         &mut self,
         node: TsIndexSignature,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexSignature> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_alias_declaration(
         &mut self,
         node: TsTypeAliasDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAliasDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_alias_declaration(
         &mut self,
         node: TsTypeAliasDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAliasDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_interface_declaration(
         &mut self,
         node: TsInterfaceDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_interface_declaration(
         &mut self,
         node: TsInterfaceDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_interface_body(
         &mut self,
         node: TsInterfaceBody,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceBody> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_interface_body(
         &mut self,
         node: TsInterfaceBody,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceBody> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_interface_heritage(
         &mut self,
         node: TsInterfaceHeritage,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceHeritage> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_interface_heritage(
         &mut self,
         node: TsInterfaceHeritage,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInterfaceHeritage> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_class_implements(
         &mut self,
         node: TsClassImplements,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsClassImplements> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_class_implements(
         &mut self,
         node: TsClassImplements,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsClassImplements> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_enum_declaration(
         &mut self,
         node: TsEnumDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsEnumDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_enum_declaration(
         &mut self,
         node: TsEnumDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsEnumDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_ts_enum_body(&mut self, node: TsEnumBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_ts_enum_body(
+        &mut self,
+        node: TsEnumBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsEnumBody> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_ts_enum_body(&mut self, node: TsEnumBody, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_ts_enum_body(
+        &mut self,
+        node: TsEnumBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsEnumBody> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_ts_enum_member(
         &mut self,
         node: TsEnumMember,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsEnumMember> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_ts_enum_member(&mut self, node: TsEnumMember, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn exit_ts_enum_member(
+        &mut self,
+        node: TsEnumMember,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<TsEnumMember> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_module_declaration(
         &mut self,
         node: TsModuleDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_module_declaration(
         &mut self,
         node: TsModuleDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_module_block(
         &mut self,
         node: TsModuleBlock,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleBlock> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_module_block(
         &mut self,
         node: TsModuleBlock,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsModuleBlock> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_global_declaration(
         &mut self,
         node: TsGlobalDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsGlobalDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_global_declaration(
         &mut self,
         node: TsGlobalDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsGlobalDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_parameter_property(
         &mut self,
         node: TsParameterProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsParameterProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_parameter_property(
         &mut self,
         node: TsParameterProperty,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsParameterProperty> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_this_parameter(
         &mut self,
         node: TsThisParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsThisParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_this_parameter(
         &mut self,
         node: TsThisParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsThisParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_as_expression(
         &mut self,
         node: TsAsExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsAsExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_as_expression(
         &mut self,
         node: TsAsExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsAsExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_satisfies_expression(
         &mut self,
         node: TsSatisfiesExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsSatisfiesExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_satisfies_expression(
         &mut self,
         node: TsSatisfiesExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsSatisfiesExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_type_assertion(
         &mut self,
         node: TsTypeAssertion,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAssertion> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_type_assertion(
         &mut self,
         node: TsTypeAssertion,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsTypeAssertion> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_non_null_expression(
         &mut self,
         node: TsNonNullExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNonNullExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_non_null_expression(
         &mut self,
         node: TsNonNullExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNonNullExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_instantiation_expression(
         &mut self,
         node: TsInstantiationExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInstantiationExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_instantiation_expression(
         &mut self,
         node: TsInstantiationExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsInstantiationExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_export_assignment(
         &mut self,
         node: TsExportAssignment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsExportAssignment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_export_assignment(
         &mut self,
         node: TsExportAssignment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsExportAssignment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_namespace_export_declaration(
         &mut self,
         node: TsNamespaceExportDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNamespaceExportDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_namespace_export_declaration(
         &mut self,
         node: TsNamespaceExportDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsNamespaceExportDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_import_equals_declaration(
         &mut self,
         node: TsImportEqualsDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsImportEqualsDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_import_equals_declaration(
         &mut self,
         node: TsImportEqualsDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsImportEqualsDeclaration> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_external_module_reference(
         &mut self,
         node: TsExternalModuleReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsExternalModuleReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_external_module_reference(
         &mut self,
         node: TsExternalModuleReference,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsExternalModuleReference> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_ts_index_signature_parameter(
         &mut self,
         node: TsIndexSignatureParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexSignatureParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_ts_index_signature_parameter(
         &mut self,
         node: TsIndexSignatureParameter,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<TsIndexSignatureParameter> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_element_name(
         &mut self,
         node: JsxElementName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxElementName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_element_name(
         &mut self,
         node: JsxElementName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxElementName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_member_expression_object(
         &mut self,
         node: JsxMemberExpressionObject,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxMemberExpressionObject> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_member_expression_object(
         &mut self,
         node: JsxMemberExpressionObject,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxMemberExpressionObject> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_attribute_name(
         &mut self,
         node: JsxAttributeName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_attribute_name(
         &mut self,
         node: JsxAttributeName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_attribute_item(
         &mut self,
         node: JsxAttributeItem,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeItem> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_attribute_item(
         &mut self,
         node: JsxAttributeItem,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeItem> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_attribute_value(
         &mut self,
         node: JsxAttributeValue,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeValue> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_attribute_value(
         &mut self,
         node: JsxAttributeValue,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxAttributeValue> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_expression(
         &mut self,
         node: JsxExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_expression(
         &mut self,
         node: JsxExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxExpression> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_jsx_child(&mut self, node: JsxChild, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_jsx_child(
+        &mut self,
+        node: JsxChild,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxChild> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_jsx_child(&mut self, node: JsxChild, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_jsx_child(
+        &mut self,
+        node: JsxChild,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxChild> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn enter_jsx_element(&mut self, node: JsxElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_jsx_element(
+        &mut self,
+        node: JsxElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxElement> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_jsx_element(&mut self, node: JsxElement, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_jsx_element(
+        &mut self,
+        node: JsxElement,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxElement> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_jsx_opening_element(
         &mut self,
         node: JsxOpeningElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxOpeningElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_opening_element(
         &mut self,
         node: JsxOpeningElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxOpeningElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_closing_element(
         &mut self,
         node: JsxClosingElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxClosingElement> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_closing_element(
         &mut self,
         node: JsxClosingElement,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxClosingElement> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_jsx_fragment(&mut self, node: JsxFragment, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_jsx_fragment(
+        &mut self,
+        node: JsxFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxFragment> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_jsx_fragment(&mut self, node: JsxFragment, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_jsx_fragment(
+        &mut self,
+        node: JsxFragment,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxFragment> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_jsx_opening_fragment(
         &mut self,
         node: JsxOpeningFragment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxOpeningFragment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_opening_fragment(
         &mut self,
         node: JsxOpeningFragment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxOpeningFragment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_closing_fragment(
         &mut self,
         node: JsxClosingFragment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxClosingFragment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_closing_fragment(
         &mut self,
         node: JsxClosingFragment,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxClosingFragment> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_identifier(
         &mut self,
         node: JsxIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_identifier(
         &mut self,
         node: JsxIdentifier,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxIdentifier> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_namespaced_name(
         &mut self,
         node: JsxNamespacedName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxNamespacedName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_namespaced_name(
         &mut self,
         node: JsxNamespacedName,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxNamespacedName> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_member_expression(
         &mut self,
         node: JsxMemberExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxMemberExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_member_expression(
         &mut self,
         node: JsxMemberExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxMemberExpression> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_jsx_attribute(&mut self, node: JsxAttribute, ctx: &mut TraverseMutCtx<'_, 'a, State>) {
+    fn enter_jsx_attribute(
+        &mut self,
+        node: JsxAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxAttribute> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn exit_jsx_attribute(&mut self, node: JsxAttribute, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_jsx_attribute(
+        &mut self,
+        node: JsxAttribute,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxAttribute> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_jsx_spread_attribute(
         &mut self,
         node: JsxSpreadAttribute,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxSpreadAttribute> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_spread_attribute(
         &mut self,
         node: JsxSpreadAttribute,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxSpreadAttribute> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_expression_container(
         &mut self,
         node: JsxExpressionContainer,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxExpressionContainer> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_expression_container(
         &mut self,
         node: JsxExpressionContainer,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxExpressionContainer> {
+        TraverseAction::Continue
     }
     #[inline]
     fn enter_jsx_empty_expression(
         &mut self,
         node: JsxEmptyExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxEmptyExpression> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_empty_expression(
         &mut self,
         node: JsxEmptyExpression,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxEmptyExpression> {
+        TraverseAction::Continue
     }
     #[inline]
-    fn enter_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn enter_jsx_text(
+        &mut self,
+        node: JsxText,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxText> {
+        TraverseAction::Continue
+    }
     #[inline]
-    fn exit_jsx_text(&mut self, node: JsxText, ctx: &mut TraverseMutCtx<'_, 'a, State>) {}
+    fn exit_jsx_text(
+        &mut self,
+        node: JsxText,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<JsxText> {
+        TraverseAction::Continue
+    }
     #[inline]
     fn enter_jsx_spread_child(
         &mut self,
         node: JsxSpreadChild,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxSpreadChild> {
+        TraverseAction::Continue
     }
     #[inline]
     fn exit_jsx_spread_child(
         &mut self,
         node: JsxSpreadChild,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
+    ) -> TraverseAction<JsxSpreadChild> {
+        TraverseAction::Continue
     }
 }
-/// Walks AST nodes and invokes their traversal hooks.
-pub trait TraverseMutWith<'a, State = ()> {
+/// Returns the disposition of the current node to its owning slot.
+/// Parents attach replacements before revisiting for ReplaceContinue.
+/// A direct root caller must do the same through its root setter.
+/// Skip is consumed at the node boundary and returned as Continue.
+pub trait TraverseMutWith<'a, State = ()>: Sized {
     fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    );
+    ) -> TraverseAction<Self>;
 }
 impl<'a, State> TraverseMutWith<'a, State> for Program {
     #[inline]
@@ -28366,12 +29232,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Program {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_program(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_program(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28381,14 +29251,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Stmt {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(self, ctx);
-            walk_mut_stmt(self, traverser, ctx);
-            traverser.exit_stmt(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_stmt(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28398,14 +29270,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Decl {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_decl(self, ctx);
-            walk_mut_decl(self, traverser, ctx);
-            traverser.exit_decl(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_decl(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28415,14 +29289,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Expr {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(self, ctx);
-            walk_mut_expr(self, traverser, ctx);
-            traverser.exit_expr(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_expr(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28432,14 +29308,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingPattern {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_binding_pattern(self, ctx);
-            walk_mut_binding_pattern(self, traverser, ctx);
-            traverser.exit_binding_pattern(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_binding_pattern(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28449,14 +29327,16 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentTarget {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_assignment_target(self, ctx);
-            walk_mut_assignment_target(self, traverser, ctx);
-            traverser.exit_assignment_target(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_assignment_target(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28466,14 +29346,16 @@ impl<'a, State> TraverseMutWith<'a, State> for SimpleAssignmentTarget {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_simple_assignment_target(self, ctx);
-            walk_mut_simple_assignment_target(self, traverser, ctx);
-            traverser.exit_simple_assignment_target(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_simple_assignment_target(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28483,14 +29365,16 @@ impl<'a, State> TraverseMutWith<'a, State> for PropertyKey {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_property_key(self, ctx);
-            walk_mut_property_key(self, traverser, ctx);
-            traverser.exit_property_key(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_property_key(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28500,14 +29384,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ModuleExportName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_module_export_name(self, ctx);
-            walk_mut_module_export_name(self, traverser, ctx);
-            traverser.exit_module_export_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_module_export_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28517,14 +29403,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Argument {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_argument(self, ctx);
-            walk_mut_argument(self, traverser, ctx);
-            traverser.exit_argument(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_argument(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28534,14 +29422,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectPropertyKind {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_object_property_kind(self, ctx);
-            walk_mut_object_property_kind(self, traverser, ctx);
-            traverser.exit_object_property_kind(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_object_property_kind(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28551,14 +29441,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatementInit {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_for_statement_init(self, ctx);
-            walk_mut_for_statement_init(self, traverser, ctx);
-            traverser.exit_for_statement_init(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_for_statement_init(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28568,14 +29460,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatementLeft {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_for_statement_left(self, ctx);
-            walk_mut_for_statement_left(self, traverser, ctx);
-            traverser.exit_for_statement_left(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_for_statement_left(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28585,14 +29479,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_arrow_function_body(self, ctx);
-            walk_mut_arrow_function_body(self, traverser, ctx);
-            traverser.exit_arrow_function_body(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_arrow_function_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28602,14 +29498,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterItem {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_formal_parameter_item(self, ctx);
-            walk_mut_formal_parameter_item(self, traverser, ctx);
-            traverser.exit_formal_parameter_item(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_formal_parameter_item(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28619,14 +29517,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterPattern {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_formal_parameter_pattern(self, ctx);
-            walk_mut_formal_parameter_pattern(self, traverser, ctx);
-            traverser.exit_formal_parameter_pattern(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_formal_parameter_pattern(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28636,14 +29536,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ClassElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_class_element(self, ctx);
-            walk_mut_class_element(self, traverser, ctx);
-            traverser.exit_class_element(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_class_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28653,14 +29555,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDeclarationSpecifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_import_declaration_specifier(self, ctx);
-            walk_mut_import_declaration_specifier(self, traverser, ctx);
-            traverser.exit_import_declaration_specifier(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_declaration_specifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28670,14 +29574,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclarationKind {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_export_default_declaration_kind(self, ctx);
-            walk_mut_export_default_declaration_kind(self, traverser, ctx);
-            traverser.exit_export_default_declaration_kind(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_export_default_declaration_kind(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28687,12 +29593,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Super {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_super(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_super(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28702,12 +29612,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ThisExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_this_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_this_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28717,12 +29631,16 @@ impl<'a, State> TraverseMutWith<'a, State> for StringLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_string_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_string_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28732,12 +29650,16 @@ impl<'a, State> TraverseMutWith<'a, State> for NumericLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_numeric_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_numeric_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28747,12 +29669,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BigIntLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_big_int_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_big_int_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28762,12 +29688,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BooleanLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_boolean_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_boolean_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28777,12 +29707,16 @@ impl<'a, State> TraverseMutWith<'a, State> for NullLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_null_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_null_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28792,12 +29726,16 @@ impl<'a, State> TraverseMutWith<'a, State> for RegExpLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_reg_exp_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_reg_exp_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28807,12 +29745,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TemplateLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_template_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_template_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28822,12 +29764,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TemplateElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_template_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_template_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28837,12 +29783,16 @@ impl<'a, State> TraverseMutWith<'a, State> for IdentifierReference {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_identifier_reference(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_identifier_reference(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28852,12 +29802,16 @@ impl<'a, State> TraverseMutWith<'a, State> for PrivateIdentifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_private_identifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_private_identifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28867,12 +29821,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingIdentifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_identifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_binding_identifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28882,12 +29840,16 @@ impl<'a, State> TraverseMutWith<'a, State> for IdentifierName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_identifier_name(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_identifier_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28897,12 +29859,16 @@ impl<'a, State> TraverseMutWith<'a, State> for LabelIdentifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_label_identifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_label_identifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28912,12 +29878,16 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentPattern {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_assignment_pattern(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_assignment_pattern(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28927,12 +29897,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingRestElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_rest_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_binding_rest_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28942,12 +29916,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrayPattern {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_array_pattern(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_array_pattern(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28957,12 +29935,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectPattern {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_object_pattern(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_object_pattern(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28972,12 +29954,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingProperty {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_property(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_binding_property(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -28987,12 +29973,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BinaryExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binary_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_binary_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29002,12 +29992,16 @@ impl<'a, State> TraverseMutWith<'a, State> for LogicalExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_logical_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_logical_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29017,12 +30011,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ConditionalExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_conditional_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_conditional_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29032,12 +30030,16 @@ impl<'a, State> TraverseMutWith<'a, State> for UnaryExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_unary_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_unary_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29047,12 +30049,16 @@ impl<'a, State> TraverseMutWith<'a, State> for UpdateExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_update_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_update_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29062,12 +30068,16 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_assignment_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_assignment_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29077,12 +30087,16 @@ impl<'a, State> TraverseMutWith<'a, State> for VariableDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_variable_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_variable_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29092,12 +30106,16 @@ impl<'a, State> TraverseMutWith<'a, State> for VariableDeclarator {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_variable_declarator(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_variable_declarator(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29107,12 +30125,16 @@ impl<'a, State> TraverseMutWith<'a, State> for IfStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_if_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_if_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29122,12 +30144,16 @@ impl<'a, State> TraverseMutWith<'a, State> for SwitchStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_switch_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_switch_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29137,12 +30163,16 @@ impl<'a, State> TraverseMutWith<'a, State> for SwitchCase {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_switch_case(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_switch_case(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29152,12 +30182,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_for_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_for_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29167,12 +30201,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ForInStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_for_in_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_for_in_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29182,12 +30220,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ForOfStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_for_of_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_for_of_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29197,12 +30239,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TryStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_try_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_try_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29212,12 +30258,16 @@ impl<'a, State> TraverseMutWith<'a, State> for CatchClause {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_catch_clause(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_catch_clause(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29227,12 +30277,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BreakStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_break_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_break_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29242,12 +30296,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ContinueStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_continue_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_continue_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29257,12 +30315,16 @@ impl<'a, State> TraverseMutWith<'a, State> for LabeledStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_labeled_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_labeled_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29272,12 +30334,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExpressionStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_expression_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_expression_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29287,12 +30353,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ReturnStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_return_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_return_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29302,12 +30372,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ThrowStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_throw_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_throw_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29317,12 +30391,16 @@ impl<'a, State> TraverseMutWith<'a, State> for DebuggerStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_debugger_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_debugger_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29332,12 +30410,16 @@ impl<'a, State> TraverseMutWith<'a, State> for EmptyStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_empty_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_empty_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29347,12 +30429,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Directive {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_directive(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_directive(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29362,12 +30448,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Decorator {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_decorator(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29377,12 +30467,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Class {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_class(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_class(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29392,12 +30486,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ClassBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_class_body(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_class_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29407,12 +30505,16 @@ impl<'a, State> TraverseMutWith<'a, State> for MethodDefinition {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_method_definition(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_method_definition(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29422,12 +30524,16 @@ impl<'a, State> TraverseMutWith<'a, State> for PropertyDefinition {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_property_definition(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_property_definition(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29437,12 +30543,16 @@ impl<'a, State> TraverseMutWith<'a, State> for StaticBlock {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_static_block(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_static_block(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29452,12 +30562,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Function {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_function(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_function(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29467,12 +30581,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FunctionBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_function_body(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_function_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29482,12 +30600,16 @@ impl<'a, State> TraverseMutWith<'a, State> for BlockStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_block_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_block_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29497,12 +30619,16 @@ impl<'a, State> TraverseMutWith<'a, State> for WhileStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_while_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_while_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29512,12 +30638,16 @@ impl<'a, State> TraverseMutWith<'a, State> for DoWhileStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_do_while_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_do_while_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29527,12 +30657,16 @@ impl<'a, State> TraverseMutWith<'a, State> for WithStatement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_with_statement(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_with_statement(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29542,12 +30676,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameters {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_formal_parameters(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_formal_parameters(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29557,12 +30695,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameter {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_formal_parameter(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_formal_parameter(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29572,12 +30714,16 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterRest {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_formal_parameter_rest(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_formal_parameter_rest(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29587,12 +30733,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrayExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_array_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_array_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29602,12 +30752,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_object_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_object_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29617,12 +30771,16 @@ impl<'a, State> TraverseMutWith<'a, State> for SpreadElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_spread_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_spread_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29632,12 +30790,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectProperty {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_object_property(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_object_property(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29647,12 +30809,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ParenthesizedExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_parenthesized_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_parenthesized_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29662,12 +30828,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_arrow_function_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_arrow_function_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29677,12 +30847,16 @@ impl<'a, State> TraverseMutWith<'a, State> for SequenceExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_sequence_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_sequence_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29692,12 +30866,16 @@ impl<'a, State> TraverseMutWith<'a, State> for MemberExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_member_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_member_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29707,12 +30885,16 @@ impl<'a, State> TraverseMutWith<'a, State> for CallExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_call_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_call_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29722,12 +30904,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ChainExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_chain_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_chain_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29737,12 +30923,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TaggedTemplateExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_tagged_template_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_tagged_template_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29752,12 +30942,16 @@ impl<'a, State> TraverseMutWith<'a, State> for NewExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_new_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_new_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29767,12 +30961,16 @@ impl<'a, State> TraverseMutWith<'a, State> for AwaitExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_await_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_await_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29782,12 +30980,16 @@ impl<'a, State> TraverseMutWith<'a, State> for YieldExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_yield_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_yield_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29797,12 +30999,16 @@ impl<'a, State> TraverseMutWith<'a, State> for MetaProperty {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_meta_property(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_meta_property(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29812,12 +31018,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29827,12 +31037,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29842,12 +31056,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportSpecifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_specifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_specifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29857,12 +31075,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDefaultSpecifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_default_specifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_default_specifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29872,12 +31094,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportNamespaceSpecifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_namespace_specifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_namespace_specifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29887,12 +31113,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportAttribute {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_attribute(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_import_attribute(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29902,12 +31132,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportNamedDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_export_named_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_export_named_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29917,12 +31151,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_export_default_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_export_default_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29932,12 +31170,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportAllDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_export_all_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_export_all_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29947,12 +31189,16 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportSpecifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_export_specifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_export_specifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29962,12 +31208,16 @@ impl<'a, State> TraverseMutWith<'a, State> for Hashbang {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_hashbang(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_hashbang(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29977,14 +31227,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(self, ctx);
-            walk_mut_ts_type(self, traverser, ctx);
-            traverser.exit_ts_type(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -29994,14 +31246,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_name(self, ctx);
-            walk_mut_ts_type_name(self, traverser, ctx);
-            traverser.exit_ts_type_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30011,14 +31265,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedNameLeft {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_qualified_name_left(self, ctx);
-            walk_mut_ts_qualified_name_left(self, traverser, ctx);
-            traverser.exit_ts_qualified_name_left(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_qualified_name_left(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30028,14 +31284,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportTypeQualifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_import_type_qualifier(self, ctx);
-            walk_mut_ts_import_type_qualifier(self, traverser, ctx);
-            traverser.exit_ts_import_type_qualifier(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_import_type_qualifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30045,14 +31303,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeQueryExprName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_query_expr_name(self, ctx);
-            walk_mut_ts_type_query_expr_name(self, traverser, ctx);
-            traverser.exit_ts_type_query_expr_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_query_expr_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30062,14 +31322,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_literal(self, ctx);
-            walk_mut_ts_literal(self, traverser, ctx);
-            traverser.exit_ts_literal(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30079,14 +31341,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTupleElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_tuple_element(self, ctx);
-            walk_mut_ts_tuple_element(self, traverser, ctx);
-            traverser.exit_ts_tuple_element(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_tuple_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30096,14 +31360,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_element(self, ctx);
-            walk_mut_ts_type_element(self, traverser, ctx);
-            traverser.exit_ts_type_element(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30113,14 +31379,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicateName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_predicate_name(self, ctx);
-            walk_mut_ts_type_predicate_name(self, traverser, ctx);
-            traverser.exit_ts_type_predicate_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_predicate_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30130,14 +31398,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumMemberName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_enum_member_name(self, ctx);
-            walk_mut_ts_enum_member_name(self, traverser, ctx);
-            traverser.exit_ts_enum_member_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_enum_member_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30147,14 +31417,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_module_name(self, ctx);
-            walk_mut_ts_module_name(self, traverser, ctx);
-            traverser.exit_ts_module_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_module_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30164,14 +31436,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_module_body(self, ctx);
-            walk_mut_ts_module_body(self, traverser, ctx);
-            traverser.exit_ts_module_body(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_module_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30181,14 +31455,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleReference {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_module_reference(self, ctx);
-            walk_mut_ts_module_reference(self, traverser, ctx);
-            traverser.exit_ts_module_reference(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_module_reference(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30198,12 +31474,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsFunction {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_function(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_function(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30213,12 +31493,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMethodDefinition {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_method_definition(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_method_definition(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30228,12 +31512,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAnnotation {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_annotation(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30243,12 +31531,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsAnyKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_any_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_any_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30258,12 +31550,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUnknownKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_unknown_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_unknown_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30273,12 +31569,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNeverKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_never_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_never_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30288,12 +31588,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsVoidKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_void_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_void_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30303,12 +31607,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNullKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_null_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_null_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30318,12 +31626,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUndefinedKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_undefined_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_undefined_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30333,12 +31645,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsStringKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_string_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_string_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30348,12 +31664,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNumberKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_number_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_number_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30363,12 +31683,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsBigIntKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_big_int_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_big_int_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30378,12 +31702,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsBooleanKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_boolean_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_boolean_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30393,12 +31721,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsSymbolKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_symbol_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_symbol_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30408,12 +31740,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsObjectKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_object_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_object_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30423,12 +31759,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIntrinsicKeyword {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_intrinsic_keyword(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_intrinsic_keyword(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30438,12 +31778,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsThisType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_this_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30453,12 +31797,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeReference {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_reference(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_reference(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30468,12 +31816,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_qualified_name(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_qualified_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30483,12 +31835,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeQuery {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_query(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_query(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30498,12 +31854,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_import_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_import_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30513,12 +31873,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameter {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_parameter(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30528,12 +31892,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_parameter_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30543,12 +31911,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterInstantiation {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_parameter_instantiation(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30558,12 +31930,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsLiteralType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_literal_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_literal_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30573,12 +31949,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTemplateLiteralType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_template_literal_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_template_literal_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30588,12 +31968,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsArrayType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_array_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_array_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30603,12 +31987,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexedAccessType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_indexed_access_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_indexed_access_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30618,12 +32006,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTupleType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_tuple_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_tuple_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30633,12 +32025,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNamedTupleMember {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_named_tuple_member(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_named_tuple_member(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30648,12 +32044,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsOptionalType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_optional_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_optional_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30663,12 +32063,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsRestType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_rest_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_rest_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30678,12 +32082,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNullableType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_js_doc_nullable_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_js_doc_nullable_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30693,12 +32101,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNonNullableType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_js_doc_non_nullable_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_js_doc_non_nullable_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30708,12 +32120,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocUnknownType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_js_doc_unknown_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_js_doc_unknown_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30723,12 +32139,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUnionType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_union_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_union_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30738,12 +32158,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIntersectionType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_intersection_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_intersection_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30753,12 +32177,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConditionalType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_conditional_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_conditional_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30768,12 +32196,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInferType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_infer_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_infer_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30783,12 +32215,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeOperator {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_operator(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_operator(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30798,12 +32234,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsParenthesizedType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_parenthesized_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_parenthesized_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30813,12 +32253,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsFunctionType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_function_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_function_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30828,12 +32272,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConstructorType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_constructor_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_constructor_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30843,12 +32291,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicate {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_predicate(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_predicate(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30858,12 +32310,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeLiteral {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_literal(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_literal(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30873,12 +32329,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMappedType {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_mapped_type(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_mapped_type(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30888,12 +32348,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsPropertySignature {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_property_signature(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_property_signature(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30903,12 +32367,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMethodSignature {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_method_signature(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_method_signature(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30918,12 +32386,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsCallSignatureDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_call_signature_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_call_signature_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30933,12 +32405,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConstructSignatureDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_construct_signature_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_construct_signature_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30948,12 +32424,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexSignature {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_index_signature(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_index_signature(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30963,12 +32443,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAliasDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_alias_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_alias_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30978,12 +32462,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_interface_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_interface_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -30993,12 +32481,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_interface_body(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_interface_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31008,12 +32500,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceHeritage {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_interface_heritage(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_interface_heritage(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31023,12 +32519,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsClassImplements {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_class_implements(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_class_implements(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31038,12 +32538,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_enum_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_enum_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31053,12 +32557,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumBody {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_enum_body(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_enum_body(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31068,12 +32576,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumMember {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_enum_member(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_enum_member(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31083,12 +32595,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_module_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_module_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31098,12 +32614,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleBlock {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_module_block(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_module_block(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31113,12 +32633,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsGlobalDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_global_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_global_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31128,12 +32652,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsParameterProperty {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_parameter_property(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_parameter_property(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31143,12 +32671,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsThisParameter {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_this_parameter(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31158,12 +32690,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsAsExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_as_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_as_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31173,12 +32709,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsSatisfiesExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_satisfies_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_satisfies_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31188,12 +32728,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAssertion {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_assertion(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_type_assertion(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31203,12 +32747,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNonNullExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_non_null_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_non_null_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31218,12 +32766,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInstantiationExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_instantiation_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_instantiation_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31233,12 +32785,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsExportAssignment {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_export_assignment(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_export_assignment(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31248,12 +32804,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNamespaceExportDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_namespace_export_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_namespace_export_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31263,12 +32823,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportEqualsDeclaration {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_import_equals_declaration(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_import_equals_declaration(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31278,12 +32842,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsExternalModuleReference {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_external_module_reference(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_external_module_reference(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31293,12 +32861,16 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexSignatureParameter {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_index_signature_parameter(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_ts_index_signature_parameter(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31308,14 +32880,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxElementName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_element_name(self, ctx);
-            walk_mut_jsx_element_name(self, traverser, ctx);
-            traverser.exit_jsx_element_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_element_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31325,14 +32899,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpressionObject {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_member_expression_object(self, ctx);
-            walk_mut_jsx_member_expression_object(self, traverser, ctx);
-            traverser.exit_jsx_member_expression_object(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_member_expression_object(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31342,14 +32918,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_attribute_name(self, ctx);
-            walk_mut_jsx_attribute_name(self, traverser, ctx);
-            traverser.exit_jsx_attribute_name(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_attribute_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31359,14 +32937,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeItem {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_attribute_item(self, ctx);
-            walk_mut_jsx_attribute_item(self, traverser, ctx);
-            traverser.exit_jsx_attribute_item(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_attribute_item(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31376,14 +32956,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeValue {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_attribute_value(self, ctx);
-            walk_mut_jsx_attribute_value(self, traverser, ctx);
-            traverser.exit_jsx_attribute_value(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_attribute_value(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31393,14 +32975,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_expression(self, ctx);
-            walk_mut_jsx_expression(self, traverser, ctx);
-            traverser.exit_jsx_expression(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31410,14 +32994,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxChild {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_child(self, ctx);
-            walk_mut_jsx_child(self, traverser, ctx);
-            traverser.exit_jsx_child(self, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_child(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31427,12 +33013,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31442,12 +33032,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_opening_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_opening_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31457,12 +33051,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxClosingElement {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_closing_element(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_closing_element(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31472,12 +33070,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxFragment {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_fragment(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_fragment(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31487,12 +33089,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningFragment {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_opening_fragment(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_opening_fragment(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31502,12 +33108,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxClosingFragment {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_closing_fragment(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_closing_fragment(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31517,12 +33127,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxIdentifier {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_identifier(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_identifier(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31532,12 +33146,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxNamespacedName {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_namespaced_name(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_namespaced_name(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31547,12 +33165,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_member_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_member_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31562,12 +33184,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttribute {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_attribute(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_attribute(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31577,12 +33203,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadAttribute {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_spread_attribute(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_spread_attribute(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31592,12 +33222,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxExpressionContainer {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_expression_container(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_expression_container(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31607,12 +33241,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxEmptyExpression {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_empty_expression(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_empty_expression(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31622,12 +33260,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxText {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_text(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_text(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31637,12 +33279,16 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadChild {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        {
-            let node_id = (self).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_spread_child(self, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        let original = self.node_id();
+        traverser.enter_node(original, ctx);
+        let action = walk_mut_jsx_spread_child(self, traverser, ctx);
+        traverser.exit_node(original, ctx);
+        match action {
+            std::ops::ControlFlow::Continue(false)
+            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
+            std::ops::ControlFlow::Break(action) => action,
         }
     }
 }
@@ -31652,16 +33298,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Directive> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_directive(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<Stmt> {
@@ -31670,18 +33318,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Stmt> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_stmt(child, ctx);
-                walk_mut_stmt(child, traverser, ctx);
-                traverser.exit_stmt(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<Hashbang> {
@@ -31690,14 +33338,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<Hashbang> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_hashbang(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31707,16 +33351,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TemplateElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_template_element(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<Expr> {
@@ -31725,18 +33371,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Expr> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_expr(child, ctx);
-                walk_mut_expr(child, traverser, ctx);
-                traverser.exit_expr(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<BindingPattern> {
@@ -31745,16 +33391,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<BindingPattern> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_binding_pattern(child, ctx);
-                walk_mut_binding_pattern(child, traverser, ctx);
-                traverser.exit_binding_pattern(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31764,20 +33404,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<BindingPattern>> 
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            if let Some(child) = child {
-                {
-                    let node_id = (child).node_id();
-                    traverser.enter_node(node_id, ctx);
-                    traverser.enter_binding_pattern(child, ctx);
-                    walk_mut_binding_pattern(child, traverser, ctx);
-                    traverser.exit_binding_pattern(child, ctx);
-                    traverser.exit_node(node_id, ctx);
-                }
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<BindingRestElement> {
@@ -31786,14 +33424,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<BindingRestElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_binding_rest_element(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31803,16 +33437,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<BindingProperty> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_binding_property(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<VariableDeclarator> {
@@ -31821,16 +33457,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<VariableDeclarator> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_variable_declarator(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeAnnotation> {
@@ -31839,14 +33477,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeAnnotation> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_type_annotation(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31856,16 +33490,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<Expr> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_expr(child, ctx);
-                walk_mut_expr(child, traverser, ctx);
-                traverser.exit_expr(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31875,16 +33503,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<Stmt> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_stmt(child, ctx);
-                walk_mut_stmt(child, traverser, ctx);
-                traverser.exit_stmt(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31894,16 +33516,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<SwitchCase> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_switch_case(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<ForStatementInit> {
@@ -31912,16 +33536,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<ForStatementInit> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_for_statement_init(child, ctx);
-                walk_mut_for_statement_init(child, traverser, ctx);
-                traverser.exit_for_statement_init(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31931,14 +33549,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<CatchClause> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_catch_clause(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31948,14 +33562,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<BlockStatement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_block_statement(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31965,14 +33575,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<LabelIdentifier> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_label_identifier(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -31982,16 +33588,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Decorator> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_decorator(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<BindingIdentifier> {
@@ -32000,14 +33608,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<BindingIdentifier> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_binding_identifier(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32017,14 +33621,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeParameterDeclaration
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32034,14 +33634,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeParameterInstantiati
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32051,16 +33647,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsClassImplements> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_class_implements(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<ClassElement> {
@@ -32069,18 +33667,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ClassElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_class_element(child, ctx);
-                walk_mut_class_element(child, traverser, ctx);
-                traverser.exit_class_element(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<TsThisParameter> {
@@ -32089,14 +33687,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsThisParameter> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_this_parameter(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32106,18 +33700,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<FormalParameterItem> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_formal_parameter_item(child, ctx);
-                walk_mut_formal_parameter_item(child, traverser, ctx);
-                traverser.exit_formal_parameter_item(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<FormalParameterRest> {
@@ -32126,14 +33720,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<FormalParameterRest> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_formal_parameter_rest(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32143,16 +33733,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<Argument> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_argument(child, ctx);
-                walk_mut_argument(child, traverser, ctx);
-                traverser.exit_argument(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32162,20 +33746,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<Argument>> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            if let Some(child) = child {
-                {
-                    let node_id = (child).node_id();
-                    traverser.enter_node(node_id, ctx);
-                    traverser.enter_argument(child, ctx);
-                    walk_mut_argument(child, traverser, ctx);
-                    traverser.exit_argument(child, ctx);
-                    traverser.exit_node(node_id, ctx);
-                }
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<ObjectPropertyKind> {
@@ -32184,18 +33766,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ObjectPropertyKind> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_object_property_kind(child, ctx);
-                walk_mut_object_property_kind(child, traverser, ctx);
-                traverser.exit_object_property_kind(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<Argument> {
@@ -32204,18 +33786,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Argument> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_argument(child, ctx);
-                walk_mut_argument(child, traverser, ctx);
-                traverser.exit_argument(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportDeclarationSpecifier> {
@@ -32224,18 +33806,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportDeclarationSpecifi
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_import_declaration_specifier(child, ctx);
-                walk_mut_import_declaration_specifier(child, traverser, ctx);
-                traverser.exit_import_declaration_specifier(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportAttribute> {
@@ -32244,16 +33826,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportAttribute> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_import_attribute(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<Decl> {
@@ -32262,16 +33846,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<Decl> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_decl(child, ctx);
-                walk_mut_decl(child, traverser, ctx);
-                traverser.exit_decl(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32281,16 +33859,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ExportSpecifier> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_export_specifier(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<StringLiteral> {
@@ -32299,14 +33879,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<StringLiteral> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_string_literal(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32316,16 +33892,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<ModuleExportName> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_module_export_name(child, ctx);
-                walk_mut_module_export_name(child, traverser, ctx);
-                traverser.exit_module_export_name(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32335,16 +33905,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsImportTypeQualifier> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_import_type_qualifier(child, ctx);
-                walk_mut_ts_import_type_qualifier(child, traverser, ctx);
-                traverser.exit_ts_import_type_qualifier(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32354,16 +33918,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsType> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_type(child, ctx);
-                walk_mut_ts_type(child, traverser, ctx);
-                traverser.exit_ts_type(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32373,16 +33931,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeParameter> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_type_parameter(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsType> {
@@ -32391,18 +33951,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsType> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_type(child, ctx);
-                walk_mut_ts_type(child, traverser, ctx);
-                traverser.exit_ts_type(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTupleElement> {
@@ -32411,18 +33971,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTupleElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_tuple_element(child, ctx);
-                walk_mut_ts_tuple_element(child, traverser, ctx);
-                traverser.exit_ts_tuple_element(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeElement> {
@@ -32431,18 +33991,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_type_element(child, ctx);
-                walk_mut_ts_type_element(child, traverser, ctx);
-                traverser.exit_ts_type_element(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsIndexSignatureParameter> {
@@ -32451,16 +34011,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsIndexSignatureParamete
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_index_signature_parameter(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsInterfaceHeritage> {
@@ -32469,16 +34031,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsInterfaceHeritage> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_interface_heritage(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsEnumMember> {
@@ -32487,16 +34051,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsEnumMember> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_ts_enum_member(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<TsModuleBody> {
@@ -32505,16 +34071,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<TsModuleBody> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_ts_module_body(child, ctx);
-                walk_mut_ts_module_body(child, traverser, ctx);
-                traverser.exit_ts_module_body(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32524,18 +34084,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxChild> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_jsx_child(child, ctx);
-                walk_mut_jsx_child(child, traverser, ctx);
-                traverser.exit_jsx_child(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<JsxClosingElement> {
@@ -32544,14 +34104,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<JsxClosingElement> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_mut_jsx_closing_element(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32561,18 +34117,18 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxAttributeItem> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        for child_idx in self.iter() {
-            let child = ctx.ast.get_node_in_sub_range(child_idx);
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_jsx_attribute_item(child, ctx);
-                walk_mut_jsx_attribute_item(child, traverser, ctx);
-                traverser.exit_jsx_attribute_item(child, ctx);
-                traverser.exit_node(node_id, ctx);
+    ) -> TraverseAction<Self> {
+        for slot in self.iter() {
+            if traverse_mut_slot(
+                ctx.ast.get_node_in_sub_range(slot),
+                traverser,
+                ctx,
+                |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
+            ) {
+                return TraverseAction::Stop;
             }
         }
+        TraverseAction::Continue
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<JsxAttributeValue> {
@@ -32581,16 +34137,10 @@ impl<'a, State> TraverseMutWith<'a, State> for Option<JsxAttributeValue> {
         self,
         traverser: &mut T,
         ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_jsx_attribute_value(child, ctx);
-                walk_mut_jsx_attribute_value(child, traverser, ctx);
-                traverser.exit_jsx_attribute_value(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
         }
     }
 }
@@ -32599,103 +34149,115 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Program,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_program(node, ctx);
-    let child = node.directives(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_directive(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<Program>, bool> {
+    match traverser.enter_program(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.directives(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_directives(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.hashbang(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_hashbang(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.hashbang(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_hashbang(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_program(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_program(node, ctx);
 }
 #[inline]
 fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Stmt,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<Stmt>, bool> {
+    match traverser.enter_stmt(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BlockStatement => {
-            walk_mut_block_statement(BlockStatement(node.0), traverser, ctx);
+            walk_mut_block_statement(BlockStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::BlockStatement))
         }
         NodeKind::BreakStatement => {
-            walk_mut_break_statement(BreakStatement(node.0), traverser, ctx);
+            walk_mut_break_statement(BreakStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::BreakStatement))
         }
         NodeKind::ContinueStatement => {
-            walk_mut_continue_statement(ContinueStatement(node.0), traverser, ctx);
+            walk_mut_continue_statement(ContinueStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ContinueStatement))
         }
         NodeKind::DebuggerStatement => {
-            walk_mut_debugger_statement(DebuggerStatement(node.0), traverser, ctx);
+            walk_mut_debugger_statement(DebuggerStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::DebuggerStatement))
         }
         NodeKind::DoWhileStatement => {
-            walk_mut_do_while_statement(DoWhileStatement(node.0), traverser, ctx);
+            walk_mut_do_while_statement(DoWhileStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::DoWhileStatement))
         }
         NodeKind::EmptyStatement => {
-            walk_mut_empty_statement(EmptyStatement(node.0), traverser, ctx);
+            walk_mut_empty_statement(EmptyStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::EmptyStatement))
         }
         NodeKind::ExpressionStatement => {
-            walk_mut_expression_statement(ExpressionStatement(node.0), traverser, ctx);
+            walk_mut_expression_statement(ExpressionStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ExpressionStatement))
         }
         NodeKind::ForInStatement => {
-            walk_mut_for_in_statement(ForInStatement(node.0), traverser, ctx);
+            walk_mut_for_in_statement(ForInStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ForInStatement))
         }
         NodeKind::ForOfStatement => {
-            walk_mut_for_of_statement(ForOfStatement(node.0), traverser, ctx);
+            walk_mut_for_of_statement(ForOfStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ForOfStatement))
         }
-        NodeKind::ForStatement => {
-            walk_mut_for_statement(ForStatement(node.0), traverser, ctx);
-        }
-        NodeKind::IfStatement => {
-            walk_mut_if_statement(IfStatement(node.0), traverser, ctx);
-        }
+        NodeKind::ForStatement => walk_mut_for_statement(ForStatement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Stmt::ForStatement)),
+        NodeKind::IfStatement => walk_mut_if_statement(IfStatement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Stmt::IfStatement)),
         NodeKind::LabeledStatement => {
-            walk_mut_labeled_statement(LabeledStatement(node.0), traverser, ctx);
+            walk_mut_labeled_statement(LabeledStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::LabeledStatement))
         }
         NodeKind::ReturnStatement => {
-            walk_mut_return_statement(ReturnStatement(node.0), traverser, ctx);
+            walk_mut_return_statement(ReturnStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ReturnStatement))
         }
         NodeKind::SwitchStatement => {
-            walk_mut_switch_statement(SwitchStatement(node.0), traverser, ctx);
+            walk_mut_switch_statement(SwitchStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::SwitchStatement))
         }
         NodeKind::ThrowStatement => {
-            walk_mut_throw_statement(ThrowStatement(node.0), traverser, ctx);
+            walk_mut_throw_statement(ThrowStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ThrowStatement))
         }
-        NodeKind::TryStatement => {
-            walk_mut_try_statement(TryStatement(node.0), traverser, ctx);
-        }
+        NodeKind::TryStatement => walk_mut_try_statement(TryStatement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Stmt::TryStatement)),
         NodeKind::WhileStatement => {
-            walk_mut_while_statement(WhileStatement(node.0), traverser, ctx);
+            walk_mut_while_statement(WhileStatement(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::WhileStatement))
         }
-        NodeKind::WithStatement => {
-            walk_mut_with_statement(WithStatement(node.0), traverser, ctx);
-        }
+        NodeKind::WithStatement => walk_mut_with_statement(WithStatement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Stmt::WithStatement)),
         NodeKind::VariableDeclaration
         | NodeKind::Function
         | NodeKind::Class
@@ -32705,34 +34267,44 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsEnumDeclaration
         | NodeKind::TsModuleDeclaration
         | NodeKind::TsGlobalDeclaration
-        | NodeKind::TsImportEqualsDeclaration => {
-            traverser.enter_decl(Decl(node.0), ctx);
-            walk_mut_decl(Decl(node.0), traverser, ctx);
-            traverser.exit_decl(Decl(node.0), ctx);
-        }
+        | NodeKind::TsImportEqualsDeclaration => walk_mut_decl(Decl(node.0), traverser, ctx)
+            .map_break(|action| action.map(Stmt::Declaration)),
         NodeKind::ImportDeclaration => {
-            walk_mut_import_declaration(ImportDeclaration(node.0), traverser, ctx);
+            walk_mut_import_declaration(ImportDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ImportDeclaration))
         }
         NodeKind::ExportNamedDeclaration => {
-            walk_mut_export_named_declaration(ExportNamedDeclaration(node.0), traverser, ctx);
+            walk_mut_export_named_declaration(ExportNamedDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ExportNamedDeclaration))
         }
         NodeKind::ExportDefaultDeclaration => {
-            walk_mut_export_default_declaration(ExportDefaultDeclaration(node.0), traverser, ctx);
+            walk_mut_export_default_declaration(ExportDefaultDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ExportDefaultDeclaration))
         }
         NodeKind::ExportAllDeclaration => {
-            walk_mut_export_all_declaration(ExportAllDeclaration(node.0), traverser, ctx);
+            walk_mut_export_all_declaration(ExportAllDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::ExportAllDeclaration))
         }
         NodeKind::TsExportAssignment => {
-            walk_mut_ts_export_assignment(TsExportAssignment(node.0), traverser, ctx);
+            walk_mut_ts_export_assignment(TsExportAssignment(node.0), traverser, ctx)
+                .map_break(|action| action.map(Stmt::TsExportAssignment))
         }
-        NodeKind::TsNamespaceExportDeclaration => {
-            walk_mut_ts_namespace_export_declaration(
-                TsNamespaceExportDeclaration(node.0),
-                traverser,
-                ctx,
-            );
+        NodeKind::TsNamespaceExportDeclaration => walk_mut_ts_namespace_export_declaration(
+            TsNamespaceExportDeclaration(node.0),
+            traverser,
+            ctx,
+        )
+        .map_break(|action| action.map(Stmt::TsNamespaceExportDeclaration)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_stmt(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -32740,44 +34312,56 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Decl,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<Decl>, bool> {
+    match traverser.enter_decl(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
-            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx);
+            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::VariableDeclaration))
         }
-        NodeKind::Function => {
-            walk_mut_function(Function(node.0), traverser, ctx);
-        }
-        NodeKind::Class => {
-            walk_mut_class(Class(node.0), traverser, ctx);
-        }
-        NodeKind::TsFunction => {
-            walk_mut_ts_function(TsFunction(node.0), traverser, ctx);
-        }
+        NodeKind::Function => walk_mut_function(Function(node.0), traverser, ctx)
+            .map_break(|action| action.map(Decl::Function)),
+        NodeKind::Class => walk_mut_class(Class(node.0), traverser, ctx)
+            .map_break(|action| action.map(Decl::Class)),
+        NodeKind::TsFunction => walk_mut_ts_function(TsFunction(node.0), traverser, ctx)
+            .map_break(|action| action.map(Decl::TsFunction)),
         NodeKind::TsTypeAliasDeclaration => {
-            walk_mut_ts_type_alias_declaration(TsTypeAliasDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_type_alias_declaration(TsTypeAliasDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsTypeAliasDeclaration))
         }
         NodeKind::TsInterfaceDeclaration => {
-            walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsInterfaceDeclaration))
         }
         NodeKind::TsEnumDeclaration => {
-            walk_mut_ts_enum_declaration(TsEnumDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_enum_declaration(TsEnumDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsEnumDeclaration))
         }
         NodeKind::TsModuleDeclaration => {
-            walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsModuleDeclaration))
         }
         NodeKind::TsGlobalDeclaration => {
-            walk_mut_ts_global_declaration(TsGlobalDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_global_declaration(TsGlobalDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsGlobalDeclaration))
         }
         NodeKind::TsImportEqualsDeclaration => {
-            walk_mut_ts_import_equals_declaration(
-                TsImportEqualsDeclaration(node.0),
-                traverser,
-                ctx,
-            );
+            walk_mut_ts_import_equals_declaration(TsImportEqualsDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(Decl::TsImportEqualsDeclaration))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_decl(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -32785,130 +34369,160 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Expr,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<Expr>, bool> {
+    match traverser.enter_expr(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::IdentifierReference))
         }
         NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ThisExpression))
         }
-        NodeKind::Super => {
-            walk_mut_super(Super(node.0), traverser, ctx);
-        }
-        NodeKind::MetaProperty => {
-            walk_mut_meta_property(MetaProperty(node.0), traverser, ctx);
-        }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::Super => walk_mut_super(Super(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::Super)),
+        NodeKind::MetaProperty => walk_mut_meta_property(MetaProperty(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::MetaProperty)),
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::StringLiteral)),
         NodeKind::NumericLiteral => {
-            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx);
+            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::NumericLiteral))
         }
-        NodeKind::BigIntLiteral => {
-            walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::BigIntLiteral => walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::BigIntLiteral)),
         NodeKind::BooleanLiteral => {
-            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx);
+            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::BooleanLiteral))
         }
-        NodeKind::NullLiteral => {
-            walk_mut_null_literal(NullLiteral(node.0), traverser, ctx);
-        }
-        NodeKind::RegExpLiteral => {
-            walk_mut_reg_exp_literal(RegExpLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::NullLiteral => walk_mut_null_literal(NullLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::NullLiteral)),
+        NodeKind::RegExpLiteral => walk_mut_reg_exp_literal(RegExpLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::RegExpLiteral)),
         NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TemplateLiteral))
         }
         NodeKind::BinaryExpression => {
-            walk_mut_binary_expression(BinaryExpression(node.0), traverser, ctx);
+            walk_mut_binary_expression(BinaryExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::BinaryExpression))
         }
         NodeKind::LogicalExpression => {
-            walk_mut_logical_expression(LogicalExpression(node.0), traverser, ctx);
+            walk_mut_logical_expression(LogicalExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::LogicalExpression))
         }
         NodeKind::UnaryExpression => {
-            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx);
+            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::UnaryExpression))
         }
         NodeKind::UpdateExpression => {
-            walk_mut_update_expression(UpdateExpression(node.0), traverser, ctx);
+            walk_mut_update_expression(UpdateExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::UpdateExpression))
         }
         NodeKind::AssignmentExpression => {
-            walk_mut_assignment_expression(AssignmentExpression(node.0), traverser, ctx);
+            walk_mut_assignment_expression(AssignmentExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::AssignmentExpression))
         }
         NodeKind::ConditionalExpression => {
-            walk_mut_conditional_expression(ConditionalExpression(node.0), traverser, ctx);
+            walk_mut_conditional_expression(ConditionalExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ConditionalExpression))
         }
         NodeKind::SequenceExpression => {
-            walk_mut_sequence_expression(SequenceExpression(node.0), traverser, ctx);
+            walk_mut_sequence_expression(SequenceExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::SequenceExpression))
         }
         NodeKind::MemberExpression => {
-            walk_mut_member_expression(MemberExpression(node.0), traverser, ctx);
+            walk_mut_member_expression(MemberExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::MemberExpression))
         }
         NodeKind::CallExpression => {
-            walk_mut_call_expression(CallExpression(node.0), traverser, ctx);
+            walk_mut_call_expression(CallExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::CallExpression))
         }
         NodeKind::ChainExpression => {
-            walk_mut_chain_expression(ChainExpression(node.0), traverser, ctx);
+            walk_mut_chain_expression(ChainExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ChainExpression))
         }
-        NodeKind::NewExpression => {
-            walk_mut_new_expression(NewExpression(node.0), traverser, ctx);
-        }
+        NodeKind::NewExpression => walk_mut_new_expression(NewExpression(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::NewExpression)),
         NodeKind::TaggedTemplateExpression => {
-            walk_mut_tagged_template_expression(TaggedTemplateExpression(node.0), traverser, ctx);
+            walk_mut_tagged_template_expression(TaggedTemplateExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TaggedTemplateExpression))
         }
         NodeKind::ArrowFunctionExpression => {
-            walk_mut_arrow_function_expression(ArrowFunctionExpression(node.0), traverser, ctx);
+            walk_mut_arrow_function_expression(ArrowFunctionExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ArrowFunctionExpression))
         }
         NodeKind::ArrayExpression => {
-            walk_mut_array_expression(ArrayExpression(node.0), traverser, ctx);
+            walk_mut_array_expression(ArrayExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ArrayExpression))
         }
         NodeKind::ObjectExpression => {
-            walk_mut_object_expression(ObjectExpression(node.0), traverser, ctx);
+            walk_mut_object_expression(ObjectExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ObjectExpression))
         }
         NodeKind::ParenthesizedExpression => {
-            walk_mut_parenthesized_expression(ParenthesizedExpression(node.0), traverser, ctx);
+            walk_mut_parenthesized_expression(ParenthesizedExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ParenthesizedExpression))
         }
-        NodeKind::Function => {
-            walk_mut_function(Function(node.0), traverser, ctx);
-        }
-        NodeKind::Class => {
-            walk_mut_class(Class(node.0), traverser, ctx);
-        }
+        NodeKind::Function => walk_mut_function(Function(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::Function)),
+        NodeKind::Class => walk_mut_class(Class(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::Class)),
         NodeKind::ImportExpression => {
-            walk_mut_import_expression(ImportExpression(node.0), traverser, ctx);
+            walk_mut_import_expression(ImportExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::ImportExpression))
         }
         NodeKind::AwaitExpression => {
-            walk_mut_await_expression(AwaitExpression(node.0), traverser, ctx);
+            walk_mut_await_expression(AwaitExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::AwaitExpression))
         }
         NodeKind::YieldExpression => {
-            walk_mut_yield_expression(YieldExpression(node.0), traverser, ctx);
+            walk_mut_yield_expression(YieldExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::YieldExpression))
         }
         NodeKind::PrivateIdentifier => {
-            walk_mut_private_identifier(PrivateIdentifier(node.0), traverser, ctx);
+            walk_mut_private_identifier(PrivateIdentifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::PrivateIdentifier))
         }
         NodeKind::TsAsExpression => {
-            walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx);
+            walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TsAsExpression))
         }
         NodeKind::TsSatisfiesExpression => {
-            walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx);
+            walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TsSatisfiesExpression))
         }
         NodeKind::TsTypeAssertion => {
-            walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx);
+            walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TsTypeAssertion))
         }
         NodeKind::TsNonNullExpression => {
-            walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx);
+            walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TsNonNullExpression))
         }
         NodeKind::TsInstantiationExpression => {
-            walk_mut_ts_instantiation_expression(TsInstantiationExpression(node.0), traverser, ctx);
+            walk_mut_ts_instantiation_expression(TsInstantiationExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(Expr::TsInstantiationExpression))
         }
-        NodeKind::JsxElement => {
-            walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::JsxElement)),
+        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
+            .map_break(|action| action.map(Expr::JsxFragment)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::JsxFragment => {
-            walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -32916,11 +34530,15 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BindingPattern,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<BindingPattern>, bool> {
+    match traverser.enter_binding_pattern(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(BindingPattern::BindingIdentifier))
         }
         NodeKind::IdentifierReference
         | NodeKind::MemberExpression
@@ -32928,23 +34546,31 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsSatisfiesExpression
         | NodeKind::TsTypeAssertion
         | NodeKind::TsNonNullExpression => {
-            traverser.enter_simple_assignment_target(SimpleAssignmentTarget(node.0), ctx);
-            walk_mut_simple_assignment_target(SimpleAssignmentTarget(node.0), traverser, ctx);
-            traverser.exit_simple_assignment_target(SimpleAssignmentTarget(node.0), ctx);
+            walk_mut_simple_assignment_target(SimpleAssignmentTarget(node.0), traverser, ctx)
+                .map_break(|action| action.map(BindingPattern::SimpleAssignmentTarget))
         }
         NodeKind::AssignmentPattern => {
-            walk_mut_assignment_pattern(AssignmentPattern(node.0), traverser, ctx);
+            walk_mut_assignment_pattern(AssignmentPattern(node.0), traverser, ctx)
+                .map_break(|action| action.map(BindingPattern::AssignmentPattern))
         }
         NodeKind::BindingRestElement => {
-            walk_mut_binding_rest_element(BindingRestElement(node.0), traverser, ctx);
+            walk_mut_binding_rest_element(BindingRestElement(node.0), traverser, ctx)
+                .map_break(|action| action.map(BindingPattern::BindingRestElement))
         }
-        NodeKind::ArrayPattern => {
-            walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx);
+        NodeKind::ArrayPattern => walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(BindingPattern::ArrayPattern)),
+        NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(BindingPattern::ObjectPattern)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::ObjectPattern => {
-            walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_binding_pattern(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -32952,26 +34578,35 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: AssignmentTarget,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<AssignmentTarget>, bool> {
+    match traverser.enter_assignment_target(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
         | NodeKind::MemberExpression
         | NodeKind::TsAsExpression
         | NodeKind::TsSatisfiesExpression
         | NodeKind::TsTypeAssertion
         | NodeKind::TsNonNullExpression => {
-            traverser.enter_simple_assignment_target(SimpleAssignmentTarget(node.0), ctx);
-            walk_mut_simple_assignment_target(SimpleAssignmentTarget(node.0), traverser, ctx);
-            traverser.exit_simple_assignment_target(SimpleAssignmentTarget(node.0), ctx);
+            walk_mut_simple_assignment_target(SimpleAssignmentTarget(node.0), traverser, ctx)
+                .map_break(|action| action.map(AssignmentTarget::SimpleAssignmentTarget))
         }
-        NodeKind::ArrayPattern => {
-            walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx);
+        NodeKind::ArrayPattern => walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(AssignmentTarget::ArrayAssignmentTarget)),
+        NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(AssignmentTarget::ObjectAssignmentTarget)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::ObjectPattern => {
-            walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_assignment_target(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -32979,28 +34614,46 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
     node: SimpleAssignmentTarget,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<SimpleAssignmentTarget>, bool> {
+    match traverser.enter_simple_assignment_target(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::IdentifierReference))
         }
         NodeKind::MemberExpression => {
-            walk_mut_member_expression(MemberExpression(node.0), traverser, ctx);
+            walk_mut_member_expression(MemberExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::MemberExpression))
         }
         NodeKind::TsAsExpression => {
-            walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx);
+            walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::TsAsExpression))
         }
         NodeKind::TsSatisfiesExpression => {
-            walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx);
+            walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::TsSatisfiesExpression))
         }
         NodeKind::TsTypeAssertion => {
-            walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx);
+            walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::TsTypeAssertion))
         }
         NodeKind::TsNonNullExpression => {
-            walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx);
+            walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(SimpleAssignmentTarget::TsNonNullExpression))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_simple_assignment_target(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33008,11 +34661,15 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: PropertyKey,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<PropertyKey>, bool> {
+    match traverser.enter_property_key(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(PropertyKey::IdentifierName))
         }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
@@ -33053,12 +34710,18 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(PropertyKey::Expr)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_property_key(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33066,16 +34729,28 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ModuleExportName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ModuleExportName>, bool> {
+    match traverser.enter_module_export_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(ModuleExportName::IdentifierName))
         }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(ModuleExportName::StringLiteral)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_module_export_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33083,9 +34758,12 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Argument,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<Argument>, bool> {
+    match traverser.enter_argument(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -33125,15 +34803,20 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(Argument::Expr)),
+        NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx)
+            .map_break(|action| action.map(Argument::SpreadElement)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::SpreadElement => {
-            walk_mut_spread_element(SpreadElement(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_argument(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33141,16 +34824,28 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ObjectPropertyKind,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ObjectPropertyKind>, bool> {
+    match traverser.enter_object_property_kind(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::ObjectProperty => {
-            walk_mut_object_property(ObjectProperty(node.0), traverser, ctx);
+            walk_mut_object_property(ObjectProperty(node.0), traverser, ctx)
+                .map_break(|action| action.map(ObjectPropertyKind::ObjectProperty))
         }
-        NodeKind::SpreadElement => {
-            walk_mut_spread_element(SpreadElement(node.0), traverser, ctx);
+        NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx)
+            .map_break(|action| action.map(ObjectPropertyKind::SpreadElement)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_object_property_kind(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33158,11 +34853,15 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForStatementInit,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ForStatementInit>, bool> {
+    match traverser.enter_for_statement_init(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
-            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx);
+            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(ForStatementInit::VariableDeclaration))
         }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
@@ -33203,12 +34902,18 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(ForStatementInit::Expr)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_for_statement_init(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33216,11 +34921,15 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForStatementLeft,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ForStatementLeft>, bool> {
+    match traverser.enter_for_statement_left(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
-            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx);
+            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(ForStatementLeft::VariableDeclaration))
         }
         NodeKind::IdentifierReference
         | NodeKind::MemberExpression
@@ -33230,11 +34939,19 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::ArrayPattern
         | NodeKind::ObjectPattern => {
-            traverser.enter_assignment_target(AssignmentTarget(node.0), ctx);
-            walk_mut_assignment_target(AssignmentTarget(node.0), traverser, ctx);
-            traverser.exit_assignment_target(AssignmentTarget(node.0), ctx);
+            walk_mut_assignment_target(AssignmentTarget(node.0), traverser, ctx)
+                .map_break(|action| action.map(ForStatementLeft::AssignmentTarget))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_for_statement_left(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33242,12 +34959,14 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ArrowFunctionBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::FunctionBody => {
-            walk_mut_function_body(FunctionBody(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ArrowFunctionBody>, bool> {
+    match traverser.enter_arrow_function_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::FunctionBody => walk_mut_function_body(FunctionBody(node.0), traverser, ctx)
+            .map_break(|action| action.map(ArrowFunctionBody::FunctionBody)),
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -33287,12 +35006,18 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(ArrowFunctionBody::Expr)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_arrow_function_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33300,16 +35025,30 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
     node: FormalParameterItem,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<FormalParameterItem>, bool> {
+    match traverser.enter_formal_parameter_item(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::FormalParameter => {
-            walk_mut_formal_parameter(FormalParameter(node.0), traverser, ctx);
+            walk_mut_formal_parameter(FormalParameter(node.0), traverser, ctx)
+                .map_break(|action| action.map(FormalParameterItem::FormalParameter))
         }
         NodeKind::TsParameterProperty => {
-            walk_mut_ts_parameter_property(TsParameterProperty(node.0), traverser, ctx);
+            walk_mut_ts_parameter_property(TsParameterProperty(node.0), traverser, ctx)
+                .map_break(|action| action.map(FormalParameterItem::TsParameterProperty))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_formal_parameter_item(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33317,19 +35056,30 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
     node: FormalParameterPattern,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<FormalParameterPattern>, bool> {
+    match traverser.enter_formal_parameter_pattern(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(FormalParameterPattern::BindingIdentifier))
         }
-        NodeKind::ArrayPattern => {
-            walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx);
+        NodeKind::ArrayPattern => walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(FormalParameterPattern::ArrayPattern)),
+        NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
+            .map_break(|action| action.map(FormalParameterPattern::ObjectPattern)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::ObjectPattern => {
-            walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_formal_parameter_pattern(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33337,25 +35087,40 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ClassElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ClassElement>, bool> {
+    match traverser.enter_class_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::MethodDefinition => {
-            walk_mut_method_definition(MethodDefinition(node.0), traverser, ctx);
+            walk_mut_method_definition(MethodDefinition(node.0), traverser, ctx)
+                .map_break(|action| action.map(ClassElement::MethodDefinition))
         }
         NodeKind::PropertyDefinition => {
-            walk_mut_property_definition(PropertyDefinition(node.0), traverser, ctx);
+            walk_mut_property_definition(PropertyDefinition(node.0), traverser, ctx)
+                .map_break(|action| action.map(ClassElement::PropertyDefinition))
         }
-        NodeKind::StaticBlock => {
-            walk_mut_static_block(StaticBlock(node.0), traverser, ctx);
-        }
+        NodeKind::StaticBlock => walk_mut_static_block(StaticBlock(node.0), traverser, ctx)
+            .map_break(|action| action.map(ClassElement::StaticBlock)),
         NodeKind::TsMethodDefinition => {
-            walk_mut_ts_method_definition(TsMethodDefinition(node.0), traverser, ctx);
+            walk_mut_ts_method_definition(TsMethodDefinition(node.0), traverser, ctx)
+                .map_break(|action| action.map(ClassElement::TsMethodDefinition))
         }
         NodeKind::TsIndexSignature => {
-            walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx);
+            walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx)
+                .map_break(|action| action.map(ClassElement::TsIndexSignature))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_class_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33363,19 +35128,36 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
     node: ImportDeclarationSpecifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ImportDeclarationSpecifier>, bool> {
+    match traverser.enter_import_declaration_specifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::ImportSpecifier => {
-            walk_mut_import_specifier(ImportSpecifier(node.0), traverser, ctx);
+            walk_mut_import_specifier(ImportSpecifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(ImportDeclarationSpecifier::ImportSpecifier))
         }
         NodeKind::ImportDefaultSpecifier => {
-            walk_mut_import_default_specifier(ImportDefaultSpecifier(node.0), traverser, ctx);
+            walk_mut_import_default_specifier(ImportDefaultSpecifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(ImportDeclarationSpecifier::ImportDefaultSpecifier))
         }
         NodeKind::ImportNamespaceSpecifier => {
-            walk_mut_import_namespace_specifier(ImportNamespaceSpecifier(node.0), traverser, ctx);
+            walk_mut_import_namespace_specifier(ImportNamespaceSpecifier(node.0), traverser, ctx)
+                .map_break(|action| {
+                    action.map(ImportDeclarationSpecifier::ImportNamespaceSpecifier)
+                })
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_import_declaration_specifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33383,31 +35165,30 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
     node: ExportDefaultDeclarationKind,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<ExportDefaultDeclarationKind>, bool> {
+    match traverser.enter_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::Function => {
             let concrete = Function(node.0);
             if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
-                walk_mut_function(concrete, traverser, ctx);
+                walk_mut_function(concrete, traverser, ctx)
+                    .map_break(|action| action.map(ExportDefaultDeclarationKind::Function))
             } else {
-                {
-                    traverser.enter_expr(Expr(node.0), ctx);
-                    walk_mut_expr(Expr(node.0), traverser, ctx);
-                    traverser.exit_expr(Expr(node.0), ctx);
-                }
+                walk_mut_expr(Expr(node.0), traverser, ctx)
+                    .map_break(|action| action.map(ExportDefaultDeclarationKind::Expr))
             }
         }
         NodeKind::Class => {
             let concrete = Class(node.0);
             if concrete.class_type(ctx.ast) == ClassType::ClassDeclaration {
-                walk_mut_class(concrete, traverser, ctx);
+                walk_mut_class(concrete, traverser, ctx)
+                    .map_break(|action| action.map(ExportDefaultDeclarationKind::Class))
             } else {
-                {
-                    traverser.enter_expr(Expr(node.0), ctx);
-                    walk_mut_expr(Expr(node.0), traverser, ctx);
-                    traverser.exit_expr(Expr(node.0), ctx);
-                }
+                walk_mut_expr(Expr(node.0), traverser, ctx)
+                    .map_break(|action| action.map(ExportDefaultDeclarationKind::Expr))
             }
         }
         NodeKind::IdentifierReference
@@ -33447,18 +35228,26 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
-        }
-        NodeKind::TsFunction => {
-            walk_mut_ts_function(TsFunction(node.0), traverser, ctx);
-        }
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(ExportDefaultDeclarationKind::Expr)),
+        NodeKind::TsFunction => walk_mut_ts_function(TsFunction(node.0), traverser, ctx)
+            .map_break(|action| action.map(ExportDefaultDeclarationKind::TsFunction)),
         NodeKind::TsInterfaceDeclaration => {
-            walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx)
+                .map_break(|action| {
+                    action.map(ExportDefaultDeclarationKind::TsInterfaceDeclaration)
+                })
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -33466,2267 +35255,2588 @@ fn walk_mut_super<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Super,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_super(node, ctx);
-    traverser.exit_super(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Super>, bool> {
+    match traverser.enter_super(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_super(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_this_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ThisExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_this_expression(node, ctx);
-    traverser.exit_this_expression(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ThisExpression>, bool> {
+    match traverser.enter_this_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_this_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: StringLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_string_literal(node, ctx);
-    traverser.exit_string_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<StringLiteral>, bool> {
+    match traverser.enter_string_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_string_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: NumericLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_numeric_literal(node, ctx);
-    traverser.exit_numeric_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<NumericLiteral>, bool> {
+    match traverser.enter_numeric_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_numeric_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BigIntLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_big_int_literal(node, ctx);
-    traverser.exit_big_int_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BigIntLiteral>, bool> {
+    match traverser.enter_big_int_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_big_int_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BooleanLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_boolean_literal(node, ctx);
-    traverser.exit_boolean_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BooleanLiteral>, bool> {
+    match traverser.enter_boolean_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_boolean_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_null_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: NullLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_null_literal(node, ctx);
-    traverser.exit_null_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<NullLiteral>, bool> {
+    match traverser.enter_null_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_null_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_reg_exp_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: RegExpLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_reg_exp_literal(node, ctx);
-    traverser.exit_reg_exp_literal(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<RegExpLiteral>, bool> {
+    match traverser.enter_reg_exp_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_reg_exp_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TemplateLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_template_literal(node, ctx);
-    let child = node.quasis(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_template_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TemplateLiteral>, bool> {
+    match traverser.enter_template_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.expressions(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_quasis(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.expressions(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expressions(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_template_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_template_literal(node, ctx);
 }
 #[inline]
 fn walk_mut_template_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TemplateElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_template_element(node, ctx);
-    traverser.exit_template_element(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TemplateElement>, bool> {
+    match traverser.enter_template_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_template_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: IdentifierReference,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_identifier_reference(node, ctx);
-    traverser.exit_identifier_reference(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<IdentifierReference>, bool> {
+    match traverser.enter_identifier_reference(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_identifier_reference(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_private_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: PrivateIdentifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_private_identifier(node, ctx);
-    traverser.exit_private_identifier(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<PrivateIdentifier>, bool> {
+    match traverser.enter_private_identifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_private_identifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BindingIdentifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_binding_identifier(node, ctx);
-    traverser.exit_binding_identifier(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BindingIdentifier>, bool> {
+    match traverser.enter_binding_identifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_binding_identifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: IdentifierName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_identifier_name(node, ctx);
-    traverser.exit_identifier_name(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<IdentifierName>, bool> {
+    match traverser.enter_identifier_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_identifier_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_label_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: LabelIdentifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_label_identifier(node, ctx);
-    traverser.exit_label_identifier(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<LabelIdentifier>, bool> {
+    match traverser.enter_label_identifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_label_identifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_assignment_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: AssignmentPattern,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_assignment_pattern(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_binding_pattern(child, ctx);
-        walk_mut_binding_pattern(child, traverser, ctx);
-        traverser.exit_binding_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<AssignmentPattern>, bool> {
+    match traverser.enter_assignment_pattern(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_assignment_pattern(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_assignment_pattern(node, ctx);
 }
 #[inline]
 fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BindingRestElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_binding_rest_element(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_binding_pattern(child, ctx);
-        walk_mut_binding_pattern(child, traverser, ctx);
-        traverser.exit_binding_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BindingRestElement>, bool> {
+    match traverser.enter_binding_rest_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_binding_rest_element(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_binding_rest_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ArrayPattern,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_array_pattern(node, ctx);
-    let child = node.elements(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        if let Some(child) = child {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_binding_pattern(child, ctx);
-                walk_mut_binding_pattern(child, traverser, ctx);
-                traverser.exit_binding_pattern(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
-        }
+) -> std::ops::ControlFlow<TraverseAction<ArrayPattern>, bool> {
+    match traverser.enter_array_pattern(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.rest(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_rest_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.elements(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_elements(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_rest(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_array_pattern(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_array_pattern(node, ctx);
 }
 #[inline]
 fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ObjectPattern,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_object_pattern(node, ctx);
-    let child = node.properties(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_property(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ObjectPattern>, bool> {
+    match traverser.enter_object_pattern(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.rest(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_rest_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.properties(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_properties(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_rest(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_object_pattern(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_object_pattern(node, ctx);
 }
 #[inline]
 fn walk_mut_binding_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BindingProperty,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_binding_property(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BindingProperty>, bool> {
+    match traverser.enter_binding_property(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.value(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_binding_pattern(child, ctx);
-        walk_mut_binding_pattern(child, traverser, ctx);
-        traverser.exit_binding_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_binding_property(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_binding_property(node, ctx);
 }
 #[inline]
 fn walk_mut_binary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BinaryExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_binary_expression(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<BinaryExpression>, bool> {
+    match traverser.enter_binary_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_binary_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_binary_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_logical_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: LogicalExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_logical_expression(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<LogicalExpression>, bool> {
+    match traverser.enter_logical_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_logical_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_logical_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ConditionalExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_conditional_expression(node, ctx);
-    let child = node.test(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ConditionalExpression>, bool> {
+    match traverser.enter_conditional_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.consequent(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.consequent(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_consequent(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.alternate(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_alternate(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_conditional_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.alternate(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_conditional_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: UnaryExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_unary_expression(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<UnaryExpression>, bool> {
+    match traverser.enter_unary_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_unary_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_unary_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: UpdateExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_update_expression(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_simple_assignment_target(child, ctx);
-        walk_mut_simple_assignment_target(child, traverser, ctx);
-        traverser.exit_simple_assignment_target(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<UpdateExpression>, bool> {
+    match traverser.enter_update_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_update_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_update_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_assignment_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: AssignmentExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_assignment_expression(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_assignment_target(child, ctx);
-        walk_mut_assignment_target(child, traverser, ctx);
-        traverser.exit_assignment_target(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<AssignmentExpression>, bool> {
+    match traverser.enter_assignment_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_assignment_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_assignment_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: VariableDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_variable_declaration(node, ctx);
-    let child = node.declarators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_variable_declarator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<VariableDeclaration>, bool> {
+    match traverser.enter_variable_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_variable_declaration(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.declarators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_declarators(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_variable_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: VariableDeclarator,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_variable_declarator(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_binding_pattern(child, ctx);
-        walk_mut_binding_pattern(child, traverser, ctx);
-        traverser.exit_binding_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<VariableDeclarator>, bool> {
+    match traverser.enter_variable_declarator(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.init(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_init(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_variable_declarator(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_variable_declarator(node, ctx);
 }
 #[inline]
 fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: IfStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_if_statement(node, ctx);
-    let child = node.test(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<IfStatement>, bool> {
+    match traverser.enter_if_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.consequent(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.alternate(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.consequent(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_consequent(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.alternate(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_alternate(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_if_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_if_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: SwitchStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_switch_statement(node, ctx);
-    let child = node.discriminant(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<SwitchStatement>, bool> {
+    match traverser.enter_switch_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.cases(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_switch_case(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.discriminant(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_discriminant(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.cases(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_cases(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_switch_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_switch_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: SwitchCase,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_switch_case(node, ctx);
-    let child = node.test(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<SwitchCase>, bool> {
+    match traverser.enter_switch_case(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.consequent(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.consequent(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_consequent(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_switch_case(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_switch_case(node, ctx);
 }
 #[inline]
 fn walk_mut_for_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_for_statement(node, ctx);
-    let child = node.init(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_for_statement_init(child, ctx);
-            walk_mut_for_statement_init(child, traverser, ctx);
-            traverser.exit_for_statement_init(child, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ForStatement>, bool> {
+    match traverser.enter_for_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_init(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.test(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.update(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.update(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_update(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_for_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_for_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_for_in_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForInStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_for_in_statement(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_for_statement_left(child, ctx);
-        walk_mut_for_statement_left(child, traverser, ctx);
-        traverser.exit_for_statement_left(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ForInStatement>, bool> {
+    match traverser.enter_for_in_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_for_in_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_for_in_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_for_of_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForOfStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_for_of_statement(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_for_statement_left(child, ctx);
-        walk_mut_for_statement_left(child, traverser, ctx);
-        traverser.exit_for_statement_left(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ForOfStatement>, bool> {
+    match traverser.enter_for_of_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_for_of_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_for_of_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TryStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_try_statement(node, ctx);
-    let child = node.block(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_block_statement(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TryStatement>, bool> {
+    match traverser.enter_try_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.handler(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_catch_clause(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.block(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_block(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.finalizer(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_block_statement(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.handler(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_handler(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.finalizer(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_finalizer(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_try_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_try_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: CatchClause,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_catch_clause(node, ctx);
-    let child = node.param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_binding_pattern(child, ctx);
-            walk_mut_binding_pattern(child, traverser, ctx);
-            traverser.exit_binding_pattern(child, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<CatchClause>, bool> {
+    match traverser.enter_catch_clause(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(node.param(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_param(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_catch_clause(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_block_statement(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_catch_clause(node, ctx);
 }
 #[inline]
 fn walk_mut_break_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BreakStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_break_statement(node, ctx);
-    let child = node.label(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_label_identifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<BreakStatement>, bool> {
+    match traverser.enter_break_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_break_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_label(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_break_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_continue_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ContinueStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_continue_statement(node, ctx);
-    let child = node.label(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_label_identifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ContinueStatement>, bool> {
+    match traverser.enter_continue_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_continue_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_label(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_continue_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_labeled_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: LabeledStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_labeled_statement(node, ctx);
-    let child = node.label(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_label_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<LabeledStatement>, bool> {
+    match traverser.enter_labeled_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_label(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_labeled_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_labeled_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExpressionStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_expression_statement(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ExpressionStatement>, bool> {
+    match traverser.enter_expression_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_expression_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_expression_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ReturnStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_return_statement(node, ctx);
-    let child = node.argument(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ReturnStatement>, bool> {
+    match traverser.enter_return_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_return_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_return_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ThrowStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_throw_statement(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ThrowStatement>, bool> {
+    match traverser.enter_throw_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_throw_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_throw_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_debugger_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: DebuggerStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_debugger_statement(node, ctx);
-    traverser.exit_debugger_statement(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<DebuggerStatement>, bool> {
+    match traverser.enter_debugger_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_debugger_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_empty_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: EmptyStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_empty_statement(node, ctx);
-    traverser.exit_empty_statement(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<EmptyStatement>, bool> {
+    match traverser.enter_empty_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_empty_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Directive,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_directive(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Directive>, bool> {
+    match traverser.enter_directive(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_directive(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_directive(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Decorator,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_decorator(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Decorator>, bool> {
+    match traverser.enter_decorator(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_decorator(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_decorator(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Class,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_class(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Class>, bool> {
+    match traverser.enter_class(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.id(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_identifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.super_class(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.super_class(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_super_class(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.super_type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.super_type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_super_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.implements(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_class_implements(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.implements(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_implements(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_class(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_class_body(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_class(node, ctx);
 }
 #[inline]
 fn walk_mut_class_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ClassBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_class_body(node, ctx);
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_class_element(child, ctx);
-            walk_mut_class_element(child, traverser, ctx);
-            traverser.exit_class_element(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ClassBody>, bool> {
+    match traverser.enter_class_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_class_body(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_class_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: MethodDefinition,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_method_definition(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<MethodDefinition>, bool> {
+    match traverser.enter_method_definition(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_method_definition(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.value(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_function(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_method_definition(node, ctx);
 }
 #[inline]
 fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: PropertyDefinition,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_property_definition(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<PropertyDefinition>, bool> {
+    match traverser.enter_property_definition(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.value(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_property_definition(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_property_definition(node, ctx);
 }
 #[inline]
 fn walk_mut_static_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: StaticBlock,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_static_block(node, ctx);
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<StaticBlock>, bool> {
+    match traverser.enter_static_block(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_static_block(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_static_block(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Function,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_function(node, ctx);
-    let child = node.id(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_identifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Function>, bool> {
+    match traverser.enter_function(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.this_param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.this_param(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_this_param(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_function(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_function_body(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_function(node, ctx);
 }
 #[inline]
 fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: FunctionBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_function_body(node, ctx);
-    let child = node.directives(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_directive(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<FunctionBody>, bool> {
+    match traverser.enter_function_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.directives(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_directives(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_function_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_function_body(node, ctx);
 }
 #[inline]
 fn walk_mut_block_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: BlockStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_block_statement(node, ctx);
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<BlockStatement>, bool> {
+    match traverser.enter_block_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_block_statement(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_block_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: WhileStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_while_statement(node, ctx);
-    let child = node.test(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<WhileStatement>, bool> {
+    match traverser.enter_while_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_while_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_while_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_do_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: DoWhileStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_do_while_statement(node, ctx);
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<DoWhileStatement>, bool> {
+    match traverser.enter_do_while_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.test(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_test(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_do_while_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_do_while_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_with_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: WithStatement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_with_statement(node, ctx);
-    let child = node.object(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<WithStatement>, bool> {
+    match traverser.enter_with_statement(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_stmt(child, ctx);
-        walk_mut_stmt(child, traverser, ctx);
-        traverser.exit_stmt(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_object(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_with_statement(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_with_statement(node, ctx);
 }
 #[inline]
 fn walk_mut_formal_parameters<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: FormalParameters,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_formal_parameters(node, ctx);
-    let child = node.items(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_formal_parameter_item(child, ctx);
-            walk_mut_formal_parameter_item(child, traverser, ctx);
-            traverser.exit_formal_parameter_item(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<FormalParameters>, bool> {
+    match traverser.enter_formal_parameters(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.rest(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_formal_parameter_rest(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.items(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_items(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_rest(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_formal_parameters(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_formal_parameters(node, ctx);
 }
 #[inline]
 fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: FormalParameter,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_formal_parameter(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<FormalParameter>, bool> {
+    match traverser.enter_formal_parameter(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.pattern(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_formal_parameter_pattern(child, ctx);
-        walk_mut_formal_parameter_pattern(child, traverser, ctx);
-        traverser.exit_formal_parameter_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.pattern(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_pattern(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.initializer(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.initializer(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_initializer(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_formal_parameter(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_formal_parameter(node, ctx);
 }
 #[inline]
 fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: FormalParameterRest,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_formal_parameter_rest(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<FormalParameterRest>, bool> {
+    match traverser.enter_formal_parameter_rest(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_formal_parameter_pattern(child, ctx);
-        walk_mut_formal_parameter_pattern(child, traverser, ctx);
-        traverser.exit_formal_parameter_pattern(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_formal_parameter_rest(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_formal_parameter_rest(node, ctx);
 }
 #[inline]
 fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ArrayExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_array_expression(node, ctx);
-    let child = node.elements(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        if let Some(child) = child {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                traverser.enter_argument(child, ctx);
-                walk_mut_argument(child, traverser, ctx);
-                traverser.exit_argument(child, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
-        }
+) -> std::ops::ControlFlow<TraverseAction<ArrayExpression>, bool> {
+    match traverser.enter_array_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_array_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.elements(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_elements(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_array_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ObjectExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_object_expression(node, ctx);
-    let child = node.properties(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_object_property_kind(child, ctx);
-            walk_mut_object_property_kind(child, traverser, ctx);
-            traverser.exit_object_property_kind(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ObjectExpression>, bool> {
+    match traverser.enter_object_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_object_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.properties(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_properties(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_object_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: SpreadElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_spread_element(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<SpreadElement>, bool> {
+    match traverser.enter_spread_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_spread_element(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_spread_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_object_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ObjectProperty,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_object_property(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ObjectProperty>, bool> {
+    match traverser.enter_object_property(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.value(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_object_property(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_object_property(node, ctx);
 }
 #[inline]
 fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ParenthesizedExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_parenthesized_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ParenthesizedExpression>, bool> {
+    match traverser.enter_parenthesized_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_parenthesized_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_parenthesized_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ArrowFunctionExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_arrow_function_expression(node, ctx);
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ArrowFunctionExpression>, bool> {
+    match traverser.enter_arrow_function_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_arrow_function_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_arrow_function_body(child, ctx);
-        walk_mut_arrow_function_body(child, traverser, ctx);
-        traverser.exit_arrow_function_body(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_arrow_function_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: SequenceExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_sequence_expression(node, ctx);
-    let child = node.expressions(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<SequenceExpression>, bool> {
+    match traverser.enter_sequence_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_sequence_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expressions(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expressions(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_sequence_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: MemberExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_member_expression(node, ctx);
-    let child = node.object(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<MemberExpression>, bool> {
+    match traverser.enter_member_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.property(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_object(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.property(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_property(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_member_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_member_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: CallExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_call_expression(node, ctx);
-    let child = node.callee(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<CallExpression>, bool> {
+    match traverser.enter_call_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_callee(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.arguments(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_argument(child, ctx);
-            walk_mut_argument(child, traverser, ctx);
-            traverser.exit_argument(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_call_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_call_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ChainExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_chain_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ChainExpression>, bool> {
+    match traverser.enter_chain_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_chain_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_chain_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TaggedTemplateExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_tagged_template_expression(node, ctx);
-    let child = node.tag(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TaggedTemplateExpression>, bool> {
+    match traverser.enter_tagged_template_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.tag(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_tag(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.quasi(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_quasi(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_tagged_template_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.quasi(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_template_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_tagged_template_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: NewExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_new_expression(node, ctx);
-    let child = node.callee(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<NewExpression>, bool> {
+    match traverser.enter_new_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_callee(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.arguments(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_argument(child, ctx);
-            walk_mut_argument(child, traverser, ctx);
-            traverser.exit_argument(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_new_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_new_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: AwaitExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_await_expression(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<AwaitExpression>, bool> {
+    match traverser.enter_await_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_await_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_await_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: YieldExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_yield_expression(node, ctx);
-    let child = node.argument(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<YieldExpression>, bool> {
+    match traverser.enter_yield_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_yield_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_yield_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: MetaProperty,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_meta_property(node, ctx);
-    let child = node.meta(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<MetaProperty>, bool> {
+    match traverser.enter_meta_property(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.property(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.meta(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_meta(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.property(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_property(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_meta_property(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_meta_property(node, ctx);
 }
 #[inline]
 fn walk_mut_import_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_expression(node, ctx);
-    let child = node.source(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportExpression>, bool> {
+    match traverser.enter_import_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.options(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_source(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_options(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_import_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_declaration(node, ctx);
-    let child = node.specifiers(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_import_declaration_specifier(child, ctx);
-            walk_mut_import_declaration_specifier(child, traverser, ctx);
-            traverser.exit_import_declaration_specifier(child, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportDeclaration>, bool> {
+    match traverser.enter_import_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.specifiers(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.source(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.attributes(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_attribute(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_source(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.attributes(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_attributes(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_import_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportSpecifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_specifier(node, ctx);
-    let child = node.imported(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_module_export_name(child, ctx);
-        walk_mut_module_export_name(child, traverser, ctx);
-        traverser.exit_module_export_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportSpecifier>, bool> {
+    match traverser.enter_import_specifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.local(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.imported(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_imported(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_local(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_specifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_import_specifier(node, ctx);
 }
 #[inline]
 fn walk_mut_import_default_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportDefaultSpecifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_default_specifier(node, ctx);
-    let child = node.local(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportDefaultSpecifier>, bool> {
+    match traverser.enter_import_default_specifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_import_default_specifier(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_local(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_default_specifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_import_namespace_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportNamespaceSpecifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_namespace_specifier(node, ctx);
-    let child = node.local(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportNamespaceSpecifier>, bool> {
+    match traverser.enter_import_namespace_specifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_import_namespace_specifier(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_local(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_namespace_specifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_import_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ImportAttribute,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_import_attribute(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_module_export_name(child, ctx);
-        walk_mut_module_export_name(child, traverser, ctx);
-        traverser.exit_module_export_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ImportAttribute>, bool> {
+    match traverser.enter_import_attribute(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.value(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_import_attribute(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_import_attribute(node, ctx);
 }
 #[inline]
 fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExportNamedDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_export_named_declaration(node, ctx);
-    let child = node.declaration(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_decl(child, ctx);
-            walk_mut_decl(child, traverser, ctx);
-            traverser.exit_decl(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<ExportNamedDeclaration>, bool> {
+    match traverser.enter_export_named_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.specifiers(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_export_specifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.declaration(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_declaration(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.source(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_string_literal(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.specifiers(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.attributes(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_attribute(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_source(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.attributes(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_attributes(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_export_named_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_export_named_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExportDefaultDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_export_default_declaration(node, ctx);
-    let child = node.declaration(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_export_default_declaration_kind(child, ctx);
-        walk_mut_export_default_declaration_kind(child, traverser, ctx);
-        traverser.exit_export_default_declaration_kind(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ExportDefaultDeclaration>, bool> {
+    match traverser.enter_export_default_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_export_default_declaration(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.declaration(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_declaration(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_export_default_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExportAllDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_export_all_declaration(node, ctx);
-    let child = node.exported(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_module_export_name(child, ctx);
-            walk_mut_module_export_name(child, traverser, ctx);
-            traverser.exit_module_export_name(child, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ExportAllDeclaration>, bool> {
+    match traverser.enter_export_all_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.exported(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_exported(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.source(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.attributes(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_import_attribute(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_source(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.attributes(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_attributes(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_export_all_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_export_all_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExportSpecifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_export_specifier(node, ctx);
-    let child = node.local(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_module_export_name(child, ctx);
-        walk_mut_module_export_name(child, traverser, ctx);
-        traverser.exit_module_export_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<ExportSpecifier>, bool> {
+    match traverser.enter_export_specifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.exported(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_module_export_name(child, ctx);
-        walk_mut_module_export_name(child, traverser, ctx);
-        traverser.exit_module_export_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_local(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.exported(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_exported(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_export_specifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_export_specifier(node, ctx);
 }
 #[inline]
 fn walk_mut_hashbang<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Hashbang,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_hashbang(node, ctx);
-    traverser.exit_hashbang(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<Hashbang>, bool> {
+    match traverser.enter_hashbang(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_hashbang(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::TsAnyKeyword => {
-            walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsType>, bool> {
+    match traverser.enter_ts_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::TsAnyKeyword => walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsAnyKeyword)),
         NodeKind::TsUnknownKeyword => {
-            walk_mut_ts_unknown_keyword(TsUnknownKeyword(node.0), traverser, ctx);
+            walk_mut_ts_unknown_keyword(TsUnknownKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsUnknownKeyword))
         }
         NodeKind::TsNeverKeyword => {
-            walk_mut_ts_never_keyword(TsNeverKeyword(node.0), traverser, ctx);
+            walk_mut_ts_never_keyword(TsNeverKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsNeverKeyword))
         }
-        NodeKind::TsVoidKeyword => {
-            walk_mut_ts_void_keyword(TsVoidKeyword(node.0), traverser, ctx);
-        }
-        NodeKind::TsNullKeyword => {
-            walk_mut_ts_null_keyword(TsNullKeyword(node.0), traverser, ctx);
-        }
+        NodeKind::TsVoidKeyword => walk_mut_ts_void_keyword(TsVoidKeyword(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsVoidKeyword)),
+        NodeKind::TsNullKeyword => walk_mut_ts_null_keyword(TsNullKeyword(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsNullKeyword)),
         NodeKind::TsUndefinedKeyword => {
-            walk_mut_ts_undefined_keyword(TsUndefinedKeyword(node.0), traverser, ctx);
+            walk_mut_ts_undefined_keyword(TsUndefinedKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsUndefinedKeyword))
         }
         NodeKind::TsStringKeyword => {
-            walk_mut_ts_string_keyword(TsStringKeyword(node.0), traverser, ctx);
+            walk_mut_ts_string_keyword(TsStringKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsStringKeyword))
         }
         NodeKind::TsNumberKeyword => {
-            walk_mut_ts_number_keyword(TsNumberKeyword(node.0), traverser, ctx);
+            walk_mut_ts_number_keyword(TsNumberKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsNumberKeyword))
         }
         NodeKind::TsBigIntKeyword => {
-            walk_mut_ts_big_int_keyword(TsBigIntKeyword(node.0), traverser, ctx);
+            walk_mut_ts_big_int_keyword(TsBigIntKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsBigIntKeyword))
         }
         NodeKind::TsBooleanKeyword => {
-            walk_mut_ts_boolean_keyword(TsBooleanKeyword(node.0), traverser, ctx);
+            walk_mut_ts_boolean_keyword(TsBooleanKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsBooleanKeyword))
         }
         NodeKind::TsSymbolKeyword => {
-            walk_mut_ts_symbol_keyword(TsSymbolKeyword(node.0), traverser, ctx);
+            walk_mut_ts_symbol_keyword(TsSymbolKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsSymbolKeyword))
         }
         NodeKind::TsObjectKeyword => {
-            walk_mut_ts_object_keyword(TsObjectKeyword(node.0), traverser, ctx);
+            walk_mut_ts_object_keyword(TsObjectKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsObjectKeyword))
         }
         NodeKind::TsIntrinsicKeyword => {
-            walk_mut_ts_intrinsic_keyword(TsIntrinsicKeyword(node.0), traverser, ctx);
+            walk_mut_ts_intrinsic_keyword(TsIntrinsicKeyword(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsIntrinsicKeyword))
         }
-        NodeKind::TsThisType => {
-            walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx);
-        }
+        NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsThisType)),
         NodeKind::TsTypeReference => {
-            walk_mut_ts_type_reference(TsTypeReference(node.0), traverser, ctx);
+            walk_mut_ts_type_reference(TsTypeReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsTypeReference))
         }
-        NodeKind::TsTypeQuery => {
-            walk_mut_ts_type_query(TsTypeQuery(node.0), traverser, ctx);
-        }
-        NodeKind::TsImportType => {
-            walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx);
-        }
-        NodeKind::TsLiteralType => {
-            walk_mut_ts_literal_type(TsLiteralType(node.0), traverser, ctx);
-        }
+        NodeKind::TsTypeQuery => walk_mut_ts_type_query(TsTypeQuery(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsTypeQuery)),
+        NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsImportType)),
+        NodeKind::TsLiteralType => walk_mut_ts_literal_type(TsLiteralType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsLiteralType)),
         NodeKind::TsTemplateLiteralType => {
-            walk_mut_ts_template_literal_type(TsTemplateLiteralType(node.0), traverser, ctx);
+            walk_mut_ts_template_literal_type(TsTemplateLiteralType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsTemplateLiteralType))
         }
-        NodeKind::TsArrayType => {
-            walk_mut_ts_array_type(TsArrayType(node.0), traverser, ctx);
-        }
+        NodeKind::TsArrayType => walk_mut_ts_array_type(TsArrayType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsArrayType)),
         NodeKind::TsIndexedAccessType => {
-            walk_mut_ts_indexed_access_type(TsIndexedAccessType(node.0), traverser, ctx);
+            walk_mut_ts_indexed_access_type(TsIndexedAccessType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsIndexedAccessType))
         }
-        NodeKind::TsTupleType => {
-            walk_mut_ts_tuple_type(TsTupleType(node.0), traverser, ctx);
-        }
+        NodeKind::TsTupleType => walk_mut_ts_tuple_type(TsTupleType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsTupleType)),
         NodeKind::TsOptionalType => {
-            walk_mut_ts_optional_type(TsOptionalType(node.0), traverser, ctx);
+            walk_mut_ts_optional_type(TsOptionalType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsOptionalType))
         }
-        NodeKind::TsRestType => {
-            walk_mut_ts_rest_type(TsRestType(node.0), traverser, ctx);
-        }
+        NodeKind::TsRestType => walk_mut_ts_rest_type(TsRestType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsRestType)),
         NodeKind::TsJsDocNullableType => {
-            walk_mut_ts_js_doc_nullable_type(TsJsDocNullableType(node.0), traverser, ctx);
+            walk_mut_ts_js_doc_nullable_type(TsJsDocNullableType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsJsDocNullableType))
         }
         NodeKind::TsJsDocNonNullableType => {
-            walk_mut_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node.0), traverser, ctx);
+            walk_mut_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsJsDocNonNullableType))
         }
         NodeKind::TsJsDocUnknownType => {
-            walk_mut_ts_js_doc_unknown_type(TsJsDocUnknownType(node.0), traverser, ctx);
+            walk_mut_ts_js_doc_unknown_type(TsJsDocUnknownType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsJsDocUnknownType))
         }
-        NodeKind::TsUnionType => {
-            walk_mut_ts_union_type(TsUnionType(node.0), traverser, ctx);
-        }
+        NodeKind::TsUnionType => walk_mut_ts_union_type(TsUnionType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsUnionType)),
         NodeKind::TsIntersectionType => {
-            walk_mut_ts_intersection_type(TsIntersectionType(node.0), traverser, ctx);
+            walk_mut_ts_intersection_type(TsIntersectionType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsIntersectionType))
         }
         NodeKind::TsConditionalType => {
-            walk_mut_ts_conditional_type(TsConditionalType(node.0), traverser, ctx);
+            walk_mut_ts_conditional_type(TsConditionalType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsConditionalType))
         }
-        NodeKind::TsInferType => {
-            walk_mut_ts_infer_type(TsInferType(node.0), traverser, ctx);
-        }
+        NodeKind::TsInferType => walk_mut_ts_infer_type(TsInferType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsInferType)),
         NodeKind::TsTypeOperator => {
-            walk_mut_ts_type_operator(TsTypeOperator(node.0), traverser, ctx);
+            walk_mut_ts_type_operator(TsTypeOperator(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsTypeOperator))
         }
         NodeKind::TsParenthesizedType => {
-            walk_mut_ts_parenthesized_type(TsParenthesizedType(node.0), traverser, ctx);
+            walk_mut_ts_parenthesized_type(TsParenthesizedType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsParenthesizedType))
         }
         NodeKind::TsFunctionType => {
-            walk_mut_ts_function_type(TsFunctionType(node.0), traverser, ctx);
+            walk_mut_ts_function_type(TsFunctionType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsFunctionType))
         }
         NodeKind::TsConstructorType => {
-            walk_mut_ts_constructor_type(TsConstructorType(node.0), traverser, ctx);
+            walk_mut_ts_constructor_type(TsConstructorType(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsConstructorType))
         }
         NodeKind::TsTypePredicate => {
-            walk_mut_ts_type_predicate(TsTypePredicate(node.0), traverser, ctx);
+            walk_mut_ts_type_predicate(TsTypePredicate(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsType::TsTypePredicate))
         }
-        NodeKind::TsTypeLiteral => {
-            walk_mut_ts_type_literal(TsTypeLiteral(node.0), traverser, ctx);
+        NodeKind::TsTypeLiteral => walk_mut_ts_type_literal(TsTypeLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsTypeLiteral)),
+        NodeKind::TsMappedType => walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsType::TsMappedType)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::TsMappedType => {
-            walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35734,16 +37844,30 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsTypeName>, bool> {
+    match traverser.enter_ts_type_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeName::IdentifierReference))
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeName::TsQualifiedName))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_type_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35751,25 +37875,42 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
     node: TsQualifiedNameLeft,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsQualifiedNameLeft>, bool> {
+    match traverser.enter_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsQualifiedNameLeft::IdentifierReference))
         }
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsQualifiedNameLeft::IdentifierName))
         }
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsQualifiedNameLeft::BindingIdentifier))
         }
         NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsQualifiedNameLeft::ThisExpression))
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsQualifiedNameLeft::TsQualifiedName))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35777,16 +37918,30 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
     node: TsImportTypeQualifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsImportTypeQualifier>, bool> {
+    match traverser.enter_ts_import_type_qualifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsImportTypeQualifier::IdentifierName))
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsImportTypeQualifier::TsQualifiedName))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_import_type_qualifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35794,21 +37949,32 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
     node: TsTypeQueryExprName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsTypeQueryExprName>, bool> {
+    match traverser.enter_ts_type_query_expr_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
-            traverser.enter_ts_type_name(TsTypeName(node.0), ctx);
-            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx);
-            traverser.exit_ts_type_name(TsTypeName(node.0), ctx);
+            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeQueryExprName::TsTypeName))
         }
         NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeQueryExprName::ThisExpression))
         }
-        NodeKind::TsImportType => {
-            walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx);
+        NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsTypeQueryExprName::TsImportType)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_ts_type_query_expr_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35816,28 +37982,42 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsLiteral>, bool> {
+    match traverser.enter_ts_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsLiteral::StringLiteral)),
         NodeKind::NumericLiteral => {
-            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx);
+            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsLiteral::NumericLiteral))
         }
-        NodeKind::BigIntLiteral => {
-            walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::BigIntLiteral => walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsLiteral::BigIntLiteral)),
         NodeKind::BooleanLiteral => {
-            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx);
+            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsLiteral::BooleanLiteral))
         }
         NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsLiteral::TemplateLiteral))
         }
         NodeKind::UnaryExpression => {
-            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx);
+            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsLiteral::UnaryExpression))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35845,9 +38025,12 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTupleElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsTupleElement>, bool> {
+    match traverser.enter_ts_tuple_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsAnyKeyword
         | NodeKind::TsUnknownKeyword
         | NodeKind::TsNeverKeyword
@@ -35885,15 +38068,22 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsConstructorType
         | NodeKind::TsTypePredicate
         | NodeKind::TsTypeLiteral
-        | NodeKind::TsMappedType => {
-            traverser.enter_ts_type(TsType(node.0), ctx);
-            walk_mut_ts_type(TsType(node.0), traverser, ctx);
-            traverser.exit_ts_type(TsType(node.0), ctx);
-        }
+        | NodeKind::TsMappedType => walk_mut_ts_type(TsType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsTupleElement::TsType)),
         NodeKind::TsNamedTupleMember => {
-            walk_mut_ts_named_tuple_member(TsNamedTupleMember(node.0), traverser, ctx);
+            walk_mut_ts_named_tuple_member(TsNamedTupleMember(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTupleElement::TsNamedTupleMember))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_tuple_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35901,33 +38091,46 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsTypeElement>, bool> {
+    match traverser.enter_ts_type_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsPropertySignature => {
-            walk_mut_ts_property_signature(TsPropertySignature(node.0), traverser, ctx);
+            walk_mut_ts_property_signature(TsPropertySignature(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeElement::TsPropertySignature))
         }
         NodeKind::TsMethodSignature => {
-            walk_mut_ts_method_signature(TsMethodSignature(node.0), traverser, ctx);
+            walk_mut_ts_method_signature(TsMethodSignature(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeElement::TsMethodSignature))
         }
-        NodeKind::TsCallSignatureDeclaration => {
-            walk_mut_ts_call_signature_declaration(
-                TsCallSignatureDeclaration(node.0),
-                traverser,
-                ctx,
-            );
-        }
-        NodeKind::TsConstructSignatureDeclaration => {
-            walk_mut_ts_construct_signature_declaration(
-                TsConstructSignatureDeclaration(node.0),
-                traverser,
-                ctx,
-            );
-        }
+        NodeKind::TsCallSignatureDeclaration => walk_mut_ts_call_signature_declaration(
+            TsCallSignatureDeclaration(node.0),
+            traverser,
+            ctx,
+        )
+        .map_break(|action| action.map(TsTypeElement::TsCallSignatureDeclaration)),
+        NodeKind::TsConstructSignatureDeclaration => walk_mut_ts_construct_signature_declaration(
+            TsConstructSignatureDeclaration(node.0),
+            traverser,
+            ctx,
+        )
+        .map_break(|action| action.map(TsTypeElement::TsConstructSignatureDeclaration)),
         NodeKind::TsIndexSignature => {
-            walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx);
+            walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypeElement::TsIndexSignature))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_type_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35935,16 +38138,28 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
     node: TsTypePredicateName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsTypePredicateName>, bool> {
+    match traverser.enter_ts_type_predicate_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsTypePredicateName::IdentifierName))
         }
-        NodeKind::TsThisType => {
-            walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx);
+        NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsTypePredicateName::TsThisType)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_ts_type_predicate_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35952,19 +38167,32 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsEnumMemberName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsEnumMemberName>, bool> {
+    match traverser.enter_ts_enum_member_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsEnumMemberName::IdentifierName))
         }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsEnumMemberName::StringLiteral)),
         NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsEnumMemberName::TemplateLiteral))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_enum_member_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35972,19 +38200,32 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsModuleName>, bool> {
+    match traverser.enter_ts_module_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsModuleName::BindingIdentifier))
         }
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsModuleName::StringLiteral)),
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsModuleName::TsQualifiedName))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_module_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -35992,16 +38233,28 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::TsModuleBlock => {
-            walk_mut_ts_module_block(TsModuleBlock(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsModuleBody>, bool> {
+    match traverser.enter_ts_module_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::TsModuleBlock => walk_mut_ts_module_block(TsModuleBlock(node.0), traverser, ctx)
+            .map_break(|action| action.map(TsModuleBody::TsModuleBlock)),
         NodeKind::TsModuleDeclaration => {
-            walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx);
+            walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsModuleBody::TsModuleDeclaration))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_module_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -36009,22 +38262,30 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleReference,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<TsModuleReference>, bool> {
+    match traverser.enter_ts_module_reference(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
-            traverser.enter_ts_type_name(TsTypeName(node.0), ctx);
-            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx);
-            traverser.exit_ts_type_name(TsTypeName(node.0), ctx);
+            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsModuleReference::TsTypeName))
         }
         NodeKind::TsExternalModuleReference => {
-            walk_mut_ts_external_module_reference(
-                TsExternalModuleReference(node.0),
-                traverser,
-                ctx,
-            );
+            walk_mut_ts_external_module_reference(TsExternalModuleReference(node.0), traverser, ctx)
+                .map_break(|action| action.map(TsModuleReference::TsExternalModuleReference))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_ts_module_reference(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -36032,1735 +38293,2146 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsFunction,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_function(node, ctx);
-    let child = node.id(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_binding_identifier(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsFunction>, bool> {
+    match traverser.enter_ts_function(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.this_param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.this_param(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_this_param(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_function(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_function(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsMethodDefinition,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_method_definition(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsMethodDefinition>, bool> {
+    match traverser.enter_ts_method_definition(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_method_definition(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.value(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_function(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_method_definition(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeAnnotation,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_annotation(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeAnnotation>, bool> {
+    match traverser.enter_ts_type_annotation(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_type_annotation(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_annotation(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_any_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsAnyKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_any_keyword(node, ctx);
-    traverser.exit_ts_any_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsAnyKeyword>, bool> {
+    match traverser.enter_ts_any_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_any_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_unknown_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsUnknownKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_unknown_keyword(node, ctx);
-    traverser.exit_ts_unknown_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsUnknownKeyword>, bool> {
+    match traverser.enter_ts_unknown_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_unknown_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_never_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNeverKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_never_keyword(node, ctx);
-    traverser.exit_ts_never_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNeverKeyword>, bool> {
+    match traverser.enter_ts_never_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_never_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_void_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsVoidKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_void_keyword(node, ctx);
-    traverser.exit_ts_void_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsVoidKeyword>, bool> {
+    match traverser.enter_ts_void_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_void_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_null_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNullKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_null_keyword(node, ctx);
-    traverser.exit_ts_null_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNullKeyword>, bool> {
+    match traverser.enter_ts_null_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_null_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_undefined_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsUndefinedKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_undefined_keyword(node, ctx);
-    traverser.exit_ts_undefined_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsUndefinedKeyword>, bool> {
+    match traverser.enter_ts_undefined_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_undefined_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_string_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsStringKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_string_keyword(node, ctx);
-    traverser.exit_ts_string_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsStringKeyword>, bool> {
+    match traverser.enter_ts_string_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_string_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_number_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNumberKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_number_keyword(node, ctx);
-    traverser.exit_ts_number_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNumberKeyword>, bool> {
+    match traverser.enter_ts_number_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_number_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_big_int_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsBigIntKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_big_int_keyword(node, ctx);
-    traverser.exit_ts_big_int_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsBigIntKeyword>, bool> {
+    match traverser.enter_ts_big_int_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_big_int_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_boolean_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsBooleanKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_boolean_keyword(node, ctx);
-    traverser.exit_ts_boolean_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsBooleanKeyword>, bool> {
+    match traverser.enter_ts_boolean_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_boolean_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_symbol_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsSymbolKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_symbol_keyword(node, ctx);
-    traverser.exit_ts_symbol_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsSymbolKeyword>, bool> {
+    match traverser.enter_ts_symbol_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_symbol_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_object_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsObjectKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_object_keyword(node, ctx);
-    traverser.exit_ts_object_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsObjectKeyword>, bool> {
+    match traverser.enter_ts_object_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_object_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_intrinsic_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsIntrinsicKeyword,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_intrinsic_keyword(node, ctx);
-    traverser.exit_ts_intrinsic_keyword(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsIntrinsicKeyword>, bool> {
+    match traverser.enter_ts_intrinsic_keyword(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_intrinsic_keyword(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_this_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsThisType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_this_type(node, ctx);
-    traverser.exit_ts_this_type(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsThisType>, bool> {
+    match traverser.enter_ts_this_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_this_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeReference,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_reference(node, ctx);
-    let child = node.type_name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type_name(child, ctx);
-        walk_mut_ts_type_name(child, traverser, ctx);
-        traverser.exit_ts_type_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeReference>, bool> {
+    match traverser.enter_ts_type_reference(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_name(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_name(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_reference(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_type_reference(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsQualifiedName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_qualified_name(node, ctx);
-    let child = node.left(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_qualified_name_left(child, ctx);
-        walk_mut_ts_qualified_name_left(child, traverser, ctx);
-        traverser.exit_ts_qualified_name_left(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsQualifiedName>, bool> {
+    match traverser.enter_ts_qualified_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.right(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_left(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_right(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_qualified_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_qualified_name(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeQuery,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_query(node, ctx);
-    let child = node.expr_name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type_query_expr_name(child, ctx);
-        walk_mut_ts_type_query_expr_name(child, traverser, ctx);
-        traverser.exit_ts_type_query_expr_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeQuery>, bool> {
+    match traverser.enter_ts_type_query(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expr_name(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expr_name(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_query(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_type_query(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsImportType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_import_type(node, ctx);
-    let child = node.source(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsImportType>, bool> {
+    match traverser.enter_ts_import_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.options(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_source(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.qualifier(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_import_type_qualifier(child, ctx);
-            walk_mut_ts_import_type_qualifier(child, traverser, ctx);
-            traverser.exit_ts_import_type_qualifier(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_options(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.qualifier(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_qualifier(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_import_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_import_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeParameter,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_parameter(node, ctx);
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeParameter>, bool> {
+    match traverser.enter_ts_type_parameter(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.constraint(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.default(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.constraint(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_constraint(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.default(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_default(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_parameter(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_type_parameter(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_parameter_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeParameterDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_parameter_declaration(node, ctx);
-    let child = node.params(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsTypeParameterDeclaration>, bool> {
+    match traverser.enter_ts_type_parameter_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_type_parameter_declaration(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_parameter_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_type_parameter_instantiation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeParameterInstantiation,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_parameter_instantiation(node, ctx);
-    let child = node.params(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsTypeParameterInstantiation>, bool> {
+    match traverser.enter_ts_type_parameter_instantiation(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_type_parameter_instantiation(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_parameter_instantiation(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsLiteralType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_literal_type(node, ctx);
-    let child = node.literal(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_literal(child, ctx);
-        walk_mut_ts_literal(child, traverser, ctx);
-        traverser.exit_ts_literal(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsLiteralType>, bool> {
+    match traverser.enter_ts_literal_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_literal_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.literal(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_literal(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_literal_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_template_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTemplateLiteralType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_template_literal_type(node, ctx);
-    let child = node.quasis(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_template_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsTemplateLiteralType>, bool> {
+    match traverser.enter_ts_template_literal_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.types(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_quasis(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_types(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_template_literal_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_template_literal_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsArrayType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_array_type(node, ctx);
-    let child = node.element_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsArrayType>, bool> {
+    match traverser.enter_ts_array_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_array_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.element_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_element_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_array_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsIndexedAccessType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_indexed_access_type(node, ctx);
-    let child = node.object_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsIndexedAccessType>, bool> {
+    match traverser.enter_ts_indexed_access_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.index_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.object_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_object_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.index_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_index_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_indexed_access_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_indexed_access_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTupleType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_tuple_type(node, ctx);
-    let child = node.element_types(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_tuple_element(child, ctx);
-            walk_mut_ts_tuple_element(child, traverser, ctx);
-            traverser.exit_ts_tuple_element(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsTupleType>, bool> {
+    match traverser.enter_ts_tuple_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_tuple_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.element_types(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_element_types(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_tuple_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNamedTupleMember,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_named_tuple_member(node, ctx);
-    let child = node.label(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNamedTupleMember>, bool> {
+    match traverser.enter_ts_named_tuple_member(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.element_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_label(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.element_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_element_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_named_tuple_member(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_named_tuple_member(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsOptionalType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_optional_type(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsOptionalType>, bool> {
+    match traverser.enter_ts_optional_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_optional_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_optional_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsRestType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_rest_type(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_tuple_element(child, ctx);
-        walk_mut_ts_tuple_element(child, traverser, ctx);
-        traverser.exit_ts_tuple_element(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsRestType>, bool> {
+    match traverser.enter_ts_rest_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_rest_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_rest_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsJsDocNullableType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_js_doc_nullable_type(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsJsDocNullableType>, bool> {
+    match traverser.enter_ts_js_doc_nullable_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_js_doc_nullable_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_js_doc_nullable_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsJsDocNonNullableType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_js_doc_non_nullable_type(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsJsDocNonNullableType>, bool> {
+    match traverser.enter_ts_js_doc_non_nullable_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_js_doc_non_nullable_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_js_doc_non_nullable_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_js_doc_unknown_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsJsDocUnknownType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_js_doc_unknown_type(node, ctx);
-    traverser.exit_ts_js_doc_unknown_type(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsJsDocUnknownType>, bool> {
+    match traverser.enter_ts_js_doc_unknown_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_ts_js_doc_unknown_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_union_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsUnionType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_union_type(node, ctx);
-    let child = node.types(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsUnionType>, bool> {
+    match traverser.enter_ts_union_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_union_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_types(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_union_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_intersection_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsIntersectionType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_intersection_type(node, ctx);
-    let child = node.types(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsIntersectionType>, bool> {
+    match traverser.enter_ts_intersection_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_intersection_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_types(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_intersection_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsConditionalType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_conditional_type(node, ctx);
-    let child = node.check_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsConditionalType>, bool> {
+    match traverser.enter_ts_conditional_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.extends_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.check_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_check_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.extends_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_extends_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.true_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_true_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.false_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_false_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_conditional_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.true_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.false_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_conditional_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsInferType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_infer_type(node, ctx);
-    let child = node.type_parameter(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_parameter(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsInferType>, bool> {
+    match traverser.enter_ts_infer_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_infer_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameter(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameter(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_infer_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeOperator,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_operator(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeOperator>, bool> {
+    match traverser.enter_ts_type_operator(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_type_operator(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_operator(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsParenthesizedType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_parenthesized_type(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsParenthesizedType>, bool> {
+    match traverser.enter_ts_parenthesized_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_parenthesized_type(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_parenthesized_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsFunctionType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_function_type(node, ctx);
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsFunctionType>, bool> {
+    match traverser.enter_ts_function_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.this_param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.this_param(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_this_param(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_function_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_annotation(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_function_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsConstructorType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_constructor_type(node, ctx);
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsConstructorType>, bool> {
+    match traverser.enter_ts_constructor_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_constructor_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_annotation(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_constructor_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypePredicate,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_predicate(node, ctx);
-    let child = node.parameter_name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type_predicate_name(child, ctx);
-        walk_mut_ts_type_predicate_name(child, traverser, ctx);
-        traverser.exit_ts_type_predicate_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypePredicate>, bool> {
+    match traverser.enter_ts_type_predicate(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.parameter_name(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_parameter_name(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_predicate(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_type_predicate(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeLiteral,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_literal(node, ctx);
-    let child = node.members(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_element(child, ctx);
-            walk_mut_ts_type_element(child, traverser, ctx);
-            traverser.exit_ts_type_element(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsTypeLiteral>, bool> {
+    match traverser.enter_ts_type_literal(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_type_literal(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_members(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_literal(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsMappedType,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_mapped_type(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsMappedType>, bool> {
+    match traverser.enter_ts_mapped_type(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.constraint(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.name_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type(child, ctx);
-            walk_mut_ts_type(child, traverser, ctx);
-            traverser.exit_ts_type(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.constraint(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_constraint(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.name_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_name_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_mapped_type(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_mapped_type(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsPropertySignature,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_property_signature(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsPropertySignature>, bool> {
+    match traverser.enter_ts_property_signature(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_property_signature(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_property_signature(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsMethodSignature,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_method_signature(node, ctx);
-    let child = node.key(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_property_key(child, ctx);
-        walk_mut_property_key(child, traverser, ctx);
-        traverser.exit_property_key(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsMethodSignature>, bool> {
+    match traverser.enter_ts_method_signature(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_key(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.this_param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.this_param(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_this_param(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_method_signature(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_method_signature(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsCallSignatureDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_call_signature_declaration(node, ctx);
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsCallSignatureDeclaration>, bool> {
+    match traverser.enter_ts_call_signature_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.this_param(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_this_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.this_param(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_this_param(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_call_signature_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_call_signature_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsConstructSignatureDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_construct_signature_declaration(node, ctx);
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsConstructSignatureDeclaration>, bool> {
+    match traverser.enter_ts_construct_signature_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.params(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameters(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    let child = node.return_type(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_params(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.return_type(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_return_type(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_construct_signature_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_construct_signature_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsIndexSignature,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_index_signature(node, ctx);
-    let child = node.parameters(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_index_signature_parameter(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsIndexSignature>, bool> {
+    match traverser.enter_ts_index_signature(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_index_signature(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_annotation(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_index_signature(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeAliasDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_alias_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeAliasDeclaration>, bool> {
+    match traverser.enter_ts_type_alias_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_alias_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_type_alias_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsInterfaceDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_interface_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsInterfaceDeclaration>, bool> {
+    match traverser.enter_ts_interface_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_parameters(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_declaration(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.extends(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_interface_heritage(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_parameters(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.extends(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_extends(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_interface_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_interface_body(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_interface_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_interface_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsInterfaceBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_interface_body(node, ctx);
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_type_element(child, ctx);
-            walk_mut_ts_type_element(child, traverser, ctx);
-            traverser.exit_ts_type_element(child, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsInterfaceBody>, bool> {
+    match traverser.enter_ts_interface_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_interface_body(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_interface_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsInterfaceHeritage,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_interface_heritage(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsInterfaceHeritage>, bool> {
+    match traverser.enter_ts_interface_heritage(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_interface_heritage(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_interface_heritage(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsClassImplements,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_class_implements(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsClassImplements>, bool> {
+    match traverser.enter_ts_class_implements(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_class_implements(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_class_implements(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_enum_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsEnumDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_enum_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsEnumDeclaration>, bool> {
+    match traverser.enter_ts_enum_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_enum_body(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_enum_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_enum_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_enum_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsEnumBody,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_enum_body(node, ctx);
-    let child = node.members(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_enum_member(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsEnumBody>, bool> {
+    match traverser.enter_ts_enum_body(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_enum_body(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_members(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_enum_body(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsEnumMember,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_enum_member(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_enum_member_name(child, ctx);
-        walk_mut_ts_enum_member_name(child, traverser, ctx);
-        traverser.exit_ts_enum_member_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsEnumMember>, bool> {
+    match traverser.enter_ts_enum_member(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.initializer(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_expr(child, ctx);
-            walk_mut_expr(child, traverser, ctx);
-            traverser.exit_expr(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.initializer(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_initializer(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_enum_member(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_enum_member(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_module_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_module_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_module_name(child, ctx);
-        walk_mut_ts_module_name(child, traverser, ctx);
-        traverser.exit_ts_module_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsModuleDeclaration>, bool> {
+    match traverser.enter_ts_module_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_ts_module_body(child, ctx);
-            walk_mut_ts_module_body(child, traverser, ctx);
-            traverser.exit_ts_module_body(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_module_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_module_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleBlock,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_module_block(node, ctx);
-    let child = node.directives(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_directive(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsModuleBlock>, bool> {
+    match traverser.enter_ts_module_block(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_stmt(child, ctx);
-            walk_mut_stmt(child, traverser, ctx);
-            traverser.exit_stmt(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.directives(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_directives(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_module_block(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_module_block(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_global_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsGlobalDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_global_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsGlobalDeclaration>, bool> {
+    match traverser.enter_ts_global_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.body(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_module_block(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_body(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_global_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_global_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsParameterProperty,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_parameter_property(node, ctx);
-    let child = node.decorators(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_decorator(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsParameterProperty>, bool> {
+    match traverser.enter_ts_parameter_property(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.decorators(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_decorators(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.parameter(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_parameter(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_parameter_property(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.parameter(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_formal_parameter(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_ts_parameter_property(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsThisParameter,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_this_parameter(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<TsThisParameter>, bool> {
+    match traverser.enter_ts_this_parameter(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_this_parameter(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_this_parameter(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsAsExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_as_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsAsExpression>, bool> {
+    match traverser.enter_ts_as_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_as_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_as_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsSatisfiesExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_satisfies_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsSatisfiesExpression>, bool> {
+    match traverser.enter_ts_satisfies_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_satisfies_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_satisfies_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypeAssertion,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_type_assertion(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_type(child, ctx);
-        walk_mut_ts_type(child, traverser, ctx);
-        traverser.exit_ts_type(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsTypeAssertion>, bool> {
+    match traverser.enter_ts_type_assertion(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_type_assertion(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_type_assertion(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNonNullExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_non_null_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNonNullExpression>, bool> {
+    match traverser.enter_ts_non_null_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_non_null_expression(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_non_null_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsInstantiationExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_instantiation_expression(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsInstantiationExpression>, bool> {
+    match traverser.enter_ts_instantiation_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_instantiation_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_instantiation_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsExportAssignment,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_export_assignment(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsExportAssignment>, bool> {
+    match traverser.enter_ts_export_assignment(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_export_assignment(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_export_assignment(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_namespace_export_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsNamespaceExportDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_namespace_export_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_identifier_name(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsNamespaceExportDeclaration>, bool> {
+    match traverser.enter_ts_namespace_export_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_namespace_export_declaration(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_namespace_export_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsImportEqualsDeclaration,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_import_equals_declaration(node, ctx);
-    let child = node.id(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsImportEqualsDeclaration>, bool> {
+    match traverser.enter_ts_import_equals_declaration(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.module_reference(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_ts_module_reference(child, ctx);
-        walk_mut_ts_module_reference(child, traverser, ctx);
-        traverser.exit_ts_module_reference(child, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_id(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.module_reference(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_module_reference(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_import_equals_declaration(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_import_equals_declaration(node, ctx);
 }
 #[inline]
 fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsExternalModuleReference,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_external_module_reference(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_string_literal(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsExternalModuleReference>, bool> {
+    match traverser.enter_ts_external_module_reference(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_ts_external_module_reference(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_external_module_reference(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsIndexSignatureParameter,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_ts_index_signature_parameter(node, ctx);
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_binding_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<TsIndexSignatureParameter>, bool> {
+    match traverser.enter_ts_index_signature_parameter(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_annotation(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_ts_type_annotation(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_ts_index_signature_parameter(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_ts_index_signature_parameter(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxElementName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::JsxIdentifier => {
-            walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxElementName>, bool> {
+    match traverser.enter_jsx_element_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxElementName::JsxIdentifier)),
         NodeKind::JsxNamespacedName => {
-            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx);
+            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxElementName::JsxNamespacedName))
         }
         NodeKind::JsxMemberExpression => {
-            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx);
+            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxElementName::JsxMemberExpression))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_jsx_element_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37768,16 +40440,28 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
     node: JsxMemberExpressionObject,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::JsxIdentifier => {
-            walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxMemberExpressionObject>, bool> {
+    match traverser.enter_jsx_member_expression_object(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxMemberExpressionObject::JsxIdentifier)),
         NodeKind::JsxMemberExpression => {
-            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx);
+            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxMemberExpressionObject::JsxMemberExpression))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_jsx_member_expression_object(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37785,16 +40469,28 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxAttributeName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::JsxIdentifier => {
-            walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxAttributeName>, bool> {
+    match traverser.enter_jsx_attribute_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxAttributeName::JsxIdentifier)),
         NodeKind::JsxNamespacedName => {
-            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx);
+            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxAttributeName::JsxNamespacedName))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_jsx_attribute_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37802,16 +40498,28 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxAttributeItem,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::JsxAttribute => {
-            walk_mut_jsx_attribute(JsxAttribute(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxAttributeItem>, bool> {
+    match traverser.enter_jsx_attribute_item(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::JsxAttribute => walk_mut_jsx_attribute(JsxAttribute(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxAttributeItem::JsxAttribute)),
         NodeKind::JsxSpreadAttribute => {
-            walk_mut_jsx_spread_attribute(JsxSpreadAttribute(node.0), traverser, ctx);
+            walk_mut_jsx_spread_attribute(JsxSpreadAttribute(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxAttributeItem::JsxSpreadAttribute))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_jsx_attribute_item(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37819,22 +40527,32 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxAttributeValue,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::StringLiteral => {
-            walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxAttributeValue>, bool> {
+    match traverser.enter_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxAttributeValue::StringLiteral)),
         NodeKind::JsxExpressionContainer => {
-            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx);
+            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxAttributeValue::JsxExpressionContainer))
         }
-        NodeKind::JsxElement => {
-            walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxAttributeValue::JsxElement)),
+        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxAttributeValue::JsxFragment)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::JsxFragment => {
-            walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37842,9 +40560,12 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
+) -> std::ops::ControlFlow<TraverseAction<JsxExpression>, bool> {
+    match traverser.enter_jsx_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -37884,15 +40605,22 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => {
-            traverser.enter_expr(Expr(node.0), ctx);
-            walk_mut_expr(Expr(node.0), traverser, ctx);
-            traverser.exit_expr(Expr(node.0), ctx);
-        }
+        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxExpression::Expr)),
         NodeKind::JsxEmptyExpression => {
-            walk_mut_jsx_empty_expression(JsxEmptyExpression(node.0), traverser, ctx);
+            walk_mut_jsx_empty_expression(JsxEmptyExpression(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxExpression::JsxEmptyExpression))
         }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
+        }
+    };
+    match traverser.exit_jsx_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37900,25 +40628,36 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxChild,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    let kind = unsafe { *ctx.ast.nodes.kind_unchecked(node.0) };
-    match kind {
-        NodeKind::JsxText => {
-            walk_mut_jsx_text(JsxText(node.0), traverser, ctx);
-        }
+) -> std::ops::ControlFlow<TraverseAction<JsxChild>, bool> {
+    match traverser.enter_jsx_child(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+        NodeKind::JsxText => walk_mut_jsx_text(JsxText(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxChild::JsxText)),
         NodeKind::JsxExpressionContainer => {
-            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx);
+            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxChild::JsxExpressionContainer))
         }
         NodeKind::JsxSpreadChild => {
-            walk_mut_jsx_spread_child(JsxSpreadChild(node.0), traverser, ctx);
+            walk_mut_jsx_spread_child(JsxSpreadChild(node.0), traverser, ctx)
+                .map_break(|action| action.map(JsxChild::JsxSpreadChild))
         }
-        NodeKind::JsxElement => {
-            walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxChild::JsxElement)),
+        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
+            .map_break(|action| action.map(JsxChild::JsxFragment)),
+        _ => unreachable!("invalid node kind for traversal union"),
+    } {
+        std::ops::ControlFlow::Continue(stopped) => stopped,
+        std::ops::ControlFlow::Break(action) => {
+            return std::ops::ControlFlow::Break(action);
         }
-        NodeKind::JsxFragment => {
-            walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
-        }
-        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    match traverser.exit_jsx_child(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
 }
 #[inline]
@@ -37926,303 +40665,392 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_element(node, ctx);
-    let child = node.opening_element(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_opening_element(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxElement>, bool> {
+    match traverser.enter_jsx_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.children(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_child(child, ctx);
-            walk_mut_jsx_child(child, traverser, ctx);
-            traverser.exit_jsx_child(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.opening_element(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_opening_element(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
-    }
-    let child = node.closing_element(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_jsx_closing_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.children(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_children(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.closing_element(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_closing_element(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_jsx_element(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxOpeningElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_opening_element(node, ctx);
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_jsx_element_name(child, ctx);
-        walk_mut_jsx_element_name(child, traverser, ctx);
-        traverser.exit_jsx_element_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxOpeningElement>, bool> {
+    match traverser.enter_jsx_opening_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.type_arguments(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_mut_ts_type_parameter_instantiation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
-    }
-    let child = node.attributes(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_attribute_item(child, ctx);
-            walk_mut_jsx_attribute_item(child, traverser, ctx);
-            traverser.exit_jsx_attribute_item(child, ctx);
-            traverser.exit_node(node_id, ctx);
+        if traverse_mut_slot(
+            node.type_arguments(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.attributes(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_attributes(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_opening_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_jsx_opening_element(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_closing_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxClosingElement,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_closing_element(node, ctx);
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_jsx_element_name(child, ctx);
-        walk_mut_jsx_element_name(child, traverser, ctx);
-        traverser.exit_jsx_element_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxClosingElement>, bool> {
+    match traverser.enter_jsx_closing_element(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_jsx_closing_element(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_closing_element(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxFragment,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_fragment(node, ctx);
-    let child = node.opening_fragment(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_opening_fragment(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxFragment>, bool> {
+    match traverser.enter_jsx_fragment(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.children(ctx.ast);
-    for child_idx in child.iter() {
-        let child = ctx.ast.get_node_in_sub_range(child_idx);
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_child(child, ctx);
-            walk_mut_jsx_child(child, traverser, ctx);
-            traverser.exit_jsx_child(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.opening_fragment(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_opening_fragment(ctx.ast, replacement),
+        ) {
+            break 'children true;
         }
+        if traverse_mut_slot(
+            node.children(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_children(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.closing_fragment(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_closing_fragment(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_fragment(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    let child = node.closing_fragment(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_closing_fragment(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
-    }
-    traverser.exit_jsx_fragment(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_opening_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxOpeningFragment,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_opening_fragment(node, ctx);
-    traverser.exit_jsx_opening_fragment(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxOpeningFragment>, bool> {
+    match traverser.enter_jsx_opening_fragment(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_jsx_opening_fragment(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_closing_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxClosingFragment,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_closing_fragment(node, ctx);
-    traverser.exit_jsx_closing_fragment(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxClosingFragment>, bool> {
+    match traverser.enter_jsx_closing_fragment(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_jsx_closing_fragment(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxIdentifier,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_identifier(node, ctx);
-    traverser.exit_jsx_identifier(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxIdentifier>, bool> {
+    match traverser.enter_jsx_identifier(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_jsx_identifier(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxNamespacedName,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_namespaced_name(node, ctx);
-    let child = node.namespace(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxNamespacedName>, bool> {
+    match traverser.enter_jsx_namespaced_name(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.namespace(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_namespace(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_namespaced_name(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_jsx_namespaced_name(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxMemberExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_member_expression(node, ctx);
-    let child = node.object(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_jsx_member_expression_object(child, ctx);
-        walk_mut_jsx_member_expression_object(child, traverser, ctx);
-        traverser.exit_jsx_member_expression_object(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxMemberExpression>, bool> {
+    match traverser.enter_jsx_member_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.property(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        walk_mut_jsx_identifier(child, traverser, ctx);
-        traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_object(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        if traverse_mut_slot(
+            node.property(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_property(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_member_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_jsx_member_expression(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxAttribute,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_attribute(node, ctx);
-    let child = node.name(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_jsx_attribute_name(child, ctx);
-        walk_mut_jsx_attribute_name(child, traverser, ctx);
-        traverser.exit_jsx_attribute_name(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxAttribute>, bool> {
+    match traverser.enter_jsx_attribute(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    let child = node.value(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            traverser.enter_jsx_attribute_value(child, ctx);
-            walk_mut_jsx_attribute_value(child, traverser, ctx);
-            traverser.exit_jsx_attribute_value(child, ctx);
-            traverser.exit_node(node_id, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_name(ctx.ast, replacement)
+        }) {
+            break 'children true;
         }
+        if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
+            node.set_value(ctx.ast, replacement)
+        }) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_attribute(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
     }
-    traverser.exit_jsx_attribute(node, ctx);
 }
 #[inline]
 fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxSpreadAttribute,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_spread_attribute(node, ctx);
-    let child = node.argument(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxSpreadAttribute>, bool> {
+    match traverser.enter_jsx_spread_attribute(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_jsx_spread_attribute(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.argument(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_argument(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_spread_attribute(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxExpressionContainer,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_expression_container(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_jsx_expression(child, ctx);
-        walk_mut_jsx_expression(child, traverser, ctx);
-        traverser.exit_jsx_expression(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxExpressionContainer>, bool> {
+    match traverser.enter_jsx_expression_container(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_jsx_expression_container(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_expression_container(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_empty_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxEmptyExpression,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_empty_expression(node, ctx);
-    traverser.exit_jsx_empty_expression(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxEmptyExpression>, bool> {
+    match traverser.enter_jsx_empty_expression(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_jsx_empty_expression(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_text<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxText,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_text(node, ctx);
-    traverser.exit_jsx_text(node, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxText>, bool> {
+    match traverser.enter_jsx_text(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
+    }
+    let stopped = false;
+    match traverser.exit_jsx_text(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }
 #[inline]
 fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxSpreadChild,
     traverser: &mut T,
     ctx: &mut TraverseMutCtx<'_, 'a, State>,
-) {
-    traverser.enter_jsx_spread_child(node, ctx);
-    let child = node.expression(ctx.ast);
-    {
-        let node_id = (child).node_id();
-        traverser.enter_node(node_id, ctx);
-        traverser.enter_expr(child, ctx);
-        walk_mut_expr(child, traverser, ctx);
-        traverser.exit_expr(child, ctx);
-        traverser.exit_node(node_id, ctx);
+) -> std::ops::ControlFlow<TraverseAction<JsxSpreadChild>, bool> {
+    match traverser.enter_jsx_spread_child(node, ctx) {
+        TraverseAction::Continue => {}
+        action => return std::ops::ControlFlow::Break(action),
     }
-    traverser.exit_jsx_spread_child(node, ctx);
+    let stopped = 'children: {
+        if traverse_mut_slot(
+            node.expression(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_expression(ctx.ast, replacement),
+        ) {
+            break 'children true;
+        }
+        false
+    };
+    match traverser.exit_jsx_spread_child(node, ctx) {
+        TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
+        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+    }
 }

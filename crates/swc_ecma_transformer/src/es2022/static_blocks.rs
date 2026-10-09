@@ -4,9 +4,7 @@
 //! The named-evaluation helper comes from
 //! packages/babel-helper-create-class-features-plugin/src/decorators.ts.
 //!
-//! BabelApiGaps records only operations used by those sources, with the original
-//! call next to every TODO. These placeholders do not implement framework APIs.
-//! Their Rust signatures carry explicit node IDs/scopes because the current
+//! Rust signatures carry explicit node IDs/scopes because the current
 //! architecture has no Babel NodePath/Scope objects. Mutation must synchronize
 //! AST edges, moved scope owners, bindings/references and comments in each edit.
 //!
@@ -23,8 +21,8 @@ use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionBody, AssignmentOperator, AssignmentTarget, Ast, AstWtf8, Class,
     ClassBody, ClassElement, ClassElementData, ClassType, DUMMY_SP, Expr, FormalParameterKind,
-    GetSpan, NodeId, NodeKindData, PropertyDefinition, PropertyKey, ScopeId,
-    SimpleAssignmentTarget, Span, StaticBlock, Stmt, SubRange, UnaryOperator,
+    GetSpan, NodeId, NodeKindData, ObjectProperty, PropertyDefinition, PropertyKey, ScopeId,
+    SimpleAssignmentTarget, Span, StaticBlock, Stmt, SubRange, TraverseAction, UnaryOperator,
 };
 
 use crate::{
@@ -35,8 +33,9 @@ use crate::{
 
 pub(crate) struct StaticBlocks {
     prevent_extensions: bool,
-    // Babel replaces/inserts after the class within ClassBody. The generic
-    // traversal does that in exit_class, retaining only the generated tmp here.
+    // Babel replaces/inserts after the class within ClassBody. Traversal
+    // dispatches declaration exits through exit_decl and expression exits
+    // through exit_expr, retaining only the generated tmp here.
     closures: FxHashMap<NodeId, BoundIdentifier>,
 }
 
@@ -73,9 +72,9 @@ impl StaticBlocks {
         // prevent_extensions selects the Babel algorithm below.
         if !self.prevent_extensions {
             let mut private_names = Self::private_names(ctx.container_class_body(class_body), ctx);
-            // Snapshot member handles before replacing their attachments.
-            let elements: Vec<_> = ctx.container_class_body(class_body).collect();
-            for path in elements {
+            // Borrow the member list briefly so lowering can also borrow ctx.
+            let mut index = 0;
+            while let Some(path) = ctx.container_class_body_mut(class_body).get(index).copied() {
                 if let Some(block) = path.as_static_block(ctx.ast) {
                     let value = Self::block_to_expression(block, scope, ctx);
                     let static_block_private_id = Self::generate_uid(&mut private_names);
@@ -86,8 +85,11 @@ impl StaticBlocks {
                         block.span(ctx.ast),
                         ctx,
                     );
-                    ctx.replace_with(path.node_id(), None, field.node_id());
+                    // TODO: synchronize the detached block's scope owner when
+                    // moving its contents into the generated initializer.
+                    ctx.container_class_body_mut(class_body)[index] = field;
                 }
+                index += 1;
             }
             return;
         }
@@ -227,9 +229,13 @@ impl StaticBlocks {
         )));
     }
 
-    pub(crate) fn exit_class(&mut self, class: Class, ctx: &mut Mutation<'_, '_, '_>) {
+    pub(crate) fn exit_class(
+        &mut self,
+        class: Class,
+        ctx: &mut Mutation<'_, '_, '_>,
+    ) -> TraverseAction<Expr> {
         let Some(tmp) = self.closures.remove(&class.node_id()) else {
-            return;
+            return TraverseAction::Continue;
         };
         let scope = ctx.semantic().scope_outside(class.node_id()).unwrap();
         // t.cloneNode(tmp): BoundIdentifier::reference supplies a fresh read
@@ -242,10 +248,11 @@ impl StaticBlocks {
             // the call will already return the class itself.
             let expressions = vec![Expr::Class(class), static_block_closure_call];
             let replacement = Self::maybe_sequence_expression(scope, expressions, ctx);
-            ctx.replace_with(class.node_id(), None, replacement.node_id());
+            TraverseAction::ReplaceContinue(replacement)
         } else {
             let statement = Self::expression_statement(scope, static_block_closure_call, ctx);
             ctx.insert_after(class.node_id(), statement);
+            TraverseAction::Continue
         }
     }
 
@@ -339,7 +346,7 @@ impl StaticBlocks {
         let value = Self::maybe_sequence_expression(scope, expressions, ctx);
         // Babel assigns prop.value directly. The current architecture requires
         // the synchronized equivalent of propPath.get("value").replaceWith(value).
-        ctx.replace_with(prop.node_id(), Some("value"), value.node_id());
+        prop.set_value(ctx.ast, Some(value));
     }
 
     fn blocks_to_expressions(
@@ -553,7 +560,7 @@ impl StaticBlocks {
                     .is_some_and(|value| value.node_id() == initializer) =>
             {
                 return Self::property_name(
-                    parent,
+                    PropertyLike::ClassProperty(property),
                     property.key(ctx.ast),
                     property.computed(ctx.ast),
                     scope,
@@ -582,7 +589,13 @@ impl StaticBlocks {
                 if proto {
                     return None;
                 }
-                return Self::property_name(parent, key, property.computed(ctx.ast), scope, ctx);
+                return Self::property_name(
+                    PropertyLike::ObjectProperty(property),
+                    key,
+                    property.computed(ctx.ast),
+                    scope,
+                    ctx,
+                );
             }
             _ => None,
         }?;
@@ -592,7 +605,7 @@ impl StaticBlocks {
     /// Adapts buildNamedEvaluationVisitor's property visitors and
     /// handleComputedProperty in babel-helper-create-class-features-plugin/src/decorators.ts.
     fn property_name(
-        owner: NodeId,
+        owner: PropertyLike,
         key: PropertyKey,
         computed: bool,
         scope: ScopeId,
@@ -620,7 +633,7 @@ impl StaticBlocks {
                 if computed {
                     let key_scope = ctx.semantic().scope_at(key.node_id()).expect("key scope");
                     let replacement = Self::string_value(key_scope, value, ctx);
-                    ctx.replace_with(owner, Some("key"), replacement.node_id());
+                    owner.set_key(ctx.ast, PropertyKey::Expr(replacement));
                 }
                 Some(Self::string_value(scope, value, ctx))
             }
@@ -639,7 +652,7 @@ impl StaticBlocks {
                     .expect("Babel handleComputedProperty requires a memoised key");
                 let converted = ctx.call_to_property_key(expression);
                 let assignment = Self::assignment(key_scope, temp, converted, ctx);
-                ctx.replace_with(owner, Some("key"), assignment.node_id());
+                owner.set_key(ctx.ast, PropertyKey::Expr(assignment));
                 Some(Expr::IdentifierReference(
                     temp.reference(ctx, scope, DUMMY_SP),
                 ))
@@ -662,20 +675,16 @@ impl StaticBlocks {
     }
 }
 
-/// TODOs for Babel operations used by this transform. All source calls are in
-/// babel-plugin-transform-class-static-block/src/index.ts unless noted otherwise.
-/// Explicit node IDs/scopes replace Babel's NodePath/Scope receivers; they are
-/// signature adaptations, not additional transform-specific framework operations.
-#[allow(unused_variables)]
-trait BabelApiGaps {
-    /// Babel: classBody.parentPath.replaceWith(t.sequenceExpression([classBody.parent, call])),
-    /// propertyPath.get("key").replaceWith(...) in decorators.ts, and prop.value = ... .
-    /// field=None means path.replaceWith; Some(field) means path.get(field).replaceWith.
-    /// Update the attachment edge, retaining the original node when wrapped.
-    /// Class-element replacements must also update any logical member list.
-    fn replace_with(&mut self, path: NodeId, field: Option<&str>, replacement: NodeId) {
-        todo!("Babel NodePath.replaceWith: replace an attachment with registered syntax")
-    }
+enum PropertyLike {
+    ClassProperty(PropertyDefinition),
+    ObjectProperty(ObjectProperty),
 }
 
-impl BabelApiGaps for Mutation<'_, '_, '_> {}
+impl PropertyLike {
+    fn set_key(&self, ast: &mut Ast, key: PropertyKey) {
+        match self {
+            PropertyLike::ClassProperty(prop) => prop.set_key(ast, key),
+            PropertyLike::ObjectProperty(prop) => prop.set_key(ast, key),
+        }
+    }
+}
