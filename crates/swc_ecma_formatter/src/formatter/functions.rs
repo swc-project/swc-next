@@ -13,7 +13,7 @@ use super::types::callable::{
 };
 use super::types::generics::{TypeListKind, TypeListPrefix, TypeParameterContext};
 use crate::{FormatError, document::Writer};
-pub(super) use methods::{MethodOwner, SourceMethodHeader};
+pub(super) use methods::{MethodOwner, SourceMethodHeader, SourceMethodPrefix};
 use swc_next_ecma_ast::{
     BindingIdentifier, Comment, CommentKind, Function, FunctionBody, GetSpan, PropertyKey, Span,
     Stmt, StmtData, TsTypeAnnotation, TsTypeParameterDeclaration,

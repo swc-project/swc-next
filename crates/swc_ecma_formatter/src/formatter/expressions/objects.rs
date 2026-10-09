@@ -913,6 +913,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(in crate::formatter) fn unquoted_key_mode(
+        &self,
+        key: PropertyKey,
+        computed: Option<Span>,
+        context: PropertyKeyContext,
+        mode: ContentMode,
+        quoting: PropertyKeyQuoting,
+    ) -> ContentMode {
+        if computed.is_some() || mode == ContentMode::Formatted {
+            return mode;
+        }
+        if let PropertyKeyData::Expr(expression) = self.ast.property_key_data(key)
+            && let ExprData::StringLiteral(literal) = self.ast.expr_data(expression)
+            && self
+                .unquoted_string_key(literal, context, quoting)
+                .is_some()
+        {
+            return ContentMode::Formatted;
+        }
+        mode
+    }
+
     pub(in crate::formatter) fn property_key_quoting_context(
         &self,
         key: PropertyKey,

@@ -2,7 +2,8 @@
 
 use swc_next_ecma_ast::{
     Accessibility, BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment,
-    CommentKind, Expr, GetSpan, PropertyDefinition, PropertyKey, Span, StaticBlock, StmtData,
+    CommentKind, Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span,
+    StaticBlock, StmtData, TsFunction, TsMethodDefinition,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -15,7 +16,8 @@ use super::comments::{
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart, TailOwner};
-use super::functions::{MethodOwner, SourceMethodHeader};
+use super::functions::bodyless::PreparedBodylessSignature;
+use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageLayout, HeritageOwners, HeritagePrefix};
 use super::statements::IncomingStatement;
 use super::suppression::{
@@ -76,15 +78,22 @@ struct PreparedClassMember<'ast> {
     sibling: Option<DelimitedSuppression>,
 }
 
-#[expect(
-    clippy::large_enum_variant,
-    reason = "Keep the prepared borrowed method inline instead of allocating per member."
-)]
 enum ClassMemberContent<'ast> {
     Verbatim,
     Method(SourceMethodHeader<'ast>),
+    Bodyless(SourceBodylessClassMethod<'ast>),
+    BodylessValue {
+        prefix: SourceMethodPrefix,
+        value: TsFunction,
+    },
     Field(SourceClassField<'ast>),
     Static(SourceStaticBlock<'ast>),
+}
+
+struct SourceBodylessClassMethod<'ast> {
+    prefix: SourceMethodPrefix,
+    signature: PreparedBodylessSignature<'ast>,
+    terminal: TypedClassMemberTerminal,
 }
 
 struct SourceClassField<'ast> {
@@ -102,6 +111,11 @@ struct SourceClassField<'ast> {
 struct FieldInitializer<'ast> {
     right: Expr,
     layout: InitializerLayout<'ast>,
+}
+
+enum TypedClassMemberTerminal {
+    Canonical(Span),
+    Source(Span),
 }
 
 enum FieldTerminal {
@@ -686,6 +700,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ClassElementData::MethodDefinition(method) => ClassMemberContent::Method(
                 self.source_method_header(MethodOwner::Class(method), quoting)?,
             ),
+            ClassElementData::TsMethodDefinition(method) => {
+                if !method.decorators(ast).is_empty() {
+                    return Err(self.unsupported("decorated bodyless class method", method));
+                }
+                self.source_bodyless_class_method(method, sibling, span.start, quoting)?
+            }
             ClassElementData::PropertyDefinition(field) => {
                 match self.source_class_field(field, sibling, quoting)? {
                     Some(field) => ClassMemberContent::Field(field),
@@ -715,6 +735,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match content {
             ClassMemberContent::Verbatim => self.format_verbatim(span, writer),
             ClassMemberContent::Method(header) => self.format_method_header(header, writer),
+            ClassMemberContent::Bodyless(method) => {
+                self.format_bodyless_class_method(method, writer)
+            }
+            ClassMemberContent::BodylessValue { prefix, value } => {
+                let end = prefix.end(self.ast);
+                self.format_method_key_prefix(prefix, writer)?;
+                self.format_source_token_gap(end, value.span(self.ast).start, false, writer)?;
+                self.format_verbatim(value.span(self.ast), writer)
+            }
             ClassMemberContent::Field(field) => self.format_class_field(field, following, writer),
             ClassMemberContent::Static(block) => self.format_static_block(block, writer),
         }
@@ -984,6 +1013,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn class_member_needs_field_separator(&self, member: &PreparedClassMember<'ast>) -> bool {
         match &member.content {
             ClassMemberContent::Method(header) => header.needs_field_separator(self),
+            ClassMemberContent::Bodyless(method) => method.prefix.needs_field_separator(self),
+            ClassMemberContent::BodylessValue { prefix, .. } => prefix.needs_field_separator(self),
             ClassMemberContent::Field(field) => {
                 !field.prefix.has_modifiers()
                     && (field.computed.is_some()
@@ -1101,5 +1132,115 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_comment_run(comments, CommentRunLayout::SourceAfter(end), writer)?;
         gap.write(writer, FlatSeparator::Space, Writer::space);
         self.format_static_block_body(node, braces, incoming, writer)
+    }
+
+    fn source_bodyless_class_method(
+        &self,
+        node: TsMethodDefinition,
+        sibling: Option<DelimitedSuppression>,
+        core_start: u32,
+        quoting: PropertyKeyQuoting,
+    ) -> Result<ClassMemberContent<'ast>, FormatError> {
+        let ast = self.ast;
+        let function = node.value(ast);
+        if node.optional(ast) && node.kind(ast) != MethodDefinitionKind::Method
+            || function.r#async(ast)
+            || function.generator(ast)
+        {
+            return Err(self.unsupported("typed or decorated bodyless class method", node));
+        }
+        let kind = node.kind(ast);
+        if kind != MethodDefinitionKind::Method {
+            if function.type_parameters(ast).is_some()
+                || (kind != MethodDefinitionKind::Get && function.return_type(ast).is_some())
+            {
+                return Err(self.unsupported("typed accessor or constructor header", function));
+            }
+            if function.this_param(ast).is_some() {
+                return Err(self.unsupported("typed function", function));
+            }
+        }
+        let mut source = self.source_bodyless_signature(function);
+        let mut prefix = self.source_bodyless_method_prefix(
+            node,
+            source.header_start(ast),
+            source.generic.is_some(),
+            core_start,
+            quoting,
+        )?;
+        source.set_leading_mode(prefix.following_mode);
+        if self.bodyless_empty_parameters_are_verbatim(&source) {
+            return Ok(ClassMemberContent::BodylessValue {
+                prefix,
+                value: source.node,
+            });
+        }
+        let signature = self.prepare_bodyless_signature_suffix(
+            source,
+            prefix.end(ast),
+            Some(SignaturePreceding::Key(prefix.key)),
+            prefix.key_mode,
+        )?;
+        prefix.key_mode = self.method_key_mode(&prefix, signature.preceding_mode);
+        let internal = Span::new(signature.content_end, node.span(ast).end);
+        let (terminal, _) = self.prepare_typed_class_member_terminal(internal, sibling);
+        Ok(ClassMemberContent::Bodyless(SourceBodylessClassMethod {
+            prefix,
+            signature,
+            terminal,
+        }))
+    }
+
+    fn format_bodyless_class_method(
+        &mut self,
+        method: SourceBodylessClassMethod<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let tail = writer.group(false, |writer| {
+            self.format_method_key_prefix(method.prefix, writer)?;
+            self.format_bodyless_signature_suffix(method.signature, writer)
+        })?;
+        self.format_typed_class_member_terminal(method.terminal, tail, writer)
+    }
+
+    fn prepare_typed_class_member_terminal(
+        &self,
+        internal: Span,
+        sibling: Option<DelimitedSuppression>,
+    ) -> (TypedClassMemberTerminal, ContentMode) {
+        let comments = self.comments.in_range(internal);
+        let mode = if self.has_suppression {
+            self.content_mode(comments)
+        } else {
+            ContentMode::Formatted
+        };
+        let source_terminal = mode == ContentMode::Verbatim
+            || sibling.is_some() && self.find_token(internal, comments, ";").is_some();
+        let terminal = if source_terminal {
+            TypedClassMemberTerminal::Source(internal)
+        } else {
+            TypedClassMemberTerminal::Canonical(internal)
+        };
+        (terminal, mode)
+    }
+
+    fn format_typed_class_member_terminal(
+        &mut self,
+        terminal: TypedClassMemberTerminal,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match terminal {
+            TypedClassMemberTerminal::Canonical(span) => {
+                let tail = self.capture_expression_tail(span, tail)?;
+                if self.options.semicolons == Semicolons::Always {
+                    writer.text(";");
+                }
+                self.format_expression_tail(tail, writer)
+            }
+            TypedClassMemberTerminal::Source(span) => {
+                self.format_source_class_member_terminal(span, tail, writer)
+            }
+        }
     }
 }
