@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(
+/* prettier-ignore */
+public readonly readonly value : number, other: number) {} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly readonly value : number,
+    other: number,
+  ) {}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    /* prettier-ignore */
+    public readonly readonly value : number,
+    other: number,
+  ) {}
+}
