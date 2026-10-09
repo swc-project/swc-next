@@ -1,0 +1,156 @@
+{
+  "baselineVersion": "yuku-ast 0.18.0",
+  "fixture": "1000 functions: function fN(x) { debugger; keep(); return x + 1; }",
+  "node": "v24.20.0",
+  "platform": "darwin/arm64",
+  "cpu": "Apple M5 Max",
+  "method": "Three isolated processes per variant, rotating order; at least 12 warmups and 300 ms; 25 measured iterations; parsing and cloning excluded. GC before warmup.",
+  "memory": "process peak RSS and maximum heap sampled after each iteration; includes setup; no separate client/server",
+  "sourceSha256": {
+    "npm/core/src-js/ast.js": "1e2badf9c742cb7b8dc7c582a240ad290213f8996bae22a991fd083b61a9df5a",
+    "npm/core/src-js/child-visitors.js": "43139c56481baec90bd1e4aa27d356185847c804dc4a2745b33176862e2dc1c3",
+    "npm/core/benches/handwritten-edit.mjs": "2ca0eb422fc356654d838753ac98b168c65ac28ccfa8d8b20d969813a226ae40"
+  },
+  "summary": {
+    "yukuAst": {
+      "ms": 0.8019999999999641,
+      "peakRssMiB": 120.875,
+      "observedHeapMiB": 44.4766845703125
+    },
+    "swcNext": {
+      "ms": 0.6884579999999687,
+      "peakRssMiB": 102.5,
+      "observedHeapMiB": 24.455772399902344
+    },
+    "handwritten": {
+      "ms": 0.20333299999998644,
+      "peakRssMiB": 123.171875,
+      "observedHeapMiB": 40.601600646972656
+    }
+  },
+  "samples": {
+    "yukuAst": [
+      {
+        "warmups": 61,
+        "batch": 1,
+        "ms": 0.7977920000000154,
+        "minMs": 0.7816250000000196,
+        "maxMs": 0.8794170000000463,
+        "peakRssMiB": 121.28125,
+        "observedHeapMiB": 44.4766845703125,
+        "heapBeforeMiB": 14.672393798828125,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 59,
+        "batch": 1,
+        "ms": 0.8202080000000365,
+        "minMs": 0.7889579999999796,
+        "maxMs": 0.878832999999986,
+        "peakRssMiB": 115.765625,
+        "observedHeapMiB": 39.299049377441406,
+        "heapBeforeMiB": 21.997970581054688,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 60,
+        "batch": 1,
+        "ms": 0.8019999999999641,
+        "minMs": 0.7724999999999795,
+        "maxMs": 0.8426249999999982,
+        "peakRssMiB": 120.875,
+        "observedHeapMiB": 44.4766845703125,
+        "heapBeforeMiB": 26.3173828125,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      }
+    ],
+    "swcNext": [
+      {
+        "warmups": 62,
+        "batch": 1,
+        "ms": 0.7089169999999854,
+        "minMs": 0.6800830000000246,
+        "maxMs": 0.9427080000000387,
+        "peakRssMiB": 102.5,
+        "observedHeapMiB": 24.455772399902344,
+        "heapBeforeMiB": 9.729156494140625,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 63,
+        "batch": 1,
+        "ms": 0.6884579999999687,
+        "minMs": 0.658457999999996,
+        "maxMs": 0.9253749999999741,
+        "peakRssMiB": 105.6875,
+        "observedHeapMiB": 28.03087615966797,
+        "heapBeforeMiB": 13.223075866699219,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 62,
+        "batch": 1,
+        "ms": 0.6876250000000255,
+        "minMs": 0.6556249999999864,
+        "maxMs": 0.9347080000000005,
+        "peakRssMiB": 102.3125,
+        "observedHeapMiB": 24.45574951171875,
+        "heapBeforeMiB": 9.813308715820312,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      }
+    ],
+    "handwritten": [
+      {
+        "warmups": 69,
+        "batch": 1,
+        "ms": 0.20333299999998644,
+        "minMs": 0.1882919999999899,
+        "maxMs": 0.237041999999974,
+        "peakRssMiB": 123.171875,
+        "observedHeapMiB": 39.10100555419922,
+        "heapBeforeMiB": 18.974624633789062,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 70,
+        "batch": 1,
+        "ms": 0.1970410000000129,
+        "minMs": 0.18495799999999463,
+        "maxMs": 0.48320799999999053,
+        "peakRssMiB": 117.515625,
+        "observedHeapMiB": 40.601600646972656,
+        "heapBeforeMiB": 22.384300231933594,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      },
+      {
+        "warmups": 71,
+        "batch": 1,
+        "ms": 0.21129099999996015,
+        "minMs": 0.184833000000026,
+        "maxMs": 0.48099999999999454,
+        "peakRssMiB": 131.265625,
+        "observedHeapMiB": 41.097023010253906,
+        "heapBeforeMiB": 9.693939208984375,
+        "digest": "da00eefc00b291d7595a3e5f700f3adf80ec328a59b434210ae9faba94515ef4",
+        "traceDigest": "9e95d0afe66746a19aa8e21f6c161c02c424245b73c3563ed3f05a97fc5a57cd",
+        "visits": 75000
+      }
+    ]
+  }
+}

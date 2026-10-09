@@ -1,5 +1,6 @@
 // Compare with an ast.js snapshot plus its adjacent visitor-keys.js:
 // node npm/core/benches/walk.bench.mjs /absolute/path/to/baseline/ast.js
+// Add --handwritten-edits for a three-way task-specific editing comparison.
 // Parsing/cloning and validation are outside walk timings. The pipeline case
 // includes parse, four walks and print. Each sample runs in an isolated process;
 // variant order alternates to reduce warmup/thermal bias. No timing assertions.
@@ -16,9 +17,14 @@ const scenarios = ["no-hooks", "sparse", "dense", "context", "edits", "four-pass
 const median = (values) => [...values].sort((a, b) => a - b)[values.length >> 1];
 
 if (process.argv[2] === "--worker") {
-  const { walk } = await import(pathToFileURL(process.argv[3]));
+  const handwritten = process.argv[3] === "handwritten";
+  const { walk } = handwritten ? {} : await import(pathToFileURL(process.argv[3]));
+  const { editByHand, traceByHand } = handwritten
+    ? await import("./handwritten-edit.mjs")
+    : {};
   const { parseSync, printSync } = await import("../src-js/index.js");
   const scenario = process.argv[4];
+  if (handwritten) assert.equal(scenario, "edits");
   const fixture = process.argv[5] || fileURLToPath(new URL("../../../tasks/benchmark/files/jquery-1.9.1.js", import.meta.url));
   const parserOptions = { lang: scenario === "edits" ? "js" : extname(fixture).slice(1) };
 
@@ -54,7 +60,10 @@ if (process.argv[2] === "--worker") {
   } : { enter() { visits++; } };
   const passes = scenario === "four-passes" || scenario === "pipeline" ? 4 : 1;
   const run = (ast) => {
-    for (let i = 0; i < passes; i++) walk(ast, hooks);
+    for (let i = 0; i < passes; i++) {
+      if (handwritten) visits += editByHand(ast);
+      else walk(ast, hooks);
+    }
   };
   function timed() {
     // Edits always start from an identical AST; cloning is not timed.
@@ -91,11 +100,15 @@ if (process.argv[2] === "--worker") {
   }
   const peakRssMiB = process.resourceUsage().maxRSS / 1024;
   const trace = createHash("sha256");
-  walk(typeof result === "string" ? original : result, {
-    enter(node, ctx) {
-      trace.update(JSON.stringify([node.type, node.start, node.end, ctx.key, ctx.index]));
-    },
-  });
+  if (handwritten) {
+    for (const row of traceByHand(result)) trace.update(JSON.stringify(row));
+  } else {
+    walk(typeof result === "string" ? original : result, {
+      enter(node, ctx) {
+        trace.update(JSON.stringify([node.type, node.start, node.end, ctx.key, ctx.index]));
+      },
+    });
+  }
   const traceDigest = trace.digest("hex");
   const digest = createHash("sha256").update(JSON.stringify(result)).digest("hex");
   if (scenario === "edits") {
@@ -108,18 +121,25 @@ if (process.argv[2] === "--worker") {
     heapBeforeMiB: heapBefore / 1048576, digest, traceDigest, visits,
   }));
 } else {
-  const baseline = process.argv[2];
-  const fixture = process.argv[3] ? resolve(process.argv[3]) : "";
+  const handwritten = process.argv.includes("--handwritten-edits");
+  const args = process.argv.slice(2).filter((arg) => arg !== "--handwritten-edits");
+  const baseline = args[0];
+  const fixture = args[1] ? resolve(args[1]) : "";
   if (!baseline) throw new Error("Pass a baseline ast.js path (with adjacent visitor-keys.js)");
   const variants = {
     before: resolve(baseline),
     after: fileURLToPath(new URL("../src-js/ast.js", import.meta.url)),
   };
+  if (handwritten) variants.handwritten = "handwritten";
+  const variantNames = Object.keys(variants);
   const rows = [];
-  for (const scenario of scenarios) {
-    const samples = { before: [], after: [] };
+  for (const scenario of handwritten ? ["edits"] : scenarios) {
+    const samples = Object.fromEntries(variantNames.map((name) => [name, []]));
     for (let round = 0; round < 3; round++) {
-      const names = round % 2 ? ["after", "before"] : ["before", "after"];
+      // In the three-way comparison each variant runs first, second and third.
+      const names = handwritten
+        ? [...variantNames.slice(round), ...variantNames.slice(0, round)]
+        : round % 2 ? ["after", "before"] : ["before", "after"];
       for (const name of names) {
         const child = spawnSync(process.execPath,
           ["--expose-gc", fileURLToPath(import.meta.url), "--worker", variants[name], scenario, fixture],
@@ -128,13 +148,13 @@ if (process.argv[2] === "--worker") {
         samples[name].push(JSON.parse(child.stdout));
       }
     }
-    for (const sample of [...samples.before, ...samples.after]) {
+    for (const sample of Object.values(samples).flat()) {
       assert.equal(sample.traceDigest, samples.before[0].traceDigest, `${scenario}: visit order/positions differ`);
       assert.equal(sample.digest, samples.before[0].digest, `${scenario}: output differs`);
       assert.equal(sample.visits, samples.before[0].visits, `${scenario}: visit count differs`);
     }
     const summary = {};
-    for (const name of ["before", "after"]) {
+    for (const name of variantNames) {
       summary[name] = {
         ms: median(samples[name].map((s) => s.ms)),
         peakRssMiB: median(samples[name].map((s) => s.peakRssMiB)),
@@ -142,11 +162,12 @@ if (process.argv[2] === "--worker") {
       };
     }
     rows.push({ scenario, ...summary, speedup: summary.before.ms / summary.after.ms, samples });
-    console.error(`${scenario}: ${summary.before.ms.toFixed(2)} -> ${summary.after.ms.toFixed(2)} ms`);
+    console.error(`${scenario}: ${variantNames.map((name) => `${name}=${summary[name].ms.toFixed(3)} ms`).join(", ")}`);
   }
   console.log(JSON.stringify({
+    comparison: handwritten ? "libraries and task-specific handwritten editing" : "two walkers",
     gcAfterWarmup: process.env.WALK_BENCH_GC_AFTER_WARMUP === "1",
-    fixture: fixture || "tasks/benchmark/files/jquery-1.9.1.js",
+    fixture: handwritten ? "synthetic functions (1000)" : fixture || "tasks/benchmark/files/jquery-1.9.1.js",
     baselineModule: variants.before, candidateModule: variants.after,
     node: process.version, platform: `${process.platform}/${process.arch}`, cpu: cpus()[0].model,
     samples: "3 processes per variant/scenario; at least 12 warmups / 300 ms + 25 iterations each",

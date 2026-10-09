@@ -108,6 +108,45 @@ Both libraries use the same setting. All walker cases still favor SWC Next.
 | Four walks | 4.895 | 3.897 | 1.26x |
 | Parse + four walks + print | 27.660 | 26.639 | 1.04x |
 
+## Task-specific handwritten editing baseline
+
+The additional `--handwritten-edits` case compares the same synthetic edit task
+across three implementations: yuku-ast, SWC Next and a handwritten recursive
+function in [handwritten-edit.mjs](./handwritten-edit.mjs). The handwritten code
+imports no packages and calls no visitor/walker APIs, including during its
+independent output trace verification. It edits parent fields and arrays directly,
+recurses through the fixture's AST nodes, and throws on unsupported node types.
+The common harness still uses SWC Next to parse input outside the timer.
+
+All three delete debugger statements, replace literal `1` with a new literal `2`
+node, and insert empty statements before/after `keep()`. They use the same
+replacement objects and splice operations; before-inserted nodes are skipped and
+after-inserted nodes are traversed. The handwritten version has no configurable
+hooks, aliases, reusable context API or general JS/TS syntax support. This is a
+**task-specialized reference**, not a drop-in replacement or a universal lower bound.
+
+The fresh comparison rotates the three variants through all three execution
+positions. Each runs in three fresh processes, with the same warmup, cloning,
+timing and memory rules above. Output hashes, matched edit-node counts and
+post-edit position traces agree. Figures below come from this new three-way run,
+not a combination with older two-way timings.
+
+| Implementation | Edit time ms | Relative to handwritten | Process peak RSS MiB | Observed heap MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Handwritten | 0.203 | 1.00x | 123.2 | 40.6 |
+| SWC Next | 0.688 | 3.39x | 102.5 | 24.5 |
+| yuku-ast 0.18.0 | 0.802 | 3.94x | 120.9 | 44.5 |
+
+The gap includes task specialization and omitted generic dispatch/context checks;
+it does not isolate the cost of the API's surface syntax. Process memory includes
+parser setup, warmup and input cloning, so faster editing does not imply a lower
+whole-process RSS. Per-process data and code hashes:
+[handwritten-edit-results.json](./handwritten-edit-results.json).
+
+```sh
+node npm/core/benches/walk.bench.mjs /tmp/swc-walk-yuku/node_modules/yuku-ast/dist/index.js --handwritten-edits
+```
+
 ## Why this implementation can improve on yuku-ast
 
 The source of yuku-ast 0.18.0 still leaves these optimization opportunities:
