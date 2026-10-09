@@ -2,20 +2,23 @@ use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, BlockStatement, Class, ClassBody, Function, FunctionBody, NodeId,
     Program, StaticBlock, SwitchCase, TraverseMut, TraverseMutCtx, TraverseMutWith, TsModuleBlock,
 };
-use swc_next_ecma_semantic::Semantic;
+use swc_next_ecma_semantic::ScopeModel;
 
-use crate::{assumptions::Assumptions, state::TransformerState};
+use crate::{
+    assumptions::Assumptions,
+    context::{ContainerOwner, Mutate},
+    state::TransformerState,
+};
 
-mod analysis;
-pub mod assumptions;
 mod context;
-pub use context::{GeneratedBinding, Mutate, Mutation, StatementList};
-pub mod es2022;
 mod helpers;
-pub mod normalize;
-pub mod proposal;
 mod state;
 mod used_names;
+
+pub mod assumptions;
+pub mod es2022;
+pub mod normalize;
+pub mod proposal;
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
@@ -56,7 +59,7 @@ impl Transformer {
     /// Call `normalize::Normalizer::normalize` before constructing `semantic`.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
-        semantic: &mut Semantic<'ast>,
+        semantic: &mut ScopeModel<'ast>,
         options: TransformerOptions,
     ) {
         let features = options.transform_features();
@@ -66,15 +69,10 @@ impl Transformer {
             x0_es2022: es2022::ES2022::new(features),
         };
 
-        let state = TransformerState::new(
-            semantic,
-            options.assumptions,
-            analysis::TransformAnalysis::collect(ast, features),
-        );
+        let state = TransformerState::new(semantic, options.assumptions);
         let mut ctx = TraverseMutCtx::new(ast, state);
         program.traverse_mut_with(&mut transformer, &mut ctx);
         ctx.mutate().finish();
-        debug_assert!(transformer.x0_es2022.is_empty());
     }
 }
 
@@ -95,16 +93,6 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         debug_assert_eq!(ctx.state.path.pop(), Some(node));
     }
 
-    fn enter_program(
-        &mut self,
-        node: Program,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
-        ctx.enter_var_scope(node.node_id());
-    }
-
     fn enter_class_body(
         &mut self,
         node: ClassBody,
@@ -112,6 +100,16 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
     ) {
         let ctx = &mut ctx.mutate();
         self.x0_es2022.enter_class_body(node, ctx);
+        ctx.container_flush(ContainerOwner::ClassBody(node));
+    }
+
+    fn exit_class_body(
+        &mut self,
+        node: ClassBody,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
+    ) {
+        let ctx = &mut ctx.mutate();
+        ctx.container_flush(ContainerOwner::ClassBody(node));
     }
 
     fn exit_class(
@@ -130,19 +128,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
     ) {
         let ctx = &mut ctx.mutate();
         ctx.inject_helpers(node);
-        ctx.flush_statements(node.node_id());
-        ctx.exit_var_scope(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_function(
-        &mut self,
-        node: Function,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        let body = node.body(ctx.ast()).node_id();
-        ctx.enter_var_scope(body);
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_function(
@@ -151,17 +137,8 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        let body = node.body(ctx.ast()).node_id();
-        ctx.exit_var_scope(body);
-    }
-
-    fn enter_function_body(
-        &mut self,
-        node: FunctionBody,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
+        let body = node.body(ctx.ast).node_id();
+        ctx.inject_statements_to(body);
     }
 
     fn exit_function_body(
@@ -170,17 +147,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        ctx.flush_statements(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_block_statement(
-        &mut self,
-        node: BlockStatement,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_block_statement(
@@ -189,18 +156,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        ctx.flush_statements(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_static_block(
-        &mut self,
-        node: StaticBlock,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
-        ctx.enter_var_scope(node.node_id());
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_static_block(
@@ -209,18 +165,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        ctx.flush_statements(node.node_id());
-        ctx.exit_var_scope(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_switch_case(
-        &mut self,
-        node: SwitchCase,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_switch_case(
@@ -229,18 +174,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        ctx.flush_statements(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_ts_module_block(
-        &mut self,
-        node: TsModuleBlock,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        ctx.enter_statement_container(node.node_id());
-        ctx.enter_var_scope(node.node_id());
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_ts_module_block(
@@ -249,22 +183,7 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
     ) {
         let ctx = &mut ctx.mutate();
-        ctx.flush_statements(node.node_id());
-        ctx.exit_var_scope(node.node_id());
-        ctx.exit_statement_container(node.node_id());
-    }
-
-    fn enter_arrow_function_expression(
-        &mut self,
-        node: ArrowFunctionExpression,
-        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>,
-    ) {
-        let ctx = &mut ctx.mutate();
-        let container = node
-            .body(ctx.ast())
-            .as_function_body(ctx.ast())
-            .map_or(node.node_id(), |body| body.node_id());
-        ctx.enter_var_scope(container);
+        ctx.inject_statements_to(node.node_id());
     }
 
     fn exit_arrow_function_expression(
@@ -274,14 +193,9 @@ impl<'s, 'a> TraverseMut<'a, TransformerState<'s, 'a>> for Transformer {
     ) {
         let ctx = &mut ctx.mutate();
         let container = node
-            .body(ctx.ast())
-            .as_function_body(ctx.ast())
+            .body(ctx.ast)
+            .as_function_body(ctx.ast)
             .map_or(node.node_id(), |body| body.node_id());
-        ctx.flush_arrow_statements(node);
-        ctx.exit_var_scope(container);
+        ctx.inject_statements_to(container);
     }
 }
-
-#[cfg(test)]
-#[path = "../tests/lib.rs"]
-mod tests;

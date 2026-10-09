@@ -6,11 +6,14 @@
 
 use oxc_index::Idx;
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{NodeId, ReferenceId, ScopeId, SymbolId};
+use swc_next_ecma_ast::{
+    Ast, BindingIdentifier, IdentifierReference, NodeId, ReferenceId, ScopeId, SymbolId,
+};
 
 use crate::{
     Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator, Redeclarations,
-    Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolIterator,
+    Reference, ReferenceFlags, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol,
+    SymbolFlags, SymbolIterator,
     scope::{Scope, ScopeTree},
 };
 
@@ -171,5 +174,30 @@ impl<'a> ScopeModel<'a> {
             declarations: &self.declarations,
             index: 0,
         }
+    }
+
+    pub fn grow_to(&mut self, _node_count: usize, _scope: ScopeId) {
+        todo!()
+    }
+
+    pub fn register_binding(
+        &mut self,
+        _ast: &Ast,
+        _scope: ScopeId,
+        _binding: BindingIdentifier,
+        _flags: SymbolFlags,
+    ) -> SymbolId {
+        todo!()
+    }
+
+    pub fn register_reference(
+        &mut self,
+        _ast: &Ast,
+        _scope: ScopeId,
+        _reference: IdentifierReference,
+        _target: Option<SymbolId>,
+        _flags: ReferenceFlags,
+    ) -> SymbolId {
+        todo!()
     }
 }

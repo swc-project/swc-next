@@ -15,10 +15,6 @@ pub struct ES2022Options {
 }
 
 impl ES2022 {
-    pub(crate) fn is_empty(&self) -> bool {
-        self.static_blocks.is_empty()
-    }
-
     pub(crate) fn new(features: TransformFeatureFlags) -> Self {
         Self {
             features,

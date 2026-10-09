@@ -91,6 +91,21 @@ The statement queue defers attachment to AST lists, not binding allocation or
 reference registration. Ordinary replacements happen during the visitor. Flush
 is per destination container; it is not one global replay of all AST mutations.
 
+`push_container` and `unshift_container` currently support `ClassBody.body`.
+They edit the logical member list returned by `container_class_body` in
+transformer state, including pending insertions. `container_write_back` attaches
+the list with one `add_sub_range` call and releases the cached handles. Unedited
+lists keep their original ranges, and repeated write-back without further edits
+does nothing. The class-body entry callback writes back before the generic
+traversal reads the member range, so traversal sees the updated members. The exit
+callback writes back any edits made while visiting children; `Mutation::finish`
+checks that no containers remain pending. These operations
+defer list attachment only; new scope owners, bindings and references must be
+registered when nodes are prepared. Scope registration for the synthetic
+named-evaluation static block remains unimplemented. Removal and replacement of
+class members must update the same logical list so final attachment retains all
+edits.
+
 Semantic always collects node evaluation scopes in an arena-backed index. It has
 no transform collection flags. Transformer preparation uses the enabled pass flags
 to collect static-block comments and closure-lowering layouts in one optional
@@ -153,7 +168,9 @@ snapshots, repeated subtree scans, or a separate node-retirement lifecycle.
 Helpers are currently external only. `Mutation::helper_callee` allocates the name,
 registers its binding, and prepares the import on first use. `Helpers` caches that
 prepared declaration; `inject_helpers` feeds it into the statement injector at
-Program exit. Repeated uses must reuse the binding and import.
+Program exit. Repeated uses must reuse the binding and import. Helper construction
+and calls are methods on `Mutation`, implemented in `context/helpers.rs`; transforms
+use `call_set_function_name` and `call_to_property_key` through that interface.
 
 Module output uses `import`; script output uses `require`. Currently
 `setFunctionName` comes from `@babel/runtime/helpers/setFunctionName`, while
@@ -168,7 +185,7 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Entry point, enabled passes, visitor dispatch | [crates/swc_ecma_transformer/src/lib.rs](../crates/swc_ecma_transformer/src/lib.rs) |
 | Optional transform preparation | [crates/swc_ecma_transformer/src/analysis.rs](../crates/swc_ecma_transformer/src/analysis.rs) |
 | Shared transform state | [crates/swc_ecma_transformer/src/state.rs](../crates/swc_ecma_transformer/src/state.rs) |
-| Mutate trait, borrowed Mutation, names and helpers | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
+| Mutate trait, borrowed Mutation, and names | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
 | Shared name allocation from Semantic indexes | [crates/swc_ecma_transformer/src/context/names.rs](../crates/swc_ecma_transformer/src/context/names.rs) |
 | Generated-name collision domains | [crates/swc_ecma_transformer/src/used_names.rs](../crates/swc_ecma_transformer/src/used_names.rs) |
 | Post-transform semantic invariant checks | [crates/swc_ecma_transformer/src/context/invariants.rs](../crates/swc_ecma_transformer/src/context/invariants.rs) |
@@ -176,7 +193,8 @@ TODO; do not silently reintroduce inline implementations for ordinary transforms
 | Expression replacement contracts | [crates/swc_ecma_transformer/src/context/expressions.rs](../crates/swc_ecma_transformer/src/context/expressions.rs) |
 | Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |
 | Deferred statement attachment | [crates/swc_ecma_transformer/src/context/statement_injector.rs](../crates/swc_ecma_transformer/src/context/statement_injector.rs) |
-| External helper cache and imports | [crates/swc_ecma_transformer/src/helpers.rs](../crates/swc_ecma_transformer/src/helpers.rs), [crates/swc_ecma_transformer/src/helpers/builder.rs](../crates/swc_ecma_transformer/src/helpers/builder.rs) |
+| External helper cache and kinds | [crates/swc_ecma_transformer/src/helpers.rs](../crates/swc_ecma_transformer/src/helpers.rs) |
+| Helper construction, imports, and calls | [crates/swc_ecma_transformer/src/context/helpers.rs](../crates/swc_ecma_transformer/src/context/helpers.rs) |
 | Concrete lowering examples | [crates/swc_ecma_transformer/src/es2022/static_blocks.rs](../crates/swc_ecma_transformer/src/es2022/static_blocks.rs) |
 | Name resolution and semantic synchronization | [crates/swc_ecma_semantic/src/builder.rs](../crates/swc_ecma_semantic/src/builder.rs), [crates/swc_ecma_semantic/src/mutation.rs](../crates/swc_ecma_semantic/src/mutation.rs) |
 | Generic traversal context | [crates/swc_ecma_ast/src/visit.rs](../crates/swc_ecma_ast/src/visit.rs) |

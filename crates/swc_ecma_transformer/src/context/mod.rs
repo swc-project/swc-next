@@ -1,22 +1,17 @@
-use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr, IdentifierReference,
-    NodeId, Program, PropertyKey, ScopeId, Span, SymbolId, TraverseMutCtx,
-};
-mod construction;
-mod expressions;
-#[cfg(debug_assertions)]
-mod invariants;
-mod mutation;
-mod names;
-mod scopes;
+use swc_next_ecma_ast::{Ast, NodeId, NodeKindData, ScopeId, Stmt, TraverseMutCtx};
+
+mod bound_identifier;
+mod container;
+mod helpers;
+mod memoisation;
 mod statement_injector;
 
-use crate::state::TransformerState;
-pub(crate) use mutation::ClassElementAction;
-pub use mutation::StatementList;
-pub(crate) use scopes::ScopeOptions;
+pub(crate) use bound_identifier::BoundIdentifier;
+pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use statement_injector::StatementInjector;
-use swc_next_ecma_semantic::Semantic;
+
+use crate::{assumptions::Assumptions, state::TransformerState};
+use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 
 /// Borrow AST and transform state together for synchronized mutations.
 pub trait Mutate<'s, 'a> {
@@ -34,86 +29,17 @@ impl<'s, 'a> Mutate<'s, 'a> for TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>>
 
 /// An atomic mutation interface borrowing the traversal's AST, state and path.
 pub struct Mutation<'c, 's, 'a> {
-    ast: &'c mut Ast<'a>,
+    pub ast: &'c mut Ast<'a>,
     state: &'c mut TransformerState<'s, 'a>,
 }
 
 impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
-    pub fn assumptions(&self) -> &crate::assumptions::Assumptions {
+    pub fn assumptions(&self) -> &Assumptions {
         &self.state.assumptions
     }
 
-    pub fn ast(&self) -> &Ast<'a> {
-        self.ast
-    }
-    pub fn semantic(&self) -> &Semantic<'a> {
+    pub fn semantic(&self) -> &ScopeModel<'a> {
         self.state.semantic
-    }
-
-    pub(crate) fn analysis(&self) -> &crate::analysis::TransformAnalysis<'a> {
-        &self.state.analysis
-    }
-
-    pub(crate) fn take_static_block_layout(
-        &mut self,
-        class: NodeId,
-    ) -> crate::analysis::StaticBlockLayout {
-        self.state
-            .analysis
-            .take_static_block_layout(class)
-            .expect("closure lowering requires static block layout information")
-    }
-
-    pub fn generate_binding(
-        &mut self,
-        base: &str,
-        scope: ScopeId,
-        flags: swc_next_ecma_semantic::SymbolFlags,
-    ) -> GeneratedBinding {
-        let name = self.generate_name(base, 2);
-        let declaration = self.ast.binding_identifier(DUMMY_SP, name);
-        let symbol = self
-            .state
-            .semantic
-            .register_binding(self.ast, declaration, scope, flags);
-        let binding = GeneratedBinding {
-            declaration,
-            symbol,
-        };
-        self.state.generated_bindings.insert(name, binding);
-        binding
-    }
-
-    pub fn create_binding_reference(
-        &mut self,
-        symbol: SymbolId,
-        scope: ScopeId,
-    ) -> IdentifierReference {
-        let name = self.state.semantic.symbol(symbol).name;
-        let name = self
-            .ast
-            .get_wtf8(name)
-            .as_str()
-            .expect("generated identifier is UTF-8")
-            .to_owned();
-        let name = self.ast.add_utf8(&name);
-        let node = self.ast.identifier_reference(DUMMY_SP, name);
-        self.state.semantic.register_reference(
-            self.ast,
-            node,
-            scope,
-            Some(symbol),
-            Default::default(),
-        );
-        node
-    }
-
-    pub(crate) fn path(&self) -> &[NodeId] {
-        &self.state.path
-    }
-
-    pub(crate) fn current_node(&self) -> Option<NodeId> {
-        self.state.path.last().copied()
     }
 
     pub(crate) fn parent(&self) -> Option<NodeId> {
@@ -124,154 +50,141 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
         self.state.path.iter().rev().copied()
     }
 
-    pub(crate) fn depth(&self) -> usize {
-        self.state.path.len().saturating_sub(1)
-    }
-
-    /// The innermost scope owned by a node on the current traversal path.
-    pub fn current_scope(&self) -> ScopeId {
-        self.ancestors()
-            .find_map(|node| self.state.semantic.scope_at(node))
-            .unwrap_or(ScopeId::ROOT)
-    }
-
-    pub(crate) fn generated_reference_in_scope(
-        &mut self,
-        name: AstUtf8,
-        span: Span,
-        scope: ScopeId,
-    ) -> IdentifierReference {
-        let symbol = self.state.generated_bindings[&name].symbol;
-        let node = self.ast.identifier_reference(span, name);
-        self.state.semantic.register_reference(
-            self.ast,
-            node,
-            scope,
-            Some(symbol),
-            Default::default(),
-        );
-        node
-    }
-
-    pub(crate) fn generated_declaration(&self, name: AstUtf8) -> BindingIdentifier {
-        self.state.generated_bindings[&name].declaration
-    }
-
     pub(crate) fn program_scope(&self) -> ScopeId {
-        self.scope_for_node(self.ast.root_program().node_id())
+        self.semantic()
+            .scope_at(self.ast.root_program().node_id())
             .expect("program scope exists")
     }
 
-    pub(crate) fn helper_callee(
-        &mut self,
-        helper: crate::helpers::HelperKind,
-        scope: ScopeId,
-    ) -> Expr {
-        use crate::helpers;
-        let name = match self.state.helpers.name(helper) {
-            Some(name) => name,
-            None => {
-                let prepared = helpers::prepare(helper, self);
-                let name = prepared.name;
-                self.state.helpers.insert(helper, prepared);
-                name
-            }
-        };
-        helpers::callee(name, helper, scope, self)
-    }
-
-    pub(crate) fn inject_helpers(&mut self, program: Program) {
-        let statements = self.state.helpers.take_statements();
-        for statement in statements.into_iter().flatten() {
-            self.inject_statement(program.node_id(), statement);
-        }
-    }
-
-    pub(crate) fn flush_statements(&mut self, container: NodeId) {
-        let mut injector = std::mem::take(&mut self.state.statement_injector);
-        injector.flush(container, self);
-        self.state.statement_injector = injector;
-        self.state.semantic.grow_node_indexes(self.ast.node_count());
-    }
-
-    pub(crate) fn flush_arrow_statements(&mut self, arrow: ArrowFunctionExpression) {
-        let mut injector = std::mem::take(&mut self.state.statement_injector);
-        injector.flush_arrow_expression(arrow, self);
-        self.state.statement_injector = injector;
-        self.state.semantic.grow_node_indexes(self.ast.node_count());
-    }
-
-    pub(crate) fn generate_var_name(&mut self, base: &str) -> AstUtf8 {
-        let container = self.state.statement_injector.current_var_scope();
-        let scope = self
-            .state
-            .semantic
-            .scope_at(container)
-            .expect("variable container is registered");
-        self.generate_binding(
-            base,
-            scope,
-            swc_next_ecma_semantic::SymbolFlags::FUNCTION_SCOPED_VAR,
-        )
-        .declaration
-        .name(self.ast)
-    }
-
-    pub(crate) fn assign_generated(
-        &mut self,
-        name: AstUtf8,
-        value: Expr,
-        span: Span,
-        scope: ScopeId,
-    ) -> Expr {
-        use swc_next_ecma_ast::{AssignmentOperator, AssignmentTarget, SimpleAssignmentTarget};
-        let symbol = self.state.generated_bindings[&name].symbol;
-        let node = self.ast.identifier_reference(span, name);
-        self.state.semantic.register_reference(
-            self.ast,
-            node,
-            scope,
-            Some(symbol),
-            swc_next_ecma_semantic::ReferenceFlags::default().write_only(),
+    /// Allocate nodes in their final evaluation scope and register only the new
+    /// NodeId range. The closure must only create nodes; existing AST edges are
+    /// edited through mutation APIs. Bindings, references and scope owners use
+    /// their dedicated construction methods.
+    pub(crate) fn add_node<N>(&mut self, scope: ScopeId, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
+        debug_assert!(
+            self.state.semantic.scope(scope).active,
+            "target scope must be active"
         );
-        let left = AssignmentTarget::SimpleAssignmentTarget(
-            SimpleAssignmentTarget::IdentifierReference(node),
-        );
-        Expr::AssignmentExpression(self.add_node(scope, |ast| {
-            ast.assignment_expression(span, left, value, AssignmentOperator::Assign)
-        }))
-    }
-
-    pub(crate) fn next_private_name(&mut self, class: NodeId) -> PropertyKey {
-        let scope = self.scope_for_node(class).expect("class scope exists");
-        let name = self.state.analysis.next_private_name(self.ast, class);
-        self.add_node(scope, |ast| {
-            ast.property_key_expr_private_identifier(DUMMY_SP, name)
-        })
+        let count = self.ast.node_count();
+        let node = f(self.ast);
+        self.state.semantic.grow_to(count, scope);
+        node
     }
 
     pub(crate) fn finish(&mut self) {
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
-        #[cfg(debug_assertions)]
-        self.assert_invariants();
-    }
-
-    #[cfg(debug_assertions)]
-    pub(crate) fn assert_invariants(&self) {
-        invariants::assert_semantic_invariants(self.state.semantic, self.ast);
-        self.state.analysis.assert_invariants(self.ast);
+        debug_assert!(self.state.container.is_empty());
     }
 }
 
-/// A generated binding keeps its declaration and symbol together while its
-/// declaration is waiting for statement injection.
-#[derive(Clone, Copy)]
-pub struct GeneratedBinding {
-    pub declaration: BindingIdentifier,
-    pub symbol: SymbolId,
-}
+impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
+    /// Babel: classBody.pushContainer("body", [t.classPrivateProperty(...)]) .
+    /// Append a prepared member; container_flush attaches the final range.
+    pub fn push_container(&mut self, owner: ContainerOwnerChild) {
+        match owner {
+            ContainerOwnerChild::ClassBody((class_body, class_element)) => self
+                .container_class_body_mut(class_body)
+                .push(class_element),
+        }
+    }
 
-#[cfg(test)]
-#[path = "../../tests/context/support.rs"]
-mod tests;
+    /// Babel: classPath.get("body").unshiftContainer("body", t.staticBlock([...])) .
+    /// Prepend a prepared member, visible immediately through container_class_body.
+    /// The caller must register new scope owners and references before insertion.
+    pub fn unshift_container(&mut self, owner: ContainerOwnerChild) {
+        match owner {
+            ContainerOwnerChild::ClassBody((class_body, class_element)) => self
+                .container_class_body_mut(class_body)
+                .insert(0, class_element),
+        }
+    }
+
+    /// Babel: scope.generateDeclaredUidIdentifier.
+    /// Generate a unique identifier and add it to the current scope.
+    ///
+    /// `name` is an identifier stem, e.g. `staticBlock`. Reuse the shared name
+    /// allocator for Babel's `generateUidIdentifier`, and queue an uninitialized
+    /// `var` for `scope.push({ id })`. The declaration goes in Semantic's var
+    /// hoist target; Babel's declaration grouping and IIFE parameter optimization
+    /// are not needed for this equivalent implementation.
+    pub fn generate_declared_uid_identifier(
+        &mut self,
+        scope: ScopeId,
+        name: &str,
+    ) -> BoundIdentifier {
+        let scope = self.semantic().scope(scope).hoist_target;
+        // Parameter expressions can give the function body its own var scope.
+        let scope = self.semantic().scope(scope).function_body.unwrap_or(scope);
+        let owner = self.semantic().scope(scope).node;
+        let container = match self.ast.kind_data(owner) {
+            NodeKindData::Function(function) => function.body(self.ast).node_id(),
+            NodeKindData::ArrowFunctionExpression(arrow) => arrow
+                .body(self.ast)
+                .as_function_body(self.ast)
+                .map_or(owner, |body| body.node_id()),
+            _ => owner,
+        };
+
+        let base = format!("_{name}");
+        let id = BoundIdentifier::named(self, scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
+        self.inject_variable(container, id.identifier.name(self.ast));
+
+        // BoundIdentifier retains the declaration identity; callers create fresh
+        // registered references with id.reference(), rather than cloneNode(id).
+        id
+    }
+
+    /// Babel: classBody.parentPath.insertAfter(t.expressionStatement(call)).
+    /// Queue a prepared statement after a path on the current traversal stack.
+    /// Like Babel, forward through expression statements, labels and exports to
+    /// anchor the insertion after the containing statement. The caller prepares
+    /// the statement's semantic information in its destination scope before
+    /// queueing it; the statement injector only defers attachment to the list.
+    ///
+    /// This covers statement-list insertion used by static-block lowering.
+    /// Babel's expression rewriting and wrapping of single-statement bodies
+    /// still require separate mutation support.
+    pub fn insert_after(&mut self, path: NodeId, statement: Stmt) {
+        let index = self
+            .state
+            .path
+            .iter()
+            .rposition(|&node| node == path)
+            .expect("insert_after target must be on the current traversal path");
+        let mut anchor = path;
+        let mut parents = self.state.path[..index].iter().rev().copied();
+        let (container, anchor) = loop {
+            let parent = parents
+                .next()
+                .expect("insert_after needs a statement container");
+            let statements = match self.ast.kind_data(parent) {
+                NodeKindData::Program(node) => node.body(self.ast),
+                NodeKindData::BlockStatement(node) => node.body(self.ast),
+                NodeKindData::FunctionBody(node) => node.body(self.ast),
+                NodeKindData::StaticBlock(node) => node.body(self.ast),
+                NodeKindData::SwitchCase(node) => node.consequent(self.ast),
+                NodeKindData::TsModuleBlock(node) => node.body(self.ast),
+                NodeKindData::ExpressionStatement(_)
+                | NodeKindData::LabeledStatement(_)
+                | NodeKindData::ExportNamedDeclaration(_)
+                | NodeKindData::ExportDefaultDeclaration(_) => {
+                    anchor = parent;
+                    continue;
+                }
+                _ => panic!("insert_after requires a target in a statement list"),
+            };
+            let anchor = statements
+                .iter()
+                .map(|slot| self.ast.get_node_in_sub_range(slot))
+                .find(|node| node.node_id() == anchor)
+                .expect("insert_after anchor must belong to its statement container");
+            break (parent, anchor);
+        };
+        self.inject_statement(
+            container,
+            statement,
+            statement_injector::Anchor::After(anchor),
+        );
+    }
+}
