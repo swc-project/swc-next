@@ -1,0 +1,1 @@
+const make = <T>(value: T): ((next: T) => T) => (next: T): T => value;

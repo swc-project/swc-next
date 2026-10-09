@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const select = async <T extends { value: number }>(value: T): Promise<T> => value;---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const select = async <T extends { value: number }>(value: T): Promise<T> =>
+  value;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const select =
+  async <
+    T extends {
+      value: number;
+    },
+  >(
+    value: T,
+  ): Promise<T> =>
+    value;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const select =
+  async <
+    T extends {
+      value: number
+    }
+  >(
+    value: T
+  ): Promise<T> =>
+    value
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+const select =
+  async <
+    T extends {
+      value: number;
+    },
+  >(
+    value: T,
+  ): Promise<T> =>
+    value;
