@@ -206,6 +206,34 @@ storage alive does not justify stale semantic indexes for detached references or
 scope owners. Update the affected semantic identities without adding subtree
 snapshots, repeated subtree scans, or a separate node-retirement lifecycle.
 
+### Planned scope mutation contracts
+
+`context/scopes.rs` declares the following `Mutation` APIs with `todo!()` bodies.
+They are not connected to transforms yet:
+
+- `create_child_scope(parent, owner, kind, flags)` registers an allocated scope
+  owner and returns its scope ID. Existing content is moved separately.
+- `convert_scope(scope, owner, kind, flags)` reuses a scope under a replacement
+  owner, preserving binding/reference identities while updating scope properties.
+- `move_subtree_to_scope(root, from, to)` moves node evaluation mappings and
+  references directly in `from`, and reparents contained direct child scopes.
+  Nested scopes retain their internal mappings and bindings.
+- `move_binding(from, to, symbol)` moves the binding-table entry and declarations
+  owned by `from`, preserving the symbol, references and other merged declarations.
+  Declaration ownership is separate from node evaluation scope.
+- `reparent_scope(scope, parent)` changes ancestry and refreshes affected hoist
+  targets and flags, preserving the scope's owner and contents.
+- `remove_scope(scope)` marks an empty scope inactive and clears its detached
+  owner's mapping; retained contents must have moved first.
+- `clear_node_scope(node)` clears a detached syntax shell's mapping without
+  visiting children retained elsewhere.
+
+For single-expression static blocks, move the expression, clear the discarded
+statement shell and retire the empty static-block scope. For a whole block reused
+as an arrow body, convert its scope and register new parameters/body nodes there.
+For an additional wrapping arrow, create its scope and move each retained subtree
+into it, preserving independent scopes belonging to the original blocks.
+
 ## Helpers
 
 Helpers are currently external only. `Mutation::helper_callee` allocates the name,

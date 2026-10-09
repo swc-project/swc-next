@@ -5,7 +5,7 @@
 
 use super::Mutation;
 use crate::{
-    context::{bound_identifier::BoundIdentifier, statement_injector::Anchor},
+    context::{semantic::BoundIdentifier, statement_injector::Anchor},
     helpers::{HelperKind, PreparedHelper},
 };
 use swc_next_ecma_ast::{

@@ -1,7 +1,5 @@
 use rustc_hash::FxHashMap;
-use swc_next_ecma_ast::{Ast, CommentPosition, GetSpan, Span};
-
-use super::Mutation;
+use swc_next_ecma_ast::{Ast, CommentPosition, Span};
 
 /// Deferred comment attachment changes for one traversal. The flat AST comment
 /// list already stores each comment once, so inheritance retains child comments
@@ -13,7 +11,7 @@ pub(crate) struct CommentState {
 }
 
 impl CommentState {
-    fn inherit(&mut self, child: Span, parent: Span) {
+    pub(crate) fn inherit(&mut self, child: Span, parent: Span) {
         if parent.start != child.start {
             self.leading.push((parent.start, child.start));
         }
@@ -47,22 +45,5 @@ impl CommentState {
             CommentPosition::Leading => leading.get(&attached_to).copied(),
             CommentPosition::Trailing => trailing.get(&attached_to).copied(),
         });
-    }
-}
-
-impl Mutation<'_, '_, '_> {
-    /// Babel: t.inheritsComments(child, parent). Retain the child's attachments,
-    /// inherit the parent's leading/trailing attachments, and return the child.
-    /// The parent is being replaced; the AST stores one attachment per comment
-    /// rather than Babel's shared comment objects on both nodes. Inner comments
-    /// retain their existing child/token anchors; there is no inner-comment list.
-    /// Nodes use their span boundaries as attachment anchors, as in Normalizer.
-    pub(crate) fn inherits_comments<C: GetSpan, P: GetSpan>(&mut self, child: C, parent: P) -> C {
-        if !self.ast.comments().is_empty() {
-            self.state
-                .comments
-                .inherit(child.span(self.ast), parent.span(self.ast));
-        }
-        child
     }
 }
