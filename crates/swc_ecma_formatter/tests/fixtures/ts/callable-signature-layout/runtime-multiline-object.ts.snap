@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(x: {
+  a: string;
+}): void {}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f(x: { a: string }): void {}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(x: { a: string }): void {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+function f(x: { a: string }): void {}
