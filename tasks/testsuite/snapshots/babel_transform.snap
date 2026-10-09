@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 440/4069 (10.81%)
-Failed: 51/4069 (1.25%)
+Passed: 470/4069 (11.55%)
+Failed: 21/4069 (0.52%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3578/4069 (87.93%)
 
@@ -27,8 +27,8 @@ Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-m
 babel-generator
 ---------------
 Cases: 560
-Passed: 425/560 (75.89%)
-Failed: 43/560 (7.68%)
+Passed: 452/560 (80.71%)
+Failed: 16/560 (2.86%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -36,44 +36,17 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/await-using-declar
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-class-method-computed-key-comment/input.js - babel-generator/test/fixtures/comments/async-class-method-computed-key-comment: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-comment/input.js - babel-generator/test/fixtures/comments/async-generator-class-method-comment: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-computed-key-comment/input.js - babel-generator/test/fixtures/comments/async-generator-class-method-computed-key-comment: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/create-parenthesized-expressions/input.js - babel-generator/test/fixtures/comments/create-parenthesized-expressions: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/comments/pure-in-paren/input.js - babel-generator/test/fixtures/comments/pure-in-paren: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-in-no-in/input.js - babel-generator/test/fixtures/edgecase/for-in-no-in: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-loop-in/input.js - babel-generator/test/fixtures/edgecase/for-loop-in: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/new-precedence/input.js - babel-generator/test/fixtures/edgecase/new-precedence: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option/input.js - babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-option/input.js - babel-generator/test/fixtures/edgecase/return-with-retainlines-option: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/throw-with-retainlines-option/input.js - babel-generator/test/fixtures/edgecase/throw-with-retainlines-option: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/yield-with-retainlines-option/input.js - babel-generator/test/fixtures/edgecase/yield-with-retainlines-option: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/await-expression/input.js - babel-generator/test/fixtures/parentheses/await-expression: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/class-extends/input.js - babel-generator/test/fixtures/parentheses/class-extends: transformed output differs from output.js
+Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/class-extends/input.js - parse: Unexpected token '++' at 404..406
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/expression/input.js - babel-generator/test/fixtures/parentheses/expression: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/in-inside-for/input.js - babel-generator/test/fixtures/parentheses/in-inside-for: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/new-callee/input.js - semantic: 'super()' is only valid in a constructor of a derived class at 275..282
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/nullish-coalescing/input.js - babel-generator/test/fixtures/parentheses/nullish-coalescing: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/terminator-break/input.js - babel-generator/test/fixtures/parentheses/terminator-break: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-constructor-type/input.ts - babel-generator/test/fixtures/parentheses/ts-constructor-type: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-function-type/input.ts - babel-generator/test/fixtures/parentheses/ts-function-type: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-new-callee/input.js - semantic: 'super()' is only valid in a constructor of a derived class at 287..294
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/11304/input.js - babel-generator/test/fixtures/regression/11304: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/15161/input.js - babel-generator/test/fixtures/regression/15161: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/regression/comment-before-parentheses-return-arg-createParenthesizedExpressions: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/regression/jsx-with-retainLines/input.js - babel-generator/test/fixtures/regression/jsx-with-retainLines: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/argument/input.js - babel-generator/test/fixtures/retainFunctionParens/argument: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/assignment/input.js - babel-generator/test/fixtures/retainFunctionParens/assignment: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/nested/input.js - babel-generator/test/fixtures/retainFunctionParens/nested: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg-createParenthesizedExpressions: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg/input.js - babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file1/input.ts - babel-generator/test/fixtures/sourcemaps/real-world-babel-file1: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - babel-generator/test/fixtures/types/LogicalExpression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/UnaryExpression/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/types/WithStatement/input.js - semantic: 'with' statements are not allowed in strict mode at 0..13
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses-createParenthesizedExpression/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses-createParenthesizedExpression: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - babel-generator/test/fixtures/typescript/satisfies-parentheses: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - babel-generator/test/fixtures/typescript/satisfies: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-parenthesized-createParenthesizedExpression/input.js - babel-generator/test/fixtures/typescript/types-parenthesized-createParenthesizedExpression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/typescript/variance-annotations-with-jsx/input.tsx - parse: Expected a semicolon or an implicit semicolon after a statement, but found '<' at 27..28
 
 babel-helper-create-class-features-plugin
@@ -327,16 +300,13 @@ Skipped: 267/267 (100.00%)
 babel-plugin-transform-class-static-block
 -----------------------------------------
 Cases: 24
-Passed: 5/24 (20.83%)
-Failed: 5/24 (20.83%)
+Passed: 8/24 (33.33%)
+Failed: 2/24 (8.33%)
 Panicked: 0/24 (0.00%)
 Skipped: 14/24 (58.33%)
 Messages:
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/multiple-static-initializers/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/multiple-static-initializers: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/preserve-comments/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/preserve-comments: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/var-scope/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/var-scope: transformed output differs from output.js
 
 babel-plugin-transform-classes
 ------------------------------

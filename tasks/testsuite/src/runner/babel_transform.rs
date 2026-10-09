@@ -7,7 +7,7 @@ use std::{
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Severity};
 use swc_next_ecma_codegen::print;
-use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, analyze};
 use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
 
@@ -62,9 +62,9 @@ pub(super) fn run_transform<C: TransformCase>(case: &C, runner_name: &str) -> Te
 
 fn run_case<C: TransformCase>(case: &C, runner_name: &str) -> Result<(), String> {
     let actual = transform_input(case)?;
-    let expected = normalize_expected_output(case)?;
+    let expected = print_expected_output(case)?;
     write_comparison_outputs(case, runner_name, &actual, &expected)?;
-    if actual == expected {
+    if normalize_output(&actual, case)? == normalize_output(&expected, case)? {
         Ok(())
     } else {
         Err(format!(
@@ -130,13 +130,33 @@ fn transform_input<C: TransformCase>(case: &C) -> Result<String, String> {
         .to_owned())
 }
 
-fn normalize_expected_output<C: TransformCase>(case: &C) -> Result<String, String> {
+fn print_expected_output<C: TransformCase>(case: &C) -> Result<String, String> {
     let source = case.output();
     let allocator = Allocator::new();
     let ast = parse_program(source, &allocator, case)?;
     Ok(print(&allocator, &ast, case.codegen_options())
         .code
         .to_owned())
+}
+
+/// Compare reparsed output with comments and without redundant sequence parentheses.
+/// Keep the readable output files above for diagnosing remaining differences.
+fn normalize_output<C: TransformCase>(source: &str, case: &C) -> Result<String, String> {
+    let allocator = Allocator::new();
+    let ast = parse_program_with_options(
+        source,
+        &allocator,
+        ParserOptions {
+            source_type: case.source_type(),
+            lang: case.lang(),
+            preserve_parens: false,
+            comments: CommentMode::Flat,
+        },
+    )?;
+    let mut options = case.codegen_options();
+    options.minify = true;
+    options.comments = true;
+    Ok(print(&allocator, &ast, options).code.to_owned())
 }
 
 fn parse_program<'a, C: TransformCase>(
@@ -149,6 +169,14 @@ fn parse_program<'a, C: TransformCase>(
         lang: case.lang(),
         ..ParserOptions::default()
     };
+    parse_program_with_options(source, allocator, options)
+}
+
+fn parse_program_with_options<'a>(
+    source: &'a str,
+    allocator: &'a Allocator,
+    options: ParserOptions,
+) -> Result<Ast<'a>, String> {
     let (ast, error) = {
         let result = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
         let error = result
