@@ -833,7 +833,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_signature_return_with_context(result, TypeContext::Root, writer)
     }
 
-    pub(super) fn format_signature_return_with_context(
+    pub(in crate::formatter) fn format_signature_return_with_context(
         &mut self,
         result: SignatureReturn<'ast>,
         context: TypeContext,

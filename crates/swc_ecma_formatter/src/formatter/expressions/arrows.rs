@@ -1,4 +1,5 @@
 //! Expression arrows with parameter, arrow-token and body boundary ownership.
+use super::arguments::TrailingCommaPolicy;
 use super::parentheses::{ExpressionContent, SourceParentheses};
 use super::{
     ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, SourceTailOwner, TailOwner,
@@ -8,15 +9,20 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::functions::{FunctionBodyAttachment, SignatureBoundaryRole};
 use crate::formatter::parameters::{ArrowParameterParentheses, SourceParameters};
 use crate::formatter::statements::{IncomingStatement, StatementBodyLeading};
-use crate::formatter::suppression::ContentMode;
+use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::types::callable::{
+    SignatureParameterLayout, SignatureReturn, SignatureReturnDelimiter, SignatureReturnEolTarget,
+};
+use crate::formatter::types::generics::TypeParameterContext;
+use crate::formatter::types::{TypeContext, TypeGap};
 use crate::{
-    ArrowParentheses, FormatError, Semicolons,
+    ArrowParentheses, FormatError, Semicolons, TrailingCommas,
     document::{Fragment, RecordedGroup, Writer},
 };
 use swc_next_ecma_ast::{
     ArrowFunctionBody, ArrowFunctionBodyData, ArrowFunctionExpression, AssignmentTargetData,
     Comment, CommentKind, Expr, ExprData, FormalParameterItemData, FormalParameterPatternData,
-    FormalParameters, FunctionBody, GetSpan, Span,
+    FormalParameters, FunctionBody, GetSpan, Span, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArrowLayout {
@@ -103,9 +109,26 @@ pub(super) struct VerbatimArrow {
     span: Span,
     is_async: bool,
 }
+struct ArrowReturnInput {
+    annotation: TsTypeAnnotation,
+    mode: ContentMode,
+}
+
+struct PreparedArrowGenerics<'ast> {
+    node: TsTypeParameterDeclaration,
+    mode: ContentMode,
+    prefix: TypeGap<'ast>,
+    following: TypeGap<'ast>,
+    tail: TrailingCommaPolicy,
+}
+
 pub(super) struct FormattedArrowHead<'a> {
     arrow: ArrowFunctionExpression,
     parameters: SourceParameters,
+    generics: Option<PreparedArrowGenerics<'a>>,
+    body_mode: ContentMode,
+    result: Option<ArrowReturnInput>,
+    parameter_start: u32,
     signature_end: u32,
     body: ArrowFunctionBody,
     body_span: Span,
@@ -113,6 +136,7 @@ pub(super) struct FormattedArrowHead<'a> {
     comments: &'a [Comment],
     before_count: usize,
 }
+
 pub(super) enum SourceArrow<'a> {
     Verbatim(VerbatimArrow),
     Formatted(FormattedArrowHead<'a>),
@@ -121,12 +145,17 @@ pub(super) struct FormattedSourceArrow<'a> {
     arrow: ArrowFunctionExpression,
     next: Option<ArrowChainChild<'a>>,
     parameters: SourceParameters,
+    generics: Option<PreparedArrowGenerics<'a>>,
+    parameter_start: u32,
     signature_end: u32,
+    result: Option<SignatureReturn<'a>>,
     before: &'a [Comment],
     body: SourceArrowBody<'a>,
 }
+
 struct ArrowBoundary<'ast> {
     parameters: FormalParameters,
+    parameter_span: Span,
     signature_end: u32,
     body: ArrowFunctionBody,
     body_span: Span,
@@ -181,36 +210,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.options.arrow_parentheses == ArrowParentheses::Always {
             return Ok(true);
         }
-        let boundary = self.source_arrow_boundary(arrow)?;
+        let annotation = arrow.return_type(self.ast);
+        let generics = arrow.type_parameters(self.ast);
+        if generics.is_some() || annotation.is_some() {
+            self.check_arrow_header_domain(arrow, generics, annotation)?;
+            // Generic heads start with `<`, nongeneric typed heads with `(`.
+            // Their ASI protection is separate from parameter parentheses.
+            return Ok(true);
+        }
+        let boundary = self.source_arrow_boundary(arrow, generics, annotation)?;
         let parentheses = if boundary.before_count == 0 {
             ArrowParameterParentheses::Optional
         } else {
             ArrowParameterParentheses::Required
         };
-        Ok(self
-            .source_arrow_parameters(boundary.parameters, parentheses)?
-            .starts_with_parenthesis())
+        let parameters = self.source_arrow_parameters(boundary.parameters, parentheses)?;
+        Ok(parameters.starts_with_parenthesis())
     }
+    fn check_arrow_header_domain(
+        &self,
+        arrow: ArrowFunctionExpression,
+        generics: Option<TsTypeParameterDeclaration>,
+        annotation: Option<TsTypeAnnotation>,
+    ) -> Result<(), FormatError> {
+        if (generics.is_some() || annotation.is_some()) && !self.ast.is_ts() {
+            return Err(self.unsupported("typed arrow", arrow));
+        }
+        Ok(())
+    }
+
+    #[inline(always)]
     fn source_arrow_boundary(
         &self,
         arrow: ArrowFunctionExpression,
+        generics: Option<TsTypeParameterDeclaration>,
+        annotation: Option<TsTypeAnnotation>,
     ) -> Result<ArrowBoundary<'ast>, FormatError> {
-        if arrow.return_type(self.ast).is_some() || arrow.type_parameters(self.ast).is_some() {
-            return Err(self.unsupported("typed arrow", arrow));
-        }
+        self.check_arrow_header_domain(arrow, generics, annotation)?;
         let params = arrow.params(self.ast);
         let parameter_span = params.span(self.ast);
         let body = arrow.body(self.ast);
         let body_span = body.span(self.ast);
-        let signature_end = parameter_span.end;
+        let signature_end = annotation.map_or(parameter_span.end, |node| node.span(self.ast).end);
         let gap = Span::new(signature_end, body_span.start);
         let comments = self.comments.in_range(gap);
-        let operator = self
-            .find_token(gap, comments, "=>")
-            .ok_or_else(|| self.unsupported("arrow token boundary", arrow))?;
-        let before_count = comments.partition_point(|c| c.span.end <= operator);
+        let Some(operator) = self.find_token(gap, comments, "=>") else {
+            return Err(self.unsupported("arrow token boundary", arrow));
+        };
+        let before_count = comments.partition_point(|comment| comment.span.end <= operator);
         Ok(ArrowBoundary {
             parameters: params,
+            parameter_span,
             signature_end,
             body,
             body_span,
@@ -223,22 +273,95 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         arrow: ArrowFunctionExpression,
     ) -> Result<SourceArrow<'ast>, FormatError> {
-        let boundary = self.source_arrow_boundary(arrow)?;
-        let parentheses = if boundary.before_count == 0 {
-            ArrowParameterParentheses::Optional
-        } else {
-            ArrowParameterParentheses::Required
-        };
-        let parameters = self.source_arrow_parameters(boundary.parameters, parentheses)?;
+        let annotation = arrow.return_type(self.ast);
+        let generic_node = arrow.type_parameters(self.ast);
+        let boundary = self.source_arrow_boundary(arrow, generic_node, annotation)?;
+        let parentheses =
+            if generic_node.is_some() || annotation.is_some() || boundary.before_count != 0 {
+                ArrowParameterParentheses::Required
+            } else {
+                ArrowParameterParentheses::Optional
+            };
+        let mut parameters = self.source_arrow_parameters(boundary.parameters, parentheses)?;
         if parameters.enclosing_mode() == ContentMode::Verbatim {
             return Ok(SourceArrow::Verbatim(VerbatimArrow {
                 span: arrow.span(self.ast),
                 is_async: arrow.r#async(self.ast),
             }));
         }
+        let mut source_return = None;
+        let mut body_mode = ContentMode::Formatted;
+        let generics = generic_node.map(|node| {
+            let generic_span = node.span(self.ast);
+            let prefix_start =
+                arrow.span(self.ast).start + if arrow.r#async(self.ast) { 5 } else { 0 };
+            let prefix_gap = Span::new(prefix_start, generic_span.start);
+            let prefix_source = self.has_suppression
+                && self.content_mode(self.comments.in_range(prefix_gap)) == ContentMode::Verbatim;
+            let mut mode = if prefix_source {
+                ContentMode::Verbatim
+            } else {
+                ContentMode::Formatted
+            };
+            let following_gap = Span::new(generic_span.end, boundary.parameter_span.start);
+            let mut following_source = false;
+            if self.has_suppression {
+                let comments = self.comments.in_range(following_gap);
+                following_source = self.content_mode(comments) == ContentMode::Verbatim;
+                if following_source {
+                    for (_, position) in self.suppressed_comment_runs(comments, following_gap.end) {
+                        if matches!(position, SuppressionPosition::EndOfLine)
+                            || (!parameters.has_parameters()
+                                && matches!(position, SuppressionPosition::Inline))
+                        {
+                            mode = ContentMode::Verbatim;
+                        } else if parameters.has_parameters() {
+                            parameters.set_leading_mode(ContentMode::Verbatim);
+                        } else if let Some(annotation) = annotation {
+                            source_return = Some(annotation);
+                        } else {
+                            body_mode = ContentMode::Verbatim;
+                        }
+                    }
+                }
+            }
+            let members = node.params(self.ast);
+            let requires_comma = self.ast.is_jsx()
+                && members.len() == 1
+                && members.iter().next().is_some_and(|id| {
+                    let member = self.ast.get_node_in_sub_range(id);
+                    member.constraint(self.ast).is_none()
+                });
+            let tail = if requires_comma {
+                TrailingCommaPolicy::Required
+            } else if self.options.trailing_commas == TrailingCommas::None {
+                TrailingCommaPolicy::Forbidden
+            } else {
+                TrailingCommaPolicy::IfBreak
+            };
+            PreparedArrowGenerics {
+                node,
+                mode,
+                prefix: self.prepare_type_gap(prefix_gap, prefix_source),
+                following: self.prepare_type_gap(following_gap, following_source),
+                tail,
+            }
+        });
+        let result = annotation.map(|annotation| ArrowReturnInput {
+            annotation,
+            mode: if source_return.is_some() {
+                ContentMode::Verbatim
+            } else {
+                ContentMode::Formatted
+            },
+        });
         Ok(SourceArrow::Formatted(FormattedArrowHead {
             arrow,
             parameters,
+            generics,
+            body_mode,
+            result,
+            parameter_start: boundary.parameter_span.start,
             signature_end: boundary.signature_end,
             body: boundary.body,
             body_span: boundary.body_span,
@@ -264,7 +387,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<FormattedSourceArrow<'ast>, FormatError> {
         let FormattedArrowHead {
             arrow,
-            parameters,
+            mut parameters,
+            mut generics,
+            body_mode,
+            result,
+            parameter_start,
             signature_end,
             body,
             body_span,
@@ -272,6 +399,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments,
             before_count,
         } = head;
+        let result = if let Some(input) = result {
+            let target = if parameters.has_parameters() {
+                SignatureReturnEolTarget::Parameter
+            } else if let Some(generic) = &mut generics {
+                SignatureReturnEolTarget::Header(&mut generic.mode)
+            } else {
+                SignatureReturnEolTarget::Annotation
+            };
+            let source_return = (input.mode == ContentMode::Verbatim).then_some(input.annotation);
+            let result = self.prepare_signature_return(
+                parameters.span(self.ast).end,
+                target,
+                input.annotation,
+                source_return,
+                SignatureReturnDelimiter::Colon,
+            );
+            if result.preceding_mode == ContentMode::Verbatim {
+                parameters.suppress_last(self.ast)?;
+            }
+            Some(result)
+        } else {
+            None
+        };
         let (before, leading) = comments.split_at(before_count);
         let body = prepared_body.unwrap_or_else(|| self.prepare_arrow_body(body));
         let (mode, first_statement, trailing_constraint) = match &body {
@@ -295,6 +445,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
                 LineConstraint::Unconstrained,
             ),
+        };
+        let mode = if body_mode == ContentMode::Verbatim {
+            body_mode
+        } else {
+            mode
         };
         let mode = match body {
             PreparedArrowBody::FunctionBody(body) => self.function_body_content_mode(body, mode),
@@ -368,7 +523,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             arrow,
             next,
             parameters,
+            generics,
+            parameter_start,
             signature_end,
+            result,
             before,
             body,
         })
@@ -469,6 +627,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn arrow_chain_breaks(&self, source: &FormattedSourceArrow<'ast>) -> bool {
+        if source.generics.is_some()
+            || source.result.is_some() && source.parameters.has_parameters()
+        {
+            return true;
+        }
         let ast = self.ast;
         let params = source.arrow.params(ast);
         params.rest(ast).is_some()
@@ -504,7 +667,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             SourceArrow::Formatted(head) => self.source_formatted_arrow(head, prepared_body)?,
         };
         let Some(first_child) = source.next.take() else {
-            let independent_signature = !source.parameters.has_parameters();
+            let independent_signature = !source.parameters.has_parameters()
+                && source.generics.is_none()
+                && source.result.is_none();
             let (signature, source_body) = writer
                 .record_with_value(|writer| self.format_arrow_head(source, context, writer))?;
             let body_layout = source_body.layout();
@@ -743,7 +908,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let FormattedSourceArrow {
             arrow,
             parameters,
+            generics,
+            parameter_start,
             signature_end,
+            result,
             before,
             body,
             ..
@@ -751,21 +919,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
             && !arrow.r#async(self.ast)
-            && parameters.starts_with_parenthesis()
+            && (generics.is_some() || parameters.starts_with_parenthesis())
         {
             writer.text(";");
         }
         if arrow.r#async(self.ast) {
             writer.text("async");
-            self.format_source_token_gap(
-                arrow.span(self.ast).start + 5,
-                parameters.span(self.ast).start,
-                true,
-                writer,
-            )?;
+            if generics.is_none() {
+                self.format_source_token_gap(
+                    arrow.span(self.ast).start + 5,
+                    parameter_start,
+                    true,
+                    writer,
+                )?;
+            }
         }
+        let source_generic_gap = generics.as_ref().is_some_and(|generic| {
+            matches!(generic.prefix, TypeGap::Source(_))
+                || matches!(generic.following, TypeGap::Source(_))
+        });
+        // Preserved signature gaps must not make the parameter list break.
+        let parameter_layout = if source_generic_gap
+            || result
+                .as_ref()
+                .is_some_and(|result| result.preceding_mode == ContentMode::Verbatim)
+        {
+            SignatureParameterLayout::Independent
+        } else {
+            SignatureParameterLayout::Shared
+        };
         writer.group(false, |writer| {
-            self.format_source_parameters(parameters, writer)
+            if let Some(generic) = generics {
+                let prefix_separator = if arrow.r#async(self.ast) {
+                    FlatSeparator::Space
+                } else {
+                    FlatSeparator::Empty
+                };
+                self.format_type_gap(generic.prefix, prefix_separator, writer)?;
+                self.format_type_parameters_with_tail(
+                    generic.node,
+                    TypeParameterContext::Callable,
+                    generic.mode,
+                    generic.tail,
+                    writer,
+                )?;
+                self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
+            }
+            self.format_source_parameters_with_layout(parameters, None, parameter_layout, writer)?;
+            if let Some(result) = result {
+                let tail = self.format_signature_return_with_context(
+                    result,
+                    TypeContext::ArrowReturn,
+                    writer,
+                )?;
+                self.format_expression_tail(tail, writer)?;
+            }
+            Ok::<_, FormatError>(())
         })?;
         self.comments.claim(before)?;
         self.format_comment_run(before, CommentRunLayout::SourceAfter(signature_end), writer)?;

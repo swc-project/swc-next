@@ -59,6 +59,7 @@ impl FollowingItem {
 pub(in crate::formatter) enum TrailingCommaPolicy {
     Forbidden,
     IfBreak,
+    Required,
 }
 
 struct ItemComments<'item, 'ast> {
@@ -538,7 +539,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             Separator::Line
         };
-        let required_comma = has_more || protected_comma.is_some();
+        let required_comma = has_more
+            || protected_comma.is_some()
+            || matches!(trailing_comma, TrailingCommaPolicy::Required);
         if required_comma {
             if let Some(comma) = comma
                 && let Some(last) = boundary.last()
