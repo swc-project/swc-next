@@ -210,7 +210,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             MethodSignatureKind::Public
         };
-        let signature_owner = FunctionSignatureOwner::Method { key, kind };
+        let signature_owner = match owner {
+            MethodOwner::Class(method)
+                if ast.is_ts() && method.kind(ast) == MethodDefinitionKind::Constructor =>
+            {
+                FunctionSignatureOwner::Constructor { method, key }
+            }
+            _ => FunctionSignatureOwner::Method { key, kind },
+        };
         let mut signature = self.source_function_signature(function, signature_owner)?;
         let header_start = signature.header_start(ast);
         let has_generics = signature.has_generics();
