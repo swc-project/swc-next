@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const key = "method"; class C { value = 1; [key](input: number): number; [key](input: number): number { return input + this.value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const key = "method";
+class C {
+  value = 1;
+  [key](input: number): number;
+  [key](input: number): number {
+    return input + this.value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const key =
+  "method";
+class C {
+  value = 1;
+  [key](
+    input: number,
+  ): number;
+  [key](
+    input: number,
+  ): number {
+    return (
+      input +
+      this.value
+    );
+  }
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const key = "method"
+class C {
+  value = 1;
+  [key](
+    input: number
+  ): number
+  [key](
+    input: number
+  ): number {
+    return (
+      input +
+      this.value
+    )
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+const key =
+  "method";
+class C {
+  value = 1;
+  [key](
+    input: number,
+  ): number;
+  [key](
+    input: number,
+  ): number {
+    return (
+      input +
+      this.value
+    );
+  }
+}
