@@ -7,34 +7,45 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { cpus } from "node:os";
-import { resolve } from "node:path";
+import { resolve, extname } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { performance } from "node:perf_hooks";
 
-const scenarios = ["no-hooks", "sparse", "dense", "edits", "four-passes", "pipeline"];
+const scenarios = ["no-hooks", "sparse", "dense", "context", "edits", "four-passes", "pipeline"];
 const median = (values) => [...values].sort((a, b) => a - b)[values.length >> 1];
 
 if (process.argv[2] === "--worker") {
   const { walk } = await import(pathToFileURL(process.argv[3]));
   const { parseSync, printSync } = await import("../src-js/index.js");
   const scenario = process.argv[4];
+  const fixture = process.argv[5] || fileURLToPath(new URL("../../../tasks/benchmark/files/jquery-1.9.1.js", import.meta.url));
+  const parserOptions = { lang: scenario === "edits" ? "js" : extname(fixture).slice(1) };
+
   const source = scenario === "edits"
     ? Array.from({ length: 1000 }, (_, i) =>
       `function f${i}(x) { debugger; keep(); return x + 1; }`).join("\n")
-    : readFileSync(new URL("../../../tasks/benchmark/files/jquery-1.9.1.js", import.meta.url), "utf8");
-  const parsed = parseSync(source);
+    : readFileSync(fixture, "utf8");
+  const parsed = parseSync(source, parserOptions);
   assert.equal(parsed.diagnostics.filter((d) => d.severity === "error").length, 0);
   const original = parsed.program;
+  const batch = source.length < 5000 ? 1000 : 1;
   let visits = 0;
   const hooks = scenario === "no-hooks" ? {} : scenario === "sparse" ? {
     FunctionDeclaration() { visits++; },
+  } : scenario === "context" ? {
+    enter(node, ctx) {
+      assert.equal(ctx.node, node);
+      visits += (ctx.parent === null ? 0 : 1) + (ctx.index === null ? 0 : 1) + (ctx.key?.length ?? 0);
+    },
   } : scenario === "edits" ? {
-    DebuggerStatement(node, ctx) { ctx.remove(); },
+    DebuggerStatement(node, ctx) { visits++; ctx.remove(); },
     Literal(node, ctx) {
+      visits++;
       if (node.value === 1) ctx.replace({ ...node, value: 2 });
     },
     ExpressionStatement(node, ctx) {
+      visits++;
       if (node.expression.type === "CallExpression" && node.expression.callee.name === "keep") {
         ctx.insertBefore({ type: "EmptyStatement" });
         ctx.insertAfter({ type: "EmptyStatement" });
@@ -50,15 +61,23 @@ if (process.argv[2] === "--worker") {
     const ast = scenario === "edits" ? structuredClone(original) : original;
     const start = performance.now();
     let result = ast;
-    if (scenario === "pipeline") {
-      const next = parseSync(source);
-      run(next.program);
-      result = printSync(next.program, undefined, next.meta).code;
-    } else run(ast);
-    return { ms: performance.now() - start, result };
+    for (let iteration = 0; iteration < batch; iteration++) {
+      if (scenario === "pipeline") {
+        const next = parseSync(source, parserOptions);
+        run(next.program);
+        result = printSync(next.program, undefined, next.meta).code;
+      } else run(ast);
+    }
+    return { ms: (performance.now() - start) / batch, result };
   }
-  for (let i = 0; i < 12; i++) timed();
   global.gc();
+  const warmupUntil = performance.now() + 300;
+  let warmups = 0;
+  do {
+    timed();
+    warmups++;
+  } while (warmups < 12 || performance.now() < warmupUntil);
+  if (process.env.WALK_BENCH_GC_AFTER_WARMUP === "1") global.gc();
   visits = 0;
   const heapBefore = process.memoryUsage().heapUsed;
   let heapMax = heapBefore;
@@ -71,18 +90,26 @@ if (process.argv[2] === "--worker") {
     heapMax = Math.max(heapMax, process.memoryUsage().heapUsed);
   }
   const peakRssMiB = process.resourceUsage().maxRSS / 1024;
+  const trace = createHash("sha256");
+  walk(typeof result === "string" ? original : result, {
+    enter(node, ctx) {
+      trace.update(JSON.stringify([node.type, node.start, node.end, ctx.key, ctx.index]));
+    },
+  });
+  const traceDigest = trace.digest("hex");
   const digest = createHash("sha256").update(JSON.stringify(result)).digest("hex");
   if (scenario === "edits") {
     assert.equal(result.body[0].body.body.length, 4);
     assert.equal(result.body[0].body.body[3].argument.right.value, 2);
   }
   console.log(JSON.stringify({
-    ms: median(timings), minMs: Math.min(...timings), maxMs: Math.max(...timings),
+    warmups, batch, ms: median(timings), minMs: Math.min(...timings), maxMs: Math.max(...timings),
     peakRssMiB, observedHeapMiB: heapMax / 1048576,
-    heapBeforeMiB: heapBefore / 1048576, digest, visits,
+    heapBeforeMiB: heapBefore / 1048576, digest, traceDigest, visits,
   }));
 } else {
   const baseline = process.argv[2];
+  const fixture = process.argv[3] ? resolve(process.argv[3]) : "";
   if (!baseline) throw new Error("Pass a baseline ast.js path (with adjacent visitor-keys.js)");
   const variants = {
     before: resolve(baseline),
@@ -95,13 +122,14 @@ if (process.argv[2] === "--worker") {
       const names = round % 2 ? ["after", "before"] : ["before", "after"];
       for (const name of names) {
         const child = spawnSync(process.execPath,
-          ["--expose-gc", fileURLToPath(import.meta.url), "--worker", variants[name], scenario],
+          ["--expose-gc", fileURLToPath(import.meta.url), "--worker", variants[name], scenario, fixture],
           { encoding: "utf8" });
         if (child.status !== 0) throw new Error(child.stderr || child.stdout);
         samples[name].push(JSON.parse(child.stdout));
       }
     }
     for (const sample of [...samples.before, ...samples.after]) {
+      assert.equal(sample.traceDigest, samples.before[0].traceDigest, `${scenario}: visit order/positions differ`);
       assert.equal(sample.digest, samples.before[0].digest, `${scenario}: output differs`);
       assert.equal(sample.visits, samples.before[0].visits, `${scenario}: visit count differs`);
     }
@@ -117,8 +145,11 @@ if (process.argv[2] === "--worker") {
     console.error(`${scenario}: ${summary.before.ms.toFixed(2)} -> ${summary.after.ms.toFixed(2)} ms`);
   }
   console.log(JSON.stringify({
+    gcAfterWarmup: process.env.WALK_BENCH_GC_AFTER_WARMUP === "1",
+    fixture: fixture || "tasks/benchmark/files/jquery-1.9.1.js",
+    baselineModule: variants.before, candidateModule: variants.after,
     node: process.version, platform: `${process.platform}/${process.arch}`, cpu: cpus()[0].model,
-    samples: "3 processes per variant/scenario; 12 warmups + 25 iterations each",
+    samples: "3 processes per variant/scenario; at least 12 warmups / 300 ms + 25 iterations each",
     memory: "process peak RSS and maximum heap sampled after each iteration; includes setup; no separate client/server",
     rows,
   }, null, 2));

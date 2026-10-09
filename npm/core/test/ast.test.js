@@ -443,3 +443,23 @@ test("nested edits restore parent positions for leave and later siblings", () =>
   ]);
   assert.deepEqual(second.elements.map((node) => node.name), ["keep"]);
 });
+
+
+test("generated child accessors stop before later scalar fields", () => {
+  const ast = { type: "BinaryExpression", operator: "+", left: id("left"), right: id("right") };
+  const seen = [];
+  walk(ast, {
+    Identifier(node, ctx) {
+      seen.push(node.name);
+      assert.equal(ctx.parent, ast);
+      assert.equal(ctx.key, "left");
+      ctx.stop();
+    },
+    leave() { assert.fail("stop must suppress pending leave hooks"); },
+  });
+  assert.deepEqual(seen, ["left"]);
+  ast.left = { type: "Unknown" };
+  assert.throws(() => walk(ast, {}), /Unsupported AST/);
+  ast.left = Object.assign(() => {}, { type: "Identifier" });
+  assert.throws(() => walk(ast, {}), /Unsupported AST/);
+});

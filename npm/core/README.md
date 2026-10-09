@@ -94,10 +94,13 @@ and ancestor snapshot references may be retained; they are ordinary objects.
 Call methods through `ctx` (for example `ctx.remove()`); they are not bound
 functions and must not be detached from their receiver.
 
-The walker reuses traversal frames by depth and constructs context methods once
-on the prototype, rather than allocating a context and closures per hook. Frame
-allocation scales with maximum depth, not the number of visited nodes. Ancestor
-arrays are allocated only when `ancestors()` is requested.
+The walker uses generated child accessors (for example `node.left`) and a shared
+per-type dispatch table. It only populates context storage for phases with hooks;
+recursive positions stay in local variables. One mutable position record is
+reused for the entire walk. An ancestor stack scales with depth; `ancestors()`
+allocates a snapshot only when requested. The traversal engine and context
+methods live on the prototype, avoiding per-walk traversal closures and per-hook
+allocations. No runtime code generation or `eval` is used.
 
 Replace followed by skip traverses no replacement children. Remove or stop
 prevents further hooks for that node; removal makes subsequent structural edits

@@ -28,6 +28,7 @@
     "src-js/ast.js",
     "src-js/ast.d.ts",
     "src-js/visitor-keys.js",
+    "src-js/child-visitors.js",
     "src-js/visitor-keys.d.ts",
     "src-js/transform.js",
     "README.md"

@@ -32,6 +32,7 @@
     "src/ast.js",
     "src/ast.d.ts",
     "src/visitor-keys.js",
+    "src/child-visitors.js",
     "src/visitor-keys.d.ts",
     "src/transform.js"
   ],

@@ -44,6 +44,7 @@ async function prepareBrowserPackage({
     "ast.js",
     "ast.d.ts",
     "visitor-keys.js",
+    "child-visitors.js",
     "visitor-keys.d.ts",
     "transform.js",
   ]) {
