@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default class<T> { method(value: T): T { return value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+export default class<T> {
+  method(value: T): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export default class<
+  T,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+export default class<
+  T
+> {
+  method(
+    value: T
+  ): T {
+    return value
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+export default class<
+  T,
+> {
+  method(
+    value: T,
+  ): T {
+    return value;
+  }
+}
