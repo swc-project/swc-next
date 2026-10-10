@@ -1099,21 +1099,8 @@ impl<'a> Printer<'a> {
                 if !matches!(self.ast.decl_data(d), DeclData::Class(_)) {
                     self.print_indent();
                 }
-                let ends_with_block = matches!(
-                    self.ast.decl_data(d),
-                    DeclData::Function(_)
-                        | DeclData::Class(_)
-                        | DeclData::TsInterfaceDeclaration(_)
-                        | DeclData::TsEnumDeclaration(_)
-                        | DeclData::TsModuleDeclaration(_)
-                        | DeclData::TsGlobalDeclaration(_)
-                );
                 self.print_decl(d);
-                if ends_with_block {
-                    self.print_newline();
-                } else {
-                    self.print_semicolon_after_statement();
-                }
+                self.print_decl_terminator(d);
             }
             StmtData::ImportDeclaration(s) => {
                 self.print_indent();
@@ -1446,6 +1433,23 @@ impl<'a> Printer<'a> {
             DeclData::TsModuleDeclaration(d) => self.print_ts_module(d),
             DeclData::TsGlobalDeclaration(d) => self.print_ts_global(d),
             DeclData::TsImportEqualsDeclaration(d) => self.print_ts_import_equals(d),
+        }
+    }
+
+    fn print_decl_terminator(&mut self, decl: Decl) {
+        let ends_with_block = match self.ast.decl_data(decl) {
+            DeclData::Function(_)
+            | DeclData::Class(_)
+            | DeclData::TsInterfaceDeclaration(_)
+            | DeclData::TsEnumDeclaration(_)
+            | DeclData::TsGlobalDeclaration(_) => true,
+            DeclData::TsModuleDeclaration(module) => module.body(self.ast).is_some(),
+            _ => false,
+        };
+        if ends_with_block {
+            self.print_newline();
+        } else {
+            self.print_semicolon_after_statement();
         }
     }
 
@@ -3769,24 +3773,12 @@ impl<'a> Printer<'a> {
             self.print_space();
         }
         if let Some(decl) = declaration {
-            let block = matches!(
-                self.ast.decl_data(decl),
-                DeclData::Function(_)
-                    | DeclData::Class(_)
-                    | DeclData::TsInterfaceDeclaration(_)
-                    | DeclData::TsEnumDeclaration(_)
-                    | DeclData::TsModuleDeclaration(_)
-            );
             if let DeclData::Class(class) = self.ast.decl_data(decl) {
                 self.print_class(class, false);
             } else {
                 self.print_decl(decl);
             }
-            if block {
-                self.print_newline();
-            } else {
-                self.print_semicolon_after_statement();
-            }
+            self.print_decl_terminator(decl);
             return;
         }
         self.print("{");

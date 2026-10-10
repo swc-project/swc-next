@@ -400,6 +400,41 @@ fn test_optional_and_rest_tuple_elements() {
 }
 
 #[test]
+fn test_ambient_module_declarations() {
+    expect_printed_ts(
+        "declare module \"a\"; declare module \"b\";",
+        "declare module \"a\";\ndeclare module \"b\";\n",
+    );
+
+    expect_printed_ts_minify(
+        "declare module \"a\"; declare module \"b\";",
+        "declare module \"a\";declare module \"b\";",
+    );
+
+    expect_printed_ts_minify(
+        "declare module \"a\"; const x = 1;",
+        "declare module \"a\";const x=1;",
+    );
+
+    expect_printed_ts_minify(
+        "export declare module \"a\"; export declare module \"b\";",
+        "export declare module \"a\";export declare module \"b\";",
+    );
+
+    expect_printed_ts_minify("declare module \"a\";", "declare module \"a\";");
+
+    expect_printed_ts_minify(
+        "declare module \"a\" {} declare module \"b\" {}",
+        "declare module \"a\"{}declare module \"b\"{}",
+    );
+
+    expect_printed_ts_minify(
+        "namespace N { module \"a\"; module \"b\"; }",
+        "namespace N{module \"a\";module \"b\"}",
+    );
+}
+
+#[test]
 fn test_enum_declarations_do_not_emit_semicolons() {
     expect_printed_ts("enum E {}", "enum E {}\n");
     expect_printed_ts(
