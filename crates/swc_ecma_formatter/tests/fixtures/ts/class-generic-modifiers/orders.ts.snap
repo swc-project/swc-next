@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Variance<const in Input, out const Output, in out const State> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Variance<const in Input, const out Output, const in out State> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State,
+> {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State
+> {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class Variance<
+  const in Input,
+  const out Output,
+  const in out State,
+> {}

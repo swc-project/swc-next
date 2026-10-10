@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A // name
+<T= 12.00> /* prettier-ignore */ extends Base {}
+---------- Options ----------
+{}
+---------- Output ----------
+class A // name
+<T= 12.00> /* prettier-ignore */
+  extends Base {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class A // name
+<T= 12.00> /* prettier-ignore */
+  extends Base {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"useTabs":true}
+---------- Output ----------
+class A // name
+<T= 12.00> /* prettier-ignore */
+	extends Base {}

@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Collection<
+// prettier-ignore
+in const T extends Array < number > = number[],
+U
+> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U
+> {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class Collection<
+  // prettier-ignore
+  in const T extends Array < number > = number[],
+  U,
+> {}
