@@ -3,7 +3,7 @@
 use swc_next_ecma_ast::{
     Accessibility, BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment,
     CommentKind, Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span,
-    StaticBlock, StmtData, TsFunction, TsMethodDefinition,
+    StaticBlock, StmtData, TsFunction, TsIndexSignature, TsMethodDefinition,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -24,6 +24,7 @@ use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
     is_suppression_comment,
 };
+use super::types::members::PreparedIndexSignature;
 use crate::{FormatError, QuoteProperties, Semicolons, document::Writer};
 use member_prefix::ClassMemberPrefix;
 
@@ -88,6 +89,7 @@ enum ClassMemberContent<'ast> {
     },
     Field(SourceClassField<'ast>),
     Static(SourceStaticBlock<'ast>),
+    Index(SourceClassIndexSignature<'ast>),
 }
 
 struct SourceBodylessClassMethod<'ast> {
@@ -111,6 +113,11 @@ struct SourceClassField<'ast> {
 struct FieldInitializer<'ast> {
     right: Expr,
     layout: InitializerLayout<'ast>,
+}
+
+struct SourceClassIndexSignature<'ast> {
+    signature: PreparedIndexSignature<'ast>,
+    terminal: TypedClassMemberTerminal,
 }
 
 enum TypedClassMemberTerminal {
@@ -715,7 +722,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ClassElementData::StaticBlock(block) => {
                 ClassMemberContent::Static(self.source_static_block(block)?)
             }
-            _ => return Err(self.unsupported("typed class member", node)),
+            ClassElementData::TsIndexSignature(index) => {
+                ClassMemberContent::Index(self.source_class_index_signature(index, sibling)?)
+            }
         };
         Ok(PreparedClassMember {
             node,
@@ -746,6 +755,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             ClassMemberContent::Field(field) => self.format_class_field(field, following, writer),
             ClassMemberContent::Static(block) => self.format_static_block(block, writer),
+            ClassMemberContent::Index(index) => {
+                let tail = self.format_index_signature(index.signature, writer)?;
+                self.format_typed_class_member_terminal(index.terminal, tail, writer)
+            }
         }
     }
 
@@ -1029,6 +1042,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ))
             }
             ClassMemberContent::Static(_) => false,
+            ClassMemberContent::Index(index) => index.signature.starts_with_bracket(),
             ClassMemberContent::Verbatim => {
                 let ast = self.ast;
                 let key = match ast.class_element_data(member.node) {
@@ -1242,5 +1256,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_source_class_member_terminal(span, tail, writer)
             }
         }
+    }
+
+    fn source_class_index_signature(
+        &self,
+        node: TsIndexSignature,
+        sibling: Option<DelimitedSuppression>,
+    ) -> Result<SourceClassIndexSignature<'ast>, FormatError> {
+        let mut signature = self.prepare_index_signature(node)?;
+        let internal = Span::new(signature.content_end(), node.span(self.ast).end);
+        let (terminal, mode) = self.prepare_typed_class_member_terminal(internal, sibling);
+        if mode == ContentMode::Verbatim {
+            signature.protect_result_type();
+        }
+        Ok(SourceClassIndexSignature {
+            signature,
+            terminal,
+        })
     }
 }

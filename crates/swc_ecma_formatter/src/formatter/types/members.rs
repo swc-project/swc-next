@@ -97,7 +97,7 @@ struct SignatureMember<'ast> {
     result: Option<SignatureReturn<'ast>>,
 }
 
-pub(super) struct PreparedIndexSignature<'ast> {
+pub(in crate::formatter) struct PreparedIndexSignature<'ast> {
     parameters: SubRange<TsIndexSignatureParameter>,
     content_end: u32,
     opening: u32,
@@ -110,17 +110,40 @@ pub(super) struct PreparedIndexSignature<'ast> {
     result: SignatureReturn<'ast>,
 }
 
+#[derive(Clone, Copy)]
+enum IndexModifier {
+    Static,
+    Readonly,
+}
+
+impl IndexModifier {
+    fn keyword(self) -> &'static str {
+        match self {
+            Self::Static => "static",
+            Self::Readonly => "readonly",
+        }
+    }
+}
+
 enum IndexSignaturePrefix<'ast> {
     Bare,
-    Readonly(TypeGap<'ast>),
+    One(IndexModifier, TypeGap<'ast>),
+    Two {
+        first: (IndexModifier, TypeGap<'ast>),
+        second: (IndexModifier, TypeGap<'ast>),
+    },
 }
 
 impl PreparedIndexSignature<'_> {
-    pub(super) fn content_end(&self) -> u32 {
+    pub(in crate::formatter) fn content_end(&self) -> u32 {
         self.content_end
     }
 
-    pub(super) fn protect_result_type(&mut self) {
+    pub(in crate::formatter) fn starts_with_bracket(&self) -> bool {
+        matches!(self.prefix, IndexSignaturePrefix::Bare)
+    }
+
+    pub(in crate::formatter) fn protect_result_type(&mut self) {
         if let AnnotationContent::Type(node) = &mut self.result.content {
             node.source_owner = Some(node.node);
         }
@@ -1059,7 +1082,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ))
     }
 
-    pub(super) fn prepare_index_signature(
+    pub(in crate::formatter) fn prepare_index_signature(
         &self,
         node: TsIndexSignature,
     ) -> Result<PreparedIndexSignature<'ast>, FormatError> {
@@ -1143,28 +1166,78 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ),
         FormatError,
     > {
+        let ast = self.ast;
         let comments = self.comments.in_range(span);
         let opening = self
             .find_token(span, comments, "[")
             .ok_or_else(|| self.unsupported("index signature opening", node))?;
-        let (prefix, head_start, leading_end) = if node.readonly(self.ast) {
-            let prefix_span = Span::new(span.start, opening);
-            let token = self
-                .find_token(prefix_span, comments, "readonly")
+        let prefix_span = Span::new(span.start, opening);
+        let token = |modifier: IndexModifier| -> Result<Span, FormatError> {
+            let keyword = modifier.keyword();
+            let start = self
+                .find_token(prefix_span, comments, keyword)
                 .ok_or_else(|| self.unsupported("index signature modifier boundary", node))?;
-            let end = token + 8;
-            let gap = Span::new(end, opening);
-            (
-                IndexSignaturePrefix::Readonly(self.prepare_type_gap(
-                    gap,
-                    self.has_suppression
-                        && self.content_mode(self.comments.in_range(gap)) == ContentMode::Verbatim,
-                )),
-                end,
-                token,
+            Ok(Span::new(start, start + keyword.len() as u32))
+        };
+        let static_token = node
+            .r#static(ast)
+            .then(|| token(IndexModifier::Static))
+            .transpose()?;
+        let readonly_token = node
+            .readonly(ast)
+            .then(|| token(IndexModifier::Readonly))
+            .transpose()?;
+        let gap = |span: Span| {
+            self.prepare_type_gap(
+                span,
+                self.has_suppression
+                    && self.content_mode(self.comments.in_range(span)) == ContentMode::Verbatim,
             )
-        } else {
-            (IndexSignaturePrefix::Bare, opening + 1, opening)
+        };
+        let (prefix, head_start, leading_end) = match (static_token, readonly_token) {
+            (None, None) => (IndexSignaturePrefix::Bare, opening + 1, opening),
+            (Some(token), None) => (
+                IndexSignaturePrefix::One(
+                    IndexModifier::Static,
+                    gap(Span::new(token.end, opening)),
+                ),
+                token.end,
+                token.start,
+            ),
+            (None, Some(token)) => (
+                IndexSignaturePrefix::One(
+                    IndexModifier::Readonly,
+                    gap(Span::new(token.end, opening)),
+                ),
+                token.end,
+                token.start,
+            ),
+            (Some(static_token), Some(readonly_token)) => {
+                let (first, first_token, second, second_token) =
+                    if static_token.start < readonly_token.start {
+                        (
+                            IndexModifier::Static,
+                            static_token,
+                            IndexModifier::Readonly,
+                            readonly_token,
+                        )
+                    } else {
+                        (
+                            IndexModifier::Readonly,
+                            readonly_token,
+                            IndexModifier::Static,
+                            static_token,
+                        )
+                    };
+                (
+                    IndexSignaturePrefix::Two {
+                        first: (first, gap(Span::new(first_token.end, second_token.start))),
+                        second: (second, gap(Span::new(second_token.end, opening))),
+                    },
+                    second_token.end,
+                    first_token.start,
+                )
+            }
         };
         let leading = self.prepare_type_member_leading(Span::new(span.start, leading_end));
         Ok((opening, leading, prefix, head_start))
@@ -1355,7 +1428,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_index_signature(
+    pub(in crate::formatter) fn format_index_signature(
         &mut self,
         index: PreparedIndexSignature<'ast>,
         writer: &mut Writer<'ast>,
@@ -1364,12 +1437,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_type_member_leading(index.leading, writer)?;
         match index.prefix {
             IndexSignaturePrefix::Bare => {}
-            IndexSignaturePrefix::Readonly(gap) => {
-                writer.text("readonly");
+            IndexSignaturePrefix::One(keyword, gap) => {
+                writer.text(keyword.keyword());
                 self.format_type_gap(gap, FlatSeparator::Space, writer)?;
             }
-        };
-
+            IndexSignaturePrefix::Two { first, second } => {
+                writer.text(first.0.keyword());
+                self.format_type_gap(first.1, FlatSeparator::Space, writer)?;
+                writer.text(second.0.keyword());
+                self.format_type_gap(second.1, FlatSeparator::Space, writer)?;
+            }
+        }
         writer.group(false, |writer| {
             writer.text("[");
             writer.indent(|writer| {
