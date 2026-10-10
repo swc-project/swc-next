@@ -1545,13 +1545,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.cursor += 4;
         while (self.cursor as usize) < self.source.len() {
             let c = self.source[self.cursor as usize];
-            if c == b'-' && self.peek(1) == b'-' && self.peek(2) == b'>' {
-                self.cursor += 3;
-                self.record_comment(CommentKind::Line, start, self.cursor, trailing)?;
-                self.module_mode_errors.push(Span::new(start, self.cursor));
-                self.state.had_line_break = true;
-                return Ok(());
-            }
             if self.is_line_terminator(c) {
                 break;
             }
@@ -2035,6 +2028,26 @@ mod tests {
         let token = next_after_trivia("<!-- comment\nname", true);
         assert_eq!(token.span(), Span::new(13, 17));
         assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("<!-- --> \"\nname", true);
+        assert_eq!(token.span(), Span::new(11, 15));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("<!-- --> \"\r\nname", true);
+        assert_eq!(token.span(), Span::new(12, 16));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("<!-- --> \"\u{2028}name", true);
+        assert_eq!(token.span(), Span::new(13, 17));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("<!-- --> \"\u{2029}name", true);
+        assert_eq!(token.span(), Span::new(13, 17));
+        assert!(token.has_line_terminator_before());
+
+        let token = next_after_trivia("<!-- --> \"", true);
+        assert_eq!(token.tag(), TokenTag::Eof);
+        assert_eq!(token.span(), Span::new(10, 10));
 
         let token = next_after_trivia("--> comment\nname", true);
         assert_eq!(token.span(), Span::new(12, 16));
