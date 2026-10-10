@@ -669,6 +669,17 @@ fn test_computed_key_comments() {
 }
 
 #[test]
+fn test_jsx_spread_attributes() {
+    expect_printed_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
+
+    expect_printed_jsx_minify("<C {...(a, b)} />;", "<C{...(a,b)}/>;");
+
+    expect_printed_jsx("<C {...(a = b)} />;", "<C {...a = b} />;\n");
+
+    expect_printed_jsx_minify("<C {...a} />;", "<C{...a}/>;");
+}
+
+#[test]
 fn test_jsx_container_comments() {
     expect_printed_jsx(
         "<C value={x /* keep */} />;",

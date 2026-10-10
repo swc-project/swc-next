@@ -4784,7 +4784,7 @@ impl<'a> Printer<'a> {
                 JsxAttributeItemData::JsxSpreadAttribute(s) => {
                     self.add_source_mapping(item.span(self.ast).start);
                     self.print("{...");
-                    self.print_expr(s.argument(self.ast), Precedence::Lowest);
+                    self.print_expr(s.argument(self.ast), Precedence::Comma);
                     self.print_comments_before(s.span(self.ast).end.saturating_sub(1), false, true);
                     self.print("}");
                 }
