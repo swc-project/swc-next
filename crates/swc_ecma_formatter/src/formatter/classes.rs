@@ -4,6 +4,7 @@ use swc_next_ecma_ast::{
     Accessibility, BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment,
     CommentKind, Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span,
     StaticBlock, StmtData, TsFunction, TsIndexSignature, TsMethodDefinition,
+    TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -24,10 +25,15 @@ use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
     is_suppression_comment,
 };
+use super::types::generics::{TypeListKind, TypeListPrefix};
 use super::types::members::PreparedIndexSignature;
 use crate::{FormatError, QuoteProperties, Semicolons, document::Writer};
 use member_prefix::ClassMemberPrefix;
 
+#[expect(
+    clippy::large_enum_variant,
+    reason = "Keep the prepared borrowed header inline instead of allocating per class."
+)]
 enum PreparedClassHead<'ast> {
     Verbatim,
     Source(SourceClassHead<'ast>),
@@ -42,6 +48,7 @@ struct SourceClassHead<'ast> {
     keyword_end: u32,
     name: Option<BindingIdentifier>,
     name_mode: ContentMode,
+    parameters: Option<SourceClassParameters<'ast>>,
     heritage: Option<SourceClassHeritage<'ast>>,
     layout: HeritageLayout,
     body: ClassBody,
@@ -51,6 +58,12 @@ struct SourceClassHead<'ast> {
     body_comments: &'ast [Comment],
     body_leading: Option<&'ast [Comment]>,
     body_gap: CommentGap,
+}
+
+struct SourceClassParameters<'ast> {
+    node: TsTypeParameterDeclaration,
+    prefix: TypeListPrefix<'ast>,
+    mode: ContentMode,
 }
 
 #[derive(Clone, Copy)]
@@ -155,7 +168,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         if class.r#abstract(ast)
             || class.declare(ast)
-            || class.type_parameters(ast).is_some()
             || !class.implements(ast).is_empty()
             || class.super_type_arguments(ast).is_some()
             || !class.decorators(ast).is_empty()
@@ -189,6 +201,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             keyword_end,
             name,
             name_mode,
+            parameters,
             heritage,
             layout,
             body,
@@ -208,6 +221,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     writer.text(self.ast.get_utf8(name.name(self.ast)));
                 }
+            }
+            if let Some(parameters) = parameters {
+                self.format_declaration_type_parameters(
+                    parameters.node,
+                    parameters.prefix,
+                    parameters.mode,
+                    writer,
+                )?;
             }
             let write_heritage = |writer: &mut Writer<'ast>| {
                 if let Some(heritage) = heritage {
@@ -270,7 +291,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let superclass = class.super_class(ast);
         let mut end = name.map_or(start, |name| name.span(ast).end);
-        let mut grouped = false;
+        let continuation_start = superclass.map(|node| node.span(ast).start);
+        let mut parameters = class.type_parameters(ast).map(|node| {
+            let gap = Span::new(end, node.span(ast).start);
+            let prefix =
+                if let Some(following_start) = continuation_start.filter(|_| name.is_some()) {
+                    self.prepare_declaration_type_list_prefix(gap, node, following_start)
+                } else {
+                    self.prepare_type_list_prefix(
+                        gap,
+                        TypeListKind::Parameters {
+                            has_left_owner: name.is_some(),
+                        },
+                    )
+                };
+            if prefix.left_mode == ContentMode::Verbatim {
+                name_mode = ContentMode::Verbatim;
+            }
+            end = node.span(ast).end;
+            SourceClassParameters {
+                node,
+                mode: prefix.right_mode,
+                prefix,
+            }
+        });
+        let mut grouped = parameters
+            .as_ref()
+            .is_some_and(|parameters| parameters.prefix.has_trailing_name_comment());
         let heritage = if let Some(expression) = superclass {
             let gap = Span::new(end, expression.span(ast).start);
             let comments = self.comments.in_range(gap);
@@ -282,7 +329,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Span::new(extends, extends + 7),
                 comments,
                 || {
-                    let preceding = name.map(|name| name.span(ast));
+                    let preceding = parameters
+                        .as_ref()
+                        .map(|parameters| parameters.node.span(ast))
+                        .or_else(|| name.map(|name| name.span(ast)));
                     HeritageOwners {
                         inline_before: preceding.unwrap_or_else(|| expression.span(ast)),
                         line_preceding: preceding.unwrap_or_else(|| expression.span(ast)),
@@ -294,7 +344,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::Unbound => {}
                 CommentBinding::SourceBound => return Ok(PreparedClassHead::Verbatim),
                 CommentBinding::BoundTo(_) => {
-                    if name.is_some() {
+                    if let Some(parameters) = &mut parameters {
+                        parameters.mode = ContentMode::Verbatim;
+                    } else if name.is_some() {
                         name_mode = ContentMode::Verbatim;
                     } else {
                         return Ok(PreparedClassHead::Verbatim);
@@ -369,6 +421,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             keyword_end: start,
             name,
             name_mode,
+            parameters,
             heritage,
             layout,
             body,

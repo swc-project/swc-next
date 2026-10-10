@@ -482,7 +482,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut mode = input.mode;
             let prefix_gap = Span::new(prefix_end, input.node.span(self.ast).start);
             let prefix = if let Some(owner) = input.owner {
-                let prefix = self.prepare_type_list_prefix(prefix_gap, TypeListKind::Parameters);
+                let prefix = self.prepare_type_list_prefix(
+                    prefix_gap,
+                    TypeListKind::Parameters {
+                        has_left_owner: true,
+                    },
+                );
                 if prefix.left_mode == ContentMode::Verbatim {
                     preceding = Some(owner);
                 }

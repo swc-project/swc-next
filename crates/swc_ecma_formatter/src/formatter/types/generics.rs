@@ -29,7 +29,7 @@ use crate::{
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeListKind {
     Arguments,
-    Parameters,
+    Parameters { has_left_owner: bool },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -42,6 +42,7 @@ pub(in crate::formatter) enum TypeArgumentOwner {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeParameterContext {
     TypeDeclaration,
+    Class,
     Callable,
     Infer,
 }
@@ -84,12 +85,19 @@ enum PreparedGenericMember {
 enum TypeListPrefixLayout<'ast> {
     Source(Span),
     Formatted(CommentBoundary<'ast>),
+    TrailingName(CommentBoundary<'ast>),
 }
 
 pub(in crate::formatter) struct TypeListPrefix<'ast> {
     pub(in crate::formatter) left_mode: ContentMode,
     pub(in crate::formatter) right_mode: ContentMode,
     layout: TypeListPrefixLayout<'ast>,
+}
+
+impl TypeListPrefix<'_> {
+    pub(in crate::formatter) fn has_trailing_name_comment(&self) -> bool {
+        matches!(self.layout, TypeListPrefixLayout::TrailingName(_))
+    }
 }
 
 struct ParameterBound<'ast> {
@@ -207,8 +215,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if !is_suppression_comment(self.ast, comment) {
                         continue;
                     }
-                    if matches!(kind, TypeListKind::Parameters)
-                        && matches!(position, SuppressionPosition::EndOfLine)
+                    if matches!(
+                        kind,
+                        TypeListKind::Parameters {
+                            has_left_owner: true
+                        }
+                    ) && matches!(position, SuppressionPosition::EndOfLine)
                         && comment.kind == CommentKind::Line
                     {
                         left_mode = ContentMode::Verbatim;
@@ -232,6 +244,74 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(in crate::formatter) fn prepare_declaration_type_list_prefix(
+        &self,
+        gap: Span,
+        node: TsTypeParameterDeclaration,
+        following_start: u32,
+    ) -> TypeListPrefix<'ast> {
+        let mut prefix = self.prepare_type_list_prefix(
+            gap,
+            TypeListKind::Parameters {
+                has_left_owner: true,
+            },
+        );
+        let TypeListPrefixLayout::Formatted(boundary) = &prefix.layout else {
+            return prefix;
+        };
+        // A name's trailing Line can cross the angle suffix only while no
+        // intervening comment can be overtaken before the heritage break.
+        let [comment] = boundary.comments() else {
+            return prefix;
+        };
+        if comment.kind != CommentKind::Line
+            || self.line_breaks(gap.start, comment.span.start) != 0
+            || self.diagnostic_range_is_sensitive(gap)
+        {
+            return prefix;
+        }
+        let semantics = self.comment_semantics(*comment);
+        if semantics.diagnostic
+            || !self
+                .comments
+                .in_range(Span::new(node.span(self.ast).start, following_start))
+                .is_empty()
+        {
+            return prefix;
+        }
+        if let TypeListPrefixLayout::Formatted(boundary) = prefix.layout {
+            prefix.layout = TypeListPrefixLayout::TrailingName(boundary);
+        }
+        prefix
+    }
+
+    pub(in crate::formatter) fn format_declaration_type_parameters(
+        &mut self,
+        node: TsTypeParameterDeclaration,
+        prefix: TypeListPrefix<'ast>,
+        mode: ContentMode,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let tail = match prefix.layout {
+            TypeListPrefixLayout::TrailingName(boundary) => {
+                // Claim in source order, then attach the suffix to the completed
+                // angle group so its internal breaks cannot flush this Line.
+                let (tail, ()) = writer
+                    .record_with_value(|writer| self.format_comment_boundary(&boundary, writer))?;
+                Some(tail)
+            }
+            layout => {
+                self.format_type_list_prefix(TypeListPrefix { layout, ..prefix }, writer)?;
+                None
+            }
+        };
+        self.format_type_parameters(node, TypeParameterContext::Class, mode, writer)?;
+        if let Some(tail) = tail {
+            writer.write_fragment(tail);
+        }
+        Ok(())
+    }
+
     pub(in crate::formatter) fn format_type_list_prefix(
         &mut self,
         prefix: TypeListPrefix<'ast>,
@@ -241,6 +321,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TypeListPrefixLayout::Source(gap) => self.format_verbatim(gap, writer),
             TypeListPrefixLayout::Formatted(boundary) => {
                 self.format_type_comment_gap(&boundary, FlatSeparator::Empty, writer)
+            }
+            TypeListPrefixLayout::TrailingName(boundary) => {
+                self.format_comment_boundary(&boundary, writer)
             }
         }
     }

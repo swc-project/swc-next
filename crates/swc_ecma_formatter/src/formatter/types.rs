@@ -674,7 +674,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let parameters = alias.type_parameters(ast).map(|node| {
             let prefix = self.prepare_type_list_prefix(
                 Span::new(identifier_span.end, node.span(ast).start),
-                generics::TypeListKind::Parameters,
+                generics::TypeListKind::Parameters {
+                    has_left_owner: true,
+                },
             );
             (node, prefix)
         });
