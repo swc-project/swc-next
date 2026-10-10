@@ -14,6 +14,50 @@ mod test {
 
     use crate::{ConstructorParser, LiteralParser, Options};
 
+    fn parse_literal<'a>(
+        allocator: &'a Allocator,
+        source: &'a str,
+        flags: Option<&str>,
+    ) -> crate::diagnostic::Result<crate::ast::Pattern<'a>> {
+        LiteralParser::new(allocator, source, flags, Options::default()).parse()
+    }
+
+    #[test]
+    fn decimal_backreferences() {
+        use crate::ast::{CharacterKind, Term};
+
+        let allocator = Allocator::default();
+
+        let pattern = parse_literal(&allocator, r"()\1", Some("u")).unwrap();
+        let terms = &pattern.body.body[0].body;
+        assert!(matches!(&terms[1], Term::IndexedReference(reference) if reference.index == 1));
+
+        let pattern = parse_literal(&allocator, r"()\4294967297", None).unwrap();
+        let terms = &pattern.body.body[0].body;
+        assert!(
+            matches!(&terms[1], Term::Character(c) if c.value == 34 && c.kind == CharacterKind::Octal2)
+        );
+        assert_eq!(terms.len(), 10);
+
+        let pattern = parse_literal(&allocator, r"()\18446744073709551616", None).unwrap();
+        let terms = &pattern.body.body[0].body;
+        assert!(
+            matches!(&terms[1], Term::Character(c) if c.value == 1 && c.kind == CharacterKind::Octal1)
+        );
+        assert_eq!(terms.len(), 21);
+
+        let pattern = parse_literal(&allocator, r"()\01", None).unwrap();
+        let terms = &pattern.body.body[0].body;
+        assert!(
+            matches!(&terms[1], Term::Character(c) if c.value == 1 && c.kind == CharacterKind::Octal2)
+        );
+
+        let pattern = parse_literal(&allocator, r"\99999999999999999999", None).unwrap();
+        let terms = &pattern.body.body[0].body;
+        assert!(matches!(&terms[0], Term::Character(c) if c.value == u32::from(b'9')));
+        assert_eq!(terms.len(), 20);
+    }
+
     #[test]
     fn should_pass() {
         let allocator = Allocator::default();
@@ -163,7 +207,7 @@ mod test {
             ("x{9007199254740992}", ""),
             ("x{9007199254740991,9007199254740992}", ""),
             ("x{99999999999999999999999999999999999999999999999999}", ""),
-            (r"\99999999999999999999999999999999999999999999999999", ""),
+            (r"\99999999999999999999999999999999999999999999999999", "u"),
             (r"\u{FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}", "u"),
             ("(?=a", ""),
             ("(?<!a", ""),

@@ -506,7 +506,7 @@ impl<'a> PatternParser<'a> {
         let checkpoint = self.reader.checkpoint();
 
         // DecimalEscape: \1 means indexed reference
-        if let Some(index) = self.consume_decimal_escape()? {
+        if let Some(index) = self.consume_decimal_escape() {
             if self.state.unicode_mode {
                 // [SS:EE] AtomEscape :: DecimalEscape
                 // It is a Syntax Error if the CapturingGroupNumber of DecimalEscape is strictly greater than CountLeftCapturingParensWithin(the Pattern containing AtomEscape).
@@ -1888,20 +1888,28 @@ impl<'a> PatternParser<'a> {
     // DecimalEscape ::
     //   NonZeroDigit DecimalDigits[~Sep][opt] [lookahead ∉ DecimalDigit]
     // ```
-    fn consume_decimal_escape(&mut self) -> Result<Option<u32>> {
-        let checkpoint = self.reader.checkpoint();
-
-        if let Some(index) = self.consume_decimal_digits()? {
-            // \0 is CharacterEscape, not DecimalEscape
-            if index != 0 {
-                #[expect(clippy::cast_possible_truncation)]
-                return Ok(Some(index as u32));
-            }
-
-            self.reader.rewind(checkpoint);
+    fn consume_decimal_escape(&mut self) -> Option<u32> {
+        let first = self.reader.peek()?;
+        // DecimalEscape starts with a nonzero digit; \0 is a CharacterEscape.
+        if first == u32::from(b'0') || !character::is_decimal_digit(first) {
+            return None;
         }
 
-        Ok(None)
+        let mut index = first - u32::from(b'0');
+        self.reader.advance();
+        while let Some(cp) = self
+            .reader
+            .peek()
+            .filter(|&cp| character::is_decimal_digit(cp))
+        {
+            let digit = cp - u32::from(b'0');
+            // Capture counts are below u32::MAX. Larger indices only need to
+            // stay out of range for Unicode validation or Annex B fallback.
+            index = index.saturating_mul(10).saturating_add(digit);
+            self.reader.advance();
+        }
+
+        Some(index)
     }
 
     // ```
@@ -1910,7 +1918,7 @@ impl<'a> PatternParser<'a> {
     //   DecimalDigits[?Sep] DecimalDigit
     //   [+Sep] DecimalDigits[+Sep] NumericLiteralSeparator DecimalDigit
     // ```
-    // ([Sep] is disabled for `QuantifierPrefix` and `DecimalEscape`, skip it)
+    // ([Sep] is disabled for `QuantifierPrefix`, skip it)
     fn consume_decimal_digits(&mut self) -> Result<Option<u64>> {
         let span_start = self.reader.offset();
         let checkpoint = self.reader.checkpoint();
@@ -1925,7 +1933,7 @@ impl<'a> PatternParser<'a> {
             #[expect(clippy::cast_lossless)]
             let d = (cp - '0' as u32) as u64;
 
-            // To prevent panic on overflow cases like `\999999999999999999999`, `a{999999999999999999999}`
+            // Prevent overflow in repetition counts such as `a{999999999999999999999}`.
             if let Some(v) = value.checked_mul(10).and_then(|v| v.checked_add(d)) {
                 value = v;
                 self.reader.advance();

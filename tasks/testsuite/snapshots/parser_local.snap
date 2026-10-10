@@ -1,5 +1,5 @@
 parser * local
 ========================
-Positive Passed: 29/29 (100.00%)
-Negative Passed: 9/9 (100.00%)
-Panicked: 0/38 (0.00%)
+Positive Passed: 31/31 (100.00%)
+Negative Passed: 15/15 (100.00%)
+Panicked: 0/46 (0.00%)
