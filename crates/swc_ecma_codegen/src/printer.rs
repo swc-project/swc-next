@@ -2797,10 +2797,13 @@ impl<'a> Printer<'a> {
                 if self.can_print_identifier(name) {
                     self.print_identifier(name);
                 } else {
-                    self.print_quoted(Wtf8::from_str(name), true);
+                    self.print_quoted(Wtf8::from_str(name), false);
                 }
             }
             PropertyKeyData::Expr(expression) => match self.ast.expr_data(expression) {
+                ExprData::StringLiteral(value) => {
+                    self.print_quoted(self.ast.get_wtf8(value.value(self.ast)), false);
+                }
                 ExprData::NumericLiteral(value) => self.print_number_property_key(value),
                 _ => self.print_property_key_expr(key, Precedence::Assignment),
             },
@@ -2814,7 +2817,7 @@ impl<'a> Printer<'a> {
         if !has_source_spelling && requires_string {
             let mut buffer = zmij_ecma::Buffer::new();
             let property_name = buffer.format(value);
-            self.print_quoted(Wtf8::from_str(property_name), true);
+            self.print_quoted(Wtf8::from_str(property_name), false);
             return;
         }
 
@@ -4621,7 +4624,7 @@ impl<'a> Printer<'a> {
             }
             TsEnumMemberNameData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
-                self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), true)
+                self.print_quoted(self.ast.get_wtf8(s.value(self.ast)), computed)
             }
             TsEnumMemberNameData::TemplateLiteral(t) => self.print_template(t, false),
         }

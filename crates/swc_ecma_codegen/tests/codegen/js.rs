@@ -476,6 +476,17 @@ fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> St
 }
 
 #[test]
+fn test_string_property_keys() {
+    expect_printed_minify(r#"({ "'\"": 1 });"#, r#"({"'\"":1});"#);
+
+    expect_printed_minify(r#"class C { "'\"" = 1; }"#, r#"class C{"'\""=1}"#);
+
+    expect_printed_minify(r#"const { "'\"": x } = o;"#, r#"const{"'\"":x}=o;"#);
+
+    expect_printed_minify(r#"({ ["'\""]: 1 });"#, r#"({[`'"`]:1});"#);
+}
+
+#[test]
 fn synthesized_number_property_keys() {
     assert_eq!(
         print_synthesized_number_property_key(f64::NAN, false, false),

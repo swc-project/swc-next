@@ -418,6 +418,10 @@ fn test_enum_member_names() {
     expect_printed_ts("enum E { [`x`] }", "enum E {\n  [`x`],\n}\n");
 
     expect_printed_ts_minify("enum E { [`\\u0078\\n`] = 1 }", "enum E{[`x\n`]=1,}");
+
+    expect_printed_ts_minify(r#"enum E { "'\"" = 1 }"#, r#"enum E{"'\""=1,}"#);
+
+    expect_printed_ts_minify(r#"enum E { ["'\""] = 1 }"#, r#"enum E{[`'"`]=1,}"#);
 }
 
 #[test]
