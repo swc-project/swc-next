@@ -713,6 +713,29 @@ fn test_container_comments() {
 }
 
 #[test]
+fn test_update_expression_parentheses() {
+    expect_printed("(a++)`x`;", "(a++)`x`;\n");
+
+    expect_printed_minify("(a++)`x`;", "(a++)`x`;");
+
+    expect_printed("(++a)`x`;", "(++a)`x`;\n");
+
+    expect_printed_minify("(++a)`x`;", "(++a)`x`;");
+
+    expect_printed("(a--)`x`;", "(a--)`x`;\n");
+
+    expect_printed_minify("(a--)`x`;", "(a--)`x`;");
+
+    expect_printed("(--a)`x`;", "(--a)`x`;\n");
+
+    expect_printed_minify("(--a)`x`;", "(--a)`x`;");
+
+    expect_printed_minify("a++;", "a++;");
+
+    expect_printed_minify("++a;", "++a;");
+}
+
+#[test]
 fn test_parenthesized_comments() {
     expect_stable(
         "function f() { (/* first */ /* second */ value); }",

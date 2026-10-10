@@ -2378,7 +2378,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_update(&mut self, e: UpdateExpression, level: Precedence) {
-        let wrap = level > Precedence::Postfix;
+        let wrap = level >= Precedence::Postfix;
         if wrap {
             self.print("(");
         }

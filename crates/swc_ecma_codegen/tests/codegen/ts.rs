@@ -262,6 +262,17 @@ fn test_non_null_token_boundaries() {
 }
 
 #[test]
+fn test_non_null_update_expressions() {
+    expect_printed_ts("(a++)!;", "(a++)!;\n");
+
+    expect_printed_ts_minify("(a++)!;", "(a++)!;");
+
+    expect_printed_ts("(++a)!;", "(++a)!;\n");
+
+    expect_printed_ts_minify("(++a)!;", "(++a)!;");
+}
+
+#[test]
 fn test_non_null_optional_chains() {
     expect_printed_ts("(value?.prop)!;", "(value?.prop)!;\n");
 

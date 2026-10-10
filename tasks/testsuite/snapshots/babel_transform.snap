@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 449/4069 (11.03%)
-Failed: 54/4069 (1.33%)
+Passed: 450/4069 (11.06%)
+Failed: 53/4069 (1.30%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3566/4069 (87.64%)
 
@@ -28,8 +28,8 @@ Failed: fixtures/babel/packages/babel-core/test/fixtures/transformation/source-m
 babel-generator
 ---------------
 Cases: 560
-Passed: 425/560 (75.89%)
-Failed: 43/560 (7.68%)
+Passed: 426/560 (76.07%)
+Failed: 42/560 (7.50%)
 Panicked: 0/560 (0.00%)
 Skipped: 92/560 (16.43%)
 Messages:
@@ -48,7 +48,6 @@ Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/throw-wit
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/unary-op/input.js - semantic: Deleting a variable in strict mode is not allowed at 7..15
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/edgecase/yield-with-retainlines-option/input.js - babel-generator/test/fixtures/edgecase/yield-with-retainlines-option: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/await-expression/input.js - babel-generator/test/fixtures/parentheses/await-expression: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/class-extends/input.js - babel-generator/test/fixtures/parentheses/class-extends: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/expression/input.js - babel-generator/test/fixtures/parentheses/expression: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/in-inside-for/input.js - babel-generator/test/fixtures/parentheses/in-inside-for: transformed output differs from output.js
 Failed: fixtures/babel/packages/babel-generator/test/fixtures/parentheses/new-callee/input.js - semantic: 'super()' is only valid in a constructor of a derived class at 275..282
