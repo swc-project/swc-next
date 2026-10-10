@@ -3,13 +3,13 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 462/804 (57.46%)
-Snapshot matched: 462/804
-AST parity: 470/470
-AST mismatched: 0/470
+Passed: 463/804 (57.59%)
+Snapshot matched: 463/804
+AST parity: 471/471
+AST mismatched: 0/471
 AST format errors: 0/804
 Mismatched: 8/804
-Format errors: 334/804
+Format errors: 333/804
 Panicked: 0/804
 Not idempotent: 0/804
 Ignored files: 76
@@ -214,7 +214,6 @@ Unsupported option sets: 7
 - typescript/import-require/comments.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-type/long-module-name/long-module-name4.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/index-signature/index-signature.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/index-signature/static.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/instantiation-expression/logical-expr.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/instantiation-expression/property-access.ts: 0/1 mismatched, 1/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/interface/generic.ts: 0/2 mismatched, 2/2 format errors, 0/2 panicked, 0/2 not idempotent
