@@ -9,7 +9,7 @@ mod imports;
 mod infer;
 mod interfaces;
 mod mapped;
-mod members;
+pub(super) mod members;
 mod postfix;
 mod tuple;
 
