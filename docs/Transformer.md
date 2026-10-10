@@ -208,25 +208,40 @@ snapshots, repeated subtree scans, or a separate node-retirement lifecycle.
 
 ### Planned scope mutation contracts
 
-`context/scopes.rs` declares the following `Mutation` APIs with `todo!()` bodies.
-They are not connected to transforms yet:
+`ScopeModel` declares index-only operations with `todo!()` bodies. Mutation's
+AST-facing adapters live in `context/semantic.rs`; the planned scope operations
+are not connected to transforms yet:
 
 - `create_child_scope(parent, owner, kind, flags)` registers an allocated scope
   owner and returns its scope ID. Existing content is moved separately.
 - `convert_scope(scope, owner, kind, flags)` reuses a scope under a replacement
   owner, preserving binding/reference identities while updating scope properties.
-- `move_subtree_to_scope(root, from, to)` moves node evaluation mappings and
-  references directly in `from`, and reparents contained direct child scopes.
-  Nested scopes retain their internal mappings and bindings.
+- `move_node_to_scope(node, from, to)` updates one evaluation mapping and its
+  reference's scope, preserving reference identity and target.
 - `move_binding(from, to, symbol)` moves the binding-table entry and declarations
   owned by `from`, preserving the symbol, references and other merged declarations.
   Declaration ownership is separate from node evaluation scope.
 - `reparent_scope(scope, parent)` changes ancestry and refreshes affected hoist
-  targets and flags, preserving the scope's owner and contents.
+  targets, preserving the scope's owner and contents.
+- `set_scope_flags(scope, flags)` applies flags computed from syntax by Mutation.
 - `remove_scope(scope)` marks an empty scope inactive and clears its detached
   owner's mapping; retained contents must have moved first.
 - `clear_node_scope(node)` clears a detached syntax shell's mapping without
   visiting children retained elsewhere.
+
+Mutation's `move_subtree_to_scope(root, from, to)` reads AST edges and composes
+node moves and scope reparenting. Only nodes directly in `from` move; nested
+scopes keep their internal mappings and bindings. Mutation coordinates any
+syntax-dependent strictness and direct-eval changes. Semantic does not traverse
+syntax to infer these updates.
+
+Existing binding/reference registration also follows this boundary.
+`Mutation::register_binding` reads the identifier's name and arena-lived text;
+`ScopeModel::register_binding` receives the node ID, scope, name handle, text and
+flags. `Mutation::register_reference` constructs a `Reference` record for
+`ScopeModel::register_reference`. Mutation registers the full AST allocation
+range; ScopeModel only ensures capacity through the supplied node ID. Neither
+ScopeModel registration method takes `Ast` or reads node attributes.
 
 For single-expression static blocks, move the expression, clear the discarded
 statement shell and retire the empty static-block scope. For a whole block reused

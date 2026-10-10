@@ -2,26 +2,25 @@
 //!
 //! The model consumes Semantic's basic indexes without retaining its hoisting
 //! conflict tables, module record, or TypeScript member and alias lookup indexes.
-//! Mutation operations will be designed separately.
+//! Index mutations take semantic records and identifiers, not an AST. Transforms
+//! read syntax and coordinate subtree edits through Mutation.
 
 use oxc_index::Idx;
 use swc_next_allocator::vec::Vec as ArenaVec;
-use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, IdentifierReference, NodeId, ReferenceId, ScopeId, SymbolId,
-};
+use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator, Redeclarations,
-    Reference, ReferenceFlags, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol,
-    SymbolFlags, SymbolIterator,
-    scope::{Scope, ScopeTree},
+    Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags,
+    SymbolIterator,
+    scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
 /// The basic semantic indexes needed by Babel-style transforms.
 ///
 /// Scope, symbol, declaration, reference, and node identities are preserved.
-/// Existing scope kinds and declaration/reference flags remain input facts;
-/// this model does not provide Semantic's TypeScript name-resolution queries.
+/// This model maintains basic indexes without Semantic's TypeScript
+/// name-resolution queries or AST traversal.
 #[derive(Debug)]
 pub struct ScopeModel<'a> {
     scopes: ScopeTree<'a>,
@@ -186,20 +185,24 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Register a binding from data read by the caller.
+    ///
+    /// `text` is the arena-lived UTF-8 spelling represented by `name`. It becomes
+    /// the binding-table key; `name` remains the symbol's AST string handle.
+    /// Grow indexes through this node only. The AST-facing caller registers any
+    /// other new allocations with `grow_to` in their evaluation scope.
     pub fn register_binding(
         &mut self,
-        ast: &Ast<'a>,
         scope: ScopeId,
-        binding: BindingIdentifier,
+        node: NodeId,
+        name: AstUtf8,
+        text: &'a str,
         flags: SymbolFlags,
     ) -> SymbolId {
-        self.grow_to(ast.node_count(), scope);
-        let node = binding.node_id();
+        self.grow_to(node.index() + 1, scope);
         if let Some(symbol) = self.symbol_of(node) {
             return symbol;
         }
-        let text = ast.get_utf8(binding.name(ast));
-        let name = binding.name(ast).into();
         let declaration = DeclarationId::from_usize(self.declarations.len());
         let symbol = if let Some(symbol) = self.own_binding(scope, text.as_bytes()) {
             self.symbols[symbol.index()].flags |= flags;
@@ -211,7 +214,7 @@ impl<'a> ScopeModel<'a> {
         } else {
             let symbol = SymbolId::from_usize(self.symbols.len());
             self.symbols.push(Symbol {
-                name,
+                name: name.into(),
                 flags,
                 declaration,
             });
@@ -230,33 +233,119 @@ impl<'a> ScopeModel<'a> {
         symbol
     }
 
-    pub fn register_reference(
-        &mut self,
-        ast: &Ast,
-        scope: ScopeId,
-        reference: IdentifierReference,
-        target: Option<SymbolId>,
-        flags: ReferenceFlags,
-    ) -> ReferenceId {
-        self.grow_to(ast.node_count(), scope);
-        let node = reference.node_id();
+    /// Register a reference record and its node/use indexes without reading AST.
+    pub fn register_reference(&mut self, reference: Reference) -> ReferenceId {
+        let Reference {
+            node,
+            scope,
+            symbol: target,
+            ..
+        } = reference;
+        self.grow_to(node.index() + 1, scope);
         assert!(
             self.reference_of(node).is_none(),
             "reference already registered"
         );
         let id = ReferenceId::from_usize(self.references.len());
-        self.references.push(Reference {
-            name: reference.name(ast),
-            scope,
-            node,
-            symbol: target,
-            flags,
-        });
+        self.references.push(reference);
         self.node_references[node.index()] = Some(id);
         self.node_scopes[node.index()] = Some(scope);
         if let Some(symbol) = target {
             self.uses[symbol.index()].push(id);
         }
         id
+    }
+}
+
+impl ScopeModel<'_> {
+    /// Register an allocated scope owner below an active parent.
+    ///
+    /// Set the owner's node mapping, inherit strictness, and initialize the hoist
+    /// target and flags according to `kind`. The owner must not already own a
+    /// scope. The caller registers AST allocations and supplies syntax-dependent
+    /// flags; existing children are moved separately.
+    pub fn create_child_scope(
+        &mut self,
+        parent: ScopeId,
+        owner: NodeId,
+        kind: ScopeKind,
+        flags: ScopeFlags,
+    ) -> ScopeId {
+        todo!("Register {kind:?} scope for {owner:?} below {parent:?} with {flags:?}")
+    }
+
+    /// Transfer a scope to a replacement owner and change its kind/flags.
+    ///
+    /// Preserve ScopeId, parent, bindings, declaration/reference identities and
+    /// child scopes. Replace the old owner's mapping with the new owner's mapping;
+    /// retained content stays in this scope. Refresh affected hoist targets and
+    /// function-body linkage. The caller supplies syntax-dependent flags.
+    /// Example: a StaticBlock scope becomes an arrow's Function scope.
+    pub fn convert_scope(
+        &mut self,
+        scope: ScopeId,
+        owner: NodeId,
+        kind: ScopeKind,
+        flags: ScopeFlags,
+    ) {
+        todo!("Convert {scope:?} to {kind:?} owned by {owner:?} with {flags:?}")
+    }
+
+    /// Move one node's evaluation mapping and its Reference.scope, if present.
+    ///
+    /// Require its current evaluation scope to be `from` and both scopes active.
+    /// Scope owners use `convert_scope` or `reparent_scope`. Preserve reference
+    /// identity, target, flags and use lists. Declaration ownership is separate:
+    /// a binding node may execute in a scope different from its var hoist target.
+    /// This method does not traverse syntax or move declarations/bindings.
+    pub fn move_node_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId) {
+        todo!("Move node {node:?} evaluation from {from:?} to {to:?}")
+    }
+
+    /// Move an existing binding between scopes without allocating a new symbol.
+    ///
+    /// Move the binding-table entry and declarations belonging to `from`; preserve
+    /// merged declarations in other scopes, declaration IDs, reference targets and
+    /// use lists. Require that `to` has no conflicting binding. Node evaluation
+    /// scopes are updated separately with `move_node_to_scope`.
+    pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
+        todo!("Move binding {symbol:?} from {from:?} to {to:?}")
+    }
+
+    /// Change an active non-root scope's parent to another active scope.
+    ///
+    /// Reject cycles. Preserve owner, bindings and internal node/reference mappings;
+    /// refresh affected descendant hoist targets. Function and static-block scopes
+    /// remain their own hoist targets. Syntax-dependent strictness and direct-eval
+    /// changes are coordinated by Mutation, not inferred by traversing AST here.
+    pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
+        todo!("Reparent {scope:?} below {parent:?}")
+    }
+
+    /// Apply scope flags computed by the AST-facing caller.
+    ///
+    /// Preserve owner, parent, kind, bindings and node/reference mappings. Mutation
+    /// determines syntax-dependent strictness, arguments barriers and direct-eval
+    /// summaries, including any affected ancestors/descendants.
+    pub fn set_scope_flags(&mut self, scope: ScopeId, flags: ScopeFlags) {
+        todo!("Set flags of {scope:?} to {flags:?}")
+    }
+
+    /// Retire an empty non-root scope after its retained contents have moved.
+    ///
+    /// Require no remaining bindings, declarations, references, child scopes or
+    /// retained node mappings. Clear the detached owner's mapping and mark the
+    /// scope inactive without recycling its ID. Reused scopes use `convert_scope`
+    /// instead; this operation does not recursively delete a subtree.
+    pub fn remove_scope(&mut self, scope: ScopeId) {
+        todo!("Retire empty scope {scope:?}")
+    }
+
+    /// Clear a detached syntax shell's evaluation mapping without visiting children.
+    ///
+    /// Require that the node owns no active scope, binding or reference. Its
+    /// children may already be retained elsewhere in the AST.
+    pub fn clear_node_scope(&mut self, node: NodeId) {
+        todo!("Clear scope mapping for detached shell {node:?}")
     }
 }

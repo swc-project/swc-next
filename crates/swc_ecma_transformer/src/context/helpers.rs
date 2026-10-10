@@ -185,13 +185,7 @@ impl Mutation<'_, '_, '_> {
             let name = self.state.helpers.require(self.ast);
             let require = self.ast.identifier_reference(DUMMY_SP, name);
             let target = self.semantic().own_binding(scope, b"require");
-            self.state.semantic.register_reference(
-                self.ast,
-                scope,
-                require,
-                target,
-                Default::default(),
-            );
+            self.register_reference(scope, require, target, Default::default());
             let require = Expr::IdentifierReference(require);
             let source = self.ast.add_wtf8(source.into());
             let source = Expr::StringLiteral(self.add_node(scope, |ast| {

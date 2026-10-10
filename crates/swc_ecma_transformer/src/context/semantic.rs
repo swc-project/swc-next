@@ -1,9 +1,9 @@
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, DUMMY_SP, IdentifierReference, NodeId, NodeKindData, ScopeId,
-    Span, SymbolId,
+    Ast, AstUtf8, BindingIdentifier, DUMMY_SP, IdentifierReference, NodeId, NodeKindData,
+    ReferenceId, ScopeId, Span, SymbolId,
 };
 use swc_next_ecma_semantic::{
-    ReferenceFlags, SymbolFlags,
+    Reference, ReferenceFlags, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -25,10 +25,7 @@ impl BoundIdentifier {
     ) -> BoundIdentifier {
         let name = ctx.generate_name(base, 2);
         let identifier = ctx.ast.binding_identifier(DUMMY_SP, name);
-        let symbol = ctx
-            .state
-            .semantic
-            .register_binding(ctx.ast, scope, identifier, flags);
+        let symbol = ctx.register_binding(scope, identifier, flags);
         let binding = BoundIdentifier { identifier, symbol };
         binding
     }
@@ -43,13 +40,7 @@ impl BoundIdentifier {
         let node = ctx
             .ast
             .identifier_reference(span, self.identifier.name(ctx.ast));
-        ctx.state.semantic.register_reference(
-            ctx.ast,
-            scope,
-            node,
-            Some(self.symbol),
-            ReferenceFlags::default(),
-        );
+        ctx.register_reference(scope, node, Some(self.symbol), ReferenceFlags::default());
         node
     }
 
@@ -63,8 +54,7 @@ impl BoundIdentifier {
         let node = ctx
             .ast
             .identifier_reference(span, self.identifier.name(ctx.ast));
-        ctx.state.semantic.register_reference(
-            ctx.ast,
+        ctx.register_reference(
             scope,
             node,
             Some(self.symbol),
@@ -102,11 +92,47 @@ impl Mutation<'_, '_, '_> {
 }
 
 impl<'a> Mutation<'_, '_, 'a> {
+    /// Read a binding's AST name and register all pending allocations before
+    /// passing the declaration data to ScopeModel's index-only operation.
+    pub fn register_binding(
+        &mut self,
+        scope: ScopeId,
+        binding: BindingIdentifier,
+        flags: SymbolFlags,
+    ) -> SymbolId {
+        let name = binding.name(self.ast);
+        let text = self.ast.get_utf8(name);
+        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state
+            .semantic
+            .register_binding(scope, binding.node_id(), name, text, flags)
+    }
+
+    /// Read a reference's AST name and register allocations before passing its
+    /// semantic record to ScopeModel. The caller supplies its resolved target.
+    pub fn register_reference(
+        &mut self,
+        scope: ScopeId,
+        reference: IdentifierReference,
+        target: Option<SymbolId>,
+        flags: ReferenceFlags,
+    ) -> ReferenceId {
+        let reference = Reference {
+            name: reference.name(self.ast),
+            node: reference.node_id(),
+            scope,
+            symbol: target,
+            flags,
+        };
+        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.register_reference(reference)
+    }
+
     /// Allocate nodes in their final evaluation scope and register only the new
     /// NodeId range. The closure must only create nodes; existing AST edges are
     /// edited through mutation APIs. Bindings, references and scope owners use
     /// their dedicated construction methods.
-    pub(crate) fn add_node<N>(&mut self, scope: ScopeId, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
+    pub fn add_node<N>(&mut self, scope: ScopeId, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
         debug_assert!(
             self.state.semantic.scope(scope).active,
             "target scope must be active"
@@ -129,7 +155,10 @@ impl<'a> Mutation<'_, '_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) -> ScopeId {
-        todo!("Register {kind:?} scope for {owner:?} below {parent:?} with {flags:?}")
+        self.state.semantic.grow_to(self.ast.node_count(), parent);
+        self.state
+            .semantic
+            .create_child_scope(parent, owner, kind, flags)
     }
 
     /// Transfer a scope to a replacement owner and change its kind/flags.
@@ -146,7 +175,8 @@ impl<'a> Mutation<'_, '_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) {
-        todo!("Convert {scope:?} to {kind:?} owned by {owner:?} with {flags:?}")
+        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
     /// Move the evaluation of a retained subtree between active scopes.
@@ -170,15 +200,15 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// scopes are updated separately by `move_subtree_to_scope`, since declaration
     /// ownership (e.g. a var hoist target) can differ from its evaluation scope.
     pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
-        todo!("Move binding {symbol:?} from {from:?} to {to:?}")
+        self.state.semantic.move_binding(from, to, symbol);
     }
 
     /// Change an active non-root scope's parent to another active scope.
     ///
     /// Reject cycles. Preserve owner, bindings and internal node/reference mappings;
-    /// refresh affected hoist targets and inherited flags in descendants, and
-    /// direct-eval flags along the old/new ancestry. Function and static-block
-    /// scopes remain their own hoist targets.
+    /// delegate tree/hoist-target changes to ScopeModel and coordinate any
+    /// syntax-dependent strictness/direct-eval changes here. Function and
+    /// static-block scopes remain their own hoist targets.
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         todo!("Reparent {scope:?} below {parent:?}")
     }
@@ -190,7 +220,7 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// scope inactive without recycling its ID. Reused scopes use `convert_scope`
     /// instead; this operation does not recursively delete a subtree.
     pub fn remove_scope(&mut self, scope: ScopeId) {
-        todo!("Retire empty scope {scope:?}")
+        self.state.semantic.remove_scope(scope);
     }
 
     /// Clear the evaluation-scope mapping of a detached syntax shell only.
@@ -199,6 +229,6 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// visit its children: they may already be retained elsewhere in the AST.
     /// Example: the discarded ExpressionStatement after extracting its expression.
     pub fn clear_node_scope(&mut self, node: NodeId) {
-        todo!("Clear scope mapping for detached shell {node:?}")
+        self.state.semantic.clear_node_scope(node);
     }
 }
