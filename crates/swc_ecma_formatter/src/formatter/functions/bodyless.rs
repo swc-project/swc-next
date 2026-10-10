@@ -114,7 +114,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if generic.is_some() && preceding.is_some() {
             let prepared = self.prepare_type_list_prefix(
                 Span::new(prefix_start, signature_start),
-                TypeListKind::Parameters,
+                TypeListKind::Parameters {
+                    has_left_owner: true,
+                },
             );
             if prepared.left_mode == ContentMode::Verbatim {
                 preceding_mode = ContentMode::Verbatim;
