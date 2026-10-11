@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T, U> {}
+class Derived<T> extends Base<T, Array<string>> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Base<T, U> {}
+class Derived<T> extends Base<T, Array<string>> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Base<T, U> {}
+class Derived<
+  T,
+> extends Base<
+  T,
+  Array<string>
+> {}

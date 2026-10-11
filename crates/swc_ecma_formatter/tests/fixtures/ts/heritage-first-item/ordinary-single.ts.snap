@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Subject implements
+/* head */
+First {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Subject implements /* head */ First {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Subject
+  implements /* head */ First {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class Subject implements /* head */ First {}
