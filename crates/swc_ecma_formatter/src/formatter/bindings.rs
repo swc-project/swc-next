@@ -8,6 +8,8 @@ use super::expressions::objects::PropertyKeyQuoting;
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionPosition};
 use super::suppression::{ContentMode, SuppressionPosition};
+use super::types::PreparedBindingAnnotation;
+use super::types::generics::TypeArgumentOwner;
 use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     ArrayPattern, Ast, BindingPattern, BindingPatternData, BindingProperty, Comment, CommentKind,
@@ -16,8 +18,22 @@ use swc_next_ecma_ast::{
 };
 
 pub(super) struct PreparedAnnotatedBinding<'ast> {
-    pattern: BindingPattern,
-    annotation: super::types::PreparedBindingAnnotation<'ast>,
+    span: Span,
+    layout: AnnotatedBindingLayout<'ast>,
+}
+
+pub(super) struct DefiniteMarker {
+    pub(super) source: Option<Span>,
+    pub(super) movable: bool,
+}
+
+enum AnnotatedBindingLayout<'ast> {
+    Source,
+    Formatted {
+        pattern: BindingPattern,
+        definite: Option<DefiniteMarker>,
+        annotation: Option<PreparedBindingAnnotation<'ast>>,
+    },
 }
 
 pub(super) enum DefaultOwner<'ast> {
@@ -187,16 +203,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn prepare_annotated_binding(
         &self,
         pattern: BindingPattern,
-        annotation: TsTypeAnnotation,
-        type_argument_owner: super::types::TypeArgumentOwner,
+        span: Span,
+        definite: Option<DefiniteMarker>,
+        annotation: Option<TsTypeAnnotation>,
+        type_argument_owner: TypeArgumentOwner,
+        mode: ContentMode,
     ) -> Result<PreparedAnnotatedBinding<'ast>, FormatError> {
+        if mode == ContentMode::Verbatim {
+            return Ok(PreparedAnnotatedBinding {
+                span,
+                layout: AnnotatedBindingLayout::Source,
+            });
+        }
+        let annotation = annotation
+            .map(|annotation| {
+                self.prepare_binding_annotation_content(
+                    pattern.span(self.ast).end,
+                    annotation,
+                    type_argument_owner,
+                )
+            })
+            .transpose()?;
         Ok(PreparedAnnotatedBinding {
-            pattern,
-            annotation: self.prepare_binding_annotation_content(
-                pattern.span(self.ast).end,
+            span,
+            layout: AnnotatedBindingLayout::Formatted {
+                pattern,
+                definite,
                 annotation,
-                type_argument_owner,
-            )?,
+            },
         })
     }
 
@@ -206,10 +240,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         group: BindingGroup,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let (pattern, definite, annotation) = match binding.layout {
+            AnnotatedBindingLayout::Source => {
+                self.format_verbatim(binding.span, writer)?;
+                return Ok(None);
+            }
+            AnnotatedBindingLayout::Formatted {
+                pattern,
+                definite,
+                annotation,
+            } => (pattern, definite, annotation),
+        };
         let tail =
-            self.format_binding_with_group(binding.pattern, group, ContentMode::Formatted, writer)?;
+            self.format_binding_with_group(pattern, group, ContentMode::Formatted, writer)?;
         self.format_expression_tail(tail, writer)?;
-        self.format_binding_annotation_content(binding.annotation, writer)
+        if let Some(marker) = definite {
+            if marker.movable && annotation.is_none() {
+                writer.text("!");
+                let pattern_end = pattern.span(self.ast).end;
+                let marker_start = marker.source.map_or(pattern_end, |span| span.start);
+                return Ok(Some(ExpressionTail {
+                    source_end: pattern_end,
+                    comments: self.comments.in_range(Span::new(pattern_end, marker_start)),
+                }));
+            }
+            if annotation.is_none() {
+                let pattern_end = pattern.span(self.ast).end;
+                let marker_start = marker.source.map_or(pattern_end, |span| span.start);
+                self.format_source_token_gap(pattern_end, marker_start, false, writer)?;
+            }
+            writer.text("!");
+        }
+        match annotation {
+            Some(annotation) => self.format_binding_annotation_content(annotation, writer),
+            None => Ok(None),
+        }
     }
 
     pub(super) fn format_parameter_binding(
