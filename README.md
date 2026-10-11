@@ -1,4 +1,4 @@
-## SWC Next
+# SWC Next
 
 SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a brand-new rewrite and redesign of [SWC](https://github.com/swc-project/swc), built around a flat, ESTree-based AST for performance and extensibility.
 
