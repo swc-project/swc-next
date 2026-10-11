@@ -86,7 +86,7 @@ fn ts_module_declaration_context_error(
     }
     if quoted
         && parent_kind != NodeKind::Program
-        && !is_ts_module_augmentation_external(builder, parent, ancestors)
+        && !is_ts_module_augmentation_external(builder.ast, parent, ancestors)
     {
         return Some((
             declaration.id(builder.ast).node_id(),
@@ -126,7 +126,7 @@ fn ts_global_declaration_context_error(
         ));
     }
 
-    if is_ts_module_augmentation_external(builder, parent, ancestors) {
+    if is_ts_module_augmentation_external(builder.ast, parent, ancestors) {
         return None;
     }
     Some((
@@ -135,34 +135,41 @@ fn ts_global_declaration_context_error(
     ))
 }
 
+/// Recognizes external augmentation containers: an ESM/CommonJS program or the
+/// direct body of a top-level ambient module in a Script.
+/// `parent` is the effective parent after skipping an export declaration wrapper,
+/// and `ancestors` starts immediately above it.
 fn is_ts_module_augmentation_external(
-    builder: &SemanticBuilder<'_, '_>,
+    tree: &Ast<'_>,
     parent: NodeId,
     mut ancestors: impl Iterator<Item = NodeId>,
 ) -> bool {
     let external_module = matches!(
-        builder.ast.source_type(),
+        tree.source_type(),
         SourceType::Module | SourceType::CommonJs
     );
-    match builder.ast.node_kind(parent) {
+    match tree.node_kind(parent) {
         NodeKind::Program => external_module,
         // In an external module, a quoted module declaration is an augmentation.
         NodeKind::TsModuleBlock if !external_module => {
-            let ambient_module =
-                ancestors
-                    .next()
-                    .is_some_and(|parent| match builder.ast.kind_data(parent) {
-                        NodeKindData::TsModuleDeclaration(module) => matches!(
-                            builder.ast.ts_module_name_data(module.id(builder.ast)),
-                            TsModuleNameData::StringLiteral(_)
-                        ),
-                        NodeKindData::TsGlobalDeclaration(_) => true,
-                        _ => false,
-                    });
-            ambient_module
-                && ancestors
-                    .next()
-                    .is_some_and(|parent| builder.ast.node_kind(parent) == NodeKind::Program)
+            let Some(owner) = ancestors.next() else {
+                return false;
+            };
+            let ambient_module = match tree.kind_data(owner) {
+                NodeKindData::TsModuleDeclaration(module) => matches!(
+                    tree.ts_module_name_data(module.id(tree)),
+                    TsModuleNameData::StringLiteral(_)
+                ),
+                NodeKindData::TsGlobalDeclaration(_) => true,
+                _ => false,
+            };
+            if !ambient_module {
+                return false;
+            }
+            let Some(program) = ancestors.next() else {
+                return false;
+            };
+            tree.node_kind(program) == NodeKind::Program
         }
         _ => false,
     }

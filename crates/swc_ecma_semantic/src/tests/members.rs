@@ -379,7 +379,7 @@ fn ambient_external_modules_are_lexical_only() {
 }
 
 #[test]
-fn namespace_contexts() {
+fn augmentation_contexts() {
     let allocator = Allocator::new();
     let ts_commonjs = Options {
         source_type: SourceType::CommonJs,
