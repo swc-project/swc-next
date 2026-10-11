@@ -397,11 +397,8 @@ fn namespace_contexts() {
     let invalid = has_syntax_diagnostics(&allocator, "declare global {}", ts_commonjs);
     assert!(!invalid);
 
-    let invalid = has_syntax_diagnostics(
-        &allocator,
-        "declare module 'pkg' { global {} }",
-        ts_commonjs,
-    );
+    let source = "declare module 'pkg' { global {} }";
+    let invalid = has_syntax_diagnostics(&allocator, source, ts_commonjs);
     assert!(invalid);
 
     let invalid = has_syntax_diagnostics(&allocator, "global {}", ts_commonjs);
@@ -454,11 +451,8 @@ fn global_augmentation_recovery() {
     assert!(!reference.flags.is_read());
     assert!(!reference.flags.is_write());
 
-    let (ast, checked) = analyze_syntax_source(
-        &allocator,
-        "export {}; declare global { global {} }",
-        ts_unambiguous,
-    );
+    let source = "export {}; declare global { global {} }";
+    let (ast, checked) = analyze_syntax_source(&allocator, source, ts_unambiguous);
     assert_eq!(ast.source_type(), SourceType::Module);
     assert_eq!(checked.diagnostics.len(), 1);
 }
