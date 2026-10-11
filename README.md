@@ -9,12 +9,7 @@ This project is the next generation of [SWC](https://github.com/swc-project/swc)
 
 ## Roadmap
 
-There's a long way to go, but luckly it could be progressive.
-
-- [x] Flattening AST design
-- [x] Parser, Visit, and Transformation APIs.
-- [ ] Port SWC minifier.
-- [ ] Port SWC transformation.
+See https://github.com/swc-project/swc-next/issues/181
 
 ## Design & Architecture
 
