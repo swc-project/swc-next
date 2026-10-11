@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let alpha /* name */ !;
+---------- Options ----------
+{}
+---------- Output ----------
+let alpha!; /* name */
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+let alpha!; /* name */
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+let alpha! /* name */

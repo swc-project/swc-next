@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value /* before bang */ ! /* @ts-expect-error */ : /* type */ number;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+let value! /* before bang */ /* @ts-expect-error */ : /* type */ number
