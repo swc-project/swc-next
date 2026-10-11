@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const fieldKey = "field"; class KeyIgnore { [
+/* prettier-ignore */
+fieldKey
+]?: number = 1; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const fieldKey = "field";
+class KeyIgnore {
+  [
+    /* prettier-ignore */
+    fieldKey
+  ]?: number = 1;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+const fieldKey = "field"
+class KeyIgnore {
+  [
+    /* prettier-ignore */
+    fieldKey
+  ]?: number = 1
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+const fieldKey =
+	"field";
+class KeyIgnore {
+	[
+		/* prettier-ignore */
+		fieldKey
+	]?: number = 1;
+}
