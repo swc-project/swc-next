@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1617/2992 (54.04%)
+Negative Passed: 1619/2992 (54.11%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -523,7 +523,6 @@ Failed: fixtures/typescript/tests/cases/compiler/primitiveMembers.ts - primitive
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsClassName.ts - primitiveTypeAsClassName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsInterfaceName.ts - primitiveTypeAsInterfaceName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/primitiveTypeAsInterfaceNameGeneric.ts - primitiveTypeAsInterfaceNameGeneric.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/privacyGloImportParseErrors.ts - privacyGloImportParseErrors.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithExport.ts - privacyTopLevelAmbientExternalModuleImportWithExport_core.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privacyTopLevelAmbientExternalModuleImportWithoutExport.ts - privacyTopLevelAmbientExternalModuleImportWithoutExport_core.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/privateNameJsx.tsx - privateNameJsx.tsx: expected a parse or early error, but pipeline succeeded
@@ -642,7 +641,6 @@ Failed: fixtures/typescript/tests/cases/compiler/widenedTypes.ts - widenedTypes.
 Failed: fixtures/typescript/tests/cases/compiler/withStatement.ts - withStatement.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/withStatementNestedScope.ts - withStatementNestedScope.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientDeclarationsPatterns_merging3.ts - test.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientExternalModuleInsideNonAmbient.ts - ambientExternalModuleInsideNonAmbient.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/ambient/ambientExternalModuleInsideNonAmbientExternalModule.ts - ambientExternalModuleInsideNonAmbientExternalModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/async/es2017/asyncArrowFunction/asyncArrowFunction3_es2017.ts - asyncArrowFunction3_es2017.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/async/es2017/await_unaryExpression_es2017_1.ts - await_unaryExpression_es2017_1.ts: expected a parse or early error, but pipeline succeeded

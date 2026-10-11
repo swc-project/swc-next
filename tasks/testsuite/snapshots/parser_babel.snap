@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Positive Passed: 2234/2235 (99.96%)
-Negative Passed: 1642/1743 (94.21%)
+Positive Passed: 2233/2235 (99.91%)
+Negative Passed: 1643/1743 (94.26%)
 Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
@@ -77,8 +77,8 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-import/input.ts - typescript/module-namespace/invalid-body-import: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-namespace-export/input.ts - typescript/module-namespace/invalid-body-namespace-export: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-declare-module-identifier/input.ts - typescript/module-namespace/invalid-declare-module-identifier: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-global-redeclare-block-level-variable/input.ts - typescript/module-namespace/invalid-global-redeclare-block-level-variable: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/module-identifier-invalid/input.ts - typescript/module-namespace/module-identifier-invalid: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/redeclaration-in-nested-module/input.ts - typescript/scope/redeclaration-in-nested-module: semantic: Ambient modules cannot be nested in other modules or namespaces at 88..99
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/invalid-within-single-statement-context/input.ts - typescript/type-alias/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-property-access/input.ts - typescript/type-arguments/instantiation-expression-property-access: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/export-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/export-invalid-type-in-type: expected a parse or early error, but pipeline succeeded

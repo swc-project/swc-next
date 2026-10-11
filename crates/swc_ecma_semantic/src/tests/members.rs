@@ -379,6 +379,91 @@ fn ambient_external_modules_are_lexical_only() {
 }
 
 #[test]
+fn namespace_contexts() {
+    let allocator = Allocator::new();
+    let ts_commonjs = Options {
+        source_type: SourceType::CommonJs,
+        ..ts_module_options()
+    };
+    let ts_script = Options {
+        source_type: SourceType::Script,
+        ..ts_module_options()
+    };
+    let dts_script = Options {
+        source_type: SourceType::Script,
+        ..dts_module_options()
+    };
+
+    let invalid = has_syntax_diagnostics(&allocator, "declare global {}", ts_commonjs);
+    assert!(!invalid);
+
+    let invalid = has_syntax_diagnostics(
+        &allocator,
+        "declare module 'pkg' { global {} }",
+        ts_commonjs,
+    );
+    assert!(invalid);
+
+    let invalid = has_syntax_diagnostics(&allocator, "global {}", ts_commonjs);
+    assert!(invalid);
+
+    let source = "declare module 'outer' { module 'inner' {} }";
+    let invalid = has_syntax_diagnostics(&allocator, source, ts_commonjs);
+    assert!(invalid);
+
+    let invalid = has_syntax_diagnostics(&allocator, "module 'pkg' { global {} }", dts_script);
+    assert!(!invalid);
+
+    let invalid = has_syntax_diagnostics(&allocator, "module 'pkg' { global {} }", ts_script);
+    assert!(invalid);
+}
+
+#[test]
+fn global_augmentation_recovery() {
+    let allocator = Allocator::new();
+    let ts_unambiguous = Options {
+        source_type: SourceType::Unambiguous,
+        ..ts_module_options()
+    };
+
+    let source = "export const value = 0; global { global { let copy: typeof value; } }";
+    let (ast, checked) = analyze_syntax_source(&allocator, source, ts_unambiguous);
+    assert_eq!(ast.source_type(), SourceType::Module);
+    assert_eq!(checked.diagnostics.len(), 3);
+    let outer = source.find("global").unwrap() as u32;
+    let inner = source.rfind("global").unwrap() as u32;
+    let spans = checked
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.span.start)
+        .collect::<Vec<_>>();
+    assert_eq!(spans, [inner, inner, outer]);
+    let unchecked = analyze(&ast, AnalyzeOptions::default());
+    assert!(unchecked.diagnostics.is_empty());
+    let value = symbol_named(&ast, &checked.semantic, b"value");
+    assert_eq!(
+        reference_symbol(&ast, &checked.semantic, b"value"),
+        Some(value)
+    );
+    assert_eq!(
+        reference_symbol(&ast, &unchecked.semantic, b"value"),
+        Some(value)
+    );
+    let reference = checked.semantic.iter_references().next().unwrap().reference;
+    assert_eq!(reference.flags.space, ReferenceSpace::Typeof);
+    assert!(!reference.flags.is_read());
+    assert!(!reference.flags.is_write());
+
+    let (ast, checked) = analyze_syntax_source(
+        &allocator,
+        "export {}; declare global { global {} }",
+        ts_unambiguous,
+    );
+    assert_eq!(ast.source_type(), SourceType::Module);
+    assert_eq!(checked.diagnostics.len(), 1);
+}
+
+#[test]
 fn global_augmentation_merging() {
     let allocator = Allocator::new();
     let ts_module = ts_module_options();

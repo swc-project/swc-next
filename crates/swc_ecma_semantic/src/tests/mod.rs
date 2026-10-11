@@ -15,7 +15,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use crate::{
     AnalyzeOptions, ExportOrigin, ExportTarget, NameResolution, ReferenceSpace, Semantic,
-    SymbolFlags, analyze, scope::ScopeKind,
+    SemanticReturn, SymbolFlags, analyze, scope::ScopeKind,
 };
 
 #[track_caller]
@@ -44,7 +44,11 @@ fn analyze_with_options<'a>(
 }
 
 #[track_caller]
-fn has_syntax_diagnostics(allocator: &Allocator, source: &str, parser_options: Options) -> bool {
+fn analyze_syntax_source<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    parser_options: Options,
+) -> (Ast<'a>, SemanticReturn<'a>) {
     let parse = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
     assert!(parse.diagnostics.is_empty());
     let result = analyze(
@@ -54,6 +58,12 @@ fn has_syntax_diagnostics(allocator: &Allocator, source: &str, parser_options: O
             ..AnalyzeOptions::default()
         },
     );
+    (parse.ast, result)
+}
+
+#[track_caller]
+fn has_syntax_diagnostics(allocator: &Allocator, source: &str, parser_options: Options) -> bool {
+    let (_, result) = analyze_syntax_source(allocator, source, parser_options);
     !result.diagnostics.is_empty()
 }
 
