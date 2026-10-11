@@ -1,7 +1,9 @@
 //! ECMAScript and TypeScript parser implementation.
 //!
-//! This module is a Rust port of the parser design from
-//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
+//! Parser based on
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku) (MIT).
+//! Modified for SWC Next.
+//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 use std::hint::cold_path;
 use std::{borrow::Cow, mem};

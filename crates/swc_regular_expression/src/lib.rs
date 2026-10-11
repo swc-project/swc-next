@@ -1,3 +1,8 @@
+//! Based on Oxc's MIT-licensed `oxc_regular_expression` 0.137.0.
+//!
+//! Modified for SWC Next's allocator, diagnostics, and source spans, focusing on validation.
+//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
+
 #![expect(clippy::missing_errors_doc)]
 
 mod diagnostic;

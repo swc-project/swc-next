@@ -1,4 +1,6 @@
-// https://github.com/oxc-project/oxc/tree/main/crates/oxc_transformer/src/options/babel
+// Based on https://github.com/oxc-project/oxc/tree/main/crates/oxc_transformer/src/options/babel
+// Babel option handling modified for SWC Next.
+// MIT license: see THIRD_PARTY_NOTICES at the repository root.
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, de::DeserializeOwned};

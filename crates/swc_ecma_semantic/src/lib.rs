@@ -12,8 +12,10 @@
 //! retaining occurrence-local visibility. This does not model TypeScript's
 //! shared identities between type parameters and same-named instance members.
 //!
-//! This crate is a Rust port of the semantic-analysis design from
-//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
+//! Semantic analysis based on
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku) (MIT).
+//! Modified for SWC Next.
+//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 #![deny(clippy::all)]
 #![deny(unused)]

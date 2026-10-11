@@ -1,6 +1,5 @@
-// Ported from upstream esbuild's internal/js_printer/js_printer_test.go.
-// This upstream mirror should normally only change when syncing with esbuild.
-// Add swc-next-specific regressions to the parent suite (`../js.rs` or `../ts.rs`).
+// Based on upstream esbuild's internal/js_printer/js_printer_test.go, modified for SWC Next.
+// MIT license: see THIRD_PARTY_NOTICES at the repository root.
 use crate::{
     expect_printed, expect_printed_ascii, expect_printed_jsx, expect_printed_jsx_ascii,
     expect_printed_jsx_minify, expect_printed_minify, expect_printed_minify_ascii,

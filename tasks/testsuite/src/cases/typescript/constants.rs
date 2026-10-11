@@ -1,7 +1,10 @@
 //! TypeScript coverage exclusions.
 //!
-//! Ported from Oxc's `tasks/coverage/src/typescript/constants.rs` at
+//! Based on Oxc's `tasks/coverage/src/typescript/constants.rs` at
 //! <https://github.com/oxc-project/oxc/blob/e86e0d8125d2bc17fb7cf7f319f35646c7ab7fab/tasks/coverage/src/typescript/constants.rs>.
+//! Modified for SWC Next.
+//!
+//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 pub const NOT_SUPPORTED_ERROR_CODES: &[&str] = &[
     "1006", "1055", "1058", "1062", "1064", "1065", "1084", "1148", "1166", "1169", "1170", "1192",
