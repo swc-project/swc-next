@@ -133,7 +133,7 @@ pub(super) enum TypeGap<'ast> {
     Source(Span),
     Formatted(CommentBoundary<'ast>),
 }
-struct PreparedAnnotation<'ast> {
+pub(super) struct PreparedAnnotation<'ast> {
     content: AnnotationContent,
     prefix: TypeBoundaryLayout<'ast>,
 }
@@ -187,7 +187,7 @@ enum AnnotationContent {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    fn format_annotation_content(
+    pub(super) fn format_annotation_content(
         &mut self,
         content: PreparedAnnotation<'ast>,
         writer: &mut Writer<'ast>,
@@ -200,7 +200,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         preceding_end: u32,
         annotation: TsTypeAnnotation,
     ) -> Result<PreparedAnnotation<'ast>, FormatError> {
+        self.prepare_annotation_content_mode(preceding_end, annotation, ContentMode::Formatted)
+    }
+
+    pub(super) fn prepare_annotation_content_mode(
+        &self,
+        preceding_end: u32,
+        annotation: TsTypeAnnotation,
+        mode: ContentMode,
+    ) -> Result<PreparedAnnotation<'ast>, FormatError> {
         let ast = self.ast;
+        if mode == ContentMode::Verbatim {
+            return Ok(PreparedAnnotation {
+                content: AnnotationContent::Source(annotation),
+                prefix: TypeBoundaryLayout::Source(Span::new(
+                    preceding_end,
+                    annotation.span(ast).start,
+                )),
+            });
+        }
         let node = annotation.type_annotation(ast);
         let gap = Span::new(preceding_end, node.span(ast).start);
         let comments = self.comments.in_range(gap);
