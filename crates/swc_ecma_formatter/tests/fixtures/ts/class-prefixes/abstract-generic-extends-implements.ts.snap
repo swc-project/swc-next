@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T> { value = 7; }
+interface I { value: number; }
+abstract class A<T = number> extends Base<T> implements I {}
+class B extends A<number> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Base<T> {
+  value = 7;
+}
+interface I {
+  value: number;
+}
+abstract class A<T = number> extends Base<T> implements I {}
+class B extends A<number> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Base<T> {
+  value = 7;
+}
+interface I {
+  value: number;
+}
+abstract class A<
+  T = number,
+>
+  extends Base<T>
+  implements I {}
+class B extends A<number> {}

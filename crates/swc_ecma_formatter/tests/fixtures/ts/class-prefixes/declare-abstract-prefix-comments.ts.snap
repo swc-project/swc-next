@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* declared */ abstract /* class token */ class A<T = number> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare abstract class /* declared */ /* class token */ A<T = number> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare abstract class /* declared */ /* class token */ A<
+  T = number,
+> {}

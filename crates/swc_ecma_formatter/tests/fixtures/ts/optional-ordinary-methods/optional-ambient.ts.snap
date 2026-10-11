@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare class OptionalAmbient { method?(): number; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare class OptionalAmbient {
+  method?(): number;
+}
