@@ -1,8 +1,8 @@
 //! Class modifiers belong to the member, before its real key and function.
 
 use swc_next_ecma_ast::{
-    Accessibility, Ast, GetSpan, MethodDefinition, MethodDefinitionKind, PropertyKey,
-    PropertyKeyData, Span, TsMethodDefinition,
+    Accessibility, Ast, GetSpan, MethodDefinition, MethodDefinitionKind, PropertyDefinition,
+    PropertyKey, PropertyKeyData, Span, TsMethodDefinition,
 };
 
 use crate::formatter::comments::CommentRunLayout;
@@ -11,23 +11,28 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::{Formatter, suppression::SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
+const DECLARE: u8 = 1;
 const PUBLIC: u8 = 2;
 const PRIVATE: u8 = 4;
 const PROTECTED: u8 = 8;
 const STATIC: u8 = 16;
 const ABSTRACT: u8 = 32;
 const OVERRIDE: u8 = 64;
-const MODIFIERS: [(&str, u8); 6] = [
+const READONLY: u8 = 128;
+const MODIFIERS: [(&str, u8); 8] = [
+    ("declare", DECLARE),
     ("public", PUBLIC),
     ("private", PRIVATE),
     ("protected", PROTECTED),
     ("static", STATIC),
     ("abstract", ABSTRACT),
     ("override", OVERRIDE),
+    ("readonly", READONLY),
 ];
 
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum ClassMemberPrefixOwner {
+    Field(PropertyDefinition),
     Method(MethodDefinition),
     Bodyless(TsMethodDefinition),
 }
@@ -35,6 +40,7 @@ pub(in crate::formatter) enum ClassMemberPrefixOwner {
 impl ClassMemberPrefixOwner {
     pub(in crate::formatter) fn key_context(self, ast: &Ast<'_>) -> PropertyKeyContext {
         let (kind, optional, generator, generics) = match self {
+            Self::Field(_) => return PropertyKeyContext::ClassField,
             Self::Method(method) => {
                 let function = method.value(ast);
                 (
@@ -179,23 +185,36 @@ impl ClassMemberPrefix {
 impl ClassMemberPrefixOwner {
     fn key(self, ast: &Ast<'_>) -> PropertyKey {
         match self {
+            Self::Field(node) => node.key(ast),
             Self::Method(node) => node.key(ast),
             Self::Bodyless(node) => node.key(ast),
         }
     }
     fn modifiers(self, ast: &Ast<'_>) -> u8 {
-        let (accessibility, is_static, is_abstract, is_override) = match self {
+        let (accessibility, is_static, declare, is_abstract, is_override, readonly) = match self {
+            Self::Field(node) => (
+                node.accessibility(ast),
+                node.r#static(ast),
+                node.declare(ast),
+                node.r#abstract(ast),
+                node.r#override(ast),
+                node.readonly(ast),
+            ),
             Self::Method(node) => (
                 node.accessibility(ast),
                 node.r#static(ast),
+                false,
                 node.r#abstract(ast),
                 node.r#override(ast),
+                false,
             ),
             Self::Bodyless(node) => (
                 node.accessibility(ast),
                 node.r#static(ast),
+                false,
                 node.r#abstract(ast),
                 node.r#override(ast),
+                false,
             ),
         };
         let accessibility = match accessibility {
@@ -206,11 +225,20 @@ impl ClassMemberPrefixOwner {
         };
         accessibility
             | if is_static { STATIC } else { 0 }
+            | if declare { DECLARE } else { 0 }
             | if is_abstract { ABSTRACT } else { 0 }
             | if is_override { OVERRIDE } else { 0 }
+            | if readonly { READONLY } else { 0 }
     }
     fn prefix_tokens(self, ast: &Ast<'_>) -> (Option<&'static str>, bool, bool) {
         let (kind, is_async, generator, computed) = match self {
+            Self::Field(node) => {
+                return (
+                    node.accessor(ast).then_some("accessor"),
+                    false,
+                    node.computed(ast),
+                );
+            }
             Self::Method(node) => {
                 let function = node.value(ast);
                 (
@@ -247,7 +275,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         core_start: u32,
     ) -> Result<Option<ClassMemberPrefixParts>, FormatError> {
         let ast = self.ast;
-        if !ast.is_ts() {
+        if !ast.is_ts()
+            && !matches!(owner, ClassMemberPrefixOwner::Field(node) if node.accessor(ast))
+        {
             return Ok(None);
         }
         let expected = owner.modifiers(ast);
@@ -269,6 +299,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Ok(Some(parts));
         }
+        let field_keyword =
+            matches!(owner, ClassMemberPrefixOwner::Field(node) if node.accessor(ast));
         let mut lexical_comments = comments.iter().peekable();
         let mut cursor = span.start;
         let mut end = cursor;
@@ -319,7 +351,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             // The AST selects flags; this span retains the existing source prefix layout.
             cursor += length;
-            if star.is_none() && opening.is_none() && keyword.is_none() {
+            if star.is_none() && opening.is_none() && (keyword.is_none() || field_keyword) {
                 end = cursor;
             }
         }
