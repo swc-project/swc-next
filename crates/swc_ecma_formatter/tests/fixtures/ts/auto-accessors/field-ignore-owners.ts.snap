@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Owners {
+  accessor [first  +  second
+  /* prettier-ignore */
+  ]?: Box < number > = { a:1,b:2 };
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >;
+}
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+class Owners {
+  accessor [
+    first + second
+    /* prettier-ignore */
+  ]?: Box < number > = { a: 1, b: 2 };
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Owners {
+  accessor [
+    first + second
+    /* prettier-ignore */
+  ]?: Box < number > =
+    { a: 1, b: 2 }
+  accessor 1.0e+00 // prettier-ignore
+  : Box < number >
+}

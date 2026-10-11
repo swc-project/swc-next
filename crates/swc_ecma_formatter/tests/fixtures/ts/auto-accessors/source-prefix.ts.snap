@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abstract class Prefix { accessor override public /* @ts-expect-error */ static abstract field: number; }
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+abstract class Prefix {
+  accessor override public /* @ts-expect-error */ static abstract field: number; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+abstract class Prefix {
+  accessor override public /* @ts-expect-error */ static abstract field: number }

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Key { [first  +  second] /* prettier-ignore */ ?: Box<number>; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Key {
+  [first  +  second] /* prettier-ignore */?: Box<number>;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class Key {
+  [
+    first  +  second
+  ] /* prettier-ignore */?: Box<number>
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class Key {
+	[
+		first  +  second
+	] /* prettier-ignore */?: Box<number>;
+}

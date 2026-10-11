@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { private secret = 3; protected value = 7; read() { return this.secret + this.value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  private secret = 3;
+  protected value = 7;
+  read() {
+    return this.secret + this.value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  private secret = 3;
+  protected value = 7;
+  read() {
+    return (
+      this.secret +
+      this.value
+    );
+  }
+}
