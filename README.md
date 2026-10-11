@@ -1,6 +1,6 @@
 ## SWC Next
 
-SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc), built around a flat, ESTree-based AST for performance and extensibility.
+SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a brand-new rewrite and redesign of [SWC](https://github.com/swc-project/swc), built around a flat, ESTree-based AST for performance and extensibility.
 
 - **Performance:** Compact AST storage and optimized components, enabling 2x faster parsing and transformations than SWC.
 - **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript.
@@ -15,6 +15,12 @@ See https://github.com/swc-project/swc-next/issues/181
 ## Design & Architecture
 
 See our [docs](/docs/)
+
+## Compatibility
+
+SWC Next aims to provide capabilities while supporting parts of SWC's [`.swcrc` configuration](https://swc.rs/docs/configuration/swcrc). Its Rust and JavaScript APIs will not be compatible with SWC's.
+
+<sub><em>Configuration compatibility is planned and has not been implemented yet.</em></sub>
 
 ## Credits
 
