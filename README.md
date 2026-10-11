@@ -13,21 +13,21 @@
 
 # SWC Next
 
-SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a brand-new rewrite and redesign of [SWC](https://github.com/swc-project/swc), built around a flat, ESTree-based AST for performance and extensibility.
+SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc) from the ground up, built around a flat, ESTree-based AST for performance and extensibility.
 
 - **Performance:** Compact AST storage and optimized components, enabling 2x faster parsing and transformations than SWC.
-- **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript.
+- **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript enable writing plugins in JavaScript.
 - **Correctness:** Tested against Test262, TypeScript, and Babel, supplemented by additional unit tests.
 
 This project is still in a very early stage; please continue to use SWC for production.
 
 ## Roadmap
 
-See https://github.com/swc-project/swc-next/issues/181
+See the [project roadmap](https://github.com/swc-project/swc-next/issues/181).
 
 ## Design & Architecture
 
-See our [docs](/docs/)
+See the [Flattening AST design](docs/FlatteningAST.md) and other documents.
 
 ## Soundness
 
@@ -37,18 +37,18 @@ The current Rust AST API has known soundness issues:
 
 ## Compatibility
 
-SWC Next aims to provide capabilities while supporting parts of SWC's [`.swcrc` configuration](https://swc.rs/docs/configuration/swcrc). Its Rust and JavaScript APIs will not be compatible with SWC's.
+SWC Next plans to support selected SWC [`.swcrc` options](https://swc.rs/docs/configuration/swcrc). Its Rust and JavaScript APIs will not be compatible with SWC's.
 
-This is planned but has not been implemented yet.
+Configuration compatibility has not been implemented yet.
 
 ## Credits
 
 Thanks to:
 
-- The [yuku](https://github.com/yuku-toolchain/yuku), which provides the prototype of ESTree AST design, parser and semantic analysis.
-- The [zig](https://github.com/ziglang/zig) compiler and the [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
-- The [oxc](https://github.com/oxc-project/oxc), which provides high-performance arena data structures, regular expression parser, and inspires the ast-tools / test harness design.
-- The [esbuild](https://github.com/evanw/esbuild), which provides the prototype of Code generator.
+- [Yuku](https://github.com/yuku-toolchain/yuku), whose AST definitions, parser, and semantic analysis form the basis of the corresponding SWC Next components, with modifications for SWC Next.
+- The [Zig](https://codeberg.org/ziglang/zig) compiler and [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
+- [Oxc](https://github.com/oxc-project/oxc), whose arena data structures and regular expression parser form the basis of our implementations, with modifications for SWC Next. Its AST tooling and test harness also inform our design.
+- [esbuild](https://github.com/evanw/esbuild), whose printer implementation and codegen tests form the basis of ours, with modifications for SWC Next.
 
 ## License
 
