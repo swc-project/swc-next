@@ -54,6 +54,43 @@ pub(super) fn check_tuple_optional_type(
     }
 }
 
+pub(super) fn check_ts_module_declaration(
+    builder: &mut SemanticBuilder<'_, '_>,
+    declaration: TsModuleDeclaration,
+) {
+    let Some(mut parent) = builder.parent() else {
+        return;
+    };
+    if matches!(
+        builder.ast.kind_data(parent),
+        NodeKindData::ExportNamedDeclaration(_)
+    ) {
+        let Some(container) = builder.ancestors().nth(2) else {
+            return;
+        };
+        parent = container;
+    }
+    if matches!(
+        builder.ast.node_kind(parent),
+        NodeKind::Program | NodeKind::TsModuleBlock | NodeKind::TsModuleDeclaration
+    ) {
+        return;
+    }
+    let message = match builder.ast.ts_module_name_data(declaration.id(builder.ast)) {
+        TsModuleNameData::StringLiteral(_) => {
+            "An ambient module declaration is only allowed at the top level in a file"
+        }
+        TsModuleNameData::BindingIdentifier(_) | TsModuleNameData::TsQualifiedName(_) => {
+            "A namespace declaration is only allowed at the top level of a namespace or module"
+        }
+    };
+    builder.report(
+        builder.ast.span(declaration.node_id()),
+        message,
+        ReportOptions::default(),
+    );
+}
+
 pub(super) fn check_ts_alias_issues(
     builder: &mut SemanticBuilder<'_, '_>,
     export_alias_issues: impl IntoIterator<Item = TsNamespaceExportAliasIssue>,
