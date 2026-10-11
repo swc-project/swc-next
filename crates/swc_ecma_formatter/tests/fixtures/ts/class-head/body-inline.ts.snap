@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A extends Base implements First, Second /* body */ { method(){} }
+---------- Options ----------
+{}
+---------- Output ----------
+class A extends Base implements First, Second /* body */ {
+  method() {}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class A
+  extends Base
+  implements
+    First,
+    Second /* body */ {
+  method() {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"useTabs":true}
+---------- Output ----------
+class A
+	extends Base
+	implements
+		First,
+		Second /* body */ {
+	method() {}
+}

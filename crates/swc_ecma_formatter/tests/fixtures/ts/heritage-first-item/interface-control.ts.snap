@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Subject<T> extends
+// head
+First<T>, Second<T> { value: T; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+interface Subject<T>
+  // head
+  extends First<T>, Second<T> {
+  value: T;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+interface Subject<T>
+  // head
+  extends
+    First<T>,
+    Second<T> {
+  value: T
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+interface Subject<T>
+	// head
+	extends First<T>, Second<T> {
+	value: T;
+}

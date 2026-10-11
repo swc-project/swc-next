@@ -50,6 +50,14 @@ pub(in crate::formatter) struct ExpressionTypeArguments<'ast> {
 }
 
 impl ExpressionTypeArguments<'_> {
+    pub(in crate::formatter) fn node(&self) -> TsTypeParameterInstantiation {
+        self.node
+    }
+
+    pub(in crate::formatter) fn suppress(&mut self) {
+        self.mode = ContentMode::Verbatim;
+    }
+
     pub(in crate::formatter) fn has_comments(&self) -> bool {
         self.has_comments
     }
