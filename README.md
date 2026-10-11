@@ -1,3 +1,16 @@
+<p align="center">
+  <a href="https://swc.rs/">
+    <img alt="SWC" src="./docs/images/swc.png" width="546">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://discord.com/invite/GnHbXTdZz6"><img alt="Discord" src="https://img.shields.io/discord/889779439272075314?label=Discord&amp;logo=discord"></a>
+  <a href="https://www.npmjs.com/package/@swc-next/core"><img alt="npm version (@swc-next/core)" src="https://img.shields.io/npm/v/@swc-next/core"></a>
+  <a href="https://crates.io/crates/swc_next_ecma_parser"><img alt="crates.io version (swc_next_ecma_parser)" src="https://img.shields.io/crates/v/swc_next_ecma_parser"></a>
+  <a href="./LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+</p>
+
 # SWC Next
 
 SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a brand-new rewrite and redesign of [SWC](https://github.com/swc-project/swc), built around a flat, ESTree-based AST for performance and extensibility.
