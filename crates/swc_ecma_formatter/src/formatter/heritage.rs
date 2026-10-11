@@ -1,6 +1,6 @@
-//! Heritage keywords share a prepared continuation owner.
+//! Heritage keywords and comma items share one prepared continuation owner.
 
-use swc_next_ecma_ast::{Comment, Expr, ExprData, Span, TsTypeParameterInstantiation};
+use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, Span, TsTypeParameterInstantiation};
 
 use super::Formatter;
 use super::comments::{CommentBinding, CommentBoundary, CommentRunLayout};
@@ -60,6 +60,33 @@ enum HeritagePrefixLayout<'ast> {
 enum HeritageLeading {
     None,
     Keyword(CommentBinding),
+    FirstItem,
+    Preceding,
+}
+
+impl HeritagePrefix<'_> {
+    pub(super) fn with_preceding_owner(mut self) -> Self {
+        if !self.has_comments {
+            return self;
+        }
+        if let HeritagePrefixLayout::Formatted {
+            leading: leading @ HeritageLeading::Keyword(CommentBinding::Unbound),
+            after,
+            ..
+        } = &mut self.layout
+        {
+            *leading = if after
+                .comments()
+                .iter()
+                .all(|comment| comment.kind == CommentKind::Line)
+            {
+                HeritageLeading::Preceding
+            } else {
+                HeritageLeading::FirstItem
+            };
+        }
+        self
+    }
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -223,13 +250,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => (before, after, leading, inline_target, first_start),
         };
         self.format_comment_boundary(&before, writer)?;
-        before.gap().write(writer, FlatSeparator::Space, |writer| {
-            if layout.grouped() {
-                writer.line();
-            } else {
-                writer.space();
-            }
-        });
+        if matches!(leading, HeritageLeading::Preceding) {
+            self.format_comment_boundary(&after, writer)?;
+            after
+                .gap()
+                .write(writer, FlatSeparator::Space, Writer::hard_line);
+        } else {
+            before.gap().write(writer, FlatSeparator::Space, |writer| {
+                if layout.grouped() {
+                    writer.line();
+                } else {
+                    writer.space();
+                }
+            });
+        }
         if matches!(leading, HeritageLeading::Keyword(_)) {
             if matches!(layout, HeritageLayout::Multiple)
                 && matches!(leading, HeritageLeading::Keyword(CommentBinding::Unbound))
@@ -252,11 +286,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(keyword);
             let write_items = |formatter: &mut Self, writer: &mut Writer<'ast>| {
                 match leading {
-                    HeritageLeading::Keyword(_) => {
+                    HeritageLeading::Keyword(_)
+                    | HeritageLeading::FirstItem
+                    | HeritageLeading::Preceding => {
                         if matches!(layout, HeritageLayout::Multiple) {
                             writer.line();
                         } else {
                             writer.space();
+                        }
+                        if matches!(leading, HeritageLeading::FirstItem) {
+                            let comment_layout = if matches!(layout, HeritageLayout::Multiple) {
+                                CommentRunLayout::GroupedLeading(first_start)
+                            } else {
+                                CommentRunLayout::FlatLeading(first_start)
+                            };
+                            formatter.format_comment_boundary_with_layout(
+                                &after,
+                                comment_layout,
+                                writer,
+                            )?;
                         }
                     }
                     HeritageLeading::None => {

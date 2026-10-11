@@ -28,6 +28,7 @@ use swc_next_ecma_ast::{
 };
 
 pub(in crate::formatter) use self::for_initializer::ForInitializerGrammar;
+pub(in crate::formatter) use self::typescript::ExpressionTypeArguments;
 
 use self::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use self::assignment::AssignmentParent;
