@@ -26,7 +26,7 @@ The current Rust AST API has known soundness issues:
 
 SWC Next aims to provide capabilities while supporting parts of SWC's [`.swcrc` configuration](https://swc.rs/docs/configuration/swcrc). Its Rust and JavaScript APIs will not be compatible with SWC's.
 
-<sub><em>Configuration compatibility is planned and has not been implemented yet.</em></sub>
+This is planned but has not been implemented yet.
 
 ## Credits
 
