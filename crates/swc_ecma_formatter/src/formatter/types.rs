@@ -18,7 +18,7 @@ pub(super) use self::context::TypeContext;
 pub(super) use self::generics::TypeArgumentOwner;
 
 use super::Formatter;
-use super::bindings::{BindingGroup, BindingInitializerOwner, InitializerLayout};
+use super::bindings::{BindingGroup, BindingInitializerOwner, DefiniteMarker, InitializerLayout};
 use super::comments::{
     CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, PreparedTrailingRun,
 };
@@ -2241,18 +2241,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_typed_variable_declarator(
         &mut self,
         declarator: VariableDeclarator,
-        annotation: TsTypeAnnotation,
+        annotation: Option<TsTypeAnnotation>,
         context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
         let pattern = declarator.id(ast);
         let pattern_span = pattern.span(ast);
-        let left_end = annotation.span(ast).end;
+        let is_definite = declarator.definite(ast);
+        let mut definite = if is_definite && annotation.is_none() {
+            Some(self.variable_definite_marker(declarator, annotation))
+        } else {
+            None
+        };
+        let marker_end = definite
+            .as_ref()
+            .and_then(|marker| marker.source)
+            .map_or(pattern_span.end, |span| span.end);
+        let left_end = annotation.map_or(marker_end, |annotation| annotation.span(ast).end);
         let owner = Span::new(pattern_span.start, left_end);
         let Some(right) = declarator.init(ast) else {
-            let binding =
-                self.prepare_annotated_binding(pattern, annotation, TypeArgumentOwner::Ordinary)?;
+            if is_definite && definite.is_none() {
+                definite = Some(self.variable_definite_marker(declarator, annotation));
+            }
+            let binding = self.prepare_annotated_binding(
+                pattern,
+                owner,
+                definite,
+                annotation,
+                TypeArgumentOwner::Ordinary,
+                ContentMode::Formatted,
+            )?;
             let group = self.declaration_binding_group(pattern);
             return self.format_annotated_binding(binding, group, writer);
         };
@@ -2297,10 +2316,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let context = self.variable_initializer_context(right, context);
-        let is_identifier_annotation = matches!(
-            ast.binding_pattern_data(pattern),
-            BindingPatternData::BindingIdentifier(_)
-        );
+        let is_identifier_annotation = annotation.is_some()
+            && matches!(
+                ast.binding_pattern_data(pattern),
+                BindingPatternData::BindingIdentifier(_)
+            );
         let annotation_owner = |data| {
             if is_identifier_annotation && matches!(data, ExprData::ArrowFunctionExpression(_)) {
                 TypeArgumentOwner::ArrowVariableAnnotation
@@ -2315,23 +2335,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     BindingGroup::Auto
                 };
-                let owner = if left_mode == ContentMode::Formatted && is_identifier_annotation {
-                    let content = self.expression_content(right);
-                    annotation_owner(self.source_parentheses_rhs_content(
-                        content.data,
-                        context.with_content_mode(right_mode),
-                    ))
-                } else {
-                    TypeArgumentOwner::Ordinary
-                };
-                (group, InitializerLayout::Bound { gap, right_mode }, owner)
+                let type_argument_owner =
+                    if left_mode == ContentMode::Formatted && is_identifier_annotation {
+                        let content = self.expression_content(right);
+                        annotation_owner(self.source_parentheses_rhs_content(
+                            content.data,
+                            context.with_content_mode(right_mode),
+                        ))
+                    } else {
+                        TypeArgumentOwner::Ordinary
+                    };
+                (
+                    group,
+                    InitializerLayout::Bound { gap, right_mode },
+                    type_argument_owner,
+                )
             } else {
                 let content = self.expression_content(right);
                 let boundary = self.assignment_boundary(
                     left_end,
                     &content,
                     Span::new(operator, operator + 1),
-                    right.span(ast).end,
+                    right.span(self.ast).end,
                 )?;
                 let data = if is_identifier_annotation {
                     self.source_parentheses_rhs_content(
@@ -2345,9 +2370,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let rhs_layout = self.ordinary_rhs_layout(content.data, context, &boundary);
                 let (group, rhs_layout) = self.binding_initializer_layout(
                     pattern,
-                    BindingInitializerOwner::Variable {
-                        annotation: Some(annotation),
-                    },
+                    BindingInitializerOwner::Variable { annotation },
                     content.data,
                     &boundary,
                     rhs_layout,
@@ -2365,8 +2388,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if left_mode == ContentMode::Verbatim {
                 self.format_verbatim(owner, writer)?;
             } else {
-                let binding =
-                    self.prepare_annotated_binding(pattern, annotation, type_argument_owner)?;
+                if is_definite && definite.is_none() {
+                    definite = Some(self.variable_definite_marker(declarator, annotation));
+                }
+                let binding = self.prepare_annotated_binding(
+                    pattern,
+                    owner,
+                    definite,
+                    annotation,
+                    type_argument_owner,
+                    ContentMode::Formatted,
+                )?;
                 let tail = self.format_annotated_binding(binding, group, writer)?;
                 self.format_expression_tail(tail, writer)?;
             }
@@ -2596,5 +2628,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
     ) -> Result<TypeBoundary<'ast>, FormatError> {
         self.prepare_type_boundary(gap, TypeBoundaryTarget::ModuleReference)
+    }
+
+    fn variable_definite_marker(
+        &self,
+        declarator: VariableDeclarator,
+        annotation: Option<TsTypeAnnotation>,
+    ) -> DefiniteMarker {
+        if annotation.is_some() {
+            return DefiniteMarker {
+                source: None,
+                movable: false,
+            };
+        }
+        let ast = self.ast;
+        let end = declarator
+            .init(ast)
+            .map_or(declarator.span(ast).end, |right| right.span(ast).start);
+        let gap = Span::new(declarator.id(ast).span(ast).end, end);
+        let source = self
+            .find_token(gap, self.comments.in_range(gap), "!")
+            .map(|marker| Span::new(marker, marker + 1));
+        let prefix = Span::new(gap.start, source.map_or(gap.start, |span| span.start));
+        let comments = self.comments.in_range(prefix);
+        let movable = !comments.is_empty()
+            && self
+                .comment_binding(comments, prefix, None)
+                .allows_relocation(None);
+        DefiniteMarker { source, movable }
     }
 }

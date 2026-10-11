@@ -1,13 +1,21 @@
 //! Try blocks, catch bindings, and finally boundaries retain distinct owners.
+
 use super::{CompoundBlock, CompoundGap, Formatter};
+use crate::formatter::bindings::{BindingGroup, PreparedAnnotatedBinding};
 use crate::formatter::comments::CommentRunLayout;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::statements::{EmptyBlock, StatementBoundary};
-use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
     BindingPattern, CatchClause, Comment, CommentKind, GetSpan, Span, TryStatement,
+    TsTypeAnnotation,
 };
+
+enum CatchBinding<'ast> {
+    Plain(PlainCatchBinding<'ast>),
+    Annotated(AnnotatedCatchBinding<'ast>),
+}
 
 struct PlainCatchBinding<'ast> {
     pattern: BindingPattern,
@@ -19,6 +27,34 @@ struct PlainCatchBinding<'ast> {
     before_opening: &'ast [Comment],
     leading: &'ast [Comment],
     expanded: bool,
+}
+
+/// Direct parameter comments decide the catch parentheses' layout. Inner type
+/// comments remain with the prepared annotation and never expand this owner.
+struct AnnotatedCatchBinding<'ast> {
+    binding: PreparedAnnotatedBinding<'ast>,
+    head: CatchParameterHead<'ast>,
+    tail: CatchParameterTail<'ast>,
+    body_head: CompoundGap<'ast>,
+    expanded: bool,
+}
+
+enum CatchParameterHead<'ast> {
+    Parameter {
+        comments: &'ast [Comment],
+        opening: Span,
+        end: u32,
+    },
+    Source(Span),
+}
+
+enum CatchParameterTail<'ast> {
+    Parameter {
+        comments: &'ast [Comment],
+        closing: Span,
+        start: u32,
+    },
+    Source(Span),
 }
 
 struct PreparedCatch<'ast> {
@@ -34,7 +70,7 @@ struct FinallyBoundary<'ast> {
 }
 
 struct CatchHead<'ast> {
-    binding: Option<PlainCatchBinding<'ast>>,
+    binding: Option<CatchBinding<'ast>>,
     body_head: CompoundGap<'ast>,
     body: CompoundBlock<'ast>,
     leading_before_parameter: bool,
@@ -184,80 +220,91 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         let body_start = body.node.span(ast).start;
         let binding = if let Some(pattern) = node.param(ast) {
-            if node.type_annotation(ast).is_some() {
-                return Err(self.unsupported("typed catch binding", node));
-            }
-            let span = pattern.span(ast);
-            let head = self.compound_gap(Span::new(keyword_end, span.start));
-            let tail = self.compound_gap(Span::new(span.end, body_start));
-            let Some(opening) = self.find_token(head.span, head.comments, "(") else {
-                return Err(FormatError::unsupported(
-                    "catch opening boundary",
-                    None,
-                    head.span,
-                ));
-            };
-            let Some(closing) = self.find_token(tail.span, tail.comments, ")") else {
-                return Err(FormatError::unsupported(
-                    "catch closing boundary",
-                    None,
-                    tail.span,
-                ));
-            };
-            let mut mode = ContentMode::Formatted;
-            if self.has_suppression {
-                let before_close = self.comments.in_range(Span::new(span.end, closing));
-                if head.has_suppression()
-                    || self.content_mode(before_close) == ContentMode::Verbatim
-                {
-                    mode = ContentMode::Verbatim;
-                }
-                let after_close = self.comments.in_range(Span::new(closing + 1, body_start));
-                for position in self.suppression_positions(after_close, body_start) {
-                    match position {
-                        SuppressionPosition::Inline => body.mode = ContentMode::Verbatim,
-                        SuppressionPosition::EndOfLine | SuppressionPosition::OwnLine => {
-                            mode = ContentMode::Verbatim
+            if let Some(annotation) = node.type_annotation(ast) {
+                Some(CatchBinding::Annotated(
+                    self.prepare_annotated_catch_binding(
+                        pattern,
+                        annotation,
+                        keyword_end,
+                        &mut body,
+                    )?,
+                ))
+            } else {
+                let span = pattern.span(ast);
+                let head = self.compound_gap(Span::new(keyword_end, span.start));
+                let tail = self.compound_gap(Span::new(span.end, body_start));
+                let Some(opening) = self.find_token(head.span, head.comments, "(") else {
+                    return Err(FormatError::unsupported(
+                        "catch opening boundary",
+                        None,
+                        head.span,
+                    ));
+                };
+                let Some(closing) = self.find_token(tail.span, tail.comments, ")") else {
+                    return Err(FormatError::unsupported(
+                        "catch closing boundary",
+                        None,
+                        tail.span,
+                    ));
+                };
+                let mut mode = ContentMode::Formatted;
+                if self.has_suppression {
+                    let before_close = self.comments.in_range(Span::new(span.end, closing));
+                    if head.has_suppression()
+                        || self.content_mode(before_close) == ContentMode::Verbatim
+                    {
+                        mode = ContentMode::Verbatim;
+                    }
+                    let after_close = self.comments.in_range(Span::new(closing + 1, body_start));
+                    for position in self.suppression_positions(after_close, body_start) {
+                        match position {
+                            SuppressionPosition::Inline => body.mode = ContentMode::Verbatim,
+                            SuppressionPosition::EndOfLine | SuppressionPosition::OwnLine => {
+                                mode = ContentMode::Verbatim
+                            }
                         }
                     }
                 }
+                let head_split = head
+                    .comments
+                    .partition_point(|comment| comment.span.end <= opening);
+                let before_opening = &head.comments[..head_split];
+                let leading = &head.comments[head_split..];
+                let tail_split = tail
+                    .comments
+                    .partition_point(|comment| comment.span.end <= closing);
+                let parameter_tail = &tail.comments[..tail_split];
+                let expanded = !head.has_suppression()
+                    && !tail.has_suppression()
+                    && (leading.iter().any(|comment| {
+                        comment.kind == CommentKind::Line
+                            || self.line_breaks(comment.span.end, span.start) != 0
+                    }) || parameter_tail.iter().any(|comment| {
+                        comment.kind == CommentKind::Line
+                            || self.line_breaks(span.end, comment.span.start) != 0
+                    }));
+                Some(CatchBinding::Plain(PlainCatchBinding {
+                    pattern,
+                    mode,
+                    opening,
+                    closing,
+                    head,
+                    tail,
+                    before_opening,
+                    leading,
+                    expanded,
+                }))
             }
-            let head_split = head
-                .comments
-                .partition_point(|comment| comment.span.end <= opening);
-            let before_opening = &head.comments[..head_split];
-            let leading = &head.comments[head_split..];
-            let tail_split = tail
-                .comments
-                .partition_point(|comment| comment.span.end <= closing);
-            let parameter_tail = &tail.comments[..tail_split];
-            let expanded = !head.has_suppression()
-                && !tail.has_suppression()
-                && (leading.iter().any(|comment| {
-                    comment.kind == CommentKind::Line
-                        || self.line_breaks(comment.span.end, span.start) != 0
-                }) || parameter_tail.iter().any(|comment| {
-                    comment.kind == CommentKind::Line
-                        || self.line_breaks(span.end, comment.span.start) != 0
-                }));
-            Some(PlainCatchBinding {
-                pattern,
-                mode,
-                opening,
-                closing,
-                head,
-                tail,
-                before_opening,
-                leading,
-                expanded,
-            })
         } else {
             None
         };
         let mut body_head = self.compound_gap(Span::new(
             binding
                 .as_ref()
-                .map_or(keyword_end, |binding| binding.closing + 1),
+                .map_or(keyword_end, |binding| match binding {
+                    CatchBinding::Plain(binding) => binding.closing + 1,
+                    CatchBinding::Annotated(_) => body_start,
+                }),
             body_start,
         ));
         if binding.is_none() {
@@ -280,6 +327,182 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn prepare_annotated_catch_binding(
+        &self,
+        pattern: BindingPattern,
+        annotation: TsTypeAnnotation,
+        keyword_end: u32,
+        body: &mut CompoundBlock<'ast>,
+    ) -> Result<AnnotatedCatchBinding<'ast>, FormatError> {
+        let span = Span::new(pattern.span(self.ast).start, annotation.span(self.ast).end);
+        let body_start = body.node.span(self.ast).start;
+        let head_span = Span::new(keyword_end, span.start);
+        let tail_span = Span::new(span.end, body_start);
+        let head_comments = self.comments.in_range(head_span);
+        let tail_comments = self.comments.in_range(tail_span);
+        let Some(opening) = self.find_token(head_span, head_comments, "(") else {
+            return Err(FormatError::unsupported(
+                "catch opening boundary",
+                None,
+                head_span,
+            ));
+        };
+        let Some(closing) = self.find_token(tail_span, tail_comments, ")") else {
+            return Err(FormatError::unsupported(
+                "catch closing boundary",
+                None,
+                tail_span,
+            ));
+        };
+        let before_close = tail_comments.partition_point(|comment| comment.span.end <= closing);
+        let after_close = &tail_comments[before_close..];
+        let parameter_end = before_close
+            + after_close
+                .partition_point(|comment| self.line_breaks(comment.span.end, body_start) != 0);
+        let (parameter_tail, body_comments) = tail_comments.split_at(parameter_end);
+        let body_gap_start = parameter_tail
+            .last()
+            .map_or(closing + 1, |comment| comment.span.end.max(closing + 1));
+        let mut mode = ContentMode::Formatted;
+        if self.has_suppression {
+            if self.content_mode(head_comments) == ContentMode::Verbatim
+                || self.content_mode(parameter_tail) == ContentMode::Verbatim
+            {
+                mode = ContentMode::Verbatim;
+            }
+            if self.content_mode(body_comments) == ContentMode::Verbatim {
+                body.mode = ContentMode::Verbatim;
+            }
+        }
+        let head = if self
+            .comment_binding(head_comments, head_span, Some(span))
+            .allows_relocation(Some(span))
+        {
+            CatchParameterHead::Parameter {
+                comments: head_comments,
+                opening: Span::new(opening, opening + 1),
+                end: span.start,
+            }
+        } else {
+            CatchParameterHead::Source(head_span)
+        };
+        let tail = if self
+            .comment_binding(tail_comments, tail_span, Some(span))
+            .allows_relocation(Some(span))
+        {
+            CatchParameterTail::Parameter {
+                comments: parameter_tail,
+                closing: Span::new(closing, closing + 1),
+                start: span.end,
+            }
+        } else {
+            CatchParameterTail::Source(tail_span)
+        };
+        let expanded = matches!(head, CatchParameterHead::Parameter { .. })
+            && matches!(tail, CatchParameterTail::Parameter { .. })
+            && (head_comments.iter().any(|comment| {
+                comment.kind == CommentKind::Line
+                    || self.line_breaks(comment.span.end, span.start) != 0
+            }) || parameter_tail.iter().any(|comment| {
+                comment.kind == CommentKind::Line
+                    || self.line_breaks(span.end, comment.span.start) != 0
+            }));
+        let body_head = self.compound_gap(Span::new(
+            if matches!(tail, CatchParameterTail::Source(_)) {
+                body_start
+            } else {
+                body_gap_start
+            },
+            body_start,
+        ));
+        // Whole binding Source includes its annotation and does not prepare a type.
+        let binding = self.prepare_annotated_binding(
+            pattern,
+            span,
+            None,
+            Some(annotation),
+            crate::formatter::types::generics::TypeArgumentOwner::Ordinary,
+            mode,
+        )?;
+        Ok(AnnotatedCatchBinding {
+            binding,
+            head,
+            tail,
+            body_head,
+            expanded,
+        })
+    }
+
+    fn format_annotated_catch_binding(
+        &mut self,
+        binding: AnnotatedCatchBinding<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let formatted_head = match binding.head {
+            CatchParameterHead::Parameter {
+                comments,
+                opening,
+                end,
+            } => {
+                writer.space();
+                writer.text(self.source(opening));
+                Some((comments, end))
+            }
+            CatchParameterHead::Source(span) => {
+                let gap =
+                    self.format_delimited_source_gap(span, DelimitedFollowing::Node, writer)?;
+                gap.following.write(writer, FlatSeparator::Empty, |_| {});
+                None
+            }
+        };
+        let format_parameter = |writer: &mut Writer<'ast>| {
+            if binding.expanded {
+                writer.soft_line();
+            }
+            if let Some((comments, end)) = formatted_head {
+                self.comments.claim(comments)?;
+                self.format_comment_run(comments, CommentRunLayout::Leading(end), writer)?;
+            }
+            let tail =
+                self.format_annotated_binding(binding.binding, BindingGroup::Auto, writer)?;
+            self.format_expression_tail(tail, writer)?;
+            if let CatchParameterTail::Parameter {
+                comments, start, ..
+            } = binding.tail
+            {
+                self.comments.claim(comments)?;
+                self.format_comment_run(comments, CommentRunLayout::SourceAfter(start), writer)?;
+            }
+            Ok::<_, FormatError>(())
+        };
+        if binding.expanded {
+            writer.indent(format_parameter)?;
+        } else {
+            format_parameter(writer)?;
+        }
+        match binding.tail {
+            CatchParameterTail::Parameter { closing, .. } => {
+                if binding.expanded {
+                    writer.soft_line();
+                }
+                writer.text(self.source(closing));
+                self.format_compound_gap(
+                    binding.body_head,
+                    FlatSeparator::Space,
+                    Writer::space,
+                    writer,
+                )?;
+            }
+            CatchParameterTail::Source(span) => {
+                let gap =
+                    self.format_delimited_source_gap(span, DelimitedFollowing::Node, writer)?;
+                gap.following
+                    .write(writer, FlatSeparator::Space, Writer::space);
+            }
+        }
+        Ok(())
+    }
+
     fn format_catch(
         &mut self,
         handler: PreparedCatch<'ast>,
@@ -293,6 +516,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.text("catch");
         if let Some(binding) = handler.binding {
+            let binding = match binding {
+                CatchBinding::Annotated(binding) => {
+                    self.format_annotated_catch_binding(binding, writer)?;
+                    if !handler.leading_before_parameter {
+                        self.comments.claim(handler.body.leading.comments())?;
+                    }
+                    return self.format_compound_block_part(handler.body, writer);
+                }
+                CatchBinding::Plain(binding) => binding,
+            };
             writer.group(false, |writer| {
                 if binding.head.has_suppression() {
                     self.format_compound_gap(
