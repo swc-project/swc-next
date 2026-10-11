@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import /* before */ type /* prettier-ignore */ {} from "\u006d";
+---------- Options ----------
+{}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+import type {} from /* before */ /* prettier-ignore */ "\u006d"

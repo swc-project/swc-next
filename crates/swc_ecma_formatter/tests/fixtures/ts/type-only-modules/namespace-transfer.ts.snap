@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* before type */ type /* star */ * /* as */ as /* namespace */ Models from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export type * as /* before type */ /* star */ /* as */ /* namespace */ Models from "m"
