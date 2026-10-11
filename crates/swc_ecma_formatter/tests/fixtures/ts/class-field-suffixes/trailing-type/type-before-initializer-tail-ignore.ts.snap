@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A { value?: number | string /* prettier-ignore */ = 1; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class A {
+  value?: number | string /* prettier-ignore */ = 1;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class A {
+  value?: number | string /* prettier-ignore */ = 1
+}

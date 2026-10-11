@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Typed { value: number | undefined; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Typed {
+  value: number | undefined;
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class Typed {
+  value:
+    number | undefined
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class Typed {
+	value:
+		number | undefined;
+}
