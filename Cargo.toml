@@ -28,7 +28,7 @@ unicode-id-start = "1.5.0"
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "81.0.2", features = [
+swc_core = { version = "82.0.2", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
