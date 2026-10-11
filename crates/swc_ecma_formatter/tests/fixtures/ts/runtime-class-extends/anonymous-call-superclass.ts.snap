@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T> {}
+function choose<T>() { return Base; }
+const Derived = class extends (choose<string>())<number> {};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Base<T> {}
+function choose<T>() {
+  return Base;
+}
+const Derived = class extends choose<string>()<number> {};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Base<T> {}
+function choose<
+  T,
+>() {
+  return Base;
+}
+const Derived = class extends choose<string>()<number> {};

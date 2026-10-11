@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Subject extends Base
+// before
+implements
+// head
+First, Second {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Subject
+  extends Base
+  // before
+  // head
+  implements First, Second {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Subject
+  extends Base
+  // before
+  // head
+  implements
+    First,
+    Second {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class Subject
+	extends Base
+	// before
+	// head
+	implements First, Second {}

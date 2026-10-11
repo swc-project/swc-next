@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Name implements /* prettier-ignore */ First<  string  >, Second { value =  1 ; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Name implements /* prettier-ignore */ First<  string  >, Second {
+  value = 1;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Name
+  implements /* prettier-ignore */ First<  string  >,
+    Second
+{
+  value = 1
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+class Name
+	implements /* prettier-ignore */ First<  string  >,
+		Second
+{
+	value = 1;
+}
