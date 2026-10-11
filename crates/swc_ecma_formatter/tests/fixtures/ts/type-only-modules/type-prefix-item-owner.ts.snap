@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {type
+// prettier-ignore
+"\u006dodel"   as    Record, Other} from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+export {
+  type
+// prettier-ignore
+"\u006dodel"   as    Record,
+  Other,
+} from "m";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export {
+  type
+// prettier-ignore
+"\u006dodel"   as    Record,
+  Other,
+} from "m";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export {
+  type
+// prettier-ignore
+"\u006dodel"   as    Record,
+  Other,
+} from "m"
