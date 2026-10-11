@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { value = 1; public /* prettier-ignore */ static *values(){yield 7;} }
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class C {
+  value = 1
+  public static */* prettier-ignore */ values() {
+    yield 7
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  value = 1
+  public static */* prettier-ignore */ values() {
+    yield 7
+  }
+}

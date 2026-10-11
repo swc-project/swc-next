@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { public declare readonly value: number; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  declare public readonly value: number;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  declare public readonly value: number;
+}
