@@ -66,6 +66,7 @@ enum ModuleItemContent<'ast> {
         operator: Span,
         modes: NameModes,
         promoted: Option<Span>,
+        namespace_head: Option<Span>,
     },
     Attribute {
         quoting: PropertyKeyQuoting,
@@ -78,7 +79,9 @@ enum ModuleItemContent<'ast> {
 }
 
 struct ModuleNamePrefix<'ast> {
+    is_type: bool,
     span: Span,
+    keyword_end: u32,
     comments: &'ast [Comment],
     source: ModulePrefixSource,
     promoted: bool,
@@ -106,6 +109,7 @@ struct ModuleList {
 
 enum ModuleSourcePrefix<'a> {
     SideEffect(u32),
+    Empty(u32),
     Standalone(Span),
     Braced {
         keyword_end: u32,
@@ -280,9 +284,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let span = node.span(ast);
         let keyword_end = span.start + 6;
-        if node.import_kind(ast) == ImportOrExportKind::Type {
-            return Err(self.unsupported("type-only import", node));
-        }
+        let type_only = node.import_kind(ast) == ImportOrExportKind::Type;
         let mut specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
         let standalone = first.filter(|&node| {
@@ -340,6 +342,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             None => match last {
                 Some(node) => ModuleSourcePrefix::Standalone(node.span(ast)),
+                None if type_only => ModuleSourcePrefix::Empty(keyword_end),
                 None => ModuleSourcePrefix::SideEffect(keyword_end),
             },
         };
@@ -350,7 +353,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_prefix,
         )?;
         writer.text("import");
-        let mut end = keyword_end;
+        let mut end = if type_only {
+            let head_end = match (standalone, list.as_ref()) {
+                (Some(node), _) => node.span(ast).start,
+                (None, Some(list)) => list.span.start,
+                (None, None) => source.from.map_or(source_start, |token| token.start),
+            };
+            self.format_module_type_prefix(Span::new(keyword_end, head_end), writer)?
+        } else {
+            keyword_end
+        };
         let mut incoming = ContentMode::Formatted;
         if let Some(node) = standalone {
             let owner = node.span(ast);
@@ -376,8 +388,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContentMode::Formatted
             };
-            let content =
+            let mut content =
                 self.prepare_module_item(ModuleItem::Import(node), PropertyKeyQuoting::Preserve)?;
+            if type_only && mode == ContentMode::Formatted {
+                self.prepare_module_namespace_head(&mut content.content, owner.start + 1);
+            }
             self.format_module_gap(end, owner.start, true, writer)?;
             self.format_module_item(owner, content, mode, writer)?;
             end = owner.end;
@@ -427,10 +442,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.space();
             writer.text("{}");
         } else if let Some(list) = list {
+            let mut leading = None;
             if standalone.is_none() {
                 let comments = self.comments.in_range(Span::new(end, list.span.start));
                 incoming = self.content_mode(comments);
-                self.format_module_gap(end, list.span.start, true, writer)?;
+                if type_only
+                    && first_named.is_some()
+                    && !self.diagnostic_range_is_sensitive(Span::new(end, list.span.start))
+                {
+                    leading = Some(comments);
+                    writer.space();
+                } else {
+                    self.format_module_gap(end, list.span.start, true, writer)?;
+                }
             }
             end = list.span.end;
             self.format_module_list(
@@ -441,6 +465,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 list,
                 incoming,
                 source.preceding,
+                leading,
                 writer,
             )?;
         }
@@ -465,9 +490,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("export");
             self.format_module_gap(keyword_end, declaration.span(ast).start, true, writer)?;
             return self.format_declaration(declaration, mode, punctuation, writer);
-        }
-        if node.export_kind(ast) == ImportOrExportKind::Type {
-            return Err(self.unsupported("type-only export", node));
         }
         let specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
@@ -511,7 +533,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .in_range(Span::new(keyword_end, list.span.start));
         let mode = self.content_mode(comments);
         writer.text("export");
-        let head_end = keyword_end;
+        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
+        let head_end = if type_only {
+            self.format_module_type_prefix(Span::new(keyword_end, list.span.start), writer)?
+        } else {
+            keyword_end
+        };
+        let mut leading = None;
         let empty_header = source
             .as_ref()
             .is_some_and(|source| source.empty_header.is_some());
@@ -526,7 +554,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .in_range(Span::new(keyword_end, list.span.start))
                     .last()
                     .is_some_and(|comment| comment.kind == CommentKind::Line);
-            self.format_module_gap(head_end, list.span.start, true, writer)?;
+            if type_only
+                && first.is_some()
+                && !self.diagnostic_range_is_sensitive(Span::new(head_end, list.span.start))
+            {
+                leading = Some(comments);
+                writer.space();
+            } else {
+                self.format_module_gap(head_end, list.span.start, true, writer)?;
+            }
             // The empty specifier prefix owns its literal space after dangling comments.
             if dangling {
                 writer.space();
@@ -544,6 +580,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 source
                     .as_ref()
                     .map_or(ContentMode::Formatted, |source| source.preceding),
+                leading,
                 writer,
             )?;
         }
@@ -561,9 +598,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
         let span = node.span(ast);
-        if node.export_kind(ast) == ImportOrExportKind::Type {
-            return Err(self.unsupported("type-only export", node));
-        }
         let header = Span::new(span.start + 6, node.source(ast).span(ast).start);
         let comments = self.comments.in_range(header);
         let Some(star) = self.find_token(header, comments, "*") else {
@@ -598,14 +632,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ContentMode::Formatted
         };
         writer.text("export");
-        let head_end = header.start;
-        if let Some((owner, content)) = namespace {
+        let type_only = node.export_kind(ast) == ImportOrExportKind::Type;
+        let head_end = if type_only {
+            self.format_module_type_prefix(Span::new(header.start, star), writer)?
+        } else {
+            header.start
+        };
+        if let Some((owner, mut content)) = namespace {
             let mode = if source.preceding == ContentMode::Verbatim {
                 source.preceding
             } else {
                 incoming
             };
-            self.format_module_gap(head_end, star, true, writer)?;
+            let moved = type_only
+                && mode == ContentMode::Formatted
+                && self.prepare_module_namespace_head(&mut content.content, header.start);
+            if moved {
+                writer.space();
+            } else {
+                self.format_module_gap(head_end, star, true, writer)?;
+            }
             self.format_module_item(owner, content, mode, writer)?;
         } else {
             self.format_module_gap(head_end, star, true, writer)?;
@@ -792,15 +838,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ModuleSource, FormatError> {
         let ast = self.ast;
         let (preceding_end, preceding, list) = match &prefix {
-            ModuleSourcePrefix::SideEffect(end) => (*end, None, None),
+            ModuleSourcePrefix::SideEffect(end) | ModuleSourcePrefix::Empty(end) => {
+                (*end, None, None)
+            }
             ModuleSourcePrefix::Star(header) => (header.end, None, None),
             ModuleSourcePrefix::Standalone(target) => (target.end, Some(*target), None),
             ModuleSourcePrefix::Braced { list, last, .. } => (list.span.end, *last, Some(*list)),
         };
         let source_span = literal.span(ast);
-        let from = (!matches!(prefix, ModuleSourcePrefix::SideEffect(_)))
-            .then(|| self.module_operator(Span::new(preceding_end, source_span.start), "from"))
-            .transpose()?;
+        let from = (!matches!(
+            prefix,
+            ModuleSourcePrefix::SideEffect(_) | ModuleSourcePrefix::Empty(_)
+        ))
+        .then(|| self.module_operator(Span::new(preceding_end, source_span.start), "from"))
+        .transpose()?;
         let mut mode = self.content_mode(self.comments.in_range(Span::new(
             from.map_or(preceding_end, |token| token.end),
             source_span.start,
@@ -834,6 +885,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode = ContentMode::Verbatim;
         }
         let empty_header = match prefix {
+            ModuleSourcePrefix::Empty(keyword_end) => {
+                Some(Span::new(keyword_end, source_span.start))
+            }
             ModuleSourcePrefix::Braced {
                 keyword_end,
                 last: None,
@@ -1022,6 +1076,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     list,
                     mode,
                     ContentMode::Formatted,
+                    None,
                     writer,
                 )?;
             }
@@ -1032,9 +1087,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_module_list(
         &mut self,
         mut items: std::iter::Peekable<impl Iterator<Item = ModuleItem>>,
-        list: ModuleList,
+        mut list: ModuleList,
         mut incoming: ContentMode,
         last_mode: ContentMode,
+        leading: Option<&'ast [Comment]>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let content = Span::new(list.span.start + 1, list.span.end - 1);
@@ -1055,6 +1111,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("}");
             return Ok(());
         };
+        list.breakable |= leading.is_some_and(|comments| !comments.is_empty());
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let end = writer.indent(|writer| {
@@ -1076,6 +1133,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                 } else if self.options.bracket_spacing {
                     writer.space();
+                }
+                if let Some(comments) = leading {
+                    self.comments.claim(comments)?;
+                    self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+                    if let Some(last) = comments.last() {
+                        self.comment_gap(last.span.end, first.span(self).start, writer);
+                    }
                 }
                 let mut current = Some((first, self.prepare_module_item(first, list.key_quoting)?));
                 let mut end = content.start;
@@ -1269,15 +1333,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         right: ModuleName,
         kind: ImportOrExportKind,
     ) -> Result<PreparedModuleItem<'ast>, FormatError> {
-        if kind == ImportOrExportKind::Type {
-            return Err(FormatError::unsupported("type-only specifier", None, owner));
-        }
+        let is_type = kind == ImportOrExportKind::Type;
         let span = Span::new(owner.start, left.span(self).start);
-        let prefix = if span.start < span.end {
+        let prefix = if is_type || span.start < span.end {
             let comments = if span.start < span.end {
                 self.comments.in_range(span)
             } else {
                 &[]
+            };
+            let keyword_end = if is_type && !comments.is_empty() {
+                self.find_token(span, comments, "type")
+                    .map_or(span.start, |start| start + 4)
+            } else {
+                span.start
             };
             let promoted = !comments.is_empty()
                 && !self.diagnostic_range_is_sensitive(span)
@@ -1301,7 +1369,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             Some(ModuleNamePrefix {
+                is_type,
                 span,
+                keyword_end,
                 comments,
                 source,
                 promoted,
@@ -1337,6 +1407,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 enclosing: ContentMode::Formatted,
             },
             promoted: None,
+            namespace_head: None,
         })
     }
 
@@ -1398,6 +1469,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator,
             modes,
             promoted,
+            namespace_head: None,
         })
     }
 
@@ -1444,25 +1516,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .filter(|prefix| prefix.source == ModulePrefixSource::Name)
             .map_or(ContentMode::Formatted, |_| ContentMode::Verbatim);
-        if let Some(prefix) = prefix
-            && !prefix.promoted
-            && !prefix.comments.is_empty()
-        {
-            self.format_comment_run(
-                prefix.comments,
-                CommentRunLayout::FlatLeading(prefix.span.end),
-                writer,
-            )?;
-            let end = prefix
-                .comments
-                .last()
-                .map_or(prefix.span.start, |comment| comment.span.end);
-            let constraint = if name_mode == ContentMode::Verbatim {
-                self.source_line_constraint(end, prefix.span.end)
+        if let Some(prefix) = prefix {
+            if prefix.is_type {
+                writer.text("type");
+            }
+            if prefix.promoted || prefix.comments.is_empty() {
+                if prefix.is_type {
+                    writer.space();
+                }
             } else {
-                self.line_constraint(end, prefix.span.end)
-            };
-            constraint.write(writer, FlatSeparator::Space, Writer::space);
+                self.format_comment_run(
+                    prefix.comments,
+                    if prefix.is_type {
+                        CommentRunLayout::SourceAfter(prefix.keyword_end)
+                    } else {
+                        CommentRunLayout::FlatLeading(prefix.span.end)
+                    },
+                    writer,
+                )?;
+                let end = prefix
+                    .comments
+                    .last()
+                    .map_or(prefix.keyword_end, |comment| comment.span.end);
+                let constraint = if name_mode == ContentMode::Verbatim {
+                    self.source_line_constraint(end, prefix.span.end)
+                } else {
+                    self.line_constraint(end, prefix.span.end)
+                };
+                constraint.write(writer, FlatSeparator::Space, Writer::space);
+            }
         }
         match content {
             ModuleItemContent::Name(name) => self.format_module_name(name, name_mode, writer),
@@ -1471,8 +1553,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 right,
                 operator,
                 mut modes,
+                namespace_head,
                 promoted: _,
             } => {
+                if let Some(head) = namespace_head {
+                    let comments = self.comments.between(head)?;
+                    self.comments.claim(comments)?;
+                    writer.text("* as ");
+                    self.format_comment_run(
+                        comments,
+                        CommentRunLayout::FlatLeading(right.span(self).start),
+                        writer,
+                    )?;
+                    return self.format_module_name(right, modes.right, writer);
+                }
                 if name_mode == ContentMode::Verbatim {
                     modes.left = name_mode;
                 }
@@ -1622,5 +1716,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
         );
         Ok(())
+    }
+
+    fn format_module_type_prefix(
+        &mut self,
+        header: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<u32, FormatError> {
+        if self.diagnostic_range_is_sensitive(header) {
+            let comments = self.comments.in_range(header);
+            if let Some(start) = self.find_token(header, comments, "type") {
+                self.format_module_gap(header.start, start, true, writer)?;
+                writer.text("type");
+                return Ok(start + 4);
+            }
+        }
+        writer.text(" type");
+        Ok(header.start)
+    }
+
+    fn prepare_module_namespace_head(
+        &self,
+        content: &mut ModuleItemContent<'ast>,
+        start: u32,
+    ) -> bool {
+        let ModuleItemContent::Alias {
+            left: None,
+            right,
+            namespace_head,
+            ..
+        } = content
+        else {
+            return false;
+        };
+        let span = Span::new(start, right.span(self).start);
+        let comments = self.comments.in_range(span);
+        if comments.is_empty()
+            || self.diagnostic_range_is_sensitive(span)
+            || !comments
+                .iter()
+                .all(|&comment| self.comment_semantics(comment).is_ordinary())
+        {
+            return false;
+        }
+        *namespace_head = Some(span);
+        true
     }
 }
