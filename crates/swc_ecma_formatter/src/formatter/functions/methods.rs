@@ -165,9 +165,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             MethodOwner::Class(method) => {
                 if method.optional(ast) && method.kind(ast) != MethodDefinitionKind::Method
-                    || method.accessibility(ast) != swc_next_ecma_ast::Accessibility::None
-                    || method.r#abstract(ast)
-                    || method.r#override(ast)
                     || !method.decorators(ast).is_empty()
                 {
                     return Err(self.unsupported("typed or decorated class method", method));
