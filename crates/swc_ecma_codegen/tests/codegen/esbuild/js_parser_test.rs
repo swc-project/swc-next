@@ -1,5 +1,4 @@
 // Based on upstream esbuild's internal/js_parser/js_parser_test.go, modified for SWC Next.
-// MIT license: see THIRD_PARTY_NOTICES at the repository root.
 use crate::{expect_printed, expect_printed_jsx, expect_printed_script};
 
 #[test]

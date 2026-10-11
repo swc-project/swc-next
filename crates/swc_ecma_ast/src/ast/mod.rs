@@ -1,9 +1,8 @@
 //! ECMAScript and TypeScript AST node definitions.
 //!
 //! AST definitions based on
-//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku) (MIT).
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 //! Modified for SWC Next.
-//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 mod js;
 mod jsx;

@@ -1,9 +1,8 @@
 //! ECMAScript and TypeScript parser implementation.
 //!
 //! Parser based on
-//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku) (MIT).
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 //! Modified for SWC Next.
-//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 use std::hint::cold_path;
 use std::{borrow::Cow, mem};

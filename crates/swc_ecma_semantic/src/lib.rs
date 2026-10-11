@@ -13,9 +13,8 @@
 //! shared identities between type parameters and same-named instance members.
 //!
 //! Semantic analysis based on
-//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku) (MIT).
+//! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 //! Modified for SWC Next.
-//! MIT license: see `THIRD_PARTY_NOTICES` at the repository root.
 
 #![deny(clippy::all)]
 #![deny(unused)]

@@ -1,7 +1,6 @@
 // Based on Yuku's src/util/unicode_id.zig, mechanically converted to Rust; do not edit by hand.
 // Source reference (matching table data):
 // https://github.com/yuku-toolchain/yuku/blob/ffd0e416c0a7a7e13bc4daae940ac0d11eef7a60/src/util/unicode_id.zig
-// MIT license: see THIRD_PARTY_NOTICES at the repository root.
 
 #[rustfmt::skip]
 pub const ID_START_ROOT: [u8; 4096] = [
