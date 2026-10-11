@@ -3,8 +3,8 @@
 use swc_next_ecma_ast::{
     Accessibility, BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment,
     CommentKind, Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span,
-    StaticBlock, StmtData, TsFunction, TsIndexSignature, TsMethodDefinition,
-    TsTypeParameterDeclaration,
+    StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature,
+    TsMethodDefinition, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -16,10 +16,13 @@ use super::comments::{
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
-use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart, TailOwner};
+use super::expressions::{
+    AccessKind, ExpressionContext, ExpressionPosition, ExpressionStart, ExpressionTypeArguments,
+    TailOwner,
+};
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
-use super::heritage::{HeritageLayout, HeritageOwners, HeritagePrefix};
+use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
 use super::statements::IncomingStatement;
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
@@ -50,6 +53,7 @@ struct SourceClassHead<'ast> {
     name_mode: ContentMode,
     parameters: Option<SourceClassParameters<'ast>>,
     heritage: Option<SourceClassHeritage<'ast>>,
+    implements: Option<SourceClassImplements<'ast>>,
     layout: HeritageLayout,
     body: ClassBody,
     body_mode: ContentMode,
@@ -82,6 +86,15 @@ struct SourceClassHeritage<'ast> {
     caller: ClassCaller,
     expression: Expr,
     mode: ContentMode,
+    prefix: HeritagePrefix<'ast>,
+    arguments: Option<ExpressionTypeArguments<'ast>>,
+}
+
+struct SourceClassImplements<'ast> {
+    first: TsClassImplements,
+    remaining: SubRange<TsClassImplements>,
+    first_mode: ContentMode,
+    end: u32,
     prefix: HeritagePrefix<'ast>,
 }
 
@@ -166,12 +179,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
-        if class.r#abstract(ast)
-            || class.declare(ast)
-            || !class.implements(ast).is_empty()
-            || class.super_type_arguments(ast).is_some()
-            || !class.decorators(ast).is_empty()
-        {
+        if class.r#abstract(ast) || class.declare(ast) || !class.decorators(ast).is_empty() {
             return Err(self.unsupported("typed or decorated class", class));
         }
         let span = class.span(ast);
@@ -203,6 +211,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             name_mode,
             parameters,
             heritage,
+            implements,
             layout,
             body,
             body_mode,
@@ -242,6 +251,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?;
                 }
+                if let Some(implements) = implements {
+                    self.format_class_implements(implements, layout, writer)?;
+                }
                 Ok(())
             };
             if layout.grouped() {
@@ -277,6 +289,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PreparedClassHead<'ast>, FormatError> {
         let ast = self.ast;
         let body = class.body(ast);
+        let span = class.span(ast);
         let name = class.id(ast);
         let start = core_start + 5;
         let mut name_mode = ContentMode::Formatted;
@@ -290,8 +303,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let superclass = class.super_class(ast);
+        let mut implements_nodes = class.implements(ast);
+        let first_implements: Option<TsClassImplements> = implements_nodes
+            .first()
+            .map(|id| ast.get_node_in_sub_range(id));
+        let continuation_start = superclass
+            .map(|node| node.span(ast).start)
+            .or_else(|| first_implements.map(|node| node.span(ast).start));
         let mut end = name.map_or(start, |name| name.span(ast).end);
-        let continuation_start = superclass.map(|node| node.span(ast).start);
         let mut parameters = class.type_parameters(ast).map(|node| {
             let gap = Span::new(end, node.span(ast).start);
             let prefix =
@@ -318,7 +337,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut grouped = parameters
             .as_ref()
             .is_some_and(|parameters| parameters.prefix.has_trailing_name_comment());
-        let heritage = if let Some(expression) = superclass {
+        let mut heritage = if let Some(expression) = superclass {
             let gap = Span::new(end, expression.span(ast).start);
             let comments = self.comments.in_range(gap);
             let extends = self
@@ -353,22 +372,139 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let mode = prepared.first_mode;
+            let mut mode = prepared.first_mode;
             end = expression.span(ast).end;
+            let arguments = if let Some(node) = class.super_type_arguments(ast) {
+                let arguments =
+                    self.prepare_expression_type_arguments(expression, node, AccessKind::Ordinary)?;
+                if arguments.callee_mode == ContentMode::Verbatim {
+                    mode = ContentMode::Verbatim;
+                }
+                grouped |= arguments.has_comments();
+                end = node.span(ast).end;
+                Some(arguments)
+            } else {
+                None
+            };
             grouped |= prepared.prefix.has_comments
                 || !self.comments.in_range(expression.span(ast)).is_empty()
                 || matches!(caller, ClassCaller::Ordinary)
+                    && arguments.is_none()
                     && self.heritage_expression_is_member(expression);
             Some(SourceClassHeritage {
                 caller,
                 expression,
                 mode,
                 prefix: prepared.prefix,
+                arguments,
             })
         } else {
             None
         };
-        let layout = if grouped {
+        let multiple = usize::from(heritage.is_some()) + implements_nodes.len() > 1;
+        let implements = if let Some(first) = first_implements {
+            let remaining = implements_nodes.split_off(1);
+            let gap = Span::new(end, first.span(ast).start);
+            let comments = self.comments.in_range(gap);
+            let keyword = self
+                .find_token(gap, comments, "implements")
+                .ok_or_else(|| self.unsupported("class implements boundary", class))?;
+            let prepared = self.prepare_heritage_prefix(
+                gap,
+                Span::new(keyword, keyword + 10),
+                comments,
+                || {
+                    let preceding_before = heritage
+                        .as_ref()
+                        .map(|heritage| {
+                            heritage
+                                .arguments
+                                .as_ref()
+                                .map_or(heritage.expression.span(ast), |arguments| {
+                                    arguments.node().span(ast)
+                                })
+                        })
+                        .or_else(|| {
+                            parameters
+                                .as_ref()
+                                .map(|parameters| parameters.node.span(ast))
+                        })
+                        .or_else(|| name.map(|name| name.span(ast)));
+                    let preceding_after = heritage.as_ref().map_or_else(
+                        || {
+                            parameters
+                                .as_ref()
+                                .map(|parameters| parameters.node.span(ast))
+                                .or_else(|| name.map(|name| name.span(ast)))
+                        },
+                        |heritage| {
+                            heritage
+                                .arguments
+                                .is_none()
+                                .then(|| heritage.expression.span(ast))
+                        },
+                    );
+                    HeritageOwners {
+                        inline_before: preceding_before.unwrap_or(span),
+                        line_preceding: preceding_after.unwrap_or(span),
+                    }
+                },
+                first.span(ast),
+            );
+            match prepared.preceding {
+                CommentBinding::Unbound => {}
+                CommentBinding::SourceBound => return Ok(PreparedClassHead::Verbatim),
+                CommentBinding::BoundTo(target) if target == span => {
+                    return Ok(PreparedClassHead::Verbatim);
+                }
+                CommentBinding::BoundTo(target) => {
+                    if let Some(heritage) = &mut heritage {
+                        if let Some(arguments) = &mut heritage.arguments {
+                            debug_assert_eq!(
+                                target,
+                                arguments.node().span(ast),
+                                "a before-keyword ignore selects the actual superclass angle owner"
+                            );
+                            arguments.suppress();
+                        } else {
+                            heritage.mode = ContentMode::Verbatim;
+                        }
+                    } else if let Some(parameters) = &mut parameters {
+                        parameters.mode = ContentMode::Verbatim;
+                    } else {
+                        name_mode = ContentMode::Verbatim;
+                    }
+                }
+            }
+            grouped |= prepared.prefix.has_comments
+                || first.type_arguments(ast).is_none()
+                    && self.heritage_expression_is_member(first.expression(ast));
+            end = remaining.last().map_or(first.span(ast).end, |last| {
+                ast.get_node_in_sub_range(last).span(ast).end
+            });
+            let mut prefix = prepared.prefix;
+            // Superclass angle arguments have their own continuation owner;
+            // other heads retain leading Line packets before the next keyword.
+            if prefix.has_comments
+                && !heritage
+                    .as_ref()
+                    .is_some_and(|heritage| heritage.arguments.is_some())
+            {
+                prefix = prefix.with_preceding_owner();
+            }
+            Some(SourceClassImplements {
+                first,
+                remaining,
+                first_mode: prepared.first_mode,
+                end,
+                prefix,
+            })
+        } else {
+            None
+        };
+        let layout = if multiple {
+            HeritageLayout::Multiple
+        } else if grouped {
             HeritageLayout::Single
         } else {
             HeritageLayout::Inline
@@ -423,6 +559,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             name_mode,
             parameters,
             heritage,
+            implements,
             layout,
             body,
             body_mode,
@@ -487,6 +624,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             |formatter, writer| {
                 let context = ExpressionContext::at(ExpressionPosition::Superclass)
                     .with_content_mode(heritage.mode);
+                let context = if heritage.arguments.is_some() {
+                    context.with_tail_owner(TailOwner::ParentOperation)
+                } else {
+                    context
+                };
                 let write_superclass = |formatter: &mut Self, writer: &mut Writer<'ast>| {
                     formatter.format_expression(heritage.expression, context, writer)
                 };
@@ -506,7 +648,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     write_superclass(formatter, writer)?
                 };
-                formatter.format_expression_tail(tail, writer)
+                if let Some(arguments) = heritage.arguments {
+                    formatter.format_expression_type_arguments(arguments, tail, writer)
+                } else {
+                    formatter.format_expression_tail(tail, writer)
+                }
             },
         )
     }
@@ -1326,5 +1472,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             signature,
             terminal,
         })
+    }
+
+    fn format_class_implements(
+        &mut self,
+        list: SourceClassImplements<'ast>,
+        layout: HeritageLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let ast = self.ast;
+        let items = std::iter::once(list.first)
+            .chain(
+                list.remaining
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id)),
+            )
+            .map(|node| HeritageItem {
+                span: node.span(ast),
+                expression: node.expression(ast),
+                arguments: node.type_arguments(ast),
+            });
+        self.format_heritage_clause(
+            list.prefix,
+            "implements",
+            layout,
+            writer,
+            |formatter, writer| {
+                formatter.format_heritage_items(items, list.first_mode, list.end, writer)
+            },
+        )
     }
 }
