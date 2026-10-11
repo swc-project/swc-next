@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare class OptionalGap { method /* optional boundary */ ?(value: number): number; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare class OptionalGap {
+  method /* optional boundary */?(value: number): number;
+}

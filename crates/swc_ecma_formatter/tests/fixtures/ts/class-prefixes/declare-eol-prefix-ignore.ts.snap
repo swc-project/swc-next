@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare // prettier-ignore
+abstract class A<T = number> {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare; // prettier-ignore
+abstract class A<T = number> {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare; // prettier-ignore
+abstract class A<
+  T = number,
+> {}
