@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1609/2992 (53.78%)
+Negative Passed: 1617/2992 (54.04%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -206,7 +206,6 @@ Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty.
 Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_computedName1.ts - duplicateObjectLiteralProperty_computedName1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_computedName2.ts - duplicateObjectLiteralProperty_computedName2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateObjectLiteralProperty_computedName3.ts - b.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_globalMerge.ts - /node_modules/@types/react/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePackage_withErrors.ts - /node_modules/a/node_modules/x/index.d.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicatePropertiesInStrictMode.ts - duplicatePropertiesInStrictMode.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/duplicateStringNamedProperty1.ts - duplicateStringNamedProperty1.ts: expected a parse or early error, but pipeline succeeded
@@ -449,12 +448,6 @@ Failed: fixtures/typescript/tests/cases/compiler/moduleAndInterfaceWithSameName.
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationDisallowedExtensions.ts - x.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationEnumClassMergeOfReexportIsError.ts - augment.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationEnumClassMergeOfReexportIsError.ts - file.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal6.ts - moduleAugmentationGlobal6.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal6_1.ts - moduleAugmentationGlobal6_1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal7.ts - moduleAugmentationGlobal7.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal7_1.ts - moduleAugmentationGlobal7_1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal8.ts - moduleAugmentationGlobal8.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationGlobal8_1.ts - moduleAugmentationGlobal8_1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports2.ts - f3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports2.ts - f4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/moduleAugmentationImportsAndExports3.ts - f3.ts: expected a parse or early error, but pipeline succeeded
@@ -755,7 +748,6 @@ Failed: fixtures/typescript/tests/cases/conformance/es2017/useSharedArrayBuffer6
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisAmbientModules.ts - globalThisAmbientModules.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisBlockscopedProperties.ts - globalThisBlockscopedProperties.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisCollision.ts - globalThisCollision.js: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisGlobalExportAsGlobal.ts - globalThisGlobalExportAsGlobal.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisPropertyAssignment.ts - globalThisPropertyAssignment.js: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisReadonlyProperties.ts - globalThisReadonlyProperties.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es2019/globalThisUnknown.ts - globalThisUnknown.ts: expected a parse or early error, but pipeline succeeded

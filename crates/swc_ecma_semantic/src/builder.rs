@@ -263,6 +263,7 @@ impl SemanticBuilder<'_, '_> {
             }
             NodeKindData::TsExportAssignment(node) => ts::check_ts_export_assignment(self, node),
             NodeKindData::TsModuleDeclaration(node) => ts::check_ts_module_declaration(self, node),
+            NodeKindData::TsGlobalDeclaration(node) => ts::check_ts_global_declaration(self, node),
             NodeKindData::ExportAllDeclaration(node) => {
                 js::check_export_all_declaration(self, node)
             }

@@ -58,22 +58,10 @@ pub(super) fn check_ts_module_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: TsModuleDeclaration,
 ) {
-    let Some(mut parent) = builder.parent() else {
+    let Some((parent, _)) = ts_module_element_context(builder) else {
         return;
     };
-    if matches!(
-        builder.ast.kind_data(parent),
-        NodeKindData::ExportNamedDeclaration(_)
-    ) {
-        let Some(container) = builder.ancestors().nth(2) else {
-            return;
-        };
-        parent = container;
-    }
-    if matches!(
-        builder.ast.node_kind(parent),
-        NodeKind::Program | NodeKind::TsModuleBlock | NodeKind::TsModuleDeclaration
-    ) {
+    if is_ts_module_element_container(builder.ast.node_kind(parent)) {
         return;
     }
     let message = match builder.ast.ts_module_name_data(declaration.id(builder.ast)) {
@@ -89,6 +77,78 @@ pub(super) fn check_ts_module_declaration(
         message,
         ReportOptions::default(),
     );
+}
+
+pub(super) fn check_ts_global_declaration(
+    builder: &mut SemanticBuilder<'_, '_>,
+    declaration: TsGlobalDeclaration,
+) {
+    let Some((node, message)) = ts_global_declaration_context_error(builder, declaration) else {
+        return;
+    };
+    builder.report(builder.ast.span(node), message, ReportOptions::default());
+}
+
+fn ts_global_declaration_context_error(
+    builder: &SemanticBuilder<'_, '_>,
+    declaration: TsGlobalDeclaration,
+) -> Option<(NodeId, &'static str)> {
+    let (parent, mut ancestors) = ts_module_element_context(builder)?;
+    let parent_kind = builder.ast.node_kind(parent);
+    if !is_ts_module_element_container(parent_kind) {
+        return Some((
+            declaration.node_id(),
+            "An ambient module declaration is only allowed at the top level in a file",
+        ));
+    }
+
+    let valid_container = match parent_kind {
+        NodeKind::Program => builder.ast.is_module(),
+        // In an external module, a quoted module declaration is an augmentation.
+        NodeKind::TsModuleBlock if !builder.ast.is_module() => {
+            let ambient_module =
+                ancestors
+                    .next()
+                    .is_some_and(|parent| match builder.ast.kind_data(parent) {
+                        NodeKindData::TsModuleDeclaration(module) => matches!(
+                            builder.ast.ts_module_name_data(module.id(builder.ast)),
+                            TsModuleNameData::StringLiteral(_)
+                        ),
+                        NodeKindData::TsGlobalDeclaration(_) => true,
+                        _ => false,
+                    });
+            ambient_module
+                && ancestors
+                    .next()
+                    .is_some_and(|parent| builder.ast.node_kind(parent) == NodeKind::Program)
+        }
+        _ => false,
+    };
+    if valid_container {
+        return None;
+    }
+    Some((
+        declaration.id(builder.ast).node_id(),
+        "Augmentations for the global scope can only be directly nested in external modules or ambient module declarations",
+    ))
+}
+
+fn ts_module_element_context<'b>(
+    builder: &'b SemanticBuilder<'_, '_>,
+) -> Option<(NodeId, impl Iterator<Item = NodeId> + 'b)> {
+    let mut ancestors = builder.ancestors().skip(1);
+    let mut parent = ancestors.next()?;
+    if builder.ast.node_kind(parent) == NodeKind::ExportNamedDeclaration {
+        parent = ancestors.next()?;
+    }
+    Some((parent, ancestors))
+}
+
+fn is_ts_module_element_container(kind: NodeKind) -> bool {
+    matches!(
+        kind,
+        NodeKind::Program | NodeKind::TsModuleBlock | NodeKind::TsModuleDeclaration
+    )
 }
 
 pub(super) fn check_ts_alias_issues(

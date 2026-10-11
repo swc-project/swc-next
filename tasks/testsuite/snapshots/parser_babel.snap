@@ -1,7 +1,7 @@
 parser * babel
 ========================
-Positive Passed: 2235/2235 (100.00%)
-Negative Passed: 1641/1743 (94.15%)
+Positive Passed: 2234/2235 (99.96%)
+Negative Passed: 1642/1743 (94.21%)
 Panicked: 0/3978 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
@@ -66,6 +66,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/get-set-invalid-this-parameters/input.ts - typescript/interface/get-set-invalid-this-parameters: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/get-set-type-parameters/input.ts - typescript/interface/get-set-type-parameters: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/interface/invalid-within-single-statement-context/input.ts - typescript/interface/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/global-in-module/input.ts - typescript/module-namespace/global-in-module: semantic: Augmentations for the global scope can only be directly nested in external modules or ambient module declarations at 25..31
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-declare-export-assignment/input.ts - typescript/module-namespace/invalid-body-declare-export-assignment: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-declare-export-default/input.ts - typescript/module-namespace/invalid-body-declare-export-default: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-declare-export-from/input.ts - typescript/module-namespace/invalid-body-declare-export-from: expected a parse or early error, but pipeline succeeded
@@ -76,7 +77,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-import/input.ts - typescript/module-namespace/invalid-body-import: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-body-namespace-export/input.ts - typescript/module-namespace/invalid-body-namespace-export: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-declare-module-identifier/input.ts - typescript/module-namespace/invalid-declare-module-identifier: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-global-redeclare-block-level-variable-in-module/input.ts - typescript/module-namespace/invalid-global-redeclare-block-level-variable-in-module: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/invalid-global-redeclare-block-level-variable/input.ts - typescript/module-namespace/invalid-global-redeclare-block-level-variable: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/module-identifier-invalid/input.ts - typescript/module-namespace/module-identifier-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/invalid-within-single-statement-context/input.ts - typescript/type-alias/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
