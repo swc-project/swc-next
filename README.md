@@ -16,6 +16,12 @@ See https://github.com/swc-project/swc-next/issues/181
 
 See our [docs](/docs/)
 
+## Soundness
+
+The current Rust AST API has known soundness issues:
+
+- Node IDs and typed handles are not tied to their owning `Ast`. Using a handle with a different AST can access unrelated nodes or cause undefined behavior through unchecked access, even through safe APIs.
+
 ## Compatibility
 
 SWC Next aims to provide capabilities while supporting parts of SWC's [`.swcrc` configuration](https://swc.rs/docs/configuration/swcrc). Its Rust and JavaScript APIs will not be compatible with SWC's.
