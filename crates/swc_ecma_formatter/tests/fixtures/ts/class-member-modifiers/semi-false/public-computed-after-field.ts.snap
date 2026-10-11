@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const key = "read"; class C { value = 1; public [key]() { return this.value + 6; } }
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const key = "read"
+class C {
+  value = 1
+  public [key]() {
+    return this.value + 6
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const key = "read"
+class C {
+  value = 1
+  public [key]() {
+    return (
+      this.value + 6
+    )
+  }
+}
