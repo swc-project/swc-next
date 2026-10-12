@@ -1,6 +1,8 @@
 //! Heritage keywords and comma items share one prepared continuation owner.
 
-use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, Span, TsTypeParameterInstantiation};
+use swc_next_ecma_ast::{
+    Comment, CommentKind, Decorator, Expr, ExprData, GetSpan, Span, TsTypeParameterInstantiation,
+};
 
 use super::Formatter;
 use super::comments::{CommentBinding, CommentBoundary, CommentRunLayout};
@@ -32,6 +34,7 @@ pub(super) struct HeritageItem {
 pub(super) struct HeritageOwners {
     pub(super) inline_before: Span,
     pub(super) line_preceding: Span,
+    pub(super) line_decorator: Option<Decorator>,
 }
 
 pub(super) struct PreparedHeritagePrefix<'ast> {
@@ -119,11 +122,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut after_suppression = CommentBinding::Unbound;
         if self.has_suppression && !comments.is_empty() {
             let owners = owners();
+            let line_owner = owners.line_decorator.map(|node| node.span(self.ast));
             for (_, position) in self.suppressed_comment_runs(before, keyword.start) {
                 let target = if matches!(position, SuppressionPosition::Inline) {
                     owners.inline_before
                 } else {
-                    owners.line_preceding
+                    line_owner.unwrap_or(owners.line_preceding)
                 };
                 before_suppression = before_suppression.combine(CommentBinding::BoundTo(target));
                 if target == first {
@@ -136,7 +140,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let target = if matches!(position, SuppressionPosition::Inline) {
                     first
                 } else {
-                    owners.line_preceding
+                    line_owner.unwrap_or(owners.line_preceding)
                 };
                 after_suppression = after_suppression.combine(CommentBinding::BoundTo(target));
                 if target == first {

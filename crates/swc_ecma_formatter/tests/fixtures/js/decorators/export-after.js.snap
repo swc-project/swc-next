@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export /* export */ default /* default */ @dec /* decorator */ class C {}
+---------- Options ----------
+{}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+export /* export */ default /* default */
+@dec /* decorator */
+class C {}

@@ -203,6 +203,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     HeritageOwners {
                         inline_before: preceding,
                         line_preceding: preceding,
+                        line_decorator: None,
                     }
                 },
                 first.span(ast),
