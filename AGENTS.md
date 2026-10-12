@@ -88,6 +88,7 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 | Parser diagnostics, tokens, AST counts              | `cargo run -p swc_next_ecma_parser --example parser -- input.js [--preserve-parens]`                                               |
 | Printed output, minification, escaping, parentheses | `cargo run -p swc_next_ecma_codegen --example codegen -- input.js [--minify] [--ascii-only] [--inline-script] [--preserve-parens]` |
 | Scopes, bindings, semantic diagnostics              | `cargo run -p swc_next_ecma_semantic --example semantic -- input.js`                                                               |
+| TypeScript lowering, class static blocks            | `cargo run -p swc_next_ecma_transformer --example transformer -- input.ts`                                                        |
 | Compare/profile Rspack-like pipelines               | `TARGET=<legacy\|next\|oxc> cargo run -p benchmark --release --example rspack_simulator [--features tracy]`                        |
 
 ### Adding Rust Unit Tests
