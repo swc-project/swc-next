@@ -74,10 +74,10 @@ excluded. The process is parallel by default.
 
 ## Babel transform conformance
 
-Run all supported Babel transform fixtures:
+Run all supported Babel transform fixtures through the conformance command:
 
 ```sh
-cargo run -p testsuite --bin babel_transform
+cargo run -p testsuite --bin conformance --profile conformance
 ```
 
 For each runnable fixture, the harness:
@@ -92,7 +92,7 @@ For each runnable fixture, the harness:
 Fixtures with unsupported plugins, presets, or invalid options are counted as
 skipped. The full run writes
 `tasks/testsuite/snapshots/transform_babel.snap`, using the same shared
-`transform` runner and snapshot format as the full conformance command.
+`transform` runner and snapshot format as the other conformance suites.
 
 ## TypeScript transform conformance
 
@@ -106,10 +106,10 @@ Debug one case with `--runner transform --case typescript`. The optional
 
 ## SWC transform conformance
 
-Run the SWC static-block transform fixtures:
+Run the SWC static-block transform fixtures through the conformance command:
 
 ```sh
-cargo run -p testsuite --bin swc_transform
+cargo run -p testsuite --bin conformance --profile conformance
 ```
 
 This reads `input.js`/`output.js` pairs from
@@ -120,7 +120,8 @@ SWC's `es2022_static_blocks.rs` test entry: standalone static blocks run with
 `static_blocks=true` and the default `prevent_extensions=false`; fixtures under
 `class-properties/` are counted as skipped until that transform is supported.
 
-The SWC run writes `tasks/testsuite/snapshots/transform_swc.snap`. Both fixture commands use the shared `transform` runner and write readable `expected/`, `actual/`, and `differences.md` files under
+The SWC suite writes `tasks/testsuite/snapshots/transform_swc.snap`. Both suites use
+the shared `transform` runner and write readable `expected/` and `actual/` files under
 `tasks/testsuite/outputs/transform/{babel,swc}/`. Missing fixtures and
 panics fail the command; ordinary output mismatches are recorded in snapshots.
 The full conformance command runs both suites, and CI checks their snapshots for changes.
@@ -128,8 +129,7 @@ The full conformance command runs both suites, and CI checks their snapshots for
 To cover both static-block lowering modes locally, run:
 
 ```sh
-cargo run --locked -p testsuite --bin swc_transform
-cargo run --locked -p testsuite --bin babel_transform
+cargo run --locked -p testsuite --bin conformance --profile conformance
 ```
 
 The Babel static-block fixtures use `prevent_extensions=true`, exercising the
