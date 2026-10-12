@@ -1,9 +1,9 @@
-//! Construct helper AST nodes through Mutation so their bindings and references
+//! Construct helper AST nodes through TransformCtx so their bindings and references
 //! are registered before the generated import or require statement is attached.
 //! The first use prepares and caches the declaration; Program exit queues it,
 //! and statement injection attaches it to the program body.
 
-use super::Mutation;
+use super::TransformCtx;
 use crate::{
     context::{semantic::BoundIdentifier, statement_injector::Anchor},
     helpers::{HelperKind, PreparedHelper},
@@ -14,7 +14,7 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_semantic::SymbolFlags;
 
-impl Mutation<'_, '_, '_> {
+impl TransformCtx<'_, '_> {
     /// Build a callee reference in `scope`, preparing its program-level binding
     /// and external declaration on first use. Later calls reuse that binding.
     /// The declaration stays cached until `inject_helpers` queues it.

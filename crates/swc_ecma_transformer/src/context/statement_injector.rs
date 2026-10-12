@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     Stmt, SubRange, VariableKind,
 };
 
-use crate::context::Mutation;
+use crate::context::TransformCtx;
 
 struct Insertion {
     statement: Stmt,
@@ -32,7 +32,7 @@ impl StatementInjector {
     }
 }
 
-impl Mutation<'_, '_, '_> {
+impl TransformCtx<'_, '_> {
     pub fn inject_statement(&mut self, container_id: NodeId, statement: Stmt, anchor: Anchor) {
         let insertion = Insertion { statement, anchor };
         let injector = &mut self.state.statement_injector;

@@ -8,7 +8,7 @@ use swc_next_ecma_semantic::{
     scope::{ScopeFlags, ScopeKind},
 };
 
-use crate::{context::Mutation, used_names::UsedNameState};
+use crate::{context::TransformCtx, used_names::UsedNameState};
 
 /// A generated binding keeps its declaration and symbol together
 #[derive(Clone, Copy)]
@@ -30,7 +30,7 @@ impl BoundIdentifier {
     /// // Return the identifier and SymbolId together; declaration attachment happens separately.
     /// ```
     pub fn named(
-        ctx: &mut Mutation<'_, '_, '_>,
+        ctx: &mut TransformCtx<'_, '_>,
         scope: ScopeId,
         base: &str,
         flags: SymbolFlags,
@@ -53,7 +53,7 @@ impl BoundIdentifier {
     /// ```
     pub fn reference_read(
         &self,
-        ctx: &mut Mutation<'_, '_, '_>,
+        ctx: &mut TransformCtx<'_, '_>,
         scope: ScopeId,
         span: Span,
     ) -> IdentifierReference {
@@ -77,7 +77,7 @@ impl BoundIdentifier {
     /// ```
     pub fn reference_write(
         &self,
-        ctx: &mut Mutation<'_, '_, '_>,
+        ctx: &mut TransformCtx<'_, '_>,
         scope: ScopeId,
         span: Span,
     ) -> IdentifierReference {
@@ -105,7 +105,7 @@ impl BoundIdentifier {
     /// ```
     pub fn assign(
         &self,
-        ctx: &mut Mutation<'_, '_, '_>,
+        ctx: &mut TransformCtx<'_, '_>,
         scope: ScopeId,
         span: Span,
         value: Expr,
@@ -119,7 +119,7 @@ impl BoundIdentifier {
     }
 }
 
-impl Mutation<'_, '_, '_> {
+impl TransformCtx<'_, '_> {
     /// Reserve and intern an available name in the lazily initialized shared transform collision domain.
     ///
     /// ```javascript
@@ -157,7 +157,7 @@ impl Mutation<'_, '_, '_> {
     }
 }
 
-impl<'a> Mutation<'_, '_, 'a> {
+impl<'a> TransformCtx<'_, 'a> {
     /// Read a binding's AST name and register pending allocations before registering its declaration and symbol.
     ///
     /// ```javascript
@@ -307,7 +307,7 @@ impl<'a> Mutation<'_, '_, 'a> {
             return;
         }
         let mut mover = ScopeMover {
-            semantic: self.state.semantic,
+            semantic: &mut self.state.semantic,
             from,
             to,
         };
@@ -360,8 +360,8 @@ impl<'a> Mutation<'_, '_, 'a> {
     }
 }
 
-struct ScopeMover<'s, 'a> {
-    semantic: &'s mut ScopeModel<'a>,
+struct ScopeMover<'c, 'a> {
+    semantic: &'c mut ScopeModel<'a>,
     from: ScopeId,
     to: ScopeId,
 }

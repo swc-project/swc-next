@@ -11,30 +11,49 @@ pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
 pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
-use crate::state::TransformerState;
+use crate::{helpers::Helpers, used_names::UsedNameState};
 use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 
-/// Borrow AST and transform state together for synchronized mutations.
-pub trait Mutate<'s, 'a> {
-    fn mutate(&mut self) -> Mutation<'_, 's, 'a>;
+/// Configuration, caches and pending work for a single transform.
+/// Passes access state through the context's mutation APIs.
+pub(crate) struct TransformerState<'a> {
+    pub(crate) path: Vec<NodeId>,
+    pub(crate) semantic: ScopeModel<'a>,
+    pub(crate) helpers: Helpers,
+    pub(crate) statement_injector: StatementInjector,
+    pub(crate) container: Container,
+    pub(crate) comments: CommentState,
+    pub(crate) used_names: Option<UsedNameState<'a>>,
 }
 
-impl<'s, 'a> Mutate<'s, 'a> for TraverseMutCtx<'_, 'a, TransformerState<'s, 'a>> {
-    fn mutate(&mut self) -> Mutation<'_, 's, 'a> {
-        Mutation {
-            ast: self.ast,
-            state: &mut self.state,
+impl<'a> TransformerState<'a> {
+    pub(crate) fn new(semantic: ScopeModel<'a>) -> Self {
+        Self {
+            path: Vec::with_capacity(64),
+            semantic,
+            helpers: Helpers::default(),
+            statement_injector: Default::default(),
+            container: Default::default(),
+            comments: Default::default(),
+            used_names: None,
         }
     }
 }
 
-/// An atomic mutation interface borrowing the traversal's AST, state and path.
-pub struct Mutation<'c, 's, 'a> {
+/// Borrowed context for AST reads and synchronized transform operations.
+pub struct TransformCtx<'c, 'a> {
     pub ast: &'c mut Ast<'a>,
-    state: &'c mut TransformerState<'s, 'a>,
+    state: &'c mut TransformerState<'a>,
 }
 
-impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
+impl<'c, 'a> TransformCtx<'c, 'a> {
+    pub(crate) fn new(ctx: &'c mut TraverseMutCtx<'_, 'a, TransformerState<'a>>) -> Self {
+        Self {
+            ast: ctx.ast,
+            state: &mut ctx.state,
+        }
+    }
+
     pub fn ast(&self) -> &Ast<'a> {
         self.ast
     }
@@ -46,7 +65,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
     }
 
     pub fn semantic(&self) -> &ScopeModel<'a> {
-        self.state.semantic
+        &self.state.semantic
     }
 
     pub(crate) fn parent(&self) -> Option<NodeId> {
@@ -71,7 +90,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
     }
 }
 
-impl Mutation<'_, '_, '_> {
+impl TransformCtx<'_, '_> {
     /// Babel: t.inheritsComments(child, parent). Retain the child's attachments,
     /// inherit the parent's leading/trailing attachments, and return the child.
     /// The parent is being replaced; the AST stores one attachment per comment

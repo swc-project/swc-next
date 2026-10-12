@@ -1,7 +1,7 @@
 //! ES2022 static blocks transform.
 //!
 //! Retains the original private-field and non-extensible-class closure lowering.
-//! Synchronizes scopes through Mutation and reads class information locally.
+//! Synchronizes scopes through TransformCtx and reads class information locally.
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionBody, ArrowFunctionExpression, AssignmentOperator,
     AssignmentTarget, Ast, AstWtf8, Class, ClassBody, ClassElement, ClassType, DUMMY_SP, Expr,
@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    context::{BoundIdentifier, ContainerOwnerChild, Mutation},
+    context::{BoundIdentifier, ContainerOwnerChild, TransformCtx},
     used_names::UsedNameState,
 };
 use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
@@ -28,7 +28,7 @@ impl StaticBlocks {
         }
     }
 
-    pub(super) fn enter_class_body(&mut self, body: ClassBody, ctx: &mut Mutation<'_, '_, '_>) {
+    pub(super) fn enter_class_body(&mut self, body: ClassBody, ctx: &mut TransformCtx<'_, '_>) {
         let class = match ctx
             .ast()
             .kind_data(ctx.parent().expect("class body parent"))
@@ -87,7 +87,7 @@ impl StaticBlocks {
     pub(super) fn exit_class(
         &mut self,
         class: Class,
-        ctx: &mut Mutation<'_, '_, '_>,
+        ctx: &mut TransformCtx<'_, '_>,
     ) -> TraverseAction<Expr> {
         if self
             .class_calls
@@ -124,7 +124,7 @@ fn transform_supporting_non_extensible_class(
     name: Option<InferredName>,
     layout: &ClassLayout,
     names: &mut UsedNameState<'_>,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<Expr> {
     let body = class.body(ctx.ast());
     let scope = ctx.current_scope();
@@ -237,7 +237,7 @@ fn materialize_block(
     block: StaticBlock,
     first: bool,
     parent: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     if let Some(expression) = single_expression_statement(block.body(ctx.ast()), ctx.ast()) {
         inline_static_block_expression(block.node_id(), parent, ctx);
@@ -259,7 +259,7 @@ fn materialize_block(
 
 fn create_trailing_arrow(
     parent: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> (ArrowFunctionExpression, ScopeId) {
     let arrow = ctx.add_node(parent, |ast| {
         let body = ast.function_body(DUMMY_SP, SubRange::empty(), SubRange::empty());
@@ -297,7 +297,7 @@ fn block_to_arrow(
     block: StaticBlock,
     completion: bool,
     parent: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     let scope = ctx
         .semantic()
@@ -326,7 +326,7 @@ fn block_to_arrow(
 fn sequence_or_single(
     expressions: Vec<Expr>,
     scope: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     debug_assert!(!expressions.is_empty());
     if expressions.len() == 1 {
@@ -339,7 +339,7 @@ fn sequence_or_single(
 fn prepend_to_initializer(
     property: PropertyDefinition,
     mut expressions: Vec<Expr>,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) {
     let scope = ctx
         .semantic()
@@ -374,7 +374,7 @@ fn prepend_to_initializer(
     }
 }
 
-fn set_function_name(target: Expr, name: InferredName, ctx: &mut Mutation<'_, '_, '_>) -> Expr {
+fn set_function_name(target: Expr, name: InferredName, ctx: &mut TransformCtx<'_, '_>) -> Expr {
     let scope = ctx
         .semantic()
         .scope_outside(target.node_id())
@@ -392,7 +392,7 @@ fn set_function_name(target: Expr, name: InferredName, ctx: &mut Mutation<'_, '_
 fn prepare_inferred_name(
     name: InferredName,
     scope: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> InferredName {
     let InferredName::Computed { parent, key } = name else {
         return name;
@@ -419,7 +419,7 @@ fn private_field(
     key: PropertyKey,
     value: Expr,
     span: Span,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> ClassElement {
     ClassElement::PropertyDefinition(ctx.add_node(ctx.current_scope(), |ast| {
         ast.property_definition(
@@ -445,7 +445,7 @@ fn private_field(
 fn inferred_name(
     class: Class,
     ancestors: impl IntoIterator<Item = NodeId>,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<InferredName> {
     if class.id(ctx.ast()).is_some() {
         return None;
@@ -535,7 +535,7 @@ fn inferred_name(
     None
 }
 
-fn property_key_name(key: PropertyKey, ctx: &mut Mutation<'_, '_, '_>) -> Option<InferredName> {
+fn property_key_name(key: PropertyKey, ctx: &mut TransformCtx<'_, '_>) -> Option<InferredName> {
     if let Some(literal) = key
         .as_expr(ctx.ast())
         .and_then(|expr| expr.as_string_literal(ctx.ast()))
@@ -603,7 +603,7 @@ fn inferred_property_key_name(
     key: PropertyKey,
     computed: bool,
     parent: NodeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<InferredName> {
     property_key_name(key, ctx).or_else(|| {
         computed
@@ -657,7 +657,7 @@ fn static_property(element: ClassElement, ast: &Ast<'_>) -> Option<PropertyDefin
 fn transform_class_as_private_fields(
     body: ClassBody,
     names: &mut UsedNameState<'_>,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) {
     let mut index = 0;
     while let Some(member) = ctx.container_class_body_mut(body).get(index).copied() {
@@ -702,7 +702,7 @@ fn single_expression_statement(statements: SubRange<Stmt>, ast: &Ast<'_>) -> Opt
         .map(|statement| statement.expression(ast))
 }
 
-fn call_generated_after_class(name: BoundIdentifier, ctx: &mut Mutation<'_, '_, '_>) -> Expr {
+fn call_generated_after_class(name: BoundIdentifier, ctx: &mut TransformCtx<'_, '_>) -> Expr {
     let class = ctx.parent().expect("class body parent");
     let scope = ctx
         .semantic()
@@ -726,7 +726,7 @@ fn build_static_block_arrow(
     expression: bool,
     reuse: ScopeId,
     parent: ScopeId,
-    ctx: &mut Mutation<'_, '_, '_>,
+    ctx: &mut TransformCtx<'_, '_>,
 ) -> (Expr, ScopeId) {
     let arrow = ctx.add_node(reuse, |ast| {
         let params = ast.formal_parameters(
@@ -753,7 +753,7 @@ fn build_static_block_arrow(
     (Expr::ArrowFunctionExpression(arrow), reuse)
 }
 
-fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Mutation<'_, '_, '_>) {
+fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut TransformCtx<'_, '_>) {
     let block = static_block(block, ctx.ast());
     let scope = ctx
         .semantic()
@@ -799,7 +799,7 @@ struct ClassLayout {
 }
 
 impl ClassLayout {
-    fn read(body: ClassBody, ctx: &Mutation<'_, '_, '_>) -> Self {
+    fn read(body: ClassBody, ctx: &TransformCtx<'_, '_>) -> Self {
         let mut layout = Self::default();
         for member in ctx.container_class_body(body) {
             if let Some(property) = static_property(member, ctx.ast()) {
@@ -817,7 +817,7 @@ impl ClassLayout {
     }
 }
 
-fn private_names<'a>(body: ClassBody, ctx: &Mutation<'_, '_, 'a>) -> UsedNameState<'a> {
+fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameState<'a> {
     let mut names = UsedNameState::new(ctx.ast().allocator());
     for member in ctx.container_class_body(body) {
         let key = match ctx.ast().class_element_data(member) {
@@ -840,7 +840,7 @@ fn private_names<'a>(body: ClassBody, ctx: &Mutation<'_, '_, 'a>) -> UsedNameSta
     names
 }
 
-fn private_name(names: &mut UsedNameState<'_>, ctx: &mut Mutation<'_, '_, '_>) -> PropertyKey {
+fn private_name(names: &mut UsedNameState<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
     let name = ctx.ast.add_utf8(names.next_name("_", 2));
     PropertyKey::Expr(Expr::PrivateIdentifier(
         ctx.add_node(ctx.current_scope(), |ast| {

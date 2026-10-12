@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::{ClassBody, ClassElement, SubRange};
 
-use crate::context::Mutation;
+use crate::context::TransformCtx;
 
 #[derive(Clone, Copy)]
 pub enum ContainerOwner {
@@ -24,7 +24,7 @@ impl Container {
     }
 }
 
-impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
+impl<'c, 'a> TransformCtx<'c, 'a> {
     /// Read pending members, or the attached AST range if no edits are cached.
     /// Reading does not allocate or initialize a mutable container.
     pub fn container_class_body(

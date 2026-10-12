@@ -3,7 +3,7 @@
 //! The model consumes Semantic's basic indexes without retaining its hoisting
 //! conflict tables, module record, or TypeScript member and alias lookup indexes.
 //! Index mutations take semantic records and identifiers, not an AST. Transforms
-//! read syntax and coordinate subtree edits through Mutation.
+//! read syntax and coordinate subtree edits through TransformCtx.
 
 use oxc_index::Idx;
 use swc_next_allocator::vec::Vec as ArenaVec;

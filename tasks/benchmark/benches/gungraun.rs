@@ -149,8 +149,8 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
 #[bench::hono_types(setup_transform(HONO_TYPES, Lang::Ts))]
 fn bench_transform(input: TransformInput) {
     let (mut ast, semantic, options) = black_box(input);
-    let scopes = Transformer::transform(&mut ast, semantic, options);
-    black_box((ast, scopes));
+    let result = Transformer::transform(&mut ast, semantic, options);
+    black_box((ast, result));
 }
 
 fn type_strip_options(lang: Lang) -> Options {

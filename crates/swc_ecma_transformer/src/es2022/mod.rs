@@ -2,7 +2,7 @@ mod static_blocks;
 
 use swc_next_ecma_ast::{Class, ClassBody, Expr, TraverseAction};
 
-use crate::{context::Mutation, proposal::ProposalOptions};
+use crate::{context::TransformCtx, proposal::ProposalOptions};
 
 pub struct ES2022 {
     static_blocks: Option<static_blocks::StaticBlocks>,
@@ -22,7 +22,7 @@ impl ES2022 {
         }
     }
 
-    pub(crate) fn enter_class_body<'a>(&mut self, body: ClassBody, ctx: &mut Mutation<'_, '_, 'a>) {
+    pub(crate) fn enter_class_body<'a>(&mut self, body: ClassBody, ctx: &mut TransformCtx<'_, 'a>) {
         if let Some(static_blocks) = &mut self.static_blocks {
             static_blocks.enter_class_body(body, ctx);
         }
@@ -31,7 +31,7 @@ impl ES2022 {
     pub(crate) fn exit_class<'a>(
         &mut self,
         class: Class,
-        ctx: &mut Mutation<'_, '_, 'a>,
+        ctx: &mut TransformCtx<'_, 'a>,
     ) -> TraverseAction<Expr> {
         if let Some(static_blocks) = &mut self.static_blocks {
             return static_blocks.exit_class(class, ctx);
