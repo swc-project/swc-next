@@ -307,11 +307,11 @@ fn test_type_argument_token_boundaries() {
 
     expect_token_boundary("f<T> === x", "f<T> ===x;");
 
-    expect_token_boundary("f<T> >= x", "f<T> >=x;");
+    expect_token_boundary("(f<T>) >= x", "(f<T>)>=x;");
 
-    expect_token_boundary("f<T> >> x", "f<T> >>x;");
+    expect_token_boundary("(f<T>) >> x", "(f<T>)>>x;");
 
-    expect_token_boundary("f<T> >>> x", "f<T> >>>x;");
+    expect_token_boundary("(f<T>) >>> x", "(f<T>)>>>x;");
 
     expect_token_boundary("f<Foo<T>> == x", "f<Foo<T>> ==x;");
 

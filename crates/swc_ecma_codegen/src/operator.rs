@@ -53,15 +53,32 @@ impl BinaryishOperator {
         }
     }
 
-    // These tokens can extend the type at the end of an `as` or `satisfies`
-    // expression instead of starting a binary operation.
-    pub(crate) fn can_continue_type(self) -> bool {
-        matches!(
+    // `<`, `|`, and `&` can extend an `as` or `satisfies` type. Instantiation
+    // expressions instead need grouping before `<`, `>`, `+`, and `-`.
+    // TypeScript's scanner also starts `>=`, `>>`, and `>>>` with `>`.
+    pub(crate) fn following_context(self) -> ExprContext {
+        let continues_type = matches!(
             self,
             Self::Binary(
                 BinaryOperator::LessThan | BinaryOperator::BitwiseOr | BinaryOperator::BitwiseAnd
             )
-        )
+        );
+        let forbids_instantiation = matches!(
+            self,
+            Self::Binary(
+                BinaryOperator::LessThan
+                    | BinaryOperator::GreaterThan
+                    | BinaryOperator::GreaterThanOrEqual
+                    | BinaryOperator::RightShift
+                    | BinaryOperator::UnsignedRightShift
+                    | BinaryOperator::Add
+                    | BinaryOperator::Subtract
+            )
+        );
+        let mut context = ExprContext::empty();
+        context.set(ExprContext::WRAP_TS_CAST, continues_type);
+        context.set(ExprContext::NO_INSTANTIATION, forbids_instantiation);
+        context
     }
 
     pub(crate) fn is_keyword(self) -> bool {
@@ -96,7 +113,7 @@ pub(crate) struct BinaryExprVisitor {
     pub(crate) e: Binaryish,
     pub(crate) level: Precedence,
     pub(crate) flags: bool,
-    // Carry cast grouping through the rightmost ungrouped operand.
+    // Carry grouping context through the rightmost ungrouped operand.
     pub(crate) context: ExprContext,
 
     // Input for visiting the left child
@@ -119,5 +136,17 @@ bitflags::bitflags! {
         const IN_NEW_CALLEE = 1 << 0;
         const WRAP_TS_CAST = 1 << 1;
         const NO_INSTANTIATION = 1 << 2;
+    }
+}
+
+impl ExprContext {
+    pub(crate) fn inside_group(self, grouped: bool) -> Self {
+        if grouped { Self::empty() } else { self }
+    }
+
+    // Prefix expressions and transparent chains end in their operand, so the
+    // following-token restriction on instantiations reaches that operand.
+    pub(crate) fn instantiation_tail(self, grouped: bool) -> Self {
+        self.inside_group(grouped) & Self::NO_INSTANTIATION
     }
 }

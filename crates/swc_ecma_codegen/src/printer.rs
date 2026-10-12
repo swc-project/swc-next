@@ -217,13 +217,9 @@ impl BinaryExprVisitor {
             precedence.next()
         };
         self.left_flags = local_forbid_in;
-        self.left_context = ExprContext::empty();
-        self.left_context
-            .set(ExprContext::WRAP_TS_CAST, operator.can_continue_type());
-        self.right_context = self.context & ExprContext::WRAP_TS_CAST;
-        if self.wrap {
-            self.right_context = ExprContext::empty();
-        }
+        self.left_context = operator.following_context();
+        self.right_context = self.context.inside_group(self.wrap)
+            & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION);
 
         match operator {
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
@@ -2069,7 +2065,14 @@ impl<'a> Printer<'a> {
             ExprData::LogicalExpression(e) => {
                 self.print_binaryish(Binaryish::Logical(e), level, context)
             }
-            ExprData::UnaryExpression(e) => self.print_unary(e, level),
+            ExprData::UnaryExpression(e) => {
+                // Select the operand mode before printing to shorten the context live range.
+                if context.contains(ExprContext::NO_INSTANTIATION) {
+                    self.print_unary::<true>(e, level);
+                } else {
+                    self.print_unary::<false>(e, level);
+                }
+            }
             ExprData::UpdateExpression(e) => self.print_update(e, level),
             ExprData::AssignmentExpression(e) => {
                 let at_stmt_start = self.js.len() == self.stmt_start;
@@ -2161,11 +2164,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
-                let chain_context = if wrap {
-                    ExprContext::empty()
-                } else {
-                    context & ExprContext::NO_INSTANTIATION
-                };
+                let chain_context = context.instantiation_tail(wrap);
                 self.print_expr_with_context(
                     e.expression(self.ast),
                     Precedence::Lowest,
@@ -2273,20 +2272,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::AwaitExpression(e) => {
-                let wrap = level > Precedence::Prefix;
-                if wrap {
-                    self.print("(");
-                }
-                self.print_space_before_identifier();
-                self.add_source_mapping(expr.span(self.ast).start);
-                self.print("await");
-                self.print_space();
-                self.print_expr(e.argument(self.ast), Precedence::Prefix);
-                if wrap {
-                    self.print(")");
-                }
-            }
+            ExprData::AwaitExpression(e) => self.print_await(e, level, context),
             ExprData::YieldExpression(e) => {
                 let wrap = level > Precedence::Assignment;
                 if wrap {
@@ -2337,20 +2323,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::TsTypeAssertion(e) => {
-                let wrap = level > Precedence::Prefix;
-                if wrap {
-                    self.print("(");
-                }
-                self.print_ts_type_assertion_prefix(
-                    e.type_annotation(self.ast),
-                    expr.span(self.ast).start,
-                );
-                self.print_expr(e.expression(self.ast), Precedence::Prefix);
-                if wrap {
-                    self.print(")");
-                }
-            }
+            ExprData::TsTypeAssertion(e) => self.print_ts_type_assertion(e, level, context),
             ExprData::TsNonNullExpression(e) => {
                 self.print_ts_non_null(e, context.contains(ExprContext::IN_NEW_CALLEE))
             }
@@ -2457,14 +2430,54 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_unary(&mut self, e: UnaryExpression, level: Precedence) {
+    // Keep prefix operand contexts outside the main expression dispatch.
+    #[inline(never)]
+    fn print_await(&mut self, e: AwaitExpression, level: Precedence, context: ExprContext) {
+        let wrap = level > Precedence::Prefix;
+        if wrap {
+            self.print("(");
+        }
+        self.print_space_before_identifier();
+        self.add_source_mapping(e.span(self.ast).start);
+        self.print("await");
+        self.print_space();
+        let operand_context = context.instantiation_tail(wrap);
+        self.print_expr_with_context(e.argument(self.ast), Precedence::Prefix, operand_context);
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    #[inline(never)]
+    fn print_ts_type_assertion(
+        &mut self,
+        e: TsTypeAssertion,
+        level: Precedence,
+        context: ExprContext,
+    ) {
+        let wrap = level > Precedence::Prefix;
+        if wrap {
+            self.print("(");
+        }
+        self.print_ts_type_assertion_prefix(e.type_annotation(self.ast), e.span(self.ast).start);
+        let operand_context = context.instantiation_tail(wrap);
+        self.print_expr_with_context(e.expression(self.ast), Precedence::Prefix, operand_context);
+        if wrap {
+            self.print(")");
+        }
+    }
+
+    fn print_unary<const NO_INSTANTIATION: bool>(&mut self, e: UnaryExpression, level: Precedence) {
         let wrap = level > Precedence::Prefix;
         if wrap {
             self.print("(");
         }
         let operator = e.operator(self.ast);
         let op = operator.as_str();
-        if op.as_bytes()[0].is_ascii_alphabetic() {
+        if matches!(
+            operator,
+            UnaryOperator::Typeof | UnaryOperator::Void | UnaryOperator::Delete
+        ) {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
@@ -2473,7 +2486,12 @@ impl<'a> Printer<'a> {
             let operator_code = OperatorCode::Unary(operator);
             self.print_mapped_operator(operator_code, op, e.span(self.ast).start);
         }
-        self.print_expr(e.argument(self.ast), Precedence::Prefix);
+        let operand_context = if NO_INSTANTIATION && !wrap {
+            ExprContext::NO_INSTANTIATION
+        } else {
+            ExprContext::empty()
+        };
+        self.print_expr_with_context(e.argument(self.ast), Precedence::Prefix, operand_context);
         if wrap {
             self.print(")");
         }
@@ -4455,11 +4473,11 @@ impl<'a> Printer<'a> {
         let operator = expression.operator(self.ast);
         let argument = expression.argument(self.ast);
         let ExprData::NumericLiteral(number) = self.ast.expr_data(argument) else {
-            self.print_unary(expression, Precedence::Lowest);
+            self.print_unary::<false>(expression, Precedence::Lowest);
             return;
         };
         if !matches!(operator, UnaryOperator::Negate | UnaryOperator::Positive) {
-            self.print_unary(expression, Precedence::Lowest);
+            self.print_unary::<false>(expression, Precedence::Lowest);
             return;
         }
 
