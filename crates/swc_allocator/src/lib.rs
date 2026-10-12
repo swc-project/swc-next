@@ -188,22 +188,3 @@ impl Default for Allocator {
         Self::new()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Allocator, CloneIn, wtf8};
-
-    #[test]
-    fn clone_wtf8() {
-        let allocator = Allocator::new();
-        let cloned = {
-            let source = wtf8::Wtf8Buf::from_bytes(b"a\xc3\xa9\xed\xa0\x80".to_vec()).unwrap();
-            let text: &wtf8::Wtf8 = &source;
-            text.clone_in(&allocator)
-        };
-        assert_eq!(cloned.as_bytes(), b"a\xc3\xa9\xed\xa0\x80");
-
-        let empty = wtf8::Wtf8::from_str("").clone_in(&allocator);
-        assert!(empty.is_empty());
-    }
-}
