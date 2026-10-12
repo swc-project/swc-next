@@ -13,7 +13,6 @@ use crate::{
     Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator, Redeclarations,
     Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags,
     SymbolIterator,
-    binder::find_internal_name,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -346,6 +345,7 @@ impl ScopeModel<'_> {
     /// Transfer a scope to a new owner and kind while preserving its contents and identities.
     ///
     /// The caller must maintain strictness inheritance and update affected descendant flags separately.
+    /// The current owner must own only this scope; a replacement owner must not own another scope.
     ///
     /// ```javascript
     /// // Before: value and its uses belong to the static-block scope.
@@ -355,7 +355,6 @@ impl ScopeModel<'_> {
     /// // Replace the StaticBlock owner with the arrow owner and change kind to Function.
     /// // Keep ScopeId, parent, bindings, references and child scopes; refresh hoist/body links.
     /// // The caller supplies arrow flags, including arguments_barrier = false.
-    /// // Owners shared by multiple active scopes remain TODO.
     /// ```
     pub fn convert_scope(
         &mut self,
@@ -369,17 +368,9 @@ impl ScopeModel<'_> {
         let parent = original.parent.expect("cannot convert a root scope");
         assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
         assert!(kind == ScopeKind::Function || original.function_body.is_none());
-        if self
-            .iter_scopes()
-            .any(|entry| entry.id != scope && entry.scope.node == original.node)
-        {
-            todo!("Convert an owner shared by multiple active scopes");
-        }
-        assert!(
-            !self
-                .iter_scopes()
-                .any(|entry| entry.id != scope && entry.scope.node == owner)
-        );
+        assert!(!self.iter_scopes().any(|entry| {
+            entry.id != scope && (entry.scope.node == original.node || entry.scope.node == owner)
+        }));
         if kind == ScopeKind::FunctionBody {
             assert_eq!(self.scope(parent).kind, ScopeKind::Function);
             assert!(
@@ -393,6 +384,7 @@ impl ScopeModel<'_> {
             assert_eq!(self.scope_at(original.node), Some(scope));
             self.node_scopes[original.node.index()] = None;
         }
+        self.node_scopes[owner.index()] = Some(scope);
         if original.kind == ScopeKind::FunctionBody && kind != ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = None;
         } else if kind == ScopeKind::FunctionBody {
@@ -402,7 +394,6 @@ impl ScopeModel<'_> {
         current.node = owner;
         current.kind = kind;
         current.flags = flags;
-        self.node_scopes[owner.index()] = Some(scope);
         let target = if kind.is_hoist_target() {
             scope
         } else {
@@ -435,58 +426,6 @@ impl ScopeModel<'_> {
         self.node_scopes[node.index()] = Some(to);
         if let Some(reference) = self.reference_of(node) {
             self.references[reference.index()].scope = to;
-        }
-    }
-
-    /// Move a binding and its source-owned declarations to another scope without changing its symbol.
-    ///
-    /// ```javascript
-    /// // Before: the block owns value's lexical binding.
-    /// { let value = 1; use(value); }
-    /// // After: the caller moves the declaration and use into an arrow.
-    /// (() => { let value = 1; use(value); })();
-    /// // Move value's binding-table entry and source-owned declarations to the arrow scope.
-    /// // Keep declaration IDs, SymbolId, reference targets, uses and declarations elsewhere.
-    /// // The destination must have no conflicting value; move node evaluation scopes separately.
-    /// ```
-    pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
-        assert!(self.scope(from).active && self.scope(to).active);
-        if from == to {
-            return;
-        }
-        let names: Vec<_> = self.scope_maps[from.index()]
-            .iter()
-            .filter_map(|(&name, &binding)| (binding == symbol).then_some(name))
-            .collect();
-        assert!(!names.is_empty(), "source must own the binding");
-        for &name in &names {
-            assert!(
-                self.own_binding(to, name)
-                    .is_none_or(|binding| binding == symbol)
-            );
-        }
-        for name in names {
-            if let Some(expression_name) =
-                find_internal_name(&self.symbols, &self.declarations, from, symbol)
-            {
-                self.scope_maps[from.index()].insert(name, expression_name);
-            } else {
-                self.scope_maps[from.index()].remove(name);
-            }
-            self.scope_maps[to.index()].insert(name, symbol);
-        }
-        let first = self.symbol(symbol).declaration;
-        for id in std::iter::once(first).chain(
-            self.redeclarations
-                .get(&symbol)
-                .into_iter()
-                .flatten()
-                .copied(),
-        ) {
-            let declaration = &mut self.declarations[id.index()];
-            if declaration.scope == from {
-                declaration.scope = to;
-            }
         }
     }
 

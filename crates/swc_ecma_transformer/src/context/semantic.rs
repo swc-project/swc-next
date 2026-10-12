@@ -260,6 +260,7 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// Transfer a scope to a new owner and kind while preserving its contents and identities.
     ///
     /// The caller must maintain strictness inheritance and update affected descendant flags separately.
+    /// The current owner must own only this scope; a replacement owner must not own another scope.
     ///
     /// ```javascript
     /// // Before: value and its uses belong to the static-block scope.
@@ -311,25 +312,6 @@ impl<'a> Mutation<'_, '_, 'a> {
             to,
         };
         root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
-    }
-
-    /// Move a binding and its source-owned declarations to another scope without changing its symbol.
-    ///
-    /// ```javascript
-    /// // Before: the block owns value's lexical binding.
-    /// { let value = 1; use(value); }
-    /// // After: the caller moves the declaration and use into an arrow.
-    /// (() => { let value = 1; use(value); })();
-    /// // Move value's binding-table entry and source-owned declarations to the arrow scope.
-    /// // Keep declaration IDs, SymbolId, reference targets, uses and declarations elsewhere.
-    /// // The destination must have no conflicting value; move node evaluation scopes separately.
-    /// ```
-    #[expect(
-        dead_code,
-        reason = "Binding relocation is not yet needed by current passes"
-    )]
-    pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
-        self.state.semantic.move_binding(from, to, symbol);
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
@@ -388,16 +370,11 @@ impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
     fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
         let scope = self.semantic.scope_at(node).expect("retained node scope");
         if self.semantic.scope(scope).node == node {
-            // Reparent the outermost scope owned by this node.
-            let mut outer = scope;
-            while let Some(parent) = self.semantic.scope(outer).parent {
-                if self.semantic.scope(parent).node != node {
-                    break;
-                }
-                outer = parent;
-            }
-            if self.semantic.scope(outer).parent == Some(self.from) {
-                self.semantic.reparent_scope(outer, self.to);
+            // Program scopes keep their fixed outer wrapper.
+            if self.semantic.scope(scope).parent == Some(self.from)
+                && self.semantic.scope(self.from).node != node
+            {
+                self.semantic.reparent_scope(scope, self.to);
             }
         } else if scope == self.from {
             self.semantic.move_node_to_scope(node, self.from, self.to);

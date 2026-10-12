@@ -131,7 +131,6 @@ Nested scopes keep their contents and receive a new parent when needed.
 | `create_child_scope` | Register a new scope owner below an active parent; move existing content separately. |
 | `convert_scope` | Transfer a scope to a replacement owner and change kind/flags while preserving bindings, references and child scopes. |
 | `move_node_to_scope` | Move one evaluation mapping and its reference scope while preserving identity and target. |
-| `move_binding` | Move a binding-table entry and declarations owned by the source, preserving merged declarations elsewhere. |
 | `reparent_scope` | Change ancestry and refresh affected hoist targets without changing retained content identities. |
 | `set_scope_flags` | Apply caller-computed flags to one scope. |
 | `remove_scope` | Retire an empty scope and clear its detached owner's mapping after retained content has moved. |
@@ -142,13 +141,9 @@ The caller maintains strictness inheritance. `create_child_scope` and
 unchanged. When a syntax or ancestry change affects strictness, the caller must
 compute and apply flags to each affected scope through `set_scope_flags`.
 
-Converting a node shared by multiple active scopes still stops at an explicit
-`todo!()`: it needs to coordinate all scope owners and the node's innermost
-mapping together.
-
-Ordinary static-block lowering keeps strictness and uses a single source owner,
-so it does not need this unsupported operation. Do not bypass that check
-with unsynchronized AST edits.
+`convert_scope` requires its current owner to own only that scope. When replacing
+the owner, it clears the old node's mapping and maps the new node to the same
+ScopeId. A replacement owner must not already own another scope.
 
 A single-expression static block moves its expression into the destination
 scope, clears the discarded ExpressionStatement mapping and retires its empty
@@ -197,8 +192,7 @@ Reuse conformance fixtures for covered behavior; add focused tests for semantic
 invariants or observable behavior following AGENTS.md. For scope changes, compare
 transformed ScopeModel node/reference scopes, binding ownership and reference
 targets with fresh Semantic analysis, and compare generated JavaScript execution
-with native input. Cases using the unsupported operations above remain explicit
-TODOs.
+with native input.
 
 Run Rust tests and required formatting/lint checks. For static-block/helper
 changes, prepare fixtures with `./scripts/clone_fixtures.sh` and run both
