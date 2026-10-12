@@ -1,217 +1,165 @@
 ## Flattening AST
 
-The core idea of flattening AST can be found in https://www.cs.cornell.edu/~asampson/blog/flattening.html
+The core idea of flattening AST can be found in [Flattening ASTs](https://www.cs.cornell.edu/~asampson/blog/flattening.html).
 
-In summary, the main idea is to use a single data structure to represent the entire AST, instead of using a tree structure. This can be done by using a vector to store all the nodes, and refer to them by their index (NodeId).
+The AST still describes a tree, but its nodes live in indexed tables instead of separately allocated objects. Child edges use `NodeId` values rather than pointers or `Box<T>`, and an `Ast` context owns the storage and provides access to it.
 
-- **Pros:** Better performance because of less memory consumption and memory locality.
-- **Cons:** Less ergonomic API
+- **Pros:** Fewer per-node allocations and better memory locality, with compact handles that remain stable as storage grows.
+- **Cons:** Field access requires the AST context, and handles must be used with the context that created them.
 
 ### Detailed Design
 
-There are two parts of the AST design: universal (untyped) abstract syntax node for storage, and typed ASTs for ergonomic and compatible API.
+There are two parts to the design: untyped storage shared by all node kinds, and typed handles that provide the public AST API.
 
 #### Universal AST
 
-This part of design is heavily inspired by [zig compiler](https://codeberg.org/ziglang/zig) and [the corresponding blog](https://mitchellh.com/zig/parser).
+This part of the design is inspired by the [Zig compiler](https://codeberg.org/ziglang/zig) and [its parser design](https://mitchellh.com/zig/parser).
 
-First, the AST context stores everything about the AST, where all CRUD should happen. Each one is an arena:
+`Ast` borrows the source text and an arena allocator. Besides node and field storage, it keeps the root, source metadata, attached comments, and strings. The main storage fields are:
 
 ```rs
-pub struct Ast {
-    nodes: IndexVec<NodeId, AstNode>,
-    extra_data: IndexVec<ExtraDataId, ExtraData>,
-    bigint: IndexVec<BigIntId, BigIntValue>,
-    string_allocator: StringAllocator,
+pub struct Ast<'a> {
+    allocator: &'a Allocator,
+    root: Option<NodeId>,
+    // Source metadata and attached comments omitted.
+    nodes: NodeData<'a>,
+    extra_data: ArenaVec<'a, ExtraData>,
+    strings: StringPool<'a>,
 }
 ```
 
-The `AstNode` stores the kind of the node (1 byte enum), and the data of the node, which represents the start index of extra data (fields) of the node.
+The node table uses a structure-of-arrays layout: spans, kinds, and payloads are stored in separate arena-backed columns, all indexed by the same `NodeId`. There is no stored `AstNode` record; `AstNode` is the trait implemented by typed handles.
+
+| Column | Element type  | Size     |
+| ------ | ------------- | -------- |
+| `span` | `Span`        | 8 bytes  |
+| `kind` | `NodeKind`    | 1 byte   |
+| `data` | `NodePayload` | 16 bytes |
+
+Different node kinds have different fields. `ast_tools` computes a fixed layout for each kind, and generates a `NodePayload` union containing the corresponding typed payload structs. Fields are placed in the payload when possible:
+
+- **Full layout:** All fields fit in the 16-byte payload; no extra field slots are needed.
+- **Partial layout:** Selected fields occupy the first 12 bytes, and the last 4 bytes hold an `ExtraDataId` pointing to the remaining fields. Smaller fields are preferred to keep more fields inline.
+
+For example, `Program` stores `directives` and `hashbang` inline, while `body` occupies one extra-data slot:
 
 ```rs
-assert!(size_of::<AstNode>() == 16);
-pub struct AstNode {
-    span: Span,         // 8 bytes
-    kind: NodeKind,     // 1 bytes
-    data: NodeData,     // 4 bytes
+#[repr(C)]
+pub(crate) struct ProgramPayload {
+    directives: SubRange<Directive>, // 8 bytes
+    hashbang: u32,                   // 4 bytes: NodeId or None sentinel
+    extra_data_start: ExtraDataId,   // 4 bytes: points to body
 }
 ```
 
-Since difference kinds of AST nodes are heterogeneous, which means they have difference kinds and lengths of fields, we cannot store their fields in a single typed data struct like `Vec<T>`.
+`ExtraData` is an 8-byte, type-erased slot. The AST schema supplies the field type and its encoding; no per-slot runtime discriminant is needed.
 
-`NodeData` is basically the start index of extra data.
-
-```rs
-pub union NodeData {
-    empty: (),
-    extra_data_start: ExtraDataId,
-}
-```
-
-`ExtraData` is a type-erased, canonical 64-bit word used for node fields that do
-not fit in the inline payload. The AST schema supplies the field type, and
-`ExtraDataValue` defines how that type is encoded and decoded.
-
-- For data smaller than 8 bytes, such as `bool` and `number`, they are directly stored in the `ExtraData`.
-- For data larger than 8 bytes, such as `BigIntValue`, `ExtraData` stores their Ids, while their values are stored in another typed arena of AST context.
-- For data with undetermined length, such as `SubRange<Expr>`, their start and end `ExtraDataId` values are packed into `ExtraData`.
-
-```rs
-assert!(size_of::<ExtraData>() == 8);
-#[repr(transparent)]
-pub struct ExtraData(u64);
-
-pub trait ExtraDataValue: Sized {
-    fn into_extra_data(self) -> ExtraData;
-    unsafe fn from_extra_data(data: ExtraData) -> Self;
-}
-```
+- Node handles are encoded as `NodeId` values.
+- Supported scalar fields are encoded as compact words.
+- `AstUtf8`, `AstWtf8`, and `SubRange<T>` store two `u32` offsets in one slot.
+- Optional handles and strings use reserved representations for `None`, such as `u32::MAX` for an optional node ID.
 
 ![Flattening AST](./images/flattening-ast.excalidraw.png)
 
-No runtime discriminant is needed because each node kind has a fixed schema.
-AST node handles share blanket `ExtraDataValue` implementations instead of
-generating identical conversions for every concrete node type.
-
 #### Typed AST
 
-This part of design is inspired by [rowan](https://github.com/rust-analyzer/rowan).
-
-The universal AST is hard to use, and has no compatibility with legacy SWC at all. Therefore typed AST is proposed. All of them are just typed wrappers of `NodeId` or `AstNode`.
-
-What `#[ast]` macro in the following example does is only to make the definition wrapper of `NodeId`. Other useful functions and builders are generated by `ast_tools`.
+The typed handle API is inspired by [rowan](https://github.com/rust-analyzer/rowan). AST declarations describe the logical fields, while `#[ast]` turns each declaration into a copyable wrapper around a 4-byte `NodeId`:
 
 ```rs
 #[ast]
-pub struct Module {
-    body: SubRange<ModuleItem>,
-    shebang: OptionalAtomRef,
+pub struct Program {
+    directives: SubRange<Directive>,
+    body: SubRange<Stmt>,
+    hashbang: Option<Hashbang>,
 }
 
-// Macro expand
-pub struct Module(NodeId)
+// Macro expansion, omitting derives:
+#[repr(transparent)]
+pub struct Program(pub(crate) NodeId);
 ```
 
-For the typed AST of `enum`, the macro keeps the definition unchanged.
+AST enum declarations such as `Expr` and `Stmt` also become `NodeId` wrappers. Their concrete kind is read from the node table, so the handle does not carry a separate enum discriminant. Generated `is_*` and `as_*` methods provide variant checks and downcasts. Types marked with `#[ast(repr)]` additionally get a matching data enum, such as `ExprData`, for pattern matching through `ast.expr_data(expr)`.
+
+Handles do not encode ownership or an AST lifetime. They must refer to a valid node of the expected kind in the same context; unchecked construction or changing a node's kind must preserve that invariant.
 
 #### Ast Tool
 
-This part of design is inspired by [rowan](https://github.com/rust-analyzer/rowan) and [oxc](https://github.com/oxc-project/oxc).
+`ast_tools` reads the typed AST declarations and builds a shared schema of node kinds, fields, and enum variants. It computes each node's inline and extra-data layout, then generates payload structs, builders, getters/setters, node conversions, cloning, and traversal APIs from that schema.
 
-The ast tool scans all definition of typed AST, collects their fields and generates everything useful, such as builders, getters/setters, visitors, and more.
-
-The builder functions are used for creating new typed AST nodes.
-
-- The names are either same as the struct names or the enum name concated with their variant names.
-- The params are the fields of the struct.
-- The builder adds each param to the extra data list of the AST context, and finally adds the universal AST node with corresponding `NodeKind` and the first extra data index. Finally, it wraps the returnt `NodeId` with the typed AST wrapper.
+Generated builders take a span and the declared fields, write inline and extra-data fields according to the layout, append the node, and return its typed handle. For example:
 
 ```rs
-impl Ast {
-    #[inline]
-    pub fn module(&mut self, span: Span, body: SubRange<ModuleItem>, shebang: OptionalUtf8Ref) -> Module {
-        let _f0 = self.add_extra(body);
-        let _f1 = self.add_extra(shebang);
-        Module(self.add_node(AstNode {
+impl<'a> Ast<'a> {
+    pub fn program(
+        &mut self,
+        span: Span,
+        directives: SubRange<Directive>,
+        body: SubRange<Stmt>,
+        hashbang: Option<Hashbang>,
+    ) -> Program {
+        let extra_data_start = self.add_extra(body);
+        Program(self.add_node(
             span,
-            kind: NodeKind::Module,
-            data: NodeData {
-                extra_data_start: _f0,
+            NodeKind::Program,
+            NodePayload {
+                program: ProgramPayload {
+                    directives,
+                    hashbang: hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    extra_data_start,
+                },
             },
-        }))
+        ))
     }
 }
 ```
 
-The ast tool also generates the field getters and setters like:
+Getters and setters use the same layout: inline fields access the concrete payload directly; spilled fields use `extra_data_start` plus a generated slot offset. Physical field order can differ from declaration order. Callers use the same API in either case:
 
 ```rs
-impl Module {
-    #[inline]
-    pub fn shebang(&self, ast: &crate::Ast) -> OptionalAtomRef {
-        debug_assert!(self.0 < ast.nodes.len());
-        let offset = unsafe { ast.nodes.as_raw_slice().get_unchecked(self.0.index()).data.extra_data_start} + 1usize;
-
-        debug_assert!(offset < ast.extra_data.len());
-        let ret = unsafe { ast.extra_data.as_raw_slice().get_unchecked(offset.index()).optional_atom };
-        ret.into()
-    }
-
-    #[inline]
-    pub fn set_shebang(&self, ast: &mut crate::Ast, shebang: OptionalAtomRef) {
-        debug_assert!(self.0 < ast.nodes.len());
-        let offset = unsafe { ast.nodes.as_raw_slice().get_unchecked(self.0.index()).data.extra_data_start} + 1usize;
-
-        debug_assert!(offset < ast.extra_data.len());
-        unsafe { ast.extra_data.as_raw_slice_mut().get_unchecked_mut(offset.index()).optional_atom = shebang.into() };
-    }
-}
+let directives = program.directives(&ast); // Inline field
+let body = program.body(&ast);            // Extra-data field
+program.set_body(&mut ast, new_body);
 ```
-
-The `offset` is calculated with the `NodeData` (which is the start index of extra data), and the relative number of the field defined in the struct.
-
-The safety of these functions are guaranteed by the typed AST wrapper, which ensures that the offset is always valid and the extra data is always of the correct type.
 
 ### API diff
 
-The parser returns the AST context with its typed root stored on it:
+The parser returns an AST context with its typed root stored on it. A single `Program` type represents Script, Module, and CommonJS sources; `Ast::source_type()` distinguishes them.
 
 ```rs
 let result = Parser::init(&allocator, source, options, config).parse();
-
-let ast = result.ast;
+let mut ast = result.ast;
 let program = ast.root_program();
 ```
 
-As is said above, all typed ASTs are just typed wrappers of `NodeId`. Therefore it's impossble to directly access the properties from them. Instead, Getter and setter functions are needed with AST context.
+Unlike legacy SWC's public struct fields and ordinary enums, typed handles require getters/setters and context-based variant access:
 
 ```rs
-// swc: Directly property acccess
-let expr = paren_expr.expr;
-match program {
-  Program::Module(Module { span, body, shebang }) => { ... },
-  _ => { ... }
-}
+let expression = paren_expr.expression(&ast);
+let replacement = ast.expr_null_literal(DUMMY_SP);
+paren_expr.set_expression(&mut ast, replacement);
 
-paren_expr.expr = Expr::Invalid(...)
-
-// SWC Next: use getters and setters with the reference to AST context
-let expr = paren_expr.expr(&ast);
-match program {
-  Program::Module(module) => {
-      let span = module.span(&ast);
-      let body = module.body(&ast);
-      let shebang = module.shebang(&ast);
-  },
-  _ => { ... }
-}
-
-paren_expr.set_expr(
-    &mut ast,
-    Expr::Invalid(...)
-);
-```
-
-For visitors, it's not hard to think of the implementation with the AST context passed throught the visit functions:
-
-```rs
-impl Visit for ExampleVisitor {
-    fn visit_ident(&mut self, n: Ident, ast: &Ast) {
-        n.visit_children_with(self, ast);
+match ast.expr_data(expression) {
+    ExprData::ParenthesizedExpression(paren) => {
+        let inner = paren.expression(&ast);
     }
-}
-
-impl VisitMut for ExampleVisitor {
-    fn visit_ident(&mut self, n: Ident, ast: &mut Ast) {
-        n.visit_mut_children_with(self, ast);
-    }
+    _ => {}
 }
 ```
 
-Storage-specific changes in AST definitions include:
+Visitors also operate on handles. `Visit` and `VisitMut` obtain the AST through an `ast()` method on the visitor, rather than an argument on every hook. Mutable hooks return `Option<T>`: `Some` replaces the visited handle, while `None` leaves it in place (including any field edits).
 
-1. `Box<T>` in ASTs are unnecessary, since all nodes are referred with `NodeId`.
-2. Variable-length fields are declared as `SubRange<T>`. It only stores the start and the end `ExtraDataId`, with which we can query the list of `NodeId`s from the AST context.
-3. `Atom` is replaced with `Utf8Ref`, and `Wtf8Atom` is replaced with `Wtf8Ref`. Both of them are two `u32`s to represent the start index and the end index of shared string pools, which are just a rust `String` and `Wtf8Buf`.
-4. Optional node handles and strings use reserved canonical words, such as
-   `u32::MAX`, to represent `None` in extra-data storage.
+```rs
+struct ExampleVisitor<'v, 'a> {
+    ast: &'v Ast<'a>,
+}
+
+impl<'a> Visit<'a> for ExampleVisitor<'_, 'a> {
+    fn ast(&self) -> &Ast<'a> {
+        self.ast
+    }
+
+    fn visit_identifier_reference(&mut self, node: IdentifierReference) {
+        node.visit_children_with(self);
+    }
+}
+```
