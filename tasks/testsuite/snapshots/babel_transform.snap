@@ -4,8 +4,8 @@ babel transform
 Total
 -----
 Cases: 4069
-Passed: 470/4069 (11.55%)
-Failed: 21/4069 (0.52%)
+Passed: 471/4069 (11.58%)
+Failed: 20/4069 (0.49%)
 Panicked: 0/4069 (0.00%)
 Skipped: 3578/4069 (87.93%)
 
@@ -300,13 +300,12 @@ Skipped: 267/267 (100.00%)
 babel-plugin-transform-class-static-block
 -----------------------------------------
 Cases: 24
-Passed: 8/24 (33.33%)
-Failed: 2/24 (8.33%)
+Passed: 9/24 (37.50%)
+Failed: 1/24 (4.17%)
 Panicked: 0/24 (0.00%)
 Skipped: 14/24 (58.33%)
 Messages:
 Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/class-inferred-name: transformed output differs from output.js
-Failed: fixtures/babel/packages/babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict/input.js - babel-plugin-transform-class-static-block/test/fixtures/class-static-block/name-conflict: transformed output differs from output.js
 
 babel-plugin-transform-classes
 ------------------------------
