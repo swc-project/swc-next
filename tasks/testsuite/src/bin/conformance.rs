@@ -3,9 +3,14 @@ use std::{fs, process::ExitCode};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use testsuite::{
     cases::{
-        Case, babel::BabelTransformCase, babel_parser::BabelParserCase, local::LocalCase,
-        swc_resolver::SwcResolverCase, swc_transform::SwcTransformCase, test262::Test262Case,
-        typescript::parser::TypeScriptParserCase,
+        Case,
+        babel::BabelTransformCase,
+        babel_parser::BabelParserCase,
+        local::LocalCase,
+        swc_resolver::SwcResolverCase,
+        swc_transform::SwcTransformCase,
+        test262::Test262Case,
+        typescript::{parser::TypeScriptParserCase, transform::TypeScriptTransformCase},
     },
     runner::{
         Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
@@ -28,6 +33,9 @@ pub fn main() -> ExitCode {
         update_snapshot::<ResolverRunner, SwcResolverCase>(&SwcResolverCase::read()),
         update_snapshot::<TransformerRunner, BabelTransformCase>(&BabelTransformCase::read()),
         update_snapshot::<TransformerRunner, SwcTransformCase>(&SwcTransformCase::read()),
+        update_snapshot::<TransformerRunner, TypeScriptTransformCase>(
+            &TypeScriptTransformCase::read(),
+        ),
     ]
     .into_iter()
     .any(|panicked| panicked);

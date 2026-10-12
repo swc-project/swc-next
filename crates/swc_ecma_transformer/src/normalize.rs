@@ -17,6 +17,11 @@ impl Normalizer {
         Self::run::<true>(program, ast);
     }
 
+    /// Normalize runtime expressions while retaining TypeScript declaration shapes.
+    pub fn normalize_runtime<'ast>(program: Program, ast: &mut Ast<'ast>) {
+        Self::run::<false>(program, ast);
+    }
+
     fn run<'ast, const NORMALIZE_TYPES: bool>(program: Program, ast: &mut Ast<'ast>) {
         let mut pass = NormalizePass::<NORMALIZE_TYPES> {
             ast,

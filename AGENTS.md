@@ -55,6 +55,8 @@ semantic synchronization, helper imports, and the test directory layout.
   `Mutate` trait; keep Semantic in `TransformerState` and read AST through `Mutation::ast()`.
   Perform AST operations through `Mutation`; do not mutate AST and Semantic separately
   in a visitor.
+- The TypeScript pass temporarily retains main's Semantic-based stage.
+  Refresh Semantic after that stage and build ScopeModel before entering Mutation-based passes.
 - `Mutation` must synchronize Semantic whenever nodes are inserted, deleted,
   replaced, or moved, so subsequent visitor operations always see semantic information
   consistent with the latest AST. It must also update affected transformer metadata.
@@ -82,6 +84,7 @@ the parser language.
 | Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
 | Resolver  | SWC resolver fixtures             | Name resolution text matches `swc-conformance`                 | Same as above                                                    |
 | Transform | Babel                             | Normalized output matches Babel fixtures                       | Same as above                                                    |
+| Transform | TypeScript                        | Runtime JavaScript syntax and transform idempotence             | Same as above                                                    |
 | Transform | SWC static blocks                 | Normalized output matches SWC fixtures                       | Same as above                                                    |
 | ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 | Codec     | Test262, TypeScript               | JS decode/encode codegen output matches native parse/codegen   | `pnpm test:codec`                                                |

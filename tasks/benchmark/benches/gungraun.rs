@@ -168,7 +168,7 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
 #[bench::transform(setup_transform(TRANSFORM, Lang::Js))]
 fn bench_transform(input: TransformInput) {
     let (mut ast, mut semantic, options) = black_box(input);
-    Transformer::transform(&mut ast, &mut semantic, options);
+    Transformer::transform_with_scopes(&mut ast, &mut semantic, options);
     black_box((ast, semantic));
 }
 

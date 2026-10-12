@@ -24,8 +24,12 @@ Visitor callback -> ctx.mutate() -> Mutation
                                     +-- borrows state, including path
 ```
 
-`Transformer` dispatches callbacks to the enabled concrete passes. Each pass
-keeps its own traversal state, such as calls to trailing static-block closures.
+`Transformer::transform_with_scopes` dispatches callbacks to the enabled concrete passes.
+This entry point requires TypeScript lowering to have already run; its
+options must disable TypeScript. It accepts an existing ScopeModel for callers
+that only need synchronized scope transforms, including static-block benchmarks.
+
+Each pass keeps its own traversal state, such as calls to trailing static-block closures.
 `TraverseMutCtx` belongs to `swc_ecma_ast`; generic traversal does not depend on
 Semantic or implement transform replacement policies.
 
@@ -43,9 +47,14 @@ the Mutation boundary.
 
 ## Execution flow
 
-1. Normalize parser AST shapes with `Normalizer::normalize`.
-2. Analyze that AST with Semantic and construct a `ScopeModel` from the result.
-3. Pass the same AST and ScopeModel to `Transformer::transform`.
+1. Normalize parser AST shapes with `Normalizer::normalize_runtime` when
+   TypeScript lowering is enabled, otherwise `Normalizer::normalize`.
+2. Analyze that AST with Semantic and pass it by value to `Transformer::transform`.
+3. Run main's TypeScript lowering with full Semantic, then refresh Semantic for
+   the resulting runtime AST. Construct ScopeModel only after that phase.
+   This existing phase retains its Semantic/VisitMut contract; migrating it
+   to Mutation is separate work. Static-block lowering uses synchronized Mutation.
+   `Transformer::transform` returns the final ScopeModel.
 4. Select enabled passes through `TransformerOptions::transform_features` and
    traverse with `TraverseMutCtx<TransformerState>`.
 5. Prepare generated nodes, scopes, bindings and references through Mutation.

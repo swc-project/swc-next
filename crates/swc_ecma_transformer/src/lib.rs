@@ -3,7 +3,7 @@ use swc_next_ecma_ast::{
     ExportDefaultDeclarationKind, Expr, Function, FunctionBody, NodeId, Program, StaticBlock,
     SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsModuleBlock,
 };
-use swc_next_ecma_semantic::ScopeModel;
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -14,6 +14,7 @@ use crate::{
 mod comments;
 mod context;
 mod helpers;
+mod jsx_pragma;
 mod state;
 mod used_names;
 
@@ -21,6 +22,7 @@ pub mod assumptions;
 pub mod es2022;
 pub mod normalize;
 pub mod proposal;
+pub mod typescript;
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
@@ -35,6 +37,7 @@ pub struct TransformerOptions {
     pub assumptions: Assumptions,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
+    pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
 impl TransformerOptions {
@@ -57,13 +60,31 @@ pub struct Transformer {
 }
 
 impl Transformer {
-    /// Transform an AST that was normalized before semantic analysis.
-    /// Call `normalize::Normalizer::normalize` before constructing `semantic`.
+    /// Run the Semantic-based TypeScript phase, then synchronized scope transforms.
+    /// Normalize runtime syntax before analysis when TypeScript is enabled, otherwise normalize all syntax.
     pub fn transform<'ast>(
+        ast: &mut Ast<'ast>,
+        mut semantic: Semantic<'ast>,
+        mut options: TransformerOptions,
+    ) -> ScopeModel<'ast> {
+        if let Some(typescript) = options.typescript.take() {
+            typescript::transform(ast.root_program(), ast, &semantic, typescript);
+            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        }
+
+        let mut scopes = ScopeModel::new(semantic);
+        Self::transform_with_scopes(ast, &mut scopes, options);
+        scopes
+    }
+
+    /// Run synchronized transforms on an already normalized runtime AST and its ScopeModel.
+    /// TypeScript must be disabled; use `transform` to run TypeScript lowering first.
+    pub fn transform_with_scopes<'ast>(
         ast: &mut Ast<'ast>,
         semantic: &mut ScopeModel<'ast>,
         options: TransformerOptions,
     ) {
+        debug_assert!(options.typescript.is_none());
         let features = options.transform_features();
         let program = ast.root_program();
 

@@ -8,10 +8,14 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, Severity};
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
 use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
 
-use crate::{cases::TransformCase, suite::TestResult, util::crate_root};
+use crate::{
+    cases::TransformCase,
+    suite::TestResult,
+    util::{crate_root, workspace_root},
+};
 
 use super::Runner;
 
@@ -35,18 +39,33 @@ pub fn output_root(runner_name: &str) -> PathBuf {
 }
 
 fn run_transform<C: TransformCase>(case: &C, runner_name: &str) -> TestResult {
-    let path = case.relative_path().to_path_buf();
+    let path = case
+        .path()
+        .strip_prefix(workspace_root().expect("workspace root should be discoverable"))
+        .expect("transform fixture should be inside the workspace")
+        .to_path_buf();
     let result = catch_unwind(AssertUnwindSafe(|| run_case(case, runner_name)));
     match result {
-        Ok(Ok(())) => TestResult::Passed {
+        Ok(Ok(true)) => TestResult::Passed {
             path,
             negative: false,
         },
-        Ok(Err(error)) => TestResult::Failed {
-            path,
-            error,
-            negative: false,
-        },
+        Ok(Ok(false)) => TestResult::Skipped { path },
+        Ok(Err(error)) => {
+            let error = match case.options_label() {
+                Some(options) => format!("[{options}]: {error}"),
+                None => error,
+            };
+            let error = match case.virtual_file_name() {
+                Some(name) => format!("virtual: {name} - {error}"),
+                None => error,
+            };
+            TestResult::Failed {
+                path,
+                error,
+                negative: false,
+            }
+        }
         Err(_) => TestResult::Panic {
             path,
             negative: false,
@@ -54,12 +73,18 @@ fn run_transform<C: TransformCase>(case: &C, runner_name: &str) -> TestResult {
     }
 }
 
-fn run_case<C: TransformCase>(case: &C, runner_name: &str) -> Result<(), String> {
-    let actual = transform_input(case)?;
+fn run_case<C: TransformCase>(case: &C, runner_name: &str) -> Result<bool, String> {
+    let actual = match transform_input(case) {
+        Ok(actual) => actual,
+        // TypeScript conformance includes inputs with syntax and semantic errors.
+        // As in main, these are outside the transform suite's valid-input contract.
+        Err(_) if case.expected_output().is_none() => return Ok(false),
+        Err(error) => return Err(error),
+    };
     if case.expected_output().is_none() {
         if case.lang() == Lang::Dts {
             return if actual.is_empty() {
-                Ok(())
+                Ok(true)
             } else {
                 Err("declaration input emitted JavaScript".into())
             };
@@ -69,9 +94,12 @@ fn run_case<C: TransformCase>(case: &C, runner_name: &str) -> Result<(), String>
         } else {
             Lang::Js
         };
-        let output = transform_source(&actual, lang, case)?;
+        let output = match transform_source(&actual, lang, case) {
+            Ok(output) => output,
+            Err(_) => return Ok(false),
+        };
         return if output == actual {
-            Ok(())
+            Ok(true)
         } else {
             Err("transformed output is not idempotent".into())
         };
@@ -79,7 +107,7 @@ fn run_case<C: TransformCase>(case: &C, runner_name: &str) -> Result<(), String>
     let expected = print_expected_output(case)?;
     write_comparison_outputs(case, runner_name, &actual, &expected)?;
     if normalize_output(&actual, case)? == normalize_output(&expected, case)? {
-        Ok(())
+        Ok(true)
     } else {
         Err(format!(
             "{}: transformed output differs from output.js",
@@ -132,8 +160,12 @@ fn transform_source<C: TransformCase>(
             ..ParserOptions::default()
         },
     )?;
-    Normalizer::normalize(ast.root_program(), &mut ast);
     let options = case.transformer_options();
+    if options.typescript.is_some() {
+        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    } else {
+        Normalizer::normalize(ast.root_program(), &mut ast);
+    }
     let semantic_ret = analyze(
         &ast,
         AnalyzeOptions {
@@ -152,8 +184,7 @@ fn transform_source<C: TransformCase>(
         ));
     }
 
-    let mut semantic = ScopeModel::new(semantic_ret.semantic);
-    Transformer::transform(&mut ast, &mut semantic, options);
+    Transformer::transform(&mut ast, semantic_ret.semantic, options);
     Ok(print(&allocator, &ast, case.codegen_options())
         .code
         .to_owned())

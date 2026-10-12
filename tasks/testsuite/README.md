@@ -14,7 +14,7 @@ The harness uses pinned upstream repositories under `tasks/testsuite/fixtures`:
 | Directory             | Upstream suite                                                  | Used for                                                |
 | --------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
 | `fixtures/test262`    | [TC39 Test262](https://github.com/tc39/test262)                 | JavaScript parser and codegen coverage                  |
-| `fixtures/typescript` | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) | TypeScript parser and codegen coverage                  |
+| `fixtures/typescript` | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) | TypeScript parser, codegen and transform coverage                  |
 | `fixtures/babel`      | [babel/babel](https://github.com/babel/babel)                   | Babel parser/codegen coverage and transform comparisons |
 | `fixtures/swc`        | [swc-project/swc](https://github.com/swc-project/swc)           | SWC resolver inputs and transform comparisons           |
 | `fixtures/swc-conformance` | [CPunisher/swc-conformance](https://github.com/CPunisher/swc-conformance) | Expected SWC name resolution text              |
@@ -56,8 +56,9 @@ with parser and codegen runners, then runs resolver and transform suites:
 
 The eight summaries are written to
 `tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,local}.snap`.
-The same command also writes resolver and `transform_{babel,swc}.snap` summaries;
-this branch currently supports static-block lowering only.
+The same command also writes resolver and `transform_{babel,swc,typescript}.snap` summaries.
+TypeScript transform cases check runtime output syntax and transform idempotence;
+inputs with parser or semantic errors are skipped, as on main.
 
 Project-owned JavaScript syntax regressions under `fixtures-manual/parser` use
 Test262 metadata but are counted in the separate `local` suite. Keep TypeScript
@@ -92,6 +93,16 @@ Fixtures with unsupported plugins, presets, or invalid options are counted as
 skipped. The full run writes
 `tasks/testsuite/snapshots/transform_babel.snap`, using the same shared
 `transform` runner and snapshot format as the full conformance command.
+
+## TypeScript transform conformance
+
+The full conformance command writes `transform_typescript.snap` for the compiler
+and conformance fixtures, including their virtual files and combinations of
+`verbatimModuleSyntax` and `preserveConstEnums`.
+
+Debug one case with `--runner transform --case typescript`. The optional
+`--typescript-mode` flag accepts `default`, `verbatim`, `preserve-const-enums`, or
+`verbatim-preserve-const-enums` to override fixture options.
 
 ## SWC transform conformance
 
@@ -140,7 +151,7 @@ Supported runner/case combinations are:
 | Runner | Case |
 | ------ | ---- |
 | `parser`, `codegen` | `test262`, `typescript`, `babel`, `local` |
-| `transform` | `babel`, `swc` |
+| `transform` | `babel`, `swc`, `typescript` |
 | `resolver` | `swc_resolver` |
 
 The filter is a contains match against the combined fixture path and case name.
