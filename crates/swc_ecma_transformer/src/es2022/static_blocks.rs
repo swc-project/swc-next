@@ -10,21 +10,20 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    TransformFeatureFlags,
     context::{BoundIdentifier, ContainerOwnerChild, Mutation},
     used_names::UsedNameState,
 };
 use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
 
 pub(crate) struct StaticBlocks {
-    features: TransformFeatureFlags,
+    prevent_extensions: bool,
     class_calls: Vec<(NodeId, Expr)>,
 }
 
 impl StaticBlocks {
-    pub(crate) fn new(features: TransformFeatureFlags) -> Self {
+    pub(crate) fn new(prevent_extensions: bool) -> Self {
         Self {
-            features,
+            prevent_extensions,
             class_calls: Vec::new(),
         }
     }
@@ -54,11 +53,7 @@ impl StaticBlocks {
                     _ => None,
                 })
                 == Some(true);
-        if !self
-            .features
-            .contains(TransformFeatureFlags::PROPOSAL_PREVENT_EXTENSIONS)
-            || in_formal_parameters
-        {
+        if !self.prevent_extensions || in_formal_parameters {
             transform_class_as_private_fields(body, &mut private_names, ctx);
             return;
         }

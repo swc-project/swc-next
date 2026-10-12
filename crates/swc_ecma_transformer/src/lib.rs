@@ -23,35 +23,12 @@ pub mod normalize;
 pub mod proposal;
 pub mod typescript;
 
-bitflags::bitflags! {
-    #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
-    pub(crate) struct TransformFeatureFlags: u8 {
-        const ES2022_STATIC_BLOCKS = 1 << 0;
-        const PROPOSAL_PREVENT_EXTENSIONS = 1 << 1;
-    }
-}
-
 #[derive(Default)]
 pub struct TransformerOptions {
     pub assumptions: Assumptions,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
     pub typescript: Option<typescript::TypeScriptOptions>,
-}
-
-impl TransformerOptions {
-    fn transform_features(&self) -> TransformFeatureFlags {
-        let mut features = TransformFeatureFlags::empty();
-        features.set(
-            TransformFeatureFlags::ES2022_STATIC_BLOCKS,
-            self.es2022.static_blocks,
-        );
-        features.set(
-            TransformFeatureFlags::PROPOSAL_PREVENT_EXTENSIONS,
-            self.proposal.prevent_extensions,
-        );
-        features
-    }
 }
 
 pub struct Transformer {
@@ -84,11 +61,10 @@ impl Transformer {
         options: TransformerOptions,
     ) {
         debug_assert!(options.typescript.is_none());
-        let features = options.transform_features();
         let program = ast.root_program();
 
         let mut transformer = Self {
-            x0_es2022: es2022::ES2022::new(features),
+            x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
         };
 
         let state = TransformerState::new(semantic);
