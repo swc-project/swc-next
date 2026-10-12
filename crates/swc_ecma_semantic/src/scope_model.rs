@@ -286,12 +286,14 @@ impl<'a> ScopeModel<'a> {
 impl ScopeModel<'_> {
     /// Register a fresh scope owner below an active parent with the supplied kind and flags.
     ///
+    /// The caller must compute strictness from the parent context and the new scope's own directives.
+    ///
     /// ```javascript
     /// // Before: run() executes in the surrounding scope.
     /// run();
     /// // After: the caller adds an arrow, which needs its own Function scope.
     /// (() => run())();
-    /// // Register the arrow owner below the surrounding scope and inherit strictness.
+    /// // Register the arrow owner below the surrounding scope with the supplied flags.
     /// // Move existing children into it separately; the owner must not own a scope yet.
     /// ```
     pub fn create_child_scope(
@@ -322,10 +324,7 @@ impl ScopeModel<'_> {
             },
             function_body: None,
             kind,
-            flags: ScopeFlags {
-                strict: flags.strict || parent_scope.flags.strict,
-                ..flags
-            },
+            flags,
         });
         self.scope_maps
             .push(ScopeMap::new_in(self.scopes.list.bump()));
@@ -337,6 +336,8 @@ impl ScopeModel<'_> {
     }
 
     /// Transfer a scope to a new owner and kind while preserving its contents and identities.
+    ///
+    /// The caller must maintain strictness inheritance and update affected descendant flags separately.
     ///
     /// ```javascript
     /// // Before: value and its uses belong to the static-block scope.
@@ -389,11 +390,10 @@ impl ScopeModel<'_> {
         } else if kind == ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = Some(scope);
         }
-        let strict = flags.strict || self.scope(parent).flags.strict;
         let current = &mut self.scopes.list[scope.index()];
         current.node = owner;
         current.kind = kind;
-        current.flags = ScopeFlags { strict, ..flags };
+        current.flags = flags;
         self.node_scopes[owner.index()] = Some(scope);
         let target = if kind.is_hoist_target() {
             scope
@@ -404,6 +404,8 @@ impl ScopeModel<'_> {
     }
 
     /// Move one node's evaluation mapping and reference scope without changing reference identity or target.
+    ///
+    /// Scope flags stay unchanged; the caller must maintain strictness in the destination context.
     ///
     /// ```javascript
     /// // Before: value's reference executes in the static-block scope.
@@ -476,6 +478,8 @@ impl ScopeModel<'_> {
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
     ///
+    /// Scope flags stay unchanged; the caller must maintain strictness inheritance in affected scopes.
+    ///
     /// ```javascript
     /// // Before: the inner block is a child of f's Function scope.
     /// function f() { { let value = 1; use(value); } }
@@ -483,7 +487,6 @@ impl ScopeModel<'_> {
     /// function f() { (() => { { let value = 1; use(value); } })(); }
     /// // Reparent the block scope from f to the arrow without changing its contents.
     /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
-    /// // Mutation coordinates inherited strictness along the changed ancestry.
     /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         let original = self.scope(scope);
@@ -514,13 +517,14 @@ impl ScopeModel<'_> {
 
     /// Apply caller-computed scope flags without changing the scope's structure or identities.
     ///
+    /// Only this scope's flags change; the caller must maintain strictness inheritance in affected scopes.
+    ///
     /// ```javascript
     /// // Before: f's body is not explicitly strict.
     /// function f() { run(); }
     /// // After: the caller inserts a directive and computes the new strictness flag.
     /// function f() { "use strict"; run(); }
     /// // Apply the flags while keeping owner, parent, kind, bindings and node/reference mappings.
-    /// // Mutation computes arguments barriers and strictness for affected ancestor/child scopes.
     /// ```
     pub fn set_scope_flags(&mut self, scope: ScopeId, flags: ScopeFlags) {
         assert!(self.scope(scope).active);

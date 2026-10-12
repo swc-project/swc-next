@@ -133,19 +133,21 @@ Nested scopes keep their contents and receive a new parent when needed.
 | `move_node_to_scope` | Move one evaluation mapping and its reference scope while preserving identity and target. |
 | `move_binding` | Move a binding-table entry and declarations owned by the source, preserving merged declarations elsewhere. |
 | `reparent_scope` | Change ancestry and refresh affected hoist targets without changing retained content identities. |
-| `set_scope_flags` | Apply flags computed from syntax by Mutation. |
+| `set_scope_flags` | Apply caller-computed flags to one scope. |
 | `remove_scope` | Retire an empty scope and clear its detached owner's mapping after retained content has moved. |
 | `clear_node_scope` | Clear a detached syntax shell's mapping without visiting retained children. |
 
-Two cases still stop at explicit `todo!()`:
+The caller maintains strictness inheritance. `create_child_scope` and
+`convert_scope` apply supplied flags as-is; moves and reparenting leave flags
+unchanged. When a syntax or ancestry change affects strictness, the caller must
+compute and apply flags to each affected scope through `set_scope_flags`.
 
-- Changing inherited strictness needs to distinguish explicit strict directives
-  from inherited flags before updating retained descendants.
-- Converting a node shared by multiple active scopes needs to coordinate all
-  scope owners and the node's innermost mapping together.
+Converting a node shared by multiple active scopes still stops at an explicit
+`todo!()`: it needs to coordinate all scope owners and the node's innermost
+mapping together.
 
 Ordinary static-block lowering keeps strictness and uses a single source owner,
-so it does not need these unsupported operations. Do not bypass those checks
+so it does not need this unsupported operation. Do not bypass that check
 with unsynchronized AST edits.
 
 A single-expression static block moves its expression into the destination

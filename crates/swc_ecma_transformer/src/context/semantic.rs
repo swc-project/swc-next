@@ -234,12 +234,14 @@ impl<'a> Mutation<'_, '_, 'a> {
 
     /// Register a fresh scope owner below an active parent with the supplied kind and flags.
     ///
+    /// The caller must compute strictness from the parent context and the new scope's own directives.
+    ///
     /// ```javascript
     /// // Before: run() executes in the surrounding scope.
     /// run();
     /// // After: the caller adds an arrow, which needs its own Function scope.
     /// (() => run())();
-    /// // Register pending AST allocations, then register the arrow owner and inherit strictness.
+    /// // Register pending AST allocations, then register the arrow owner with the supplied flags.
     /// // Move existing children into it separately; the owner must not own a scope yet.
     /// ```
     pub fn create_child_scope(
@@ -257,6 +259,8 @@ impl<'a> Mutation<'_, '_, 'a> {
 
     /// Transfer a scope to a new owner and kind while preserving its contents and identities.
     ///
+    /// The caller must maintain strictness inheritance and update affected descendant flags separately.
+    ///
     /// ```javascript
     /// // Before: value and its uses belong to the static-block scope.
     /// class C { static { let value = 1; use(value); } }
@@ -273,16 +277,13 @@ impl<'a> Mutation<'_, '_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) {
-        let original = self.semantic().scope(scope);
-        let parent = original.parent.expect("non-root scope");
-        if original.flags.strict != (flags.strict || self.semantic().scope(parent).flags.strict) {
-            todo!("Recompute descendant strictness when converting {scope:?}");
-        }
         self.state.semantic.grow_to(self.ast.node_count(), scope);
         self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
     /// Move a retained subtree's evaluations between scopes and reparent child scopes while preserving identities.
+    ///
+    /// Scope flags stay unchanged; the caller must maintain strictness inheritance in affected scopes.
     ///
     /// ```javascript
     /// // Before: use and value execute in a static-block scope; the arrow owns a nested scope.
@@ -293,7 +294,6 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
     /// // Move owned bindings separately, then attach through a setter or container.
     /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
-    /// // Changes requiring different inherited strictness remain TODOs.
     /// ```
     pub fn move_subtree_to_scope(
         &mut self,
@@ -304,9 +304,6 @@ impl<'a> Mutation<'_, '_, 'a> {
         assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
         if from == to {
             return;
-        }
-        if self.semantic().scope(from).flags.strict != self.semantic().scope(to).flags.strict {
-            todo!("Recompute subtree strictness when moving from {from:?} to {to:?}");
         }
         let mut mover = ScopeMover {
             semantic: self.state.semantic,
@@ -337,6 +334,8 @@ impl<'a> Mutation<'_, '_, 'a> {
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
     ///
+    /// Scope flags stay unchanged; the caller must maintain strictness inheritance in affected scopes.
+    ///
     /// ```javascript
     /// // Before: the inner block is a child of f's Function scope.
     /// function f() { { let value = 1; use(value); } }
@@ -344,10 +343,9 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// function f() { (() => { { let value = 1; use(value); } })(); }
     /// // Reparent the block scope from f to the arrow without changing its contents.
     /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
-    /// // Mutation coordinates inherited strictness along the changed ancestry.
     /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
-        reparent_scope(self.state.semantic, scope, parent);
+        self.state.semantic.reparent_scope(scope, parent);
     }
 
     /// Retire an empty non-root scope and clear its detached owner's mapping without recycling its ID.
@@ -399,33 +397,10 @@ impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
                 outer = parent;
             }
             if self.semantic.scope(outer).parent == Some(self.from) {
-                reparent_scope(self.semantic, outer, self.to);
+                self.semantic.reparent_scope(outer, self.to);
             }
         } else if scope == self.from {
             self.semantic.move_node_to_scope(node, self.from, self.to);
         }
     }
-}
-
-/// Reparent a scope when inherited strictness remains unchanged.
-///
-/// ```javascript
-/// // Before: the block is directly below f.
-/// function f() { { use(); } }
-/// // After: a generated arrow becomes its parent.
-/// function f() { (() => { { use(); } })(); }
-/// // Change the parent and refresh affected hoist targets.
-/// // Changing inherited strictness requires recomputation and remains TODO.
-/// ```
-fn reparent_scope(semantic: &mut ScopeModel<'_>, scope: ScopeId, parent: ScopeId) {
-    let original = semantic.scope(scope);
-    let previous = original.parent.expect("non-root scope");
-    assert!(original.active && semantic.scope(parent).active);
-    if previous == parent {
-        return;
-    }
-    if semantic.scope(previous).flags.strict != semantic.scope(parent).flags.strict {
-        todo!("Recompute inherited strictness when reparenting {scope:?}");
-    }
-    semantic.reparent_scope(scope, parent);
 }
