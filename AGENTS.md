@@ -48,8 +48,8 @@ Local syntax regressions use the same metadata format under
 `tasks/testsuite/fixtures-manual/parser/`; use `flags: [module]` for Module cases,
 otherwise the runner checks both sloppy and strict Script modes. These project-owned
 cases are reported separately in `{parser,codegen}_local.snap`, not Test262 totals.
-Use `.js` for JavaScript or `.ts` for TypeScript local cases; the extension selects
-the parser language.
+Use `.js` for JavaScript, `.ts` for TypeScript, or `.tsx` for TSX local cases.
+The extension selects the parser language.
 
 | Runner    | Suites                            | Check                                                          | Command                                                          |
 | --------- | --------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------- |

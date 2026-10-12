@@ -218,11 +218,9 @@ impl BinaryExprVisitor {
         };
         self.left_flags = local_forbid_in;
         self.left_context = ExprContext::empty();
-        self.left_context.set(
-            ExprContext::FOLLOWED_BY_TYPE_OPERATOR,
-            operator.can_continue_type(),
-        );
-        self.right_context = self.context & ExprContext::FOLLOWED_BY_TYPE_OPERATOR;
+        self.left_context
+            .set(ExprContext::WRAP_TS_CAST, operator.can_continue_type());
+        self.right_context = self.context & ExprContext::WRAP_TS_CAST;
         if self.wrap {
             self.right_context = ExprContext::empty();
         }
@@ -1788,39 +1786,31 @@ impl<'a> Printer<'a> {
                 .any(|comment| self.comment_has_line_terminator(*comment))
     }
 
-    fn assignment_target_first_token_offset(&self, target: AssignmentTarget) -> u32 {
-        match self.ast.assignment_target_data(target) {
-            AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                self.simple_assignment_target_first_token_offset(target)
+    fn simple_assignment_target_expression(&self, target: SimpleAssignmentTarget) -> Expr {
+        match self.ast.simple_assignment_target_data(target) {
+            SimpleAssignmentTargetData::IdentifierReference(expression) => {
+                Expr::IdentifierReference(expression)
             }
-            AssignmentTargetData::ArrayAssignmentTarget(_)
-            | AssignmentTargetData::ObjectAssignmentTarget(_) => target.span(self.ast).start,
-        }
-    }
-
-    fn simple_assignment_target_first_token_offset(&self, target: SimpleAssignmentTarget) -> u32 {
-        let expression = match self.ast.simple_assignment_target_data(target) {
-            SimpleAssignmentTargetData::MemberExpression(member) => member.object(self.ast),
+            SimpleAssignmentTargetData::MemberExpression(expression) => {
+                Expr::MemberExpression(expression)
+            }
             SimpleAssignmentTargetData::TsAsExpression(expression) => {
-                expression.expression(self.ast)
+                Expr::TsAsExpression(expression)
             }
             SimpleAssignmentTargetData::TsSatisfiesExpression(expression) => {
-                expression.expression(self.ast)
+                Expr::TsSatisfiesExpression(expression)
+            }
+            SimpleAssignmentTargetData::TsTypeAssertion(expression) => {
+                Expr::TsTypeAssertion(expression)
             }
             SimpleAssignmentTargetData::TsNonNullExpression(expression) => {
-                expression.expression(self.ast)
+                Expr::TsNonNullExpression(expression)
             }
-            SimpleAssignmentTargetData::IdentifierReference(_)
-            | SimpleAssignmentTargetData::TsTypeAssertion(_) => {
-                return target.span(self.ast).start;
-            }
-        };
-        self.expr_first_token_offset(expression)
+        }
     }
 
     fn expr_first_token_offset(&self, mut expr: Expr) -> u32 {
         loop {
-            let offset = expr.span(self.ast).start;
             expr = match self.ast.expr_data(expr) {
                 ExprData::MemberExpression(expression) => expression.object(self.ast),
                 ExprData::CallExpression(expression) => expression.callee(self.ast),
@@ -1831,23 +1821,120 @@ impl<'a> Printer<'a> {
                 ExprData::ConditionalExpression(expression) => expression.test(self.ast),
                 ExprData::SequenceExpression(expression) => {
                     let Some(first) = expression.expressions(self.ast).get_node(self.ast, 0) else {
-                        return offset;
+                        break expr.span(self.ast).start;
                     };
                     first
                 }
                 ExprData::AssignmentExpression(expression) => {
-                    return self.assignment_target_first_token_offset(expression.left(self.ast));
+                    match self.ast.assignment_target_data(expression.left(self.ast)) {
+                        AssignmentTargetData::SimpleAssignmentTarget(target) => {
+                            self.simple_assignment_target_expression(target)
+                        }
+                        AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
+                            break pattern.span(self.ast).start;
+                        }
+                        AssignmentTargetData::ObjectAssignmentTarget(pattern) => {
+                            break pattern.span(self.ast).start;
+                        }
+                    }
                 }
                 ExprData::UpdateExpression(expression) if !expression.prefix(self.ast) => {
-                    return self.simple_assignment_target_first_token_offset(
-                        expression.argument(self.ast),
-                    );
+                    self.simple_assignment_target_expression(expression.argument(self.ast))
                 }
                 ExprData::TsAsExpression(expression) => expression.expression(self.ast),
                 ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
                 ExprData::TsNonNullExpression(expression) => expression.expression(self.ast),
                 ExprData::TsInstantiationExpression(expression) => expression.expression(self.ast),
-                _ => return offset,
+                _ => break expr.span(self.ast).start,
+            };
+        }
+    }
+
+    // Only rightmost binary/logical operands carry the cast grouping context.
+    // Skip consequent lookahead when it cannot affect the test.
+    fn expr_ends_with_ts_cast(&self, mut expr: Expr) -> bool {
+        loop {
+            expr = match self.ast.expr_data(expr) {
+                ExprData::BinaryExpression(expression) => expression.right(self.ast),
+                ExprData::LogicalExpression(expression) => expression.right(self.ast),
+                data => {
+                    break matches!(
+                        data,
+                        ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_)
+                    );
+                }
+            };
+        }
+    }
+
+    // TS6 and TS7 look at the token after `?` when parsing an `as` or
+    // `satisfies` type. If it can start a type, `?` starts the conditional.
+    // Otherwise, `?` becomes part of a nullable type (`T?`).
+    // `x as T ? true : false` is safe because `true` can start a type.
+    // A regexp cannot, so we need `(x as T) ? /a/ : false`.
+    //
+    // TS also looks inside parentheses, so `(/a/)` still needs a grouped cast.
+    // `-` can start a type only when followed by a numeric or bigint literal.
+    //
+    // TS6 (6.0.3): type lookahead and nullable `?` parsing:
+    // https://github.com/microsoft/TypeScript/blob/050880ce59e30b356b686bd3144efe24f875ebc8/src/compiler/parser.ts#L4659-L4750
+    // TS7 (7.0.2): type lookahead:
+    // https://github.com/microsoft/TypeScript/blob/1e4744d68260a7cb91b62b12edc3f6a2187faaf1/tsc/internal/parser/parser.go#L6210-L6242
+    // TS7: nullable `?` parsing:
+    // https://github.com/microsoft/TypeScript/blob/1e4744d68260a7cb91b62b12edc3f6a2187faaf1/tsc/internal/parser/parser.go#L2719-L2755
+    fn expr_can_start_ts_type(&self, mut expr: Expr) -> bool {
+        loop {
+            expr = match self.ast.expr_data(expr) {
+                ExprData::MemberExpression(expression) => expression.object(self.ast),
+                ExprData::CallExpression(expression) => expression.callee(self.ast),
+                ExprData::ChainExpression(expression) => expression.expression(self.ast),
+                ExprData::TaggedTemplateExpression(expression) => expression.tag(self.ast),
+                ExprData::BinaryExpression(expression) => expression.left(self.ast),
+                ExprData::LogicalExpression(expression) => expression.left(self.ast),
+                ExprData::ConditionalExpression(expression) => expression.test(self.ast),
+                ExprData::SequenceExpression(expression) => {
+                    let Some(first) = expression.expressions(self.ast).get_node(self.ast, 0) else {
+                        break true;
+                    };
+                    first
+                }
+                ExprData::AssignmentExpression(expression) => {
+                    match self.ast.assignment_target_data(expression.left(self.ast)) {
+                        AssignmentTargetData::SimpleAssignmentTarget(target) => {
+                            self.simple_assignment_target_expression(target)
+                        }
+                        AssignmentTargetData::ArrayAssignmentTarget(_)
+                        | AssignmentTargetData::ObjectAssignmentTarget(_) => break true,
+                    }
+                }
+                ExprData::UpdateExpression(expression) if !expression.prefix(self.ast) => {
+                    self.simple_assignment_target_expression(expression.argument(self.ast))
+                }
+                ExprData::TsAsExpression(expression) => expression.expression(self.ast),
+                ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
+                ExprData::TsNonNullExpression(expression) => expression.expression(self.ast),
+                ExprData::TsInstantiationExpression(expression) => expression.expression(self.ast),
+                ExprData::ParenthesizedExpression(expression) => expression.expression(self.ast),
+                ExprData::RegExpLiteral(_)
+                | ExprData::Class(_)
+                | ExprData::Super(_)
+                | ExprData::UpdateExpression(_) => break false,
+                ExprData::UnaryExpression(expression) => {
+                    break match expression.operator(self.ast) {
+                        UnaryOperator::LogicalNot | UnaryOperator::Typeof | UnaryOperator::Void => {
+                            true
+                        }
+                        UnaryOperator::Negate => {
+                            let argument = expression.argument(self.ast);
+                            matches!(
+                                self.ast.expr_data(argument),
+                                ExprData::NumericLiteral(_) | ExprData::BigIntLiteral(_)
+                            )
+                        }
+                        _ => false,
+                    };
+                }
+                _ => break true,
             };
         }
     }
@@ -2014,12 +2101,23 @@ impl<'a> Printer<'a> {
                     self.print("(");
                     self.forbid_in = false;
                 }
-                self.print_expr(e.test(self.ast), Precedence::Conditional.next());
+                // TypeScript consumes `T ?` as a nullable type unless the next
+                // expression can start a type. Group casts to end the type first.
+                let test = e.test(self.ast);
+                let consequent = e.consequent(self.ast);
+                let mut test_context = ExprContext::empty();
+                test_context.set(
+                    ExprContext::WRAP_TS_CAST,
+                    self.ast.is_ts()
+                        && self.expr_ends_with_ts_cast(test)
+                        && !self.expr_can_start_ts_type(consequent),
+                );
+                self.print_expr_with_context(test, Precedence::Conditional.next(), test_context);
                 self.print_space();
                 self.print("?");
                 self.print_space();
                 self.forbid_in = false;
-                self.print_expr(e.consequent(self.ast), Precedence::Yield);
+                self.print_expr(consequent, Precedence::Yield);
                 self.print_space();
                 self.print(":");
                 self.print_space();
@@ -2214,8 +2312,8 @@ impl<'a> Printer<'a> {
                 self.print_identifier(name);
             }
             ExprData::TsAsExpression(e) => {
-                let wrap = level > Precedence::Compare
-                    || context.contains(ExprContext::FOLLOWED_BY_TYPE_OPERATOR);
+                let wrap =
+                    level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
                 if wrap {
                     self.print("(");
                 }
@@ -2227,8 +2325,8 @@ impl<'a> Printer<'a> {
                 }
             }
             ExprData::TsSatisfiesExpression(e) => {
-                let wrap = level > Precedence::Compare
-                    || context.contains(ExprContext::FOLLOWED_BY_TYPE_OPERATOR);
+                let wrap =
+                    level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
                 if wrap {
                     self.print("(");
                 }

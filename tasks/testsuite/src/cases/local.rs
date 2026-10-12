@@ -22,7 +22,7 @@ impl Case for LocalCase {
                 let path = entry.path();
                 let supported = path
                     .extension()
-                    .is_some_and(|ext| ext == "js" || ext == "ts");
+                    .is_some_and(|ext| ext == "js" || ext == "ts" || ext == "tsx");
                 (entry.file_type().is_file() && supported).then_some(path)
             })
             .collect::<Vec<_>>()

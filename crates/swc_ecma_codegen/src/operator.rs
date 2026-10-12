@@ -96,7 +96,7 @@ pub(crate) struct BinaryExprVisitor {
     pub(crate) e: Binaryish,
     pub(crate) level: Precedence,
     pub(crate) flags: bool,
-    // Propagate the following token to the rightmost ungrouped operand.
+    // Carry cast grouping through the rightmost ungrouped operand.
     pub(crate) context: ExprContext,
 
     // Input for visiting the left child
@@ -117,7 +117,7 @@ bitflags::bitflags! {
     #[derive(Clone, Copy, Default)]
     pub(crate) struct ExprContext: u8 {
         const IN_NEW_CALLEE = 1 << 0;
-        const FOLLOWED_BY_TYPE_OPERATOR = 1 << 1;
+        const WRAP_TS_CAST = 1 << 1;
         const NO_INSTANTIATION = 1 << 2;
     }
 }
