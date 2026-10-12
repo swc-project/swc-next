@@ -388,7 +388,7 @@ impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
     fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
         let scope = self.semantic.scope_at(node).expect("retained node scope");
         if self.semantic.scope(scope).node == node {
-            // Named expressions can have multiple scopes owned by the same node.
+            // Annex B if functions also own their implicit block scope.
             let mut outer = scope;
             while let Some(parent) = self.semantic.scope(outer).parent {
                 if self.semantic.scope(parent).node != node {

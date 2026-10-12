@@ -198,8 +198,8 @@ impl<'a> SemanticContext<'a> {
         self.ts_namespace_depth -= 1;
     }
 
-    pub fn enter_class(&mut self, tree: &Ast, class: Class) {
-        self.scope.enter_class(tree, class);
+    pub fn enter_class(&mut self, class: Class) {
+        self.scope.enter_class(class);
     }
 
     pub fn enter_static_block(&mut self, node: NodeId) {

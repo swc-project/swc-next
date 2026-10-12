@@ -450,14 +450,7 @@ impl<'a> Semantic<'a> {
         name: &[u8],
         space: ReferenceSpace,
     ) -> NameResolution {
-        self.ts_members.resolve_name(
-            &self.scopes,
-            &self.symbols,
-            &self.scope_maps,
-            scope_id,
-            name,
-            space,
-        )
+        self.ts_members.resolve_name(self, scope_id, name, space)
     }
 
     /// Iterates every `(id, scope)` pair in creation order.

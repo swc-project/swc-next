@@ -6,9 +6,9 @@ use oxc_index::Idx;
 use swc_next_ecma_ast::{ScopeId, SymbolId};
 
 use super::{
-    BindingVisibility, NameResolution, ReferenceSpace, ScopeMap, Symbol, SymbolFlags,
+    BindingVisibility, Declaration, NameResolution, ReferenceSpace, ScopeMap, Symbol, SymbolFlags,
     TsLocalExportMap, TsMemberEnvironments, TsMemberView, TsResolvedAliasSpaces, TsScopeViewIndex,
-    TsSourceExports,
+    TsSourceExports, find_expression_name,
 };
 use crate::scope::{Scope, ScopeKind};
 
@@ -30,6 +30,7 @@ impl NameLookupQuery<'_> {
 pub(super) struct LexicalLookup<'lookup, 'arena> {
     pub(super) scopes: &'lookup [Scope],
     pub(super) symbols: &'lookup [Symbol],
+    pub(super) declarations: &'lookup [Declaration],
     pub(super) scope_maps: &'lookup [ScopeMap<'arena>],
 }
 
@@ -184,6 +185,7 @@ fn lookup_name_with_ts_views_policy<
         scopes,
         symbols,
         scope_maps,
+        ..
     } = lexical;
     let arguments_barrier = query.arguments_barrier();
     let symbol_mask = if TS_LOOKUP {
@@ -216,8 +218,7 @@ fn lookup_name_with_ts_views_policy<
                 return NameLookupResult::default();
             }
             let binding = lookup_scope_binding::<TS_LOOKUP>(
-                scopes,
-                scope_maps,
+                lexical,
                 current,
                 child_kind,
                 query,
@@ -251,28 +252,20 @@ fn lookup_name_with_ts_views_policy<
         }
         // The lexical prefix already rejected this scope with the same rules.
         let binding = if PRECISE_IMPORT_ALIASES || current != member_scope {
-            lookup_scope_binding::<TS_LOOKUP>(
-                scopes,
-                scope_maps,
-                current,
-                child_kind,
-                query,
-                hash,
-                |symbol| {
-                    if TS_LOOKUP
-                        && !binding_visible_from(child_kind, symbols[symbol.index()].flags, space)
-                    {
-                        return false;
-                    }
-                    let visibility = symbol_visibility::<PRECISE_IMPORT_ALIASES>(
-                        symbols,
-                        ts.import_alias_spaces,
-                        symbol,
-                        space,
-                    );
-                    state.accept(NameBinding::symbol(symbol), visibility, &mut emit)
-                },
-            )
+            lookup_scope_binding::<TS_LOOKUP>(lexical, current, child_kind, query, hash, |symbol| {
+                if TS_LOOKUP
+                    && !binding_visible_from(child_kind, symbols[symbol.index()].flags, space)
+                {
+                    return false;
+                }
+                let visibility = symbol_visibility::<PRECISE_IMPORT_ALIASES>(
+                    symbols,
+                    ts.import_alias_spaces,
+                    symbol,
+                    space,
+                );
+                state.accept(NameBinding::symbol(symbol), visibility, &mut emit)
+            })
         } else {
             None
         };
@@ -335,6 +328,7 @@ pub(super) fn lookup_lexical_name<
         scopes,
         symbols,
         scope_maps,
+        ..
     } = lexical;
     let arguments_barrier = query.arguments_barrier();
     let NameLookupQuery { scope, name, space } = query;
@@ -345,19 +339,13 @@ pub(super) fn lookup_lexical_name<
         if !INCLUDE_GLOBAL && current == ScopeId::ROOT {
             break;
         }
-        if let Some(symbol) = lookup_scope_binding::<TS_LOOKUP>(
-            scopes,
-            scope_maps,
-            current,
-            child_kind,
-            query,
-            hash,
-            |symbol| {
+        if let Some(symbol) =
+            lookup_scope_binding::<TS_LOOKUP>(lexical, current, child_kind, query, hash, |symbol| {
                 let flags = symbols[symbol.index()].flags;
                 (!TS_LOOKUP || binding_visible_from(child_kind, flags, space))
                     && (!FILTER_BY_SPACE || flags.visible_in(space))
-            },
-        ) {
+            })
+        {
             return NameResolution::Resolved(symbol);
         }
         if arguments_barrier && scopes[current.index()].flags.arguments_barrier {
@@ -380,6 +368,7 @@ pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool
         scopes,
         symbols,
         scope_maps,
+        ..
     } = lexical;
     let arguments_barrier = query.arguments_barrier();
     let NameLookupQuery { scope, name, space } = query;
@@ -391,14 +380,8 @@ pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool
         if !INCLUDE_GLOBAL && current == ScopeId::ROOT {
             break;
         }
-        let binding = lookup_scope_binding::<true>(
-            scopes,
-            scope_maps,
-            current,
-            child_kind,
-            query,
-            hash,
-            |symbol| {
+        let binding =
+            lookup_scope_binding::<true>(lexical, current, child_kind, query, hash, |symbol| {
                 if !binding_visible_from(child_kind, symbols[symbol.index()].flags, space) {
                     return false;
                 }
@@ -407,8 +390,7 @@ pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool
                 state.accept(NameBinding::symbol(symbol), visibility, &mut |binding| {
                     emit(binding.symbol)
                 })
-            },
-        );
+            });
         if binding.is_some() {
             return state.resolution();
         }
@@ -425,24 +407,46 @@ pub(super) fn lookup_lexical_name_with_import_aliases<const INCLUDE_GLOBAL: bool
 // walking outward. Runtime parameter initializers never take this edge.
 #[inline(always)]
 fn lookup_scope_binding<const TS_LOOKUP: bool>(
-    scopes: &[Scope],
-    scope_maps: &[ScopeMap<'_>],
+    lexical: LexicalLookup<'_, '_>,
     current: ScopeId,
     child: ScopeKind,
     query: NameLookupQuery<'_>,
     hash: u64,
     mut accept: impl FnMut(SymbolId) -> bool,
 ) -> Option<SymbolId> {
+    let LexicalLookup {
+        scopes,
+        symbols,
+        scope_maps,
+        ..
+    } = lexical;
+    // The implicit arguments object is inside the expression-name environment
+    // even though both are represented by the same function scope.
+    let arguments_barrier =
+        query.arguments_barrier() && scopes[current.index()].flags.arguments_barrier;
+    let mut accept_visible = |symbol: SymbolId| {
+        (!arguments_barrier
+            || !symbols[symbol.index()]
+                .flags
+                .contains(SymbolFlags::FUNCTION_EXPRESSION))
+            && accept(symbol)
+    };
     if TS_LOOKUP
         && is_signature_query(child, query.space)
         && let Some(body) = scopes[current.index()].function_body
         && let Some(symbol) = lookup_scope_name(scope_maps, body, query.name, hash)
-        && accept(symbol)
+        && accept_visible(symbol)
     {
         return Some(symbol);
     }
     let symbol = lookup_scope_name(scope_maps, current, query.name, hash)?;
-    accept(symbol).then_some(symbol)
+    if accept_visible(symbol) {
+        return Some(symbol);
+    }
+    // Flattened expression names remain an outer fallback when a same-named
+    // type parameter or a declaration hidden from a signature is rejected.
+    let expression_name = find_expression_name(symbols, lexical.declarations, current, symbol)?;
+    accept_visible(expression_name).then_some(expression_name)
 }
 
 #[inline(always)]
@@ -480,7 +484,7 @@ fn binding_visible_from(child: ScopeKind, flags: SymbolFlags, space: ReferenceSp
     if child == ScopeKind::TsConditionalExtends {
         return !flags.contains(SymbolFlags::TYPE_PARAMETER);
     }
-    if !is_signature_query(child, space) {
+    if !is_signature_query(child, space) || flags.intersects(SymbolFlags::EXPRESSION_NAME) {
         return true;
     }
     // A class or enum has type meaning even when requested through `typeof`.

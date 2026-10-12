@@ -719,7 +719,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_class(&mut self, node: Class) {
-        self.state.enter_class(self.ast, node);
+        self.state.enter_class(node);
         self.enter_node(node.node_id());
         let state = &mut self.state;
         state.symbols.enter_class(self.ast, node, &state.scope);

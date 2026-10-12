@@ -428,6 +428,7 @@ impl<'tracker, 'a> TsExportAliasResolver<'tracker, 'a> {
             LexicalLookup {
                 scopes: self.scopes,
                 symbols: &self.tracker.symbols,
+                declarations: &self.tracker.declarations,
                 scope_maps: &self.tracker.scope_maps,
             },
             NameLookupQuery {

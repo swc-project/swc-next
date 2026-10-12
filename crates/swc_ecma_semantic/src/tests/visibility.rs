@@ -1,5 +1,95 @@
 use super::*;
 
+#[test]
+fn expression_name_visibility() {
+    let js = Options::default();
+    let ts = ts_module_options();
+
+    assert_named_declaration_targets(
+        "const f = function n() { return n; }; n;",
+        js,
+        b"n",
+        &[Some("n()"), None],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n(n) { return n; };",
+        js,
+        b"n",
+        &[Some("n) {")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n() { var n; return n; };",
+        js,
+        b"n",
+        &[Some("n; return")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n(a = n) { var n; return n; };",
+        js,
+        b"n",
+        &[Some("n(a"), Some("n; return")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n(a = n) { let n; return n; };",
+        js,
+        b"n",
+        &[Some("n(a"), Some("n; return")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n<T extends typeof n>() { var n; };",
+        ts,
+        b"n",
+        &[Some("n<T")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n(): typeof n { var n; return n; };",
+        ts,
+        b"n",
+        &[Some("n():"), Some("n; return")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n<n>(a: n) { return n; };",
+        ts,
+        b"n",
+        &[Some("n>(a"), Some("n<n>")],
+    );
+
+    assert_named_declaration_targets(
+        "const C = class Inner<T extends Inner> { self!: Inner; };",
+        ts,
+        b"Inner",
+        &[Some("Inner<T"), Some("Inner<T")],
+    );
+
+    assert_named_declaration_targets(
+        "const C = class Inner<Inner> { value!: Inner; self = Inner; };",
+        ts,
+        b"Inner",
+        &[Some("Inner>"), Some("Inner<")],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function n<n>(x: n) { return n; }; const g = function n<n>(y: n) { return n; };",
+        ts,
+        b"n",
+        &[Some("n>(x"), Some("n<n>(x"), Some("n>(y"), Some("n<n>(y")],
+    );
+
+    assert_named_declaration_targets(
+        "const a = 1; const f = function n<a>(x: a) { return a; };",
+        ts,
+        b"a",
+        &[Some("a>(x"), Some("a = 1")],
+    );
+}
+
 #[track_caller]
 fn assert_decorator_target(source: &str, name: &[u8], declaration: &str) {
     let source = format!("declare function dec<U>(value?: unknown): any;\n{source}");
@@ -532,6 +622,27 @@ fn arguments_lookup_visibility() {
         source_type: SourceType::Script,
         ..Options::default()
     };
+
+    assert_named_declaration_targets(
+        "const f = function arguments() { return arguments; };",
+        script,
+        b"arguments",
+        &[None],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function arguments(a = arguments) { return arguments; };",
+        script,
+        b"arguments",
+        &[None, None],
+    );
+
+    assert_named_declaration_targets(
+        "const f = function arguments(arguments) { return arguments; };",
+        script,
+        b"arguments",
+        &[Some("arguments) {")],
+    );
 
     assert_named_declaration_targets(
         "var arguments; function f() { return arguments; }",

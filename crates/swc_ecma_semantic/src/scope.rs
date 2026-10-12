@@ -1,8 +1,8 @@
 use oxc_index::Idx;
 use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, ClassType, Directive, Function, FunctionBody,
-    FunctionType, NodeId, NodeKindData, ScopeId, SourceType,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, NodeKindData,
+    ScopeId, SourceType,
 };
 
 use crate::ecmascript;
@@ -65,17 +65,6 @@ pub enum ScopeKind {
     ClassDecorator,
     /// Section 15.7.11 ClassStaticBlockDefinitionEvaluation.
     StaticBlock,
-    /// Intermediate scope holding a named function/class expression's
-    /// name (sections 15.2.5 and 15.7.14). The name binds in its own
-    /// environment between the outer scope and the body, so it never
-    /// conflicts with same-named bindings inside the body:
-    ///
-    /// ```text
-    /// outer scope (x lives here)
-    ///   expression-name scope (foo lives here)
-    ///     function scope (body bindings live here)
-    /// ```
-    ExpressionName,
     /// TS namespace body. Acts as a var-hoist target so vars
     /// declared inside don't escape to the surrounding scope.
     TsModule,
@@ -315,10 +304,6 @@ impl<'a> ScopeTracker<'a> {
         if annex_b_if_body && !flags.strict {
             self.push_scope(ScopeKind::Block, function.node_id(), flags);
         }
-        if is_named_function_expression(tree, function) {
-            // The expression-name scope sits between outer and body.
-            self.push_scope(ScopeKind::ExpressionName, function.node_id(), flags);
-        }
         self.push_function_scope(function.node_id(), flags);
     }
 
@@ -449,15 +434,12 @@ impl<'a> ScopeTracker<'a> {
         self.push_scope(ScopeKind::TsModule, node, self.inherit_strict_flag());
     }
 
-    pub fn enter_class(&mut self, tree: &Ast, class: Class) {
+    pub fn enter_class(&mut self, class: Class) {
         // Classes are always strict mode (section 15.7.14).
         let flags = ScopeFlags {
             strict: true,
             ..ScopeFlags::default()
         };
-        if is_named_class_expression(tree, class) {
-            self.push_scope(ScopeKind::ExpressionName, class.node_id(), flags);
-        }
         self.push_scope(ScopeKind::Class, class.node_id(), flags);
     }
 
@@ -492,10 +474,7 @@ impl<'a> ScopeTracker<'a> {
             if self.get(class).kind != ScopeKind::Class {
                 continue;
             }
-            let mut outer = self.get(class).parent?;
-            if self.get(outer).kind == ScopeKind::ExpressionName {
-                outer = self.get(outer).parent?;
-            }
+            let outer = self.get(class).parent?;
             return Some((class, outer));
         }
         None
@@ -522,8 +501,8 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    // A node owns its lexical scopes, including both scopes of a named
-    // expression. Lookup views have a separate lifetime: their root node may
+    // A node owns its lexical scopes, including the implicit Annex B block.
+    // Lookup views have a separate lifetime: their root node may
     // create lexical scopes without owning the surrounding lookup view.
     pub fn exit_scope(&mut self, node: NodeId) {
         while self.current.index() != 0
@@ -603,12 +582,4 @@ impl<'a> ScopeTracker<'a> {
         debug_assert!(self.active_with_scopes.is_empty());
         (ScopeTree { list: self.scopes }, self.has_with_statement)
     }
-}
-
-fn is_named_function_expression(tree: &Ast<'_>, function: Function) -> bool {
-    function.function_type(tree) == FunctionType::FunctionExpression && function.id(tree).is_some()
-}
-
-fn is_named_class_expression(tree: &Ast<'_>, class: Class) -> bool {
-    class.class_type(tree) != ClassType::ClassDeclaration && class.id(tree).is_some()
 }
