@@ -81,8 +81,11 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
             return Err("transformed output differs from expected output".into());
         }
     } else {
-        if case.lang() == Lang::Dts && !output.is_empty() {
-            return Err("declaration input emitted JavaScript".into());
+        if case.lang() == Lang::Dts {
+            if !output.is_empty() {
+                return Err("declaration input emitted JavaScript".into());
+            }
+            return Ok(true);
         }
         let output_lang = if case.lang() == Lang::Tsx {
             Lang::Jsx
