@@ -1,6 +1,6 @@
 use crate::context::{CommentState, Container};
 use crate::used_names::UsedNameState;
-use crate::{assumptions::Assumptions, context::StatementInjector, helpers::Helpers};
+use crate::{context::StatementInjector, helpers::Helpers};
 use swc_next_ecma_ast::NodeId;
 use swc_next_ecma_semantic::ScopeModel;
 
@@ -9,7 +9,6 @@ use swc_next_ecma_semantic::ScopeModel;
 pub(crate) struct TransformerState<'s, 'a> {
     pub(crate) path: Vec<NodeId>,
     pub(crate) semantic: &'s mut ScopeModel<'a>,
-    pub(crate) assumptions: Assumptions,
     pub(crate) helpers: Helpers,
     pub(crate) statement_injector: StatementInjector,
     pub(crate) container: Container,
@@ -18,11 +17,10 @@ pub(crate) struct TransformerState<'s, 'a> {
 }
 
 impl<'s, 'a> TransformerState<'s, 'a> {
-    pub(crate) fn new(semantic: &'s mut ScopeModel<'a>, assumptions: Assumptions) -> Self {
+    pub(crate) fn new(semantic: &'s mut ScopeModel<'a>) -> Self {
         Self {
             path: Vec::with_capacity(64),
             semantic,
-            assumptions,
             helpers: Helpers::default(),
             statement_injector: Default::default(),
             container: Default::default(),

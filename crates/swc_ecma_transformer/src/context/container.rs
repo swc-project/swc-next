@@ -44,8 +44,7 @@ impl<'c, 's, 'a> Mutation<'c, 's, 'a> {
             .chain(body.iter().map(|slot| self.ast.get_node_in_sub_range(slot)))
     }
 
-    /// The current logical member list, including pending edits. Callers that
-    /// continue mutating through Mutation must first snapshot the member handles.
+    /// The current logical member list, including pending edits.
     pub fn container_class_body_mut(&mut self, class_body: ClassBody) -> &mut Vec<ClassElement> {
         self.state
             .container

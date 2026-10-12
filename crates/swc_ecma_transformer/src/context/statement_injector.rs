@@ -13,8 +13,8 @@ struct Insertion {
 
 pub(crate) enum Anchor {
     First,
-    Last,
-    Before(Stmt),
+    // Last,
+    // Before(Stmt),
     After(Stmt),
 }
 
@@ -93,6 +93,7 @@ impl Mutation<'_, '_, '_> {
                 }
             };
             arrow.set_body(self.ast, ArrowFunctionBody::FunctionBody(body));
+            arrow.set_expression(self.ast, false);
             container = NodeKindData::FunctionBody(body);
         }
 
@@ -106,17 +107,17 @@ impl Mutation<'_, '_, '_> {
             _ => panic!("statement injection requires a statement container"),
         };
         let mut first = Vec::new();
-        let mut last = Vec::new();
+        // let mut last = Vec::new();
         let mut before: FxHashMap<NodeId, Vec<Stmt>> = FxHashMap::default();
         let mut after: FxHashMap<NodeId, Vec<Stmt>> = FxHashMap::default();
         for insertion in insertions {
             match insertion.anchor {
                 Anchor::First => first.push(insertion.statement),
-                Anchor::Last => last.push(insertion.statement),
-                Anchor::Before(anchor) => before
-                    .entry(anchor.node_id())
-                    .or_default()
-                    .push(insertion.statement),
+                // Anchor::Last => last.push(insertion.statement),
+                // Anchor::Before(anchor) => before
+                //     .entry(anchor.node_id())
+                //     .or_default()
+                //     .push(insertion.statement),
                 Anchor::After(anchor) => after
                     .entry(anchor.node_id())
                     .or_default()
@@ -163,7 +164,7 @@ impl Mutation<'_, '_, '_> {
             before.is_empty() && after.is_empty(),
             "statement injection anchor must belong to its container"
         );
-        statements.extend(last);
+        // statements.extend(last);
         let body = self.ast.add_sub_range(statements);
         match container {
             NodeKindData::Program(node) => node.set_body(self.ast, body),

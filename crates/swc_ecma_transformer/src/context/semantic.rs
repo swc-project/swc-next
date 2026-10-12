@@ -1,6 +1,7 @@
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, DUMMY_SP, IdentifierReference, NodeId, NodeKindData,
-    ReferenceId, ScopeId, Span, SymbolId,
+    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
+    IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
+    SymbolId,
 };
 use swc_next_ecma_semantic::{
     Reference, ReferenceFlags, SymbolFlags,
@@ -26,8 +27,7 @@ impl BoundIdentifier {
         let name = ctx.generate_name(base, 2);
         let identifier = ctx.ast.binding_identifier(DUMMY_SP, name);
         let symbol = ctx.register_binding(scope, identifier, flags);
-        let binding = BoundIdentifier { identifier, symbol };
-        binding
+        BoundIdentifier { identifier, symbol }
     }
 
     /// Create a fresh read-only reference to this binding.
@@ -61,6 +61,22 @@ impl BoundIdentifier {
             ReferenceFlags::default().write_only(),
         );
         node
+    }
+
+    /// Build an assignment using a fresh write-only reference to this binding.
+    pub fn assign(
+        &self,
+        ctx: &mut Mutation<'_, '_, '_>,
+        scope: ScopeId,
+        span: Span,
+        value: Expr,
+    ) -> Expr {
+        let target = AssignmentTarget::SimpleAssignmentTarget(
+            SimpleAssignmentTarget::IdentifierReference(self.reference_write(ctx, scope, span)),
+        );
+        Expr::AssignmentExpression(ctx.add_node(scope, |ast| {
+            ast.assignment_expression(span, target, value, AssignmentOperator::Assign)
+        }))
     }
 }
 
@@ -199,6 +215,7 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// use lists. Require that `to` has no conflicting binding. Node evaluation
     /// scopes are updated separately by `move_subtree_to_scope`, since declaration
     /// ownership (e.g. a var hoist target) can differ from its evaluation scope.
+    #[expect(dead_code, reason = "Planned binding relocation API")]
     pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
         self.state.semantic.move_binding(from, to, symbol);
     }

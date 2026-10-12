@@ -70,7 +70,7 @@ impl Transformer {
             x0_es2022: es2022::ES2022::new(features),
         };
 
-        let state = TransformerState::new(semantic, options.assumptions);
+        let state = TransformerState::new(semantic);
         let mut ctx = TraverseMutCtx::new(ast, state);
         let _ = program.traverse_mut_with(&mut transformer, &mut ctx);
         ctx.mutate().finish();
