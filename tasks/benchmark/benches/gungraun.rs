@@ -14,11 +14,11 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, ScopeModel, analyze, name_resolver::resolver as resolve_names,
+    AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
 };
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions,
+    proposal::ProposalOptions, typescript::TypeScriptOptions,
 };
 use swc_next_type_strip::strip_types;
 
@@ -35,7 +35,6 @@ const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
 const EFFECT_SCHEMA_AST: &str = include_str!("../files/effect-schema-ast.ts");
 const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
-const TRANSFORM: &str = include_str!("../files/transform.js");
 
 #[library_benchmark]
 #[bench::angular(ANGULAR, Lang::Js)]
@@ -115,8 +114,13 @@ fn bench_codegen(ast: Ast<'static>) {
     black_box(print(ast.allocator(), &ast, CodegenOptions::default()));
 }
 
-fn all_transform_options() -> TransformerOptions {
-    TransformerOptions {
+type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
+
+fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
+    let mut ast = setup_program(source, lang);
+    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    let options = TransformerOptions {
+        typescript: Some(TypeScriptOptions::default()),
         es2022: ES2022Options {
             static_blocks: true,
         },
@@ -124,31 +128,9 @@ fn all_transform_options() -> TransformerOptions {
             prevent_extensions: true,
         },
         ..TransformerOptions::default()
-    }
-}
-
-fn setup_normalized_program(source: &'static str, lang: Lang) -> Ast<'static> {
-    let mut ast = setup_program(source, lang);
-    Normalizer::normalize(ast.root_program(), &mut ast);
-    ast
-}
-
-// Name resolution is independent of the enabled transforms; bench_transform includes preparation.
-#[library_benchmark]
-#[bench::typescript(setup_normalized_program(TYPESCRIPT, Lang::Js))]
-#[bench::cal_com_tsx(setup_normalized_program(CAL_COM_TSX, Lang::Tsx))]
-#[bench::transform(setup_normalized_program(TRANSFORM, Lang::Js))]
-fn bench_semantic_for_transform(ast: Ast<'static>) {
-    black_box(analyze(&ast, AnalyzeOptions::default()));
-}
-
-type TransformInput = (Ast<'static>, ScopeModel<'static>, TransformerOptions);
-
-fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
-    let ast = setup_normalized_program(source, lang);
-    let options = all_transform_options();
+    };
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    (ast, ScopeModel::new(semantic), options)
+    (ast, semantic, options)
 }
 
 #[library_benchmark]
@@ -165,11 +147,10 @@ fn setup_transform(source: &'static str, lang: Lang) -> TransformInput {
 #[bench::astro_config(setup_transform(ASTRO_CONFIG, Lang::Ts))]
 #[bench::effect_schema_ast(setup_transform(EFFECT_SCHEMA_AST, Lang::Ts))]
 #[bench::hono_types(setup_transform(HONO_TYPES, Lang::Ts))]
-#[bench::transform(setup_transform(TRANSFORM, Lang::Js))]
 fn bench_transform(input: TransformInput) {
-    let (mut ast, mut semantic, options) = black_box(input);
-    Transformer::transform_with_scopes(&mut ast, &mut semantic, options);
-    black_box((ast, semantic));
+    let (mut ast, semantic, options) = black_box(input);
+    let scopes = Transformer::transform(&mut ast, semantic, options);
+    black_box((ast, scopes));
 }
 
 fn type_strip_options(lang: Lang) -> Options {
@@ -360,11 +341,7 @@ library_benchmark_group!(name = parser, benchmarks = bench_parser);
 
 library_benchmark_group!(
     name = semantic,
-    benchmarks = [
-        bench_analyze,
-        bench_syntax_check,
-        bench_semantic_for_transform
-    ]
+    benchmarks = [bench_analyze, bench_syntax_check]
 );
 
 library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
