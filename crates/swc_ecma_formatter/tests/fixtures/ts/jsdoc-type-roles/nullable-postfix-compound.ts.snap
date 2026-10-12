@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = ((A)?) | B;
+---------- Options ----------
+{}
+---------- Output ----------
+type Value = ((A)?) | B;
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type Value =
+  ((A)?) | B

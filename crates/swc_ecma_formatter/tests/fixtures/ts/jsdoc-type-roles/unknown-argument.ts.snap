@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = Foo<?>;
+---------- Options ----------
+{}
+---------- Output ----------
+type Value = Foo<?>;
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type Value =
+  Foo<?>

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = ?(string | number);
+---------- Options ----------
+{}
+---------- Output ----------
+type Value = ?(string | number);
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type Value = ?(
+  | string
+  | number
+)
