@@ -83,6 +83,11 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         ctx.state.path.push(node);
     }
 
+    fn exit_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>) {
+        let popped = ctx.state.path.pop();
+        debug_assert_eq!(popped, Some(node));
+    }
+
     fn enter_class_body(
         &mut self,
         node: ClassBody,

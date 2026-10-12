@@ -84,6 +84,7 @@ impl<'c, 'a> TransformCtx<'c, 'a> {
 
     pub(crate) fn finish(&mut self) {
         self.state.comments.flush(self.ast);
+        debug_assert!(self.state.path.is_empty());
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
         debug_assert!(self.state.container.is_empty());
