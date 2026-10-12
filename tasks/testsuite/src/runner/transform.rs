@@ -47,25 +47,15 @@ impl<C: TransformCase> Runner<C> for TransformerRunner {
 
 fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
     let allocator = Allocator::new();
-    let Some(mut ast) = parse_program(&allocator, case.code(), case.source_type(), case.lang())
-    else {
+    let Some(ast) = transform_program(
+        case,
+        &allocator,
+        case.code(),
+        case.source_type(),
+        case.lang(),
+    ) else {
         return Ok(false);
     };
-    let semantic_ret = analyze(
-        &ast,
-        AnalyzeOptions {
-            check_syntax: true,
-            build_module_record: false,
-        },
-    );
-    if semantic_ret
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-    {
-        return Ok(false);
-    }
-    Transformer::transform(&mut ast, &semantic_ret.semantic, case.transformer_options());
 
     let expected = case.expected_output();
     let output = print(&allocator, &ast, case.codegen_options()).code;
@@ -83,11 +73,10 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         if output != expected {
             return Err("transformed output differs from expected output".into());
         }
-    } else if case.lang() == Lang::Dts {
-        if !output.is_empty() {
+    } else {
+        if case.lang() == Lang::Dts && !output.is_empty() {
             return Err("declaration input emitted JavaScript".into());
         }
-    } else {
         let output_lang = if case.lang() == Lang::Tsx {
             Lang::Jsx
         } else {
@@ -96,11 +85,47 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         let output_allocator = Allocator::new();
         // TODO: Configure decorators and module transforms when those passes are supported.
         // Keep the input's parsing mode even when unambiguous parsing resolved its AST.
-        if parse_program(&output_allocator, output, case.source_type(), output_lang).is_none() {
+        let Some(output_ast) = transform_program(
+            case,
+            &output_allocator,
+            output,
+            case.source_type(),
+            output_lang,
+        ) else {
             return Ok(false);
+        };
+        let retransformed = print(&output_allocator, &output_ast, case.codegen_options()).code;
+        if output != retransformed {
+            return Err("transformed output is not idempotent".into());
         }
     }
     Ok(true)
+}
+
+fn transform_program<'a, C: TransformCase>(
+    case: &C,
+    allocator: &'a Allocator,
+    source: &'a str,
+    source_type: SourceType,
+    lang: Lang,
+) -> Option<Ast<'a>> {
+    let mut ast = parse_program(allocator, source, source_type, lang)?;
+    let semantic_ret = analyze(
+        &ast,
+        AnalyzeOptions {
+            check_syntax: true,
+            build_module_record: false,
+        },
+    );
+    if semantic_ret
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return None;
+    }
+    Transformer::transform(&mut ast, &semantic_ret.semantic, case.transformer_options());
+    Some(ast)
 }
 
 fn parse_program<'a>(

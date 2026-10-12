@@ -93,11 +93,11 @@ the cross product of those option variants; unspecified options default to
 `false`. JavaScript, JSON, config, and package virtual files are ignored.
 
 Without expected output, the runner checks that declaration files emit no
-JavaScript and all other output parses as JavaScript or JSX with the input's
-source type mode. Parser errors in fixture input, expected output, or transformed
-output cause the case to be skipped. Input semantic errors are also
-skipped. Remaining syntax is checked by the output parser without special
-exclusions for decorators or module syntax.
+JavaScript. It then parses the output as JavaScript or JSX with the input's
+source type mode, runs semantic analysis and the same transformer options again,
+and compares the two printed outputs for idempotence. Both passes use the same
+pipeline. Parser or semantic errors cause the case to be skipped; changed output
+is a failure. There are no special exclusions for decorators or module syntax.
 
 Their snapshots are `tasks/testsuite/snapshots/transform_{babel,typescript}.snap`,
 using the same format as the other conformance runners. Transform pass rates

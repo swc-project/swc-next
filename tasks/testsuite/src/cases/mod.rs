@@ -49,7 +49,7 @@ pub trait TransformCase: Case {
         true
     }
 
-    /// An absent oracle requests JavaScript output validation instead of comparison.
+    /// An absent oracle requests JavaScript output validation and transform idempotence.
     fn expected_output(&self) -> Option<&str> {
         None
     }
