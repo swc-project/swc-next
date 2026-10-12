@@ -220,8 +220,8 @@ fn transform_supporting_non_extensible_class(
             .body(ctx.ast())
             .as_function_body(ctx.ast())
             .expect("placeholder body");
-        assert!(body.body(ctx.ast()).is_empty());
-        assert!(body.directives(ctx.ast()).is_empty());
+        debug_assert!(body.body(ctx.ast()).is_empty());
+        debug_assert!(body.directives(ctx.ast()).is_empty());
         ctx.clear_node_scope(body.node_id());
         arrow.set_body(ctx.ast, ArrowFunctionBody::Expr(value));
         arrow.set_expression(ctx.ast, true);
@@ -333,7 +333,7 @@ fn sequence_or_single(
     scope: ScopeId,
     ctx: &mut Mutation<'_, '_, '_>,
 ) -> Expr {
-    assert!(!expressions.is_empty());
+    debug_assert!(!expressions.is_empty());
     if expressions.len() == 1 {
         return expressions[0];
     }

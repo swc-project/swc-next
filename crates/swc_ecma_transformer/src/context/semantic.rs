@@ -302,7 +302,7 @@ impl<'a> Mutation<'_, '_, 'a> {
         from: ScopeId,
         to: ScopeId,
     ) {
-        assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
+        debug_assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
         if from == to {
             return;
         }

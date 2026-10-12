@@ -186,7 +186,7 @@ impl<'a> ScopeModel<'a> {
     /// // Keep the existing call/reference entries; register new bindings and references separately.
     /// ```
     pub fn grow_to(&mut self, node_count: usize, scope: ScopeId) {
-        assert!(self.scope(scope).active, "target scope must be active");
+        debug_assert!(self.scope(scope).active, "target scope must be active");
         // Never truncate indexes when an already registered node is reused.
         if node_count > self.node_scopes.len() {
             self.node_scopes.resize(node_count, Some(scope));
@@ -275,7 +275,7 @@ impl<'a> ScopeModel<'a> {
             ..
         } = reference;
         self.grow_to(node.index() + 1, scope);
-        assert!(
+        debug_assert!(
             self.reference_of(node).is_none(),
             "reference already registered"
         );
@@ -311,12 +311,12 @@ impl ScopeModel<'_> {
         flags: ScopeFlags,
     ) -> ScopeId {
         let parent_scope = self.scope(parent);
-        assert!(parent_scope.active);
-        assert!(!self.iter_scopes().any(|entry| entry.scope.node == owner));
-        assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
+        debug_assert!(parent_scope.active);
+        debug_assert!(!self.iter_scopes().any(|entry| entry.scope.node == owner));
+        debug_assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
         if kind == ScopeKind::FunctionBody {
-            assert_eq!(parent_scope.kind, ScopeKind::Function);
-            assert!(parent_scope.function_body.is_none());
+            debug_assert_eq!(parent_scope.kind, ScopeKind::Function);
+            debug_assert!(parent_scope.function_body.is_none());
         }
         self.grow_to(owner.index() + 1, parent);
         let id = ScopeId::from_usize(self.scopes.list.len());
@@ -364,16 +364,16 @@ impl ScopeModel<'_> {
         flags: ScopeFlags,
     ) {
         let original = self.scope(scope);
-        assert!(original.active);
+        debug_assert!(original.active);
         let parent = original.parent.expect("cannot convert a root scope");
-        assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
-        assert!(kind == ScopeKind::Function || original.function_body.is_none());
-        assert!(!self.iter_scopes().any(|entry| {
+        debug_assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
+        debug_assert!(kind == ScopeKind::Function || original.function_body.is_none());
+        debug_assert!(!self.iter_scopes().any(|entry| {
             entry.id != scope && (entry.scope.node == original.node || entry.scope.node == owner)
         }));
         if kind == ScopeKind::FunctionBody {
-            assert_eq!(self.scope(parent).kind, ScopeKind::Function);
-            assert!(
+            debug_assert_eq!(self.scope(parent).kind, ScopeKind::Function);
+            debug_assert!(
                 self.scope(parent)
                     .function_body
                     .is_none_or(|body| body == scope)
@@ -381,7 +381,7 @@ impl ScopeModel<'_> {
         }
         self.grow_to(owner.index() + 1, scope);
         if original.node != owner {
-            assert_eq!(self.scope_at(original.node), Some(scope));
+            debug_assert_eq!(self.scope_at(original.node), Some(scope));
             self.node_scopes[original.node.index()] = None;
         }
         self.node_scopes[owner.index()] = Some(scope);
@@ -416,9 +416,9 @@ impl ScopeModel<'_> {
     /// // Binding ownership is separate, and scope owners use convert_scope or reparent_scope.
     /// ```
     pub fn move_node_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId) {
-        assert!(self.scope(from).active && self.scope(to).active);
-        assert_eq!(self.scope_at(node), Some(from));
-        assert_ne!(
+        debug_assert!(self.scope(from).active && self.scope(to).active);
+        debug_assert_eq!(self.scope_at(node), Some(from));
+        debug_assert_ne!(
             self.scope(from).node,
             node,
             "scope owners must be moved separately"
@@ -443,19 +443,18 @@ impl ScopeModel<'_> {
     /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         let original = self.scope(scope);
-        assert!(original.active && self.scope(parent).active);
+        debug_assert!(original.active && self.scope(parent).active);
         let previous = original.parent.expect("cannot reparent a root scope");
         if previous == parent {
             return;
         }
-        let mut ancestor = Some(parent);
-        while let Some(id) = ancestor {
-            assert_ne!(id, scope, "scope parent must not create a cycle");
-            ancestor = self.scope(id).parent;
-        }
+        debug_assert!(
+            self.scopes.ancestors(Some(parent)).all(|id| id != scope),
+            "scope parent must not create a cycle"
+        );
         if original.kind == ScopeKind::FunctionBody {
-            assert_eq!(self.scope(parent).kind, ScopeKind::Function);
-            assert!(self.scope(parent).function_body.is_none());
+            debug_assert_eq!(self.scope(parent).kind, ScopeKind::Function);
+            debug_assert!(self.scope(parent).function_body.is_none());
             self.scopes.list[previous.index()].function_body = None;
             self.scopes.list[parent.index()].function_body = Some(scope);
         }
@@ -480,7 +479,7 @@ impl ScopeModel<'_> {
     /// // Apply the flags while keeping owner, parent, kind, bindings and node/reference mappings.
     /// ```
     pub fn set_scope_flags(&mut self, scope: ScopeId, flags: ScopeFlags) {
-        assert!(self.scope(scope).active);
+        debug_assert!(self.scope(scope).active);
         self.scopes.list[scope.index()].flags = flags;
     }
 
@@ -497,32 +496,32 @@ impl ScopeModel<'_> {
     /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         let original = self.scope(scope);
-        assert!(original.active);
+        debug_assert!(original.active);
         let parent = original.parent.expect("cannot remove a root scope");
-        assert!(self.scope_maps[scope.index()].is_empty());
-        assert!(
+        debug_assert!(self.scope_maps[scope.index()].is_empty());
+        debug_assert!(
             !self
                 .declarations
                 .iter()
                 .any(|declaration| declaration.scope == scope)
         );
-        assert!(
+        debug_assert!(
             !self
                 .iter_references()
                 .any(|entry| entry.reference.scope == scope)
         );
-        assert!(
+        debug_assert!(
             !self
                 .iter_scopes()
                 .any(|entry| entry.scope.parent == Some(scope))
         );
-        assert!(
+        debug_assert!(
             self.node_scopes
                 .iter()
                 .enumerate()
                 .all(|(index, &mapped)| mapped != Some(scope) || index == original.node.index())
         );
-        assert!(original.function_body.is_none());
+        debug_assert!(original.function_body.is_none());
         if original.kind == ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = None;
         }
@@ -541,8 +540,8 @@ impl ScopeModel<'_> {
     /// // Its call and references remain registered; the shell must own no scope, binding or reference.
     /// ```
     pub fn clear_node_scope(&mut self, node: NodeId) {
-        assert!(self.symbol_of(node).is_none() && self.reference_of(node).is_none());
-        assert!(!self.iter_scopes().any(|entry| entry.scope.node == node));
+        debug_assert!(self.symbol_of(node).is_none() && self.reference_of(node).is_none());
+        debug_assert!(!self.iter_scopes().any(|entry| entry.scope.node == node));
         self.node_scopes[node.index()] = None;
     }
 

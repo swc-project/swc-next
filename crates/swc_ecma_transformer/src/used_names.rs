@@ -46,7 +46,7 @@ impl<'a> UsedNameState<'a> {
     /// The unsuffixed base is preferred. If it is occupied, suffixes start at
     /// `min_suffix`, for example `next_name("_temp", 2)` produces `_temp2`.
     pub(crate) fn next_name(&mut self, base: &str, min_suffix: u64) -> &str {
-        assert!(min_suffix > 0, "generated name suffix must be positive");
+        debug_assert!(min_suffix > 0, "generated name suffix must be positive");
         if !self.contains(base.as_bytes()) {
             self.insert(base.as_bytes(), min_suffix);
             return self.stored_name(base.as_bytes());

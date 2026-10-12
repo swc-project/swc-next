@@ -160,7 +160,7 @@ impl Mutation<'_, '_, '_> {
             statements.push(statement);
             statements.extend(after.remove(&statement.node_id()).into_iter().flatten());
         }
-        assert!(
+        debug_assert!(
             before.is_empty() && after.is_empty(),
             "statement injection anchor must belong to its container"
         );
