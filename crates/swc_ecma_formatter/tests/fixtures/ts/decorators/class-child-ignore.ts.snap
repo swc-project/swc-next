@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default @dec class C extends Base<T>
+// prettier-ignore
+implements I {  value  =  1 ; }
+---------- Options ----------
+{}
+---------- Output ----------
+export default @dec class C extends Base<T>
+// prettier-ignore
+implements I {  value  =  1 ; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+export default @dec class C extends Base<T>
+// prettier-ignore
+implements I {  value  =  1 ; }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+export default @dec class C extends Base<T>
+// prettier-ignore
+implements I {  value  =  1 ; }

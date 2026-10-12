@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@ns.dec(1,2) /* first */ @other
+class C extends Base {}
+---------- Options ----------
+{}
+---------- Output ----------
+@ns.dec(1, 2) /* first */
+@other
+class C extends Base {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+@ns.dec(
+  1,
+  2
+) /* first */
+@other
+class C extends Base {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+@ns.dec(1, 2) /* first */
+@other
+class C extends Base {}

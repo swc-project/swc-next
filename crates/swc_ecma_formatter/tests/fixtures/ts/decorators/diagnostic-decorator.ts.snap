@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@// @ts-expect-error
+missingDecorator
+class C {}
+---------- Options ----------
+{}
+---------- Output ----------
+@// @ts-expect-error
+missingDecorator
+class C {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+@// @ts-expect-error
+missingDecorator
+class C {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+@// @ts-expect-error
+missingDecorator
+class C {}

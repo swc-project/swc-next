@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { method(@dec { value } : { value: number } = { value: 1 }) {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  method(@dec { value }: { value: number } = { value: 1 }) {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class C {
+  method(
+    @dec {
+      value
+    }: {
+      value: number
+    } = { value: 1 }
+  ) {}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+class C {
+  method(
+    @dec { value }: {
+      value: number;
+    } = { value: 1 },
+  ) {}
+}

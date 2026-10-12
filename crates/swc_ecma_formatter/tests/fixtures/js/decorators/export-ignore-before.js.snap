@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+// prettier-ignore
+@dec export default class C {  value  =   1 ; }

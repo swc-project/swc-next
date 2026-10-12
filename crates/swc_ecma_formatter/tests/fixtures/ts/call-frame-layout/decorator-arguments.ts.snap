@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@Factory((input) => Input, (output) => output.value)
+class Subject { value: number; }
+---------- Options ----------
+{}
+---------- Output ----------
+@Factory((input) => Input, (output) => output.value)
+class Subject {
+  value: number;
+}
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+@Factory(
+  (input) => Input,
+  (output) => output.value,
+)
+class Subject {
+  value: number;
+}
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+@Factory(
+  (input) =>
+    Input,
+  (output) =>
+    output.value,
+)
+class Subject {
+  value: number
+}

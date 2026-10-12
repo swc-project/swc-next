@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const dec: any;
+class C {
+// @ts-expect-error
+@dec value: number = "bad";
+}
+---------- Options ----------
+{}
+---------- Output ----------
+declare const dec: any;
+class C {
+  // @ts-expect-error
+  @dec value: number = "bad";
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+declare const dec: any
+class C {
+  // @ts-expect-error
+  @dec value: number = "bad"
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+declare const dec: any;
+class C {
+  // @ts-expect-error
+  @dec value: number = "bad";
+}
