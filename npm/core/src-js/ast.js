@@ -111,6 +111,9 @@ class WalkContext {
   #phase;
   #state;
   #ancestors = [];
+  // Reuse depth slots instead of shrinking/growing the array for every node.
+  // Only the live prefix is exposed; reset releases retained references.
+  #depth = 0;
   #dispatch;
   #globalEnter;
   #globalLeave;
@@ -179,7 +182,7 @@ class WalkContext {
   }
   ancestors() {
     this.#check();
-    return this.#ancestors.slice();
+    return this.#ancestors.slice(0, this.#depth);
   }
   skip() {
     this.#check();
@@ -256,6 +259,7 @@ class WalkContext {
   reset() {
     this.#frame = undefined;
     this.#ancestors.length = 0;
+    this.#depth = 0;
     this.#storage.node = this.#storage.parent = this.#storage.list = null;
     this.#dispatch = this.#globalEnter = this.#globalLeave = undefined;
   }
@@ -273,6 +277,9 @@ class WalkContext {
 
   visitField(value, parent, key) {
     if (value == null) return false;
+    // A parent belongs in the ancestor chain while visiting its child field,
+    // not while probing its absent optional fields or running its leave hook.
+    this.#ancestors[this.#depth++] = parent;
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
         const child = value[i];
@@ -282,6 +289,7 @@ class WalkContext {
     } else {
       this.visit(value, parent, key, null, 0);
     }
+    this.#depth--;
     return this.stopped;
   }
 
@@ -308,10 +316,8 @@ class WalkContext {
       }
     }
     if (!skip && handlers.children !== null) {
-      this.#ancestors.push(node);
       handlers.children(node, this);
       if (this.stopped) return index;
-      this.#ancestors.pop();
     }
     if (node.type !== type) {
       handlers = this.#dispatch[node.type];

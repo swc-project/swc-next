@@ -137,16 +137,12 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
         if fields.is_empty() {
             writeln!(children, "  {name}: null,").unwrap();
         } else {
-            let calls = fields
-                .iter()
-                .map(|field| format!("walker.visitField(node.{field}, node, {field:?})"))
-                .collect::<Vec<_>>()
-                .join(" ||\n      ");
-            writeln!(
-                children,
-                "  {name}(node, walker) {{\n    return {calls};\n  }},"
-            )
-            .unwrap();
+            writeln!(children, "  {name}(node, walker) {{").unwrap();
+            for (index, field) in fields.iter().enumerate() {
+                writeln!(children, "    const child{index} = node.{field};").unwrap();
+                writeln!(children, "    if (child{index} != null && walker.visitField(child{index}, node, {field:?})) return true;").unwrap();
+            }
+            writeln!(children, "    return false;\n  }},").unwrap();
         }
     }
     js.push_str("});\n");

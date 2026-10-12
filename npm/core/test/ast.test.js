@@ -463,3 +463,32 @@ test("generated child accessors stop before later scalar fields", () => {
   ast.left = Object.assign(() => {}, { type: "Identifier" });
   assert.throws(() => walk(ast, {}), /Unsupported AST/);
 });
+
+test("child fields are read once, in traversal order, and stop leaves later getters untouched", () => {
+  const ast = { type: "BinaryExpression", operator: "+" };
+  let leftReads = 0;
+  let rightReads = 0;
+  let right = id("old");
+  Object.defineProperties(ast, {
+    left: { get() { leftReads++; return id("left"); } },
+    right: { get() { rightReads++; return right; } },
+  });
+  const seen = [];
+  walk(ast, {
+    Identifier(node, ctx) {
+      seen.push(node.name);
+      assert.deepEqual(ctx.ancestors(), [ast]);
+      if (node.name === "left") right = id("new");
+    },
+    leave(node, ctx) {
+      assert.deepEqual(ctx.ancestors(), node === ast ? [] : [ast]);
+    },
+  });
+  assert.deepEqual(seen, ["left", "new"]);
+  assert.equal(leftReads, 1);
+  assert.equal(rightReads, 1);
+
+  walk(ast, { Identifier(node, ctx) { ctx.stop(); } });
+  assert.equal(leftReads, 2);
+  assert.equal(rightReads, 1);
+});
