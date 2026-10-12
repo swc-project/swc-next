@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { decode } from "@swc-next/decoder";
 import { CommentMode, Lang, parseSync, SourceType } from "../src-js/index.js";
+import { parseSync as parseStandalone } from "../../parser/src-js/index.js";
 
 test("decoder reads little-endian words from unaligned buffers", () => {
   const backing = new ArrayBuffer(77);
@@ -172,10 +173,37 @@ test("parseSync makes semantic early-error checking optional", () => {
   assert.equal(checked.diagnostics.length, 1);
   assert.equal(checked.diagnostics[0].severity, "error");
   assert.equal(checked.program.body.length, 2);
+  assert.deepEqual(checked.program, parseSync(source).program);
 
   const valid = parseSync("let value; { let value; }", { semanticErrors: true });
   assert.deepEqual(valid.diagnostics, []);
+  const missingExport = "export { missing };";
+  assert.deepEqual(parseSync(missingExport).diagnostics, []);
+  assert.equal(parseSync(missingExport, { semanticErrors: true }).diagnostics.length, 1);
   assert.throws(() => parseSync(source, { semanticErrors: 1 }), TypeError);
+});
+
+test("semantic checking supports TypeScript through both parser entry points", () => {
+  const source = "type Value = string; type Value = number;";
+  const options = { lang: Lang.Ts, semanticErrors: true };
+  const checked = parseSync(source, options);
+  assert.deepEqual(parseSync(source, { lang: Lang.Ts }).diagnostics, []);
+  assert.deepEqual(parseSync(source, { ...options, semanticErrors: false }).diagnostics, []);
+  assert.equal(checked.diagnostics.length, 1);
+  assert.equal(checked.diagnostics[0].severity, "error");
+  assert.deepEqual(checked.program, parseSync(source, { lang: Lang.Ts }).program);
+  assert.deepEqual(parseStandalone(source, options).diagnostics, checked.diagnostics);
+  assert.deepEqual(parseStandalone(source, options).program, checked.program);
+  assert.deepEqual(parseStandalone(source, { ...options, semanticErrors: false }).diagnostics, []);
+
+  const valid = parseSync("interface Value {} interface Value {}", options);
+  assert.deepEqual(valid.diagnostics, []);
+
+  const invalid = "type Value = ;";
+  assert.deepEqual(
+    parseSync(invalid, options).diagnostics,
+    parseSync(invalid, { lang: Lang.Ts }).diagnostics,
+  );
 });
 
 test("semantic diagnostics preserve Unicode offsets and related labels", () => {
