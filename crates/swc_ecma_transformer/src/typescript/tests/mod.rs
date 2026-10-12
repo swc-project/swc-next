@@ -11,7 +11,6 @@ mod jsx;
 mod modules;
 mod namespaces;
 mod parameters;
-mod pipeline;
 mod syntax;
 
 pub(super) fn transformed_code(source: &str) -> String {
@@ -50,14 +49,7 @@ fn transformed_code_with_source_type(
     let mut ast = parsed.ast;
     Normalizer::normalize_runtime(ast.root_program(), &mut ast);
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    crate::Transformer::transform(
-        &mut ast,
-        semantic,
-        crate::TransformerOptions {
-            typescript: Some(transform_options),
-            ..Default::default()
-        },
-    );
+    transform(ast.root_program(), &mut ast, &semantic, transform_options);
     swc_next_ecma_codegen::print(&allocator, &ast, Default::default())
         .code
         .to_owned()
