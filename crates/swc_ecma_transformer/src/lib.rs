@@ -55,7 +55,7 @@ impl Transformer {
 
     /// Run synchronized transforms on an already normalized runtime AST and its ScopeModel.
     /// TypeScript must be disabled; use `transform` to run TypeScript lowering first.
-    pub fn transform_with_scopes<'ast>(
+    fn transform_with_scopes<'ast>(
         ast: &mut Ast<'ast>,
         semantic: &mut ScopeModel<'ast>,
         options: TransformerOptions,
