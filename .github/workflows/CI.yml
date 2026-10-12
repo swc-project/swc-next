@@ -130,12 +130,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Clone test fixtures
         run: ./scripts/clone_fixtures.sh
-      - name: Run parser and codegen conformance
+      - name: Run conformance
         run: cargo run --locked -p testsuite --bin conformance --profile conformance
-      - name: Run TypeScript-only transform tests
-        run: cargo run --locked -p testsuite --bin typescript_transform
-      - name: Run Babel transform conformance
-        run: cargo run --locked -p testsuite --bin babel_transform
       - name: Build Node.js bindings
         run: pnpm build --release
       - name: Run ESTree conformance

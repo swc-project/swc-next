@@ -7,13 +7,14 @@ use testsuite::{
         local::LocalCase,
         swc_resolver::SwcResolverCase,
         test262::Test262Case,
-        typescript::TypeScriptCase,
-        typescript_transform::{TypeScriptTransformInput, TypeScriptTransformMode},
+        typescript::{
+            parser::TypeScriptParserCase,
+            transform::{TypeScriptTransformCase, TypeScriptTransformMode},
+        },
     },
     runner::{
-        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
-        parser::ParserRunner, resolver::ResolverRunner,
-        typescript_transform::TypeScriptTransformRunner,
+        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
+        transform::TransformerRunner,
     },
 };
 
@@ -21,11 +22,8 @@ use testsuite::{
 enum RunnerName {
     Parser,
     Codegen,
-    #[value(name = "babel_transform")]
-    BabelTransform,
+    Transform,
     Resolver,
-    #[value(name = "typescript_transform")]
-    TypeScriptTransform,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -84,93 +82,33 @@ fn main() {
     let res = match args.runner {
         RunnerName::Parser => run_conformance::<ParserRunner>(args.case, &args.filter),
         RunnerName::Codegen => run_conformance::<CodegenRunner>(args.case, &args.filter),
-        RunnerName::BabelTransform if matches!(args.case, CaseSet::Babel) => {
-            run_filtered::<BabelTransformRunner, BabelTransformCase>(&args.filter)
-        }
-        RunnerName::BabelTransform => {
-            Err("`babel_transform` runner requires `--case babel`".into())
-        }
+        RunnerName::Transform => match args.case {
+            CaseSet::Babel => run_filtered::<TransformerRunner, BabelTransformCase>(&args.filter),
+            CaseSet::TypeScript => TypeScriptTransformCase::read_all(
+                args.typescript_mode.map(TypeScriptTransformMode::from),
+            )
+            .and_then(|cases| run_filtered_cases::<TransformerRunner, _>(&args.filter, cases)),
+            _ => Err("`transform` runner requires `--case babel` or `--case typescript`".into()),
+        },
         RunnerName::Resolver if matches!(args.case, CaseSet::SwcResolver) => {
             run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
         }
         RunnerName::Resolver => Err("`resolver` runner requires `--case swc_resolver`".into()),
-        RunnerName::TypeScriptTransform if matches!(args.case, CaseSet::TypeScript) => {
-            run_typescript_transform(
-                &args.filter,
-                args.typescript_mode.map(TypeScriptTransformMode::from),
-            )
-        }
-        RunnerName::TypeScriptTransform => {
-            Err("`typescript_transform` runner requires `--case typescript`".into())
-        }
     };
     println!("{:?}", res);
 }
 
-fn run_typescript_transform(
-    filter: &str,
-    mode_override: Option<TypeScriptTransformMode>,
-) -> Result<(), String> {
-    let inputs = TypeScriptTransformInput::read_all()?;
-    let mut units = inputs
-        .iter()
-        .flat_map(|input| {
-            input
-                .units
-                .iter()
-                .map(move |unit| (&input.relative_path, &input.modes, unit))
-        })
-        .filter(|(relative_path, _, unit)| {
-            format!("{} :: {}", relative_path.display(), unit.name).contains(filter)
-        })
-        .collect::<Vec<_>>();
-    if units.len() > 1 {
-        let candidates = units
-            .iter()
-            .map(|(relative_path, _, unit)| format!("{} :: {}", relative_path.display(), unit.name))
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Err(format!(
-            "Multiple cases found for filter `{filter}`; narrow it to one case:\n{candidates}"
-        ));
-    }
-    let (relative_path, modes, unit) = units
-        .pop()
-        .ok_or_else(|| format!("No case found for filter: {filter}"))?;
-    let mode = match (mode_override, modes.as_slice()) {
-        (Some(mode), _) => mode,
-        (None, [mode]) => *mode,
-        (None, modes) => {
-            let modes = modes
-                .iter()
-                .map(|mode| mode.name())
-                .collect::<Vec<_>>()
-                .join(", ");
-            return Err(format!(
-                "Fixture has multiple TypeScript transform option variants ({modes}); pass `--typescript-mode` to select one"
-            ));
-        }
-    };
-    println!("Runner: {}", TypeScriptTransformRunner::NAME);
-    println!(
-        "Case: {} :: {} [{}]",
-        relative_path.display(),
-        unit.name,
-        mode.name()
-    );
-    let output = TypeScriptTransformRunner::transform(mode, unit)?;
-    println!("{output}");
-    Ok(())
-}
-
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>
 where
-    R: Runner<Test262Case> + Runner<LocalCase> + Runner<TypeScriptCase> + Runner<BabelParserCase>,
+    R: Runner<Test262Case>
+        + Runner<LocalCase>
+        + Runner<TypeScriptParserCase>
+        + Runner<BabelParserCase>,
 {
     match case_set {
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::Local => run_filtered::<R, LocalCase>(filter),
-        CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
+        CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
         CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
     }
@@ -181,7 +119,15 @@ where
     C: Case,
     R: Runner<C>,
 {
-    let mut cases = C::read()
+    run_filtered_cases::<R, C>(filter, C::read())
+}
+
+fn run_filtered_cases<R, C>(filter: &str, cases: Vec<C>) -> Result<(), String>
+where
+    C: Case,
+    R: Runner<C>,
+{
+    let mut cases = cases
         .into_iter()
         .filter(|case| case_label(case).contains(filter))
         .collect::<Vec<_>>();

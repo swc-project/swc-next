@@ -24,10 +24,4 @@ swc_next_ecma_transformer = { workspace = true }
 name = "conformance"
 
 [[bin]]
-name = "babel_transform"
-
-[[bin]]
 name = "debug"
-
-[[bin]]
-name = "typescript_transform"

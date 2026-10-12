@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use swc_next_ecma_ast::{Lang, SourceType};
+use swc_next_ecma_codegen::Options as CodegenOptions;
+use swc_next_ecma_transformer::TransformerOptions;
 
 use crate::util::crate_root;
 
@@ -10,7 +12,6 @@ pub mod local;
 pub mod swc_resolver;
 pub mod test262;
 pub mod typescript;
-pub mod typescript_transform;
 
 pub trait Case: Sized + Sync {
     const NAME: &'static str;
@@ -33,6 +34,28 @@ pub trait Case: Sized + Sync {
 
     fn relative_path(&self) -> &Path {
         self.path().strip_prefix(crate_root()).unwrap()
+    }
+}
+
+/// Fixture adapters provide the configuration consumed by the shared transform pipeline.
+pub trait TransformCase: Case {
+    fn transformer_options(&self) -> TransformerOptions;
+
+    fn options_label(&self) -> Option<&str> {
+        None
+    }
+
+    fn supports_options(&self) -> bool {
+        true
+    }
+
+    /// An absent oracle requests JavaScript output validation instead of comparison.
+    fn expected_output(&self) -> Option<&str> {
+        None
+    }
+
+    fn codegen_options(&self) -> CodegenOptions {
+        CodegenOptions::default()
     }
 }
 

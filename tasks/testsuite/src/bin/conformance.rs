@@ -3,21 +3,37 @@ use std::{fs, process::ExitCode};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use testsuite::{
     cases::{
-        Case, babel_parser::BabelParserCase, local::LocalCase, swc_resolver::SwcResolverCase,
-        test262::Test262Case, typescript::TypeScriptCase,
+        Case,
+        babel::BabelTransformCase,
+        babel_parser::BabelParserCase,
+        local::LocalCase,
+        swc_resolver::SwcResolverCase,
+        test262::Test262Case,
+        typescript::{parser::TypeScriptParserCase, transform::TypeScriptTransformCase},
     },
-    runner::{Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner},
+    runner::{
+        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
+        transform::TransformerRunner,
+    },
     suite::TestResult,
     util::crate_root,
 };
 
 pub fn main() -> ExitCode {
+    rayon::ThreadPoolBuilder::new()
+        .stack_size(32 * 1024 * 1024)
+        .build_global()
+        .unwrap();
     let panicked = [
         update_snapshots::<Test262Case>(),
         update_snapshots::<LocalCase>(),
-        update_snapshots::<TypeScriptCase>(),
+        update_snapshots::<TypeScriptParserCase>(),
         update_snapshots::<BabelParserCase>(),
         update_snapshot::<ResolverRunner, SwcResolverCase>(&SwcResolverCase::read()),
+        update_snapshot::<TransformerRunner, BabelTransformCase>(&BabelTransformCase::read()),
+        update_snapshot::<TransformerRunner, TypeScriptTransformCase>(
+            &TypeScriptTransformCase::read(),
+        ),
     ]
     .into_iter()
     .any(|panicked| panicked);
@@ -66,6 +82,7 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
     let mut positive_passed = 0;
     let mut negative_passed = 0;
     let mut panicked = 0;
+    let mut skipped = 0;
     let mut diagnostics = Vec::new();
 
     for result in results {
@@ -73,6 +90,7 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
             TestResult::Passed { negative, .. }
             | TestResult::Failed { negative, .. }
             | TestResult::Panic { negative, .. } => *negative,
+            TestResult::Skipped { .. } => false,
         };
         if is_negative {
             negative += 1;
@@ -81,6 +99,7 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
         }
 
         match result {
+            TestResult::Skipped { .. } => skipped += 1,
             TestResult::Passed {
                 negative: false, ..
             } => positive_passed += 1,
@@ -118,6 +137,12 @@ fn to_snapshot(runner: &str, cases: &str, results: &[TestResult]) -> String {
         "Panicked: {panicked}/{total} ({:.2}%)\n",
         rate(panicked, total),
     ));
+    if skipped != 0 {
+        snapshot.push_str(&format!(
+            "Skipped: {skipped}/{total} ({:.2}%)\n",
+            rate(skipped, total),
+        ));
+    }
     for diagnostic in diagnostics {
         snapshot.push_str(&diagnostic);
         snapshot.push('\n');

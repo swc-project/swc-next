@@ -1,0 +1,53 @@
+transform * babel
+========================
+Positive Passed: 449/4069 (11.03%)
+Negative Passed: 0/0 (0.00%)
+Panicked: 0/4069 (0.00%)
+Skipped: 3573/4069 (87.81%)
+Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/inline/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-external/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map-same-location/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-core/test/fixtures/transformation/source-maps/input-source-map/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/await-using-declarations/for-using-init/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/comments/async-class-method-computed-key-comment/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-comment/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/comments/async-generator-class-method-computed-key-comment/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/comments/create-parenthesized-expressions/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/comments/pure-in-paren/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-in-no-in/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/for-loop-in/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/new-precedence/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-and-compact-option/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/return-with-retainlines-option/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/throw-with-retainlines-option/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/edgecase/yield-with-retainlines-option/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/await-expression/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/expression/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/in-inside-for/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/nullish-coalescing/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/sequence-expression-createParenthesizedExpressions/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/terminator-break/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-constructor-type/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/parentheses/ts-function-type/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/regression/11304/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/regression/15161/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/regression/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/regression/jsx-with-retainLines/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/argument/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/assignment/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/retainFunctionParens/nested/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg-createParenthesizedExpressions/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/comment-before-parentheses-return-arg/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/sourcemaps/real-world-babel-file1/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/types/LogicalExpression/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses-createParenthesizedExpression/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies-parentheses/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/typescript/satisfies/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-generator/test/fixtures/typescript/types-parenthesized-createParenthesizedExpression/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/implicit-var-arguments/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/arrow-functions/spec/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/basic/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/naming/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/assumption-newableArrowFunctions-false/self-referential/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-default/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-arrow-functions/test/fixtures/spec/newableArrowFunction-vs-spec-false/input.js - transformed output differs from expected output

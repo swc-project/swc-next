@@ -4,11 +4,10 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use crate::{cases::Case, suite::TestResult};
 
-pub mod babel_transform;
 pub mod codegen;
 pub mod parser;
 pub mod resolver;
-pub mod typescript_transform;
+pub mod transform;
 
 pub trait Runner<C: Case> {
     const NAME: &'static str;

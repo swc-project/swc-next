@@ -1,0 +1,131 @@
+use std::panic::{AssertUnwindSafe, catch_unwind};
+
+use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::{Ast, Lang, Severity, SourceType};
+use swc_next_ecma_codegen::print;
+use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
+use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_transformer::Transformer;
+
+use crate::{cases::TransformCase, runner::Runner, suite::TestResult, util::workspace_root};
+
+pub struct TransformerRunner;
+
+impl<C: TransformCase> Runner<C> for TransformerRunner {
+    const NAME: &'static str = "transform";
+
+    fn run(case: &C) -> TestResult {
+        let path = case
+            .path()
+            .strip_prefix(workspace_root().expect("workspace root should be discoverable"))
+            .expect("transform fixture should be inside the workspace")
+            .to_path_buf();
+        if !case.supports_options() {
+            return TestResult::Skipped { path };
+        }
+        match catch_unwind(AssertUnwindSafe(|| run_case(case))) {
+            Ok(Ok(true)) => TestResult::Passed {
+                path,
+                negative: false,
+            },
+            Ok(Ok(false)) => TestResult::Skipped { path },
+            Ok(Err(error)) => TestResult::Failed {
+                path,
+                error: match case.options_label() {
+                    Some(options) => format!("[{options}]: {error}"),
+                    None => error,
+                },
+                negative: false,
+            },
+            Err(_) => TestResult::Panic {
+                path,
+                negative: false,
+            },
+        }
+    }
+}
+
+fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
+    let allocator = Allocator::new();
+    let Some(mut ast) = parse_program(&allocator, case.code(), case.source_type(), case.lang())
+    else {
+        return Ok(false);
+    };
+    let semantic_ret = analyze(
+        &ast,
+        AnalyzeOptions {
+            check_syntax: true,
+            build_module_record: false,
+        },
+    );
+    if semantic_ret
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return Ok(false);
+    }
+    Transformer::transform(&mut ast, &semantic_ret.semantic, case.transformer_options());
+
+    let expected = case.expected_output();
+    let output = print(&allocator, &ast, case.codegen_options()).code;
+    if let Some(expected) = expected {
+        let expected_allocator = Allocator::new();
+        let Some(expected_ast) = parse_program(
+            &expected_allocator,
+            expected,
+            case.source_type(),
+            case.lang(),
+        ) else {
+            return Ok(false);
+        };
+        let expected = print(&expected_allocator, &expected_ast, case.codegen_options()).code;
+        if output != expected {
+            return Err("transformed output differs from expected output".into());
+        }
+    } else if case.lang() == Lang::Dts {
+        if !output.is_empty() {
+            return Err("declaration input emitted JavaScript".into());
+        }
+    } else {
+        let output_lang = if case.lang() == Lang::Tsx {
+            Lang::Jsx
+        } else {
+            Lang::Js
+        };
+        let output_allocator = Allocator::new();
+        // TODO: Configure decorators and module transforms when those passes are supported.
+        // Keep the input's parsing mode even when unambiguous parsing resolved its AST.
+        if parse_program(&output_allocator, output, case.source_type(), output_lang).is_none() {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn parse_program<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    source_type: SourceType,
+    lang: Lang,
+) -> Option<Ast<'a>> {
+    let result = Parser::init(
+        allocator,
+        source,
+        ParserOptions {
+            source_type,
+            lang,
+            ..ParserOptions::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    if result
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return None;
+    }
+    Some(result.ast)
+}

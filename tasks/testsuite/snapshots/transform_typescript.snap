@@ -1,0 +1,6 @@
+transform * typescript
+========================
+Positive Passed: 13056/14944 (87.37%)
+Negative Passed: 0/0 (0.00%)
+Panicked: 0/14944 (0.00%)
+Skipped: 1888/14944 (12.63%)
