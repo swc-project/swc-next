@@ -11,6 +11,7 @@ use swc_next_ecma_ast::{
 use super::{Formatter, PrintedStatement, StatementBoundary, StatementPunctuation};
 use crate::formatter::bindings::InitializerLayout;
 use crate::formatter::comments::{CommentRunLayout, NodeHead};
+use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use crate::formatter::expressions::assignment::{AssignmentBoundary, RhsLayout};
@@ -233,7 +234,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::Class(class) => {
-                self.format_class(class, ExpressionPosition::ExportDefault, writer)?;
+                self.format_class(class, ExpressionPosition::ExportDefault, false, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: class.span(self.ast).end,
                     has_terminator: false,
@@ -1761,5 +1762,136 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         *namespace_head = Some(span);
         true
+    }
+
+    pub(super) fn format_decorated_export_class(
+        &mut self,
+        node: swc_next_ecma_ast::Class,
+        prefix: DecoratorPrefix,
+        native: Span,
+        default: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
+        let ast = self.ast;
+        let prepared = self.prepare_class(node, Some(prefix))?;
+        if prepared.is_verbatim() {
+            if prefix.physical.start < native.start {
+                // The prepared statement envelope includes the export between
+                // the protected decorator and its class; print it once.
+                self.format_verbatim(prefix.envelope, writer)?;
+                return Ok(StatementBoundary::SourceEnd {
+                    end: native.end,
+                    has_terminator: false,
+                }
+                .into());
+            }
+            let class_native = node.span(ast);
+            let source = Span::new(
+                class_native.start.min(prefix.physical.start),
+                class_native.end,
+            );
+            if source.start < native.start + 6 {
+                return Err(self.unsupported("decorated class child source envelope", node));
+            }
+            let mut end = native.start + 6;
+            let operator = if default {
+                let gap = Span::new(end, source.start);
+                let comments = self.comments.in_range(gap);
+                Some(self.find_token(gap, comments, "default").ok_or_else(|| {
+                    self.unsupported("decorated class child source export boundary", node)
+                })?)
+            } else {
+                None
+            };
+            writer.text("export");
+            if let Some(operator) = operator {
+                self.format_module_gap(end, operator, true, writer)?;
+                writer.text("default");
+                end = operator + 7;
+            }
+            self.format_module_gap(end, source.start, true, writer)?;
+            self.format_verbatim(source, writer)?;
+            return Ok(StatementBoundary::SourceEnd {
+                end: native.end,
+                has_terminator: false,
+            }
+            .into());
+        }
+        let core_start = prepared.core_start();
+        let before_export = prefix.physical.start < native.start;
+        let operator = if default {
+            let mut start = native.start + 6;
+            let span = Span::new(start, core_start);
+            let comments = self.comments.in_range(span);
+            let mut found = None;
+            for decorator in std::iter::once(prefix.first).chain(
+                prefix
+                    .remaining
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id)),
+            ) {
+                let decorator = decorator.span(ast);
+                if decorator.end <= start || decorator.start >= core_start {
+                    continue;
+                }
+                let end = decorator.start.max(start);
+                let first = comments.partition_point(|comment| comment.span.start < start);
+                let last = comments.partition_point(|comment| comment.span.end <= end);
+                if let Some(position) =
+                    self.find_token(Span::new(start, end), &comments[first..last], "default")
+                {
+                    found = Some(Span::new(position, position + 7));
+                    break;
+                }
+                start = decorator.end;
+            }
+            if found.is_none() {
+                let first = comments.partition_point(|comment| comment.span.start < start);
+                found = self
+                    .find_token(Span::new(start, core_start), &comments[first..], "default")
+                    .map(|position| Span::new(position, position + 7));
+            }
+            Some(found.ok_or_else(|| self.unsupported("decorated export default boundary", node))?)
+        } else {
+            None
+        };
+        if before_export {
+            self.format_decorators(
+                prefix,
+                DecoratorLayout::Class,
+                native.start.max(prefix.physical.end),
+                writer,
+            )?;
+        }
+        writer.text("export");
+        let mut end = native.start + 6;
+        if let Some(operator) = operator {
+            if operator.start < prefix.physical.start || before_export {
+                self.format_module_gap(end, operator.start, true, writer)?;
+            } else {
+                writer.space();
+            }
+            writer.text("default");
+            end = operator.end;
+        }
+        if before_export {
+            self.format_module_gap(end, core_start, true, writer)?;
+        } else {
+            let start = prefix.physical.start;
+            let gap = Span::new(end.min(start), start);
+            let comments = self.comments.between(gap)?;
+            let boundary = self.prepare_comment_boundary(comments, gap.start, start);
+            self.format_comment_boundary(&boundary, writer)?;
+            boundary
+                .gap()
+                .write(writer, FlatSeparator::Space, Writer::hard_line);
+            self.format_decorators(prefix, DecoratorLayout::Class, core_start, writer)?;
+        }
+        self.format_prepared_class(prepared, false, writer)?;
+        Ok(StatementBoundary::SourceEnd {
+            end: native.end,
+            has_terminator: false,
+        }
+        .into())
     }
 }

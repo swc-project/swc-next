@@ -140,8 +140,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         owner: MethodOwner,
         quoting: PropertyKeyQuoting,
     ) -> Result<SourceMethodHeader<'ast>, FormatError> {
+        self.source_method_header_at(owner, owner.span(self.ast).start, quoting)
+    }
+
+    pub(in crate::formatter) fn source_method_header_at(
+        &self,
+        owner: MethodOwner,
+        start: u32,
+        quoting: PropertyKeyQuoting,
+    ) -> Result<SourceMethodHeader<'ast>, FormatError> {
         let ast = self.ast;
-        let start = owner.span(ast).start;
         let (function, key, computed, optional, keyword, is_static) = match owner {
             MethodOwner::Object(property) => {
                 let value = property.value(ast);
@@ -164,9 +172,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
             MethodOwner::Class(method) => {
-                if method.optional(ast) && method.kind(ast) != MethodDefinitionKind::Method
-                    || !method.decorators(ast).is_empty()
-                {
+                if method.optional(ast) && method.kind(ast) != MethodDefinitionKind::Method {
                     return Err(self.unsupported("typed or decorated class method", method));
                 }
                 let function = method.value(ast);
@@ -534,6 +540,59 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(in crate::formatter) fn source_bodyless_method_prefix(
+        &self,
+        node: TsMethodDefinition,
+        header_start: u32,
+        has_generics: bool,
+        core_start: u32,
+        quoting: PropertyKeyQuoting,
+    ) -> Result<SourceMethodPrefix, FormatError> {
+        let ast = self.ast;
+        let keyword = match node.kind(ast) {
+            MethodDefinitionKind::Get => Some("get"),
+            MethodDefinitionKind::Set => Some("set"),
+            MethodDefinitionKind::Method | MethodDefinitionKind::Constructor => None,
+        };
+        let mut prefix = self.source_method_key_prefix(MethodKeyInput {
+            start: core_start,
+            key: node.key(ast),
+            computed: node.computed(ast),
+            optional: node.optional(ast),
+            is_static: node.r#static(ast),
+            keyword,
+            generator: false,
+            has_generics,
+            header_start,
+            class: Some(ClassMemberPrefixOwner::Bodyless(node)),
+            quoting,
+        })?;
+        if prefix.key_mode == ContentMode::Formatted && self.has_suppression {
+            prefix.key_mode = self.content_mode(
+                self.comments
+                    .in_range(Span::new(prefix.member.start(), prefix.key.span(ast).start)),
+            );
+        }
+        Ok(prefix)
+    }
+
+    pub(in crate::formatter) fn method_key_mode(
+        &self,
+        prefix: &SourceMethodPrefix,
+        mode: ContentMode,
+    ) -> ContentMode {
+        if prefix.question.is_none() {
+            return mode;
+        }
+        self.unquoted_key_mode(
+            prefix.key,
+            prefix.computed,
+            prefix.key_context,
+            mode,
+            prefix.quoting,
+        )
+    }
+
     pub(in crate::formatter) fn format_method_header(
         &mut self,
         header: SourceMethodHeader<'ast>,
@@ -583,7 +642,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
     }
-
     pub(in crate::formatter) fn format_method_key_prefix(
         &mut self,
         prefix: SourceMethodPrefix,
@@ -641,58 +699,5 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("?");
         }
         Ok(())
-    }
-
-    pub(in crate::formatter) fn source_bodyless_method_prefix(
-        &self,
-        node: TsMethodDefinition,
-        header_start: u32,
-        has_generics: bool,
-        core_start: u32,
-        quoting: PropertyKeyQuoting,
-    ) -> Result<SourceMethodPrefix, FormatError> {
-        let ast = self.ast;
-        let keyword = match node.kind(ast) {
-            MethodDefinitionKind::Get => Some("get"),
-            MethodDefinitionKind::Set => Some("set"),
-            MethodDefinitionKind::Method | MethodDefinitionKind::Constructor => None,
-        };
-        let mut prefix = self.source_method_key_prefix(MethodKeyInput {
-            start: core_start,
-            key: node.key(ast),
-            computed: node.computed(ast),
-            optional: node.optional(ast),
-            is_static: node.r#static(ast),
-            keyword,
-            generator: false,
-            has_generics,
-            header_start,
-            class: Some(ClassMemberPrefixOwner::Bodyless(node)),
-            quoting,
-        })?;
-        if prefix.key_mode == ContentMode::Formatted && self.has_suppression {
-            prefix.key_mode = self.content_mode(
-                self.comments
-                    .in_range(Span::new(prefix.member.start(), prefix.key.span(ast).start)),
-            );
-        }
-        Ok(prefix)
-    }
-
-    pub(in crate::formatter) fn method_key_mode(
-        &self,
-        prefix: &SourceMethodPrefix,
-        mode: ContentMode,
-    ) -> ContentMode {
-        if prefix.question.is_none() {
-            return mode;
-        }
-        self.unquoted_key_mode(
-            prefix.key,
-            prefix.computed,
-            prefix.key_context,
-            mode,
-            prefix.quoting,
-        )
     }
 }

@@ -174,6 +174,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let mut arguments =
             source.ok_or_else(|| self.unsupported("call opening boundary", call))?;
+        arguments.allow_composition = !matches!(context.position, ExpressionPosition::Decorator);
         arguments.group = if matches!(context.position,
             ExpressionPosition::CallCallee { curried_call: Some(curried), .. } if curried == call)
         {

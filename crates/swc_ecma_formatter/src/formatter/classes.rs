@@ -14,6 +14,7 @@ use super::bindings::InitializerLayout;
 use super::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
 };
+use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
@@ -43,9 +44,21 @@ enum PreparedClassHead<'ast> {
     Source(SourceClassHead<'ast>),
 }
 
-struct PreparedClass<'ast> {
+pub(super) struct PreparedClass<'ast> {
     head: PreparedClassHead<'ast>,
+    prefix: Option<DecoratorPrefix>,
+    removed: Option<RemovedDecoratorHead<'ast>>,
+    core_start: u32,
     span: Span,
+}
+
+impl PreparedClass<'_> {
+    pub(super) fn is_verbatim(&self) -> bool {
+        matches!(self.head, PreparedClassHead::Verbatim)
+    }
+    pub(super) fn core_start(&self) -> u32 {
+        self.core_start
+    }
 }
 
 struct SourceClassHead<'ast> {
@@ -112,6 +125,9 @@ struct SourceClassImplements<'ast> {
 struct PreparedClassMember<'ast> {
     node: ClassElement,
     span: Span,
+    decorators: Option<DecoratorPrefix>,
+    removed: Option<RemovedDecoratorHead<'ast>>,
+    core_start: u32,
     content: ClassMemberContent<'ast>,
     sibling: Option<DelimitedSuppression>,
 }
@@ -135,6 +151,16 @@ struct SourceBodylessClassMethod<'ast> {
     terminal: TypedClassMemberTerminal,
 }
 
+struct SourceClassIndexSignature<'ast> {
+    signature: PreparedIndexSignature<'ast>,
+    terminal: TypedClassMemberTerminal,
+}
+
+enum TypedClassMemberTerminal {
+    Canonical(Span),
+    Source(Span),
+}
+
 struct SourceClassField<'ast> {
     key: PropertyKey,
     computed: Option<Span>,
@@ -149,6 +175,7 @@ struct SourceClassField<'ast> {
     terminal: FieldTerminal,
 }
 
+#[derive(Clone, Copy)]
 enum ClassFieldAccessor {
     Token(Span),
     SourcePrefix,
@@ -157,16 +184,6 @@ enum ClassFieldAccessor {
 struct FieldInitializer<'ast> {
     right: Expr,
     layout: InitializerLayout<'ast>,
-}
-
-struct SourceClassIndexSignature<'ast> {
-    signature: PreparedIndexSignature<'ast>,
-    terminal: TypedClassMemberTerminal,
-}
-
-enum TypedClassMemberTerminal {
-    Canonical(Span),
-    Source(Span),
 }
 
 struct SourceFieldSuffix {
@@ -207,35 +224,125 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         class: Class,
         position: ExpressionPosition,
+        has_expression_parentheses: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let ast = self.ast;
-        if !class.decorators(ast).is_empty() {
-            return Err(self.unsupported("typed or decorated class", class));
-        }
-        let span = class.span(ast);
+        let prefix =
+            DecoratorPrefix::new(self.ast, class.decorators(self.ast), class.span(self.ast));
         let caller = if matches!(position, ExpressionPosition::AssignmentRight(_)) {
             ClassCaller::Assignment
         } else {
             ClassCaller::Ordinary
         };
-        let prepared = PreparedClass {
-            head: self.source_class_head(class, span.start, caller)?,
-            span,
-        };
-        self.format_prepared_class(prepared, writer)
+        let prepared = self.prepare_class_with_caller(class, prefix, caller)?;
+        if has_expression_parentheses && prepared.prefix.is_some() && !prepared.is_verbatim() {
+            writer.group(false, |writer| {
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    self.format_prepared_class(prepared, true, writer)
+                })?;
+                writer.soft_line();
+                Ok(())
+            })
+        } else {
+            self.format_prepared_class(prepared, true, writer)
+        }
     }
-    fn format_prepared_class(
+
+    pub(super) fn prepare_class(
+        &self,
+        class: Class,
+        prefix: Option<DecoratorPrefix>,
+    ) -> Result<PreparedClass<'ast>, FormatError> {
+        self.prepare_class_with_caller(class, prefix, ClassCaller::Ordinary)
+    }
+
+    fn prepare_class_with_caller(
+        &self,
+        class: Class,
+        prefix: Option<DecoratorPrefix>,
+        caller: ClassCaller,
+    ) -> Result<PreparedClass<'ast>, FormatError> {
+        let native = class.span(self.ast);
+        let span = prefix.map_or(native, |prefix| {
+            Span::new(native.start.min(prefix.physical.start), native.end)
+        });
+        let displaced = prefix.is_none()
+            && (self.source_starts_decorator(native)
+                || !class.r#abstract(self.ast)
+                    && !class.declare(self.ast)
+                    && !self.source(native).starts_with("class"));
+        let core_start = if prefix.is_some() || displaced {
+            let ast = self.ast;
+            let limit = class.id(ast).map_or_else(
+                || {
+                    class.type_parameters(ast).map_or_else(
+                        || {
+                            class
+                                .super_class(ast)
+                                .map_or(class.body(ast).span(ast).start, |node| {
+                                    node.span(ast).start
+                                })
+                        },
+                        |node| node.span(ast).start,
+                    )
+                },
+                |node| node.span(ast).start,
+            );
+            let start = match prefix {
+                Some(prefix) => self.decorator_core_start(prefix, native, limit)?,
+                None => self.removed_class_core_start(class, limit)?,
+            };
+            if !class.r#abstract(ast)
+                && !class.declare(ast)
+                && !self.source(Span::new(start, limit)).starts_with("class")
+            {
+                self.removed_class_core_start(class, limit)?
+            } else {
+                start
+            }
+        } else {
+            native.start
+        };
+        let removed = if displaced {
+            self.removed_decorator_head(native, core_start)?
+        } else {
+            None
+        };
+        Ok(PreparedClass {
+            head: self.source_class_head(class, core_start, caller)?,
+            prefix,
+            removed,
+            core_start,
+            span,
+        })
+    }
+
+    pub(super) fn format_prepared_class(
         &mut self,
         prepared: PreparedClass<'ast>,
+        print_prefix: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let head = match prepared.head {
             PreparedClassHead::Verbatim => {
-                return self.format_verbatim(prepared.span, writer);
+                return self.format_verbatim(
+                    if print_prefix {
+                        prepared.span
+                    } else {
+                        Span::new(prepared.core_start, prepared.span.end)
+                    },
+                    writer,
+                );
             }
             PreparedClassHead::Source(head) => head,
         };
+        if let Some(head) = prepared.removed {
+            self.format_removed_decorator_head(head, writer)?;
+        }
+        if print_prefix && let Some(prefix) = prepared.prefix {
+            self.format_decorators(prefix, DecoratorLayout::Class, prepared.core_start, writer)?;
+        }
         let SourceClassHead {
             prefix,
             keyword_end,
@@ -411,6 +518,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 prefix,
             }
         });
+        let line_decorator =
+            if self.has_suppression && (superclass.is_some() || !implements_nodes.is_empty()) {
+                class
+                    .decorators(ast)
+                    .last()
+                    .map(|id| ast.get_node_in_sub_range(id))
+            } else {
+                None
+            };
         let mut grouped = parameters
             .as_ref()
             .is_some_and(|parameters| parameters.prefix.has_trailing_name_comment());
@@ -432,6 +548,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     HeritageOwners {
                         inline_before: preceding.unwrap_or_else(|| expression.span(ast)),
                         line_preceding: preceding.unwrap_or_else(|| expression.span(ast)),
+                        line_decorator,
                     }
                 },
                 expression.span(ast),
@@ -439,6 +556,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             match prepared.preceding {
                 CommentBinding::Unbound => {}
                 CommentBinding::SourceBound => return Ok(PreparedClassHead::Verbatim),
+                CommentBinding::BoundTo(target)
+                    if line_decorator.is_some_and(|node| node.span(ast) == target) =>
+                {
+                    return Ok(PreparedClassHead::Verbatim);
+                }
                 CommentBinding::BoundTo(_) => {
                     if let Some(parameters) = &mut parameters {
                         parameters.mode = ContentMode::Verbatim;
@@ -524,6 +646,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     HeritageOwners {
                         inline_before: preceding_before.unwrap_or(span),
                         line_preceding: preceding_after.unwrap_or(span),
+                        line_decorator,
                     }
                 },
                 first.span(ast),
@@ -531,7 +654,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             match prepared.preceding {
                 CommentBinding::Unbound => {}
                 CommentBinding::SourceBound => return Ok(PreparedClassHead::Verbatim),
-                CommentBinding::BoundTo(target) if target == span => {
+                CommentBinding::BoundTo(target)
+                    if target == span
+                        || line_decorator.is_some_and(|node| node.span(ast) == target) =>
+                {
                     return Ok(PreparedClassHead::Verbatim);
                 }
                 CommentBinding::BoundTo(target) => {
@@ -688,6 +814,51 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }) || self.line_breaks(last.span.end, gap.end) != 0
     }
 
+    fn prepare_class_prefix(
+        &self,
+        class: Class,
+        core_start: u32,
+    ) -> Result<(u32, SourceClassPrefix<'ast>), FormatError> {
+        let ast = self.ast;
+        let declare = class.declare(ast);
+        let abstract_class = class.r#abstract(ast);
+        let name = class.id(ast);
+        let mut limit = class.body(ast).span(ast).start;
+        if let Some(first) = class.implements(ast).first() {
+            limit = ast.get_node_in_sub_range(first).span(ast).start;
+        }
+        if let Some(superclass) = class.super_class(ast) {
+            limit = superclass.span(ast).start;
+        }
+        if let Some(parameters) = class.type_parameters(ast) {
+            limit = parameters.span(ast).start;
+        }
+        if let Some(name) = name {
+            limit = name.span(ast).start;
+        }
+        let span = Span::new(core_start, limit);
+        let comments = self.comments.in_range(span);
+        let keyword = self
+            .find_token(span, comments, "class")
+            .ok_or_else(|| self.unsupported("class modifier boundary", class))?;
+        let keyword_end = keyword + "class".len() as u32;
+        let target = name.map(|node| node.span(ast));
+        let binding = self.comment_binding(comments, span, target);
+        let prefix = if binding.allows_relocation(target) && (name.is_some() || comments.is_empty())
+        {
+            SourceClassPrefix::Formatted {
+                declare,
+                abstract_class,
+                name_gap: name.map(|node| {
+                    self.prepare_comment_boundary(comments, span.start, node.span(ast).start)
+                }),
+            }
+        } else {
+            SourceClassPrefix::Source(Span::new(span.start, keyword_end))
+        };
+        Ok((keyword_end, prefix))
+    }
+
     fn format_class_heritage(
         &mut self,
         heritage: SourceClassHeritage<'ast>,
@@ -731,6 +902,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     formatter.format_expression_tail(tail, writer)
                 }
+            },
+        )
+    }
+
+    fn format_class_implements(
+        &mut self,
+        list: SourceClassImplements<'ast>,
+        layout: HeritageLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let ast = self.ast;
+        let items = std::iter::once(list.first)
+            .chain(
+                list.remaining
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id)),
+            )
+            .map(|node| HeritageItem {
+                span: node.span(ast),
+                expression: node.expression(ast),
+                arguments: node.type_arguments(ast),
+            });
+        self.format_heritage_clause(
+            list.prefix,
+            "implements",
+            layout,
+            writer,
+            |formatter, writer| {
+                formatter.format_heritage_items(items, list.first_mode, list.end, writer)
             },
         )
     }
@@ -844,6 +1044,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .sibling
                     .is_none()
                     .then(|| self.prepare_class_member_gap(gap, next_span));
+                if !matches!(current.content, ClassMemberContent::Verbatim) {
+                    if let Some(head) = current.removed {
+                        self.format_removed_decorator_head(head, writer)?;
+                    }
+                    if let Some(prefix) = current.decorators {
+                        self.format_decorators(
+                            prefix,
+                            DecoratorLayout::Member,
+                            current.core_start,
+                            writer,
+                        )?;
+                    }
+                }
                 self.format_class_member(current.content, node_span, next.as_ref(), writer)?;
                 let end = if let Some(member_gap) = member_gap {
                     self.format_class_member_gap(member_gap, writer)?
@@ -952,7 +1165,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quoting: PropertyKeyQuoting,
     ) -> Result<PreparedClassMember<'ast>, FormatError> {
         let ast = self.ast;
-        let span = node.span(ast);
+        let native = node.span(ast);
+        let decorators = self.member_decorators(node);
+        let span = decorators.map_or(native, |prefix| prefix.envelope);
         let sibling = self.delimited_suppression(
             span,
             following.map_or(end, |node| node.span(ast).start),
@@ -976,22 +1191,61 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(PreparedClassMember {
                 node,
                 span,
+                decorators,
+                removed: None,
+                core_start: native.start,
                 content: ClassMemberContent::Verbatim,
                 sibling,
             });
         }
+        let displaced = decorators.is_none() && self.source_starts_decorator(native);
+        let core_start = if decorators.is_some() || displaced {
+            let limit = match ast.class_element_data(node) {
+                ClassElementData::MethodDefinition(node) => node.key(ast).span(ast).start,
+                ClassElementData::TsMethodDefinition(node) => node.key(ast).span(ast).start,
+                ClassElementData::PropertyDefinition(node) => node.key(ast).span(ast).start,
+                _ => native.end,
+            };
+            match decorators {
+                Some(prefix) => self.decorator_core_start(prefix, native, limit)?,
+                None => self.removed_member_core_start(native, limit),
+            }
+        } else {
+            native.start
+        };
+        let core_start = if decorators.is_some() || displaced {
+            let owner = match ast.class_element_data(node) {
+                ClassElementData::MethodDefinition(node) => {
+                    Some(ClassMemberPrefixOwner::Method(node))
+                }
+                ClassElementData::TsMethodDefinition(node) => {
+                    Some(ClassMemberPrefixOwner::Bodyless(node))
+                }
+                ClassElementData::PropertyDefinition(node) => {
+                    Some(ClassMemberPrefixOwner::Field(node))
+                }
+                _ => None,
+            };
+            owner
+                .and_then(|owner| owner.plain_key_start(ast))
+                .unwrap_or(core_start)
+        } else {
+            core_start
+        };
+        let removed = if displaced {
+            self.removed_decorator_head(native, core_start)?
+        } else {
+            None
+        };
         let content = match ast.class_element_data(node) {
             ClassElementData::MethodDefinition(method) => ClassMemberContent::Method(
-                self.source_method_header(MethodOwner::Class(method), quoting)?,
+                self.source_method_header_at(MethodOwner::Class(method), core_start, quoting)?,
             ),
             ClassElementData::TsMethodDefinition(method) => {
-                if !method.decorators(ast).is_empty() {
-                    return Err(self.unsupported("decorated bodyless class method", method));
-                }
-                self.source_bodyless_class_method(method, sibling, span.start, quoting)?
+                self.source_bodyless_class_method(method, sibling, core_start, quoting)?
             }
             ClassElementData::PropertyDefinition(field) => {
-                match self.source_class_field(field, sibling, quoting)? {
+                match self.source_class_field(field, sibling, core_start, quoting)? {
                     Some(field) => ClassMemberContent::Field(field),
                     None => ClassMemberContent::Verbatim,
                 }
@@ -1006,6 +1260,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedClassMember {
             node,
             span,
+            decorators,
+            removed,
+            core_start,
             content,
             sibling,
         })
@@ -1039,6 +1296,133 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn source_bodyless_class_method(
+        &self,
+        node: TsMethodDefinition,
+        sibling: Option<DelimitedSuppression>,
+        core_start: u32,
+        quoting: PropertyKeyQuoting,
+    ) -> Result<ClassMemberContent<'ast>, FormatError> {
+        let ast = self.ast;
+        let function = node.value(ast);
+        if node.optional(ast) && node.kind(ast) != MethodDefinitionKind::Method
+            || function.r#async(ast)
+            || function.generator(ast)
+        {
+            return Err(self.unsupported("typed or decorated bodyless class method", node));
+        }
+        let kind = node.kind(ast);
+        if kind != MethodDefinitionKind::Method {
+            if function.type_parameters(ast).is_some()
+                || (kind != MethodDefinitionKind::Get && function.return_type(ast).is_some())
+            {
+                return Err(self.unsupported("typed accessor or constructor header", function));
+            }
+            if function.this_param(ast).is_some() {
+                return Err(self.unsupported("typed function", function));
+            }
+        }
+        let mut source = self.source_bodyless_signature(function);
+        let mut prefix = self.source_bodyless_method_prefix(
+            node,
+            source.header_start(ast),
+            source.generic.is_some(),
+            core_start,
+            quoting,
+        )?;
+        source.set_leading_mode(prefix.following_mode);
+        if self.bodyless_empty_parameters_are_verbatim(&source) {
+            return Ok(ClassMemberContent::BodylessValue {
+                prefix,
+                value: source.node,
+            });
+        }
+        let signature = self.prepare_bodyless_signature_suffix(
+            source,
+            prefix.end(ast),
+            Some(SignaturePreceding::Key(prefix.key)),
+            prefix.key_mode,
+        )?;
+        prefix.key_mode = self.method_key_mode(&prefix, signature.preceding_mode);
+        let internal = Span::new(signature.content_end, node.span(ast).end);
+        let (terminal, _) = self.prepare_typed_class_member_terminal(internal, sibling);
+        Ok(ClassMemberContent::Bodyless(SourceBodylessClassMethod {
+            prefix,
+            signature,
+            terminal,
+        }))
+    }
+
+    fn format_bodyless_class_method(
+        &mut self,
+        method: SourceBodylessClassMethod<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let tail = writer.group(false, |writer| {
+            self.format_method_key_prefix(method.prefix, writer)?;
+            self.format_bodyless_signature_suffix(method.signature, writer)
+        })?;
+        self.format_typed_class_member_terminal(method.terminal, tail, writer)
+    }
+
+    fn source_class_index_signature(
+        &self,
+        node: TsIndexSignature,
+        sibling: Option<DelimitedSuppression>,
+    ) -> Result<SourceClassIndexSignature<'ast>, FormatError> {
+        let mut signature = self.prepare_index_signature(node)?;
+        let internal = Span::new(signature.content_end(), node.span(self.ast).end);
+        let (terminal, mode) = self.prepare_typed_class_member_terminal(internal, sibling);
+        if mode == ContentMode::Verbatim {
+            signature.protect_result_type();
+        }
+        Ok(SourceClassIndexSignature {
+            signature,
+            terminal,
+        })
+    }
+
+    fn prepare_typed_class_member_terminal(
+        &self,
+        internal: Span,
+        sibling: Option<DelimitedSuppression>,
+    ) -> (TypedClassMemberTerminal, ContentMode) {
+        let comments = self.comments.in_range(internal);
+        let mode = if self.has_suppression {
+            self.content_mode(comments)
+        } else {
+            ContentMode::Formatted
+        };
+        let source_terminal = mode == ContentMode::Verbatim
+            || sibling.is_some() && self.find_token(internal, comments, ";").is_some();
+        let terminal = if source_terminal {
+            TypedClassMemberTerminal::Source(internal)
+        } else {
+            TypedClassMemberTerminal::Canonical(internal)
+        };
+        (terminal, mode)
+    }
+
+    fn format_typed_class_member_terminal(
+        &mut self,
+        terminal: TypedClassMemberTerminal,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match terminal {
+            TypedClassMemberTerminal::Canonical(span) => {
+                let tail = self.capture_expression_tail(span, tail)?;
+                if self.options.semicolons == Semicolons::Always {
+                    writer.text(";");
+                }
+                self.format_expression_tail(tail, writer)
+            }
+            TypedClassMemberTerminal::Source(span) => {
+                self.format_source_class_member_terminal(span, tail, writer)
+            }
+        }
+    }
+
     fn format_source_class_member_terminal(
         &mut self,
         span: Span,
@@ -1064,17 +1448,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         node: PropertyDefinition,
         source_sibling: Option<DelimitedSuppression>,
+        core_start: u32,
         quoting: PropertyKeyQuoting,
     ) -> Result<Option<SourceClassField<'ast>>, FormatError> {
         let ast = self.ast;
-        if !node.decorators(ast).is_empty() {
-            return Err(self.unsupported("decorated class field", node));
-        }
         let span = node.span(ast);
         let key = node.key(ast);
         let key_span = key.span(ast);
         let parts =
-            self.source_class_member_prefix_at(ClassMemberPrefixOwner::Field(node), span.start)?;
+            self.source_class_member_prefix_at(ClassMemberPrefixOwner::Field(node), core_start)?;
         let opening = parts.as_ref().and_then(|parts| parts.opening);
         let accessor = parts.as_ref().and_then(|parts| {
             parts.keyword.map(|(_, span)| {
@@ -1087,7 +1469,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         let key_context = ClassMemberPrefixOwner::Field(node).key_context(ast);
         let prefix = parts.map_or_else(
-            || ClassMemberPrefix::ordinary(span.start, node.r#static(ast)),
+            || ClassMemberPrefix::ordinary(core_start, node.r#static(ast)),
             |parts| parts.member,
         );
         let prefix_end = match accessor {
@@ -1312,6 +1694,79 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }))
     }
 
+    fn source_field_suffix(
+        &self,
+        node: PropertyDefinition,
+        key_end: u32,
+        terminal_start: u32,
+    ) -> Result<Option<SourceFieldSuffix>, FormatError> {
+        let ast = self.ast;
+        let annotation = node.type_annotation(ast);
+        if !node.optional(ast) && !node.definite(ast) && annotation.is_none() {
+            return Ok(None);
+        }
+        let marker = if node.optional(ast) || node.definite(ast) {
+            let gap_end = annotation.map_or_else(
+                || {
+                    node.value(ast)
+                        .map_or(terminal_start, |value| value.span(ast).start)
+                },
+                |annotation| annotation.span(ast).start,
+            );
+            let gap = Span::new(key_end, gap_end);
+            let token = if node.optional(ast) { "?" } else { "!" };
+            let start = self
+                .find_token(gap, self.comments.in_range(gap), token)
+                .ok_or_else(|| self.unsupported("class field suffix marker", node))?;
+            Some((Span::new(start, start + 1), token))
+        } else {
+            None
+        };
+        let preceding_end = marker.map_or(key_end, |(span, _)| span.end);
+        let end = annotation.map_or(preceding_end, |annotation| annotation.span(ast).end);
+        Ok(Some(SourceFieldSuffix {
+            key_end,
+            marker,
+            annotation,
+            end,
+        }))
+    }
+
+    fn prepare_field_suffix(
+        &self,
+        suffix: SourceFieldSuffix,
+        annotation_mode: ContentMode,
+    ) -> Result<FieldSuffix<'ast>, FormatError> {
+        let preceding_end = suffix.marker.map_or(suffix.key_end, |(span, _)| span.end);
+        let annotation = suffix
+            .annotation
+            .map(|annotation| {
+                self.prepare_annotation_content_mode(preceding_end, annotation, annotation_mode)
+            })
+            .transpose()?;
+        Ok(FieldSuffix {
+            key_end: suffix.key_end,
+            marker: suffix.marker,
+            annotation,
+        })
+    }
+
+    fn format_field_suffix(
+        &mut self,
+        suffix: FieldSuffix<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let Some((marker, token)) = suffix.marker {
+            self.format_source_token_gap(suffix.key_end, marker.start, false, writer)?;
+            writer.text(token);
+        }
+        if let Some(annotation) = suffix.annotation {
+            self.format_annotation_content(annotation, writer)
+        } else {
+            Ok(None)
+        }
+    }
+
     fn format_class_field(
         &mut self,
         field: SourceClassField<'ast>,
@@ -1394,6 +1849,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn class_member_needs_field_separator(&self, member: &PreparedClassMember<'ast>) -> bool {
+        if member.decorators.is_some() {
+            return matches!(member.content, ClassMemberContent::Verbatim)
+                && self.source(member.span).starts_with('[');
+        }
         match &member.content {
             ClassMemberContent::Method(header) => header.needs_field_separator(self),
             ClassMemberContent::Bodyless(method) => method.prefix.needs_field_separator(self),
@@ -1519,279 +1978,5 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_comment_run(comments, CommentRunLayout::SourceAfter(end), writer)?;
         gap.write(writer, FlatSeparator::Space, Writer::space);
         self.format_static_block_body(node, braces, incoming, writer)
-    }
-
-    fn source_bodyless_class_method(
-        &self,
-        node: TsMethodDefinition,
-        sibling: Option<DelimitedSuppression>,
-        core_start: u32,
-        quoting: PropertyKeyQuoting,
-    ) -> Result<ClassMemberContent<'ast>, FormatError> {
-        let ast = self.ast;
-        let function = node.value(ast);
-        if node.optional(ast) && node.kind(ast) != MethodDefinitionKind::Method
-            || function.r#async(ast)
-            || function.generator(ast)
-        {
-            return Err(self.unsupported("typed or decorated bodyless class method", node));
-        }
-        let kind = node.kind(ast);
-        if kind != MethodDefinitionKind::Method {
-            if function.type_parameters(ast).is_some()
-                || (kind != MethodDefinitionKind::Get && function.return_type(ast).is_some())
-            {
-                return Err(self.unsupported("typed accessor or constructor header", function));
-            }
-            if function.this_param(ast).is_some() {
-                return Err(self.unsupported("typed function", function));
-            }
-        }
-        let mut source = self.source_bodyless_signature(function);
-        let mut prefix = self.source_bodyless_method_prefix(
-            node,
-            source.header_start(ast),
-            source.generic.is_some(),
-            core_start,
-            quoting,
-        )?;
-        source.set_leading_mode(prefix.following_mode);
-        if self.bodyless_empty_parameters_are_verbatim(&source) {
-            return Ok(ClassMemberContent::BodylessValue {
-                prefix,
-                value: source.node,
-            });
-        }
-        let signature = self.prepare_bodyless_signature_suffix(
-            source,
-            prefix.end(ast),
-            Some(SignaturePreceding::Key(prefix.key)),
-            prefix.key_mode,
-        )?;
-        prefix.key_mode = self.method_key_mode(&prefix, signature.preceding_mode);
-        let internal = Span::new(signature.content_end, node.span(ast).end);
-        let (terminal, _) = self.prepare_typed_class_member_terminal(internal, sibling);
-        Ok(ClassMemberContent::Bodyless(SourceBodylessClassMethod {
-            prefix,
-            signature,
-            terminal,
-        }))
-    }
-
-    fn format_bodyless_class_method(
-        &mut self,
-        method: SourceBodylessClassMethod<'ast>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let tail = writer.group(false, |writer| {
-            self.format_method_key_prefix(method.prefix, writer)?;
-            self.format_bodyless_signature_suffix(method.signature, writer)
-        })?;
-        self.format_typed_class_member_terminal(method.terminal, tail, writer)
-    }
-
-    fn prepare_typed_class_member_terminal(
-        &self,
-        internal: Span,
-        sibling: Option<DelimitedSuppression>,
-    ) -> (TypedClassMemberTerminal, ContentMode) {
-        let comments = self.comments.in_range(internal);
-        let mode = if self.has_suppression {
-            self.content_mode(comments)
-        } else {
-            ContentMode::Formatted
-        };
-        let source_terminal = mode == ContentMode::Verbatim
-            || sibling.is_some() && self.find_token(internal, comments, ";").is_some();
-        let terminal = if source_terminal {
-            TypedClassMemberTerminal::Source(internal)
-        } else {
-            TypedClassMemberTerminal::Canonical(internal)
-        };
-        (terminal, mode)
-    }
-
-    fn format_typed_class_member_terminal(
-        &mut self,
-        terminal: TypedClassMemberTerminal,
-        tail: Option<ExpressionTail<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        match terminal {
-            TypedClassMemberTerminal::Canonical(span) => {
-                let tail = self.capture_expression_tail(span, tail)?;
-                if self.options.semicolons == Semicolons::Always {
-                    writer.text(";");
-                }
-                self.format_expression_tail(tail, writer)
-            }
-            TypedClassMemberTerminal::Source(span) => {
-                self.format_source_class_member_terminal(span, tail, writer)
-            }
-        }
-    }
-
-    fn source_class_index_signature(
-        &self,
-        node: TsIndexSignature,
-        sibling: Option<DelimitedSuppression>,
-    ) -> Result<SourceClassIndexSignature<'ast>, FormatError> {
-        let mut signature = self.prepare_index_signature(node)?;
-        let internal = Span::new(signature.content_end(), node.span(self.ast).end);
-        let (terminal, mode) = self.prepare_typed_class_member_terminal(internal, sibling);
-        if mode == ContentMode::Verbatim {
-            signature.protect_result_type();
-        }
-        Ok(SourceClassIndexSignature {
-            signature,
-            terminal,
-        })
-    }
-
-    fn format_class_implements(
-        &mut self,
-        list: SourceClassImplements<'ast>,
-        layout: HeritageLayout,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let ast = self.ast;
-        let items = std::iter::once(list.first)
-            .chain(
-                list.remaining
-                    .iter()
-                    .map(|id| ast.get_node_in_sub_range(id)),
-            )
-            .map(|node| HeritageItem {
-                span: node.span(ast),
-                expression: node.expression(ast),
-                arguments: node.type_arguments(ast),
-            });
-        self.format_heritage_clause(
-            list.prefix,
-            "implements",
-            layout,
-            writer,
-            |formatter, writer| {
-                formatter.format_heritage_items(items, list.first_mode, list.end, writer)
-            },
-        )
-    }
-
-    fn prepare_class_prefix(
-        &self,
-        class: Class,
-        core_start: u32,
-    ) -> Result<(u32, SourceClassPrefix<'ast>), FormatError> {
-        let ast = self.ast;
-        let declare = class.declare(ast);
-        let abstract_class = class.r#abstract(ast);
-        let name = class.id(ast);
-        let mut limit = class.body(ast).span(ast).start;
-        if let Some(first) = class.implements(ast).first() {
-            limit = ast.get_node_in_sub_range(first).span(ast).start;
-        }
-        if let Some(superclass) = class.super_class(ast) {
-            limit = superclass.span(ast).start;
-        }
-        if let Some(parameters) = class.type_parameters(ast) {
-            limit = parameters.span(ast).start;
-        }
-        if let Some(name) = name {
-            limit = name.span(ast).start;
-        }
-        let span = Span::new(core_start, limit);
-        let comments = self.comments.in_range(span);
-        let keyword = self
-            .find_token(span, comments, "class")
-            .ok_or_else(|| self.unsupported("class modifier boundary", class))?;
-        let keyword_end = keyword + "class".len() as u32;
-        let target = name.map(|node| node.span(ast));
-        let binding = self.comment_binding(comments, span, target);
-        let prefix = if binding.allows_relocation(target) && (name.is_some() || comments.is_empty())
-        {
-            SourceClassPrefix::Formatted {
-                declare,
-                abstract_class,
-                name_gap: name.map(|node| {
-                    self.prepare_comment_boundary(comments, span.start, node.span(ast).start)
-                }),
-            }
-        } else {
-            SourceClassPrefix::Source(Span::new(span.start, keyword_end))
-        };
-        Ok((keyword_end, prefix))
-    }
-
-    fn source_field_suffix(
-        &self,
-        node: PropertyDefinition,
-        key_end: u32,
-        terminal_start: u32,
-    ) -> Result<Option<SourceFieldSuffix>, FormatError> {
-        let ast = self.ast;
-        let annotation = node.type_annotation(ast);
-        if !node.optional(ast) && !node.definite(ast) && annotation.is_none() {
-            return Ok(None);
-        }
-        let marker = if node.optional(ast) || node.definite(ast) {
-            let gap_end = annotation.map_or_else(
-                || {
-                    node.value(ast)
-                        .map_or(terminal_start, |value| value.span(ast).start)
-                },
-                |annotation| annotation.span(ast).start,
-            );
-            let gap = Span::new(key_end, gap_end);
-            let token = if node.optional(ast) { "?" } else { "!" };
-            let start = self
-                .find_token(gap, self.comments.in_range(gap), token)
-                .ok_or_else(|| self.unsupported("class field suffix marker", node))?;
-            Some((Span::new(start, start + 1), token))
-        } else {
-            None
-        };
-        let preceding_end = marker.map_or(key_end, |(span, _)| span.end);
-        let end = annotation.map_or(preceding_end, |annotation| annotation.span(ast).end);
-        Ok(Some(SourceFieldSuffix {
-            key_end,
-            marker,
-            annotation,
-            end,
-        }))
-    }
-
-    fn prepare_field_suffix(
-        &self,
-        suffix: SourceFieldSuffix,
-        annotation_mode: ContentMode,
-    ) -> Result<FieldSuffix<'ast>, FormatError> {
-        let preceding_end = suffix.marker.map_or(suffix.key_end, |(span, _)| span.end);
-        let annotation = suffix
-            .annotation
-            .map(|annotation| {
-                self.prepare_annotation_content_mode(preceding_end, annotation, annotation_mode)
-            })
-            .transpose()?;
-        Ok(FieldSuffix {
-            key_end: suffix.key_end,
-            marker: suffix.marker,
-            annotation,
-        })
-    }
-
-    fn format_field_suffix(
-        &mut self,
-        suffix: FieldSuffix<'ast>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if let Some((marker, token)) = suffix.marker {
-            self.format_source_token_gap(suffix.key_end, marker.start, false, writer)?;
-            writer.text(token);
-        }
-        if let Some(annotation) = suffix.annotation {
-            self.format_annotation_content(annotation, writer)
-        } else {
-            Ok(None)
-        }
     }
 }

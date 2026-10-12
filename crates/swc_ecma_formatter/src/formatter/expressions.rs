@@ -53,6 +53,7 @@ pub(super) enum ExpressionPosition {
     Statement,
     ExportDefault,
     Nested,
+    Decorator,
     ArrowBody,
     RestrictedArgument,
     YieldArgument,
@@ -867,6 +868,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(true);
         }
+        if matches!(position, ExpressionPosition::Decorator) {
+            return Some(!self.decorator_expression_is_unparenthesized(data));
+        }
+        if matches!(
+            position,
+            ExpressionPosition::Superclass | ExpressionPosition::ArrowBody
+        ) && matches!(data, ExprData::Class(node) if !node.decorators(self.ast).is_empty())
+        {
+            return Some(true);
+        }
         if let Some(needed) = typescript::type_expression_needs_parentheses(data, position) {
             let exposed_tail = match (data, position) {
                 (
@@ -1229,6 +1240,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         context: ExpressionContext,
+        has_expression_parentheses: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match self.ast.expr_data(expression) {
@@ -1280,7 +1292,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("#");
                 writer.text(self.ast.get_utf8(identifier.name(self.ast)));
             }
-            ExprData::Class(class) => self.format_class(class, context.position, writer)?,
+            ExprData::Class(class) => {
+                self.format_class(class, context.position, has_expression_parentheses, writer)?
+            }
             ExprData::ThisExpression(_) => writer.text("this"),
             ExprData::ChainExpression(chain) => {
                 let child_context = if self

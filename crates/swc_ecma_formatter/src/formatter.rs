@@ -3,6 +3,7 @@
 mod bindings;
 mod classes;
 mod comments;
+mod decorators;
 mod diagnostics;
 mod expressions;
 mod functions;
