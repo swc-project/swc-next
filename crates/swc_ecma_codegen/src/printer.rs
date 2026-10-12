@@ -1742,23 +1742,13 @@ impl<'a> Printer<'a> {
             }
             SimpleAssignmentTargetData::MemberExpression(m) => self.print_member(m, false),
             SimpleAssignmentTargetData::TsAsExpression(e) => {
-                self.print_expr(e.expression(self.ast), Precedence::Compare);
-                self.print(" as ");
-                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
+                self.print_expr(Expr::TsAsExpression(e), Precedence::Postfix);
             }
             SimpleAssignmentTargetData::TsSatisfiesExpression(e) => {
-                self.print("(");
-                self.print_expr(e.expression(self.ast), Precedence::Compare);
-                self.print(" satisfies ");
-                self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
-                self.print(")");
+                self.print_expr(Expr::TsSatisfiesExpression(e), Precedence::Postfix);
             }
             SimpleAssignmentTargetData::TsTypeAssertion(e) => {
-                self.print_ts_type_assertion_prefix(
-                    e.type_annotation(self.ast),
-                    e.span(self.ast).start,
-                );
-                self.print_expr(e.expression(self.ast), Precedence::Prefix);
+                self.print_expr(Expr::TsTypeAssertion(e), Precedence::Postfix);
             }
             SimpleAssignmentTargetData::TsNonNullExpression(e) => self.print_ts_non_null(e, false),
         }
