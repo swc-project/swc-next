@@ -1058,6 +1058,14 @@ fn test_statement_body_formatting() {
 }
 
 #[test]
+fn test_object_property_comments() {
+    expect_printed(
+        "const value = { /* before */ first: 1, // between\nsecond: 2 };",
+        "const value = { /* before */ first: 1, // between\nsecond: 2 };\n",
+    );
+}
+
+#[test]
 fn test_for_destructuring_default_initializer() {
     expect_printed(
         "for (const [arrow = () => {}] = []; test;);",

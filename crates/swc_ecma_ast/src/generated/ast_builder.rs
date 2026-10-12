@@ -729,9 +729,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> Expr {
         Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         )
     }
@@ -1446,9 +1447,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> PropertyKey {
         PropertyKey::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }
@@ -1939,9 +1941,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> Argument {
         Argument::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }
@@ -2456,9 +2459,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> ForStatementInit {
         ForStatementInit::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }
@@ -3070,9 +3074,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> ArrowFunctionBody {
         ArrowFunctionBody::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }
@@ -3794,9 +3799,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }
@@ -5437,6 +5443,7 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> CallExpression {
         let _f0 = self.add_extra(arguments);
         CallExpression(self.add_node(
@@ -5448,7 +5455,8 @@ impl<'a> Ast<'a> {
                     type_arguments:
                         type_arguments.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     optional,
-                    _pad0: [0; 3usize],
+                    pure,
+                    _pad0: [0; 2usize],
                     extra_data_start: _f0,
                 },
             },
@@ -8362,9 +8370,10 @@ impl<'a> Ast<'a> {
         type_arguments: Option<TsTypeParameterInstantiation>,
         arguments: SubRange<Argument>,
         optional: bool,
+        pure: bool,
     ) -> JsxExpression {
         JsxExpression::Expr(Expr::CallExpression(
-            self.call_expression(span, callee, type_arguments, arguments, optional)
+            self.call_expression(span, callee, type_arguments, arguments, optional, pure)
                 .into(),
         ))
     }

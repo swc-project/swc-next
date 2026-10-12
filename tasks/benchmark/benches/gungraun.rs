@@ -16,7 +16,11 @@ use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
     AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
 };
-use swc_next_ecma_transformer::{Transformer, TransformerOptions, typescript::TypeScriptOptions};
+use swc_next_ecma_transformer::{
+    Transformer, TransformerOptions,
+    jsx::{JsxOptions, ReactRefreshOptions},
+    typescript::TypeScriptOptions,
+};
 use swc_next_type_strip::strip_types;
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
@@ -152,6 +156,38 @@ fn bench_typescript_transform(input: (Ast<'static>, Semantic<'static>)) {
             ..TransformerOptions::default()
         },
     );
+    black_box(ast);
+}
+
+// Parse and analyze outside the measured region; each case transforms a fresh AST.
+fn setup_jsx_transform(jsx: JsxOptions) -> (Ast<'static>, Semantic<'static>, TransformerOptions) {
+    let ast = setup_program(CAL_COM_TSX, Lang::Tsx);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let options = TransformerOptions {
+        source_path: Some("cal.com.tsx".to_owned()),
+        typescript: Some(TypeScriptOptions::default()),
+        jsx: Some(jsx),
+        ..TransformerOptions::default()
+    };
+    (ast, semantic, options)
+}
+
+#[library_benchmark]
+#[bench::cal_com_production(setup_jsx_transform(JsxOptions::default()))]
+#[bench::cal_com_development(setup_jsx_transform(JsxOptions {
+    development: true,
+    source_self: true,
+    ..JsxOptions::default()
+}))]
+#[bench::cal_com_refresh(setup_jsx_transform(JsxOptions {
+    development: true,
+    source_self: true,
+    refresh: Some(ReactRefreshOptions::default()),
+    ..JsxOptions::default()
+}))]
+fn bench_jsx_transform(input: (Ast<'static>, Semantic<'static>, TransformerOptions)) {
+    let (mut ast, semantic, options) = input;
+    black_box(Transformer::transform(&mut ast, &semantic, options));
     black_box(ast);
 }
 
@@ -336,6 +372,8 @@ library_benchmark_group!(
     benchmarks = bench_typescript_transform
 );
 
+library_benchmark_group!(name = jsx_transform, benchmarks = bench_jsx_transform);
+
 library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
@@ -353,6 +391,7 @@ main!(
         codegen,
         type_strip,
         typescript_transform,
+        jsx_transform,
         visit
     ]
 );

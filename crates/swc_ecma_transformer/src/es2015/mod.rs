@@ -1,4 +1,4 @@
-use swc_next_ecma_ast::{Ast, ObjectProperty, RegExpLiteral};
+use swc_next_ecma_ast::{Ast, ObjectProperty, RegExpLiteral, VariableDeclaration};
 use swc_next_ecma_semantic::Semantic;
 
 use crate::state::TransformerCtx;
@@ -53,8 +53,13 @@ impl ES2015 {
 }
 
 impl SemanticProgramTransforms {
-    pub(crate) fn transform<'a>(&mut self, ast: &mut Ast<'a>, semantic: &Semantic) {
-        self.arrow.transform(ast, semantic);
+    pub(crate) fn transform<'a>(
+        &mut self,
+        ast: &mut Ast<'a>,
+        semantic: &Semantic,
+        generated_prelude: Option<VariableDeclaration>,
+    ) {
+        self.arrow.transform(ast, semantic, generated_prelude);
     }
 }
 

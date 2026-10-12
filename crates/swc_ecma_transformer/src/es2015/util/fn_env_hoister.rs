@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, Ast, AstUtf8, Class, DUMMY_SP, Decl, Expr, Function, FunctionBody, GetSpan,
-    IdentifierReference, Program, StaticBlock, Stmt, SubRange, VariableKind, VisitMut,
-    VisitMutWith,
+    IdentifierReference, Program, StaticBlock, Stmt, SubRange, VariableDeclaration, VariableKind,
+    VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
 
@@ -179,11 +179,17 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
         &mut self,
         program: Program,
         frame: CaptureFrame,
+        generated_prelude: Option<VariableDeclaration>,
         ast: &mut Ast<'ast>,
     ) {
         let Some(declaration) = self.build_capture_declaration(frame, false, ast) else {
             return;
         };
+        if generated_prelude.is_some_and(|target| {
+            merge_into_generated_prelude(program.body(ast), target, declaration, ast)
+        }) {
+            return;
+        }
         let statement = Stmt::Declaration(Decl::VariableDeclaration(declaration));
         let body = prepend_statement(program.body(ast), statement, ast);
         program.set_body(ast, body);
@@ -224,6 +230,36 @@ impl<'semantic, 'ast> FnEnvHoister<'semantic, 'ast> {
         let statements = prepend_statement(block.body(ast), statement, ast);
         block.set_body(ast, statements);
     }
+}
+
+fn merge_into_generated_prelude(
+    body: SubRange<Stmt>,
+    target: VariableDeclaration,
+    declaration: VariableDeclaration,
+    ast: &mut Ast<'_>,
+) -> bool {
+    let Some(first_id) = body.iter().next() else {
+        return false;
+    };
+    let first = ast.get_node_in_sub_range(first_id);
+    if first.node_id() != target.node_id() {
+        return false;
+    }
+    let first = target;
+    let mut declarators = first
+        .declarators(ast)
+        .iter()
+        .map(|id| ast.get_node_in_sub_range(id))
+        .collect::<Vec<_>>();
+    declarators.extend(
+        declaration
+            .declarators(ast)
+            .iter()
+            .map(|id| ast.get_node_in_sub_range(id)),
+    );
+    let declarators = ast.add_sub_range(declarators);
+    first.set_declarators(ast, declarators);
+    true
 }
 
 fn prepend_statement(old: SubRange<Stmt>, statement: Stmt, ast: &mut Ast<'_>) -> SubRange<Stmt> {
@@ -269,6 +305,7 @@ fn rewrite_derived_super_calls(body: FunctionBody, this_name: AstUtf8, ast: &mut
                 call.type_arguments(self.ast),
                 call.arguments(self.ast),
                 call.optional(self.ast),
+                call.pure(self.ast),
             );
             let left = self
                 .ast

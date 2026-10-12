@@ -104,12 +104,17 @@ impl From<BabelOptions> for TransformerOptions {
     fn from(options: BabelOptions) -> Self {
         let plugins = options.plugins;
         Self {
+            source_path: None,
+            react_display_name: plugins.react_display_name,
+            react_jsx_self: plugins.react_jsx_self,
+            react_jsx_source: plugins.react_jsx_source,
             assumptions: options.assumptions,
             es2015: ES2015Options {
                 arrow_functions: plugins.arrow_function,
                 shorthand_properties: plugins.shorthand_properties,
                 sticky_regex: plugins.sticky_regex,
             },
+            jsx: plugins.react_jsx_dev.or(plugins.react_jsx),
             typescript: None,
         }
     }
@@ -255,8 +260,8 @@ impl BabelOptions {
     pub fn is_jsx(&self) -> bool {
         self.plugins.syntax_jsx
             || self.presets.jsx
-            || self.plugins.react_jsx
-            || self.plugins.react_jsx_dev
+            || self.plugins.react_jsx.is_some()
+            || self.plugins.react_jsx_dev.is_some()
     }
 
     /// Returns `true` when TypeScript parsing is enabled.

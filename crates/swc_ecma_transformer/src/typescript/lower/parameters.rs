@@ -240,9 +240,14 @@ impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
             }
         };
         let callee = self.ast().expr_identifier_reference(DUMMY_SP, name);
-        let call =
-            self.ast()
-                .expr_call_expression(DUMMY_SP, callee, None, SubRange::empty(), false);
+        let call = self.ast().expr_call_expression(
+            DUMMY_SP,
+            callee,
+            None,
+            SubRange::empty(),
+            false,
+            false,
+        );
         self.finish_super_sequence(vec![expression, call])
     }
 
