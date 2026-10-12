@@ -46,7 +46,7 @@ cargo run -p testsuite --bin conformance
 ```
 
 The command combines four case sources (`test262`, `typescript`, `babel`, and `local`)
-with two runners:
+with parser and codegen runners, then runs resolver and transform suites:
 
 - `parser` parses each case and then performs semantic analysis. A case passes
   when success or failure agrees with the fixture expectation.
@@ -56,6 +56,8 @@ with two runners:
 
 The eight summaries are written to
 `tasks/testsuite/snapshots/{parser,codegen}_{test262,typescript,babel,local}.snap`.
+The same command also writes resolver and `transform_{babel,swc}.snap` summaries;
+this branch currently supports static-block lowering only.
 
 Project-owned JavaScript syntax regressions under `fixtures-manual/parser` use
 Test262 metadata but are counted in the separate `local` suite. Keep TypeScript
@@ -88,8 +90,8 @@ For each runnable fixture, the harness:
 
 Fixtures with unsupported plugins, presets, or invalid options are counted as
 skipped. The full run writes
-`tasks/testsuite/snapshots/babel_transform.snap`, including totals and
-per-package diagnostics.
+`tasks/testsuite/snapshots/transform_babel.snap`, using the same shared
+`transform` runner and snapshot format as the full conformance command.
 
 ## SWC transform conformance
 
@@ -107,11 +109,10 @@ SWC's `es2022_static_blocks.rs` test entry: standalone static blocks run with
 `static_blocks=true` and the default `prevent_extensions=false`; fixtures under
 `class-properties/` are counted as skipped until that transform is supported.
 
-The SWC run writes `tasks/testsuite/snapshots/swc_transform.snap`. Both transform
-runners write normalized `expected/`, `actual/`, and `differences.md` files under
-`tasks/testsuite/outputs/{babel_transform,swc_transform}/`. Missing fixtures and
+The SWC run writes `tasks/testsuite/snapshots/transform_swc.snap`. Both fixture commands use the shared `transform` runner and write readable `expected/`, `actual/`, and `differences.md` files under
+`tasks/testsuite/outputs/transform/{babel,swc}/`. Missing fixtures and
 panics fail the command; ordinary output mismatches are recorded in snapshots.
-CI runs both commands and checks the snapshots for changes.
+The full conformance command runs both suites, and CI checks their snapshots for changes.
 
 To cover both static-block lowering modes locally, run:
 
@@ -139,8 +140,7 @@ Supported runner/case combinations are:
 | Runner | Case |
 | ------ | ---- |
 | `parser`, `codegen` | `test262`, `typescript`, `babel`, `local` |
-| `babel_transform` | `babel` |
-| `swc_transform` | `swc` |
+| `transform` | `babel`, `swc` |
 | `resolver` | `swc_resolver` |
 
 The filter is a contains match against the combined fixture path and case name.
@@ -149,7 +149,7 @@ narrow it. For example, debug SWC private-name collision handling with:
 
 ```sh
 cargo run -p testsuite --bin debug -- \
-  --runner swc_transform --case swc --filter 'static-blocks/basic/name-conflicts02'
+  --runner transform --case swc --filter 'static-blocks/basic/name-conflicts02'
 ```
 
 ## Recommended workflow

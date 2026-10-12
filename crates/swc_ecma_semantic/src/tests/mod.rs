@@ -15,7 +15,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use crate::{
     AnalyzeOptions, ExportOrigin, ExportTarget, NameResolution, ReferenceSpace, Semantic,
-    SemanticReturn, SymbolFlags, analyze, scope::ScopeKind,
+    SemanticReturn, SymbolFlags, analyze,
 };
 
 #[track_caller]

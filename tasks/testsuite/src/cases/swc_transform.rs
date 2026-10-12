@@ -7,7 +7,7 @@ use jwalk::WalkDir;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_transformer::{TransformerOptions, es2022::ES2022Options};
 
-use super::{Case, fixtures, transform::TransformCase};
+use super::{Case, TransformCase, fixtures};
 
 #[derive(Debug)]
 pub struct SwcTransformCase {
@@ -88,16 +88,16 @@ impl Case for SwcTransformCase {
 }
 
 impl TransformCase for SwcTransformCase {
-    fn package_name(&self) -> &str {
-        "static-blocks"
+    fn supports_options(&self) -> bool {
+        !self.requires_class_properties
     }
 
     fn output_path(&self) -> &Path {
         &self.output_path
     }
 
-    fn output(&self) -> &str {
-        &self.output
+    fn expected_output(&self) -> Option<&str> {
+        Some(&self.output)
     }
 
     fn transformer_options(&self) -> TransformerOptions {

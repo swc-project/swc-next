@@ -11,6 +11,7 @@ use crate::{
     state::TransformerState,
 };
 
+mod comments;
 mod context;
 mod helpers;
 mod state;

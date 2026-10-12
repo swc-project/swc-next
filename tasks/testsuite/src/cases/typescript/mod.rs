@@ -3,18 +3,16 @@
 use std::{
     collections::HashMap,
     fs::{read, read_to_string},
-    path::{Path, PathBuf},
+    path::Path,
     sync::LazyLock,
 };
 
-use jwalk::WalkDir;
 use regex::Regex;
 use serde_json::Value;
 use swc_next_ecma_ast::Lang;
 
 mod constants;
 pub mod parser;
-pub mod transform;
 
 /// Regex for parsing options in the format `// @Alpha: Value of any sort`.
 static OPTION_REGEX: LazyLock<Regex> =
@@ -36,12 +34,6 @@ pub(crate) struct ParsedTestContent {
     global_options: HashMap<String, String>,
 }
 
-impl ParsedTestContent {
-    pub(crate) fn global_option(&self, name: &str) -> Option<&str> {
-        self.global_options.get(name).map(String::as_str)
-    }
-}
-
 fn read_test_content(path: &Path) -> Result<ParsedTestContent, String> {
     let code = read_typescript_file(path).map_err(|error| {
         format!(
@@ -52,30 +44,6 @@ fn read_test_content(path: &Path) -> Result<ParsedTestContent, String> {
     let mut parsed = parse_test_files_and_symlinks(&code, &path.to_string_lossy());
     merge_tsconfig_options(path, &mut parsed);
     Ok(parsed)
-}
-
-fn typescript_case_paths(test_dir: &Path) -> Result<Vec<PathBuf>, String> {
-    let mut paths = Vec::new();
-    for suite in ["compiler", "conformance"] {
-        let suite_root = test_dir.join(suite);
-        for entry in WalkDir::new(&suite_root) {
-            let entry = entry.map_err(|error| {
-                format!(
-                    "failed to enumerate TypeScript inputs in `{}`: {error}",
-                    suite_root.display()
-                )
-            })?;
-            if !entry.file_type().is_file() {
-                continue;
-            }
-            let path = entry.path();
-            if lang_from_path(&path.to_string_lossy()).is_some_and(Lang::is_typescript) {
-                paths.push(path);
-            }
-        }
-    }
-    paths.sort_unstable();
-    Ok(paths)
 }
 
 pub(crate) fn read_typescript_file(path: &Path) -> std::io::Result<String> {

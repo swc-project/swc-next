@@ -1,9 +1,7 @@
 use std::process::ExitCode;
-
 use testsuite::{
-    cases::swc_transform::SwcTransformCase, runner::swc_transform::SwcTransformRunner, transform,
+    cases::swc_transform::SwcTransformCase, runner::transform::TransformerRunner, transform,
 };
-
 fn main() -> ExitCode {
-    transform::run::<SwcTransformRunner, SwcTransformCase>()
+    transform::run::<TransformerRunner, SwcTransformCase>()
 }

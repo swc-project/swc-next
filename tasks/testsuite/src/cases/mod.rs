@@ -12,7 +12,6 @@ pub mod local;
 pub mod swc_resolver;
 pub mod swc_transform;
 pub mod test262;
-pub mod transform;
 pub mod typescript;
 
 pub trait Case: Sized + Sync {
@@ -41,6 +40,10 @@ pub trait Case: Sized + Sync {
 
 /// Fixture adapters provide the configuration consumed by the shared transform pipeline.
 pub trait TransformCase: Case {
+    fn output_path(&self) -> &Path {
+        self.path()
+    }
+
     fn transformer_options(&self) -> TransformerOptions;
 
     /// Identifies the input unit when a fixture contains multiple virtual files.

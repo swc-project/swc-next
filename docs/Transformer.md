@@ -196,8 +196,9 @@ with native input.
 
 Run Rust tests and required formatting/lint checks. For static-block/helper
 changes, prepare fixtures with `./scripts/clone_fixtures.sh` and run both
-`babel_transform` and `swc_transform`. Inspect snapshots and
-`tasks/testsuite/outputs/<runner>/differences.md`; successful exit alone does not
+`babel_transform` and `swc_transform`; both use the shared `transform` runner
+and write `transform_babel.snap` / `transform_swc.snap`. Inspect snapshots and
+`tasks/testsuite/outputs/transform/{babel,swc}/differences.md`; successful exit alone does not
 mean fixtures match. Separate helper spelling/import differences from semantic
 differences. Verify binding, evaluation order and constructor behavior against
 native JavaScript before changing behavior solely to match output text.

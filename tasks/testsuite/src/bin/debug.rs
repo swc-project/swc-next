@@ -3,11 +3,11 @@ use testsuite::{
     cases::{
         Case, babel::BabelTransformCase, babel_parser::BabelParserCase, local::LocalCase,
         swc_resolver::SwcResolverCase, swc_transform::SwcTransformCase, test262::Test262Case,
-        typescript::TypeScriptCase,
+        typescript::parser::TypeScriptParserCase,
     },
     runner::{
-        Runner, babel_transform::BabelTransformRunner, codegen::CodegenRunner,
-        parser::ParserRunner, resolver::ResolverRunner, swc_transform::SwcTransformRunner,
+        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
+        transform::TransformerRunner,
     },
 };
 
@@ -15,10 +15,7 @@ use testsuite::{
 enum RunnerName {
     Parser,
     Codegen,
-    #[value(name = "babel_transform")]
-    BabelTransform,
-    #[value(name = "swc_transform")]
-    SwcTransform,
+    Transform,
     Resolver,
 }
 
@@ -30,9 +27,9 @@ enum CaseSet {
     #[value(name = "typescript")]
     TypeScript,
     Babel,
-    Swc,
     #[value(name = "swc_resolver")]
     SwcResolver,
+    Swc,
 }
 
 #[derive(Parser)]
@@ -56,16 +53,11 @@ fn main() {
     let res = match args.runner {
         RunnerName::Parser => run_conformance::<ParserRunner>(args.case, &args.filter),
         RunnerName::Codegen => run_conformance::<CodegenRunner>(args.case, &args.filter),
-        RunnerName::BabelTransform if matches!(args.case, CaseSet::Babel) => {
-            run_filtered::<BabelTransformRunner, BabelTransformCase>(&args.filter)
-        }
-        RunnerName::BabelTransform => {
-            Err("`babel_transform` runner requires `--case babel`".into())
-        }
-        RunnerName::SwcTransform if matches!(args.case, CaseSet::Swc) => {
-            run_filtered::<SwcTransformRunner, SwcTransformCase>(&args.filter)
-        }
-        RunnerName::SwcTransform => Err("`swc_transform` runner requires `--case swc`".into()),
+        RunnerName::Transform => match args.case {
+            CaseSet::Babel => run_filtered::<TransformerRunner, BabelTransformCase>(&args.filter),
+            CaseSet::Swc => run_filtered::<TransformerRunner, SwcTransformCase>(&args.filter),
+            _ => Err("`transform` runner requires `--case babel` or `--case swc`".into()),
+        },
         RunnerName::Resolver if matches!(args.case, CaseSet::SwcResolver) => {
             run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
         }
@@ -76,15 +68,19 @@ fn main() {
 
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>
 where
-    R: Runner<Test262Case> + Runner<LocalCase> + Runner<TypeScriptCase> + Runner<BabelParserCase>,
+    R: Runner<Test262Case>
+        + Runner<LocalCase>
+        + Runner<TypeScriptParserCase>
+        + Runner<BabelParserCase>,
 {
     match case_set {
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::Local => run_filtered::<R, LocalCase>(filter),
-        CaseSet::TypeScript => run_filtered::<R, TypeScriptCase>(filter),
+        CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
-        CaseSet::Swc => Err("parser/codegen do not run SWC transform cases".into()),
-        CaseSet::SwcResolver => Err("parser/codegen do not run SWC resolver cases".into()),
+        CaseSet::SwcResolver | CaseSet::Swc => {
+            Err("parser/codegen do not run SWC transform/resolver cases".into())
+        }
     }
 }
 
@@ -93,7 +89,15 @@ where
     C: Case,
     R: Runner<C>,
 {
-    let mut cases = C::read()
+    run_filtered_cases::<R, C>(filter, C::read())
+}
+
+fn run_filtered_cases<R, C>(filter: &str, cases: Vec<C>) -> Result<(), String>
+where
+    C: Case,
+    R: Runner<C>,
+{
+    let mut cases = cases
         .into_iter()
         .filter(|case| case_label(case).contains(filter))
         .collect::<Vec<_>>();

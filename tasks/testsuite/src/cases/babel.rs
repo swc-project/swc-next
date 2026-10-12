@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::Options as CodegenOptions;
 use swc_next_ecma_transformer::TransformerOptions;
 
-use crate::cases::{Case, fixtures, transform::TransformCase};
+use crate::cases::{Case, TransformCase, fixtures};
 
 pub mod options;
 
@@ -41,7 +41,6 @@ const OUTPUT_FILE_NAMES: &[&str] = &[
 
 #[derive(Debug)]
 pub struct BabelTransformCase {
-    pub package_name: String,
     pub path: PathBuf,
     pub output_path: PathBuf,
     pub name: String,
@@ -51,7 +50,6 @@ pub struct BabelTransformCase {
 }
 
 struct BabelTransformCasePaths {
-    package_name: String,
     input: PathBuf,
     output: PathBuf,
 }
@@ -71,7 +69,6 @@ impl BabelTransformCase {
                 continue;
             }
 
-            let package_name = package.file_name().to_string_lossy().into_owned();
             let fixture_dir = package.path().join("test/fixtures");
             if !fixture_dir.is_dir() {
                 continue;
@@ -96,7 +93,6 @@ impl BabelTransformCase {
                 };
 
                 case_paths.push(BabelTransformCasePaths {
-                    package_name: package_name.clone(),
                     input: input_path,
                     output: output_path,
                 });
@@ -116,7 +112,6 @@ impl BabelTransformCase {
                 let input = read_to_string(&paths.input)?;
                 let output = read_to_string(&paths.output)?;
                 Ok(Self {
-                    package_name: paths.package_name,
                     path: paths.input,
                     output_path: paths.output,
                     name,
@@ -172,16 +167,19 @@ impl Case for BabelTransformCase {
 }
 
 impl TransformCase for BabelTransformCase {
-    fn package_name(&self) -> &str {
-        &self.package_name
+    fn supports_options(&self) -> bool {
+        self.options.plugins.errors.is_empty()
+            && self.options.plugins.unsupported.is_empty()
+            && self.options.presets.errors.is_empty()
+            && self.options.presets.unsupported.is_empty()
     }
 
     fn output_path(&self) -> &Path {
         &self.output_path
     }
 
-    fn output(&self) -> &str {
-        &self.output
+    fn expected_output(&self) -> Option<&str> {
+        Some(&self.output)
     }
 
     fn transformer_options(&self) -> TransformerOptions {

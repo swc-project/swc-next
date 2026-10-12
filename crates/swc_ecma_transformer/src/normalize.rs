@@ -17,12 +17,6 @@ impl Normalizer {
         Self::run::<true>(program, ast);
     }
 
-    /// Normalize executable syntax before TypeScript erasure. Type-only subtrees
-    /// are removed by the following pass and do not need canonical forms.
-    pub(crate) fn normalize_runtime<'ast>(program: Program, ast: &mut Ast<'ast>) {
-        Self::run::<false>(program, ast);
-    }
-
     fn run<'ast, const NORMALIZE_TYPES: bool>(program: Program, ast: &mut Ast<'ast>) {
         let mut pass = NormalizePass::<NORMALIZE_TYPES> {
             ast,

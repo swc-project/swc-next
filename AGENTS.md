@@ -82,14 +82,14 @@ the parser language.
 | Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
 | Resolver  | SWC resolver fixtures             | Name resolution text matches `swc-conformance`                 | Same as above                                                    |
 | Transform | Babel                             | Normalized output matches Babel fixtures                       | Same as above                                                    |
-| Transform | TypeScript                        | TS-only full-corpus output invariants                          | Same as above                                                    |
+| Transform | SWC static blocks                 | Normalized output matches SWC fixtures                       | Same as above                                                    |
 | ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 | Codec     | Test262, TypeScript               | JS decode/encode codegen output matches native parse/codegen   | `pnpm test:codec`                                                |
 
 Debug one fixture with:
 
 ```sh
-cargo run -p testsuite --bin debug -- --runner <parser|codegen|transform|resolver> --case <test262|typescript|babel|local|swc_resolver> --filter '<unique substring>'
+cargo run -p testsuite --bin debug -- --runner <parser|codegen|transform|resolver> --case <test262|typescript|babel|local|swc|swc_resolver> --filter '<unique substring>'
 ```
 
 ### Minifier Fixtures
@@ -103,7 +103,10 @@ for options. The runner validates syntax and semantics, compares compact output,
 and checks minification stability. Expected outputs are maintained manually.
 These tests run in the existing workspace test CI without external fixtures.
 
-Run both transform commands to cover static-block lowering: SWC uses the default
+Run `cargo run -p testsuite --bin babel_transform` and
+`cargo run -p testsuite --bin swc_transform` to regenerate only the transform
+snapshots (`transform_babel.snap` and `transform_swc.snap`) through the shared
+`transform` runner. To cover static-block lowering: SWC uses the default
 `prevent_extensions=false` private fields; Babel uses `prevent_extensions=true`
 closures. SWC fixtures requiring class-properties lowering are counted as skipped.
 
