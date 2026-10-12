@@ -15,6 +15,7 @@ mod tuple;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
 pub(super) use self::context::TypeContext;
+use self::context::TypeEnclosure;
 pub(super) use self::generics::TypeArgumentOwner;
 
 use super::Formatter;
@@ -1479,12 +1480,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_compound_type(node, types, kind, context, layout, writer);
             }
         }
-        self.format_type_in_context(
+        self.format_type_in_context_with_enclosure(
             node.data,
             context,
             layout,
             writer,
-            |formatter, layout, writer| formatter.format_type_data(node, layout, writer),
+            |formatter, layout, enclosure, writer| {
+                formatter.format_type_data(node, layout, enclosure, writer)
+            },
         )
     }
 
@@ -1500,40 +1503,68 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Writer<'ast>,
         ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if !context.needs_parentheses(data, self.ast) {
-            return print(self, layout, writer);
-        }
-        if matches!(
+        self.format_type_in_context_with_enclosure(
             data,
-            TsTypeData::TsIntersectionType(_)
-                | TsTypeData::TsFunctionType(_)
-                | TsTypeData::TsConstructorType(_)
-        ) || matches!(context, TypeContext::TypeConstraint)
-            && matches!(data, TsTypeData::TsConditionalType(_))
-        {
-            writer.text("(");
-            let tail = print(self, TypeLayout::Root, writer)?;
-            self.format_expression_tail(tail, writer)?;
-            writer.text(")");
-            return Ok(None);
-        }
-        writer.group(false, |writer| {
-            writer.text("(");
-            writer.indent(|writer| {
+            context,
+            layout,
+            writer,
+            |formatter, layout, _, writer| print(formatter, layout, writer),
+        )
+    }
+
+    fn format_type_in_context_with_enclosure(
+        &mut self,
+        data: TsTypeData,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+        print: impl FnOnce(
+            &mut Self,
+            TypeLayout,
+            TypeEnclosure,
+            &mut Writer<'ast>,
+        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if context.needs_parentheses(data, self.ast) {
+            if matches!(
+                data,
+                TsTypeData::TsIntersectionType(_)
+                    | TsTypeData::TsFunctionType(_)
+                    | TsTypeData::TsConstructorType(_)
+            ) || matches!(context, TypeContext::TypeConstraint)
+                && matches!(data, TsTypeData::TsConditionalType(_))
+            {
+                writer.text("(");
+                let tail = print(self, TypeLayout::Root, TypeEnclosure::Parentheses, writer)?;
+                self.format_expression_tail(tail, writer)?;
+                writer.text(")");
+                return Ok(None);
+            }
+            return writer.group(false, |writer| {
+                writer.text("(");
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    let tail = print(
+                        self,
+                        TypeLayout::CallerIndented,
+                        TypeEnclosure::Parentheses,
+                        writer,
+                    )?;
+                    self.format_expression_tail(tail, writer)
+                })?;
                 writer.soft_line();
-                let tail = print(self, TypeLayout::CallerIndented, writer)?;
-                self.format_expression_tail(tail, writer)
-            })?;
-            writer.soft_line();
-            writer.text(")");
-            Ok(None)
-        })
+                writer.text(")");
+                Ok(None)
+            });
+        }
+        print(self, layout, context.enclosure(), writer)
     }
 
     fn format_type_data(
         &mut self,
         node: PreparedType,
         layout: TypeLayout,
+        enclosure: TypeEnclosure,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if node.source_owner == Some(node.node) {
@@ -1562,6 +1593,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         match node.data {
+            TsTypeData::TsJsDocUnknownType(_) => {
+                writer.text("?");
+                Ok(None)
+            }
+            TsTypeData::TsJsDocNullableType(owner) => self.format_jsdoc_type(
+                postfix::JsDocTypeOwner::Nullable(owner),
+                node.source_owner,
+                enclosure,
+                writer,
+            ),
+            TsTypeData::TsJsDocNonNullableType(owner) => self.format_jsdoc_type(
+                postfix::JsDocTypeOwner::NonNullable(owner),
+                node.source_owner,
+                enclosure,
+                writer,
+            ),
             TsTypeData::TsImportType(node) => self.format_import_type(node, writer),
             TsTypeData::TsMappedType(node) => self.format_mapped_type(node, writer),
             TsTypeData::TsInferType(node) => self.format_infer_type(node, writer),

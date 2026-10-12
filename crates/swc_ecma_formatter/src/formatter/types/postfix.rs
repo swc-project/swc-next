@@ -1,12 +1,12 @@
 //! Type postfix delimiters and prefix operands retain their actual owners.
 
 use swc_next_ecma_ast::{
-    GetSpan, Span, TsArrayType, TsIndexedAccessType, TsTypeData, TsTypeOperator,
-    TsTypeOperatorKind, TsTypeQuery, TsTypeQueryExprNameData,
+    GetSpan, Span, TsArrayType, TsIndexedAccessType, TsJsDocNonNullableType, TsJsDocNullableType,
+    TsType, TsTypeData, TsTypeOperator, TsTypeOperatorKind, TsTypeQuery, TsTypeQueryExprNameData,
 };
 
 use super::compound::{PendingTypeHead, PreparedTypeContent};
-use super::context::TypeContext;
+use super::context::{TypeContext, TypeEnclosure};
 use super::generics::TypeArgumentOwner;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
@@ -47,6 +47,11 @@ struct PreparedIndex<'ast> {
 struct PreparedArray<'ast> {
     element: PreparedType,
     suffix: ArraySuffix<'ast>,
+}
+
+pub(super) enum JsDocTypeOwner {
+    Nullable(TsJsDocNullableType),
+    NonNullable(TsJsDocNonNullableType),
 }
 
 pub(super) enum PostfixTypeOwner {
@@ -316,6 +321,68 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    pub(super) fn format_jsdoc_type(
+        &mut self,
+        owner: JsDocTypeOwner,
+        source_owner: Option<TsType>,
+        enclosure: TypeEnclosure,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let ast = self.ast;
+        let (span, operand, postfix, marker, prefix_context, nullable) = match owner {
+            JsDocTypeOwner::Nullable(node) => (
+                node.span(ast),
+                node.type_annotation(ast),
+                node.postfix(ast),
+                "?",
+                TypeContext::JsDocNullableOperand,
+                true,
+            ),
+            JsDocTypeOwner::NonNullable(node) => (
+                node.span(ast),
+                node.type_annotation(ast),
+                node.postfix(ast),
+                "!",
+                TypeContext::JsDocPrimaryOperand,
+                false,
+            ),
+        };
+        let context = if postfix {
+            if nullable && enclosure == TypeEnclosure::Parentheses {
+                TypeContext::JsDocEnclosedPostfixOperand
+            } else {
+                TypeContext::JsDocPostfixOperand
+            }
+        } else {
+            prefix_context
+        };
+        let mut child = self.prepare_type(operand, ContentMode::Formatted);
+        child.source_owner = source_owner;
+        let child_span = operand.span(ast);
+        let gap = if postfix {
+            Span::new(child_span.end, span.end - 1)
+        } else {
+            Span::new(span.start + 1, child_span.start)
+        };
+        let boundary = self.prepare_type_prefix(gap);
+        if postfix {
+            if boundary.mode == ContentMode::Verbatim {
+                child.source_owner = Some(operand);
+            }
+            let tail = self.format_prepared_type(child, context, writer)?;
+            self.format_expression_tail(tail, writer)?;
+            self.format_type_prefix(boundary, FlatSeparator::Empty, writer)?;
+            writer.text(marker);
+            return Ok(None);
+        }
+        if boundary.mode == ContentMode::Verbatim {
+            self.select_type_head_comments(&mut child, self.comments.in_range(gap), gap.end);
+        }
+        writer.text(marker);
+        self.format_type_prefix(boundary, FlatSeparator::Empty, writer)?;
+        self.format_prepared_type(child, context, writer)
+    }
+
     pub(super) fn format_type_operator(
         &mut self,
         node: TsTypeOperator,
@@ -409,6 +476,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         TypePrefix { mode, layout }
     }
 
+    // Resolve both leading runs before either claims comments from a removed pair.
     pub(super) fn format_prepared_type_after_prefix(
         &mut self,
         node: PreparedType,
