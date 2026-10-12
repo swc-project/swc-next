@@ -207,9 +207,7 @@ pub(super) fn lang(path: &Path, options: &BabelOptions) -> Lang {
         return Lang::Dts;
     }
 
-    let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx)
-        || options.is_typescript()
-        || options.plugins.typescript;
+    let typescript = matches!(path_lang, Lang::Ts | Lang::Tsx) || options.is_typescript();
     let jsx = matches!(path_lang, Lang::Jsx | Lang::Tsx) || options.is_jsx();
     match (typescript, jsx) {
         (true, true) => Lang::Tsx,

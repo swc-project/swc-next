@@ -82,6 +82,16 @@ Babel cases derive options from `options.json` and compare the transformed
 output with Babel's `output.*`, after parsing and printing both. Unsupported
 plugins, presets, and invalid options are skipped.
 
+The Babel collection includes `babel-plugin-transform-typescript/test/fixtures`
+and `babel-generator/test/fixtures/typescript` from the pinned Babel repository.
+`transform-typescript` enables the TypeScript transform: `onlyRemoveTypeImports`
+maps to `verbatimModuleSyntax`, `optimizeConstEnums` maps to the inverse of
+`preserveConstEnums`, and `jsxPragma`/`jsxPragmaFrag` configure JSX import retention.
+These mappings use the transformer's TypeScript semantics; differences from
+Babel's import or const-enum behavior remain output mismatches. Generator
+fixtures use syntax-only TypeScript options and compare their preserved
+TypeScript output, without enabling type erasure.
+
 TypeScript parser/codegen cases live in `cases/typescript/parser.rs`;
 transform cases live in `cases/typescript/transform.rs`. Both share fixture
 parsing and compiler-option metadata in `cases/typescript/mod.rs`.

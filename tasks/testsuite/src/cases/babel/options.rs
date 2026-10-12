@@ -110,7 +110,7 @@ impl From<BabelOptions> for TransformerOptions {
                 shorthand_properties: plugins.shorthand_properties,
                 sticky_regex: plugins.sticky_regex,
             },
-            typescript: None,
+            typescript: plugins.typescript,
         }
     }
 }
