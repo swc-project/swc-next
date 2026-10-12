@@ -40,10 +40,6 @@ pub trait Case: Sized + Sync {
 
 /// Fixture adapters provide the configuration consumed by the shared transform pipeline.
 pub trait TransformCase: Case {
-    fn output_path(&self) -> &Path {
-        self.path()
-    }
-
     fn transformer_options(&self) -> TransformerOptions;
 
     /// Identifies the input unit when a fixture contains multiple virtual files.

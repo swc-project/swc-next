@@ -12,7 +12,6 @@ use super::{Case, TransformCase, fixtures};
 #[derive(Debug)]
 pub struct SwcTransformCase {
     path: PathBuf,
-    output_path: PathBuf,
     name: String,
     input: String,
     output: String,
@@ -44,7 +43,6 @@ impl SwcTransformCase {
                 input: fs::read_to_string(&path)?,
                 output: fs::read_to_string(&output_path)?,
                 path,
-                output_path,
                 requires_class_properties,
             });
         }
@@ -90,10 +88,6 @@ impl Case for SwcTransformCase {
 impl TransformCase for SwcTransformCase {
     fn supports_options(&self) -> bool {
         !self.requires_class_properties
-    }
-
-    fn output_path(&self) -> &Path {
-        &self.output_path
     }
 
     fn expected_output(&self) -> Option<&str> {

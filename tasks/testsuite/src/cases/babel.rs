@@ -42,7 +42,6 @@ const OUTPUT_FILE_NAMES: &[&str] = &[
 #[derive(Debug)]
 pub struct BabelTransformCase {
     pub path: PathBuf,
-    pub output_path: PathBuf,
     pub name: String,
     pub input: String,
     pub output: String,
@@ -113,7 +112,6 @@ impl BabelTransformCase {
                 let output = read_to_string(&paths.output)?;
                 Ok(Self {
                     path: paths.input,
-                    output_path: paths.output,
                     name,
                     input,
                     output,
@@ -172,10 +170,6 @@ impl TransformCase for BabelTransformCase {
             && self.options.plugins.unsupported.is_empty()
             && self.options.presets.errors.is_empty()
             && self.options.presets.unsupported.is_empty()
-    }
-
-    fn output_path(&self) -> &Path {
-        &self.output_path
     }
 
     fn expected_output(&self) -> Option<&str> {

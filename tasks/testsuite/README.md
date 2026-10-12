@@ -121,9 +121,8 @@ SWC's `es2022_static_blocks.rs` test entry: standalone static blocks run with
 `class-properties/` are counted as skipped until that transform is supported.
 
 The SWC suite writes `tasks/testsuite/snapshots/transform_swc.snap`. Both suites use
-the shared `transform` runner and write readable `expected/` and `actual/` files under
-`tasks/testsuite/outputs/transform/{babel,swc}/`. Missing fixtures and
-panics fail the command; ordinary output mismatches are recorded in snapshots.
+the shared `transform` runner. Missing fixtures and panics fail the command;
+ordinary output mismatches are recorded in snapshots.
 The full conformance command runs both suites, and CI checks their snapshots for changes.
 
 To cover both static-block lowering modes locally, run:
