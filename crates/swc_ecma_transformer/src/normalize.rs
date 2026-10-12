@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     TsUnionType, VisitMut, VisitMutWith,
 };
 
-use crate::comments::CommentRetargets;
+use crate::context::CommentState;
 
 /// Normalizes parser AST shapes for downstream transforms.
 ///
@@ -25,16 +25,16 @@ impl Normalizer {
     fn run<'ast, const NORMALIZE_TYPES: bool>(program: Program, ast: &mut Ast<'ast>) {
         let mut pass = NormalizePass::<NORMALIZE_TYPES> {
             ast,
-            comment_retargets: CommentRetargets::default(),
+            comments: CommentState::default(),
         };
         program.visit_mut_children_with(&mut pass);
-        pass.comment_retargets.apply(pass.ast);
+        pass.comments.flush(pass.ast);
     }
 }
 
 struct NormalizePass<'visit, 'ast, const NORMALIZE_TYPES: bool> {
     ast: &'visit mut Ast<'ast>,
-    comment_retargets: CommentRetargets,
+    comments: CommentState,
 }
 
 #[derive(Clone, Copy)]
@@ -82,8 +82,9 @@ impl AssociativeType {
 
 impl<const NORMALIZE_TYPES: bool> NormalizePass<'_, '_, NORMALIZE_TYPES> {
     fn record_replacement(&mut self, removed: Span, replacement: Span) {
-        self.comment_retargets
-            .record_replacement(self.ast, removed, replacement);
+        if !self.ast.comments().is_empty() {
+            self.comments.inherit(replacement, removed);
+        }
     }
 
     fn replacement_span(&self, flattened: &[Expr], start: usize) -> Option<Span> {

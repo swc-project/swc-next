@@ -11,7 +11,6 @@ use crate::{
     state::TransformerState,
 };
 
-mod comments;
 mod context;
 mod helpers;
 mod jsx_pragma;

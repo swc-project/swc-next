@@ -51,12 +51,9 @@ impl TypeScriptLowerer<'_, '_> {
     ) -> Expr {
         let replacement = expression.visit_mut_with(self).unwrap_or(expression);
         let replacement_span = replacement.span(self.ast_ref());
-        let Self {
-            ast,
-            comment_retargets,
-            ..
-        } = self;
-        comment_retargets.record_replacement(ast, removed_span, replacement_span);
+        if !self.ast_ref().comments().is_empty() {
+            self.comments.inherit(replacement_span, removed_span);
+        }
         replacement
     }
 

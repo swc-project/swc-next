@@ -1,5 +1,5 @@
 use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
-use crate::{comments::CommentRetargets, used_names::UsedNameState};
+use crate::{context::CommentState, used_names::UsedNameState};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{Ast, Program, SourceType, SymbolId, VisitMut};
 use swc_next_ecma_semantic::Semantic;
@@ -25,7 +25,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     analysis: TypeScriptAnalysis<'ast>,
     semantic: &'visit Semantic<'ast>,
     semantic_node_count: usize,
-    comment_retargets: CommentRetargets,
+    comments: CommentState,
     runtime_binding_scopes: Vec<FxHashSet<SymbolId>>,
     enum_member_symbols: FxHashMap<SymbolId, FxHashSet<SymbolId>>,
     namespaces: NamespaceState,
@@ -48,7 +48,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             analysis,
             semantic,
             semantic_node_count,
-            comment_retargets: CommentRetargets::default(),
+            comments: CommentState::default(),
             runtime_binding_scopes: Vec::new(),
             enum_member_symbols: FxHashMap::default(),
             namespaces: NamespaceState::default(),
@@ -68,8 +68,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             self.append_esm_marker(program);
         }
 
-        let retargets = std::mem::take(&mut self.comment_retargets);
-        retargets.apply(self.ast());
+        self.comments.flush(self.ast);
     }
 
     pub(super) fn ast_ref(&self) -> &Ast<'ast> {
