@@ -1365,7 +1365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("(");
             context.expression_start = ExpressionStart::None;
         }
-        let tail = self.format_expression_data(expression, context, writer)?;
+        let tail = self.format_expression_data(expression, context, parenthesize, writer)?;
         let tail = if parenthesize {
             self.format_parentheses_tail(
                 context.source_parentheses_tail,

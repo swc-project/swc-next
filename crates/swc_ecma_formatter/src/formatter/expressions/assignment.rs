@@ -816,6 +816,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             unary_operand: None,
         };
         match data {
+            ExprData::Class(class) if !class.decorators(self.ast).is_empty() => return None,
             ExprData::AssignmentExpression(assignment) => {
                 return (!matches!(
                     self.expression_content(assignment.right(self.ast)).data,

@@ -183,6 +183,12 @@ impl ClassMemberPrefix {
 }
 
 impl ClassMemberPrefixOwner {
+    pub(in crate::formatter) fn plain_key_start(self, ast: &Ast<'_>) -> Option<u32> {
+        let (keyword, generator, computed) = self.prefix_tokens(ast);
+        (self.modifiers(ast) == 0 && keyword.is_none() && !generator && !computed)
+            .then(|| self.key(ast).span(ast).start)
+    }
+
     fn key(self, ast: &Ast<'_>) -> PropertyKey {
         match self {
             Self::Field(node) => node.key(ast),

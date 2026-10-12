@@ -1689,4 +1689,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ParameterConsumer::ConstructorProperty(property),
         )
     }
+
+    pub(in crate::formatter) fn prepare_decorated_rest_parameter(
+        &self,
+        rest: FormalParameterRest,
+    ) -> Result<PreparedParameterItem<'ast>, FormatError> {
+        self.prepare_parameter_item(
+            CallableParameter::Rest(rest),
+            rest.type_annotation(self.ast),
+            false,
+            ParameterConsumer::Runtime,
+        )
+    }
 }

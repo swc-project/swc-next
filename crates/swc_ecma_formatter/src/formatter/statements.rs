@@ -20,6 +20,7 @@ use swc_next_ecma_ast::{
 
 use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart};
 use super::literals::StringContext;
@@ -163,6 +164,7 @@ struct OmittedStatementTail<'ast> {
 struct PreparedStatement<'ast> {
     item: StatementItem,
     span: Span,
+    decorators: Option<StatementDecorators>,
     mode: ContentMode,
     source_gap: Option<LineConstraint>,
     annotation_tail: Option<StatementAnnotationTail<'ast>>,
@@ -380,6 +382,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let PreparedStatement {
                 item: statement,
                 span: statement_span,
+                decorators,
                 mode: source_mode,
                 source_gap,
                 annotation_tail,
@@ -622,6 +625,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_prepared_statement(
                             statement,
                             statement_span,
+                            decorators,
                             StatementLayout {
                                 start: expression_start,
                                 empty_block: EmptyBlock::Expanded,
@@ -818,7 +822,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<StatementItem>,
         incoming: Option<IncomingStatement>,
     ) -> PreparedStatement<'ast> {
-        let span = item.span(self.ast);
+        let decorators = match item {
+            StatementItem::Statement(node) => self.statement_decorators(node),
+            StatementItem::Directive(_) => None,
+        };
+        let (span, decorators) = match decorators {
+            Some((span, decorators)) => (span, Some(decorators)),
+            None => (item.span(self.ast), None),
+        };
         let annotation_tail = if (self.has_target_annotations || self.has_suppression)
             && item.is_nonempty(self.ast)
         {
@@ -829,6 +840,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         PreparedStatement {
             item,
             span,
+            decorators,
             mode: incoming
                 .filter(|target| target.span == span)
                 .map_or(ContentMode::Formatted, |target| target.mode),
@@ -860,7 +872,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             Some(statement_span)
         };
-        let following_span = following.span(self.ast);
+        let following_span = match following {
+            StatementItem::Statement(node) => self
+                .statement_decorators(node)
+                .map_or_else(|| node.span(self.ast), |(span, _)| span),
+            StatementItem::Directive(node) => node.span(self.ast),
+        };
         let span = Span::new(statement_span.end, following_span.start);
         let comments = self.comments.in_range(span);
         let mut end = span.start;
@@ -944,23 +961,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
-        let span = statement.span(self.ast);
+        let decorators = self.statement_decorators(statement);
+        let (span, decorators) = match decorators {
+            Some((span, decorators)) => (span, Some(decorators)),
+            None => (statement.span(self.ast), None),
+        };
         let content = if mode == ContentMode::Verbatim {
             StatementMode::Verbatim(self.statement_content(StatementItem::Statement(statement)))
         } else {
             StatementMode::Formatted
         };
-        self.format_prepared_statement(statement, span, layout, content, head, punctuation, writer)
+        self.format_prepared_statement(
+            statement,
+            span,
+            decorators,
+            layout,
+            content,
+            head,
+            punctuation,
+            writer,
+        )
     }
 
     #[expect(
         clippy::too_many_arguments,
-        reason = "Carry the prepared statement envelope instead of rediscovering it during printing."
+        reason = "Carry the prepared statement envelope and class handle instead of rediscovering them."
     )]
     fn format_prepared_statement(
         &mut self,
         statement: Stmt,
         span: Span,
+        decorators: Option<StatementDecorators>,
         layout: StatementLayout,
         content: StatementMode,
         head: NodeHead<'ast>,
@@ -1005,6 +1036,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.finish_statement(content_end, tail, punctuation, writer);
         }
         self.format_node_head(head, layout.start, None, writer)?;
+        if mode == ContentMode::Formatted
+            && let Some(decorators) = decorators
+        {
+            return match decorators {
+                StatementDecorators::Class { node, sequence } => {
+                    let prefix = sequence.with_envelope(span);
+                    let prepared = self.prepare_class(node, Some(prefix))?;
+                    self.format_prepared_class(prepared, true, writer)?;
+                    Ok(StatementBoundary::SourceEnd {
+                        end: span.end,
+                        has_terminator: false,
+                    }
+                    .into())
+                }
+                StatementDecorators::Export {
+                    node,
+                    sequence,
+                    native,
+                    default,
+                } => {
+                    let prefix = sequence.with_envelope(span);
+                    self.format_decorated_export_class(node, prefix, native, default, writer)
+                }
+            };
+        }
         match data {
             StmtData::EmptyStatement(node) => {
                 writer.text(";");

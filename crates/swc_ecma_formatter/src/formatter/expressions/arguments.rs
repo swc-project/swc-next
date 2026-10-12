@@ -642,6 +642,7 @@ fn argument_opening_gap(prefix_start: u32, first: Option<Span>, end: u32) -> Spa
     Span::new(prefix_start, first.map_or(end - 1, |span| span.start))
 }
 pub(super) struct SourceArguments<'ast> {
+    pub(super) allow_composition: bool,
     arguments: SubRange<Argument>,
     first: Option<SourceFirstArgument>,
     delimiters: Span,
@@ -1027,6 +1028,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         let ast = self.ast;
         let SourceArguments {
+            allow_composition,
             arguments,
             first,
             delimiters,
@@ -1172,7 +1174,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(empty)
             })
             .any(|empty| empty)
-            || self.arguments_are_function_composition(arguments);
+            || allow_composition && self.arguments_are_function_composition(arguments);
         if !expand && let Some(selected) = self.select_argument_layout(arguments, !hugged) {
             let tail = self.format_selected_arguments(
                 arguments,
@@ -1475,6 +1477,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_mode = types.callee_mode;
         }
         Some(SourceArguments {
+            allow_composition: true,
             arguments,
             first,
             delimiters: Span::new(opening, end),
