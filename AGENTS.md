@@ -36,33 +36,6 @@ Wasm builds use `cargo run --locked -p bridge_cli -- build <component> --output-
 To reuse an existing core Wasm build, run
 `node scripts/wasm-package/cli.mjs prepare-browser --source-dir npm/core/src-js`.
 
-## Transform Architecture
-
-Read [Transformer Implementation](docs/Transformer.md) when implementing or
-refactoring transforms. It describes object relationships, mutation contracts,
-semantic synchronization, helper imports, and the test directory layout.
-
-- Semantic owns name resolution: reuse its scope, binding, declaration, and reference
-  indexes instead of rebuilding them in transforms. Transform-specific environments,
-  capture summaries, private-name allocation, comments, and member layouts belong to
-  `swc_ecma_transformer`.
-- Collect optional transform information only for enabled passes, using the transform
-  feature flags. Combine required lookahead in one preparation traversal; obtain local
-  class information from member lists and keep generated-node metadata in transformer
-  state. Do not add transform collection flags or caches to Semantic.
-- Keep transformation logic in the actual transform visitors using the generic `TraverseMut`.
-  Obtain a borrowed `Mutation` with `TraverseMutCtx::mutate()` from the transform crate's
-  `Mutate` trait; keep Semantic in `TransformerState` and read AST through `Mutation::ast()`.
-  Perform AST operations through `Mutation`; do not mutate AST and Semantic separately
-  in a visitor.
-- The TypeScript pass temporarily retains main's Semantic-based stage.
-  Refresh Semantic after that stage and build ScopeModel before entering Mutation-based passes.
-- `Mutation` must synchronize Semantic whenever nodes are inserted, deleted,
-  replaced, or moved, so subsequent visitor operations always see semantic information
-  consistent with the latest AST. It must also update affected transformer metadata.
-  For deferred statement injection, register semantic
-  information when preparing nodes and attach the queued statements in one final step.
-
 ## Testing & Examples
 
 ### Conformance Testing
@@ -84,8 +57,8 @@ the parser language.
 | Codegen   | Test262, TypeScript, Babel, local | AST round trip and print idempotence in both parenthesis modes | Same as above                                                    |
 | Resolver  | SWC resolver fixtures             | Name resolution text matches `swc-conformance`                 | Same as above                                                    |
 | Transform | Babel                             | Normalized output matches Babel fixtures                       | Same as above                                                    |
-| Transform | TypeScript                        | Runtime JavaScript syntax and transform idempotence             | Same as above                                                    |
-| Transform | SWC static blocks                 | Normalized output matches SWC fixtures                       | Same as above                                                    |
+| Transform | TypeScript                        | Runtime JavaScript syntax and transform idempotence            | Same as above                                                    |
+| Transform | SWC static blocks                 | Normalized output matches SWC fixtures                         | Same as above                                                    |
 | ESTree    | Test262, TypeScript               | N-API AST matches `estree-conformance`                         | `pnpm test:conformance`                                          |
 | Codec     | Test262, TypeScript               | JS decode/encode codegen output matches native parse/codegen   | `pnpm test:codec`                                                |
 
@@ -105,13 +78,6 @@ Add `input.js`, `output.js`, and optional `options.json` under
 for options. The runner validates syntax and semantics, compares compact output,
 and checks minification stability. Expected outputs are maintained manually.
 These tests run in the existing workspace test CI without external fixtures.
-
-Run `cargo run -p testsuite --bin babel_transform` and
-`cargo run -p testsuite --bin swc_transform` to regenerate only the transform
-snapshots (`transform_babel.snap` and `transform_swc.snap`) through the shared
-`transform` runner. To cover static-block lowering: SWC uses the default
-`prevent_extensions=false` private fields; Babel uses `prevent_extensions=true`
-closures. SWC fixtures requiring class-properties lowering are counted as skipped.
 
 ### Debugging with Examples
 
