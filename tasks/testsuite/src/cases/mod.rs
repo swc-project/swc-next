@@ -41,6 +41,11 @@ pub trait Case: Sized + Sync {
 pub trait TransformCase: Case {
     fn transformer_options(&self) -> TransformerOptions;
 
+    /// Identifies the input unit when a fixture contains multiple virtual files.
+    fn virtual_file_name(&self) -> Option<&str> {
+        None
+    }
+
     fn options_label(&self) -> Option<&str> {
         None
     }

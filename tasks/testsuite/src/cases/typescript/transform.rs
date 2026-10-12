@@ -51,6 +51,7 @@ pub struct TypeScriptTransformCase {
     path: PathBuf,
     relative_path: PathBuf,
     name: String,
+    virtual_file_name: Option<String>,
     code: Arc<str>,
     mode: TypeScriptTransformMode,
     source_type: SourceType,
@@ -78,6 +79,7 @@ impl TypeScriptTransformCase {
                 .strip_prefix(&test_dir)
                 .expect("TypeScript case is inside the cases directory")
                 .to_path_buf();
+            let has_multiple_units = parsed.test_units.len() > 1;
             for unit in parsed.test_units {
                 let Some(lang) = lang_from_path(&unit.name).filter(|lang| lang.is_typescript())
                 else {
@@ -89,6 +91,7 @@ impl TypeScriptTransformCase {
                         path: path.clone(),
                         relative_path: relative_path.clone(),
                         name: format!("{} [{}]", unit.name, mode.name()),
+                        virtual_file_name: has_multiple_units.then(|| unit.name.clone()),
                         code: Arc::clone(&code),
                         mode,
                         source_type: SourceType::from_path(&unit.name),
@@ -130,6 +133,10 @@ impl Case for TypeScriptTransformCase {
 }
 
 impl TransformCase for TypeScriptTransformCase {
+    fn virtual_file_name(&self) -> Option<&str> {
+        self.virtual_file_name.as_deref()
+    }
+
     fn options_label(&self) -> Option<&str> {
         Some(self.mode.name())
     }

@@ -29,14 +29,21 @@ impl<C: TransformCase> Runner<C> for TransformerRunner {
                 negative: false,
             },
             Ok(Ok(false)) => TestResult::Skipped { path },
-            Ok(Err(error)) => TestResult::Failed {
-                path,
-                error: match case.options_label() {
+            Ok(Err(error)) => {
+                let error = match case.options_label() {
                     Some(options) => format!("[{options}]: {error}"),
                     None => error,
-                },
-                negative: false,
-            },
+                };
+                let error = match case.virtual_file_name() {
+                    Some(name) => format!("virtual: {name} - {error}"),
+                    None => error,
+                };
+                TestResult::Failed {
+                    path,
+                    error,
+                    negative: false,
+                }
+            }
             Err(_) => TestResult::Panic {
                 path,
                 negative: false,

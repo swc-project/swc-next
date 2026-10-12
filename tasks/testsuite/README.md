@@ -113,6 +113,8 @@ Their snapshots are `tasks/testsuite/snapshots/transform_{babel,typescript}.snap
 using the same format as the other conformance runners. Transform pass rates
 include skipped cases in the denominator. Fixture failures are recorded in
 snapshots; panics cause a nonzero exit.
+Failures in TypeScript fixtures containing multiple virtual files include the
+virtual filename alongside the physical fixture path and transform options.
 
 Transformed and expected output are compared and validated in memory. The debug
 command uses the same runner without updating snapshots.
