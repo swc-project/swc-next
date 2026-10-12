@@ -133,7 +133,7 @@ fn access_flags_follow_reference_syntax() {
 }
 
 #[test]
-fn dynamic_scope_flags_follow_with_and_eval() {
+fn dynamic_scope_flags_follow_with() {
     let allocator = Allocator::new();
     let js_script = Options {
         source_type: SourceType::Script,
@@ -181,24 +181,6 @@ fn dynamic_scope_flags_follow_with_and_eval() {
         ast.get_wtf8(semantic.symbol(symbol_id).name).as_bytes(),
         b"value"
     );
-
-    let source = "function f() { eval('direct'); }";
-    let (_, semantic) = analyze_source(&allocator, source, js_script);
-    let function = semantic
-        .iter_scopes()
-        .find(|entry| entry.scope.kind == ScopeKind::Function)
-        .unwrap();
-    assert!(function.scope.flags.contains_direct_eval());
-    assert!(semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
-
-    let source = "function f() { (0, eval)('indirect'); }";
-    let (_, semantic) = analyze_source(&allocator, source, js_script);
-    let function = semantic
-        .iter_scopes()
-        .find(|entry| entry.scope.kind == ScopeKind::Function)
-        .unwrap();
-    assert!(!function.scope.flags.contains_direct_eval());
-    assert!(!semantic.scope(ScopeId::ROOT).flags.contains_direct_eval());
 }
 
 #[test]

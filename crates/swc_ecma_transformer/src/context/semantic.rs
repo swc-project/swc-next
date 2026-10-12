@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, CallExpression,
-    DUMMY_SP, Expr, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
-    SimpleAssignmentTarget, Span, SymbolId, Traverse, TraverseCtx, TraverseWith,
+    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
+    IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
+    SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
 use swc_next_ecma_semantic::{
     Reference, ReferenceFlags, ScopeModel, SymbolFlags,
@@ -250,14 +250,9 @@ impl<'a> Mutation<'_, '_, 'a> {
         flags: ScopeFlags,
     ) -> ScopeId {
         self.state.semantic.grow_to(self.ast.node_count(), parent);
-        let scope = self
-            .state
+        self.state
             .semantic
-            .create_child_scope(parent, owner, kind, flags);
-        if flags.direct_eval {
-            mark_direct_eval(self.state.semantic, parent);
-        }
-        scope
+            .create_child_scope(parent, owner, kind, flags)
     }
 
     /// Transfer a scope to a new owner and kind while preserving its contents and identities.
@@ -283,17 +278,11 @@ impl<'a> Mutation<'_, '_, 'a> {
         if original.flags.strict != (flags.strict || self.semantic().scope(parent).flags.strict) {
             todo!("Recompute descendant strictness when converting {scope:?}");
         }
-        if original.flags.direct_eval && !flags.direct_eval {
-            todo!("Recompute ancestor direct-eval summaries when converting {scope:?}");
-        }
         self.state.semantic.grow_to(self.ast.node_count(), scope);
         self.state.semantic.convert_scope(scope, owner, kind, flags);
-        if flags.direct_eval {
-            mark_direct_eval(self.state.semantic, parent);
-        }
     }
 
-    /// Move a retained subtree's direct evaluation mappings and reparent its child scopes while preserving identities.
+    /// Move a retained subtree's evaluations between scopes and reparent child scopes while preserving identities.
     ///
     /// ```javascript
     /// // Before: use and value execute in a static-block scope; the arrow owns a nested scope.
@@ -302,9 +291,9 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// class C { static #_ = use(value, () => value); }
     /// // Move call/use/value nodes directly in the block scope to the class scope, preserving references.
     /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
-    /// // Refresh direct-eval effects; move owned bindings separately, then attach through a setter or container.
+    /// // Move owned bindings separately, then attach through a setter or container.
     /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
-    /// // Changes needing source direct-eval recomputation or different inherited strictness remain TODOs.
+    /// // Changes requiring different inherited strictness remain TODOs.
     /// ```
     pub fn move_subtree_to_scope(
         &mut self,
@@ -318,11 +307,6 @@ impl<'a> Mutation<'_, '_, 'a> {
         }
         if self.semantic().scope(from).flags.strict != self.semantic().scope(to).flags.strict {
             todo!("Recompute subtree strictness when moving from {from:?} to {to:?}");
-        }
-        if self.semantic().scope(from).flags.direct_eval
-            && !scope_is_ancestor(self.semantic(), from, to)
-        {
-            todo!("Recompute source direct-eval summaries when moving from {from:?} to {to:?}");
         }
         let mut mover = ScopeMover {
             semantic: self.state.semantic,
@@ -360,7 +344,7 @@ impl<'a> Mutation<'_, '_, 'a> {
     /// function f() { (() => { { let value = 1; use(value); } })(); }
     /// // Reparent the block scope from f to the arrow without changing its contents.
     /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
-    /// // Mutation coordinates strictness and direct-eval effects along the changed ancestry.
+    /// // Mutation coordinates inherited strictness along the changed ancestry.
     /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         reparent_scope(self.state.semantic, scope, parent);
@@ -403,33 +387,6 @@ struct ScopeMover<'s, 'a> {
 }
 
 impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
-    fn enter_call_expression(&mut self, call: CallExpression, ctx: &mut TraverseCtx<'_, 'a>) {
-        if !self.semantic.scope(self.from).flags.direct_eval
-            || self.semantic.scope_at(call.node_id()) != Some(self.to)
-            || call.optional(ctx.ast)
-        {
-            return;
-        }
-        let mut callee = call.callee(ctx.ast).node_id();
-        loop {
-            callee = match ctx.ast.kind_data(callee) {
-                NodeKindData::IdentifierReference(identifier) => {
-                    if ctx.ast.get_utf8(identifier.name(ctx.ast)) == "eval" {
-                        mark_direct_eval(self.semantic, self.to);
-                    }
-                    break;
-                }
-                NodeKindData::ParenthesizedExpression(node) => node.expression(ctx.ast).node_id(),
-                NodeKindData::TsAsExpression(node) => node.expression(ctx.ast).node_id(),
-                NodeKindData::TsSatisfiesExpression(node) => node.expression(ctx.ast).node_id(),
-                NodeKindData::TsTypeAssertion(node) => node.expression(ctx.ast).node_id(),
-                NodeKindData::TsNonNullExpression(node) => node.expression(ctx.ast).node_id(),
-                NodeKindData::TsInstantiationExpression(node) => node.expression(ctx.ast).node_id(),
-                _ => break,
-            };
-        }
-    }
-
     fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
         let scope = self.semantic.scope_at(node).expect("retained node scope");
         if self.semantic.scope(scope).node == node {
@@ -450,48 +407,15 @@ impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
     }
 }
 
-fn scope_is_ancestor(semantic: &ScopeModel<'_>, ancestor: ScopeId, scope: ScopeId) -> bool {
-    let mut current = Some(scope);
-    while let Some(id) = current {
-        if id == ancestor {
-            return true;
-        }
-        current = semantic.scope(id).parent;
-    }
-    false
-}
-
-/// Mark a scope and its ancestors as observable by a retained direct-eval call.
-///
-/// ```javascript
-/// // Before: eval already marks f's scope and its ancestors.
-/// function f() { eval("value"); }
-/// // After: an inserted arrow also becomes an ancestor of that call.
-/// function f() { (() => eval("value"))(); }
-/// // Mark the arrow, then walk outward until reaching an already marked ancestor.
-/// ```
-fn mark_direct_eval(semantic: &mut ScopeModel<'_>, scope: ScopeId) {
-    let mut current = Some(scope);
-    while let Some(id) = current {
-        let mut flags = semantic.scope(id).flags;
-        if flags.direct_eval {
-            break;
-        }
-        flags.direct_eval = true;
-        semantic.set_scope_flags(id, flags);
-        current = semantic.scope(id).parent;
-    }
-}
-
-/// Reparent a scope when inherited strictness and existing direct-eval summaries remain valid.
+/// Reparent a scope when inherited strictness remains unchanged.
 ///
 /// ```javascript
 /// // Before: the block is directly below f.
 /// function f() { { use(); } }
 /// // After: a generated arrow becomes its parent.
 /// function f() { (() => { { use(); } })(); }
-/// // Change the parent and hoist targets, then propagate any direct-eval marking outward.
-/// // Removing marked ancestors or changing inherited strictness requires recomputation and remains TODO.
+/// // Change the parent and refresh affected hoist targets.
+/// // Changing inherited strictness requires recomputation and remains TODO.
 /// ```
 fn reparent_scope(semantic: &mut ScopeModel<'_>, scope: ScopeId, parent: ScopeId) {
     let original = semantic.scope(scope);
@@ -503,11 +427,5 @@ fn reparent_scope(semantic: &mut ScopeModel<'_>, scope: ScopeId, parent: ScopeId
     if semantic.scope(previous).flags.strict != semantic.scope(parent).flags.strict {
         todo!("Recompute inherited strictness when reparenting {scope:?}");
     }
-    if original.flags.direct_eval && !scope_is_ancestor(semantic, previous, parent) {
-        todo!("Recompute old ancestor direct-eval summaries when reparenting {scope:?}");
-    }
     semantic.reparent_scope(scope, parent);
-    if original.flags.direct_eval {
-        mark_direct_eval(semantic, parent);
-    }
 }

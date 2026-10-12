@@ -137,21 +137,16 @@ Nested scopes keep their contents and receive a new parent when needed.
 | `remove_scope` | Retire an empty scope and clear its detached owner's mapping after retained content has moved. |
 | `clear_node_scope` | Clear a detached syntax shell's mapping without visiting retained children. |
 
-Mutation propagates direct-eval markings when an inserted scope becomes an
-ancestor of a retained eval call. Three cases still stop at explicit `todo!()`:
+Two cases still stop at explicit `todo!()`:
 
-- Moving content away from a marked source or removing marked ancestors needs
-  exact direct-eval recomputation: the current flags aggregate local and child
-  calls without recording their individual contributions.
 - Changing inherited strictness needs to distinguish explicit strict directives
   from inherited flags before updating retained descendants.
 - Converting a node shared by multiple active scopes needs to coordinate all
   scope owners and the node's innermost mapping together.
 
 Ordinary static-block lowering keeps strictness and uses a single source owner,
-so it does not need these unsupported operations. Single-expression blocks with
-direct eval can hit the first TODO. Do not bypass those checks with unsynchronized
-AST edits.
+so it does not need these unsupported operations. Do not bypass those checks
+with unsynchronized AST edits.
 
 A single-expression static block moves its expression into the destination
 scope, clears the discarded ExpressionStatement mapping and retires its empty

@@ -306,19 +306,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     #[inline]
-    fn visit_call_expression(&mut self, node: CallExpression) {
-        self.enter_node(node.node_id());
-        if !self.state.symbols.in_ambient_context()
-            && self.state.default_reference_flags().is_read()
-            && is_direct_eval_call(self.ast, node)
-        {
-            self.state.scope.mark_direct_eval();
-        }
-        node.visit_children_with(self);
-        self.leave_node(NodeKindData::CallExpression(node));
-    }
-
-    #[inline]
     fn visit_update_expression(&mut self, node: UpdateExpression) {
         self.enter_node(node.node_id());
         let argument = node.argument(self.ast);
@@ -1602,28 +1589,6 @@ fn export_expression_space(tree: &Ast<'_>, expression: NodeId) -> ReferenceSpace
         ReferenceSpace::Any
     } else {
         ReferenceSpace::Value
-    }
-}
-
-fn is_direct_eval_call(tree: &Ast<'_>, call: CallExpression) -> bool {
-    if call.optional(tree) {
-        return false;
-    }
-
-    let mut callee = call.callee(tree).node_id();
-    loop {
-        callee = match tree.kind_data(callee) {
-            NodeKindData::IdentifierReference(identifier) => {
-                return tree.get_utf8(identifier.name(tree)).as_bytes() == b"eval";
-            }
-            NodeKindData::ParenthesizedExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsAsExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsSatisfiesExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsTypeAssertion(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsNonNullExpression(wrapper) => wrapper.expression(tree).node_id(),
-            NodeKindData::TsInstantiationExpression(wrapper) => wrapper.expression(tree).node_id(),
-            _ => return false,
-        };
     }
 }
 

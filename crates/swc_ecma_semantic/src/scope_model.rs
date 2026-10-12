@@ -483,7 +483,7 @@ impl ScopeModel<'_> {
     /// function f() { (() => { { let value = 1; use(value); } })(); }
     /// // Reparent the block scope from f to the arrow without changing its contents.
     /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
-    /// // Mutation coordinates strictness and direct-eval effects along the changed ancestry.
+    /// // Mutation coordinates inherited strictness along the changed ancestry.
     /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
         let original = self.scope(scope);
@@ -520,7 +520,7 @@ impl ScopeModel<'_> {
     /// // After: the caller inserts a directive and computes the new strictness flag.
     /// function f() { "use strict"; run(); }
     /// // Apply the flags while keeping owner, parent, kind, bindings and node/reference mappings.
-    /// // Mutation computes arguments barriers, direct-eval summaries and affected ancestor/child flags.
+    /// // Mutation computes arguments barriers and strictness for affected ancestor/child scopes.
     /// ```
     pub fn set_scope_flags(&mut self, scope: ScopeId, flags: ScopeFlags) {
         assert!(self.scope(scope).active);

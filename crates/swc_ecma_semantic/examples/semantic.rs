@@ -111,9 +111,6 @@ fn format_scope_flags(scope: Scope) -> String {
         ScopeKind::TsConditionalExtends => names.push("TsConditionalExtends"),
         ScopeKind::TsSignatureReturn => names.push("TsSignatureReturn"),
     }
-    if scope.flags.direct_eval {
-        names.push("DirectEval");
-    }
 
     format!("ScopeFlags({})", names.join(" | "))
 }

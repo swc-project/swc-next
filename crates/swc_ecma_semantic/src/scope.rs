@@ -141,19 +141,9 @@ impl ScopeKind {
 pub struct ScopeFlags {
     /// Whether this scope is in strict mode.
     pub strict: bool,
-    /// Whether this scope or one of its descendants contains a call that can
-    /// invoke the intrinsic eval function directly.
-    pub direct_eval: bool,
     /// Stops lookup of an outer `arguments` binding: ordinary functions provide
     /// their own implicit binding, while static blocks disallow it entirely.
     pub arguments_barrier: bool,
-}
-
-impl ScopeFlags {
-    /// True when direct eval can observe bindings owned by this scope.
-    pub fn contains_direct_eval(self) -> bool {
-        self.direct_eval
-    }
 }
 
 /// All scopes of a tree, indexed by [`ScopeId`].
@@ -605,22 +595,6 @@ impl<'a> ScopeTracker<'a> {
         AncestorIterator {
             list: &self.scopes,
             current: start,
-        }
-    }
-
-    /// Marks the current scope and every lexical ancestor as observable by
-    /// direct eval.
-    pub fn mark_direct_eval(&mut self) {
-        let mut current = Some(self.current);
-        // Each scope is marked at most once. Later calls stop at the first
-        // marked ancestor, so all calls together are O(scopes + eval calls).
-        while let Some(id) = current {
-            let scope = &mut self.scopes[id.index()];
-            if scope.flags.direct_eval {
-                break;
-            }
-            scope.flags.direct_eval = true;
-            current = scope.parent;
         }
     }
 
