@@ -13,7 +13,7 @@ use crate::{
     Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator, Redeclarations,
     Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags,
     SymbolIterator,
-    binder::find_expression_name,
+    binder::find_internal_name,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -226,7 +226,7 @@ impl<'a> ScopeModel<'a> {
             !self
                 .symbol(symbol)
                 .flags
-                .intersects(SymbolFlags::EXPRESSION_NAME)
+                .intersects(SymbolFlags::INTERNAL_NAME)
         });
         let symbol = if let Some(symbol) = existing {
             self.symbols[symbol.index()].flags |= flags;
@@ -355,7 +355,7 @@ impl ScopeModel<'_> {
     /// // Replace the StaticBlock owner with the arrow owner and change kind to Function.
     /// // Keep ScopeId, parent, bindings, references and child scopes; refresh hoist/body links.
     /// // The caller supplies arrow flags, including arguments_barrier = false.
-    /// // Owners shared by multiple active scopes, such as Annex B if functions, remain TODO.
+    /// // Owners shared by multiple active scopes remain TODO.
     /// ```
     pub fn convert_scope(
         &mut self,
@@ -467,7 +467,7 @@ impl ScopeModel<'_> {
         }
         for name in names {
             if let Some(expression_name) =
-                find_expression_name(&self.symbols, &self.declarations, from, symbol)
+                find_internal_name(&self.symbols, &self.declarations, from, symbol)
             {
                 self.scope_maps[from.index()].insert(name, expression_name);
             } else {

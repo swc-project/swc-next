@@ -637,10 +637,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     //   Bare FunctionDeclaration in if/else is allowed in non-strict code only.
     fn visit_function(&mut self, node: Function) {
         let annex_b_if_body = is_annex_b_if_function(self.ast, self.current_node(), node);
-        self.state.enter_function(self.ast, node, annex_b_if_body);
+        self.state.enter_function(self.ast, node);
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_function(self.ast, node, &state.scope);
+        state
+            .symbols
+            .enter_function(self.ast, node, &state.scope, annex_b_if_body);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::Function(node));

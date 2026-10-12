@@ -1,6 +1,67 @@
 use super::*;
 
 #[test]
+fn annex_b_if_visibility() {
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        ..script
+    };
+
+    assert_named_declaration_targets(
+        "if (condition) function f() { return f; } f;",
+        script,
+        b"f",
+        &[Some("f()"), None],
+    );
+
+    assert_named_declaration_targets(
+        "let f; if (condition) function f() { return f; } f;",
+        script,
+        b"f",
+        &[Some("f()"), Some("f; if")],
+    );
+
+    assert_named_declaration_targets(
+        "if (condition) function f() { return f; } else function f(x) { return f; }",
+        script,
+        b"f",
+        &[Some("f()"), Some("f(x)")],
+    );
+
+    assert_named_declaration_targets(
+        "if (condition) function f(f) { return f; }",
+        script,
+        b"f",
+        &[Some("f) {")],
+    );
+
+    assert_named_declaration_targets(
+        "if (condition) function f(a = f) { var f; return f; }",
+        script,
+        b"f",
+        &[Some("f(a"), Some("f; return")],
+    );
+
+    assert_named_declaration_targets(
+        "if (condition) function arguments() { return arguments; }",
+        script,
+        b"arguments",
+        &[None],
+    );
+
+    assert_named_declaration_targets(
+        "if (condition) function f(): typeof f { var f; return f; }",
+        ts_script,
+        b"f",
+        &[Some("f():"), Some("f; return")],
+    );
+}
+
+#[test]
 fn expression_name_visibility() {
     let js = Options::default();
     let ts = ts_module_options();

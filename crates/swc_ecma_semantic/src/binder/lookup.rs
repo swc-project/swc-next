@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{ScopeId, SymbolId};
 use super::{
     BindingVisibility, Declaration, NameResolution, ReferenceSpace, ScopeMap, Symbol, SymbolFlags,
     TsLocalExportMap, TsMemberEnvironments, TsMemberView, TsResolvedAliasSpaces, TsScopeViewIndex,
-    TsSourceExports, find_expression_name,
+    TsSourceExports, find_internal_name,
 };
 use crate::scope::{Scope, ScopeKind};
 
@@ -420,7 +420,7 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
         scope_maps,
         ..
     } = lexical;
-    // The implicit arguments object is inside the expression-name environment
+    // The implicit arguments object shadows an expression or if-branch name,
     // even though both are represented by the same function scope.
     let arguments_barrier =
         query.arguments_barrier() && scopes[current.index()].flags.arguments_barrier;
@@ -428,7 +428,7 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
         (!arguments_barrier
             || !symbols[symbol.index()]
                 .flags
-                .contains(SymbolFlags::FUNCTION_EXPRESSION))
+                .intersects(SymbolFlags::FUNCTION_EXPRESSION | SymbolFlags::ANNEX_B_IF_FUNCTION))
             && accept(symbol)
     };
     if TS_LOOKUP
@@ -443,10 +443,10 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
     if accept_visible(symbol) {
         return Some(symbol);
     }
-    // Flattened expression names remain an outer fallback when a same-named
+    // Flattened internal names remain an outer fallback when a same-named
     // type parameter or a declaration hidden from a signature is rejected.
-    let expression_name = find_expression_name(symbols, lexical.declarations, current, symbol)?;
-    accept_visible(expression_name).then_some(expression_name)
+    let internal_name = find_internal_name(symbols, lexical.declarations, current, symbol)?;
+    accept_visible(internal_name).then_some(internal_name)
 }
 
 #[inline(always)]
@@ -484,7 +484,7 @@ fn binding_visible_from(child: ScopeKind, flags: SymbolFlags, space: ReferenceSp
     if child == ScopeKind::TsConditionalExtends {
         return !flags.contains(SymbolFlags::TYPE_PARAMETER);
     }
-    if !is_signature_query(child, space) || flags.intersects(SymbolFlags::EXPRESSION_NAME) {
+    if !is_signature_query(child, space) || flags.intersects(SymbolFlags::INTERNAL_NAME) {
         return true;
     }
     // A class or enum has type meaning even when requested through `typeof`.

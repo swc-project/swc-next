@@ -125,6 +125,7 @@ fn format_symbol_flags(flags: SymbolFlags) -> String {
         (SymbolFlags::CATCH_VAR, "CatchVariable"),
         (SymbolFlags::FUNCTION, "Function"),
         (SymbolFlags::FUNCTION_EXPRESSION, "FunctionExpression"),
+        (SymbolFlags::ANNEX_B_IF_FUNCTION, "AnnexBIfFunction"),
         (SymbolFlags::IMPORT, "Import"),
         (SymbolFlags::TYPE_IMPORT, "TypeImport"),
         (SymbolFlags::TYPE_ALIAS, "TypeAlias"),

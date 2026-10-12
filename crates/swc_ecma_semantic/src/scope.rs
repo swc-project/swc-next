@@ -287,7 +287,7 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    pub fn enter_function(&mut self, tree: &Ast, function: Function, annex_b_if_body: bool) {
+    pub fn enter_function(&mut self, tree: &Ast, function: Function) {
         let flags = if self.has_retroactive_use_strict(tree, function.body(tree)) {
             ScopeFlags {
                 strict: true,
@@ -296,14 +296,6 @@ impl<'a> ScopeTracker<'a> {
         } else {
             self.inherit_strict_flag()
         };
-        // Annex B.3.3 permits a FunctionDeclaration directly in a sloppy
-        // if/else clause. Its lexical binding is distinct from bindings in
-        // the enclosing scope, just as if the clause had an implicit block.
-        // Use the function node as the scope creator so `exit_scope` removes
-        // this scope together with the function scope below.
-        if annex_b_if_body && !flags.strict {
-            self.push_scope(ScopeKind::Block, function.node_id(), flags);
-        }
         self.push_function_scope(function.node_id(), flags);
     }
 
@@ -501,7 +493,7 @@ impl<'a> ScopeTracker<'a> {
         }
     }
 
-    // A node owns its lexical scopes, including the implicit Annex B block.
+    // A node owns its lexical scopes.
     // Lookup views have a separate lifetime: their root node may
     // create lexical scopes without owning the surrounding lookup view.
     pub fn exit_scope(&mut self, node: NodeId) {

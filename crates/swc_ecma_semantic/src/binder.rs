@@ -59,7 +59,7 @@ use module_instance::{TsModuleInstanceMemo, TsModuleInstanceState, ts_module_ins
 /// contribution of an individual declaration matters.
 #[derive(Debug, Clone, Copy)]
 pub struct Symbol {
-    /// Same-named declarations that shadow an expression name reuse its name
+    /// Same-named declarations that shadow an internal name reuse its name
     /// handle, so lexical lookup can compare names without reading the AST.
     pub name: AstWtf8,
     pub flags: SymbolFlags,
@@ -67,7 +67,7 @@ pub struct Symbol {
     pub declaration: DeclarationId,
 }
 
-pub(crate) fn find_expression_name(
+pub(crate) fn find_internal_name(
     symbols: &[Symbol],
     declarations: &[Declaration],
     scope: ScopeId,
@@ -77,7 +77,7 @@ pub(crate) fn find_expression_name(
     symbols.iter().enumerate().find_map(|(index, symbol)| {
         let id = SymbolId::from_usize(index);
         (id != binding
-            && symbol.flags.intersects(SymbolFlags::EXPRESSION_NAME)
+            && symbol.flags.intersects(SymbolFlags::INTERNAL_NAME)
             && symbol.name == name
             && declarations[symbol.declaration.index()].scope == scope)
             .then_some(id)
@@ -145,8 +145,12 @@ bitflags::bitflags! {
         const FUNCTION_EXPRESSION = 1 << 24;
         /// A named class expression's internal name, local to its class scope.
         const CLASS_EXPRESSION = 1 << 25;
+        /// The branch-local name of a sloppy if/else function declaration.
+        /// Shares the function scope and is shadowed by parameters and locals.
+        const ANNEX_B_IF_FUNCTION = 1 << 26;
 
         const EXPRESSION_NAME = Self::FUNCTION_EXPRESSION.bits() | Self::CLASS_EXPRESSION.bits();
+        const INTERNAL_NAME = Self::EXPRESSION_NAME.bits() | Self::ANNEX_B_IF_FUNCTION.bits();
 
         /// `var` / `let` / `const`, parameters and catch bindings included.
         const VARIABLE = Self::FUNCTION_SCOPED_VAR.bits() | Self::BLOCK_SCOPED_VAR.bits();
@@ -2174,10 +2178,20 @@ impl<'a> SymbolTracker<'a> {
         kind == VariableKind::Var && scope.var_write_crosses_with()
     }
 
-    pub fn enter_function(&mut self, tree: &Ast<'a>, function: Function, scope: &ScopeTracker<'a>) {
+    pub fn enter_function(
+        &mut self,
+        tree: &Ast<'a>,
+        function: Function,
+        scope: &ScopeTracker<'a>,
+        annex_b_if_body: bool,
+    ) {
         self.push_saved_context();
         let is_declaration = function.function_type(tree) == FunctionType::FunctionDeclaration;
-        let target = if is_declaration {
+        // Preserve the branch-local binding without allocating an implicit
+        // block. Like an expression name, it is distinct from parameters,
+        // body declarations and same-named declarations in the outer scope.
+        let branch_local = annex_b_if_body && !scope.current_scope().flags.strict;
+        let target = if is_declaration && !branch_local {
             scope
                 .current_scope()
                 .parent
@@ -2194,7 +2208,7 @@ impl<'a> SymbolTracker<'a> {
             tree.is_ts() && tree.node_kind(target_scope.node) == NodeKind::CatchClause;
         let annex_b_block_function = !tree.is_ts()
             && is_declaration
-            && target_kind == ScopeKind::Block
+            && (target_kind == ScopeKind::Block || branch_local)
             && !target_scope.flags.strict
             && !function.generator(tree)
             && !function.r#async(tree);
@@ -2211,6 +2225,7 @@ impl<'a> SymbolTracker<'a> {
         self.pending = PendingBinding {
             flags: SymbolFlags::FUNCTION
                 .with(SymbolFlags::FUNCTION_EXPRESSION, !is_declaration)
+                .with(SymbolFlags::ANNEX_B_IF_FUNCTION, branch_local)
                 .with(
                     SymbolFlags::ANNEX_B_FUNCTION,
                     is_declaration && !function.generator(tree) && !function.r#async(tree),
@@ -2739,7 +2754,7 @@ impl<'a> SymbolTracker<'a> {
             .filter(|&symbol| {
                 !self.symbols[symbol.index()]
                     .flags
-                    .intersects(SymbolFlags::EXPRESSION_NAME)
+                    .intersects(SymbolFlags::INTERNAL_NAME)
             });
         let (destination, shared, existing) = if self.pending_is_default_export(tree) {
             let shared = self
@@ -2945,7 +2960,7 @@ impl<'a> SymbolTracker<'a> {
                 hashbrown::hash_map::RawEntryMut::Occupied(entry)
                     if self.symbols[entry.get().index()]
                         .flags
-                        .intersects(SymbolFlags::EXPRESSION_NAME) =>
+                        .intersects(SymbolFlags::INTERNAL_NAME) =>
                 {
                     let symbol_name = self.symbols[entry.get().index()].name;
                     entry.remove_entry();
@@ -3577,7 +3592,7 @@ impl<'a> SymbolTracker<'a> {
                     .get(binding.scope.index())
                     .and_then(|bindings| bindings.get(tree.get_wtf8(name).as_bytes()))
                     .map(|&symbol| self.symbols[symbol.index()])
-                    .filter(|symbol| symbol.flags.intersects(SymbolFlags::EXPRESSION_NAME))
+                    .filter(|symbol| symbol.flags.intersects(SymbolFlags::INTERNAL_NAME))
                     .map_or(name, |symbol| symbol.name),
                 flags: declaration_flags,
                 declaration: declaration_id,
