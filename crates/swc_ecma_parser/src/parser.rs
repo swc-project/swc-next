@@ -10025,8 +10025,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.validate_no_cover_initialized_syntax(expression)?;
                 }
             }
-            ExprData::ParenthesizedExpression(parenthesized) => {
-                self.validate_no_cover_initialized_syntax(parenthesized.expression(&self.ast))?;
+            ExprData::ParenthesizedExpression(_) => {
+                // The contents were checked by cover_to_parenthesized_expression before
+                // this node was created, even when parentheses will later be stripped.
             }
             ExprData::SequenceExpression(sequence) => {
                 for index in 0..sequence.expressions(&self.ast).len() {
@@ -13319,6 +13320,26 @@ mod tests {
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
             .collect()
+    }
+
+    #[test]
+    fn cover_initialized_names() {
+        let allocator = Allocator::new();
+        for preserve_parens in [false, true] {
+            let options = Options {
+                preserve_parens,
+                ..Options::default()
+            };
+            let parse =
+                |source| Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+
+            let parsed = parse("(({a = 0}));");
+            assert_eq!(parsed.diagnostics.len(), 1);
+            assert_eq!(parsed.diagnostics[0].span, Span::new(3, 8));
+
+            let parsed = parse("(({a: ({b = 0}), c = 0}));");
+            assert_eq!(parsed.diagnostics.len(), 2);
+        }
     }
 
     #[test]
