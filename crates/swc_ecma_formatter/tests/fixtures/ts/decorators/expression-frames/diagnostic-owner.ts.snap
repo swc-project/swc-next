@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function make(argument: string) {
+  return (value: any, context: any) => value;
+}
+// @ts-expect-error
+const complete = @make(1) class Item { static value: string = 1; };
+const enclosed = (
+  // @ts-expect-error
+  @make(1) class Item { static value: string = 1; }).missing();
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function make(argument: string) {
+  return (value: any, context: any) =>
+    value;
+}
+// @ts-expect-error
+const complete = @make(1,) class Item { static value: string = 1; };
+const enclosed = (
+  // @ts-expect-error
+  @make(1,) class Item { static value: string = 1; }).missing();
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function make(argument: string) {
+  return (value: any, context: any) =>
+    value
+}
+// @ts-expect-error
+const complete = @make(1,) class Item { static value: string = 1 }
+const enclosed = (
+  // @ts-expect-error
+  @make(1,) class Item { static value: string = 1 }).missing()

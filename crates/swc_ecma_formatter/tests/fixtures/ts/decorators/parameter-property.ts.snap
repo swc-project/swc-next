@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(@first /* decorator */ @second /* modifier */ private /* private */ readonly /* binding */ value: number = 1) {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  constructor(
+    @first /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1,
+  ) {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class C {
+  constructor(
+    @first /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1
+  ) {}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+class C {
+  constructor(
+    @first /* decorator */
+    @second /* modifier */
+    private /* private */ readonly /* binding */ value: number = 1,
+  ) {}
+}

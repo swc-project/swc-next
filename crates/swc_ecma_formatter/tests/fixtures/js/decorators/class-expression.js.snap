@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends (@dec class {}) {}
+---------- Options ----------
+{}
+---------- Output ----------
+class C extends (
+  @dec
+  class {}
+) {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class C extends (
+  @dec
+  class {}
+) {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+class C extends (
+  @dec
+  class {}
+) {}
