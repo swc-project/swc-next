@@ -1,10 +1,10 @@
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
-    IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
-    SymbolId,
+    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, CallExpression,
+    DUMMY_SP, Expr, IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId,
+    SimpleAssignmentTarget, Span, SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
 use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, SymbolFlags,
+    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -18,6 +18,17 @@ pub struct BoundIdentifier {
 }
 
 impl BoundIdentifier {
+    /// Allocate a collision-free binding identifier and register its declaration and symbol.
+    ///
+    /// ```javascript
+    /// // Before: a generated temporary would conflict with _temp.
+    /// var _temp;
+    /// // After: the caller can attach a declaration using the returned binding identity.
+    /// var _temp;
+    /// var _temp2;
+    /// // Reserve _temp2, allocate its BindingIdentifier and register it in the requested scope.
+    /// // Return the identifier and SymbolId together; declaration attachment happens separately.
+    /// ```
     pub fn named(
         ctx: &mut Mutation<'_, '_, '_>,
         scope: ScopeId,
@@ -30,7 +41,16 @@ impl BoundIdentifier {
         BoundIdentifier { identifier, symbol }
     }
 
-    /// Create a fresh read-only reference to this binding.
+    /// Allocate a fresh read reference to this binding in the requested evaluation scope.
+    ///
+    /// ```javascript
+    /// // Before: one generated binding exists.
+    /// var _temp;
+    /// // After: each use needs a distinct reference node, not a cloned declaration.
+    /// var _temp;
+    /// use(_temp, _temp);
+    /// // Each call allocates a fresh IdentifierReference and ReferenceId targeting the same SymbolId.
+    /// ```
     pub fn reference_read(
         &self,
         ctx: &mut Mutation<'_, '_, '_>,
@@ -44,7 +64,17 @@ impl BoundIdentifier {
         node
     }
 
-    /// Create a fresh write-only reference for an assignment target.
+    /// Allocate a fresh write-only reference to this binding for an assignment target.
+    ///
+    /// ```javascript
+    /// // Before: the generated binding has no assignment reference.
+    /// var _temp;
+    /// // After: the assignment builder needs a write target, not a read or declaration.
+    /// var _temp;
+    /// _temp = 1;
+    /// // Allocate the target's IdentifierReference with write-only flags and the existing SymbolId.
+    /// // The caller attaches that reference to the assignment separately.
+    /// ```
     pub fn reference_write(
         &self,
         ctx: &mut Mutation<'_, '_, '_>,
@@ -63,7 +93,16 @@ impl BoundIdentifier {
         node
     }
 
-    /// Build an assignment using a fresh write-only reference to this binding.
+    /// Build an assignment to this binding with a fresh write-only target reference.
+    ///
+    /// ```javascript
+    /// // Before: initialize() is an existing expression in the destination scope.
+    /// initialize();
+    /// // After: the caller retains the expression as the assignment's right-hand side.
+    /// _temp = initialize();
+    /// // Create a fresh write reference to the registered _temp binding and allocate the assignment.
+    /// // Retain initialize() and its semantic identities; attach the prepared expression separately.
+    /// ```
     pub fn assign(
         &self,
         ctx: &mut Mutation<'_, '_, '_>,
@@ -81,8 +120,19 @@ impl BoundIdentifier {
 }
 
 impl Mutation<'_, '_, '_> {
-    /// Reserves and interns a name in the shared transform collision domain.
-    /// Collect existing names once, when a transform first needs a fresh name.
+    /// Reserve and intern an available name in the lazily initialized shared transform collision domain.
+    ///
+    /// ```javascript
+    /// // Before: both a declaration and an unresolved reference reserve names.
+    /// var _temp;
+    /// use(_temp2);
+    /// // After: a generated declaration can use the first available suffix.
+    /// var _temp;
+    /// var _temp3;
+    /// use(_temp2);
+    /// // On first use, observe symbols, binding declaration spellings and all reference names.
+    /// // Reserve _temp3 immediately so another allocation cannot reuse it; no binding is registered yet.
+    /// ```
     pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstUtf8 {
         let names = self.state.used_names.get_or_insert_with(|| {
             let mut names = UsedNameState::new(self.ast.allocator());
@@ -108,8 +158,17 @@ impl Mutation<'_, '_, '_> {
 }
 
 impl<'a> Mutation<'_, '_, 'a> {
-    /// Read a binding's AST name and register all pending allocations before
-    /// passing the declaration data to ScopeModel's index-only operation.
+    /// Read a binding's AST name and register pending allocations before registering its declaration and symbol.
+    ///
+    /// ```javascript
+    /// // Before: lowering needs a temporary but its declaration is not indexed.
+    /// run();
+    /// // After: the caller attaches a prepared var declaration.
+    /// var _temp;
+    /// run();
+    /// // Read _temp's name handle and arena-lived text, then grow indexes through all AST allocations.
+    /// // Register the binding in its destination scope with var flags; retain its returned SymbolId.
+    /// ```
     pub fn register_binding(
         &mut self,
         scope: ScopeId,
@@ -124,8 +183,17 @@ impl<'a> Mutation<'_, '_, 'a> {
             .register_binding(scope, binding.node_id(), name, text, flags)
     }
 
-    /// Read a reference's AST name and register allocations before passing its
-    /// semantic record to ScopeModel. The caller supplies its resolved target.
+    /// Read an identifier's AST name and register a caller-resolved reference after registering pending allocations.
+    ///
+    /// ```javascript
+    /// // Before: the temporary binding is registered.
+    /// var _temp;
+    /// // After: lowering prepares a write reference for an assignment.
+    /// var _temp;
+    /// _temp = initialize();
+    /// // Read the new target node's name, grow pending allocations and build its Reference record.
+    /// // Supply the destination scope, existing _temp SymbolId and write-only flags; attach it separately.
+    /// ```
     pub fn register_reference(
         &mut self,
         scope: ScopeId,
@@ -144,10 +212,16 @@ impl<'a> Mutation<'_, '_, 'a> {
         self.state.semantic.register_reference(reference)
     }
 
-    /// Allocate nodes in their final evaluation scope and register only the new
-    /// NodeId range. The closure must only create nodes; existing AST edges are
-    /// edited through mutation APIs. Bindings, references and scope owners use
-    /// their dedicated construction methods.
+    /// Allocate new AST nodes and register their evaluation scope without changing existing edges.
+    ///
+    /// ```javascript
+    /// // Before: initialize() is already registered.
+    /// initialize();
+    /// // After: lowering prepares a unary wrapper in the same scope.
+    /// void initialize();
+    /// // Allocate only the UnaryExpression and register the new NodeId range in that scope.
+    /// // Retain the existing call; attach the wrapper separately and register new semantic identities explicitly.
+    /// ```
     pub fn add_node<N>(&mut self, scope: ScopeId, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
         debug_assert!(
             self.state.semantic.scope(scope).active,
@@ -158,12 +232,16 @@ impl<'a> Mutation<'_, '_, 'a> {
         node
     }
 
-    /// Register a scope for an already allocated owner below an active parent.
+    /// Register a fresh scope owner below an active parent with the supplied kind and flags.
     ///
-    /// Register the owner's node mapping, inherit strictness, and initialize the
-    /// hoist target and flags according to `kind`. The owner must not already own
-    /// a scope. Existing children are moved separately with `move_subtree_to_scope`;
-    /// newly allocated parameters/body nodes use `add_node` in the returned scope.
+    /// ```javascript
+    /// // Before: run() executes in the surrounding scope.
+    /// run();
+    /// // After: the caller adds an arrow, which needs its own Function scope.
+    /// (() => run())();
+    /// // Register pending AST allocations, then register the arrow owner and inherit strictness.
+    /// // Move existing children into it separately; the owner must not own a scope yet.
+    /// ```
     pub fn create_child_scope(
         &mut self,
         parent: ScopeId,
@@ -172,18 +250,27 @@ impl<'a> Mutation<'_, '_, 'a> {
         flags: ScopeFlags,
     ) -> ScopeId {
         self.state.semantic.grow_to(self.ast.node_count(), parent);
-        self.state
+        let scope = self
+            .state
             .semantic
-            .create_child_scope(parent, owner, kind, flags)
+            .create_child_scope(parent, owner, kind, flags);
+        if flags.direct_eval {
+            mark_direct_eval(self.state.semantic, parent);
+        }
+        scope
     }
 
-    /// Transfer a scope to a replacement owner and change its kind/flags.
+    /// Transfer a scope to a new owner and kind while preserving its contents and identities.
     ///
-    /// Preserve ScopeId, parent, bindings, declaration/reference identities and
-    /// child scopes. Replace the old owner's mapping with the new owner's mapping;
-    /// retained content stays in this scope. Refresh affected hoist targets,
-    /// function-body linkage and flags instead of copying the old scope unchanged.
-    /// Example: a StaticBlock scope becomes an arrow's Function scope.
+    /// ```javascript
+    /// // Before: value and its uses belong to the static-block scope.
+    /// class C { static { let value = 1; use(value); } }
+    /// // After: reuse that scope for the generated arrow instead of rebuilding bindings.
+    /// class C { static #_ = (() => { let value = 1; use(value); })(); }
+    /// // Register pending AST allocations, replace the StaticBlock owner and change kind to Function.
+    /// // Keep ScopeId, parent, bindings, references and child scopes; refresh hoist/body links.
+    /// // The caller supplies arrow flags, including arguments_barrier = false.
+    /// ```
     pub fn convert_scope(
         &mut self,
         scope: ScopeId,
@@ -191,61 +278,236 @@ impl<'a> Mutation<'_, '_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) {
+        let original = self.semantic().scope(scope);
+        let parent = original.parent.expect("non-root scope");
+        if original.flags.strict != (flags.strict || self.semantic().scope(parent).flags.strict) {
+            todo!("Recompute descendant strictness when converting {scope:?}");
+        }
+        if original.flags.direct_eval && !flags.direct_eval {
+            todo!("Recompute ancestor direct-eval summaries when converting {scope:?}");
+        }
         self.state.semantic.grow_to(self.ast.node_count(), scope);
         self.state.semantic.convert_scope(scope, owner, kind, flags);
+        if flags.direct_eval {
+            mark_direct_eval(self.state.semantic, parent);
+        }
     }
 
-    /// Move the evaluation of a retained subtree between active scopes.
+    /// Move a retained subtree's direct evaluation mappings and reparent its child scopes while preserving identities.
     ///
-    /// Update node mappings and Reference.scope only for nodes directly in `from`.
-    /// Reparent direct child scopes contained in the subtree to `to`, preserving
-    /// their internal mappings and bindings. Preserve reference IDs, targets and
-    /// use lists; maintain affected direct-eval flags along the new ancestry.
-    /// This operation does not move bindings: callers use `move_binding` for local
-    /// declarations whose ownership changes. It prepares semantic information;
-    /// the caller attaches the subtree through a container, setter or action.
-    pub fn move_subtree_to_scope(&mut self, root: NodeId, from: ScopeId, to: ScopeId) {
-        todo!("Move evaluation of subtree {root:?} from {from:?} to {to:?}")
+    /// ```javascript
+    /// // Before: use and value execute in a static-block scope; the arrow owns a nested scope.
+    /// class C { static { use(value, () => value); } }
+    /// // After: the caller reuses the whole call in the class scope.
+    /// class C { static #_ = use(value, () => value); }
+    /// // Move call/use/value nodes directly in the block scope to the class scope, preserving references.
+    /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
+    /// // Refresh direct-eval effects; move owned bindings separately, then attach through a setter or container.
+    /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
+    /// // Changes needing source direct-eval recomputation or different inherited strictness remain TODOs.
+    /// ```
+    pub fn move_subtree_to_scope(
+        &mut self,
+        root: impl TraverseWith<'a>,
+        from: ScopeId,
+        to: ScopeId,
+    ) {
+        assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
+        if from == to {
+            return;
+        }
+        if self.semantic().scope(from).flags.strict != self.semantic().scope(to).flags.strict {
+            todo!("Recompute subtree strictness when moving from {from:?} to {to:?}");
+        }
+        if self.semantic().scope(from).flags.direct_eval
+            && !scope_is_ancestor(self.semantic(), from, to)
+        {
+            todo!("Recompute source direct-eval summaries when moving from {from:?} to {to:?}");
+        }
+        let mut mover = ScopeMover {
+            semantic: self.state.semantic,
+            from,
+            to,
+        };
+        root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
     }
 
-    /// Move an existing binding between scopes without allocating a new symbol.
+    /// Move a binding and its source-owned declarations to another scope without changing its symbol.
     ///
-    /// Move the binding-table entry and declarations belonging to `from`; preserve
-    /// merged declarations in other scopes, declaration IDs, reference targets and
-    /// use lists. Require that `to` has no conflicting binding. Node evaluation
-    /// scopes are updated separately by `move_subtree_to_scope`, since declaration
-    /// ownership (e.g. a var hoist target) can differ from its evaluation scope.
-    #[expect(dead_code, reason = "Planned binding relocation API")]
+    /// ```javascript
+    /// // Before: the block owns value's lexical binding.
+    /// { let value = 1; use(value); }
+    /// // After: the caller moves the declaration and use into an arrow.
+    /// (() => { let value = 1; use(value); })();
+    /// // Move value's binding-table entry and source-owned declarations to the arrow scope.
+    /// // Keep declaration IDs, SymbolId, reference targets, uses and declarations elsewhere.
+    /// // The destination must have no conflicting value; move node evaluation scopes separately.
+    /// ```
+    #[expect(
+        dead_code,
+        reason = "Binding relocation is not yet needed by current passes"
+    )]
     pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
         self.state.semantic.move_binding(from, to, symbol);
     }
 
-    /// Change an active non-root scope's parent to another active scope.
+    /// Change an active non-root scope's parent while preserving its owner and internal identities.
     ///
-    /// Reject cycles. Preserve owner, bindings and internal node/reference mappings;
-    /// delegate tree/hoist-target changes to ScopeModel and coordinate any
-    /// syntax-dependent strictness/direct-eval changes here. Function and
-    /// static-block scopes remain their own hoist targets.
+    /// ```javascript
+    /// // Before: the inner block is a child of f's Function scope.
+    /// function f() { { let value = 1; use(value); } }
+    /// // After: a generated arrow encloses the same inner block.
+    /// function f() { (() => { { let value = 1; use(value); } })(); }
+    /// // Reparent the block scope from f to the arrow without changing its contents.
+    /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
+    /// // Mutation coordinates strictness and direct-eval effects along the changed ancestry.
+    /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
-        todo!("Reparent {scope:?} below {parent:?}")
+        reparent_scope(self.state.semantic, scope, parent);
     }
 
-    /// Retire an empty non-root scope after its retained contents have moved.
+    /// Retire an empty non-root scope and clear its detached owner's mapping without recycling its ID.
     ///
-    /// Require no remaining bindings, declarations, references, child scopes or
-    /// retained node mappings. Clear the detached owner's mapping and mark the
-    /// scope inactive without recycling its ID. Reused scopes use `convert_scope`
-    /// instead; this operation does not recursively delete a subtree.
+    /// ```javascript
+    /// // Before: an empty static block still owns a scope.
+    /// class C { static {} }
+    /// // After: the caller removes the block from the class body.
+    /// class C {}
+    /// // Require no remaining bindings, declarations, references, child scopes or retained nodes.
+    /// // Clear the block owner's mapping and mark its scope inactive; do not delete descendants.
+    /// // For a reused block body, convert_scope keeps the scope instead.
+    /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         self.state.semantic.remove_scope(scope);
     }
 
-    /// Clear the evaluation-scope mapping of a detached syntax shell only.
+    /// Clear a detached node's evaluation mapping without changing mappings of its retained children.
     ///
-    /// Require that the node owns no active scope, binding or reference. Do not
-    /// visit its children: they may already be retained elsewhere in the AST.
-    /// Example: the discarded ExpressionStatement after extracting its expression.
+    /// ```javascript
+    /// // Before: use(value) is attached through an ExpressionStatement.
+    /// class C { static { use(value); } }
+    /// // After: its expression is reused directly as a field initializer.
+    /// class C { static #_ = use(value); }
+    /// // Move the expression first, then clear only the discarded ExpressionStatement mapping.
+    /// // Its call and references remain registered; the shell must own no scope, binding or reference.
+    /// ```
     pub fn clear_node_scope(&mut self, node: NodeId) {
         self.state.semantic.clear_node_scope(node);
+    }
+}
+
+struct ScopeMover<'s, 'a> {
+    semantic: &'s mut ScopeModel<'a>,
+    from: ScopeId,
+    to: ScopeId,
+}
+
+impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
+    fn enter_call_expression(&mut self, call: CallExpression, ctx: &mut TraverseCtx<'_, 'a>) {
+        if !self.semantic.scope(self.from).flags.direct_eval
+            || self.semantic.scope_at(call.node_id()) != Some(self.to)
+            || call.optional(ctx.ast)
+        {
+            return;
+        }
+        let mut callee = call.callee(ctx.ast).node_id();
+        loop {
+            callee = match ctx.ast.kind_data(callee) {
+                NodeKindData::IdentifierReference(identifier) => {
+                    if ctx.ast.get_utf8(identifier.name(ctx.ast)) == "eval" {
+                        mark_direct_eval(self.semantic, self.to);
+                    }
+                    break;
+                }
+                NodeKindData::ParenthesizedExpression(node) => node.expression(ctx.ast).node_id(),
+                NodeKindData::TsAsExpression(node) => node.expression(ctx.ast).node_id(),
+                NodeKindData::TsSatisfiesExpression(node) => node.expression(ctx.ast).node_id(),
+                NodeKindData::TsTypeAssertion(node) => node.expression(ctx.ast).node_id(),
+                NodeKindData::TsNonNullExpression(node) => node.expression(ctx.ast).node_id(),
+                NodeKindData::TsInstantiationExpression(node) => node.expression(ctx.ast).node_id(),
+                _ => break,
+            };
+        }
+    }
+
+    fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
+        let scope = self.semantic.scope_at(node).expect("retained node scope");
+        if self.semantic.scope(scope).node == node {
+            // Named expressions can have multiple scopes owned by the same node.
+            let mut outer = scope;
+            while let Some(parent) = self.semantic.scope(outer).parent {
+                if self.semantic.scope(parent).node != node {
+                    break;
+                }
+                outer = parent;
+            }
+            if self.semantic.scope(outer).parent == Some(self.from) {
+                reparent_scope(self.semantic, outer, self.to);
+            }
+        } else if scope == self.from {
+            self.semantic.move_node_to_scope(node, self.from, self.to);
+        }
+    }
+}
+
+fn scope_is_ancestor(semantic: &ScopeModel<'_>, ancestor: ScopeId, scope: ScopeId) -> bool {
+    let mut current = Some(scope);
+    while let Some(id) = current {
+        if id == ancestor {
+            return true;
+        }
+        current = semantic.scope(id).parent;
+    }
+    false
+}
+
+/// Mark a scope and its ancestors as observable by a retained direct-eval call.
+///
+/// ```javascript
+/// // Before: eval already marks f's scope and its ancestors.
+/// function f() { eval("value"); }
+/// // After: an inserted arrow also becomes an ancestor of that call.
+/// function f() { (() => eval("value"))(); }
+/// // Mark the arrow, then walk outward until reaching an already marked ancestor.
+/// ```
+fn mark_direct_eval(semantic: &mut ScopeModel<'_>, scope: ScopeId) {
+    let mut current = Some(scope);
+    while let Some(id) = current {
+        let mut flags = semantic.scope(id).flags;
+        if flags.direct_eval {
+            break;
+        }
+        flags.direct_eval = true;
+        semantic.set_scope_flags(id, flags);
+        current = semantic.scope(id).parent;
+    }
+}
+
+/// Reparent a scope when inherited strictness and existing direct-eval summaries remain valid.
+///
+/// ```javascript
+/// // Before: the block is directly below f.
+/// function f() { { use(); } }
+/// // After: a generated arrow becomes its parent.
+/// function f() { (() => { { use(); } })(); }
+/// // Change the parent and hoist targets, then propagate any direct-eval marking outward.
+/// // Removing marked ancestors or changing inherited strictness requires recomputation and remains TODO.
+/// ```
+fn reparent_scope(semantic: &mut ScopeModel<'_>, scope: ScopeId, parent: ScopeId) {
+    let original = semantic.scope(scope);
+    let previous = original.parent.expect("non-root scope");
+    assert!(original.active && semantic.scope(parent).active);
+    if previous == parent {
+        return;
+    }
+    if semantic.scope(previous).flags.strict != semantic.scope(parent).flags.strict {
+        todo!("Recompute inherited strictness when reparenting {scope:?}");
+    }
+    if original.flags.direct_eval && !scope_is_ancestor(semantic, previous, parent) {
+        todo!("Recompute old ancestor direct-eval summaries when reparenting {scope:?}");
+    }
+    semantic.reparent_scope(scope, parent);
+    if original.flags.direct_eval {
+        mark_direct_eval(semantic, parent);
     }
 }

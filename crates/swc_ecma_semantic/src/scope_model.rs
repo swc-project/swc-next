@@ -16,7 +16,7 @@ use crate::{
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
-/// The basic semantic indexes needed by Babel-style transforms.
+/// The basic semantic indexes needed by transforms.
 ///
 /// Scope, symbol, declaration, reference, and node identities are preserved.
 /// This model maintains basic indexes without Semantic's TypeScript
@@ -175,6 +175,16 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Extend node indexes for new allocations in an active scope without changing existing entries.
+    ///
+    /// ```javascript
+    /// // Before: run() and its reference are already indexed.
+    /// run();
+    /// // After: the caller allocates a unary wrapper in the same evaluation scope.
+    /// void run();
+    /// // Grow through the new NodeId, set its evaluation scope and leave identity slots empty.
+    /// // Keep the existing call/reference entries; register new bindings and references separately.
+    /// ```
     pub fn grow_to(&mut self, node_count: usize, scope: ScopeId) {
         assert!(self.scope(scope).active, "target scope must be active");
         // Never truncate indexes when an already registered node is reused.
@@ -185,12 +195,18 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
-    /// Register a binding from data read by the caller.
+    /// Register a declaration and its scope binding using the caller-supplied name, text and flags.
     ///
-    /// `text` is the arena-lived UTF-8 spelling represented by `name`. It becomes
-    /// the binding-table key; `name` remains the symbol's AST string handle.
-    /// Grow indexes through this node only. The AST-facing caller registers any
-    /// other new allocations with `grow_to` in their evaluation scope.
+    /// ```javascript
+    /// // Before: the transform has no temporary binding.
+    /// run();
+    /// // After: the caller allocates and attaches a temporary declaration.
+    /// var _temp;
+    /// run();
+    /// // Register _temp's node, name handle, arena-lived text and var flags in its hoist scope.
+    /// // Reuse the symbol for an existing same-name binding and record the new declaration.
+    /// // Grow through this node only; the caller registers other allocations separately.
+    /// ```
     pub fn register_binding(
         &mut self,
         scope: ScopeId,
@@ -233,7 +249,17 @@ impl<'a> ScopeModel<'a> {
         symbol
     }
 
-    /// Register a reference record and its node/use indexes without reading AST.
+    /// Register a fresh reference record in the node indexes and its target symbol's use list.
+    ///
+    /// ```javascript
+    /// // Before: _temp's declaration already has a SymbolId.
+    /// var _temp;
+    /// // After: the caller creates a read of that binding.
+    /// var _temp;
+    /// _temp;
+    /// // Register the read's node, scope, target and flags, then append its ReferenceId to uses.
+    /// // An unresolved reference has no target/use entry; registering the same node twice is invalid.
+    /// ```
     pub fn register_reference(&mut self, reference: Reference) -> ReferenceId {
         let Reference {
             node,
@@ -258,12 +284,16 @@ impl<'a> ScopeModel<'a> {
 }
 
 impl ScopeModel<'_> {
-    /// Register an allocated scope owner below an active parent.
+    /// Register a fresh scope owner below an active parent with the supplied kind and flags.
     ///
-    /// Set the owner's node mapping, inherit strictness, and initialize the hoist
-    /// target and flags according to `kind`. The owner must not already own a
-    /// scope. The caller registers AST allocations and supplies syntax-dependent
-    /// flags; existing children are moved separately.
+    /// ```javascript
+    /// // Before: run() executes in the surrounding scope.
+    /// run();
+    /// // After: the caller adds an arrow, which needs its own Function scope.
+    /// (() => run())();
+    /// // Register the arrow owner below the surrounding scope and inherit strictness.
+    /// // Move existing children into it separately; the owner must not own a scope yet.
+    /// ```
     pub fn create_child_scope(
         &mut self,
         parent: ScopeId,
@@ -271,16 +301,53 @@ impl ScopeModel<'_> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) -> ScopeId {
-        todo!("Register {kind:?} scope for {owner:?} below {parent:?} with {flags:?}")
+        let parent_scope = self.scope(parent);
+        assert!(parent_scope.active);
+        assert!(!self.iter_scopes().any(|entry| entry.scope.node == owner));
+        assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
+        if kind == ScopeKind::FunctionBody {
+            assert_eq!(parent_scope.kind, ScopeKind::Function);
+            assert!(parent_scope.function_body.is_none());
+        }
+        self.grow_to(owner.index() + 1, parent);
+        let id = ScopeId::from_usize(self.scopes.list.len());
+        self.scopes.list.push(Scope {
+            active: true,
+            node: owner,
+            parent: Some(parent),
+            hoist_target: if kind.is_hoist_target() {
+                id
+            } else {
+                parent_scope.hoist_target
+            },
+            function_body: None,
+            kind,
+            flags: ScopeFlags {
+                strict: flags.strict || parent_scope.flags.strict,
+                ..flags
+            },
+        });
+        self.scope_maps
+            .push(ScopeMap::new_in(self.scopes.list.bump()));
+        self.node_scopes[owner.index()] = Some(id);
+        if kind == ScopeKind::FunctionBody {
+            self.scopes.list[parent.index()].function_body = Some(id);
+        }
+        id
     }
 
-    /// Transfer a scope to a replacement owner and change its kind/flags.
+    /// Transfer a scope to a new owner and kind while preserving its contents and identities.
     ///
-    /// Preserve ScopeId, parent, bindings, declaration/reference identities and
-    /// child scopes. Replace the old owner's mapping with the new owner's mapping;
-    /// retained content stays in this scope. Refresh affected hoist targets and
-    /// function-body linkage. The caller supplies syntax-dependent flags.
-    /// Example: a StaticBlock scope becomes an arrow's Function scope.
+    /// ```javascript
+    /// // Before: value and its uses belong to the static-block scope.
+    /// class C { static { let value = 1; use(value); } }
+    /// // After: reuse that scope for the generated arrow instead of rebuilding bindings.
+    /// class C { static #_ = (() => { let value = 1; use(value); })(); }
+    /// // Replace the StaticBlock owner with the arrow owner and change kind to Function.
+    /// // Keep ScopeId, parent, bindings, references and child scopes; refresh hoist/body links.
+    /// // The caller supplies arrow flags, including arguments_barrier = false.
+    /// // Owners shared by multiple active scopes, such as named expressions, remain TODO.
+    /// ```
     pub fn convert_scope(
         &mut self,
         scope: ScopeId,
@@ -288,64 +355,270 @@ impl ScopeModel<'_> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) {
-        todo!("Convert {scope:?} to {kind:?} owned by {owner:?} with {flags:?}")
+        let original = self.scope(scope);
+        assert!(original.active);
+        let parent = original.parent.expect("cannot convert a root scope");
+        assert!(!matches!(kind, ScopeKind::Global | ScopeKind::Module));
+        assert!(kind == ScopeKind::Function || original.function_body.is_none());
+        if self
+            .iter_scopes()
+            .any(|entry| entry.id != scope && entry.scope.node == original.node)
+        {
+            todo!("Convert an owner shared by multiple active scopes");
+        }
+        assert!(
+            !self
+                .iter_scopes()
+                .any(|entry| entry.id != scope && entry.scope.node == owner)
+        );
+        if kind == ScopeKind::FunctionBody {
+            assert_eq!(self.scope(parent).kind, ScopeKind::Function);
+            assert!(
+                self.scope(parent)
+                    .function_body
+                    .is_none_or(|body| body == scope)
+            );
+        }
+        self.grow_to(owner.index() + 1, scope);
+        if original.node != owner {
+            assert_eq!(self.scope_at(original.node), Some(scope));
+            self.node_scopes[original.node.index()] = None;
+        }
+        if original.kind == ScopeKind::FunctionBody && kind != ScopeKind::FunctionBody {
+            self.scopes.list[parent.index()].function_body = None;
+        } else if kind == ScopeKind::FunctionBody {
+            self.scopes.list[parent.index()].function_body = Some(scope);
+        }
+        let strict = flags.strict || self.scope(parent).flags.strict;
+        let current = &mut self.scopes.list[scope.index()];
+        current.node = owner;
+        current.kind = kind;
+        current.flags = ScopeFlags { strict, ..flags };
+        self.node_scopes[owner.index()] = Some(scope);
+        let target = if kind.is_hoist_target() {
+            scope
+        } else {
+            self.scope(parent).hoist_target
+        };
+        self.update_hoist_target(scope, target);
     }
 
-    /// Move one node's evaluation mapping and its Reference.scope, if present.
+    /// Move one node's evaluation mapping and reference scope without changing reference identity or target.
     ///
-    /// Require its current evaluation scope to be `from` and both scopes active.
-    /// Scope owners use `convert_scope` or `reparent_scope`. Preserve reference
-    /// identity, target, flags and use lists. Declaration ownership is separate:
-    /// a binding node may execute in a scope different from its var hoist target.
-    /// This method does not traverse syntax or move declarations/bindings.
+    /// ```javascript
+    /// // Before: value's reference executes in the static-block scope.
+    /// class C { static { use(value); } }
+    /// // After: the caller reuses the call in the class scope.
+    /// class C { static #_ = use(value); }
+    /// // Move value's node mapping and Reference.scope from the active block scope to the class scope.
+    /// // Keep ReferenceId, target, flags and uses; move other nodes separately, without traversing AST.
+    /// // Binding ownership is separate, and scope owners use convert_scope or reparent_scope.
+    /// ```
     pub fn move_node_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId) {
-        todo!("Move node {node:?} evaluation from {from:?} to {to:?}")
+        assert!(self.scope(from).active && self.scope(to).active);
+        assert_eq!(self.scope_at(node), Some(from));
+        assert_ne!(
+            self.scope(from).node,
+            node,
+            "scope owners must be moved separately"
+        );
+        self.node_scopes[node.index()] = Some(to);
+        if let Some(reference) = self.reference_of(node) {
+            self.references[reference.index()].scope = to;
+        }
     }
 
-    /// Move an existing binding between scopes without allocating a new symbol.
+    /// Move a binding and its source-owned declarations to another scope without changing its symbol.
     ///
-    /// Move the binding-table entry and declarations belonging to `from`; preserve
-    /// merged declarations in other scopes, declaration IDs, reference targets and
-    /// use lists. Require that `to` has no conflicting binding. Node evaluation
-    /// scopes are updated separately with `move_node_to_scope`.
+    /// ```javascript
+    /// // Before: the block owns value's lexical binding.
+    /// { let value = 1; use(value); }
+    /// // After: the caller moves the declaration and use into an arrow.
+    /// (() => { let value = 1; use(value); })();
+    /// // Move value's binding-table entry and source-owned declarations to the arrow scope.
+    /// // Keep declaration IDs, SymbolId, reference targets, uses and declarations elsewhere.
+    /// // The destination must have no conflicting value; move node evaluation scopes separately.
+    /// ```
     pub fn move_binding(&mut self, from: ScopeId, to: ScopeId, symbol: SymbolId) {
-        todo!("Move binding {symbol:?} from {from:?} to {to:?}")
+        assert!(self.scope(from).active && self.scope(to).active);
+        if from == to {
+            return;
+        }
+        let names: Vec<_> = self.scope_maps[from.index()]
+            .iter()
+            .filter_map(|(&name, &binding)| (binding == symbol).then_some(name))
+            .collect();
+        assert!(!names.is_empty(), "source must own the binding");
+        for &name in &names {
+            assert!(
+                self.own_binding(to, name)
+                    .is_none_or(|binding| binding == symbol)
+            );
+        }
+        for name in names {
+            self.scope_maps[from.index()].remove(name);
+            self.scope_maps[to.index()].insert(name, symbol);
+        }
+        let first = self.symbol(symbol).declaration;
+        for id in std::iter::once(first).chain(
+            self.redeclarations
+                .get(&symbol)
+                .into_iter()
+                .flatten()
+                .copied(),
+        ) {
+            let declaration = &mut self.declarations[id.index()];
+            if declaration.scope == from {
+                declaration.scope = to;
+            }
+        }
     }
 
-    /// Change an active non-root scope's parent to another active scope.
+    /// Change an active non-root scope's parent while preserving its owner and internal identities.
     ///
-    /// Reject cycles. Preserve owner, bindings and internal node/reference mappings;
-    /// refresh affected descendant hoist targets. Function and static-block scopes
-    /// remain their own hoist targets. Syntax-dependent strictness and direct-eval
-    /// changes are coordinated by Mutation, not inferred by traversing AST here.
+    /// ```javascript
+    /// // Before: the inner block is a child of f's Function scope.
+    /// function f() { { let value = 1; use(value); } }
+    /// // After: a generated arrow encloses the same inner block.
+    /// function f() { (() => { { let value = 1; use(value); } })(); }
+    /// // Reparent the block scope from f to the arrow without changing its contents.
+    /// // Reject cycles and refresh descendant hoist targets; functions keep their own targets.
+    /// // Mutation coordinates strictness and direct-eval effects along the changed ancestry.
+    /// ```
     pub fn reparent_scope(&mut self, scope: ScopeId, parent: ScopeId) {
-        todo!("Reparent {scope:?} below {parent:?}")
+        let original = self.scope(scope);
+        assert!(original.active && self.scope(parent).active);
+        let previous = original.parent.expect("cannot reparent a root scope");
+        if previous == parent {
+            return;
+        }
+        let mut ancestor = Some(parent);
+        while let Some(id) = ancestor {
+            assert_ne!(id, scope, "scope parent must not create a cycle");
+            ancestor = self.scope(id).parent;
+        }
+        if original.kind == ScopeKind::FunctionBody {
+            assert_eq!(self.scope(parent).kind, ScopeKind::Function);
+            assert!(self.scope(parent).function_body.is_none());
+            self.scopes.list[previous.index()].function_body = None;
+            self.scopes.list[parent.index()].function_body = Some(scope);
+        }
+        self.scopes.list[scope.index()].parent = Some(parent);
+        let target = if original.kind.is_hoist_target() {
+            scope
+        } else {
+            self.scope(parent).hoist_target
+        };
+        self.update_hoist_target(scope, target);
     }
 
-    /// Apply scope flags computed by the AST-facing caller.
+    /// Apply caller-computed scope flags without changing the scope's structure or identities.
     ///
-    /// Preserve owner, parent, kind, bindings and node/reference mappings. Mutation
-    /// determines syntax-dependent strictness, arguments barriers and direct-eval
-    /// summaries, including any affected ancestors/descendants.
+    /// ```javascript
+    /// // Before: f's body is not explicitly strict.
+    /// function f() { run(); }
+    /// // After: the caller inserts a directive and computes the new strictness flag.
+    /// function f() { "use strict"; run(); }
+    /// // Apply the flags while keeping owner, parent, kind, bindings and node/reference mappings.
+    /// // Mutation computes arguments barriers, direct-eval summaries and affected ancestor/child flags.
+    /// ```
     pub fn set_scope_flags(&mut self, scope: ScopeId, flags: ScopeFlags) {
-        todo!("Set flags of {scope:?} to {flags:?}")
+        assert!(self.scope(scope).active);
+        self.scopes.list[scope.index()].flags = flags;
     }
 
-    /// Retire an empty non-root scope after its retained contents have moved.
+    /// Retire an empty non-root scope and clear its detached owner's mapping without recycling its ID.
     ///
-    /// Require no remaining bindings, declarations, references, child scopes or
-    /// retained node mappings. Clear the detached owner's mapping and mark the
-    /// scope inactive without recycling its ID. Reused scopes use `convert_scope`
-    /// instead; this operation does not recursively delete a subtree.
+    /// ```javascript
+    /// // Before: an empty static block still owns a scope.
+    /// class C { static {} }
+    /// // After: the caller removes the block from the class body.
+    /// class C {}
+    /// // Require no remaining bindings, declarations, references, child scopes or retained nodes.
+    /// // Clear the block owner's mapping and mark its scope inactive; do not delete descendants.
+    /// // For a reused block body, convert_scope keeps the scope instead.
+    /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
-        todo!("Retire empty scope {scope:?}")
+        let original = self.scope(scope);
+        assert!(original.active);
+        let parent = original.parent.expect("cannot remove a root scope");
+        assert!(self.scope_maps[scope.index()].is_empty());
+        assert!(
+            !self
+                .declarations
+                .iter()
+                .any(|declaration| declaration.scope == scope)
+        );
+        assert!(
+            !self
+                .iter_references()
+                .any(|entry| entry.reference.scope == scope)
+        );
+        assert!(
+            !self
+                .iter_scopes()
+                .any(|entry| entry.scope.parent == Some(scope))
+        );
+        assert!(
+            self.node_scopes
+                .iter()
+                .enumerate()
+                .all(|(index, &mapped)| mapped != Some(scope) || index == original.node.index())
+        );
+        assert!(original.function_body.is_none());
+        if original.kind == ScopeKind::FunctionBody {
+            self.scopes.list[parent.index()].function_body = None;
+        }
+        self.scopes.list[scope.index()].active = false;
+        self.clear_node_scope(original.node);
     }
 
-    /// Clear a detached syntax shell's evaluation mapping without visiting children.
+    /// Clear a detached node's evaluation mapping without changing mappings of its retained children.
     ///
-    /// Require that the node owns no active scope, binding or reference. Its
-    /// children may already be retained elsewhere in the AST.
+    /// ```javascript
+    /// // Before: use(value) is attached through an ExpressionStatement.
+    /// class C { static { use(value); } }
+    /// // After: its expression is reused directly as a field initializer.
+    /// class C { static #_ = use(value); }
+    /// // Move the expression first, then clear only the discarded ExpressionStatement mapping.
+    /// // Its call and references remain registered; the shell must own no scope, binding or reference.
+    /// ```
     pub fn clear_node_scope(&mut self, node: NodeId) {
-        todo!("Clear scope mapping for detached shell {node:?}")
+        assert!(self.symbol_of(node).is_none() && self.reference_of(node).is_none());
+        assert!(!self.iter_scopes().any(|entry| entry.scope.node == node));
+        self.node_scopes[node.index()] = None;
+    }
+
+    /// Refresh inherited hoist targets in a changed scope's branch without changing bindings.
+    ///
+    /// ```javascript
+    /// // Before: the inner block inherits f's var hoist target.
+    /// function f() { { use(); } }
+    /// // After: the caller moves that block below an arrow Function scope.
+    /// function f() { (() => { { use(); } })(); }
+    /// // Redirect inherited hoist targets in the moved branch to the arrow.
+    /// // Independent function/static-block targets and binding ownership stay unchanged.
+    /// ```
+    fn update_hoist_target(&mut self, scope: ScopeId, target: ScopeId) {
+        let previous = self.scope(scope).hoist_target;
+        if previous == target {
+            return;
+        }
+        self.scopes.list[scope.index()].hoist_target = target;
+        for index in 0..self.scopes.list.len() {
+            let current = self.scopes.list[index];
+            if !current.active || current.kind.is_hoist_target() || current.hoist_target != previous
+            {
+                continue;
+            }
+            let mut ancestor = current.parent;
+            while let Some(id) = ancestor {
+                if id == scope {
+                    self.scopes.list[index].hoist_target = target;
+                    break;
+                }
+                ancestor = self.scope(id).parent;
+            }
+        }
     }
 }

@@ -4,8 +4,8 @@ swc transform
 Total
 -----
 Cases: 13
-Passed: 7/13 (53.85%)
-Failed: 1/13 (7.69%)
+Passed: 6/13 (46.15%)
+Failed: 2/13 (15.38%)
 Panicked: 0/13 (0.00%)
 Skipped: 5/13 (38.46%)
 
@@ -15,9 +15,10 @@ Packages
 static-blocks
 -------------
 Cases: 13
-Passed: 7/13 (53.85%)
-Failed: 1/13 (7.69%)
+Passed: 6/13 (46.15%)
+Failed: 2/13 (15.38%)
 Panicked: 0/13 (0.00%)
 Skipped: 5/13 (38.46%)
 Messages:
-Failed: fixtures/swc/crates/swc_ecma_transforms_compat/tests/static-blocks/basic/export-default/input.js - static-blocks/basic/export-default: transformed output differs from output.js
+Failed: fixtures/swc/crates/swc_ecma_transforms_compat/tests/static-blocks/basic/multiple-static-initializers/input.js - static-blocks/basic/multiple-static-initializers: transformed output differs from output.js
+Failed: fixtures/swc/crates/swc_ecma_transforms_compat/tests/static-blocks/basic/name-conflicts01/input.js - static-blocks/basic/name-conflicts01: transformed output differs from output.js

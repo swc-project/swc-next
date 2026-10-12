@@ -1,322 +1,212 @@
 # Transformer Implementation
 
-This document describes the transformer architecture in
-`crates/swc_ecma_transformer`, its integration with Semantic, and the conventions
-for implementing transforms. Paths below are relative to the repository root.
-See [AGENTS.md](../AGENTS.md) for repository-wide development and testing commands.
+This document describes `crates/swc_ecma_transformer`, its integration with
+Semantic, and the conventions for implementing transforms. See
+[AGENTS.md](../AGENTS.md) for repository-wide commands and testing conventions.
 
 ## Object relationships
 
 ```text
-Transformer                              TraverseMutCtx<TransformerState>
-| implements TraverseMut                 |
-+-- ES2022 transforms                     +-- ast: &mut Ast
-    +-- StaticBlocks                     +-- state: TransformerState
-                                             |
-                                             +-- path: Vec<NodeId>
-                                             +-- semantic: &mut Semantic
-Visitor callback receives TraverseMutCtx     +-- assumptions
-             |                               +-- generated_bindings
-             |                               +-- used_names
-             |                               +-- analysis: TransformAnalysis
-             | ctx.mutate()                  +-- helpers
-             v                               +-- statement_injector
-          Mutation
-          +-- borrows ast mutably
-          +-- borrows state mutably
-          +-- borrows transform path
+Transformer                         TraverseMutCtx<TransformerState>
+| implements TraverseMut            |
++-- ES2022                          +-- ast: &mut Ast
+    +-- StaticBlocks                +-- state: TransformerState
+                                         +-- path
+                                         +-- semantic: &mut ScopeModel
+                                         +-- used_names
+                                         +-- helpers
+                                         +-- comments
+                                         +-- container
+                                         +-- statement_injector
+
+Visitor callback -> ctx.mutate() -> Mutation
+                                    +-- borrows ast
+                                    +-- borrows state, including path
 ```
 
-- `Transformer` owns the concrete transform implementations and dispatches visitor
-  callbacks. Each transform keeps its own traversal state, such as pending
-  static-block closure state.
-- `TraverseMutCtx` belongs to `swc_ecma_ast`. It carries AST and the generic state value. The generic traversal does not implement transform
-  replacement policies or depend on Semantic.
-- `TransformerState` holds shared configuration, Semantic's mutable borrow,
-  optional transform analysis,
-  generated bindings, used names, helper imports, and the statement injection
-  queue. It stores the traversal path through the generic node hooks and does
-  not own another AST.
-- `Mutate` is a trait defined in the transform crate and implemented for
-  `TraverseMutCtx<TransformerState>`. Its `mutate()` method returns a temporary
-  `Mutation` borrowing the existing data.
-- `Mutation` provides read access through `ast()` and `semantic()`, and methods
-  that coordinate AST edits with Semantic updates. It is not a second traversal
-  engine or a snapshot of the tree.
+`Transformer` dispatches callbacks to the enabled concrete passes. Each pass
+keeps its own traversal state, such as calls to trailing static-block closures.
+`TraverseMutCtx` belongs to `swc_ecma_ast`; generic traversal does not depend on
+Semantic or implement transform replacement policies.
+
+`ScopeModel` consumes Semantic's basic scope, binding, declaration and reference
+indexes. It preserves their identities without retaining Semantic's TypeScript
+member/alias lookup indexes or hoisting conflict tables. Its mutation operations
+take semantic records and IDs, not AST syntax.
+
+`Mutate` is a transform-crate trait implemented for
+`TraverseMutCtx<TransformerState>`. Its `mutate()` method returns a temporary
+`Mutation` borrowing the existing AST and state. `Mutation` reads syntax and
+coordinates edits with ScopeModel. It is not a second traversal engine or a tree
+snapshot. Visitors read AST through `Mutation::ast()` and perform edits through
+the Mutation boundary.
 
 ## Execution flow
 
-```text
-TransformerOptions
-  transform_features() selects enabled passes (bitflags)
-             |
-             v
-Normalizer::normalize
-  normalize parser AST shapes before building semantic indexes
-             |
-             v
-Semantic analysis
-  resolve names; collect scopes, bindings, declarations, and references
-             |
-             v
-Transformer::transform
-  collect optional TransformAnalysis for enabled passes
-  create TransformerState and TraverseMutCtx
-             |
-             v
-Program.traverse_mut_with(Transformer, TraverseMutCtx)
-  enter / exit callbacks dispatch to concrete transforms
-             |
-             v
-Mutation operations
-  allocate/register new nodes and bindings; synchronize replacements/moves
-  prepare helper imports on first use; queue statements in destination scopes
-             |
-             v
-Exit the corresponding statement container
-  attach queued statements in a batch
-  inject prepared helper imports at Program exit
-             |
-             v
-Mutation::finish
-  debug-check empty queues/caches and Semantic invariants
-```
+1. Normalize parser AST shapes with `Normalizer::normalize`.
+2. Analyze that AST with Semantic and construct a `ScopeModel` from the result.
+3. Pass the same AST and ScopeModel to `Transformer::transform`.
+4. Select enabled passes through `TransformerOptions::transform_features` and
+   traverse with `TraverseMutCtx<TransformerState>`.
+5. Prepare generated nodes, scopes, bindings and references through Mutation.
+6. Attach queued statements when exiting their destination containers; inject
+   prepared helper imports at Program exit.
+7. `Mutation::finish` applies deferred comment transfers and debug-checks that
+   statement, helper and container queues are empty.
 
-Callers must normalize the AST before `analyze`, then pass that same AST and
-Semantic to `Transformer::transform`. Normalization removes parentheses and
-flattens associative containers, so building Semantic afterward records the final
-scope owners and export expression roots directly.
+There is no program-wide class-semantic preparation traversal. At ClassBody entry,
+static-block lowering reads runtime static-field order, empty-block comments and
+private-name collisions from the current class. This information stays local to
+the pass. Lexical `this` and `super` remain in arrow syntax.
 
-The statement queue defers attachment to AST lists, not binding allocation or
-reference registration. Mutable enter and exit hooks return `TraverseAction<T>`:
-`Continue`, `Skip`, `Stop`, `ReplaceContinue(T)`, `ReplaceSkip(T)`, or
-`ReplaceStop(T)`. Untyped `enter_node`/`exit_node` hooks
-return no action and always enclose each visit, including skipped, stopped, or
-replaced visits, so path bookkeeping does not depend on typed exit hooks.
+## Traversal and attachment
 
-`Skip` ends the current node's remaining typed hooks, while siblings continue.
-In enter it also skips children and exit; in exit the children were already
-visited. `Stop` also stops remaining fields and list entries and propagates
-outward. Already entered ancestors still run their exit hooks; `Continue` cannot
-cancel a descendant's stop. If an ancestor exit requests a replacement while
-unwinding a stop, the parent attaches it without revisiting it. Enum and concrete
-hooks for the same node are one visit: a skip, stop, or replacement returned by
-an inner hook ends that node's remaining hooks, rather than being merged with
-an outer exit action.
+Mutable typed hooks return `TraverseAction<T>`: `Continue`, `Skip`, `Stop`,
+`ReplaceContinue(T)`, `ReplaceSkip(T)` or `ReplaceStop(T)`. Untyped
+`enter_node`/`exit_node` hooks maintain the path and enclose every visit, including
+skipped, stopped and replaced visits.
 
-All replacement variants end the old node's visit. The parent applies the typed
-replacement before processing its disposition: `ReplaceContinue` restarts the
-replacement from enter, `ReplaceSkip` continues with the next sibling, and
-`ReplaceStop` stops. Returning a replacement always applies it, even when its
-NodeId is unchanged. Return `Continue` to keep traversing the current node.
-Scalar fields, optional fields, and list slots share the same attachment loop.
-`TraverseMutWith` returns `TraverseAction<Self>` as the disposition for its
-owning slot, consuming a local `Skip` as `Continue`. A direct root caller must
-attach returned replacements through the root setter and restart traversal for
-`ReplaceContinue`. Flush is per destination container, not one global replay of
-all AST mutations.
+`Skip` ends the current node's remaining hooks while siblings continue. In enter
+it also skips children and exit. `Stop` additionally stops remaining fields/list
+entries and propagates outward; already entered ancestors still run exit hooks.
+Replacement ends the old visit. The parent attaches it before applying the
+requested disposition. `ReplaceContinue` restarts traversal of the replacement;
+`ReplaceSkip` continues with the next sibling; `ReplaceStop` stops traversal.
+Returning a replacement applies it even when its NodeId is unchanged.
 
-`push_container` and `unshift_container` currently support `ClassBody.body`.
-They edit the logical member list returned by `container_class_body` in
-transformer state, including pending insertions. `container_flush` attaches
-the list with one `add_sub_range` call and releases the cached handles. Unedited
-lists keep their original ranges, and repeated write-back without further edits
-does nothing. The class-body entry callback writes back before the generic
-traversal reads the member range, so traversal sees the updated members. The exit
-callback writes back any edits made while visiting children; `Mutation::finish`
-checks that no containers remain pending. These operations
-defer list attachment only; new scope owners, bindings and references must be
-registered when nodes are prepared. Scope registration for the synthetic
-named-evaluation static block remains unimplemented. Removal and replacement of
-class members must update the same logical list so final attachment retains all
-edits.
+Static-block lowering returns `(class, call)` with `ReplaceContinue` from
+`exit_expr`, preserving the class's identity inside the sequence. Declarations
+queue the call through `insert_after` at `exit_decl`. The default-export kind hook
+forwards class declarations because its Class variant bypasses the Decl hook.
 
-Semantic always collects node evaluation scopes in an arena-backed index. It has
-no transform collection flags. Transformer preparation uses the enabled pass flags
-to collect static-block comments and closure-lowering layouts in one optional
-traversal. Private-name collision domains come from local class member lists.
-Mutation initializes shared generated-name state on first use from Semantic's
-symbols, binding declarations, and references, including unresolved references.
-It reserves each generated name immediately and observes newly introduced names
-so later transforms use the same collision domain. Class private-name allocation
-belongs to TransformAnalysis's separate per-class collision domains.
+Class-body edits use `container_class_body_mut`; reads use
+`container_class_body`, which includes pending edits. `push_container` and
+`unshift_container` also edit that logical list. `container_flush` attaches it
+with one `add_sub_range` call and releases cached handles. Unedited lists keep
+their original range; repeated flush without edits does nothing. ClassBody enter
+flushes before generic traversal reads the member range, and exit flushes any
+edits made while visiting children.
 
-## Implementing a transform
+The container and statement queues defer attachment only. Materialize retained
+contents and synchronize semantic information before removing or replacing old
+attachments. Detached arena storage is not a reason to retain stale node,
+reference or scope-owner mappings.
 
-1. **Identify the needed information.** Reuse Semantic's existing scopes,
-   bindings, declarations, and references; allocate names through Mutation.
-   Keep additional information in the transformer. Use traversal state or local
-   member lists when possible; combine necessary lookahead in TransformAnalysis's
-   preparation traversal and gate it with enabled transform flags.
-2. **Keep lowering in the visitor.** Follow the existing ES2022 dispatch
-   pattern. Borrow `Mutation` in callbacks and pass it to the concrete transform.
-   Keep transform-specific capture/layout logic with that transform. Add shared
-   state or Mutation methods only when their responsibility is actually shared.
-3. **Choose the edit's scope and ownership before building nodes.** An expression's
-   evaluation scope can differ from the surrounding node's own scope. Reuse
-   Semantic's scope queries rather than reconstructing lexical environments from
-   syntax. Preserve existing node, binding, and reference identities when moving
-   or wrapping them.
-4. **Apply edits through Mutation.** Extend it with a concrete atomic operation
-   when needed, including the corresponding Semantic update. Do not perform raw
-   AST edits followed by separate Semantic repairs in a visitor. Mutation also
-   retires replaced static-block metadata and invalidates affected member layouts.
-   Although the generic `TraverseMutCtx.ast` field is public, transforms use the
-   Mutation boundary.
+## Mutation contracts
 
-### Existing mutation contracts
+- `add_node(scope, |ast| ...)` allocates nodes and registers the new NodeId range
+  in their evaluation scope. Its closure must not change existing edges. Binding,
+  reference and scope-owner identities use their dedicated APIs.
+- `generate_var(scope, base)` registers a `BoundIdentifier` in the destination
+  hoist scope and queues its declaration. The identifier retains its declaration
+  and symbol. `reference_read`, `reference_write` and `assign` create fresh
+  references to that same symbol.
+- Generated names share a collision domain initialized lazily from ScopeModel's
+  symbols, declarations and references, including unresolved references. Private
+  names use a separate domain from the current class's own member keys.
+- `register_binding` reads the AST name and passes its ID, arena-lived text and
+  flags to ScopeModel. `register_reference` constructs a Reference record.
+  Mutation registers pending allocations; ScopeModel does not read syntax.
+- Prepared initializer and computed-key wrappers retain the original subtree
+  and attach through the AST setters at the lowering site. Before replacing an
+  arrow's empty placeholder body, clear that detached body's scope mapping.
+- `inject_statement`, `inject_variable` and `insert_after` queue prepared nodes.
+  The visitor lifecycle flushes each destination container. `insert_after`
+  forwards through labels and exports to the containing statement-list anchor.
+- `inherits_comments(child, parent)` queues the parent's leading/trailing anchors
+  for inheritance and returns the child. `CommentState` composes transfers in
+  call order; finish applies them with one `Ast::retarget_comments` call. Inner
+  comments retain child/token anchors. Codegen support for retargeted leading
+  anchors remains incomplete; see `context/comments.rs`.
 
-- `inherits_comments(child, parent)` returns `child` and queues the parent's
-  leading/trailing attachment offsets for inheritance, retaining the child's
-  existing comments. `CommentState` lives in traversal state and composes queued
-  transfers in call order. `Mutation::finish` applies them with one
-  `Ast::retarget_comments` call, preserving source order and avoiding duplicate
-  comment records. This is relocation for replaced parents: unlike Babel's
-  shared comment objects, the flat AST gives each comment one attachment.
-  Inner comments retain their child/token anchors because the AST has no
-  separate inner-comment list.
-- `add_node(scope, |ast| ...)` allocates nodes and registers the new allocation
-  range. The closure constructs new AST nodes; it must not modify existing edges.
-  Use dedicated binding/reference and scope-owner APIs for those identities.
-- `generate_binding` returns a `GeneratedBinding` containing its declaration and
-  symbol. Register it on first use, then reuse it through `generated_bindings`.
-  Use `add_scope_node` to create or transfer a scope owner.
-- Return `ReplaceContinue`, `ReplaceSkip`, or `ReplaceStop` from enter or exit
-  to edit the current attachment. Prepare the replacement's nodes,
-  scopes, bindings and references before returning it; traversal only applies
-  the typed AST edge and does not allocate semantic identities. Static-block
-  lowering returns `(class, call)` as `TraverseAction::ReplaceContinue` from
-  `exit_expr`, preserving the original class's NodeId and semantic identities
-  inside the sequence, with new nodes evaluated in the class's outside scope.
-  Class declarations use `exit_decl`; the default-export kind hook forwards
-  default-exported class declarations there because its Class variant bypasses
-  the Decl traversal hook.
-  Concrete hooks return their concrete type; use a union hook for replacements
-  between different node kinds. Untyped hooks only maintain traversal state.
-- `filter_map_class_elements` distinguishes `Unchanged`, `Update`, and `Delete`.
-  It compacts node-ID slots in place and synchronizes each edit. Materialize or
-  move retained contents before deleting their old class-element attachment.
-- Use `inject_statement`, `inject_var`, or the after-insertion methods for
-  deferred statements. Prepare them in their destination scopes and let the
-  existing visitor lifecycle flush them. `insert_statement` is an immediate edit;
-  do not confuse it with queued injection.
+## Scope operations
 
-Detached AST shells remain in arena storage until the AST is destroyed. Keeping
-storage alive does not justify stale semantic indexes for detached references or
-scope owners. Update the affected semantic identities without adding subtree
-snapshots, repeated subtree scans, or a separate node-retirement lifecycle.
+ScopeModel implements the index operations below, and Mutation composes them with
+AST traversal and allocation registration. Subtree moves accept typed AST handles
+and reuse `Traverse`; only nodes evaluated directly in the source scope move.
+Nested scopes keep their contents and receive a new parent when needed.
 
-### Planned scope mutation contracts
+| Operation | Contract |
+| --- | --- |
+| `create_child_scope` | Register a new scope owner below an active parent; move existing content separately. |
+| `convert_scope` | Transfer a scope to a replacement owner and change kind/flags while preserving bindings, references and child scopes. |
+| `move_node_to_scope` | Move one evaluation mapping and its reference scope while preserving identity and target. |
+| `move_binding` | Move a binding-table entry and declarations owned by the source, preserving merged declarations elsewhere. |
+| `reparent_scope` | Change ancestry and refresh affected hoist targets without changing retained content identities. |
+| `set_scope_flags` | Apply flags computed from syntax by Mutation. |
+| `remove_scope` | Retire an empty scope and clear its detached owner's mapping after retained content has moved. |
+| `clear_node_scope` | Clear a detached syntax shell's mapping without visiting retained children. |
 
-`ScopeModel` declares index-only operations with `todo!()` bodies. Mutation's
-AST-facing adapters live in `context/semantic.rs`; the planned scope operations
-are not connected to transforms yet:
+Mutation propagates direct-eval markings when an inserted scope becomes an
+ancestor of a retained eval call. Three cases still stop at explicit `todo!()`:
 
-- `create_child_scope(parent, owner, kind, flags)` registers an allocated scope
-  owner and returns its scope ID. Existing content is moved separately.
-- `convert_scope(scope, owner, kind, flags)` reuses a scope under a replacement
-  owner, preserving binding/reference identities while updating scope properties.
-- `move_node_to_scope(node, from, to)` updates one evaluation mapping and its
-  reference's scope, preserving reference identity and target.
-- `move_binding(from, to, symbol)` moves the binding-table entry and declarations
-  owned by `from`, preserving the symbol, references and other merged declarations.
-  Declaration ownership is separate from node evaluation scope.
-- `reparent_scope(scope, parent)` changes ancestry and refreshes affected hoist
-  targets, preserving the scope's owner and contents.
-- `set_scope_flags(scope, flags)` applies flags computed from syntax by Mutation.
-- `remove_scope(scope)` marks an empty scope inactive and clears its detached
-  owner's mapping; retained contents must have moved first.
-- `clear_node_scope(node)` clears a detached syntax shell's mapping without
-  visiting children retained elsewhere.
+- Moving content away from a marked source or removing marked ancestors needs
+  exact direct-eval recomputation: the current flags aggregate local and child
+  calls without recording their individual contributions.
+- Changing inherited strictness needs to distinguish explicit strict directives
+  from inherited flags before updating retained descendants.
+- Converting a node shared by multiple active scopes needs to coordinate all
+  scope owners and the node's innermost mapping together.
 
-Mutation's `move_subtree_to_scope(root, from, to)` reads AST edges and composes
-node moves and scope reparenting. Only nodes directly in `from` move; nested
-scopes keep their internal mappings and bindings. Mutation coordinates any
-syntax-dependent strictness and direct-eval changes. Semantic does not traverse
-syntax to infer these updates.
+Ordinary static-block lowering keeps strictness and uses a single source owner,
+so it does not need these unsupported operations. Single-expression blocks with
+direct eval can hit the first TODO. Do not bypass those checks with unsynchronized
+AST edits.
 
-Existing binding/reference registration also follows this boundary.
-`Mutation::register_binding` reads the identifier's name and arena-lived text;
-`ScopeModel::register_binding` receives the node ID, scope, name handle, text and
-flags. `Mutation::register_reference` constructs a `Reference` record for
-`ScopeModel::register_reference`. Mutation registers the full AST allocation
-range; ScopeModel only ensures capacity through the supplied node ID. Neither
-ScopeModel registration method takes `Ast` or reads node attributes.
-
-For single-expression static blocks, move the expression, clear the discarded
-statement shell and retire the empty static-block scope. For a whole block reused
-as an arrow body, convert its scope and register new parameters/body nodes there.
-For an additional wrapping arrow, create its scope and move each retained subtree
-into it, preserving independent scopes belonging to the original blocks.
+A single-expression static block moves its expression into the destination
+scope, clears the discarded ExpressionStatement mapping and retires its empty
+scope. A block reused as an arrow body converts its scope to Function and changes
+the owner to the arrow; its parameters/body are allocated in that same scope.
+When moving that arrow under an additional wrapping closure, reparent its scope.
+A new trailing closure creates its own scope, moves its prepared parameters/body
+there, and receives each retained expression or child scope separately.
 
 ## Helpers
 
-Helpers are currently external only. `Mutation::helper_callee` allocates the name,
-registers its binding, and prepares the import on first use. `Helpers` caches that
-prepared declaration; `inject_helpers` feeds it into the statement injector at
-Program exit. Repeated uses must reuse the binding and import. Helper construction
-and calls are methods on `Mutation`, implemented in `context/helpers.rs`; transforms
-use `call_set_function_name` and `call_to_property_key` through that interface.
+Helpers are external. `Mutation::helper_callee` registers a binding and prepares
+its import on first use. `Helpers` caches the declaration; Program exit queues it
+through `inject_helpers`. Repeated uses share the binding/import. Module output
+uses `import`; script output uses `require`.
 
-Module output uses `import`; script output uses `require`. Currently
-`setFunctionName` comes from `@babel/runtime/helpers/setFunctionName`, while
-`toPropertyKey` uses `@swc/helpers`. Verify the actual runtime export when adding a
-helper. Inline helpers and a swc-next-owned helper library remain an explicit
-TODO; do not silently reintroduce inline implementations for ordinary transforms.
+`call_set_function_name` uses `@babel/runtime/helpers/setFunctionName` and
+`call_to_property_key` uses `@swc/helpers`. Static-block name restoration places
+helper expressions in existing field initializers or the trailing closure; it
+does not synthesize a named-evaluation static block. Inline helpers and a
+swc-next-owned helper library remain TODOs.
 
 ## Source map
 
-| Responsibility | File |
+| Responsibility | File under `crates/` |
 | --- | --- |
-| Entry point, enabled passes, visitor dispatch | [crates/swc_ecma_transformer/src/lib.rs](../crates/swc_ecma_transformer/src/lib.rs) |
-| Optional transform preparation | [crates/swc_ecma_transformer/src/analysis.rs](../crates/swc_ecma_transformer/src/analysis.rs) |
-| Shared transform state | [crates/swc_ecma_transformer/src/state.rs](../crates/swc_ecma_transformer/src/state.rs) |
-| Mutate trait, borrowed Mutation, and names | [crates/swc_ecma_transformer/src/context/mod.rs](../crates/swc_ecma_transformer/src/context/mod.rs) |
-| Shared name allocation from Semantic indexes | [crates/swc_ecma_transformer/src/context/names.rs](../crates/swc_ecma_transformer/src/context/names.rs) |
-| Generated-name collision domains | [crates/swc_ecma_transformer/src/used_names.rs](../crates/swc_ecma_transformer/src/used_names.rs) |
-| Post-transform semantic invariant checks | [crates/swc_ecma_transformer/src/context/invariants.rs](../crates/swc_ecma_transformer/src/context/invariants.rs) |
-| Allocation and registration | [crates/swc_ecma_transformer/src/context/construction.rs](../crates/swc_ecma_transformer/src/context/construction.rs) |
-| Typed traversal actions and parent write-back | [crates/swc_ecma_ast/src/visit.rs](../crates/swc_ecma_ast/src/visit.rs), [tasks/ast_tools/src/generator/ast_visitor.rs](../tasks/ast_tools/src/generator/ast_visitor.rs) |
-| Statement/class edits and scope operations | [crates/swc_ecma_transformer/src/context/mutation.rs](../crates/swc_ecma_transformer/src/context/mutation.rs), [crates/swc_ecma_transformer/src/context/scopes.rs](../crates/swc_ecma_transformer/src/context/scopes.rs) |
-| Deferred statement attachment | [crates/swc_ecma_transformer/src/context/statement_injector.rs](../crates/swc_ecma_transformer/src/context/statement_injector.rs) |
-| External helper cache and kinds | [crates/swc_ecma_transformer/src/helpers.rs](../crates/swc_ecma_transformer/src/helpers.rs) |
-| Helper construction, imports, and calls | [crates/swc_ecma_transformer/src/context/helpers.rs](../crates/swc_ecma_transformer/src/context/helpers.rs) |
-| Concrete lowering examples | [crates/swc_ecma_transformer/src/es2022/static_blocks.rs](../crates/swc_ecma_transformer/src/es2022/static_blocks.rs) |
-| Name resolution and semantic synchronization | [crates/swc_ecma_semantic/src/builder.rs](../crates/swc_ecma_semantic/src/builder.rs), [crates/swc_ecma_semantic/src/mutation.rs](../crates/swc_ecma_semantic/src/mutation.rs) |
-| Generic traversal context | [crates/swc_ecma_ast/src/visit.rs](../crates/swc_ecma_ast/src/visit.rs) |
+| Options and visitor dispatch | `swc_ecma_transformer/src/lib.rs` |
+| Shared state | `swc_ecma_transformer/src/state.rs` |
+| Borrowed Mutation and statement insertion | `swc_ecma_transformer/src/context/mod.rs` |
+| Allocation, names, semantic registration and scope adapters | `swc_ecma_transformer/src/context/semantic.rs` |
+| Class containers and expression attachment | `swc_ecma_transformer/src/context/container.rs` |
+| Deferred statements | `swc_ecma_transformer/src/context/statement_injector.rs` |
+| Comment transfers | `swc_ecma_transformer/src/context/comments.rs` |
+| Helper cache and construction | `swc_ecma_transformer/src/helpers.rs`, `swc_ecma_transformer/src/context/helpers.rs` |
+| Static blocks and local class information | `swc_ecma_transformer/src/es2022/static_blocks.rs` |
+| Semantic indexes and scope operations | `swc_ecma_semantic/src/scope_model.rs` |
+| Generic traversal | `swc_ecma_ast/src/visit.rs` |
 
 ## Validation
 
-Keep test code under `crates/swc_ecma_transformer/tests/`, mirroring the source
-module layout:
+Keep tests under `crates/swc_ecma_transformer/tests/`, mirroring source layout.
+Source modules load them with `#[cfg(test)]` and `#[path]`, retaining private
+implementation access. The crate sets `autotests = false`.
 
-```text
-tests/
-|-- lib.rs                 Whole-transform tests for src/lib.rs
-|-- analysis.rs            Optional preparation and class layout tests
-|-- helpers.rs             Tests for src/helpers.rs
-`-- context/
-    |-- mutation.rs        Tests for src/context/mutation.rs
-    `-- support.rs         Shared context test utilities
-```
+Reuse conformance fixtures for covered behavior; add focused tests for semantic
+invariants or observable behavior following AGENTS.md. For scope changes, compare
+transformed ScopeModel node/reference scopes, binding ownership and reference
+targets with fresh Semantic analysis, and compare generated JavaScript execution
+with native input. Cases using the unsupported operations above remain explicit
+TODOs.
 
-Source modules load these files with `#[cfg(test)]` and `#[path]`, retaining unit
-test access to private implementation details. The crate sets `autotests = false`
-so Cargo does not compile these files as separate integration-test crates. Follow
-this pattern for additional module tests without widening production visibility.
-
-Reuse conformance fixtures for covered behavior; add focused tests for new
-semantic invariants or observable behavior, following `AGENTS.md`. Scope-sensitive
-changes should compare the transformed Semantic with fresh analysis, following
-`assert_reference_scopes` in `crates/swc_ecma_transformer/tests/lib.rs`.
-
-Run relevant Rust tests and the repository's required formatting/lint checks.
-For static-block/helper changes, run both `babel_transform` and `swc_transform`;
-see [AGENTS.md](../AGENTS.md) for commands and fixture setup. Inspect
-`tasks/testsuite/snapshots/` and `tasks/testsuite/outputs/<runner>/differences.md`:
-a successful runner exit does not mean every fixture matches.
-
-Separate helper spelling/import differences from semantic differences. When
-binding, evaluation order, or constructor behavior is in question, compare
-execution with native JavaScript and the requested upstream configuration before
-changing behavior merely to match expected text.
+Run Rust tests and required formatting/lint checks. For static-block/helper
+changes, prepare fixtures with `./scripts/clone_fixtures.sh` and run both
+`babel_transform` and `swc_transform`. Inspect snapshots and
+`tasks/testsuite/outputs/<runner>/differences.md`; successful exit alone does not
+mean fixtures match. Separate helper spelling/import differences from semantic
+differences. Verify binding, evaluation order and constructor behavior against
+native JavaScript before changing behavior solely to match output text.
