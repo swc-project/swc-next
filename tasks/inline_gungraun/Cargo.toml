@@ -1,0 +1,15 @@
+[package]
+name = "inline_gungraun"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dev-dependencies]
+gungraun = { workspace = true, features = ["act"] }
+swc_next_allocator = { workspace = true }
+swc_next_ecma_ast = { workspace = true }
+swc_next_ecma_parser = { workspace = true }
+
+[[bench]]
+name = "parser"
+harness = false

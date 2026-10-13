@@ -1,315 +1,54 @@
-name: Gungraun Benchmarks
+name: Gungraun inline comparison
 
 on:
   pull_request:
-    types: ["opened", "reopened", "synchronize"]
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
-  group: gungraun-${{ github.event.pull_request.number }}
+  group: expr-inline-gungraun-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   benchmarks:
-    name: Compare Gungraun benchmarks
-    runs-on: ubuntu-24.04
+    name: Compare parser CPU events on ARM64
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.0
+      CARGO_INCREMENTAL: 0
+      GUNGRAUN_COLOR: never
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Setup rust toolchain and cache
-        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
-        with:
-          cache-save-if: false
-
-      - name: Keep the same Rust toolchain for base and merge
-        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
-
-      - name: Install Valgrind
+      - name: Install pinned toolchain and profiling tools
         run: |
+          rustup toolchain install 1.99.0 --profile minimal
           sudo apt-get update
           sudo apt-get install --yes valgrind
+          cargo install --locked --version 0.20.0 gungraun-runner
+          rustc -Vv
+          gungraun-runner --version
           valgrind --version
+          uname -m
 
-      - name: Save base benchmark
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
-          GUNGRAUN_COLOR: never
+      - name: Run two independent base and head comparisons
         run: |
-          git checkout --detach "$BASE_SHA"
+          cp tasks/inline_gungraun/run-comparison.sh "$RUNNER_TEMP/run-comparison.sh"
+          bash "$RUNNER_TEMP/run-comparison.sh"
 
-          # Bootstrap the benchmark harness while this workflow is not on the
-          # base branch yet. Later PRs benchmark the base branch as-is.
-          if ! git cat-file -e \
-            "${BASE_SHA}:tasks/benchmark/benches/gungraun.rs" 2>/dev/null
-          then
-            git checkout "$COMPARE_SHA" -- \
-              Cargo.toml \
-              Cargo.lock \
-              tasks/benchmark/Cargo.toml \
-              tasks/benchmark/benches/gungraun.rs
-          fi
-
-          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
-          cargo install --locked --version "$runner_version" gungraun-runner
-          gungraun-runner --version
-
-          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
-            --home="$RUNNER_TEMP/gungraun" \
-            --callgrind-metrics=Ir \
-            --save-baseline=base
-
-      - name: Compare merge benchmark
-        env:
-          COMPARE_SHA: ${{ github.sha }}
-          GUNGRAUN_COLOR: never
-          GUNGRAUN_SHOW_INTERMEDIATE: true
-        run: |
-          git checkout --detach "$COMPARE_SHA"
-
-          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
-          cargo install --locked --version "$runner_version" gungraun-runner
-          gungraun-runner --version
-
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          summary="$RUNNER_TEMP/gungraun-summary.md"
-          set +e
-          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
-            --home="$RUNNER_TEMP/gungraun" \
-            --baseline=base \
-            --callgrind-metrics=Ir \
-            --save-summary=json 2>&1 | tee "$report"
-          benchmark_status="${PIPESTATUS[0]}"
-
-          node .github/scripts/render-gungraun-summary.mjs \
-            "$RUNNER_TEMP/gungraun" > "$summary"
-          summary_status="$?"
-          set -e
-
-          if [[ ! -s "$summary" ]]
-          then
-            {
-              echo "### Instruction-count changes"
-              echo
-              echo "⚠️ **The comparison summary could not be generated.** See the workflow log."
-            } > "$summary"
-          fi
-
-          {
-            echo "## Gungraun benchmark diff"
-            echo
-            echo 'Values are shown as `merge | base`.'
-            echo
-            cat "$summary"
-            echo
-            echo '```text'
-            cat "$report"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [[ "$benchmark_status" -ne 0 ]]
-          then
-            exit "$benchmark_status"
-          fi
-          exit "$summary_status"
-
-      - name: Prepare Valgrind artifact metadata
+      - name: Upload counts and raw profiles
         if: always()
-        env:
-          ARTIFACT_NAME: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          JOB_STATUS: ${{ job.status }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RUN_ATTEMPT: ${{ github.run_attempt }}
-          RUN_ID: ${{ github.run_id }}
-          RUNNER_ARCH: ${{ runner.arch }}
-          RUNNER_OS: ${{ runner.os }}
-        run: |
-          metadata="$RUNNER_TEMP/gungraun-metadata.json"
-          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          rustc_version="$(rustc --version 2>/dev/null || echo unavailable)"
-          cargo_version="$(cargo --version 2>/dev/null || echo unavailable)"
-          gungraun_version="$(gungraun-runner --version 2>/dev/null || echo unavailable)"
-          valgrind_version="$(valgrind --version 2>/dev/null || echo unavailable)"
-
-          jq -n \
-            --arg artifact_name "$ARTIFACT_NAME" \
-            --arg base_ref "$BASE_REF" \
-            --arg base_sha "$BASE_SHA" \
-            --arg cargo_version "$cargo_version" \
-            --arg compare_sha "$COMPARE_SHA" \
-            --arg event_name "$GITHUB_EVENT_NAME" \
-            --arg generated_at "$generated_at" \
-            --arg gungraun_version "$gungraun_version" \
-            --arg head_ref "$HEAD_REF" \
-            --arg job_status "$JOB_STATUS" \
-            --arg pr_head_sha "$PR_HEAD_SHA" \
-            --arg pr_number "$PR_NUMBER" \
-            --arg repository "$GITHUB_REPOSITORY" \
-            --arg run_attempt "$RUN_ATTEMPT" \
-            --arg run_id "$RUN_ID" \
-            --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            --arg runner_arch "$RUNNER_ARCH" \
-            --arg runner_os "$RUNNER_OS" \
-            --arg rustc_version "$rustc_version" \
-            --arg valgrind_version "$valgrind_version" \
-            --arg workflow_name "$GITHUB_WORKFLOW" \
-            '{
-              schema_version: 1,
-              repository: $repository,
-              workflow: {
-                name: $workflow_name,
-                event: $event_name,
-                run_id: $run_id,
-                run_attempt: ($run_attempt | tonumber),
-                run_url: $run_url,
-                job_status: $job_status
-              },
-              pull_request: {
-                number: ($pr_number | tonumber),
-                base_ref: $base_ref,
-                head_ref: $head_ref,
-                base_sha: $base_sha,
-                head_sha: $pr_head_sha,
-                compare_sha: $compare_sha
-              },
-              runner: {
-                os: $runner_os,
-                arch: $runner_arch
-              },
-              tools: {
-                rustc: $rustc_version,
-                cargo: $cargo_version,
-                gungraun_runner: $gungraun_version,
-                valgrind: $valgrind_version
-              },
-              benchmark: {
-                package: "benchmark",
-                bench: "gungraun",
-                baseline: "base",
-                base_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-metrics=Ir --save-baseline=base",
-                compare_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-metrics=Ir --save-summary=json"
-              },
-              files: {
-                data_root: "gungraun",
-                diff_report: "gungraun-diff.txt",
-                rendered_summary: "gungraun-summary.md"
-              },
-              artifact: {
-                name: $artifact_name,
-                retention_days: 90
-              },
-              generated_at: $generated_at
-            }' > "$metadata"
-
-          jq -e \
-            --arg base_sha "$BASE_SHA" \
-            --arg compare_sha "$COMPARE_SHA" \
-            --arg pr_head_sha "$PR_HEAD_SHA" \
-            '.schema_version == 1 and
-             .pull_request.base_sha == $base_sha and
-             .pull_request.head_sha == $pr_head_sha and
-             .pull_request.compare_sha == $compare_sha and
-             .files.data_root == "gungraun" and
-             .artifact.retention_days == 90' \
-            "$metadata" > /dev/null
-
-      - name: Upload Valgrind analysis bundle
-        id: upload-valgrind
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/gungraun
-            ${{ runner.temp }}/gungraun-diff.txt
-            ${{ runner.temp }}/gungraun-summary.md
-            ${{ runner.temp }}/gungraun-metadata.json
-          if-no-files-found: error
+          name: expr-inline-counts-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/expr-inline-counts
           retention-days: 90
-          compression-level: 6
-
-      - name: Link Valgrind analysis bundle
-        if: >-
-          always() &&
-          steps.upload-valgrind.outputs.artifact-url != ''
-        env:
-          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
-        run: |
-          {
-            echo "### Valgrind analysis artifact"
-            echo
-            echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Publish benchmark diff to pull request
-        if: >-
-          always() &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
-        env:
-          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          report="$RUNNER_TEMP/gungraun-diff.txt"
-          if [[ ! -f "$report" ]]
-          then
-            exit 0
-          fi
-
-          summary="$RUNNER_TEMP/gungraun-summary.md"
-          comment="$RUNNER_TEMP/gungraun-comment.md"
-          {
-            echo '<!-- gungraun-benchmark-diff -->'
-            echo '## Gungraun benchmark diff'
-            echo
-            echo 'Values are shown as `merge | base`.'
-            echo
-            if [[ -n "$ARTIFACT_URL" ]]
-            then
-              echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
-              echo
-            fi
-            if [[ -s "$summary" ]]
-            then
-              cat "$summary"
-              echo
-            fi
-            echo '<details>'
-            echo '<summary>Benchmark results</summary>'
-            echo
-            echo '```text'
-            cat "$report"
-            echo '```'
-            echo '</details>'
-          } > "$comment"
-
-          comment_id="$(
-            gh api \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
-              --jq \
-              'map(select((.body | contains("<!-- gungraun-benchmark-diff -->")) or (.body | contains("<!-- gungraun-parser-benchmark-diff -->"))))[0].id // empty'
-          )"
-
-          if [[ -n "$comment_id" ]]
-          then
-            gh api --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
-              -F body=@"$comment"
-          else
-            gh api --method POST \
-              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-              -F body=@"$comment"
-          fi
+          if-no-files-found: error
