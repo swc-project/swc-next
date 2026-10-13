@@ -254,6 +254,41 @@ impl BinaryExprVisitor {
                     self.left_level = Precedence::Call;
                 }
             }
+            BinaryishOperator::Binary(BinaryOperator::LeftShift) => {
+                let (mut expression, type_annotation) = match p.ast.expr_data(e.left(p.ast)) {
+                    ExprData::TsAsExpression(assertion) => (
+                        assertion.expression(p.ast),
+                        assertion.type_annotation(p.ast),
+                    ),
+                    ExprData::TsSatisfiesExpression(assertion) => (
+                        assertion.expression(p.ast),
+                        assertion.type_annotation(p.ast),
+                    ),
+                    _ => return,
+                };
+                if !p.ts_type_can_precede_left_shift(type_annotation) {
+                    return;
+                }
+                // Keep grouping if the cast's operand would absorb the shift.
+                loop {
+                    expression = match p.ast.expr_data(expression) {
+                        ExprData::TsAsExpression(assertion) => assertion.expression(p.ast),
+                        ExprData::TsSatisfiesExpression(assertion) => assertion.expression(p.ast),
+                        ExprData::BinaryExpression(binary)
+                            if binary.operator(p.ast).precedence() < Precedence::Shift =>
+                        {
+                            return;
+                        }
+                        ExprData::LogicalExpression(logical)
+                            if logical.operator(p.ast).precedence() < Precedence::Shift =>
+                        {
+                            return;
+                        }
+                        _ => break,
+                    };
+                }
+                self.left_level = Precedence::Compare;
+            }
             _ => {}
         }
     }
@@ -4051,6 +4086,112 @@ impl<'a> Printer<'a> {
         self.print_mapped_operator(OperatorCode::TsTypeOpen, "<", source_offset);
         self.print_ts_type(ty, TsTypePrecedence::Lowest);
         self.print_operator(OperatorCode::TsTypeClose, ">");
+    }
+
+    fn ts_type_can_precede_left_shift(&self, mut ty: TsType) -> bool {
+        let mut level = TsTypePrecedence::Lowest;
+        let mut context = TsTypeContext::Default;
+        // Follow the printed right edge. Explicit or generated parentheses,
+        // postfix operators, and other closing delimiters end the type instead.
+        loop {
+            ty = match self.ast.ts_type_data(ty) {
+                TsTypeData::TsTypeQuery(query) => {
+                    // TypeScript requires a standalone `<` token to start these
+                    // type arguments, leaving `<<` for expression parsing.
+                    // https://github.com/microsoft/TypeScript/blob/15dee00a1c6549a4953ab17ccac4c56d252ba4cc/tsc/internal/parser/parser.go#L3067-L3072
+                    // `typeof import(...)` takes the separate import-type path.
+                    // https://github.com/microsoft/TypeScript/blob/15dee00a1c6549a4953ab17ccac4c56d252ba4cc/tsc/internal/parser/parser.go#L2846-L2850
+                    return !query.expr_name(self.ast).is_ts_import_type(self.ast);
+                }
+                TsTypeData::TsUnionType(t) if level <= TsTypePrecedence::Union => {
+                    level = if self.options.minify {
+                        TsTypePrecedence::Union
+                    } else {
+                        TsTypePrecedence::Intersection
+                    };
+                    context = TsTypeContext::Default;
+                    let Some(last) = t.types(self.ast).last() else {
+                        return false;
+                    };
+                    self.ast.get_node_in_sub_range(last)
+                }
+                TsTypeData::TsIntersectionType(t) if level <= TsTypePrecedence::Intersection => {
+                    level = if self.options.minify {
+                        TsTypePrecedence::Intersection
+                    } else {
+                        TsTypePrecedence::TypeOperator
+                    };
+                    context = TsTypeContext::Default;
+                    let Some(last) = t.types(self.ast).last() else {
+                        return false;
+                    };
+                    self.ast.get_node_in_sub_range(last)
+                }
+                TsTypeData::TsConditionalType(t)
+                    if level <= TsTypePrecedence::Conditional
+                        && context != TsTypeContext::ExtendsClause =>
+                {
+                    level = TsTypePrecedence::Lowest;
+                    t.false_type(self.ast)
+                }
+                TsTypeData::TsTypeOperator(t) if level <= TsTypePrecedence::TypeOperator => {
+                    level = TsTypePrecedence::TypeOperator;
+                    t.type_annotation(self.ast)
+                }
+                TsTypeData::TsFunctionType(t) if level <= TsTypePrecedence::Function => {
+                    level = TsTypePrecedence::Function;
+                    context = context.function_return(false);
+                    t.return_type(self.ast).type_annotation(self.ast)
+                }
+                TsTypeData::TsConstructorType(t) if level <= TsTypePrecedence::Function => {
+                    level = TsTypePrecedence::Function;
+                    context = context.function_return(false);
+                    t.return_type(self.ast).type_annotation(self.ast)
+                }
+                TsTypeData::TsInferType(t) => {
+                    let Some(constraint) = t.type_parameter(self.ast).constraint(self.ast) else {
+                        return false;
+                    };
+                    let precedence = if context == TsTypeContext::ExtendsClause {
+                        TsTypePrecedence::TypeOperator
+                    } else {
+                        TsTypePrecedence::Conditional
+                    };
+                    if level > precedence || context == TsTypeContext::BeforeConditionalQuestion {
+                        return false;
+                    }
+                    level = TsTypePrecedence::Lowest;
+                    context = TsTypeContext::ExtendsClause;
+                    constraint
+                }
+                TsTypeData::TsTypePredicate(t) => {
+                    let Some(annotation) = t.type_annotation(self.ast) else {
+                        return false;
+                    };
+                    level = TsTypePrecedence::Lowest;
+                    annotation.type_annotation(self.ast)
+                }
+                TsTypeData::TsRestType(t) => {
+                    level = TsTypePrecedence::Lowest;
+                    context = TsTypeContext::Default;
+                    match self.ast.ts_tuple_element_data(t.type_annotation(self.ast)) {
+                        TsTupleElementData::TsType(t) => t,
+                        TsTupleElementData::TsNamedTupleMember(t) => t.element_type(self.ast),
+                    }
+                }
+                TsTypeData::TsJsDocNullableType(t) if !t.postfix(self.ast) => {
+                    level = TsTypePrecedence::TypeOperator;
+                    context = TsTypeContext::Default;
+                    t.type_annotation(self.ast)
+                }
+                TsTypeData::TsJsDocNonNullableType(t) if !t.postfix(self.ast) => {
+                    level = TsTypePrecedence::TypeOperator;
+                    context = TsTypeContext::Default;
+                    t.type_annotation(self.ast)
+                }
+                _ => return false,
+            };
+        }
     }
 
     fn print_ts_type(&mut self, ty: TsType, level: TsTypePrecedence) {

@@ -6383,10 +6383,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             TsTypeQueryExprName::TsTypeName(self.parse_entity_name()?)
         };
-        let type_arguments = if expr_name.is_ts_import_type(&self.ast) {
-            None
+        let type_arguments = if self.current_token.tag() == TokenTag::LessThan
+            && !self.current_token.has_line_terminator_before()
+            && !expr_name.is_ts_import_type(&self.ast)
+        {
+            Some(self.parse_type_arguments()?)
         } else {
-            self.parse_type_arguments_after_entity_name()?
+            None
         };
         let end = type_arguments.map_or(expr_name.span(&self.ast).end, |args| {
             args.span(&self.ast).end
