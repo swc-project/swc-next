@@ -1,0 +1,109 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value0=<MissingPanel>{`before ${// @ts-ignore
+coveredTemplate}`}</MissingPanel>;
+
+const value1=<MissingPanel><>{`before ${// @ts-ignore
+coveredTemplate}`}</></MissingPanel>;
+
+const value2=<MissingPanel>{tag`before ${// @ts-ignore
+coveredTemplate}`}</MissingPanel>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>{`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    <>{`before ${
+      // @ts-ignore
+      coveredTemplate}`}</></MissingPanel>);
+
+const value2 = (
+  <MissingPanel>{tag`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>{`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    <>{`before ${
+      // @ts-ignore
+      coveredTemplate}`}</></MissingPanel>);
+
+const value2 = (
+  <MissingPanel>{tag`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>{`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    <>{`before ${
+      // @ts-ignore
+      coveredTemplate}`}</></MissingPanel>);
+
+const value2 = (
+  <MissingPanel>{tag`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+---------- Options ----------
+{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+---------- Output ----------
+const value0 =
+	(
+		<MissingPanel>{`before ${
+			// @ts-ignore
+			coveredTemplate}`}</MissingPanel>)
+
+const value1 =
+	(
+		<MissingPanel>
+			<>{`before ${
+				// @ts-ignore
+				coveredTemplate}`}</></MissingPanel>)
+
+const value2 =
+	(
+		<MissingPanel>{tag`before ${
+			// @ts-ignore
+			coveredTemplate}`}</MissingPanel>)
+
+---------- Options ----------
+{"printWidth":100,"trailingComma":"none"}
+---------- Output ----------
+const value0 = (
+  <MissingPanel>{`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
+
+const value1 = (
+  <MissingPanel>
+    <>{`before ${
+      // @ts-ignore
+      coveredTemplate}`}</></MissingPanel>);
+
+const value2 = (
+  <MissingPanel>{tag`before ${
+    // @ts-ignore
+    coveredTemplate}`}</MissingPanel>);
