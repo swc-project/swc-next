@@ -1,8 +1,9 @@
 parser * babel
 ========================
-Positive Passed: 2233/2235 (99.91%)
-Negative Passed: 1644/1743 (94.32%)
-Panicked: 0/3978 (0.00%)
+Positive Passed: 2271/2274 (99.87%)
+Negative Passed: 1691/1791 (94.42%)
+Panicked: 0/4065 (0.00%)
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded
@@ -24,6 +25,7 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/decl
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/declare-method/input.ts - typescript/class/declare-method: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/declare-readonly-field-initializer-w-annotation/input.ts - typescript/class/declare-readonly-field-initializer-w-annotation: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/index-signature-errors/input.ts - typescript/class/index-signature-errors: expected a parse or early error, but pipeline succeeded
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-declare-name-eval-arguments/input.ts - typescript/class/invalid-declare-name-eval-arguments: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-definite-initializer/input.ts - typescript/class/invalid-definite-initializer: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-definite-without-type/input.ts - typescript/class/invalid-definite-without-type: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/invalid-modifiers-order/input.ts - typescript/class/invalid-modifiers-order: expected a parse or early error, but pipeline succeeded

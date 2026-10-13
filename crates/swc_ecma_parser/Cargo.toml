@@ -18,6 +18,7 @@ rustc-hash         = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
 swc_next_simd      = { workspace = true, features = ["memchr"] }
+unicode-id-start   = { workspace = true }
 
 [dev-dependencies]
 clap = { workspace = true }
