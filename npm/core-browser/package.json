@@ -15,10 +15,6 @@
       "types": "./src/index.d.ts",
       "import": "./src/index.js",
       "default": "./src/index.js"
-    },
-    "./ast": {
-      "types": "./src/ast.d.ts",
-      "import": "./src/ast.js"
     }
   },
   "files": [
@@ -28,13 +24,7 @@
     "src/swc-next-core.bridge.mjs",
     "src/swc-next-core.browser.mjs",
     "src/swc-next-core.runtime.mjs",
-    "src/swc-next-core.wasm",
-    "src/ast.js",
-    "src/ast.d.ts",
-    "src/visitor-keys.js",
-    "src/child-visitors.js",
-    "src/visitor-keys.d.ts",
-    "src/transform.js"
+    "src/swc-next-core.wasm"
   ],
   "publishConfig": {
     "access": "public",

@@ -14,24 +14,13 @@
     ".": {
       "import": "./src-js/index.js",
       "types": "./src-js/index.d.ts"
-    },
-    "./ast": {
-      "types": "./src-js/ast.d.ts",
-      "import": "./src-js/ast.js"
     }
   },
   "files": [
     "src-js/binding.d.ts",
     "src-js/binding.js",
     "src-js/index.d.ts",
-    "src-js/index.js",
-    "src-js/ast.js",
-    "src-js/ast.d.ts",
-    "src-js/visitor-keys.js",
-    "src-js/child-visitors.js",
-    "src-js/visitor-keys.d.ts",
-    "src-js/transform.js",
-    "README.md"
+    "src-js/index.js"
   ],
   "publishConfig": {
     "access": "public",
@@ -86,6 +75,7 @@
     "tinybench": "catalog:",
     "tinypool": "catalog:",
     "typescript": "catalog:",
-    "yuku-parser": "catalog:"
+    "yuku-parser": "catalog:",
+    "@swc-next/walker": "workspace:*"
   }
 }

@@ -79,9 +79,3 @@ export declare function walk<
   State = unknown,
   Node extends AstNode = AstNode,
 >(root: Root, hooks: WalkHooks<State, Node>, state?: State): Root;
-
-export interface TransformPlugin<State = any> {
-  name?: string;
-  visitor: WalkHooks<State>;
-  state?: State;
-}

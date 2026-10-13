@@ -128,7 +128,7 @@ if (process.argv[2] === "--worker") {
   if (!baseline) throw new Error("Pass a baseline ast.js path (with adjacent visitor-keys.js)");
   const variants = {
     before: resolve(baseline),
-    after: fileURLToPath(new URL("../src-js/ast.js", import.meta.url)),
+    after: fileURLToPath(new URL("../../../packages/walker/index.js", import.meta.url)),
   };
   if (handwritten) variants.handwritten = "handwritten";
   const variantNames = Object.keys(variants);

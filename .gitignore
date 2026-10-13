@@ -23,11 +23,3 @@ dist
 .idea/
 .codex/
 .DS_Store
-
-# Shared JS AST helpers copied by prepare-browser.
-/npm/core-browser/src/ast.js
-/npm/core-browser/src/ast.d.ts
-/npm/core-browser/src/child-visitors.js
-/npm/core-browser/src/visitor-keys.js
-/npm/core-browser/src/visitor-keys.d.ts
-/npm/core-browser/src/transform.js

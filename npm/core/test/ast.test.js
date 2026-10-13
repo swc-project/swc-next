@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { walk, visitorKeys } from "../src-js/ast.js";
+import { walk, visitorKeys } from "@swc-next/walker";
 
 const id = (name) => ({ type: "Identifier", name });
 const statement = (name) => ({

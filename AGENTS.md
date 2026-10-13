@@ -28,6 +28,7 @@ Run from the workspace root.
 | Build all WASM packages  | `pnpm build:wasm [--profile wasm-release]`                                                                |
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
 | Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                                   |
+| Test standalone walker | `node --test npm/core/test/ast.test.js` (imports `@swc-next/walker`; no native binding required) |
 | Check JS API types       | `pnpm --filter @swc-next/core test:types` (also included in `pnpm test`)                                  |
 | Benchmark JS walker | `node npm/core/benches/walk.bench.mjs /absolute/path/to/baseline/ast.js` (add `--handwritten-edits` for three-way editing; see `npm/core/benches/walk.md`) |
 | Benchmark application walkers | `node npm/core/benches/visitor.bench.mjs /path/to/visitor-benchmark /path/to/baseline/ast.js /path/to/results.json` (see `npm/core/benches/visitor.md`; no native binding required) |

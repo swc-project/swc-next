@@ -1,35 +1,41 @@
-# `@swc-next/core`
+# `@swc-next/walker`
 
-Parse, inspect, transform, and print JavaScript / TypeScript ESTree ASTs.
+Traverse and edit JavaScript / TypeScript ESTree ASTs with synchronous hooks.
+Pure JavaScript with no runtime dependencies, native bindings, or WASM initialization.
+The same ESM package works in Node.js and browsers.
 
 ```js
-import { transformSync } from "@swc-next/core";
+import { walk } from "@swc-next/walker";
 
-function removeDebugger() {
-  return {
-    name: "remove-debugger",
-    visitor: {
-      DebuggerStatement(node, ctx) {
-        ctx.remove();
-      },
-    },
-  };
-}
-
-const { code } = transformSync("debugger; run();", {
-  plugins: [removeDebugger()],
+walk(program, {
+  DebuggerStatement(node, ctx) {
+    ctx.remove();
+  },
 });
+```
+
+`program` is an existing AST. For example, compose the walker with SWC Next:
+
+```js
+import { parseSync, printSync } from "@swc-next/core";
+import { walk } from "@swc-next/walker";
+
+const { program, meta } = parseSync("debugger; run();");
+walk(program, { DebuggerStatement(node, ctx) { ctx.remove(); } });
+const { code } = printSync(program, {}, meta);
 // run();
 ```
+
+The walker does not parse, print, or orchestrate plugins. Parser-produced ASTs
+must use the supported ESTree node names and child fields described below.
 
 ## `walk(root, hooks, state?)`
 
 Walk an existing AST synchronously, mutate it in place, and return the original
-root. Parsing and printing are independent. Import from `@swc-next/core/ast` to
-use the walker without loading the native or WASM binding:
+root. Parsing and printing are independent. Import from `@swc-next/walker`:
 
 ```js
-import { walk } from "@swc-next/core/ast";
+import { walk } from "@swc-next/walker";
 
 const dependencies = [];
 walk(program, {
@@ -77,7 +83,7 @@ position, not deduplicated.
 | `node` | Current node, updated immediately by `replace`. The callback's `node` argument still refers to the original object. |
 | `parent`, `key`, `index` | Parent node and its child field; index is the current array index or null (also null after removal). All three are null at the root. |
 | `state` | The supplied state object; it may be mutated. |
-| `ancestors()` | A new array from the root to the parent, excluding the current node. No ancestor array is maintained eagerly. |
+| `ancestors()` | A new array from the root to the parent, excluding the current node. Only the returned snapshot is allocated on demand. |
 | `replace(node)` | Replace a non-root node immediately and end the remaining hooks in the current phase. Enter does not run again on the replacement. After an enter replacement, walk its children and run leave hooks for its type. A leave replacement is not traversed. Missing `start` / `end` on the replacement root inherit the old values. |
 | `remove()` | Splice the current array element. During enter, skip its children and all leave hooks; during leave, stop remaining leave hooks. Later siblings are still visited. Root and scalar-field removal throw. |
 | `insertBefore(nodeOrNodes)` | Insert siblings in an array, in supplied/call order. They are not visited during this walk. |
@@ -128,31 +134,3 @@ narrow `node.type`; other fields use the structural `AstNode` interface. This
 first version does not generate complete per-node field declarations. Consumers
 can supply their own discriminated union with `WalkHooks<State, Nodes>` and
 `walk<Root, State, Nodes>(root, hooks, state)` for field-level checking.
-
-## `transformSync(source, options?)`
-
-Options are `{ parser?: ParserOptions, codegen?: CodegenOptions, plugins?: [] }`.
-The result contains `{ code, program, diagnostics, meta }`.
-
-1. Parse once, using `parser` options.
-2. Throw `SyntaxError` with a `diagnostics` property on parse errors, before any
-   plugin runs. Warnings do not prevent transforms.
-3. Walk once per plugin, in array order. Each plugin sees all previous plugins'
-   changes, including nodes inserted before their traversal position.
-4. Print once, preserving parser metadata and applying `codegen` options.
-
-Plugins are objects `{ name?, visitor, state? }`. Invoke factories explicitly,
-for example `plugins: [myPlugin(options)]`. `name` is descriptive; there is no
-plugin registry or implicit factory calling. State belongs to the caller: use a
-fresh plugin instance for per-file state. Plugin hooks are not merged into one
-pass. There are no pre/post lifecycle callbacks or async transform hooks yet.
-
-`transformSync` uses the existing printer: comments are not automatically
-reattached, and it does not provide Babel presets, target lowering, semantic
-analysis of edits, or source maps. Its AST hook shape is informed by Babel and
-[`yuku-ast`](https://github.com/yuku-toolchain/yuku/tree/main/npm/yuku-ast), while
-edit semantics above are specific to SWC Next.
-
-The browser package exposes the same hooks and transform API after `await init()`;
-its `/ast` export needs no WASM initialization. The Node WASM fallback runs the
-same JS walker and transform implementation.

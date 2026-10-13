@@ -1,10 +1,15 @@
 # Application walker optimization
 
+Historical measurements of the pre-extraction implementation. The runtime now
+lives in `packages/walker/index.js` (`@swc-next/walker`); the benchmark script
+accepts either that entry or an older `ast.js` snapshot. These recorded results
+used the older benchmark preparation, including cloned ASTs in editing and
+original-source i18n. They are not fresh-parser measurements.
+
 This comparison changes only SWC Next's JavaScript walker implementation. It uses
 the existing SWC Next adapters from
 [visitor-benchmark](https://github.com/SoonIter/visitor-benchmark), without changing
-their business logic, input ASTs, or editing APIs. No `transformSync`, parser,
-printer, or public API changes are required.
+their business logic, input ASTs, or editing APIs. This comparison changes no parser, printer, or hook semantics.
 
 ## Implementation
 

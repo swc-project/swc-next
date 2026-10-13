@@ -4,19 +4,19 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 
-const candidate = fileURLToPath(new URL("../src-js/ast.js", import.meta.url));
+const candidate = fileURLToPath(new URL("../../../packages/walker/index.js", import.meta.url));
 const median = (values) => {
   const sorted = values.slice().sort((a, b) => a - b);
   return (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2;
 };
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const moduleHashes = (file) => Object.fromEntries(
-  ["ast.js", "child-visitors.js", "visitor-keys.js"].map((name) =>
+  [basename(file), "child-visitors.js", "visitor-keys.js"].map((name) =>
     [name, hash(readFileSync(resolve(dirname(file), name)))])
 );
 

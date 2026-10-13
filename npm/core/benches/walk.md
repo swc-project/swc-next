@@ -1,5 +1,9 @@
 # JavaScript walker: SWC Next vs yuku-ast
 
+The recorded samples predate extraction to `@swc-next/walker`. The current
+script loads `packages/walker/index.js`; old module paths in raw samples identify
+the code actually measured. These results are not rerun claims for the new package.
+
 Measured on 2026-10-09, Apple M5 Max, macOS arm64, Node v24.20.0.
 Baseline: published **yuku-ast 0.18.0**. Candidate: PR #840 with generated child
 accessors, prototype traversal methods and context storage populated only for

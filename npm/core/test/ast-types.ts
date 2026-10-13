@@ -1,11 +1,4 @@
-import {
-  walk,
-  transformSync,
-  type AstNode,
-  type WalkHooks,
-  type TransformPlugin,
-} from "../src-js/index.js";
-import { walk as standaloneWalk } from "@swc-next/core/ast";
+import { walk, type AstNode, type WalkHooks } from "@swc-next/walker";
 
 const root: AstNode = { type: "Program", body: [] };
 walk(
@@ -20,7 +13,7 @@ walk(
   },
   { count: 0 },
 );
-standaloneWalk(root, {
+walk(root, {
   Function(node) {
     const type:
       | "FunctionDeclaration"
@@ -47,18 +40,8 @@ const hooks: WalkHooks<{ count: number }, Nodes> = {
   },
 };
 walk<AstNode, { count: number }, Nodes>(root, hooks, { count: 0 });
-const plugin: TransformPlugin<{ count: number }> = {
-  state: { count: 0 },
-  visitor: {
-    Identifier(node, ctx) {
-      ctx.state.count++;
-    },
-  },
-};
-const result = transformSync("run();", { plugins: [plugin] });
-result.code.toUpperCase();
 // @ts-expect-error Unknown node type
-standaloneWalk(root, { Typo() {} });
+walk(root, { Typo() {} });
 const invalid: WalkHooks<{ count: number }> = {
   Identifier(node, ctx) {
     // @ts-expect-error Wrong state type

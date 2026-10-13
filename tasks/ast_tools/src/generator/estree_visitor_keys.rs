@@ -150,15 +150,15 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
     dts.push_str("};\nexport type NodeType = keyof typeof visitorKeys;\n");
     vec![
         RawOutput {
-            path: "npm/core/src-js/child-visitors.js".into(),
+            path: "packages/walker/child-visitors.js".into(),
             content: children.into_bytes(),
         },
         RawOutput {
-            path: "npm/core/src-js/visitor-keys.js".into(),
+            path: "packages/walker/visitor-keys.js".into(),
             content: js.into_bytes(),
         },
         RawOutput {
-            path: "npm/core/src-js/visitor-keys.d.ts".into(),
+            path: "packages/walker/visitor-keys.d.ts".into(),
             content: dts.into_bytes(),
         },
     ]
