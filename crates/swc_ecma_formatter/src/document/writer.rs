@@ -298,7 +298,6 @@ impl<'a> Writer<'a> {
     }
 
     /// The completed syntax scope decides whether its empty separator lines collapse.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn fill_with_empty_line_policy<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<(T, bool), E>,
