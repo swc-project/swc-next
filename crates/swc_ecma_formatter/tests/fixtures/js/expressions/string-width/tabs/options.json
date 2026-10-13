@@ -1,0 +1,6 @@
+[
+  { "printWidth": 21, "tabWidth": 0, "useTabs": true },
+  { "printWidth": 21, "tabWidth": 0, "useTabs": false },
+  { "printWidth": 21, "tabWidth": 1, "useTabs": true },
+  { "printWidth": 21, "tabWidth": 4, "useTabs": true }
+]
