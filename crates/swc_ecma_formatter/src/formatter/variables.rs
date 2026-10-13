@@ -281,7 +281,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ast.binding_pattern_data(left),
                 BindingPatternData::BindingIdentifier(_)
             )
-            && matches!(content.data, ExprData::Class(class) if class.decorators(ast).is_empty())
+            && matches!(
+                content.data,
+                ExprData::TemplateLiteral(_)
+                    | ExprData::TaggedTemplateExpression(_)
+                    | ExprData::Class(_)
+            )
+            && !matches!(content.data, ExprData::Class(class) if !class.decorators(ast).is_empty())
         {
             rhs_layout = RhsLayout::NeverBreakAfterOperator;
         }

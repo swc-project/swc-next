@@ -102,7 +102,6 @@ enum FormatElement<'a> {
     EndGroup,
     FlatGroup(GroupId),
     StartIndent,
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     StartAbsoluteIndent {
         width: usize,
     },

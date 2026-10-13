@@ -513,9 +513,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     parenthesized.expression(self.ast)
                 }
-                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => member.object(self.ast),
                 ExprData::CallExpression(call) => call.callee(self.ast),
+                ExprData::TaggedTemplateExpression(template) => template.tag(self.ast),
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 _ => return None,
             };
         }
@@ -621,6 +622,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     if let ExprData::CallExpression(node) = data {
                         expression = node.callee(self.ast);
+                        continue;
+                    }
+                    if let ExprData::TaggedTemplateExpression(node) = data {
+                        expression = node.tag(self.ast);
                         continue;
                     }
                     if let ExprData::MemberExpression(node) = data {
@@ -978,7 +983,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         }
         if context.parentheses_owner == ParenthesesOwner::Expression
-            && matches!(context.position, ExpressionPosition::CallCallee { .. })
+            && matches!(
+                context.position,
+                ExpressionPosition::CallCallee { .. } | ExpressionPosition::TemplateTag
+            )
         {
             let receiver = match context.content_mode {
                 ContentMode::Formatted => self.expression_content(child).expression,
@@ -1280,6 +1288,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut asi_guard = parenthesize
                 || match data {
                     ExprData::ArrayExpression(_)
+                    | ExprData::TemplateLiteral(_)
                     | ExprData::RegExpLiteral(_)
                     | ExprData::TsTypeAssertion(_) => true,
                     ExprData::UnaryExpression(unary) => matches!(
@@ -2345,7 +2354,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::ConditionalTest
             | ExpressionPosition::TypeBinaryOperand
             | ExpressionPosition::NonNullOperand
-            | ExpressionPosition::InstantiationOperand => true,
+            | ExpressionPosition::InstantiationOperand
+            | ExpressionPosition::TemplateTag => true,
             _ => false,
         }
     }

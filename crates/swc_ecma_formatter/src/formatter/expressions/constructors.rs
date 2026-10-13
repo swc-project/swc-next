@@ -100,10 +100,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// The constructor callee must stay a MemberExpression, including its receiver spine.
-    pub(super) fn new_callee_contains_call(&self, mut data: ExprData, mode: ContentMode) -> bool {
+    pub(super) fn new_callee_contains_call(
+        &self,
+        mut data: ExprData,
+        mut mode: ContentMode,
+    ) -> bool {
         loop {
             match data {
                 ExprData::CallExpression(_) | ExprData::ImportExpression(_) => return true,
+                ExprData::TaggedTemplateExpression(template) => {
+                    let Ok((tag, context)) = self.template_tag_head_operand(
+                        template,
+                        ExpressionContext::at(ExpressionPosition::Nested).with_content_mode(mode),
+                    ) else {
+                        return true;
+                    };
+                    mode = context.content_mode;
+                    data = if mode == ContentMode::Formatted {
+                        self.expression_content(tag).data
+                    } else {
+                        self.ast.expr_data(tag)
+                    };
+                }
                 ExprData::TsNonNullExpression(assertion) => {
                     let expression = assertion.expression(self.ast);
                     data = if mode == ContentMode::Formatted {

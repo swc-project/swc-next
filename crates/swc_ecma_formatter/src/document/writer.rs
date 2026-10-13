@@ -260,7 +260,6 @@ impl<'a> Writer<'a> {
     }
 
     /// Gives a complete scope its own root-relative indentation.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn absolute_indent<T>(
         &mut self,
         width: usize,
