@@ -533,16 +533,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn arrow_body_hugs_shape(&self, mut data: ExprData) -> bool {
-        while let ExprData::ParenthesizedExpression(node) = data {
-            data = self.ast.expr_data(node.expression(self.ast));
+        let (start, template) = match data {
+            ExprData::TemplateLiteral(template) => (template.span(self.ast).start, template),
+            ExprData::TaggedTemplateExpression(tagged) => {
+                (tagged.span(self.ast).start, tagged.quasi(self.ast))
+            }
+            _ => {
+                // A retained template pair owns its breaks; other body shapes can still hug.
+                while let ExprData::ParenthesizedExpression(parenthesized) = data {
+                    data = self.ast.expr_data(parenthesized.expression(self.ast));
+                }
+                return matches!(
+                    data,
+                    ExprData::ArrayExpression(_)
+                        | ExprData::ObjectExpression(_)
+                        | ExprData::SequenceExpression(_)
+                        | ExprData::ArrowFunctionExpression(_)
+                );
+            }
+        };
+        if self.source_line_starts_line(start) {
+            return false;
         }
-        matches!(
-            data,
-            ExprData::ArrayExpression(_)
-                | ExprData::ObjectExpression(_)
-                | ExprData::SequenceExpression(_)
-                | ExprData::ArrowFunctionExpression(_)
-        )
+        template.quasis(self.ast).iter().any(|id| {
+            let quasi = self.ast.get_node_in_sub_range(id);
+            self.ast.get_utf8(quasi.raw(self.ast)).contains('\n')
+        })
     }
     pub(super) fn format_arrow(
         &mut self,
@@ -1011,6 +1027,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 ExprData::MemberExpression(node) => node.object(ast),
                 ExprData::CallExpression(node) => node.callee(ast),
+                ExprData::TaggedTemplateExpression(node) => node.tag(ast),
                 ExprData::ConditionalExpression(node) => node.test(ast),
                 ExprData::UpdateExpression(node) if !node.prefix(ast) => {
                     super::targets::SimpleTarget::new(ast, node.argument(ast)).expression()

@@ -11,6 +11,7 @@ mod interfaces;
 mod mapped;
 pub(super) mod members;
 mod postfix;
+mod templates;
 mod tuple;
 
 use self::compound::{PendingTypeHead, PreparedTypeContent};
@@ -1651,10 +1652,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TsTypeData::TsTypeQuery(node) => self.format_type_query(node, writer),
 
             TsTypeData::TsTypeReference(reference) => self.format_type_reference(reference, writer),
+            TsTypeData::TsTemplateLiteralType(template) => {
+                self.format_template_literal_type(template, writer)?;
+                Ok(None)
+            }
             TsTypeData::TsLiteralType(literal) => {
                 match self.ast.ts_literal_data(literal.literal(self.ast)) {
                     TsLiteralData::TemplateLiteral(template) => {
-                        return Err(self.unsupported("template literal type", template));
+                        self.format_zero_slot_template(template, writer)?;
                     }
                     TsLiteralData::StringLiteral(node) => {
                         self.format_string_literal(node, StringContext::Expression, writer)

@@ -444,7 +444,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | TsTypeData::TsSymbolKeyword(_)
             | TsTypeData::TsObjectKeyword(_)
             | TsTypeData::TsIntrinsicKeyword(_)
-            | TsTypeData::TsThisType(_) => true,
+            | TsTypeData::TsThisType(_)
+            | TsTypeData::TsTemplateLiteralType(_) => true,
             TsTypeData::TsTypeReference(reference) => reference.type_arguments(self.ast).is_none(),
             TsTypeData::TsLiteralType(literal) => {
                 match self.ast.ts_literal_data(literal.literal(self.ast)) {
@@ -452,7 +453,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | TsLiteralData::NumericLiteral(_)
                     | TsLiteralData::BigIntLiteral(_)
                     | TsLiteralData::BooleanLiteral(_) => true,
-                    TsLiteralData::TemplateLiteral(_) => false,
+                    TsLiteralData::TemplateLiteral(template) => {
+                        template.expressions(self.ast).is_empty()
+                    }
                     TsLiteralData::UnaryExpression(unary) => {
                         unary.operator(self.ast) == UnaryOperator::Negate
                             && matches!(
