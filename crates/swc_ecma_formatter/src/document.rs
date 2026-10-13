@@ -9,7 +9,7 @@ mod tests;
 mod text;
 mod writer;
 
-pub(crate) use writer::Writer;
+pub(crate) use writer::{FillEntry, Writer};
 
 use crate::FormatOptions;
 use text::Text;
@@ -86,9 +86,7 @@ enum FormatElement<'a> {
     LiteralLine,
     IfBreak(Text<'a>),
     IfFlat(Text<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentBreak(Text<'a>),
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     IfCurrentFlat(Text<'a>),
     LineSuffix(Text<'a>),
     StartGroup {

@@ -12,6 +12,7 @@ mod conditional;
 mod constructors;
 mod for_initializer;
 pub(super) mod imports;
+mod jsx;
 mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
@@ -57,6 +58,9 @@ pub(super) enum ExpressionPosition {
     Decorator,
     TemplateTag,
     TemplateInterpolation,
+    JsxExpression,
+    JsxSpreadAttribute,
+    JsxSpreadChild,
     ArrowBody,
     RestrictedArgument,
     YieldArgument,
@@ -918,6 +922,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(true);
         }
+        if matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_)) {
+            return Some(Self::jsx_expression_needs_parentheses(position));
+        }
+        if matches!(position, ExpressionPosition::JsxSpreadAttribute)
+            && matches!(
+                data,
+                ExprData::ConditionalExpression(_)
+                    | ExprData::BinaryExpression(_)
+                    | ExprData::LogicalExpression(_)
+                    | ExprData::TsAsExpression(_)
+                    | ExprData::TsSatisfiesExpression(_)
+            )
+        {
+            return Some(true);
+        }
         if let Some(needed) = typescript::type_expression_needs_parentheses(data, position) {
             let exposed_tail = match (data, position) {
                 (
@@ -1132,6 +1151,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     | ExpressionPosition::ExportDefault
                     | ExpressionPosition::AssignmentRight(_)
                     | ExpressionPosition::TemplateInterpolation
+                    | ExpressionPosition::JsxExpression
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
@@ -1286,6 +1306,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match self.ast.expr_data(expression) {
+            ExprData::JsxElement(node) => {
+                return self.format_jsx_expression(
+                    node.span(self.ast),
+                    context,
+                    writer,
+                    |formatter, writer| {
+                        formatter.format_jsx_element(node, TailOwner::ParentOperation, writer)
+                    },
+                );
+            }
+            ExprData::JsxFragment(node) => {
+                self.format_jsx_expression(
+                    node.span(self.ast),
+                    context,
+                    writer,
+                    |formatter, writer| formatter.format_jsx_fragment(node, writer),
+                )?;
+            }
+
             ExprData::TemplateLiteral(template) => {
                 self.format_template_literal(template, writer)?
             }
