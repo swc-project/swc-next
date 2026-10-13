@@ -20,7 +20,6 @@ pub(crate) struct Writer<'a> {
 }
 
 /// A completed entry can retain a suffix while it is still the final scope.
-#[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
 pub(crate) struct FillEntry {
     start: usize,
     end: usize,
@@ -124,13 +123,11 @@ impl<'a> Writer<'a> {
     }
 
     /// Unlike group-bound conditionals, fill entries observe their local mode.
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_current_break(&mut self, text: &'a str) {
         self.elements
             .push(FormatElement::IfCurrentBreak(Text::new(text)));
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn if_current_flat(&mut self, text: &'a str) {
         self.elements
             .push(FormatElement::IfCurrentFlat(Text::new(text)));
@@ -354,7 +351,6 @@ impl<'a> Writer<'a> {
         (FillEntry { start, end }, result)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "Pending syntax consumers."))]
     pub(crate) fn extend_fill_entry(&mut self, entry: FillEntry, write: impl FnOnce(&mut Self)) {
         assert_eq!(
             self.elements.len(),

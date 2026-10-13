@@ -925,6 +925,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    pub(super) fn jsx_source_pair_is_enclosed(
+        &self,
+        expression: Expr,
+        content: &ExpressionContent,
+        context: ExpressionContext,
+    ) -> bool {
+        matches!(
+            content.data,
+            ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+        ) && context.content_mode == ContentMode::Formatted
+            && context.parentheses_owner == ParenthesesOwner::Expression
+            && Self::jsx_grammar_pair_is_enclosed(context.position)
+            && expression.as_parenthesized_expression(self.ast).is_some()
+            && self.expression_is_parenthesized(content.data, context)
+    }
+
     fn source_parentheses_choice(
         &self,
         parenthesized: ParenthesizedExpression,
@@ -1007,6 +1023,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         mode: context.content_mode,
                     };
                 }
+            }
+        }
+        if self.ast.is_jsx()
+            && context.content_mode == ContentMode::Formatted
+            && context.parentheses_owner == ParenthesesOwner::Expression
+            && Self::jsx_grammar_pair_is_enclosed(context.position)
+        {
+            let content = self.expression_content(child);
+            if self.jsx_source_pair_is_enclosed(
+                Expr::ParenthesizedExpression(parenthesized),
+                &content,
+                context,
+            ) {
+                // The real source pair keeps the JSX head and tail in its frame.
+                return SourceParenthesesChoice::Retained {
+                    kind: RetainedParentheses::Operand,
+                    mode: context.content_mode,
+                };
             }
         }
         if Self::conditional_test_pair_is_enclosed(context.position)
@@ -1265,7 +1299,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_sequence(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
-        if parenthesize && Self::for_head_grammar_pair_is_enclosed(data, context.position) {
+        if parenthesize
+            && (Self::for_head_grammar_pair_is_enclosed(data, context.position)
+                || matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
+                    && Self::jsx_grammar_pair_is_enclosed(context.position))
+        {
             return self.format_parenthesized_expression(
                 expression,
                 prepared,
@@ -1290,7 +1328,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExprData::ArrayExpression(_)
                     | ExprData::TemplateLiteral(_)
                     | ExprData::RegExpLiteral(_)
-                    | ExprData::TsTypeAssertion(_) => true,
+                    | ExprData::TsTypeAssertion(_)
+                    | ExprData::JsxElement(_)
+                    | ExprData::JsxFragment(_) => true,
                     ExprData::UnaryExpression(unary) => matches!(
                         unary.operator(self.ast),
                         swc_next_ecma_ast::UnaryOperator::Positive
@@ -2274,6 +2314,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         || context.conditional_envelope
                             == super::ConditionalEnvelope::OperationHead)
             }
+            ExprData::JsxElement(_) | ExprData::JsxFragment(_) => {
+                Self::jsx_grammar_pair_is_enclosed(context.position)
+            }
             _ => false,
         };
         if !breakable
@@ -2294,7 +2337,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let context = if Self::binary_grammar_pair_owns_indent(context.position) {
+        let context = if matches!(
+            content.data,
+            ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+        ) && Self::binary_grammar_pair_owns_indent(context.position)
+        {
             context.with_operand_indent(OperandIndent::Parent)
         } else {
             context
