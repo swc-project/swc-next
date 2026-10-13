@@ -113,7 +113,7 @@ impl BoundIdentifier {
         let target = AssignmentTarget::SimpleAssignmentTarget(
             SimpleAssignmentTarget::IdentifierReference(self.reference_write(ctx, scope, span)),
         );
-        Expr::AssignmentExpression(ctx.add_node(scope, |ast| {
+        Expr::AssignmentExpression(ctx.add_node(|ast| {
             ast.assignment_expression(span, target, value, AssignmentOperator::Assign)
         }))
     }
@@ -177,7 +177,7 @@ impl<'a> TransformCtx<'_, 'a> {
     ) -> SymbolId {
         let name = binding.name(self.ast);
         let text = self.ast.get_utf8(name);
-        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.grow_to(self.ast.node_count());
         self.state
             .semantic
             .register_binding(scope, binding.node_id(), name, text, flags)
@@ -208,27 +208,23 @@ impl<'a> TransformCtx<'_, 'a> {
             symbol: target,
             flags,
         };
-        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.grow_to(self.ast.node_count());
         self.state.semantic.register_reference(reference)
     }
 
-    /// Allocate new AST nodes and register their evaluation scope without changing existing edges.
+    /// Allocate new AST nodes and grow their identity indexes without changing existing edges.
     ///
     /// ```javascript
     /// // Before: initialize() is already registered.
     /// initialize();
     /// // After: lowering prepares a unary wrapper in the same scope.
     /// void initialize();
-    /// // Allocate only the UnaryExpression and register the new NodeId range in that scope.
+    /// // Allocate only the UnaryExpression and grow indexes through its new NodeId.
     /// // Retain the existing call; attach the wrapper separately and register new semantic identities explicitly.
     /// ```
-    pub fn add_node<N>(&mut self, scope: ScopeId, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
-        debug_assert!(
-            self.state.semantic.scope(scope).active,
-            "target scope must be active"
-        );
+    pub fn add_node<N>(&mut self, f: impl FnOnce(&mut Ast<'a>) -> N) -> N {
         let node = f(self.ast);
-        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.grow_to(self.ast.node_count());
         node
     }
 
@@ -251,7 +247,7 @@ impl<'a> TransformCtx<'_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) -> ScopeId {
-        self.state.semantic.grow_to(self.ast.node_count(), parent);
+        self.state.semantic.grow_to(self.ast.node_count());
         self.state
             .semantic
             .create_child_scope(parent, owner, kind, flags)
@@ -278,7 +274,7 @@ impl<'a> TransformCtx<'_, 'a> {
         kind: ScopeKind,
         flags: ScopeFlags,
     ) {
-        self.state.semantic.grow_to(self.ast.node_count(), scope);
+        self.state.semantic.grow_to(self.ast.node_count());
         self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
@@ -291,7 +287,7 @@ impl<'a> TransformCtx<'_, 'a> {
     /// class C { static { use(value, () => value); } }
     /// // After: the caller reuses the whole call in the class scope.
     /// class C { static #_ = use(value, () => value); }
-    /// // Move call/use/value nodes directly in the block scope to the class scope, preserving references.
+    /// // Move references directly in the block scope to the class scope, preserving their identities.
     /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
     /// // Move owned bindings separately, then attach through a setter or container.
     /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
@@ -337,26 +333,12 @@ impl<'a> TransformCtx<'_, 'a> {
     /// class C { static {} }
     /// // After: the caller removes the block from the class body.
     /// class C {}
-    /// // Require no remaining bindings, declarations, references, child scopes or retained nodes.
+    /// // Require no remaining bindings, declarations, references or child scopes.
     /// // Clear the block owner's mapping and mark its scope inactive; do not delete descendants.
     /// // For a reused block body, convert_scope keeps the scope instead.
     /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         self.state.semantic.remove_scope(scope);
-    }
-
-    /// Clear a detached node's evaluation mapping without changing mappings of its retained children.
-    ///
-    /// ```javascript
-    /// // Before: use(value) is attached through an ExpressionStatement.
-    /// class C { static { use(value); } }
-    /// // After: its expression is reused directly as a field initializer.
-    /// class C { static #_ = use(value); }
-    /// // Move the expression first, then clear only the discarded ExpressionStatement mapping.
-    /// // Its call and references remain registered; the shell must own no scope, binding or reference.
-    /// ```
-    pub fn clear_node_scope(&mut self, node: NodeId) {
-        self.state.semantic.clear_node_scope(node);
     }
 }
 
@@ -368,16 +350,19 @@ struct ScopeMover<'c, 'a> {
 
 impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
     fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
-        let scope = self.semantic.scope_at(node).expect("retained node scope");
-        if self.semantic.scope(scope).node == node {
+        if let Some(scope) = self.semantic.scope_of(node) {
             // Program scopes keep their fixed outer wrapper.
             if self.semantic.scope(scope).parent == Some(self.from)
                 && self.semantic.scope(self.from).node != node
             {
                 self.semantic.reparent_scope(scope, self.to);
             }
-        } else if scope == self.from {
-            self.semantic.move_node_to_scope(node, self.from, self.to);
+        }
+        if let Some(reference) = self.semantic.reference_of(node)
+            && self.semantic.reference(reference).scope == self.from
+        {
+            self.semantic
+                .move_reference_to_scope(reference, self.from, self.to);
         }
     }
 }

@@ -97,19 +97,15 @@ impl StaticBlocks {
             return TraverseAction::Continue;
         }
         let (_, call) = self.class_calls.pop().expect("matching class call");
-        let scope = ctx
-            .semantic()
-            .scope_outside(class.node_id())
-            .expect("class outer scope");
         if class.class_type(ctx.ast()) == ClassType::ClassExpression {
             let expressions = ctx.ast.add_sub_range([Expr::Class(class), call]);
             let sequence = Expr::SequenceExpression(
-                ctx.add_node(scope, |ast| ast.sequence_expression(DUMMY_SP, expressions)),
+                ctx.add_node(|ast| ast.sequence_expression(DUMMY_SP, expressions)),
             );
             TraverseAction::ReplaceContinue(sequence)
         } else {
             let statement = Stmt::ExpressionStatement(
-                ctx.add_node(scope, |ast| ast.expression_statement(DUMMY_SP, call)),
+                ctx.add_node(|ast| ast.expression_statement(DUMMY_SP, call)),
             );
             ctx.insert_after(class.node_id(), statement);
             TraverseAction::Continue
@@ -143,7 +139,7 @@ fn transform_supporting_non_extensible_class(
             if block.body(ctx.ast()).is_empty() && !block_has_comments(block, ctx.ast()) {
                 ctx.remove_scope(
                     ctx.semantic()
-                        .scope_at(block.node_id())
+                        .scope_of(block.node_id())
                         .expect("static block scope"),
                 );
                 ctx.container_class_body_mut(body).remove(index);
@@ -165,10 +161,9 @@ fn transform_supporting_non_extensible_class(
                         expression_closure.expect("name restoration closure").1
                     };
                     let name = prepare_inferred_name(name, name_scope, ctx);
-                    let target = Expr::ThisExpression(
-                        ctx.add_node(name_scope, |ast| ast.this_expression(DUMMY_SP)),
-                    );
-                    let set_name = set_function_name(target, name, ctx);
+                    let target =
+                        Expr::ThisExpression(ctx.add_node(|ast| ast.this_expression(DUMMY_SP)));
+                    let set_name = set_function_name(target, name, name_scope, ctx);
                     if let Some(property) = layout.first_static_property {
                         prepend_to_initializer(property, vec![set_name], ctx);
                     } else {
@@ -204,20 +199,19 @@ fn transform_supporting_non_extensible_class(
     let closure = if let Some(closure) = block_closure {
         closure
     } else {
-        let (arrow, arrow_scope) = expression_closure.expect("trailing expression closure");
+        let (arrow, _) = expression_closure.expect("trailing expression closure");
         if is_expression {
             pending.push(Expr::ThisExpression(
-                ctx.add_node(arrow_scope, |ast| ast.this_expression(DUMMY_SP)),
+                ctx.add_node(|ast| ast.this_expression(DUMMY_SP)),
             ));
         }
-        let value = sequence_or_single(pending, arrow_scope, ctx);
+        let value = sequence_or_single(pending, ctx);
         let body = arrow
             .body(ctx.ast())
             .as_function_body(ctx.ast())
             .expect("placeholder body");
         debug_assert!(body.body(ctx.ast()).is_empty());
         debug_assert!(body.directives(ctx.ast()).is_empty());
-        ctx.clear_node_scope(body.node_id());
         arrow.set_body(ctx.ast, ArrowFunctionBody::Expr(value));
         arrow.set_expression(ctx.ast, true);
         Expr::ArrowFunctionExpression(arrow)
@@ -245,13 +239,13 @@ fn materialize_block(
     }
     let span = block.span(ctx.ast());
     let arrow = block_to_arrow(block, false, parent, ctx);
-    let mut expression = Expr::CallExpression(ctx.add_node(parent, |ast| {
-        ast.call_expression(span, arrow, None, SubRange::empty(), false)
-    }));
+    let mut expression = Expr::CallExpression(
+        ctx.add_node(|ast| ast.call_expression(span, arrow, None, SubRange::empty(), false)),
+    );
     if block_has_comments(block, ctx.ast()) {
         let span = if first { DUMMY_SP } else { span };
         expression = Expr::ParenthesizedExpression(
-            ctx.add_node(parent, |ast| ast.parenthesized_expression(span, expression)),
+            ctx.add_node(|ast| ast.parenthesized_expression(span, expression)),
         );
     }
     ctx.inherits_comments(expression, block)
@@ -261,7 +255,7 @@ fn create_trailing_arrow(
     parent: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> (ArrowFunctionExpression, ScopeId) {
-    let arrow = ctx.add_node(parent, |ast| {
+    let arrow = ctx.add_node(|ast| {
         let body = ast.function_body(DUMMY_SP, SubRange::empty(), SubRange::empty());
         let params = ast.formal_parameters(
             DUMMY_SP,
@@ -301,7 +295,7 @@ fn block_to_arrow(
 ) -> Expr {
     let scope = ctx
         .semantic()
-        .scope_at(block.node_id())
+        .scope_of(block.node_id())
         .expect("static block scope");
     let mut statements = block.body(ctx.ast());
     if completion {
@@ -309,31 +303,27 @@ fn block_to_arrow(
             .iter()
             .map(|slot| ctx.ast().get_node_in_sub_range(slot))
             .collect();
-        let value = Expr::ThisExpression(ctx.add_node(scope, |ast| ast.this_expression(DUMMY_SP)));
-        body.push(Stmt::ReturnStatement(ctx.add_node(scope, |ast| {
-            ast.return_statement(DUMMY_SP, Some(value))
-        })));
+        let value = Expr::ThisExpression(ctx.add_node(|ast| ast.this_expression(DUMMY_SP)));
+        body.push(Stmt::ReturnStatement(
+            ctx.add_node(|ast| ast.return_statement(DUMMY_SP, Some(value))),
+        ));
         statements = ctx.ast.add_sub_range(body);
     }
     let span = block.span(ctx.ast());
-    let body = ArrowFunctionBody::FunctionBody(ctx.add_node(scope, |ast| {
-        ast.function_body(span, SubRange::empty(), statements)
-    }));
+    let body = ArrowFunctionBody::FunctionBody(
+        ctx.add_node(|ast| ast.function_body(span, SubRange::empty(), statements)),
+    );
     let arrow = build_static_block_arrow(span, body, false, scope, parent, ctx).0;
     ctx.inherits_comments(arrow, block)
 }
 
-fn sequence_or_single(
-    expressions: Vec<Expr>,
-    scope: ScopeId,
-    ctx: &mut TransformCtx<'_, '_>,
-) -> Expr {
+fn sequence_or_single(expressions: Vec<Expr>, ctx: &mut TransformCtx<'_, '_>) -> Expr {
     debug_assert!(!expressions.is_empty());
     if expressions.len() == 1 {
         return expressions[0];
     }
     let items = ctx.ast.add_sub_range(expressions);
-    Expr::SequenceExpression(ctx.add_node(scope, |ast| ast.sequence_expression(DUMMY_SP, items)))
+    Expr::SequenceExpression(ctx.add_node(|ast| ast.sequence_expression(DUMMY_SP, items)))
 }
 
 fn prepend_to_initializer(
@@ -341,20 +331,18 @@ fn prepend_to_initializer(
     mut expressions: Vec<Expr>,
     ctx: &mut TransformCtx<'_, '_>,
 ) {
-    let scope = ctx
-        .semantic()
-        .scope_at(property.node_id())
-        .expect("field scope");
+    let scope = ctx.current_scope();
     if let Some(value) = property.value(ctx.ast()) {
         let value = if anonymous_function_or_class(value, ctx.ast()) {
             if let Some(name) = inferred_property_key_name(
                 property.key(ctx.ast()),
                 property.computed(ctx.ast()),
                 property.node_id(),
+                scope,
                 ctx,
             ) {
                 let name = prepare_inferred_name(name, scope, ctx);
-                set_function_name(value, name, ctx)
+                set_function_name(value, name, scope, ctx)
             } else {
                 value
             }
@@ -362,31 +350,32 @@ fn prepend_to_initializer(
             value
         };
         expressions.push(value);
-        let sequence = sequence_or_single(expressions, scope, ctx);
+        let sequence = sequence_or_single(expressions, ctx);
         property.set_value(ctx.ast, Some(sequence));
     } else {
         let last = expressions.pop().expect("initializer prefix");
-        expressions.push(Expr::UnaryExpression(ctx.add_node(scope, |ast| {
+        expressions.push(Expr::UnaryExpression(ctx.add_node(|ast| {
             ast.unary_expression(DUMMY_SP, last, UnaryOperator::Void)
         })));
-        let value = sequence_or_single(expressions, scope, ctx);
+        let value = sequence_or_single(expressions, ctx);
         property.set_value(ctx.ast, Some(value));
     }
 }
 
-fn set_function_name(target: Expr, name: InferredName, ctx: &mut TransformCtx<'_, '_>) -> Expr {
-    let scope = ctx
-        .semantic()
-        .scope_outside(target.node_id())
-        .expect("name target scope");
+fn set_function_name(
+    target: Expr,
+    name: InferredName,
+    scope: ScopeId,
+    ctx: &mut TransformCtx<'_, '_>,
+) -> Expr {
     let name = match name {
-        InferredName::String(name) => Expr::StringLiteral(ctx.add_node(scope, |ast| {
-            ast.string_literal(DUMMY_SP, name, ast.empty_utf8())
-        })),
+        InferredName::String(name) => Expr::StringLiteral(
+            ctx.add_node(|ast| ast.string_literal(DUMMY_SP, name, ast.empty_utf8())),
+        ),
         InferredName::Expr(name) => name,
         InferredName::Computed { .. } => unreachable!("computed name must be prepared"),
     };
-    ctx.call_set_function_name(target, name)
+    ctx.call_set_function_name(target, name, scope)
 }
 
 fn prepare_inferred_name(
@@ -394,15 +383,16 @@ fn prepare_inferred_name(
     scope: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> InferredName {
-    let InferredName::Computed { parent, key } = name else {
+    let InferredName::Computed {
+        parent,
+        key,
+        key_scope,
+    } = name
+    else {
         return name;
     };
-    let key_scope = ctx
-        .semantic()
-        .scope_outside(key.node_id())
-        .expect("computed key scope");
     let binding = ctx.generate_var(key_scope, "_computedKey");
-    let key = ctx.call_to_property_key(key);
+    let key = ctx.call_to_property_key(key, key_scope);
     let assignment = binding.assign(ctx, key_scope, DUMMY_SP, key);
     let key = PropertyKey::Expr(assignment);
     match ctx.ast().kind_data(parent) {
@@ -421,7 +411,7 @@ fn private_field(
     span: Span,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> ClassElement {
-    ClassElement::PropertyDefinition(ctx.add_node(ctx.current_scope(), |ast| {
+    ClassElement::PropertyDefinition(ctx.add_node(|ast| {
         ast.property_definition(
             span,
             SubRange::empty(),
@@ -450,6 +440,11 @@ fn inferred_name(
     if class.id(ctx.ast()).is_some() {
         return None;
     }
+    let key_scope = ctx
+        .semantic()
+        .scope(ctx.current_scope())
+        .parent
+        .expect("class parent scope");
     let mut value = class.node_id();
     for parent in ancestors {
         let transparent_value = match ctx.ast().kind_data(parent) {
@@ -481,6 +476,7 @@ fn inferred_name(
                     node.key(ctx.ast()),
                     node.computed(ctx.ast()),
                     node.node_id(),
+                    key_scope,
                     ctx,
                 );
                 // A noncomputed __proto__: value sets the object's prototype;
@@ -526,6 +522,7 @@ fn inferred_name(
                     node.key(ctx.ast()),
                     node.computed(ctx.ast()),
                     node.node_id(),
+                    key_scope,
                     ctx,
                 )
             }
@@ -596,20 +593,30 @@ fn assignment_target_name(target: AssignmentTarget, ast: &Ast<'_>) -> Option<Inf
 enum InferredName {
     String(AstWtf8),
     Expr(Expr),
-    Computed { parent: NodeId, key: Expr },
+    Computed {
+        parent: NodeId,
+        key: Expr,
+        /// Evaluation scope of the original key, separate from the generated name read.
+        key_scope: ScopeId,
+    },
 }
 
 fn inferred_property_key_name(
     key: PropertyKey,
     computed: bool,
     parent: NodeId,
+    key_scope: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<InferredName> {
     property_key_name(key, ctx).or_else(|| {
         computed
             .then(|| key.as_expr(ctx.ast()))
             .flatten()
-            .map(|key| InferredName::Computed { parent, key })
+            .map(|key| InferredName::Computed {
+                parent,
+                key,
+                key_scope,
+            })
     })
 }
 
@@ -665,7 +672,7 @@ fn transform_class_as_private_fields(
             if block.body(ctx.ast()).is_empty() && !block_has_comments(block, ctx.ast()) {
                 ctx.remove_scope(
                     ctx.semantic()
-                        .scope_at(block.node_id())
+                        .scope_of(block.node_id())
                         .expect("static block scope"),
                 );
                 ctx.container_class_body_mut(body).remove(index);
@@ -680,7 +687,7 @@ fn transform_class_as_private_fields(
             } else {
                 let span = block.span(ctx.ast());
                 let arrow = block_to_arrow(block, false, ctx.current_scope(), ctx);
-                Expr::CallExpression(ctx.add_node(ctx.current_scope(), |ast| {
+                Expr::CallExpression(ctx.add_node(|ast| {
                     ast.call_expression(span, arrow, None, SubRange::empty(), false)
                 }))
             };
@@ -703,13 +710,13 @@ fn single_expression_statement(statements: SubRange<Stmt>, ast: &Ast<'_>) -> Opt
 }
 
 fn call_generated_after_class(name: BoundIdentifier, ctx: &mut TransformCtx<'_, '_>) -> Expr {
-    let class = ctx.parent().expect("class body parent");
     let scope = ctx
         .semantic()
-        .scope_outside(class)
-        .expect("class outer scope");
+        .scope(ctx.current_scope())
+        .parent
+        .expect("class parent scope");
     let callee = name.reference_read(ctx, scope, DUMMY_SP);
-    Expr::CallExpression(ctx.add_node(scope, |ast| {
+    Expr::CallExpression(ctx.add_node(|ast| {
         ast.call_expression(
             DUMMY_SP,
             Expr::IdentifierReference(callee),
@@ -728,7 +735,7 @@ fn build_static_block_arrow(
     parent: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> (Expr, ScopeId) {
-    let arrow = ctx.add_node(reuse, |ast| {
+    let arrow = ctx.add_node(|ast| {
         let params = ast.formal_parameters(
             DUMMY_SP,
             SubRange::empty(),
@@ -757,7 +764,7 @@ fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Tran
     let block = static_block(block, ctx.ast());
     let scope = ctx
         .semantic()
-        .scope_at(block.node_id())
+        .scope_of(block.node_id())
         .expect("static block scope");
     let statement = block
         .body(ctx.ast())
@@ -768,7 +775,6 @@ fn inline_static_block_expression(block: NodeId, parent: ScopeId, ctx: &mut Tran
         .expect("expression statement")
         .expression(ctx.ast());
     ctx.move_subtree_to_scope(expression, scope, parent);
-    ctx.clear_node_scope(statement.node_id());
     ctx.remove_scope(scope);
     ctx.inherits_comments(expression, statement);
     ctx.inherits_comments(expression, block);
@@ -843,8 +849,6 @@ fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameSta
 fn private_name(names: &mut UsedNameState<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
     let name = ctx.ast.add_utf8(names.next_name("_", 2));
     PropertyKey::Expr(Expr::PrivateIdentifier(
-        ctx.add_node(ctx.current_scope(), |ast| {
-            ast.private_identifier(DUMMY_SP, name)
-        }),
+        ctx.add_node(|ast| ast.private_identifier(DUMMY_SP, name)),
     ))
 }

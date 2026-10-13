@@ -100,6 +100,7 @@ pub struct Semantic<'a> {
     /// The symbol declared by each node, indexed by [`NodeId`].
     node_symbols: ArenaVec<'a, Option<SymbolId>>,
     node_references: ArenaVec<'a, Option<ReferenceId>>,
+    /// Scopes created by nodes; ordinary nodes have no entry.
     node_scopes: ArenaVec<'a, Option<ScopeId>>,
 
     module_record: ModuleRecord<'a>,
@@ -152,7 +153,8 @@ impl<'a> Semantic<'a> {
     }
 
     /// The scope created by the given node, or `None` if the node is not a
-    /// scope-creating site.
+    /// scope-creating site. If a node creates multiple scopes, returns the
+    /// last one created (for example, the program's source-type wrapper).
     pub fn scope_of(&self, node: NodeId) -> Option<ScopeId> {
         self.node_scopes[node.index()]
     }

@@ -87,7 +87,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
-        self.state.enter_scope(node);
         self.path.push(node);
         self.state.enter_node()
     }
@@ -375,20 +374,17 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     // These leaves have neither binding actions nor syntax checks. Consume
     // pending reference flags without adding an unused ancestry entry.
     #[inline]
-    fn visit_this_expression(&mut self, node: ThisExpression) {
-        self.state.enter_scope(node.node_id());
+    fn visit_this_expression(&mut self, _node: ThisExpression) {
         self.state.enter_node();
     }
 
     #[inline]
-    fn visit_boolean_literal(&mut self, node: BooleanLiteral) {
-        self.state.enter_scope(node.node_id());
+    fn visit_boolean_literal(&mut self, _node: BooleanLiteral) {
         self.state.enter_node();
     }
 
     #[inline]
-    fn visit_identifier_name(&mut self, node: IdentifierName) {
-        self.state.enter_scope(node.node_id());
+    fn visit_identifier_name(&mut self, _node: IdentifierName) {
         self.state.enter_node();
     }
 
@@ -402,7 +398,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             let current = self.path.pop();
             debug_assert_eq!(current, Some(node.node_id()));
         } else {
-            self.state.enter_scope(node.node_id());
             let flags = self.state.enter_node();
             self.record_identifier_reference(node, flags);
         }
@@ -1496,14 +1491,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     #[inline]
-    fn visit_jsx_identifier(&mut self, node: JsxIdentifier) {
-        self.state.enter_scope(node.node_id());
+    fn visit_jsx_identifier(&mut self, _node: JsxIdentifier) {
         self.state.enter_node();
     }
 
     #[inline]
-    fn visit_jsx_text(&mut self, node: JsxText) {
-        self.state.enter_scope(node.node_id());
+    fn visit_jsx_text(&mut self, _node: JsxText) {
         self.state.enter_node();
     }
 

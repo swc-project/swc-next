@@ -18,6 +18,7 @@ use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 /// Passes access state through the context's mutation APIs.
 pub(crate) struct TransformerState<'a> {
     pub(crate) path: Vec<NodeId>,
+    pub(crate) scope_stack: Vec<ScopeId>,
     pub(crate) semantic: ScopeModel<'a>,
     pub(crate) helpers: Helpers,
     pub(crate) statement_injector: StatementInjector,
@@ -30,6 +31,7 @@ impl<'a> TransformerState<'a> {
     pub(crate) fn new(semantic: ScopeModel<'a>) -> Self {
         Self {
             path: Vec::with_capacity(64),
+            scope_stack: Vec::with_capacity(64),
             semantic,
             helpers: Helpers::default(),
             statement_injector: Default::default(),
@@ -59,9 +61,11 @@ impl<'c, 'a> TransformCtx<'c, 'a> {
     }
 
     pub(crate) fn current_scope(&self) -> ScopeId {
-        self.semantic()
-            .scope_at(*self.state.path.last().expect("active traversal node"))
-            .expect("active node scope")
+        self.state
+            .scope_stack
+            .last()
+            .copied()
+            .unwrap_or(ScopeId::ROOT)
     }
 
     pub fn semantic(&self) -> &ScopeModel<'a> {
@@ -78,13 +82,14 @@ impl<'c, 'a> TransformCtx<'c, 'a> {
 
     pub(crate) fn program_scope(&self) -> ScopeId {
         self.semantic()
-            .scope_at(self.ast.root_program().node_id())
+            .scope_of(self.ast.root_program().node_id())
             .expect("program scope exists")
     }
 
     pub(crate) fn finish(&mut self) {
         self.state.comments.flush(self.ast);
         debug_assert!(self.state.path.is_empty());
+        debug_assert!(self.state.scope_stack.is_empty());
         debug_assert!(self.state.statement_injector.is_empty());
         debug_assert!(self.state.helpers.is_empty());
         debug_assert!(self.state.container.is_empty());

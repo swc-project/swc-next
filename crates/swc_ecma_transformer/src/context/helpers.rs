@@ -87,40 +87,37 @@ impl TransformCtx<'_, '_> {
     }
 
     /// Build a call that gives `target` the supplied runtime name, using the
-    /// target's evaluation scope. Reuse or prepare the external helper binding.
+    /// supplied evaluation scope. Reuse or prepare the external helper binding.
     /// Both arguments are existing expressions, retained in their original order.
     ///
     /// For `target = class {}` and `name = "C"`, build:
     /// ```js
     /// _set_function_name(class {}, "C")
     /// ```
-    pub(crate) fn call_set_function_name(&mut self, target: Expr, name: Expr) -> Expr {
-        let scope = self
-            .semantic()
-            .scope_outside(target.node_id())
-            .expect("helper target is registered");
+    pub(crate) fn call_set_function_name(
+        &mut self,
+        target: Expr,
+        name: Expr,
+        scope: ScopeId,
+    ) -> Expr {
         let callee = self.helper_callee(HelperKind::SetFunctionName, scope);
         self.call(callee, [Argument::Expr(target), Argument::Expr(name)])
     }
 
-    /// Build a property-key conversion call in the argument's evaluation scope.
+    /// Build a property-key conversion call in the supplied evaluation scope.
     /// Reuse or prepare the helper namespace; the argument appears once.
     ///
     /// For `argument = getKey()`, build:
     /// ```js
     /// _swc_helpers._to_property_key(getKey())
     /// ```
-    pub(crate) fn call_to_property_key(&mut self, argument: Expr) -> Expr {
-        let scope = self
-            .semantic()
-            .scope_outside(argument.node_id())
-            .expect("helper argument is registered");
+    pub(crate) fn call_to_property_key(&mut self, argument: Expr, scope: ScopeId) -> Expr {
         let callee = self.helper_callee(HelperKind::ToPropertyKey, scope);
         self.call(callee, [Argument::Expr(argument)])
     }
 
     /// Wrap an existing callee and ordered arguments in a normal call expression,
-    /// registering the new node in the callee's evaluation scope. The callee and
+    /// growing its identity indexes. The callee and
     /// arguments must already have their semantic information registered.
     ///
     /// For a `require` callee and one string argument, build:
@@ -128,14 +125,10 @@ impl TransformCtx<'_, '_> {
     /// require("@swc/helpers")
     /// ```
     fn call<const N: usize>(&mut self, callee: Expr, arguments: [Argument; N]) -> Expr {
-        let scope = self
-            .semantic()
-            .scope_at(callee.node_id())
-            .expect("callee is registered");
         let arguments = self.ast.add_sub_range(arguments);
-        Expr::CallExpression(self.add_node(scope, |ast| {
-            ast.call_expression(DUMMY_SP, callee, None, arguments, false)
-        }))
+        Expr::CallExpression(
+            self.add_node(|ast| ast.call_expression(DUMMY_SP, callee, None, arguments, false)),
+        )
     }
 
     /// Build a noncomputed member access on a generated helper namespace and
@@ -154,11 +147,11 @@ impl TransformCtx<'_, '_> {
         let object = Expr::IdentifierReference(namespace.reference_read(self, scope, DUMMY_SP));
         let property = self.ast.add_utf8(export);
         let property = PropertyKey::IdentifierName(
-            self.add_node(scope, |ast| ast.identifier_name(DUMMY_SP, property)),
+            self.add_node(|ast| ast.identifier_name(DUMMY_SP, property)),
         );
-        Expr::MemberExpression(self.add_node(scope, |ast| {
-            ast.member_expression(DUMMY_SP, object, property, false, false)
-        }))
+        Expr::MemberExpression(
+            self.add_node(|ast| ast.member_expression(DUMMY_SP, object, property, false, false)),
+        )
     }
 
     /// Build a detached external declaration using the already registered helper
@@ -184,34 +177,28 @@ impl TransformCtx<'_, '_> {
         if !self.ast.is_module() {
             let name = self.state.helpers.require(self.ast);
             let require = self.ast.identifier_reference(DUMMY_SP, name);
-            let target = self.semantic().own_binding(scope, b"require");
+            let target = self.semantic().binding(scope, b"require");
             self.register_reference(scope, require, target, Default::default());
             let require = Expr::IdentifierReference(require);
             let source = self.ast.add_wtf8(source.into());
-            let source = Expr::StringLiteral(self.add_node(scope, |ast| {
-                ast.string_literal(DUMMY_SP, source, ast.empty_utf8())
-            }));
+            let source = Expr::StringLiteral(
+                self.add_node(|ast| ast.string_literal(DUMMY_SP, source, ast.empty_utf8())),
+            );
             let initializer = self.call(require, [Argument::Expr(source)]);
             return self.helper_var(local.identifier, initializer);
         }
         let specifier = match helper {
-            HelperKind::SetFunctionName => {
-                ImportDeclarationSpecifier::ImportDefaultSpecifier(self.add_node(scope, |ast| {
-                    ast.import_default_specifier(DUMMY_SP, local.identifier)
-                }))
-            }
-            HelperKind::ToPropertyKey => {
-                ImportDeclarationSpecifier::ImportNamespaceSpecifier(self.add_node(scope, |ast| {
-                    ast.import_namespace_specifier(DUMMY_SP, local.identifier)
-                }))
-            }
+            HelperKind::SetFunctionName => ImportDeclarationSpecifier::ImportDefaultSpecifier(
+                self.add_node(|ast| ast.import_default_specifier(DUMMY_SP, local.identifier)),
+            ),
+            HelperKind::ToPropertyKey => ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                self.add_node(|ast| ast.import_namespace_specifier(DUMMY_SP, local.identifier)),
+            ),
         };
         let specifiers = self.ast.add_sub_range([specifier]);
         let source = self.ast.add_wtf8(source.into());
-        let source = self.add_node(scope, |ast| {
-            ast.string_literal(DUMMY_SP, source, ast.empty_utf8())
-        });
-        Stmt::ImportDeclaration(self.add_node(scope, |ast| {
+        let source = self.add_node(|ast| ast.string_literal(DUMMY_SP, source, ast.empty_utf8()));
+        Stmt::ImportDeclaration(self.add_node(|ast| {
             ast.import_declaration(
                 DUMMY_SP,
                 specifiers,
@@ -224,20 +211,14 @@ impl TransformCtx<'_, '_> {
     }
 
     /// Wrap an existing helper binding and initializer in a detached `var`
-    /// declaration. Register the new declaration nodes in the binding's scope,
-    /// retaining the binding identifier and its symbol.
+    /// declaration, retaining the registered binding identifier and its symbol.
     ///
     /// For the `_swc_helpers` binding and a require initializer, build:
     /// ```js
     /// var _swc_helpers = require("@swc/helpers");
     /// ```
     fn helper_var(&mut self, binding: BindingIdentifier, init: Expr) -> Stmt {
-        let scope = self.semantic().scope_of(
-            self.semantic()
-                .symbol_of(binding.node_id())
-                .expect("helper binding exists"),
-        );
-        let declarator = self.add_node(scope, |ast| {
+        let declarator = self.add_node(|ast| {
             ast.variable_declarator(
                 DUMMY_SP,
                 BindingPattern::BindingIdentifier(binding),
@@ -247,7 +228,7 @@ impl TransformCtx<'_, '_> {
             )
         });
         let declarators = self.ast.add_sub_range([declarator]);
-        Stmt::Declaration(Decl::VariableDeclaration(self.add_node(scope, |ast| {
+        Stmt::Declaration(Decl::VariableDeclaration(self.add_node(|ast| {
             ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false)
         })))
     }

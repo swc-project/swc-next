@@ -4153,6 +4153,11 @@ impl<'a> SymbolTracker<'a> {
             .or_else(|| self.finalize_ts_scope_views(&scopes.list));
         let symbol_count = self.symbols.len();
         let node_count = tree.node_count();
+        let mut node_scopes = ArenaVec::with_capacity_in(node_count, self.allocator);
+        node_scopes.resize(node_count, None);
+        for (index, scope) in scopes.list.iter().enumerate() {
+            node_scopes[scope.node.index()] = Some(ScopeId::from_usize(index));
+        }
         let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
         node_references.resize(node_count, None);
 
@@ -4284,7 +4289,7 @@ impl<'a> SymbolTracker<'a> {
             hoisting_variables: self.hoisting_variables,
             node_symbols,
             node_references,
-            node_scopes: ArenaVec::new_in(self.allocator),
+            node_scopes,
             ts_members: TsMemberIndex {
                 source_exports: self.ts_source_exports,
                 local_exports: self.ts_local_exports,

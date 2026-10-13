@@ -1,6 +1,5 @@
-use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId, ScopeId,
+    ArrowFunctionExpression, Ast, Class, Directive, Function, FunctionBody, NodeId,
 };
 
 use crate::{
@@ -19,7 +18,6 @@ pub(crate) struct SemanticContext<'a> {
     pub module_record: ModuleRecordBuilder<'a>,
     // Nested type syntax saves and restores this default through the visitor.
     default_reference_flags: ReferenceFlags,
-    node_scopes: ArenaVec<'a, Option<ScopeId>>,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
 }
@@ -27,14 +25,11 @@ pub(crate) struct SemanticContext<'a> {
 impl<'a> SemanticContext<'a> {
     pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
         let allocator = tree.allocator();
-        let mut node_scopes = ArenaVec::with_capacity_in(tree.node_count(), allocator);
-        node_scopes.resize(tree.node_count(), None);
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
             module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             default_reference_flags: ReferenceFlags::default(),
-            node_scopes,
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
         }
@@ -55,11 +50,6 @@ impl<'a> SemanticContext<'a> {
         let flags = self.reference_flags;
         self.reference_flags = self.default_reference_flags();
         flags
-    }
-
-    #[inline]
-    pub fn enter_scope(&mut self, node: NodeId) {
-        self.node_scopes[node.index()] = Some(self.scope.current);
     }
 
     #[inline]
@@ -220,8 +210,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
         let scopes = self.scope.into_scope_tree();
-        let mut semantic = self.symbols.finalize(tree, scopes, self.module_record);
-        semantic.node_scopes = self.node_scopes;
-        semantic
+        self.symbols.finalize(tree, scopes, self.module_record)
     }
 }

@@ -73,7 +73,6 @@ impl TransformCtx<'_, '_> {
 
         let mut container = self.ast.kind_data(container_id);
         if let NodeKindData::ArrowFunctionExpression(arrow) = container {
-            let scope = self.semantic().scope_at(container_id).expect("arrow scope");
             let arrow_body = arrow.body(self.ast);
             let body = match arrow_body.as_function_body(self.ast) {
                 Some(body) => body,
@@ -83,13 +82,9 @@ impl TransformCtx<'_, '_> {
                         .expect("concise arrow expression");
                     // scope.push in a concise arrow needs a statement body while
                     // retaining the expression as the arrow's completion value.
-                    let ret = self.add_node(scope, |ast| {
-                        ast.return_statement(DUMMY_SP, Some(expression))
-                    });
+                    let ret = self.add_node(|ast| ast.return_statement(DUMMY_SP, Some(expression)));
                     let statements = self.ast.add_sub_range([Stmt::ReturnStatement(ret)]);
-                    self.add_node(scope, |ast| {
-                        ast.function_body(DUMMY_SP, SubRange::empty(), statements)
-                    })
+                    self.add_node(|ast| ast.function_body(DUMMY_SP, SubRange::empty(), statements))
                 }
             };
             arrow.set_body(self.ast, ArrowFunctionBody::FunctionBody(body));
@@ -126,14 +121,10 @@ impl TransformCtx<'_, '_> {
         }
 
         if !vars.is_empty() {
-            let scope = self
-                .semantic()
-                .scope_at(vars[0].node_id())
-                .expect("variable scope");
             let declarators: Vec<_> = vars
                 .into_iter()
                 .map(|binding| {
-                    self.add_node(scope, |ast| {
+                    self.add_node(|ast| {
                         ast.variable_declarator(
                             DUMMY_SP,
                             BindingPattern::BindingIdentifier(binding),
@@ -145,7 +136,7 @@ impl TransformCtx<'_, '_> {
                 })
                 .collect();
             let declarators = self.ast.add_sub_range(declarators);
-            let declaration = self.add_node(scope, |ast| {
+            let declaration = self.add_node(|ast| {
                 ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarators, false)
             });
             first.push(Stmt::Declaration(Decl::VariableDeclaration(declaration)));

@@ -10,9 +10,9 @@ use swc_next_allocator::vec::Vec as ArenaVec;
 use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
-    Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator, Redeclarations,
-    Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags,
-    SymbolIterator,
+    BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
+    Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol,
+    SymbolFlags, SymbolIterator,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -68,50 +68,52 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
-    /// The evaluation scope recorded for a node.
-    pub fn scope_at(&self, node: NodeId) -> Option<ScopeId> {
-        self.node_scopes.get(node.index()).copied().flatten()
-    }
-
-    /// The evaluation scope outside a scope-owning expression.
-    pub fn scope_outside(&self, node: NodeId) -> Option<ScopeId> {
-        let mut scope = self.scope_at(node)?;
-        while self.scope(scope).node == node {
-            scope = self.scope(scope).parent?;
-        }
-        Some(scope)
-    }
-
+    /// The scope with the given id.
     pub fn scope(&self, id: ScopeId) -> Scope {
         self.scopes.get(id)
     }
 
+    /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id.index()]
     }
 
+    /// The reference with the given id.
     pub fn reference(&self, id: ReferenceId) -> Reference {
         self.references[id.index()]
     }
 
+    /// The declaration with the given id.
     pub fn declaration(&self, id: DeclarationId) -> Declaration {
         self.declarations[id.index()]
     }
 
+    /// The symbol declared at `node`, or `None` when the node is not a
+    /// declaration site.
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
         self.node_symbols[node.index()]
     }
 
+    /// The reference recorded at `node`, or `None` when the node is
+    /// not a reference site.
     pub fn reference_of(&self, node: NodeId) -> Option<ReferenceId> {
         self.node_references[node.index()]
     }
 
+    /// The scope created by the given node, or `None` if the node is not a
+    /// scope-creating site. If a node creates multiple scopes, returns the
+    /// last one created (for example, the program's source-type wrapper).
+    pub fn scope_of(&self, node: NodeId) -> Option<ScopeId> {
+        self.node_scopes[node.index()]
+    }
+
     /// The scope of the symbol's first declaration. Merged TypeScript symbols
     /// may have additional declarations in other scopes.
-    pub fn scope_of(&self, id: SymbolId) -> ScopeId {
+    pub fn scope_of_symbol(&self, id: SymbolId) -> ScopeId {
         self.declaration(self.symbol(id).declaration).scope
     }
 
+    /// Iterates the ids of every declaration of `id`, in source order.
     pub fn declaration_ids(&self, id: SymbolId) -> DeclarationIdIterator<'_> {
         let additional = self
             .redeclarations
@@ -123,6 +125,7 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Every declaration of `id`, in source order. Usually a single element.
     pub fn declarations(
         &self,
         id: SymbolId,
@@ -137,15 +140,22 @@ impl<'a> ScopeModel<'a> {
     }
 
     /// A binding owned by this lexical scope. Hoisting declarations are only
-    /// recorded at their hoist target; TypeScript member views are not queried.
-    pub fn own_binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+    /// recorded at their hoist target; passing-through hoisting occurrences
+    /// and TypeScript source-export and member views are not retained by this model.
+    pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.scope_maps[scope.index()].get(name).copied()
     }
 
-    pub fn bindings(&self, scope: ScopeId) -> impl Iterator<Item = SymbolId> + '_ {
-        self.scope_maps[scope.index()].values().copied()
+    /// Every lexical symbol owned directly by `scope`. A hoisting `var`
+    /// appears in its hoist target, not in blocks it passes through.
+    pub fn bindings(&self, scope: ScopeId) -> BindingIterator<'_> {
+        BindingIterator {
+            inner: self.scope_maps[scope.index()].values(),
+            source: None,
+        }
     }
 
+    /// Iterates every `(id, scope)` pair in creation order.
     pub fn iter_scopes(&self) -> ScopeIterator<'_> {
         ScopeIterator {
             list: &self.scopes.list,
@@ -153,6 +163,7 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Iterates every `(id, symbol)` pair in declaration order.
     pub fn iter_symbols(&self) -> SymbolIterator<'_> {
         SymbolIterator {
             symbols: &self.symbols,
@@ -160,6 +171,7 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Iterates every `(id, reference)` pair in source order.
     pub fn iter_references(&self) -> ReferenceIterator<'_> {
         ReferenceIterator {
             references: &self.references,
@@ -168,6 +180,7 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
+    /// Iterates every `(id, declaration)` pair in source order.
     pub fn iter_declarations(&self) -> DeclarationIterator<'_> {
         DeclarationIterator {
             declarations: &self.declarations,
@@ -175,21 +188,20 @@ impl<'a> ScopeModel<'a> {
         }
     }
 
-    /// Extend node indexes for new allocations in an active scope without changing existing entries.
+    /// Extend node indexes for new allocations without changing existing entries.
     ///
     /// ```javascript
     /// // Before: run() and its reference are already indexed.
     /// run();
     /// // After: the caller allocates a unary wrapper in the same evaluation scope.
     /// void run();
-    /// // Grow through the new NodeId, set its evaluation scope and leave identity slots empty.
+    /// // Grow through the new NodeId and leave scope, symbol and reference slots empty.
     /// // Keep the existing call/reference entries; register new bindings and references separately.
     /// ```
-    pub fn grow_to(&mut self, node_count: usize, scope: ScopeId) {
-        debug_assert!(self.scope(scope).active, "target scope must be active");
+    pub fn grow_to(&mut self, node_count: usize) {
         // Never truncate indexes when an already registered node is reused.
         if node_count > self.node_scopes.len() {
-            self.node_scopes.resize(node_count, Some(scope));
+            self.node_scopes.resize(node_count, None);
             self.node_symbols.resize(node_count, None);
             self.node_references.resize(node_count, None);
         }
@@ -215,12 +227,13 @@ impl<'a> ScopeModel<'a> {
         text: &'a str,
         flags: SymbolFlags,
     ) -> SymbolId {
-        self.grow_to(node.index() + 1, scope);
+        debug_assert!(self.scope(scope).active);
+        self.grow_to(node.index() + 1);
         if let Some(symbol) = self.symbol_of(node) {
             return symbol;
         }
         let declaration = DeclarationId::from_usize(self.declarations.len());
-        let previous = self.own_binding(scope, text.as_bytes());
+        let previous = self.binding(scope, text.as_bytes());
         let existing = previous.filter(|&symbol| {
             !self
                 .symbol(symbol)
@@ -252,7 +265,6 @@ impl<'a> ScopeModel<'a> {
             flags,
         });
         self.node_symbols[node.index()] = Some(symbol);
-        self.node_scopes[node.index()] = Some(scope);
         symbol
     }
 
@@ -274,7 +286,8 @@ impl<'a> ScopeModel<'a> {
             symbol: target,
             ..
         } = reference;
-        self.grow_to(node.index() + 1, scope);
+        debug_assert!(self.scope(scope).active);
+        self.grow_to(node.index() + 1);
         debug_assert!(
             self.reference_of(node).is_none(),
             "reference already registered"
@@ -282,7 +295,6 @@ impl<'a> ScopeModel<'a> {
         let id = ReferenceId::from_usize(self.references.len());
         self.references.push(reference);
         self.node_references[node.index()] = Some(id);
-        self.node_scopes[node.index()] = Some(scope);
         if let Some(symbol) = target {
             self.uses[symbol.index()].push(id);
         }
@@ -318,7 +330,7 @@ impl ScopeModel<'_> {
             debug_assert_eq!(parent_scope.kind, ScopeKind::Function);
             debug_assert!(parent_scope.function_body.is_none());
         }
-        self.grow_to(owner.index() + 1, parent);
+        self.grow_to(owner.index() + 1);
         let id = ScopeId::from_usize(self.scopes.list.len());
         self.scopes.list.push(Scope {
             active: true,
@@ -379,9 +391,9 @@ impl ScopeModel<'_> {
                     .is_none_or(|body| body == scope)
             );
         }
-        self.grow_to(owner.index() + 1, scope);
+        self.grow_to(owner.index() + 1);
         if original.node != owner {
-            debug_assert_eq!(self.scope_at(original.node), Some(scope));
+            debug_assert_eq!(self.scope_of(original.node), Some(scope));
             self.node_scopes[original.node.index()] = None;
         }
         self.node_scopes[owner.index()] = Some(scope);
@@ -402,31 +414,12 @@ impl ScopeModel<'_> {
         self.update_hoist_target(scope, target);
     }
 
-    /// Move one node's evaluation mapping and reference scope without changing reference identity or target.
-    ///
-    /// Scope flags stay unchanged; the caller must maintain strictness in the destination context.
-    ///
-    /// ```javascript
-    /// // Before: value's reference executes in the static-block scope.
-    /// class C { static { use(value); } }
-    /// // After: the caller reuses the call in the class scope.
-    /// class C { static #_ = use(value); }
-    /// // Move value's node mapping and Reference.scope from the active block scope to the class scope.
-    /// // Keep ReferenceId, target, flags and uses; move other nodes separately, without traversing AST.
-    /// // Binding ownership is separate, and scope owners use convert_scope or reparent_scope.
-    /// ```
-    pub fn move_node_to_scope(&mut self, node: NodeId, from: ScopeId, to: ScopeId) {
+    /// Move a reference between active scopes without changing its identity,
+    /// target, flags, or use lists. Scope ownership and declarations are separate.
+    pub fn move_reference_to_scope(&mut self, reference: ReferenceId, from: ScopeId, to: ScopeId) {
         debug_assert!(self.scope(from).active && self.scope(to).active);
-        debug_assert_eq!(self.scope_at(node), Some(from));
-        debug_assert_ne!(
-            self.scope(from).node,
-            node,
-            "scope owners must be moved separately"
-        );
-        self.node_scopes[node.index()] = Some(to);
-        if let Some(reference) = self.reference_of(node) {
-            self.references[reference.index()].scope = to;
-        }
+        debug_assert_eq!(self.reference(reference).scope, from);
+        self.references[reference.index()].scope = to;
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
@@ -490,7 +483,7 @@ impl ScopeModel<'_> {
     /// class C { static {} }
     /// // After: the caller removes the block from the class body.
     /// class C {}
-    /// // Require no remaining bindings, declarations, references, child scopes or retained nodes.
+    /// // Require no remaining bindings, declarations, references or child scopes.
     /// // Clear the block owner's mapping and mark its scope inactive; do not delete descendants.
     /// // For a reused block body, convert_scope keeps the scope instead.
     /// ```
@@ -498,6 +491,12 @@ impl ScopeModel<'_> {
         let original = self.scope(scope);
         debug_assert!(original.active);
         let parent = original.parent.expect("cannot remove a root scope");
+        debug_assert_eq!(self.scope_of(original.node), Some(scope));
+        debug_assert!(
+            !self
+                .iter_scopes()
+                .any(|entry| { entry.id != scope && entry.scope.node == original.node })
+        );
         debug_assert!(self.scope_maps[scope.index()].is_empty());
         debug_assert!(
             !self
@@ -515,34 +514,12 @@ impl ScopeModel<'_> {
                 .iter_scopes()
                 .any(|entry| entry.scope.parent == Some(scope))
         );
-        debug_assert!(
-            self.node_scopes
-                .iter()
-                .enumerate()
-                .all(|(index, &mapped)| mapped != Some(scope) || index == original.node.index())
-        );
         debug_assert!(original.function_body.is_none());
         if original.kind == ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = None;
         }
         self.scopes.list[scope.index()].active = false;
-        self.clear_node_scope(original.node);
-    }
-
-    /// Clear a detached node's evaluation mapping without changing mappings of its retained children.
-    ///
-    /// ```javascript
-    /// // Before: use(value) is attached through an ExpressionStatement.
-    /// class C { static { use(value); } }
-    /// // After: its expression is reused directly as a field initializer.
-    /// class C { static #_ = use(value); }
-    /// // Move the expression first, then clear only the discarded ExpressionStatement mapping.
-    /// // Its call and references remain registered; the shell must own no scope, binding or reference.
-    /// ```
-    pub fn clear_node_scope(&mut self, node: NodeId) {
-        debug_assert!(self.symbol_of(node).is_none() && self.reference_of(node).is_none());
-        debug_assert!(!self.iter_scopes().any(|entry| entry.scope.node == node));
-        self.node_scopes[node.index()] = None;
+        self.node_scopes[original.node.index()] = None;
     }
 
     /// Refresh inherited hoist targets in a changed scope's branch without changing bindings.
