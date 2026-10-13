@@ -66,6 +66,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::ParenthesizedExpression(node) => node.expression(self.ast),
                 ExprData::MemberExpression(node) => node.object(self.ast),
                 ExprData::CallExpression(node) => node.callee(self.ast),
+                ExprData::TaggedTemplateExpression(node) => node.tag(self.ast),
                 ExprData::ChainExpression(node) => node.expression(self.ast),
                 ExprData::TsNonNullExpression(node) => node.expression(self.ast),
                 ExprData::TsAsExpression(node) => node.expression(self.ast),

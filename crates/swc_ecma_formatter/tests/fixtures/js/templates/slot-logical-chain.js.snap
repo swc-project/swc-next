@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+_ = `${
+firstLongName || secondLongName || thirdLongName
+}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+_ = `${firstLongName || secondLongName || thirdLongName}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+_ = `${
+  firstLongName ||
+  secondLongName ||
+  thirdLongName
+}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+_ = `${
+  firstLongName ||
+  secondLongName ||
+  thirdLongName
+}`;

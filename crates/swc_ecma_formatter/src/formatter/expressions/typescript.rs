@@ -1459,6 +1459,7 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::AssignmentTarget
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
+                | ExpressionPosition::TemplateTag
                 | ExpressionPosition::NewCallee
                 | ExpressionPosition::Superclass
                 | ExpressionPosition::ConditionalTest
@@ -1477,6 +1478,7 @@ pub(super) fn type_expression_needs_parentheses(
                 | ExpressionPosition::AssignmentTarget
                 | ExpressionPosition::UpdateArgument
                 | ExpressionPosition::CallCallee { .. }
+                | ExpressionPosition::TemplateTag
                 | ExpressionPosition::NewCallee
                 | ExpressionPosition::Superclass
                 | ExpressionPosition::TypeBinaryOperand
@@ -1504,6 +1506,7 @@ pub(super) fn type_expression_needs_parentheses(
                 ExpressionPosition::MemberObject(_)
                     | ExpressionPosition::MemberAssignmentObject
                     | ExpressionPosition::CallCallee { .. }
+                    | ExpressionPosition::TemplateTag
                     | ExpressionPosition::NewCallee
                     | ExpressionPosition::Superclass
                     | ExpressionPosition::NonNullOperand

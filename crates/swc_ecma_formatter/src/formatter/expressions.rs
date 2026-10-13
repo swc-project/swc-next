@@ -18,6 +18,7 @@ pub(super) mod parentheses;
 mod sequence;
 mod suspension;
 pub(super) mod targets;
+mod templates;
 mod typescript;
 mod unary;
 
@@ -54,6 +55,8 @@ pub(super) enum ExpressionPosition {
     ExportDefault,
     Nested,
     Decorator,
+    TemplateTag,
+    TemplateInterpolation,
     ArrowBody,
     RestrictedArgument,
     YieldArgument,
@@ -614,6 +617,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (binary.left, child_context)
         } else {
             match data {
+                ExprData::TaggedTemplateExpression(template) => {
+                    self.template_tag_head_operand(template, context)?
+                }
                 ExprData::CallExpression(call) => {
                     let callee = self.source_call_callee(call, context)?;
                     (callee.expression, callee.context(context))
@@ -712,7 +718,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::IdentifierReference(node) if node == identifier)
     }
 
-    fn default_export_head_needs_parentheses(&self, mut data: ExprData, mode: ContentMode) -> bool {
+    fn default_export_head_needs_parentheses(
+        &self,
+        mut data: ExprData,
+        mut mode: ContentMode,
+    ) -> bool {
         loop {
             let (expression, position) = if let Some(binary) = BinaryLike::from_data(data, self.ast)
             {
@@ -726,6 +736,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 match data {
                     ExprData::Function(_) | ExprData::Class(_) => return true,
+                    ExprData::TaggedTemplateExpression(template) => {
+                        let Ok((tag, context)) = self.template_tag_head_operand(
+                            template,
+                            ExpressionContext::at(ExpressionPosition::Nested)
+                                .with_content_mode(mode),
+                        ) else {
+                            return true;
+                        };
+                        mode = context.content_mode;
+                        (tag, ExpressionPosition::TemplateTag)
+                    }
                     ExprData::CallExpression(call) => (
                         call.callee(self.ast),
                         ExpressionPosition::CallCallee {
@@ -878,6 +899,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(true);
         }
+        if matches!(position, ExpressionPosition::TemplateTag)
+            && matches!(
+                data,
+                ExprData::Function(_)
+                    | ExprData::Class(_)
+                    | ExprData::ArrowFunctionExpression(_)
+                    | ExprData::AssignmentExpression(_)
+                    | ExprData::ConditionalExpression(_)
+                    | ExprData::BinaryExpression(_)
+                    | ExprData::LogicalExpression(_)
+                    | ExprData::UnaryExpression(_)
+                    | ExprData::UpdateExpression(_)
+                    | ExprData::AwaitExpression(_)
+                    | ExprData::YieldExpression(_)
+                    | ExprData::ChainExpression(_)
+            )
+        {
+            return Some(true);
+        }
         if let Some(needed) = typescript::type_expression_needs_parentheses(data, position) {
             let exposed_tail = match (data, position) {
                 (
@@ -992,6 +1032,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || !matches!(
                         position,
                         ExpressionPosition::CallCallee { .. }
+                            | ExpressionPosition::TemplateTag
                             | ExpressionPosition::MemberObject(_)
                             | ExpressionPosition::MemberAssignmentObject
                             | ExpressionPosition::NewCallee
@@ -1090,6 +1131,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionPosition::Statement
                     | ExpressionPosition::ExportDefault
                     | ExpressionPosition::AssignmentRight(_)
+                    | ExpressionPosition::TemplateInterpolation
                     | ExpressionPosition::TypePropertyKey
                     | ExpressionPosition::EnumInitializer
                     | ExpressionPosition::ForHead
@@ -1244,6 +1286,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match self.ast.expr_data(expression) {
+            ExprData::TemplateLiteral(template) => {
+                self.format_template_literal(template, writer)?
+            }
+            ExprData::TaggedTemplateExpression(template) => {
+                return self.format_tagged_template(template, context, writer);
+            }
             ExprData::TsAsExpression(node) => {
                 return self.format_binary_type_expression(
                     node.expression(self.ast),

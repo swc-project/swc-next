@@ -585,6 +585,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::RegExpLiteral(literal) => {
                     return crate::text_width::width(ast.get_utf8(literal.pattern(ast))) <= 5;
                 }
+                ExprData::TemplateLiteral(template) => {
+                    if template.quasis(ast).iter().any(|id| {
+                        let quasi = ast.get_node_in_sub_range(id);
+                        ast.get_utf8(quasi.raw(ast)).contains('\n')
+                    }) {
+                        return false;
+                    }
+                    return template.expressions(ast).iter().all(|id| {
+                        self.simple_callback_neighbor(ast.get_node_in_sub_range(id), child_depth)
+                    });
+                }
                 ExprData::ImportExpression(import) => {
                     let options = import.options(ast);
                     if options.is_some() && depth < 2

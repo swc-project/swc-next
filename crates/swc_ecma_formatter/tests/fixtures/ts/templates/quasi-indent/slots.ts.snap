@@ -1,0 +1,107 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace Example { type Result = `
+   ${
+"firstLongName" | "secondLongName"
+} ${
+"firstLongName" | "secondLongName"
+}
+${
+"firstLongName" | "secondLongName"
+}
+`; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${"firstLongName" | "secondLongName"} ${"firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     | "firstLongName"
+     | "secondLongName"}
+${
+  | "firstLongName"
+  | "secondLongName"}
+`
+}
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+namespace Example {
+	type Result = `
+   ${
+			| "firstLongName"
+			| "secondLongName"} ${
+			| "firstLongName"
+			| "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":8,"useTabs":true}
+---------- Output ----------
+namespace Example {
+	type Result = `
+   ${
+		| "firstLongName"
+		| "secondLongName"} ${
+		| "firstLongName"
+		| "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4}
+---------- Output ----------
+namespace Example {
+    type Result = `
+   ${
+       | "firstLongName"
+       | "secondLongName"} ${
+       | "firstLongName"
+       | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     "firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40,"semi":true,"trailingComma":"none"}
+---------- Output ----------
+namespace Example {
+  type Result = `
+   ${
+     | "firstLongName"
+     | "secondLongName"} ${
+     "firstLongName" | "secondLongName"}
+${"firstLongName" | "secondLongName"}
+`;
+}
