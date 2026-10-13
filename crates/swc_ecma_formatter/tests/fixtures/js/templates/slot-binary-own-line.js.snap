@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+_ = `${
+a
+// comment
++ b
+}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+_ = `${
+  a +
+  // comment
+  b
+}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+_ = `${
+  a +
+  // comment
+  b
+}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+_ = `${
+  a +
+  // comment
+  b
+}`;

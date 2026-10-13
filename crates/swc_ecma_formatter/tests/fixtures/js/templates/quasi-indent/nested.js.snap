@@ -1,0 +1,90 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+function render() { return `
+  ${() => `
+       ${() => {a}}
+  `}
+  ${() => {b}}
+`; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function render() {
+  return `
+  ${() => `
+       ${() => {
+         a;
+       }}
+  `}
+  ${() => {
+    b;
+  }}
+`;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function render() {
+  return `
+  ${() => `
+       ${() => {
+         a
+       }}
+  `}
+  ${() => {
+    b
+  }}
+`
+}
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+function render() {
+	return `
+  ${() => `
+       ${() => {
+					a;
+				}}
+  `}
+  ${() => {
+		b;
+	}}
+`;
+}
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":8,"useTabs":true}
+---------- Output ----------
+function render() {
+	return `
+  ${() => `
+       ${() => {
+		a;
+       }}
+  `}
+  ${() => {
+		b;
+  }}
+`;
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+function render() {
+  return `
+  ${() => `
+       ${() => {
+         a;
+       }}
+  `}
+  ${() => {
+    b;
+  }}
+`;
+}

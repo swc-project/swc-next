@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = tag<{ first: string; second: number }> /* quasi */
+`value`;
+
+consume(tag<string> /* first */ // last
+`value`);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const value = tag<{ first: string; second: number }> /* quasi */ `value`;
+
+consume(
+  tag<string> /* first */ // last
+  `value`,
+);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+const value = tag<{
+  first: string
+  second: number
+}> /* quasi */
+`value`
+
+consume(
+  tag<string> /* first */ // last
+  `value`,
+)
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+---------- Output ----------
+const value = tag<{
+	first: string;
+	second: number;
+}> /* quasi */
+`value`;
+
+consume(
+	tag<string> /* first */ // last
+	`value`,
+);

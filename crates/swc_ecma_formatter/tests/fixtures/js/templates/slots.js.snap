@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const message=`a${left,right}b${key in object}c${`nested ${value}`}`; const comments=`a${/*head*/ value /*block*/}b${value //tail
+}c${//leading
+ value}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+const message = `a${(left, right)}b${key in object}c${`nested ${value}`}`;
+const comments = `a${/*head*/ value /*block*/}b${
+  value //tail
+}c${
+  //leading
+  value
+}`;

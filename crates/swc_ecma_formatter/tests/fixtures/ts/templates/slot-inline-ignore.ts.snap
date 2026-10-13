@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = `a${/* prettier-ignore */ keyof   VeryLongWorldName}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = `a${/* prettier-ignore */ keyof   VeryLongWorldName}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+type T =
+  `a${/* prettier-ignore */ keyof   VeryLongWorldName}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+type T =
+  `a${/* prettier-ignore */ keyof   VeryLongWorldName}`;

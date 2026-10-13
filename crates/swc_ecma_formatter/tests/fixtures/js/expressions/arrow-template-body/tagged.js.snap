@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const create = () => tag`
+  first
+  ${value}
+`;
+---------- Options ----------
+{}
+---------- Output ----------
+const create = () => tag`
+  first
+  ${value}
+`;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const create =
+  () => tag`
+  first
+  ${value}
+`;
+
+---------- Options ----------
+{"arrowParens":"avoid"}
+---------- Output ----------
+const create = () => tag`
+  first
+  ${value}
+`;

@@ -1,0 +1,36 @@
+[
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 20,
+    "semi": false,
+    "trailingComma": "none"
+  },
+  {
+    "printWidth": 40,
+    "useTabs": true,
+    "tabWidth": 2
+  },
+  {
+    "printWidth": 40,
+    "useTabs": true,
+    "tabWidth": 8
+  },
+  {
+    "printWidth": 40,
+    "tabWidth": 4
+  },
+  {
+    "printWidth": 40,
+    "semi": false,
+    "trailingComma": "none",
+    "endOfLine": "crlf"
+  },
+  {
+    "printWidth": 40,
+    "semi": true,
+    "trailingComma": "none",
+    "endOfLine": "crlf"
+  }
+]

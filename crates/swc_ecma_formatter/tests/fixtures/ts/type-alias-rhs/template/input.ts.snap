@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = `لا${
+ keyof World
+}`;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T =
+  `لا${keyof World}`;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = `لا${keyof World}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+type T =
+  `لا${keyof World}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type T =
+	`لا${keyof World}`;

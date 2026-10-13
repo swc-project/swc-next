@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (factory()`x`)(); new (factory().tag`x`)(); new (factory`x`)(); (new Maker)`x`; tag /*gap*/ `a${value}`;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new (factory()`x`)();
+new (factory().tag`x`)();
+new factory`x`();
+new Maker()`x`;
+tag /*gap*/ `a${value}`;
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+new (factory()`x`)()
+new (factory()
+  .tag`x`)()
+new factory`x`()
+new Maker()`x`
+tag /*gap*/ `a${value}`
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+new (factory()`x`)();
+new (factory().tag`x`)();
+new factory`x`();
+new Maker()`x`;
+tag /*gap*/ `a${value}`;

@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left << <T>`text${part}`.trim();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+left << ((<T>`text${part}`.trim()));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+left <<
+  ((<T>`text${part}`
+    .trim()));
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+left <<
+  ((<
+    T
+  >`text${part}`
+    .trim()))
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+left <<
+	((<T>`text${part}`
+		.trim()));
