@@ -38,6 +38,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
     fn sequence_member_pair_is_enclosed(
         &self,
+        expression: Expr,
         content: &ExpressionContent,
         position: ExpressionPosition,
     ) -> bool {
@@ -47,7 +48,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         let context = ExpressionContext::at(position);
-        content.parentheses.is_some() && self.expression_is_parenthesized(content.data, context)
+        self.jsx_source_pair_is_enclosed(expression, content, context)
+            || content.parentheses.is_some()
+                && self.expression_is_parenthesized(content.data, context)
     }
 
     pub(super) fn sequence_member_parentheses(
@@ -78,7 +81,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let removed = content.parentheses?;
         if !removed.head.has_comments
             || !matches!(removed.head.binding, CommentBinding::Unbound)
-            || self.sequence_member_pair_is_enclosed(&content, ExpressionPosition::SequenceMember)
+            || self.sequence_member_pair_is_enclosed(
+                first,
+                &content,
+                ExpressionPosition::SequenceMember,
+            )
         {
             return None;
         }
@@ -121,11 +128,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::SequenceMember
         };
         let first_content = self.expression_content(first);
-        let first_start = if self.sequence_member_pair_is_enclosed(&first_content, item_position) {
-            first.span(ast).start
-        } else {
-            first_content.expression.span(ast).start
-        };
+        let first_start =
+            if self.sequence_member_pair_is_enclosed(first, &first_content, item_position) {
+                first.span(ast).start
+            } else {
+                first_content.expression.span(ast).start
+            };
         let enclosed_head = matches!(context.head_comments,
             HeadComments::ClaimedSequence(owner) if owner == sequence);
         if enclosed_head {
@@ -352,7 +360,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<SequenceBoundary<'ast>, FormatError> {
         let start = previous.span(self.ast).end;
         let content = self.expression_content(next);
-        let end = if self.sequence_member_pair_is_enclosed(&content, position) {
+        let end = if self.sequence_member_pair_is_enclosed(next, &content, position) {
             next.span(self.ast).start
         } else {
             content.expression.span(self.ast).start
