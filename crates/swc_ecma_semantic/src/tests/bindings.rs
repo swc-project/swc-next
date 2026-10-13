@@ -15,7 +15,7 @@ fn annex_b_if_bindings() {
     let source = "if (condition) function f() { return f; }";
     let (ast, semantic) = analyze_with_options(&allocator, source, script, checked);
     let name = symbol_named(&ast, &semantic, b"f");
-    let scope = semantic.scope_of(name);
+    let scope = semantic.scope_of_symbol(name);
     assert!(
         semantic
             .symbol(name)
@@ -36,7 +36,10 @@ fn annex_b_if_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::ANNEX_B_IF_FUNCTION);
     let parameter = reference_symbol(&ast, &semantic, b"f").unwrap();
     assert_ne!(name, parameter);
-    assert_eq!(semantic.scope_of(name), semantic.scope_of(parameter));
+    assert_eq!(
+        semantic.scope_of_symbol(name),
+        semantic.scope_of_symbol(parameter)
+    );
     assert_eq!(semantic.declarations(name).len(), 1);
     assert_eq!(semantic.declarations(parameter).len(), 1);
     assert!(semantic.uses(name).is_empty());
@@ -46,7 +49,10 @@ fn annex_b_if_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::ANNEX_B_IF_FUNCTION);
     let local = reference_symbol(&ast, &semantic, b"f").unwrap();
     assert_ne!(name, local);
-    assert_eq!(semantic.scope_of(name), semantic.scope_of(local));
+    assert_eq!(
+        semantic.scope_of_symbol(name),
+        semantic.scope_of_symbol(local)
+    );
     assert!(
         !semantic
             .symbol(local)
@@ -69,9 +75,12 @@ fn expression_name_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::FUNCTION_EXPRESSION);
     let parameter = reference_symbol(&ast, &semantic, b"n").unwrap();
     assert_ne!(name, parameter);
-    assert_eq!(semantic.scope_of(name), semantic.scope_of(parameter));
     assert_eq!(
-        semantic.binding(semantic.scope_of(name), b"n"),
+        semantic.scope_of_symbol(name),
+        semantic.scope_of_symbol(parameter)
+    );
+    assert_eq!(
+        semantic.binding(semantic.scope_of_symbol(name), b"n"),
         Some(parameter)
     );
     assert!(semantic.uses(name).is_empty());
@@ -84,7 +93,10 @@ fn expression_name_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::FUNCTION_EXPRESSION);
     let local = reference_symbol(&ast, &semantic, b"n").unwrap();
     assert_ne!(name, local);
-    assert_eq!(semantic.scope_of(name), semantic.scope_of(local));
+    assert_eq!(
+        semantic.scope_of_symbol(name),
+        semantic.scope_of_symbol(local)
+    );
     assert!(
         !semantic
             .symbol(local)
@@ -97,13 +109,16 @@ fn expression_name_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::FUNCTION_EXPRESSION);
     let local = reference_symbol(&ast, &semantic, b"n").unwrap();
     assert_ne!(name, local);
-    assert_eq!(semantic.scope_of(name), semantic.scope_of(local));
+    assert_eq!(
+        semantic.scope_of_symbol(name),
+        semantic.scope_of_symbol(local)
+    );
 
     let source = "const C = class Inner { self = Inner; };";
     let (ast, semantic) = analyze_with_options(&allocator, source, js, checked);
     let name = expression_name_symbol(&semantic, SymbolFlags::CLASS_EXPRESSION);
     assert_eq!(
-        semantic.scope(semantic.scope_of(name)).kind,
+        semantic.scope(semantic.scope_of_symbol(name)).kind,
         crate::scope::ScopeKind::Class
     );
     assert_eq!(reference_symbol(&ast, &semantic, b"Inner"), Some(name));

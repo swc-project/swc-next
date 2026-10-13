@@ -115,7 +115,7 @@ fn assert_local_namespace_references(code: &str) {
                 .symbol()
                 .expect("namespace reference is bound");
             assert_ne!(
-                semantic.scope_of(symbol),
+                semantic.scope_of_symbol(symbol),
                 swc_next_ecma_ast::ScopeId::MODULE
             );
             count += 1;

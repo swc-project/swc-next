@@ -113,22 +113,6 @@ impl<'a> Semantic<'a> {
         &self.jsx_usages
     }
 
-    /// The scope active when this node is evaluated, collected during every analysis.
-    /// Detached structural nodes may retain their old entry; this is not a
-    /// reachability index.
-    pub fn scope_at(&self, node: NodeId) -> Option<ScopeId> {
-        self.node_scopes.get(node.index()).copied().flatten()
-    }
-
-    /// The evaluation scope outside a scope-owning expression.
-    pub fn scope_outside(&self, node: NodeId) -> Option<ScopeId> {
-        let mut scope = self.scope_at(node)?;
-        while self.scope(scope).node == node {
-            scope = self.scope(scope).parent?;
-        }
-        Some(scope)
-    }
-
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id.index()]
@@ -167,12 +151,18 @@ impl<'a> Semantic<'a> {
         self.node_references[node.index()]
     }
 
+    /// The scope created by the given node, or `None` if the node is not a
+    /// scope-creating site.
+    pub fn scope_of(&self, node: NodeId) -> Option<ScopeId> {
+        self.node_scopes[node.index()]
+    }
+
     /// The binding scope of a symbol in JavaScript semantic analysis only.
     /// Returns the scope of the symbol's first declaration.
     ///
     /// TypeScript symbols can merge declarations across multiple scopes;
     /// use the relevant [`Declaration::scope`] for TypeScript analysis.
-    pub fn scope_of(&self, id: SymbolId) -> ScopeId {
+    pub fn scope_of_symbol(&self, id: SymbolId) -> ScopeId {
         let declaration = self.symbol(id).declaration;
         self.declaration(declaration).scope
     }
