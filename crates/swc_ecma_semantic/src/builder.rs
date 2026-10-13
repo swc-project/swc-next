@@ -34,7 +34,7 @@ use swc_next_ecma_ast::{
     TsTypeAnnotation, TsTypeAssertion, TsTypeLiteral, TsTypeOperator, TsTypeParameter,
     TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypePredicate, TsTypeQuery,
     TsTypeReference, TsUnionType, UnaryExpression, UnaryOperator, UpdateExpression,
-    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith, WithStatement,
+    VariableDeclaration, VariableKind, Visit, VisitWith, WithStatement,
 };
 
 use crate::{
@@ -189,22 +189,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         } else {
             self.visit_type_member_key(key, computed);
         }
-    }
-
-    fn visit_dynamic_var_declarator(&mut self, node: VariableDeclarator, iteration_write: bool) {
-        self.enter_node(node.node_id());
-        let id = node.id(self.ast);
-        let init = node.init(self.ast);
-        let dynamic_write = iteration_write || init.is_some();
-        if dynamic_write {
-            let flags = self.assignment_reference_flags(false);
-            self.visit_with_reference_flags(id, flags);
-        } else {
-            id.visit_with(self);
-        }
-        node.type_annotation(self.ast).visit_with(self);
-        init.visit_with(self);
-        self.leave_node(NodeKindData::VariableDeclarator(node));
     }
 
     fn visit_ts_heritage_expression(
@@ -425,7 +409,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
-        let flags = self.enter_node(node.node_id());
+        self.enter_node(node.node_id());
         node.visit_children_with(self);
         let prepared = if self.check_syntax {
             let tree = self.ast;
@@ -459,11 +443,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 .symbols
                 .declare_binding_identifier(self.ast, node, &state.scope)
         };
-        if declaration.is_some() && flags.is_write_only() {
-            state
-                .symbols
-                .add_var_write_reference(self.ast, node, &state.scope, flags);
-        }
         if declaration.is_some()
             && let Some(statement) = direct_export
         {
@@ -524,21 +503,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
-        let node_flags = self.enter_node(node.node_id());
+        self.enter_node(node.node_id());
         let state = &mut self.state;
-        let dynamic_var_write =
-            state
-                .symbols
-                .enter_variable_declaration(self.ast, node, &state.scope);
-        if dynamic_var_write {
-            let iteration_write = node_flags.is_write();
-            for declarator in node.declarators(self.ast).iter() {
-                let declarator = self.ast.get_node_in_sub_range(declarator);
-                self.visit_dynamic_var_declarator(declarator, iteration_write);
-            }
-        } else {
-            node.visit_children_with(self);
-        }
+        state
+            .symbols
+            .enter_variable_declaration(self.ast, node, &state.scope);
+        node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::VariableDeclaration(node));
     }

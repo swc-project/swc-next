@@ -55,8 +55,7 @@ pub enum ScopeKind {
     /// Section 14.2.2 Block runtime semantics, 14.2.3 BlockDeclarationInstantiation.
     Block,
     /// Section 14.11 WithStatement evaluation. This object environment has
-    /// no static bindings, but can intercept value-name resolution before
-    /// the lexical scopes outside it are reached.
+    /// no static bindings.
     With,
     /// Section 15.7.14 ClassDefinitionEvaluation.
     Class,
@@ -178,12 +177,6 @@ pub(crate) struct ScopeTracker<'a> {
     pub(crate) scopes: ArenaVec<'a, Scope>,
     // active scope. follow the parent chain to walk the path.
     pub(crate) current: ScopeId,
-    // Whether finalization needs to account for a with object environment.
-    // This is transient builder state, not part of the finalized scope tree.
-    has_with_statement: bool,
-    // Active `with` scopes, used only while walking their statement bodies.
-    // The heap allocation is therefore paid only by files containing `with`.
-    active_with_scopes: Vec<ScopeId>,
     // scopes saved while a decorator subtree retargets `current`,
     // one entry per nested decorator. see `enter` on `Decorator`.
     decorator_saved: Vec<ScopeId>,
@@ -201,8 +194,6 @@ impl<'a> ScopeTracker<'a> {
         let mut tracker = Self {
             scopes: ArenaVec::with_capacity_in(estimated_scopes, allocator),
             current: ScopeId::ROOT,
-            has_with_statement: false,
-            active_with_scopes: Vec::new(),
             decorator_saved: Vec::new(),
         };
         tracker.push_root(root.node_id(), tree.source_type(), root_strict);
@@ -397,17 +388,13 @@ impl<'a> ScopeTracker<'a> {
     }
 
     pub fn enter_with_scope(&mut self, node: NodeId) {
-        self.has_with_statement = true;
         self.push_scope(ScopeKind::With, node, self.inherit_strict_flag());
-        self.active_with_scopes.push(self.current);
     }
 
     pub fn exit_with_scope(&mut self, node: NodeId) {
         let scope = self.current_scope();
         debug_assert_eq!(scope.node, node);
         debug_assert_eq!(scope.kind, ScopeKind::With);
-        let active = self.active_with_scopes.pop();
-        debug_assert_eq!(active, Some(self.current));
         self.pop_scope();
     }
 
@@ -543,24 +530,6 @@ impl<'a> ScopeTracker<'a> {
         self.current_scope().flags.strict
     }
 
-    /// Whether resolving a `var` initializer from the current scope crosses
-    /// the nearest active `with` object environment before reaching its
-    /// hoist target.
-    #[inline]
-    pub fn var_write_crosses_with(&self) -> bool {
-        let Some(&with_scope) = self.active_with_scopes.last() else {
-            return false;
-        };
-        let hoist_target = self.hoist_target();
-        // Both ids are on the active ancestor chain. Scopes are allocated on
-        // entry, so an outer hoist target precedes the intervening with scope.
-        debug_assert!(
-            self.ancestors(Some(self.current))
-                .any(|scope| scope == with_scope)
-        );
-        hoist_target.index() < with_scope.index()
-    }
-
     /// Walks from `start` up to the root, yielding `start` first.
     pub fn ancestors(&self, start: Option<ScopeId>) -> AncestorIterator<'_> {
         AncestorIterator {
@@ -570,8 +539,7 @@ impl<'a> ScopeTracker<'a> {
     }
 
     /// Finalizes into an immutable [`ScopeTree`].
-    pub fn into_scope_tree(self) -> (ScopeTree<'a>, bool) {
-        debug_assert!(self.active_with_scopes.is_empty());
-        (ScopeTree { list: self.scopes }, self.has_with_statement)
+    pub fn into_scope_tree(self) -> ScopeTree<'a> {
+        ScopeTree { list: self.scopes }
     }
 }

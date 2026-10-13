@@ -219,10 +219,8 @@ impl<'a> SemanticContext<'a> {
     }
 
     pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
-        let (scopes, has_with_statement) = self.scope.into_scope_tree();
-        let mut semantic =
-            self.symbols
-                .finalize(tree, scopes, has_with_statement, self.module_record);
+        let scopes = self.scope.into_scope_tree();
+        let mut semantic = self.symbols.finalize(tree, scopes, self.module_record);
         semantic.node_scopes = self.node_scopes;
         semantic
     }

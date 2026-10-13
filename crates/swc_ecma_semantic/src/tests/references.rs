@@ -133,57 +133,6 @@ fn access_flags_follow_reference_syntax() {
 }
 
 #[test]
-fn dynamic_scope_flags_follow_with() {
-    let allocator = Allocator::new();
-    let js_script = Options {
-        source_type: SourceType::Script,
-        ..Options::default()
-    };
-
-    let source = "let value; with ({}) { value; }";
-    let (ast, semantic) = analyze_source(&allocator, source, js_script);
-    let value_symbol = semantic.binding(ScopeId::ROOT, b"value").unwrap();
-    let value = semantic
-        .iter_references()
-        .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
-        .unwrap()
-        .reference;
-    assert!(value.flags.is_dynamic());
-    assert_eq!(value.symbol, Some(value_symbol));
-
-    let source = "with ({}) { missing; }";
-    let (_, semantic) = analyze_source(&allocator, source, js_script);
-    let missing = semantic.iter_references().next().unwrap().reference;
-    assert!(missing.flags.is_dynamic());
-    assert!(missing.symbol.is_none());
-
-    let source = "with ({}) { let value; value; }";
-    let (ast, semantic) = analyze_source(&allocator, source, js_script);
-    let reference = semantic
-        .iter_references()
-        .find(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"value")
-        .unwrap()
-        .reference;
-    assert!(!reference.flags.is_dynamic());
-    assert!(reference.symbol.is_some());
-
-    let source = "with ({}) { var value = 1; }";
-    let (ast, semantic) = analyze_source(&allocator, source, js_script);
-    let declaration = semantic.iter_declarations().next().unwrap();
-    let reference_id = semantic.reference_of(declaration.declaration.node).unwrap();
-    let reference = semantic.reference(reference_id);
-    let symbol_id = declaration.declaration.symbol;
-    assert!(reference.flags.is_write_only());
-    assert!(reference.flags.is_dynamic());
-    assert_eq!(reference.symbol, Some(symbol_id));
-    assert_eq!(semantic.uses(symbol_id), &[reference_id]);
-    assert_eq!(
-        ast.get_wtf8(semantic.symbol(symbol_id).name).as_bytes(),
-        b"value"
-    );
-}
-
-#[test]
 fn uncertain_reference_targets() {
     // The bounded property analysis cannot distinguish these keys. Both
     // candidate sets must include the target chosen by TS7's type checker.

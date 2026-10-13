@@ -230,8 +230,7 @@ impl<'a> Semantic<'a> {
     }
 
     /// Every definite or possible use site of `id`, once each in source order. Declaration sites are
-    /// not uses; those are returned by [`Semantic::declarations`]. A dynamic
-    /// `with` reference is included under its potential lexical fallback.
+    /// not uses; those are returned by [`Semantic::declarations`].
     /// An uncertain TypeScript reference is included under every candidate,
     /// even when [`Reference::symbol`] names a different, nearer candidate.
     pub fn uses(&self, id: SymbolId) -> &[ReferenceId] {
@@ -432,8 +431,6 @@ impl<'a> Semantic<'a> {
 
     /// Looks up a name and reports whether its target is known or only possible.
     /// Unknown contributions do not prove that an outer binding is shadowed.
-    /// This is name resolution; runtime interception by `with` is represented
-    /// separately by [`ReferenceFlags::is_dynamic`].
     fn resolve_name(
         &self,
         scope_id: ScopeId,

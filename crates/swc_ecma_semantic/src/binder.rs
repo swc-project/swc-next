@@ -391,12 +391,10 @@ impl Excludes {
 }
 
 /// A use of a name. One is recorded for every `identifier_reference`
-/// in the source, for a `var` binding whose runtime write crosses a `with`
-/// object environment, for the local name in an `export { name }` specifier,
+/// in the source, for the local name in an `export { name }` specifier,
 /// for JSX component tag names (`<Foo>`), and for TS type-predicate parameters
 /// (`x is T`). Re-export names in `export { name } from "module"` are external
-/// names, not references. A dynamic `var` write is both a declaration and a
-/// reference at the same node.
+/// names, not references.
 ///
 /// ## Example
 /// ```ts
@@ -415,8 +413,6 @@ pub struct Reference {
     /// no lexical binding or TypeScript container member visible in the
     /// reference's space.
     ///
-    /// When [`ReferenceFlags::is_dynamic`] is true, a `with` object may
-    /// intercept the reference at runtime before this fallback is reached.
     /// When [`ReferenceFlags::is_uncertain`] is true, this candidate may not
     /// occupy the requested space. [`Semantic::reference_candidates`] includes
     /// the other possible targets; [`Reference::resolution`] exposes certainty.
@@ -425,7 +421,7 @@ pub struct Reference {
 }
 
 impl Reference {
-    /// Name-resolution certainty, separately from runtime `with` interception.
+    /// Name-resolution certainty.
     pub fn resolution(self) -> NameResolution {
         match self.symbol {
             Some(candidate) if self.flags.is_uncertain() => NameResolution::Uncertain { candidate },
@@ -440,8 +436,7 @@ bitflags::bitflags! {
     struct ReferenceProperties: u8 {
         const READ = 1 << 0;
         const WRITE = 1 << 1;
-        const DYNAMIC = 1 << 2;
-        const UNCERTAIN = 1 << 3;
+        const UNCERTAIN = 1 << 2;
     }
 }
 
@@ -497,15 +492,6 @@ impl ReferenceFlags {
         self.is_write() && !self.is_read()
     }
 
-    /// True when a `with` object environment can intercept this value
-    /// reference before its lexical fallback binding is reached.
-    ///
-    /// [`Reference::symbol`] remains the lexical fallback when one exists;
-    /// a dynamic reference with no fallback is not definitely global.
-    pub fn is_dynamic(self) -> bool {
-        self.properties.contains(ReferenceProperties::DYNAMIC)
-    }
-
     /// True when opaque TypeScript alias or property facts leave more than
     /// one possible lookup outcome, including the absence of a local target.
     /// Such a reference is included in every possible target's use index.
@@ -532,11 +518,6 @@ impl ReferenceFlags {
     pub(crate) fn no_access(mut self) -> Self {
         self.properties
             .remove(ReferenceProperties::READ | ReferenceProperties::WRITE);
-        self
-    }
-
-    pub(crate) fn with_dynamic(mut self) -> Self {
-        self.properties.insert(ReferenceProperties::DYNAMIC);
         self
     }
 
@@ -621,7 +602,6 @@ pub enum NameResolution {
 
 impl NameResolution {
     /// The definite target, or `None` when lookup is unresolved or uncertain.
-    /// Runtime interception by `with` is reported separately on references.
     pub fn symbol(self) -> Option<SymbolId> {
         match self {
             Self::Resolved(symbol) => Some(symbol),
@@ -2135,7 +2115,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         declaration: VariableDeclaration,
         scope: &ScopeTracker<'a>,
-    ) -> bool {
+    ) {
         self.push_saved_context();
         let kind = declaration.kind(tree);
         self.pending = match kind {
@@ -2175,7 +2155,6 @@ impl<'a> SymbolTracker<'a> {
                 scope: scope.current,
             },
         };
-        kind == VariableKind::Var && scope.var_write_crosses_with()
     }
 
     pub fn enter_function(
@@ -3687,24 +3666,6 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    pub fn add_var_write_reference(
-        &mut self,
-        tree: &Ast<'a>,
-        identifier: BindingIdentifier,
-        scope: &ScopeTracker<'a>,
-        flags: ReferenceFlags,
-    ) {
-        debug_assert!(flags.is_write_only());
-        debug_assert!(scope.var_write_crosses_with());
-        self.add_reference(
-            tree,
-            identifier.name(tree),
-            scope.current,
-            identifier.node_id(),
-            flags,
-        );
-    }
-
     pub fn add_local_export_reference(
         &mut self,
         tree: &Ast<'a>,
@@ -4178,7 +4139,6 @@ impl<'a> SymbolTracker<'a> {
         mut self,
         tree: &Ast<'a>,
         scopes: ScopeTree<'a>,
-        has_with_statement: bool,
         module_record: ModuleRecordBuilder<'a>,
     ) -> Semantic<'a> {
         // The walk must have ended balanced.
@@ -4262,32 +4222,6 @@ impl<'a> SymbolTracker<'a> {
                 &mut use_ranges,
                 &mut reference_candidates,
             );
-        }
-
-        if has_with_statement {
-            let with_ancestry = with_ancestry(&scopes);
-            for reference_index in 0..self.references.len() {
-                let reference = self.references[reference_index];
-                if reference.flags.space != ReferenceSpace::Value {
-                    continue;
-                }
-                let reference_ancestors = with_ancestry[reference.scope.index()];
-                let Some(reference_with) = reference_ancestors.lexical else {
-                    continue;
-                };
-                let target_with = if let Some(symbol) = reference.symbol {
-                    let declaration = self.symbols[symbol.index()].declaration;
-                    let scope = self.declarations[declaration.index()].scope;
-                    with_ancestry[scope.index()].lexical
-                } else if tree.get_utf8(reference.name).as_bytes() == b"arguments" {
-                    reference_ancestors.arguments
-                } else {
-                    None
-                };
-                if target_with != Some(reference_with) {
-                    self.references[reference_index].flags = reference.flags.with_dynamic();
-                }
-            }
         }
 
         // Use index: prefix-sum and fill. Resolution counted uses above;
@@ -4673,37 +4607,6 @@ impl<'a> SymbolTracker<'a> {
             reference.flags.no_access()
         }
     }
-}
-
-#[derive(Clone, Copy, Default)]
-struct WithAncestry {
-    lexical: Option<ScopeId>,
-    arguments: Option<ScopeId>,
-}
-
-fn with_ancestry(scopes: &ScopeTree<'_>) -> Vec<WithAncestry> {
-    // Scope ids are allocated parent-first, so both nearest-with chains are
-    // computed in one linear pass and stored in one temporary allocation.
-    let mut ancestry: Vec<WithAncestry> = Vec::with_capacity(scopes.list.len());
-    for (index, scope) in scopes.list.iter().enumerate() {
-        let id = ScopeId::from_usize(index);
-        let parent = match scope.parent {
-            Some(parent) => ancestry[parent.index()],
-            None => WithAncestry::default(),
-        };
-        let lexical = if scope.kind == ScopeKind::With {
-            Some(id)
-        } else {
-            parent.lexical
-        };
-        let arguments = if scope.flags.arguments_barrier {
-            lexical
-        } else {
-            parent.arguments
-        };
-        ancestry.push(WithAncestry { lexical, arguments });
-    }
-    ancestry
 }
 
 fn import_pending(kind: ImportOrExportKind, scope: ScopeId) -> PendingBinding {

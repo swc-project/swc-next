@@ -3,7 +3,7 @@
 ## Testing
 
 Semantic unit tests live in the `tests` module at the bottom of `src/lib.rs`. Keep them grouped by
-broad semantic-model features such as symbols, references, modules, and dynamic scopes.
+broad semantic-model features such as symbols, references, modules, and scopes.
 
 Use unit tests to cover observable behavior and structural contracts of the public `Semantic` API.
 Parser behavior, early-error variants, exact diagnostic spans or messages, and narrow syntax cases
