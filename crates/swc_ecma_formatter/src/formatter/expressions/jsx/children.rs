@@ -1,4 +1,4 @@
-//! One forward JSX sibling stream retains text and non-text boundaries.
+//! One forward JSX sibling stream prepares borrowed words and their boundaries.
 
 use swc_next_ecma_ast::{
     Expr, ExprData, GetSpan, JsxChild, JsxChildData, JsxExpressionContainer, JsxExpressionData,
@@ -62,13 +62,16 @@ impl JsxChildrenLayout {
 
 #[derive(Clone, Copy)]
 enum JsxSeparator {
+    Words,
     Space,
-    Newline,
+    TextLine,
+    Newline { empty_line: bool },
 }
 
 #[derive(Clone, Copy)]
 enum JsxContentEdge {
-    NonText,
+    Word { single_character: bool },
+    NonText { self_closing: bool },
     Literal,
 }
 
@@ -79,6 +82,7 @@ struct JsxChildrenStream {
     pending: Option<(JsxSeparator, Span)>,
     contains_text: bool,
     seen_expression: bool,
+    has_empty_line: bool,
 }
 
 impl JsxChildrenStream {
@@ -125,10 +129,46 @@ impl JsxChildrenStream {
                     writer,
                 );
             }
-            Some((JsxSeparator::Newline, _)) => {
+            Some((JsxSeparator::Words, _)) => {
+                let constraint = formatter.line_constraint(previous_end, source.start);
+                constraint.write(writer, FlatSeparator::Space, Writer::line);
+            }
+            Some((JsxSeparator::TextLine, _)) => {
+                let single_character_next_to_non_self_closing = matches!(
+                    (previous, next),
+                    (
+                        JsxContentEdge::Word {
+                            single_character: true
+                        },
+                        JsxContentEdge::NonText {
+                            self_closing: false
+                        },
+                    ) | (
+                        JsxContentEdge::NonText {
+                            self_closing: false
+                        },
+                        JsxContentEdge::Word {
+                            single_character: true
+                        },
+                    )
+                );
+                let constraint = formatter.line_constraint(previous_end, source.start);
+                constraint.write(writer, FlatSeparator::Empty, |writer| {
+                    if single_character_next_to_non_self_closing {
+                        writer.soft_line();
+                    } else {
+                        writer.hard_line();
+                    }
+                });
+            }
+            Some((JsxSeparator::Newline { empty_line }, _)) => {
                 let constraint = formatter.line_constraint(previous_end, source.start);
                 constraint.write(writer, FlatSeparator::Empty, |writer| {
                     writer.hard_line();
+                    if empty_line {
+                        writer.hard_line();
+                        self.has_empty_line = true;
+                    }
                 });
             }
             None => {
@@ -136,7 +176,24 @@ impl JsxChildrenStream {
                 constraint.write(writer, FlatSeparator::Empty, |writer| {
                     match (previous, next) {
                         (JsxContentEdge::Literal, _) | (_, JsxContentEdge::Literal) => {}
-                        (JsxContentEdge::NonText, JsxContentEdge::NonText) => writer.hard_line(),
+                        (JsxContentEdge::NonText { .. }, JsxContentEdge::NonText { .. }) => {
+                            writer.hard_line()
+                        }
+                        (
+                            JsxContentEdge::Word { single_character },
+                            JsxContentEdge::NonText { self_closing },
+                        )
+                        | (
+                            JsxContentEdge::NonText { self_closing },
+                            JsxContentEdge::Word { single_character },
+                        ) => {
+                            if self_closing && !single_character {
+                                writer.hard_line();
+                            } else {
+                                writer.soft_line();
+                            }
+                        }
+                        (JsxContentEdge::Word { .. }, JsxContentEdge::Word { .. }) => {}
                     }
                 });
             }
@@ -216,6 +273,50 @@ fn write_jsx_space<'ast>(
     }
 }
 
+/// Every slice still borrows the original JSXText. Only the four JSX formatting
+/// characters separate words; Unicode whitespace is never Rust trim whitespace.
+struct JsxTextChunks<'ast> {
+    remaining: &'ast str,
+    meaningful: bool,
+}
+
+enum JsxTextChunk<'ast> {
+    Word(&'ast str),
+    Whitespace { line_breaks: u8 },
+}
+
+impl<'ast> Iterator for JsxTextChunks<'ast> {
+    type Item = JsxTextChunk<'ast>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let first = *self.remaining.as_bytes().first()?;
+        let whitespace = is_jsx_whitespace(first);
+        let mut end = 0;
+        let mut line_breaks = 0_u8;
+        let mut previous_cr = false;
+        for byte in self.remaining.bytes() {
+            if is_jsx_whitespace(byte) != whitespace {
+                break;
+            }
+            end += 1;
+            // Prettier normalizes physical line endings before reading JSXText.
+            if byte == b'\r' || byte == b'\n' && !previous_cr {
+                line_breaks = (line_breaks + 1).min(2);
+            }
+            previous_cr = byte == b'\r';
+        }
+        // A boundary is an ASCII formatting character, so it cannot split UTF-8.
+        let (chunk, remaining) = self.remaining.split_at(end);
+        self.remaining = remaining;
+        self.meaningful |= !whitespace || line_breaks == 0;
+        Some(if whitespace {
+            JsxTextChunk::Whitespace { line_breaks }
+        } else {
+            JsxTextChunk::Word(chunk)
+        })
+    }
+}
+
 fn is_jsx_whitespace(byte: u8) -> bool {
     matches!(byte, b' ' | b'\t' | b'\r' | b'\n')
 }
@@ -238,7 +339,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut stream = JsxChildrenStream::default();
         stream.layout.single_quote = self.options.quote_style == QuoteStyle::Single;
         let mut previous_ignore = false;
-        writer.fill(|writer| {
+        writer.fill_with_empty_line_policy(|writer| {
             for id in children.iter() {
                 let child = ast.get_node_in_sub_range(id);
                 let data = ast.jsx_child_data(child);
@@ -274,38 +375,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         stream.contains_text = true;
                         continue;
                     }
-                    if raw.is_empty() {
-                        previous_ignore = false;
-                        continue;
-                    }
-                    if !raw.bytes().all(is_jsx_whitespace) {
-                        return Err(self.unsupported("JSX text", text));
-                    }
-                    let source = text.span(ast);
-                    let line_breaks = self.line_breaks(source.start, source.end);
-                    if line_breaks >= 2 {
-                        return Err(self.unsupported("JSX child blank lines", text));
-                    }
-                    let separator = if line_breaks == 0 {
-                        previous_ignore = false;
-                        JsxSeparator::Space
-                    } else {
-                        JsxSeparator::Newline
+                    let mut chunks = JsxTextChunks {
+                        remaining: raw,
+                        meaningful: raw.is_empty(),
                     };
-                    stream.separator(separator, source);
+                    let mut first = true;
+                    let text_span = text.span(ast);
+                    let mut start = text_span.start;
+                    while let Some(chunk) = chunks.next() {
+                        let end = text_span.end - chunks.remaining.len() as u32;
+                        let source = Span::new(start, end);
+                        start = end;
+                        match chunk {
+                            JsxTextChunk::Word(word) => {
+                                let mut characters = word.chars();
+                                let single_character =
+                                    characters.next().is_some() && characters.next().is_none();
+                                let edge = JsxContentEdge::Word { single_character };
+                                stream.before(edge, source, self, writer);
+                                let (entry, ()) =
+                                    writer.fill_entry_with_handle(|writer| writer.text(word));
+                                stream.after(edge, source, entry);
+                                stream.contains_text = true;
+                            }
+                            JsxTextChunk::Whitespace { line_breaks } => {
+                                stream.contains_text |= line_breaks == 0;
+                                let last = chunks.remaining.is_empty();
+                                let separator = if !first && !last {
+                                    JsxSeparator::Words
+                                } else if line_breaks == 0 {
+                                    JsxSeparator::Space
+                                } else if first && last {
+                                    JsxSeparator::Newline {
+                                        empty_line: line_breaks == 2,
+                                    }
+                                } else {
+                                    JsxSeparator::TextLine
+                                };
+                                stream.separator(separator, source);
+                            }
+                        }
+                        first = false;
+                    }
+                    // Ignore follows the original sibling, not its canonical spelling.
+                    if chunks.meaningful {
+                        previous_ignore = false;
+                    }
                     continue;
                 }
-                match data {
-                    JsxChildData::JsxElement(_) | JsxChildData::JsxFragment(_) => {
+                let self_closing = match data {
+                    JsxChildData::JsxElement(element) => {
                         stream.layout.contains_tag = true;
+                        element.opening_element(ast).self_closing(ast)
+                    }
+                    JsxChildData::JsxFragment(_) => {
+                        stream.layout.contains_tag = true;
+                        false
                     }
                     JsxChildData::JsxExpressionContainer(_) => {
                         stream.layout.multiple_expressions |= stream.seen_expression;
                         stream.seen_expression = true;
+                        false
                     }
-                    _ => {}
-                }
-                let edge = JsxContentEdge::NonText;
+                    _ => false,
+                };
+                let edge = JsxContentEdge::NonText { self_closing };
                 let source = child.span(ast);
                 stream.before(edge, source, self, writer);
                 let ignored = previous_ignore
@@ -368,7 +502,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 previous_ignore = next_ignore;
                 stream.after(edge, source, entry);
             }
-            Ok(stream.finish(self, writer))
+            let collapse_empty_lines = stream.has_empty_line && stream.contains_text;
+            Ok((stream.finish(self, writer), collapse_empty_lines))
         })
     }
 
