@@ -225,7 +225,7 @@ fn source_exports() {
     let source = "export default function f() {} export default interface I { value: string } export type f = number; let item: f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
     let default = default_export_symbol(&semantic);
-    let module = semantic.symbol_of(ast.root_program().node_id()).unwrap();
+    let module = semantic.ts_source_module_symbol().unwrap();
     let named = semantic.ts_namespace_member(module, b"f").unwrap();
     assert_ne!(named, default);
     assert_eq!(

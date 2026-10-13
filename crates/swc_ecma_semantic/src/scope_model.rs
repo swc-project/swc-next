@@ -11,8 +11,8 @@ use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
-    Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap, Semantic, Symbol,
-    SymbolFlags, SymbolIterator,
+    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
+    Semantic, Symbol, SymbolFlags, SymbolIterator,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -31,9 +31,7 @@ pub struct ScopeModel<'a> {
     /// Independently growable use lists, indexed by SymbolId.
     uses: ArenaVec<'a, ArenaVec<'a, ReferenceId>>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
-    node_symbols: ArenaVec<'a, Option<SymbolId>>,
-    node_references: ArenaVec<'a, Option<ReferenceId>>,
-    node_scopes: ArenaVec<'a, Option<ScopeId>>,
+    node_semantic: ArenaVec<'a, NodeSemanticId>,
 }
 
 impl<'a> ScopeModel<'a> {
@@ -62,9 +60,7 @@ impl<'a> ScopeModel<'a> {
             redeclarations: semantic.redeclarations,
             uses,
             scope_maps: semantic.scope_maps,
-            node_symbols: semantic.node_symbols,
-            node_references: semantic.node_references,
-            node_scopes: semantic.node_scopes,
+            node_semantic: semantic.node_semantic,
         }
     }
 
@@ -89,22 +85,23 @@ impl<'a> ScopeModel<'a> {
     }
 
     /// The symbol declared at `node`, or `None` when the node is not a
-    /// declaration site.
+    /// binding or member declaration site. Source-module and anonymous default
+    /// export symbols do not have a node mapping.
     pub fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        self.node_symbols[node.index()]
+        self.node_semantic[node.index()].symbol()
     }
 
     /// The reference recorded at `node`, or `None` when the node is
     /// not a reference site.
     pub fn reference_of(&self, node: NodeId) -> Option<ReferenceId> {
-        self.node_references[node.index()]
+        self.node_semantic[node.index()].reference()
     }
 
     /// The scope created by the given node, or `None` if the node is not a
     /// scope-creating site. If a node creates multiple scopes, returns the
     /// last one created (for example, the program's source-type wrapper).
     pub fn scope_of(&self, node: NodeId) -> Option<ScopeId> {
-        self.node_scopes[node.index()]
+        self.node_semantic[node.index()].scope()
     }
 
     /// The scope of the symbol's first declaration. Merged TypeScript symbols
@@ -175,7 +172,7 @@ impl<'a> ScopeModel<'a> {
     pub fn iter_references(&self) -> ReferenceIterator<'_> {
         ReferenceIterator {
             references: &self.references,
-            node_references: &self.node_references,
+            node_semantic: &self.node_semantic,
             index: 0,
         }
     }
@@ -200,10 +197,8 @@ impl<'a> ScopeModel<'a> {
     /// ```
     pub fn grow_to(&mut self, node_count: usize) {
         // Never truncate indexes when an already registered node is reused.
-        if node_count > self.node_scopes.len() {
-            self.node_scopes.resize(node_count, None);
-            self.node_symbols.resize(node_count, None);
-            self.node_references.resize(node_count, None);
+        if node_count > self.node_semantic.len() {
+            self.node_semantic.resize(node_count, NodeSemanticId::None);
         }
     }
 
@@ -264,7 +259,8 @@ impl<'a> ScopeModel<'a> {
             scope,
             flags,
         });
-        self.node_symbols[node.index()] = Some(symbol);
+        debug_assert_eq!(self.node_semantic[node.index()], NodeSemanticId::None);
+        self.node_semantic[node.index()] = NodeSemanticId::Symbol(symbol);
         symbol
     }
 
@@ -294,7 +290,8 @@ impl<'a> ScopeModel<'a> {
         );
         let id = ReferenceId::from_usize(self.references.len());
         self.references.push(reference);
-        self.node_references[node.index()] = Some(id);
+        debug_assert_eq!(self.node_semantic[node.index()], NodeSemanticId::None);
+        self.node_semantic[node.index()] = NodeSemanticId::Reference(id);
         if let Some(symbol) = target {
             self.uses[symbol.index()].push(id);
         }
@@ -347,7 +344,11 @@ impl ScopeModel<'_> {
         });
         self.scope_maps
             .push(ScopeMap::new_in(self.scopes.list.bump()));
-        self.node_scopes[owner.index()] = Some(id);
+        debug_assert!(matches!(
+            self.node_semantic[owner.index()],
+            NodeSemanticId::None | NodeSemanticId::Scope(_)
+        ));
+        self.node_semantic[owner.index()] = NodeSemanticId::Scope(id);
         if kind == ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = Some(id);
         }
@@ -394,9 +395,13 @@ impl ScopeModel<'_> {
         self.grow_to(owner.index() + 1);
         if original.node != owner {
             debug_assert_eq!(self.scope_of(original.node), Some(scope));
-            self.node_scopes[original.node.index()] = None;
+            self.node_semantic[original.node.index()] = NodeSemanticId::None;
         }
-        self.node_scopes[owner.index()] = Some(scope);
+        debug_assert!(matches!(
+            self.node_semantic[owner.index()],
+            NodeSemanticId::None | NodeSemanticId::Scope(_)
+        ));
+        self.node_semantic[owner.index()] = NodeSemanticId::Scope(scope);
         if original.kind == ScopeKind::FunctionBody && kind != ScopeKind::FunctionBody {
             self.scopes.list[parent.index()].function_body = None;
         } else if kind == ScopeKind::FunctionBody {
@@ -519,7 +524,7 @@ impl ScopeModel<'_> {
             self.scopes.list[parent.index()].function_body = None;
         }
         self.scopes.list[scope.index()].active = false;
-        self.node_scopes[original.node.index()] = None;
+        self.node_semantic[original.node.index()] = NodeSemanticId::None;
     }
 
     /// Refresh inherited hoist targets in a changed scope's branch without changing bindings.

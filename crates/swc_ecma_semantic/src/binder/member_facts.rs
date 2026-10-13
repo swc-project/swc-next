@@ -6,7 +6,8 @@ use hashbrown::{HashMap, HashSet};
 use oxc_index::Idx;
 use rustc_hash::FxBuildHasher;
 use swc_next_ecma_ast::{
-    Ast, AstWtf8, MemberExpression, NodeId, NodeKindData, ScopeId, SymbolId, UnaryOperator,
+    Ast, AstWtf8, ClassType, MemberExpression, NodeId, NodeKindData, ScopeId, SymbolId,
+    UnaryOperator,
 };
 
 use super::lookup::lookup_scope_name;
@@ -93,8 +94,14 @@ pub(super) fn collect_ts_property_values<'tree>(
         let NodeKindData::Class(class) = tree.kind_data(scope.node) else {
             continue;
         };
-        let declaration = class.id(tree).map_or(class.node_id(), |id| id.node_id());
-        let Some(owner) = lookup.symbol_of(declaration) else {
+        let owner = if let Some(id) = class.id(tree) {
+            lookup.tracker.symbol_of_node(id.node_id())
+        } else if class.class_type(tree) == ClassType::ClassDeclaration {
+            lookup.tracker.default_export_symbol()
+        } else {
+            None
+        };
+        let Some(owner) = owner else {
             continue;
         };
         values.record(owner, Some(Cow::Borrowed(b"prototype")));
@@ -150,10 +157,6 @@ pub(super) fn collect_ts_property_values<'tree>(
 }
 
 impl TsMemberFactsLookup<'_, '_> {
-    fn symbol_of(&self, node: NodeId) -> Option<SymbolId> {
-        self.tracker.symbol_of_node(node)
-    }
-
     fn expando_receiver(
         &self,
         tree: &Ast,

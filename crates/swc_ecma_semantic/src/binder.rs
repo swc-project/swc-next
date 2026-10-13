@@ -20,7 +20,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, HoistingMap, Redeclarations, ScopeMap, Semantic,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic,
     module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
@@ -1024,6 +1024,18 @@ impl TsMemberIndex<'_> {
         }
     }
 
+    pub(crate) fn source_module_symbol(&self) -> Option<SymbolId> {
+        self.source_exports.as_ref().map(|source| source.owner)
+    }
+
+    pub(crate) fn default_export_symbol(&self) -> Option<SymbolId> {
+        self.source_exports
+            .as_ref()?
+            .default
+            .as_ref()
+            .map(|default| default.symbol)
+    }
+
     pub(crate) fn source_binding(&self, name: &[u8]) -> Option<SymbolId> {
         if name == b"default" {
             return None;
@@ -1675,6 +1687,7 @@ struct TsScopeLookup {
 /// declaration ownership.
 #[derive(Debug)]
 struct TsSourceExports<'a> {
+    owner: SymbolId,
     environment: TsMemberEnvironmentId,
     implicit_exports: bool,
     default: Option<TsDefaultExport<'a>>,
@@ -1800,7 +1813,7 @@ pub(crate) struct SymbolTracker<'a> {
     jsx_usages: ArenaVec<'a, crate::JsxUsage>,
     declarations: ArenaVec<'a, Declaration>,
     redeclarations: Redeclarations<'a>,
-    node_symbols: ArenaVec<'a, Option<SymbolId>>,
+    node_semantic: ArenaVec<'a, NodeSemanticId>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, HoistingMap<'a>>,
     ts_type_parameter_owners: ArenaHashMap<'a, ScopeId, SymbolId>,
@@ -2005,8 +2018,8 @@ impl<'a> SymbolTracker<'a> {
     pub fn init(tree: &Ast<'a>) -> Self {
         let allocator = tree.allocator();
         let nodes = tree.node_count();
-        let mut node_symbols = ArenaVec::with_capacity_in(nodes, allocator);
-        node_symbols.resize(nodes, None);
+        let mut node_semantic = ArenaVec::with_capacity_in(nodes, allocator);
+        node_semantic.resize(nodes, NodeSemanticId::None);
         let mut tracker = Self {
             allocator,
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
@@ -2014,7 +2027,7 @@ impl<'a> SymbolTracker<'a> {
             jsx_usages: ArenaVec::new_in(allocator),
             declarations: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             redeclarations: Redeclarations::new_in(allocator),
-            node_symbols,
+            node_semantic,
             scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             ts_type_parameter_owners: ArenaHashMap::new_in(allocator),
@@ -2059,6 +2072,7 @@ impl<'a> SymbolTracker<'a> {
                 },
             },
             None,
+            false,
         );
         let environment = self.ts_member_environments.ensure(owner, self.allocator);
         let start = self.ts_member_views.len();
@@ -2079,6 +2093,7 @@ impl<'a> SymbolTracker<'a> {
                 ts_statement_is_export_declaration(tree, statement)
             });
         self.ts_source_exports = Some(TsSourceExports {
+            owner,
             environment,
             implicit_exports,
             default: None,
@@ -2570,6 +2585,7 @@ impl<'a> SymbolTracker<'a> {
                 },
             },
             existing,
+            true,
         );
         let views = self.append_ts_namespace_views([owner], TsMemberViewKind::Module);
         if existing.is_none() {
@@ -2624,20 +2640,20 @@ impl<'a> SymbolTracker<'a> {
         // TS7 stores class/interface parameters in the merged owner's Members,
         // but only exposes parameters declared by the current occurrence. Keep
         // that identity index separate from both lexical scopes and exports.
-        let identifier = match tree.kind_data(scope.get(target).node) {
+        let owner = match tree.kind_data(scope.get(target).node) {
             NodeKindData::Class(class) if class.class_type(tree) == ClassType::ClassDeclaration => {
                 if let Some(id) = class.id(tree) {
-                    Some(id.node_id())
+                    self.symbol_of_node(id.node_id())
                 } else {
-                    Some(class.node_id())
+                    self.default_export_symbol()
                 }
             }
-            NodeKindData::TsInterfaceDeclaration(interface) => Some(interface.id(tree).node_id()),
+            NodeKindData::TsInterfaceDeclaration(interface) => {
+                self.symbol_of_node(interface.id(tree).node_id())
+            }
             _ => None,
         };
-        if let Some(identifier) = identifier
-            && let Some(owner) = self.symbol_of_node(identifier)
-        {
+        if let Some(owner) = owner {
             self.ts_type_parameter_owners.insert(target, owner);
         }
         self.export_state = ExportState::None;
@@ -2992,7 +3008,7 @@ impl<'a> SymbolTracker<'a> {
                 scope: target,
                 flags: declaration_flags,
             });
-            self.node_symbols[node.index()] = Some(id);
+            self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
             return id;
         }
 
@@ -3106,7 +3122,7 @@ impl<'a> SymbolTracker<'a> {
         };
         match tree.ts_module_name_data(name) {
             TsModuleNameData::BindingIdentifier(identifier) => {
-                let owner = self.node_symbols[identifier.node_id().index()];
+                let owner = self.node_semantic[identifier.node_id().index()].symbol();
                 let views = owner.map_or_else(Range::default, |owner| {
                     self.append_ts_namespace_views([owner], kind)
                 });
@@ -3118,7 +3134,7 @@ impl<'a> SymbolTracker<'a> {
                 let Some(root) = collect_ts_module_path(tree, qualified, &mut members) else {
                     return (Vec::new(), Range::default());
                 };
-                let Some(mut owner) = self.node_symbols[root.index()] else {
+                let Some(mut owner) = self.node_semantic[root.index()].symbol() else {
                     return (Vec::new(), Range::default());
                 };
                 let mut owners = Vec::with_capacity(members.len() + 1);
@@ -3172,6 +3188,7 @@ impl<'a> SymbolTracker<'a> {
                 },
             },
             None,
+            true,
         );
     }
 
@@ -3224,7 +3241,7 @@ impl<'a> SymbolTracker<'a> {
         let existing = source.default.as_ref().map(|default| default.symbol);
         let merges =
             existing.is_none_or(|existing| self.declaration_merges(existing, declaration.binding));
-        let symbol = self.declare_symbol(tree, declaration, existing);
+        let symbol = self.declare_symbol(tree, declaration, existing, named);
         let default = source.default.get_or_insert(TsDefaultExport {
             symbol,
             first_local: None,
@@ -3373,7 +3390,7 @@ impl<'a> SymbolTracker<'a> {
             }
             DeclarationDestination::TsTypeParameter { owner } => {
                 let declaration = plan.declaration;
-                let id = self.declare_symbol(tree, declaration, plan.existing);
+                let id = self.declare_symbol(tree, declaration, plan.existing, true);
                 if plan.local.is_none() {
                     self.insert_scope_binding(
                         tree,
@@ -3393,7 +3410,7 @@ impl<'a> SymbolTracker<'a> {
                 id
             }
             DeclarationDestination::Scope => {
-                let id = self.declare_symbol(tree, plan.declaration, plan.existing);
+                let id = self.declare_symbol(tree, plan.declaration, plan.existing, true);
                 if plan.existing.is_none() {
                     let declaration = plan.declaration;
                     self.insert_scope_binding(
@@ -3471,7 +3488,7 @@ impl<'a> SymbolTracker<'a> {
         declaration.binding.scope = symbol_scope;
         let merges =
             existing.is_none_or(|existing| self.declaration_merges(existing, declaration.binding));
-        let id = self.declare_symbol(tree, declaration, existing);
+        let id = self.declare_symbol(tree, declaration, existing, true);
 
         if merges {
             self.record_ts_member(environment, name_text, id, kind, declaration.binding.flags);
@@ -3543,6 +3560,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         declaration: PendingDeclaration,
         existing: Option<SymbolId>,
+        record_node: bool,
     ) -> SymbolId {
         let PendingDeclaration {
             name,
@@ -3585,7 +3603,13 @@ impl<'a> SymbolTracker<'a> {
             scope: binding.scope,
             flags: declaration_flags,
         });
-        self.node_symbols[node.index()] = Some(id);
+        if record_node {
+            debug_assert!(matches!(
+                self.node_semantic[node.index()],
+                NodeSemanticId::None | NodeSemanticId::Symbol(_)
+            ));
+            self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
+        }
         id
     }
 
@@ -3979,7 +4003,15 @@ impl<'a> SymbolTracker<'a> {
     }
 
     pub fn symbol_of_node(&self, node: NodeId) -> Option<SymbolId> {
-        self.node_symbols[node.index()]
+        self.node_semantic[node.index()].symbol()
+    }
+
+    fn default_export_symbol(&self) -> Option<SymbolId> {
+        self.ts_source_exports
+            .as_ref()?
+            .default
+            .as_ref()
+            .map(|default| default.symbol)
     }
 
     /// The `binding_identifier` node of the earliest declaration of `id`.
@@ -4152,14 +4184,6 @@ impl<'a> SymbolTracker<'a> {
             .take()
             .or_else(|| self.finalize_ts_scope_views(&scopes.list));
         let symbol_count = self.symbols.len();
-        let node_count = tree.node_count();
-        let mut node_scopes = ArenaVec::with_capacity_in(node_count, self.allocator);
-        node_scopes.resize(node_count, None);
-        for (index, scope) in scopes.list.iter().enumerate() {
-            node_scopes[scope.node.index()] = Some(ScopeId::from_usize(index));
-        }
-        let mut node_references = ArenaVec::with_capacity_in(node_count, self.allocator);
-        node_references.resize(node_count, None);
 
         let mut use_ranges = ArenaVec::with_capacity_in(symbol_count, self.allocator);
         use_ranges.resize(symbol_count, Range::default());
@@ -4173,7 +4197,6 @@ impl<'a> SymbolTracker<'a> {
                     tree,
                     &scopes,
                     scope_views,
-                    &mut node_references,
                     &mut use_ranges,
                     &mut reference_candidates,
                 );
@@ -4182,7 +4205,6 @@ impl<'a> SymbolTracker<'a> {
                     tree,
                     &scopes,
                     scope_views,
-                    &mut node_references,
                     &mut use_ranges,
                     &mut reference_candidates,
                 );
@@ -4191,7 +4213,6 @@ impl<'a> SymbolTracker<'a> {
             self.resolve_lexical_references::<true, true, true>(
                 tree,
                 &scopes,
-                &mut node_references,
                 &mut use_ranges,
                 &mut reference_candidates,
             );
@@ -4203,7 +4224,6 @@ impl<'a> SymbolTracker<'a> {
             self.resolve_lexical_references::<false, true, true>(
                 tree,
                 &scopes,
-                &mut node_references,
                 &mut use_ranges,
                 &mut reference_candidates,
             );
@@ -4213,7 +4233,6 @@ impl<'a> SymbolTracker<'a> {
             self.resolve_lexical_references::<false, false, true>(
                 tree,
                 &scopes,
-                &mut node_references,
                 &mut use_ranges,
                 &mut reference_candidates,
             );
@@ -4223,7 +4242,6 @@ impl<'a> SymbolTracker<'a> {
             self.resolve_lexical_references::<false, false, false>(
                 tree,
                 &scopes,
-                &mut node_references,
                 &mut use_ranges,
                 &mut reference_candidates,
             );
@@ -4262,11 +4280,26 @@ impl<'a> SymbolTracker<'a> {
             }
         }
 
-        let module_record =
-            module_record.finalize(&self.node_symbols, &self.references, &node_references);
+        for (index, reference) in self.references.iter().enumerate() {
+            let slot = &mut self.node_semantic[reference.node.index()];
+            debug_assert!(matches!(
+                *slot,
+                NodeSemanticId::None | NodeSemanticId::Reference(_)
+            ));
+            *slot = NodeSemanticId::Reference(ReferenceId::from_usize(index));
+        }
+        for (index, scope) in scopes.list.iter().enumerate() {
+            let slot = &mut self.node_semantic[scope.node.index()];
+            debug_assert!(matches!(
+                *slot,
+                NodeSemanticId::None | NodeSemanticId::Scope(_)
+            ));
+            *slot = NodeSemanticId::Scope(ScopeId::from_usize(index));
+        }
+        let module_record = module_record.finalize(&self.node_semantic, &self.references);
         let declarations = self.declarations;
         let redeclarations = self.redeclarations;
-        let node_symbols = self.node_symbols;
+        let node_semantic = self.node_semantic;
 
         let reference_values = if reference_values.ranges.is_empty() {
             None
@@ -4287,9 +4320,7 @@ impl<'a> SymbolTracker<'a> {
             use_ranges,
             scope_maps: self.scope_maps,
             hoisting_variables: self.hoisting_variables,
-            node_symbols,
-            node_references,
-            node_scopes,
+            node_semantic,
             ts_members: TsMemberIndex {
                 source_exports: self.ts_source_exports,
                 local_exports: self.ts_local_exports,
@@ -4339,7 +4370,6 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         scopes: &ScopeTree<'_>,
         scope_views: &TsScopeViewIndex<'_>,
-        node_references: &mut [Option<ReferenceId>],
         use_ranges: &mut [Range],
         additional_targets: &mut ReferenceCandidates<'a>,
     ) -> TsReferenceValues<'a> {
@@ -4348,7 +4378,6 @@ impl<'a> SymbolTracker<'a> {
                 tree,
                 scopes,
                 scope_views,
-                node_references,
                 use_ranges,
                 additional_targets,
             )
@@ -4357,7 +4386,6 @@ impl<'a> SymbolTracker<'a> {
                 tree,
                 scopes,
                 scope_views,
-                node_references,
                 use_ranges,
                 additional_targets,
             )
@@ -4374,7 +4402,6 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         scopes: &ScopeTree<'_>,
         scope_views: &TsScopeViewIndex<'_>,
-        node_references: &mut [Option<ReferenceId>],
         use_ranges: &mut [Range],
         additional_targets: &mut ReferenceCandidates<'a>,
     ) -> TsReferenceValues<'a> {
@@ -4392,7 +4419,6 @@ impl<'a> SymbolTracker<'a> {
             bindings.clear();
             let reference = self.references[reference_index];
             let id = ReferenceId::from_usize(reference_index);
-            node_references[reference.node.index()] = Some(id);
             let name = tree.get_utf8(reference.name).as_bytes();
             let query = NameLookupQuery {
                 scope: reference.scope,
@@ -4469,7 +4495,6 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTree<'_>,
-        node_references: &mut [Option<ReferenceId>],
         use_ranges: &mut [Range],
         additional_targets: &mut ReferenceCandidates<'a>,
     ) {
@@ -4483,7 +4508,6 @@ impl<'a> SymbolTracker<'a> {
             candidates.clear();
             let reference = self.references[reference_index];
             let id = ReferenceId::from_usize(reference_index);
-            node_references[reference.node.index()] = Some(id);
             // JavaScript and JSX only produce runtime-value references here;
             // `Any` is the name-only form used by local export specifiers.
             debug_assert!(

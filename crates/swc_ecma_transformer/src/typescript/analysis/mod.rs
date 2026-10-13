@@ -38,7 +38,7 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         let implicit_usage = jsx::dependencies(program, ast, semantic, &options.jsx);
         // Ordinary imports use semantic reference flags directly during lowering.
         // Only enums, namespaces and import-equals need a precomputed emission plan.
-        let source_module = semantic.symbol_of(program.node_id());
+        let source_module = semantic.ts_source_module_symbol();
         let needs_plan = semantic.iter_symbols().any(|entry| {
             Some(entry.id) != source_module
                 && entry.symbol.flags.intersects(

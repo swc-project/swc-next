@@ -1,5 +1,7 @@
 use std::vec::Vec as RawVec;
 
+use crate::NodeSemanticId;
+
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 use swc_next_ecma_ast::{
     Ast, AstWtf8, ExportAllDeclaration, ExportDefaultDeclaration, ExportDefaultDeclarationKindData,
@@ -254,23 +256,23 @@ impl<'a> ModuleRecordBuilder<'a> {
 
     pub fn finalize(
         self,
-        node_symbols: &[Option<SymbolId>],
+        node_semantic: &[NodeSemanticId],
         references: &[crate::Reference],
-        node_references: &[Option<ReferenceId>],
     ) -> ModuleRecord<'a> {
         let mut exports = ArenaVec::with_capacity_in(self.exports.len(), self.allocator);
         for raw in self.exports {
             let target = match raw.target {
                 RawExportTarget::Direct { binding } => {
-                    let symbol =
-                        node_symbols[binding.index()].expect("direct export binding has a symbol");
+                    let symbol = node_semantic[binding.index()]
+                        .symbol()
+                        .expect("direct export binding has a symbol");
                     ExportTarget::Local {
                         symbol,
                         reference: None,
                     }
                 }
                 RawExportTarget::Local { name } => {
-                    let reference = node_references[name.node.index()];
+                    let reference = node_semantic[name.node.index()].reference();
                     let symbol = reference.and_then(|id| references[id.index()].symbol);
                     if let Some(symbol) = symbol {
                         ExportTarget::Local { symbol, reference }
@@ -287,14 +289,15 @@ impl<'a> ModuleRecordBuilder<'a> {
                     expression,
                 } => {
                     if let Some(binding) = binding {
-                        let symbol = node_symbols[binding.index()]
+                        let symbol = node_semantic[binding.index()]
+                            .symbol()
                             .expect("named default export has a symbol");
                         ExportTarget::Local {
                             symbol,
                             reference: None,
                         }
                     } else if let Some(expression) = expression {
-                        let reference = node_references[expression.index()];
+                        let reference = node_semantic[expression.index()].reference();
                         let symbol = reference.and_then(|id| references[id.index()].symbol);
                         ExportTarget::Expression {
                             node: value,
