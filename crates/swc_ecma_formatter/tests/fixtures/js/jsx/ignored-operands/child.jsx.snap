@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <div>{.../* prettier-ignore */ factory ( { first:1,second:  2 } )}</div>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  <div>{/* prettier-ignore */ ...factory ( { first:1,second:  2 } )}</div>
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view = (
+  <div>
+    {
+      /* prettier-ignore */ ...factory ( { first:1,second:  2 } )
+    }
+  </div>
+);

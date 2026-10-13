@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Box title=/* value */"one very long string attribute value" />;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view = (
+  <Box title=/* value */ "one very long string attribute value" />
+);
