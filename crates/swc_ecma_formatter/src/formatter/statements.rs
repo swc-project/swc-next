@@ -22,7 +22,7 @@ use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart};
+use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart, TailBoundary};
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
 use super::suppression::ContentMode;
@@ -225,6 +225,15 @@ enum StatementPunctuation {
     Canonical(Semicolons),
     Source(StatementSourceTerminator),
     SourcePacket,
+}
+
+impl StatementPunctuation {
+    fn tail_boundary(self) -> TailBoundary {
+        match self {
+            Self::Canonical(Semicolons::Always) => TailBoundary::Separated,
+            _ => TailBoundary::Adjacent,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1019,6 +1028,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head,
                 ExpressionContext::at(ExpressionPosition::Statement)
                     .with_expression_start(layout.start)
+                    .with_tail_boundary(punctuation.tail_boundary())
                     .with_content_mode(mode),
                 None,
                 writer,

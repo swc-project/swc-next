@@ -179,6 +179,41 @@ struct PreparedRightStep {
     next: ChainParent,
 }
 
+enum BinaryRightSteps {
+    Source,
+    Prepared(std::vec::IntoIter<PreparedRightStep>),
+}
+
+struct PreparedLogicalTail {
+    steps: Vec<PreparedRightStep>,
+    operand: PreparedLogicalOperand,
+}
+
+struct PreparedLogicalOperand {
+    owner: OperandOwner,
+    layout: LogicalOperandLayout,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LogicalOperandLayout {
+    Break,
+    Inline,
+    Jsx,
+}
+
+impl LogicalOperandLayout {
+    fn inline(self) -> bool {
+        self != Self::Break
+    }
+}
+
+impl PreparedLogicalTail {
+    fn inline_root(&self) -> bool {
+        self.operand.layout == LogicalOperandLayout::Jsx
+            || self.steps.is_empty() && self.operand.layout.inline()
+    }
+}
+
 struct BinaryRightOperand<'ast> {
     entry: ChainParent,
     parent: Option<BinaryOperatorKind>,
@@ -395,6 +430,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(Some(PreparedRightStep { parentheses, next }))
     }
 
+    fn prepare_binary_logical_tail(
+        &self,
+        mut entry: ChainParent,
+    ) -> Result<Option<PreparedLogicalTail>, FormatError> {
+        if !self.ast.is_jsx() || !matches!(entry.binary.operator, BinaryOperatorKind::Logical(_)) {
+            return Ok(None);
+        }
+        let mut steps = Vec::new();
+        loop {
+            let mut owner = OperandOwner::new(entry.binary.right);
+            let layout = if entry.right_mode() == ContentMode::Verbatim {
+                LogicalOperandLayout::Break
+            } else {
+                let content = &owner.prepare(self).content;
+                match content.data {
+                    ExprData::JsxElement(_) | ExprData::JsxFragment(_) => LogicalOperandLayout::Jsx,
+                    ExprData::ArrayExpression(array) if !array.elements(self.ast).is_empty() => {
+                        LogicalOperandLayout::Inline
+                    }
+                    ExprData::ObjectExpression(object)
+                        if !object.properties(self.ast).is_empty() =>
+                    {
+                        LogicalOperandLayout::Inline
+                    }
+                    _ => {
+                        if let Some((right, parentheses)) =
+                            self.binary_content_from_prepared(content)
+                            && right.operator == entry.binary.operator
+                        {
+                            let next =
+                                self.prepare_binary_entry(right, right.left.span(self.ast).end)?;
+                            steps.push(PreparedRightStep { parentheses, next });
+                            entry = next;
+                            continue;
+                        }
+                        LogicalOperandLayout::Break
+                    }
+                }
+            };
+            return Ok(Some(PreparedLogicalTail {
+                steps,
+                operand: PreparedLogicalOperand { owner, layout },
+            }));
+        }
+    }
+
     fn binary_head_start(&self, expression: Expr) -> u32 {
         let content = self.expression_content(expression);
         self.binary_head_start_from_content(expression, &content)
@@ -538,21 +619,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         {
             return writer.group(false, |writer| {
-                self.format_prepared_binary_enclosed(chain, context, writer)
+                self.format_prepared_binary_enclosed(chain, context, None, writer)
             });
         }
-        let parent_indents = matches!(
-            context.position,
+        let root = chain.ancestors.first().copied().unwrap_or(chain.first);
+        let arrow_body = matches!(context.position, ExpressionPosition::ArrowBody);
+        let logical_tail = if !arrow_body {
+            self.prepare_binary_logical_tail(root)?
+        } else {
+            None
+        };
+        let inline_right = !arrow_body
+            && logical_tail.as_ref().map_or_else(
+                || self.inline_logical_operand(binary.operator, binary.right),
+                PreparedLogicalTail::inline_root,
+            );
+        let jsx_tail = logical_tail
+            .as_ref()
+            .is_some_and(|tail| tail.operand.layout == LogicalOperandLayout::Jsx);
+        let parent_indents = match context.position {
             ExpressionPosition::AssignmentRight(_)
-                | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
-                | ExpressionPosition::PropertyValue
-                | ExpressionPosition::ArrowBody
-        ) && (!self.inline_logical_operand(binary.operator, binary.right)
-            || !BinaryLike::from_data(self.expression_content(binary.left).data, self.ast)
-                .is_some_and(|left| binary.operator.flattens(left.operator)));
-        if parent_indents {
+            | ExpressionPosition::Initializer(super::assignment::AssignmentParent::Statement)
+            | ExpressionPosition::PropertyValue => {
+                let has_right_prefix = logical_tail.as_ref().is_some_and(|tail| {
+                    tail.operand.layout == LogicalOperandLayout::Jsx && !tail.steps.is_empty()
+                });
+                !inline_right
+                    || !has_right_prefix
+                        && !BinaryLike::from_data(
+                            self.expression_content(binary.left).data,
+                            self.ast,
+                        )
+                        .is_some_and(|left| binary.operator.flattens(left.operator))
+            }
+            _ => false,
+        };
+        if parent_indents && !jsx_tail {
             return writer.group(false, |writer| {
-                self.format_prepared_binary_enclosed(chain, context, writer)
+                self.format_prepared_binary_enclosed(chain, context, logical_tail, writer)
             });
         }
         let mut owner = OperandOwner::new(chain.first.binary.left);
@@ -571,21 +675,126 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             context.expression_start = head.expression_start;
+            context.protected_head_start = head.protected_head_start;
             context.head_comments = HeadComments::Claimed;
             head
         } else {
             BinaryHead::from_context(&context)
         };
         chain.first.left_scope = owner.scope;
-        let inline = chain.ancestors.is_empty()
-            && self.inline_logical_operand(binary.operator, binary.right);
+        let inline = chain.ancestors.is_empty() && inline_right;
+        let logical_tail = match logical_tail {
+            Some(tail) if tail.operand.layout == LogicalOperandLayout::Jsx => {
+                return self.format_binary_jsx_chain(chain, context, &mut owner, tail, writer);
+            }
+            tail => tail,
+        };
         writer.group(false, |writer| {
             let tail = self.format_binary_head(chain.first, head, &mut owner, writer)?;
-            if inline {
-                self.format_binary_continuation(chain, context, tail, writer)
+            if inline || arrow_body {
+                self.format_binary_continuation(chain, context, tail, logical_tail, writer)
             } else {
-                writer
-                    .indent(|writer| self.format_binary_continuation(chain, context, tail, writer))
+                writer.indent(|writer| {
+                    self.format_binary_continuation(chain, context, tail, logical_tail, writer)
+                })
+            }
+        })
+    }
+
+    fn format_binary_jsx_chain(
+        &mut self,
+        chain: BinaryChain,
+        context: ExpressionContext,
+        owner: &mut OperandOwner,
+        jsx_tail: PreparedLogicalTail,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let head = BinaryHead::from_context(&context);
+        writer.group(false, |writer| {
+            let PreparedLogicalTail {
+                steps,
+                operand:
+                    PreparedLogicalOperand {
+                        owner: mut right_owner,
+                        ..
+                    },
+            } = jsx_tail;
+            let mut entry = chain.first;
+            if chain.ancestors.is_empty() && steps.is_empty() {
+                let tail = self.format_binary_head(entry, head, owner, writer)?;
+                let boundary = self.format_binary_operator(
+                    entry,
+                    &mut right_owner,
+                    OperandSide::Right,
+                    true,
+                    tail,
+                    writer,
+                )?;
+                return self.format_binary_right_operand(
+                    &mut right_owner,
+                    entry.binary.operator,
+                    boundary,
+                    context.tail_owner,
+                    writer,
+                );
+            }
+            let mut prepared = None;
+            let prefix = writer.named_group(false, |writer| {
+                prepared = Some((|| {
+                    let mut tail = self.format_binary_head(entry, head, owner, writer)?;
+                    writer.indent(|writer| {
+                        for next in chain.ancestors.into_iter().rev() {
+                            tail = self.format_binary_right(
+                                entry,
+                                BinaryRightContext {
+                                    parent: Some(next.binary.operator),
+                                    layout: BinaryContinuationLayout::Expression,
+                                    tail_owner: TailOwner::ParentOperation,
+                                },
+                                tail,
+                                None,
+                                writer,
+                            )?;
+                            entry = next;
+                        }
+                        let operand = self.format_binary_right_prefix(
+                            entry,
+                            None,
+                            BinaryContinuationLayout::Expression,
+                            tail,
+                            BinaryRightSteps::Prepared(steps.into_iter()),
+                            writer,
+                        )?;
+                        let boundary = self.format_binary_operator(
+                            operand.entry,
+                            &mut right_owner,
+                            OperandSide::Right,
+                            true,
+                            operand.tail,
+                            writer,
+                        )?;
+                        Ok((boundary, operand.closing_end))
+                    })
+                })());
+            });
+            let (boundary, closing_end) =
+                prepared.expect("named binary prefix executes its operand preparation")?;
+            let tail = writer.indent_if_break(prefix, |writer| {
+                self.format_binary_right_operand(
+                    &mut right_owner,
+                    entry.binary.operator,
+                    boundary,
+                    context.tail_owner,
+                    writer,
+                )
+            })?;
+            if let Some(end) = closing_end {
+                self.capture_expression_tail(
+                    Span::new(right_owner.expression.span(self.ast).end, end),
+                    tail,
+                )
+            } else {
+                Ok(tail)
             }
         })
     }
@@ -609,13 +818,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let chain = self.binary_chain(binary)?;
-        self.format_prepared_binary_enclosed(chain, context, writer)
+        self.format_prepared_binary_enclosed(chain, context, None, writer)
     }
 
     fn format_prepared_binary_enclosed(
         &mut self,
         mut chain: BinaryChain,
         context: ExpressionContext,
+        logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let mut owner = OperandOwner::new(chain.first.binary.left);
@@ -635,12 +845,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         chain.first.left_scope = owner.scope;
         let context = ExpressionContext {
             expression_start: head.expression_start,
-            expression_head: head.expression_head,
             protected_head_start: head.protected_head_start,
             ..context
         };
         let tail = self.format_binary_head(chain.first, head, &mut owner, writer)?;
-        self.format_binary_continuation(chain, context, tail, writer)
+        self.format_binary_continuation(chain, context, tail, logical_tail, writer)
     }
 
     fn format_binary_head(
@@ -700,6 +909,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         chain: BinaryChain,
         context: ExpressionContext,
         mut tail: Option<ExpressionTail<'ast>>,
+        mut logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let parent = match context.position {
@@ -719,6 +929,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(next) => (Some(next.binary.operator), TailOwner::ParentOperation),
                 None => (parent, context.tail_owner),
             };
+            let prepared = if nodes.peek().is_none() {
+                logical_tail.take()
+            } else {
+                None
+            };
             tail = self.format_binary_right(
                 entry,
                 BinaryRightContext {
@@ -727,6 +942,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     tail_owner,
                 },
                 tail,
+                prepared,
                 writer,
             )?;
         }
@@ -741,11 +957,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !matches!(operator, BinaryOperatorKind::Logical(_)) {
             return false;
         }
-        // Opaque ignored collections already have a real binary operand owner.
-        match self.expression_content(operand).data {
-            ExprData::ArrayExpression(array) => !array.elements(self.ast).is_empty(),
-            ExprData::ObjectExpression(object) => !object.properties(self.ast).is_empty(),
-            _ => false,
+        let mut content = self.expression_content(operand);
+        match content.data {
+            ExprData::ArrayExpression(array) => return !array.elements(self.ast).is_empty(),
+            ExprData::ObjectExpression(object) => return !object.properties(self.ast).is_empty(),
+            _ => {}
+        }
+        if !self.ast.is_jsx() {
+            return false;
+        }
+        loop {
+            if matches!(
+                content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            ) {
+                return true;
+            }
+            let Some((binary, _)) = self.binary_content_from_prepared(&content) else {
+                return false;
+            };
+            if binary.operator != operator {
+                return false;
+            }
+            if self.has_suppression {
+                let Ok(entry) = self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
+                else {
+                    return false;
+                };
+                if entry.right_mode() == ContentMode::Verbatim {
+                    return false;
+                }
+            }
+            content = self.expression_content(binary.right);
         }
     }
 
@@ -754,6 +997,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         entry: ChainParent,
         context: BinaryRightContext,
         tail: Option<ExpressionTail<'ast>>,
+        prepared: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let BinaryRightContext {
@@ -761,8 +1005,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             layout,
             tail_owner,
         } = context;
-        let operand = self.format_binary_right_prefix(entry, parent, layout, tail, writer)?;
-        self.format_binary_final_right(operand, layout, tail_owner, writer)
+        let (steps, prepared) = match prepared {
+            Some(PreparedLogicalTail { steps, operand }) => {
+                (BinaryRightSteps::Prepared(steps.into_iter()), Some(operand))
+            }
+            None => (BinaryRightSteps::Source, None),
+        };
+        let operand =
+            self.format_binary_right_prefix(entry, parent, layout, tail, steps, writer)?;
+        self.format_binary_final_right(operand, layout, tail_owner, prepared, writer)
     }
 
     fn format_binary_right_prefix(
@@ -771,13 +1022,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut parent: Option<BinaryOperatorKind>,
         layout: BinaryContinuationLayout,
         mut tail: Option<ExpressionTail<'ast>>,
+        mut steps: BinaryRightSteps,
         writer: &mut Writer<'ast>,
     ) -> Result<BinaryRightOperand<'ast>, FormatError> {
         let mut entry = entry;
         let mut closing_end = None;
         // Same-operator logical operands keep their short-circuit order in one group.
         loop {
-            let step = self.prepare_binary_right_step(entry)?;
+            let step = match &mut steps {
+                BinaryRightSteps::Source => self.prepare_binary_right_step(entry)?,
+                BinaryRightSteps::Prepared(steps) => steps.next(),
+            };
             let Some(PreparedRightStep {
                 parentheses: boundary,
                 mut next,
@@ -834,6 +1089,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     })
                     .with_tail_owner(TailOwner::ParentOperation),
                     head,
+                    None,
                     writer,
                 )?;
                 next.left_content_end = boundary.map_or_else(
@@ -870,6 +1126,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operand: BinaryRightOperand<'ast>,
         layout: BinaryContinuationLayout,
         tail_owner: TailOwner,
+        prepared: Option<PreparedLogicalOperand>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let BinaryRightOperand {
@@ -879,8 +1136,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             closing_end,
         } = operand;
         let binary = entry.binary;
-        let mut owner = OperandOwner::new(binary.right);
-        let inline = self.inline_logical_operand(binary.operator, binary.right);
+        let (mut owner, inline) = match prepared {
+            Some(PreparedLogicalOperand { owner, layout }) => (owner, layout.inline()),
+            None => (
+                OperandOwner::new(binary.right),
+                self.inline_logical_operand(binary.operator, binary.right),
+            ),
+        };
         let same_kind = |expression| {
             let data = self.expression_content(expression).data;
             BinaryOperatorKind::from_data(data, self.ast)
@@ -934,6 +1196,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let indents = boundary.indents();
+        let jsx = !matches!(boundary, OperandBoundary::Constrained { .. })
+            && boundary.mode() == ContentMode::Formatted
+            && matches!(operator, BinaryOperatorKind::Logical(_))
+            && matches!(
+                owner.prepare(self).content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            );
         let write_argument = |writer: &mut Writer<'ast>| {
             Self::format_binary_operand_separator(&boundary, writer);
             let write = |formatter: &mut Self, writer: &mut Writer<'ast>| {
@@ -946,6 +1215,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .with_tail_owner(tail_owner);
                 formatter.format_binary_owned_operand(owner, context, writer)
             };
+            if jsx {
+                return writer.group(false, |writer| {
+                    writer.if_break("(");
+                    writer.indent(|writer| {
+                        writer.soft_line();
+                        let tail = write(self, writer)?;
+                        self.format_expression_tail(tail, writer)
+                    })?;
+                    writer.soft_line();
+                    writer.if_break(")");
+                    Ok(None)
+                });
+            }
             write(self, writer)
         };
         if indents {

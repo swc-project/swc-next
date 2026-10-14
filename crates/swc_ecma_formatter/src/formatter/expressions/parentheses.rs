@@ -6,7 +6,7 @@ use swc_next_ecma_ast::{
 
 use super::{
     ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent,
-    ParenthesesOwner, SourceTailOwner, TailOwner,
+    ParenthesesOwner, SourceTailOwner, TailBoundary, TailOwner,
 };
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
@@ -1157,6 +1157,78 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !head.comments.is_empty() {
             context.arrow_layout = context.arrow_layout.with_leading_comments();
         }
+        if !head.comments.is_empty()
+            && matches!(binding, CommentBinding::Unbound)
+            && context.content_mode == ContentMode::Formatted
+            && Self::jsx_expression_has_optional_frame(context)
+            && matches!(
+                prepared
+                    .get_or_insert_with(|| self.expression_content(expression))
+                    .data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            )
+        {
+            let span = Span::new(head.comments[0].span.start, expression.span(self.ast).end);
+            let head = NodeHead {
+                layout: CommentRunLayout::GroupedLeading(
+                    head.gap_end.unwrap_or(head.content_start),
+                ),
+                gap_end: None,
+                ..head
+            };
+            let source_tail = prepared
+                .as_ref()
+                .and_then(|content| content.parentheses)
+                .and_then(|removed| removed.tail)
+                .filter(|_| {
+                    context.source_tail_owner == SourceTailOwner::Enclosure
+                        && context.tail_owner != TailOwner::ParentOperation
+                });
+            return self.format_jsx_expression(span, context, writer, |formatter, writer| {
+                let tail = formatter.format_expression_leading_prepared(
+                    expression,
+                    prepared,
+                    ResolvedExpressionHead { head, binding },
+                    context.inside_parentheses(),
+                    array_comments.as_deref_mut(),
+                    writer,
+                )?;
+                let tail = formatter.format_parentheses_tail(
+                    context.source_parentheses_tail,
+                    tail,
+                    array_comments.as_deref_mut(),
+                    writer,
+                )?;
+                let tail = if let Some(owner) = source_tail
+                    && tail.is_some()
+                {
+                    if context.tail_boundary == TailBoundary::Separated {
+                        writer.break_parent();
+                    }
+                    let tail = formatter.capture_expression_tail(owner.span, tail)?;
+                    formatter.format_expression_tail_with_array_comments(
+                        tail,
+                        array_comments.as_deref_mut(),
+                        writer,
+                    )?;
+                    None
+                } else {
+                    tail
+                };
+                if context.tail_owner == TailOwner::ParentOperation
+                    || context.source_tail_owner == SourceTailOwner::Enclosure
+                {
+                    Ok(tail)
+                } else {
+                    formatter.format_expression_tail_with_array_comments(
+                        tail,
+                        array_comments,
+                        writer,
+                    )?;
+                    Ok(None)
+                }
+            });
+        }
         // Added readability pairs have their own placement proof; the source
         // binding still owns ASI and diagnostic line constraints.
         let pair_binding = self.optional_nullish_head_binding(
@@ -2109,7 +2181,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn format_prepared_expression_with_resolved_head(
+    pub(in crate::formatter) fn format_prepared_expression_with_resolved_head(
         &mut self,
         expression: Expr,
         content: ExpressionContent,

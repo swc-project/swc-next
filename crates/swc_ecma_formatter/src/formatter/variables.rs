@@ -15,14 +15,16 @@ use super::comments::{CommentBinding, ExpressionTail};
 use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::RhsLayout;
-use super::expressions::{ExpressionContext, ExpressionPosition, ForInitializerGrammar};
+use super::expressions::{
+    ExpressionContext, ExpressionPosition, ForInitializerGrammar, TailBoundary,
+};
 use super::statements::DeclarationKeyword;
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum VariableContext {
-    Statement,
+    Statement(TailBoundary),
     ForInitializer,
     ForIn,
     Iteration,
@@ -39,7 +41,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.for_initializer_context(expression, ForInitializerGrammar::Assignment)
             }
             VariableContext::ForIn => ExpressionContext::at(ExpressionPosition::ForInInitializer),
-            VariableContext::Statement => ExpressionContext::variable_initializer(),
+            VariableContext::Statement(boundary) => {
+                ExpressionContext::variable_initializer().with_tail_boundary(boundary)
+            }
             VariableContext::Iteration => ExpressionContext::variable_initializer(),
         };
         context.with_variable_initializer_owner()
@@ -49,11 +53,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         declaration: VariableDeclaration,
         keyword: Option<DeclarationKeyword>,
+        tail_boundary: TailBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
         self.format_variable_declaration_parts(
             declaration,
-            VariableContext::Statement,
+            VariableContext::Statement(tail_boundary),
             keyword,
             writer,
         )
@@ -157,6 +162,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let following = declarators.peek().map_or(FollowingItem::End, |node| {
                     FollowingItem::Node(node.span(ast))
                 });
+                let context = match (context, following) {
+                    (VariableContext::Statement(_), FollowingItem::Node(_)) => {
+                        VariableContext::Statement(TailBoundary::Adjacent)
+                    }
+                    _ => context,
+                };
                 let mut write = |writer: &mut Writer<'ast>| {
                     if !first_item {
                         let next = self
@@ -164,7 +175,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .in_range(Span::new(previous_end, span.start))
                             .first()
                             .map_or(span.start, |comment| comment.span.start);
-                        if matches!(context, VariableContext::Statement)
+                        if matches!(context, VariableContext::Statement(_))
                             && has_value
                             && !matches!(separator, Separator::Source(_))
                         {
