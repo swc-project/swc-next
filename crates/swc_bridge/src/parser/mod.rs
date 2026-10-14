@@ -19,11 +19,10 @@ pub unsafe fn parse_to_buffer(
 ) -> Vec<u8> {
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
-    let options = options.unwrap_or_default();
-    let semantic_errors = options.semantic_errors.unwrap_or(false);
-    let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
+    let options = options.unwrap_or_default().normalize();
+    let result = Parser::init(&allocator, source, options.parser, NoTokenParserConfig).parse();
 
-    let diagnostics = if semantic_errors && result.diagnostics.is_empty() {
+    let diagnostics = if options.semantic_errors && result.diagnostics.is_empty() {
         let semantic = analyze(
             &result.ast,
             AnalyzeOptions {
