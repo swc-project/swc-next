@@ -34,7 +34,6 @@ pub(super) struct StringEnum {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct StringEnumVariant {
-    pub rust_name: String,
     pub js_value: String,
 }
 

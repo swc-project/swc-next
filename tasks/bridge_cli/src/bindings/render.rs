@@ -69,12 +69,11 @@ pub(super) fn render_binding(descriptors: Vec<BridgeDescriptor>, runtime: &str) 
     )
     .unwrap();
 
-    for enumeration in enums.values() {
-        render_enum(
-            &mut source,
-            enumeration,
-            usage.used_enums.contains(&enumeration.rust_name),
-        );
+    for enumeration in enums
+        .values()
+        .filter(|enumeration| usage.used_enums.contains(&enumeration.rust_name))
+    {
+        render_enum_values(&mut source, enumeration);
         source.push('\n');
     }
 
@@ -235,37 +234,19 @@ impl RenderContext<'_> {
     }
 }
 
-fn render_enum(source: &mut String, enumeration: &StringEnum, render_values: bool) {
+fn render_enum_values(source: &mut String, enumeration: &StringEnum) {
     writeln!(
         source,
-        "export const {} = Object.defineProperties({{}}, {{",
-        enumeration.js_name
+        "const {}Values = [{}];",
+        lower_camel(&enumeration.js_name),
+        enumeration
+            .variants
+            .iter()
+            .map(|variant| js_string(&variant.js_value))
+            .collect::<Vec<_>>()
+            .join(", ")
     )
     .unwrap();
-    for variant in &enumeration.variants {
-        writeln!(
-            source,
-            "  {}: {{ value: {} }},",
-            variant.rust_name,
-            js_string(&variant.js_value)
-        )
-        .unwrap();
-    }
-    source.push_str("});\n");
-    if render_values {
-        writeln!(
-            source,
-            "const {}Values = [{}];",
-            lower_camel(&enumeration.js_name),
-            enumeration
-                .variants
-                .iter()
-                .map(|variant| js_string(&variant.js_value))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-        .unwrap();
-    }
 }
 
 fn render_function(

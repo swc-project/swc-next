@@ -15,3 +15,7 @@ console.log(printSync(program).code);
 
 Call `init()` before parsing or printing. It loads the bundled `.wasm` file;
 subsequent calls are idempotent.
+
+Parser options use strings, for example
+`{ lang: "ts", sourceType: "module", comments: "flat" }`.
+`Lang`, `SourceType`, and `CommentMode` are available only as TypeScript types.

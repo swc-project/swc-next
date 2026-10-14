@@ -2,8 +2,27 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { decode } from "@swc-next/decoder";
-import { CommentMode, Lang, parseSync, SourceType } from "../src-js/index.js";
+import * as core from "../src-js/index.js";
+import { langFromPath, parseSync, sourceTypeFromPath } from "../src-js/index.js";
 import { parseSync as parseStandalone } from "../../parser/src-js/index.js";
+
+test("parser options use strings without enum value exports", () => {
+  assert.equal("Lang" in core, false);
+  assert.equal("SourceType" in core, false);
+  assert.equal("CommentMode" in core, false);
+  assert.equal(langFromPath("input.ts"), "ts");
+  assert.equal(sourceTypeFromPath("input.cjs"), "commonjs");
+
+  const result = parseSync("// comment\nconst value: number = 1;", {
+    lang: "ts",
+    sourceType: "script",
+    comments: "none",
+  });
+  assert.equal(result.meta.lang, "ts");
+  assert.equal(result.meta.sourceType, "script");
+  assert.deepEqual(result.comments, []);
+  assert.equal(result.program.body[0].declarations[0].id.typeAnnotation.type, "TSTypeAnnotation");
+});
 
 test("decoder reads little-endian words from unaligned buffers", () => {
   const backing = new ArrayBuffer(77);
@@ -58,7 +77,7 @@ test("parseSync decodes ASCII strings after non-ASCII source text", () => {
   const longName = "longAsciiIdentifierAfterUnicodePrefix".repeat(3);
   const source = `/* 😀 */ const asciiName = "plain"; const escaped = "\\u0061"; const 文 = "é"; const ${longName} = 1;`;
 
-  for (const lang of [Lang.Js, Lang.Ts]) {
+  for (const lang of ["js", "ts"]) {
     const declarations = parseSync(source, { lang }).program.body;
     assert.equal(declarations[0].declarations[0].id.name, "asciiName");
     assert.equal(declarations[0].declarations[0].init.value, "plain");
@@ -83,7 +102,7 @@ test("parseSync decodes UTF-8 source and pool strings", () => {
 test("parseSync exposes flat comments lazily", () => {
   const source =
     '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
-  const result = parseSync(source, { comments: CommentMode.Flat });
+  const result = parseSync(source, { comments: "flat" });
   const descriptor = Object.getOwnPropertyDescriptor(result, "comments");
 
   assert.equal(typeof descriptor.get, "function");
@@ -113,8 +132,8 @@ test("parseSync exposes flat comments lazily", () => {
 test("parseSync exposes HTML comments without delimiters", () => {
   const source = "<!-- open\n--> close\n";
   const result = parseSync(source, {
-    comments: CommentMode.Flat,
-    sourceType: SourceType.Script,
+    comments: "flat",
+    sourceType: "script",
   });
 
   assert.deepEqual(result.comments, [
@@ -131,7 +150,7 @@ test("parseSync defaults to flat comments and returns an empty array", () => {
 });
 
 test("parseSync can disable comment collection", () => {
-  const result = parseSync("// omitted", { comments: CommentMode.None });
+  const result = parseSync("// omitted", { comments: "none" });
 
   assert.deepEqual(result.comments, []);
 });
@@ -185,13 +204,13 @@ test("parseSync makes semantic early-error checking optional", () => {
 
 test("semantic checking supports TypeScript through both parser entry points", () => {
   const source = "type Value = string; type Value = number;";
-  const options = { lang: Lang.Ts, semanticErrors: true };
+  const options = { lang: "ts", semanticErrors: true };
   const checked = parseSync(source, options);
-  assert.deepEqual(parseSync(source, { lang: Lang.Ts }).diagnostics, []);
+  assert.deepEqual(parseSync(source, { lang: "ts" }).diagnostics, []);
   assert.deepEqual(parseSync(source, { ...options, semanticErrors: false }).diagnostics, []);
   assert.equal(checked.diagnostics.length, 1);
   assert.equal(checked.diagnostics[0].severity, "error");
-  assert.deepEqual(checked.program, parseSync(source, { lang: Lang.Ts }).program);
+  assert.deepEqual(checked.program, parseSync(source, { lang: "ts" }).program);
   assert.deepEqual(parseStandalone(source, options).diagnostics, checked.diagnostics);
   assert.deepEqual(parseStandalone(source, options).program, checked.program);
   assert.deepEqual(parseStandalone(source, { ...options, semanticErrors: false }).diagnostics, []);
@@ -202,13 +221,13 @@ test("semantic checking supports TypeScript through both parser entry points", (
   const invalid = "type Value = ;";
   assert.deepEqual(
     parseSync(invalid, options).diagnostics,
-    parseSync(invalid, { lang: Lang.Ts }).diagnostics,
+    parseSync(invalid, { lang: "ts" }).diagnostics,
   );
 });
 
 test("semantic diagnostics preserve Unicode offsets and related labels", () => {
   const source = "/* 😀 */ let 文; let 文;";
-  const result = parseSync(source, { semanticErrors: true, comments: CommentMode.None });
+  const result = parseSync(source, { semanticErrors: true, comments: "none" });
   const [error] = result.diagnostics;
   assert.equal(error.start, source.lastIndexOf("文"));
   assert.equal(error.end, source.lastIndexOf("文") + 1);
@@ -233,8 +252,8 @@ test("semantic checking appends diagnostics after parser recovery", () => {
     );
   }
 
-  checkRecovery("/* 😀 */ const a; let 文; let 文;", Lang.Js);
-  checkRecovery("/* 😀 */ const a; type Value = string; type Value = number;", Lang.Ts);
+  checkRecovery("/* 😀 */ const a; let 文; let 文;", "js");
+  checkRecovery("/* 😀 */ const a; type Value = string; type Value = number;", "ts");
 });
 
 test("parseSync reports diagnostics with UTF-16 offsets", () => {
@@ -246,7 +265,7 @@ test("parseSync reports diagnostics with UTF-16 offsets", () => {
   assert.equal(result.diagnostics[0].end, source.indexOf("=") + 1);
   assert.equal(result.comments[0].value, " 文😀 ");
 
-  const noComments = parseSync(source, { comments: CommentMode.None });
+  const noComments = parseSync(source, { comments: "none" });
   assert.deepEqual(noComments.diagnostics, result.diagnostics);
   assert.deepEqual(noComments.comments, []);
 
@@ -259,7 +278,7 @@ test("parseSync reports diagnostics with UTF-16 offsets", () => {
 
 test("parseSync preserves diagnostic help, labels, and Unicode messages", () => {
   const source = "/* 😀 */ <开始></结束>";
-  const result = parseSync(source, { lang: Lang.Jsx });
+  const result = parseSync(source, { lang: "jsx" });
 
   assert.equal(result.diagnostics.length, 1);
   const [error] = result.diagnostics;
@@ -283,7 +302,7 @@ test("parseSync decodes diagnostic arrays and optional metadata", () => {
   assert.equal(result.diagnostics[1].severity, "error");
   assert.ok(result.diagnostics[0].start < result.diagnostics[1].start);
 
-  const ambient = parseSync("declare function f() {}", { lang: Lang.Dts });
+  const ambient = parseSync("declare function f() {}", { lang: "dts" });
   assert.equal(ambient.diagnostics.length, 1);
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);

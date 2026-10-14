@@ -5,7 +5,7 @@ const textEncoder = new TextEncoder();
 const canTransferToFixedLength =
   typeof ArrayBuffer.prototype.transferToFixedLength === "function";
 
-export * from "./binding.js";
+export { langFromPath, sourceTypeFromPath } from "./binding.js";
 
 export function parseSync(source, options) {
   const sourceBuffer = new Uint8Array(source.length * 3);

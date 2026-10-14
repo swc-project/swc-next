@@ -17,9 +17,6 @@ const canTransferToFixedLength =
 
 export {
   default,
-  CommentMode,
-  Lang,
-  SourceType,
   langFromPath,
   sourceTypeFromPath,
 } from "./swc-next-core.browser.mjs";
