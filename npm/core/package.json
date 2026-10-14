@@ -32,8 +32,7 @@
     "test": "node --test test/*.test.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && node ./test/estree-conformance.ts",
-    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts",
-    "test:types": "tsc -p test/types/tsconfig.json"
+    "test:codec": "napi build --platform --release --features test-codec --esm --output-dir test/binding && node ./test/codec-conformance.ts"
   },
   "keywords": [],
   "author": "",
@@ -76,9 +75,6 @@
     "tinybench": "catalog:",
     "tinypool": "catalog:",
     "typescript": "catalog:",
-    "yuku-parser": "catalog:",
-    "@swc-next/parser": "workspace:*",
-    "@swc-next/codegen": "workspace:*",
-    "@swc-next/core-browser": "workspace:*"
+    "yuku-parser": "catalog:"
   }
 }

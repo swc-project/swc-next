@@ -305,15 +305,6 @@ importers:
       '@napi-rs/cli':
         specifier: 'catalog:'
         version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
-      '@swc-next/codegen':
-        specifier: workspace:*
-        version: link:../codegen
-      '@swc-next/core-browser':
-        specifier: workspace:*
-        version: link:../core-browser
-      '@swc-next/parser':
-        specifier: workspace:*
-        version: link:../parser
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.46(@swc/helpers@0.5.23)
