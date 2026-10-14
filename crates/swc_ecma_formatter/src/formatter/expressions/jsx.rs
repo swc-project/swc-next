@@ -12,10 +12,12 @@ use swc_next_ecma_ast::{
     StringLiteral,
 };
 
+use super::arrows::ArrowLayout;
 use super::binary::{BinaryOperatorKind, OperandSide};
 use super::parentheses::ExpressionContent;
 use super::{
-    ExpressionContext, ExpressionPosition, Formatter, OperandIndent, ParenthesesOwner, TailOwner,
+    ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, OperandIndent,
+    ParenthesesOwner, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -112,9 +114,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !Self::jsx_expression_has_optional_frame(context) {
             return content(self, writer);
         }
+        let callback_body = matches!(context.jsx_callback, JsxCallbackContext::Body);
         let opening = self.line_constraint(span.start, span.start);
         let closing = self.line_constraint(span.end, span.end);
-        writer.group(false, |writer| {
+        writer.group(callback_body, |writer| {
             writer.if_break("(");
             let result = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
@@ -856,7 +859,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let closing_constraint = self.line_constraint(expression_span.end, closing);
         let mut content = content;
-        let hug = if mode == ContentMode::Formatted {
+        let (hug, arrow_layout, jsx_callback) = if mode == ContentMode::Formatted {
             let data = content
                 .as_ref()
                 .map_or_else(|| ast.expr_data(expression), |content| content.data);
@@ -869,19 +872,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 data
             };
+            let jsx_callback = self.jsx_container_callback(data);
             let core_span = content
                 .as_ref()
                 .map_or(expression_span, |content| content.expression.span(ast));
-            self.comments
+            let hug = self
+                .comments
                 .in_range(Span::new(opening, core_span.start))
                 .is_empty()
                 && self
                     .comments
                     .in_range(Span::new(core_span.end, closing))
                     .is_empty()
-                && self.jsx_expression_hugs(data, role)
+                && self.jsx_expression_hugs(data, role, jsx_callback);
+            // A source-constrained closing gap belongs to the container alone.
+            let arrow_layout = if hug
+                && matches!(data, ExprData::ArrowFunctionExpression(_))
+                && closing_constraint == LineConstraint::Unconstrained
+            {
+                if content.is_none() {
+                    content = Some(ExpressionContent {
+                        expression,
+                        data,
+                        parentheses: None,
+                    });
+                }
+                ArrowLayout::JsxExpression
+            } else {
+                ArrowLayout::Ordinary
+            };
+            (hug, arrow_layout, jsx_callback)
         } else {
-            false
+            (false, ArrowLayout::Ordinary, JsxCallbackContext::Ordinary)
         };
         // Attribute braces own the indent only on this actual non-hug path.
         let operand_indent =
@@ -907,6 +929,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let context = ExpressionContext::at(ExpressionPosition::JsxExpression)
                     .with_content_mode(mode)
+                    .with_arrow_layout(arrow_layout)
+                    .with_jsx_callback(jsx_callback)
                     .with_operand_indent(operand_indent)
                     .with_tail_owner(TailOwner::ParentOperation);
                 let tail = match content {
@@ -1230,8 +1254,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok((end, hug))
     }
 
-    /// Template braces retain their interpolation continuation owner.
-    fn jsx_expression_hugs(&self, mut data: ExprData, role: JsxBraceRole) -> bool {
+    /// Inline braces let the expression own its continuation indentation.
+    /// Binary and conditional expressions inline only as element children.
+    fn jsx_expression_hugs(
+        &self,
+        mut data: ExprData,
+        role: JsxBraceRole,
+        mut callback: JsxCallbackContext,
+    ) -> bool {
         let mut child = matches!(role, JsxBraceRole::Child);
         loop {
             match data {
@@ -1239,6 +1269,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::ArrayExpression(_)
                 | ExprData::CallExpression(_)
                 | ExprData::Function(_)
+                | ExprData::ArrowFunctionExpression(_)
                 | ExprData::TemplateLiteral(_)
                 | ExprData::TaggedTemplateExpression(_) => return true,
                 ExprData::BinaryExpression(_)
@@ -1264,9 +1295,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return true;
                     }
                     child = false;
+                    callback = self.jsx_container_callback(data);
                 }
-                _ => return false,
+                _ => return matches!(callback, JsxCallbackContext::ContainerCall(_)),
             }
+        }
+    }
+
+    fn jsx_container_callback(&self, mut data: ExprData) -> JsxCallbackContext {
+        loop {
+            let expression = match data {
+                ExprData::ChainExpression(chain) => chain.expression(self.ast),
+                ExprData::TsNonNullExpression(assertion) => {
+                    let Ok(source) = self.source_non_null(assertion) else {
+                        return JsxCallbackContext::Ordinary;
+                    };
+                    if source.source_break() {
+                        return JsxCallbackContext::Ordinary;
+                    }
+                    source.expression
+                }
+                _ => break,
+            };
+            data = self.expression_content(expression).data;
+        }
+        match data {
+            ExprData::CallExpression(call) => JsxCallbackContext::ContainerCall(call),
+            _ => JsxCallbackContext::Ordinary,
         }
     }
 }

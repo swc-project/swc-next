@@ -158,6 +158,11 @@ impl SourceNonNull<'_> {
                 TailOwner::ParentOperation,
             )
             .with_member_layout(context.member_layout)
+            .with_jsx_callback(if self.source_break() {
+                super::JsxCallbackContext::Ordinary
+            } else {
+                context.jsx_callback
+            })
             .with_conditional_envelope(context.conditional_envelope.chain_head())
     }
 

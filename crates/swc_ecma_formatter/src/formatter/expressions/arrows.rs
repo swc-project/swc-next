@@ -1,8 +1,16 @@
 //! Expression arrows with parameter, arrow-token and body boundary ownership.
+
+use swc_next_ecma_ast::{
+    ArrowFunctionBody, ArrowFunctionBodyData, ArrowFunctionExpression, AssignmentTargetData,
+    Comment, CommentKind, Expr, ExprData, FormalParameterItemData, FormalParameterPatternData,
+    FormalParameters, FunctionBody, GetSpan, Span, TsTypeAnnotation, TsTypeParameterDeclaration,
+};
+
 use super::arguments::TrailingCommaPolicy;
 use super::parentheses::{ExpressionContent, SourceParentheses};
 use super::{
-    ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, SourceTailOwner, TailOwner,
+    ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
+    SourceTailOwner, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -19,11 +27,7 @@ use crate::{
     ArrowParentheses, FormatError, Semicolons, TrailingCommas,
     document::{Fragment, RecordedGroup, Writer},
 };
-use swc_next_ecma_ast::{
-    ArrowFunctionBody, ArrowFunctionBodyData, ArrowFunctionExpression, AssignmentTargetData,
-    Comment, CommentKind, Expr, ExprData, FormalParameterItemData, FormalParameterPatternData,
-    FormalParameters, FunctionBody, GetSpan, Span, TsTypeAnnotation, TsTypeParameterDeclaration,
-};
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArrowLayout {
     Ordinary,
@@ -32,6 +36,7 @@ pub(super) enum ArrowLayout {
     AssignmentContinuation,
     Callee,
     Argument,
+    JsxExpression,
 }
 
 /// A leading comment run owns the gap to the arrow's first signature.
@@ -109,6 +114,7 @@ pub(super) struct VerbatimArrow {
     span: Span,
     is_async: bool,
 }
+
 struct ArrowReturnInput {
     annotation: TsTypeAnnotation,
     mode: ContentMode,
@@ -141,6 +147,7 @@ pub(super) enum SourceArrow<'a> {
     Verbatim(VerbatimArrow),
     Formatted(FormattedArrowHead<'a>),
 }
+
 pub(super) struct FormattedSourceArrow<'a> {
     arrow: ArrowFunctionExpression,
     next: Option<ArrowChainChild<'a>>,
@@ -172,8 +179,22 @@ pub(super) enum PreparedArrowBody {
     },
 }
 
+/// A JSX layout pair owns its ordinary head and line-owning source tail.
+struct ArrowJsxComments<'ast> {
+    head: NodeHead<'ast>,
+    tail: ArrowJsxTail<'ast>,
+}
+
+enum ArrowJsxTail<'ast> {
+    Empty,
+    Enclosed(ExpressionTail<'ast>),
+    // Inline block tails keep the parent punctuation owner when the pair collapses.
+    Parent(ExpressionTail<'ast>),
+}
+
 pub(super) struct SourceArrowBody<'a> {
     body: PreparedArrowBody,
+    parent_layout: ArrowLayout,
     body_span: Span,
     operator: u32,
     leading: &'a [Comment],
@@ -185,6 +206,8 @@ pub(super) struct SourceArrowBody<'a> {
     body_starts_line: bool,
     hug_body: bool,
     flat_conditional_pair: bool,
+    jsx_callback: JsxCallbackContext,
+    jsx_comments: Option<ArrowJsxComments<'a>>,
 }
 
 impl SourceArrowBody<'_> {
@@ -227,6 +250,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let parameters = self.source_arrow_parameters(boundary.parameters, parentheses)?;
         Ok(parameters.starts_with_parenthesis())
     }
+
     fn check_arrow_header_domain(
         &self,
         arrow: ArrowFunctionExpression,
@@ -269,6 +293,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             before_count,
         })
     }
+
     pub(super) fn source_arrow(
         &self,
         arrow: ArrowFunctionExpression,
@@ -370,6 +395,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             before_count: boundary.before_count,
         }))
     }
+
     pub(super) fn prepare_arrow_body(&self, body: ArrowFunctionBody) -> PreparedArrowBody {
         match self.ast.arrow_function_body_data(body) {
             ArrowFunctionBodyData::FunctionBody(body) => PreparedArrowBody::FunctionBody(body),
@@ -499,6 +525,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && self.source_position_starts_line(comment.span.start)
                     && self.line_breaks(comment.span.end, next_start) != 0)
         });
+        let jsx_comments = if mode == ContentMode::Formatted {
+            self.prepare_arrow_jsx_comments(&body, head_comments, operator, body_span.end)
+        } else {
+            None
+        };
+        let body_starts_line = body_starts_line && jsx_comments.is_none();
         let hug_body = hugs_shape && !body_starts_line;
         let flat_conditional_pair = !body_starts_line
             && mode == ContentMode::Formatted
@@ -506,6 +538,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if self.arrow_conditional_needs_flat_pair(content.data));
         let mut body = SourceArrowBody {
             body,
+            parent_layout: ArrowLayout::Ordinary,
             body_span,
             operator,
             leading,
@@ -517,6 +550,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body_starts_line,
             hug_body,
             flat_conditional_pair,
+            jsx_callback: JsxCallbackContext::Ordinary,
+            jsx_comments,
         };
         let next = self.arrow_chain_child(&mut body)?;
         Ok(FormattedSourceArrow {
@@ -549,6 +584,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExprData::ObjectExpression(_)
                         | ExprData::SequenceExpression(_)
                         | ExprData::ArrowFunctionExpression(_)
+                        | ExprData::JsxElement(_)
+                        | ExprData::JsxFragment(_)
                 );
             }
         };
@@ -560,6 +597,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.ast.get_utf8(quasi.raw(self.ast)).contains('\n')
         })
     }
+
+    fn prepare_arrow_jsx_comments(
+        &self,
+        body: &PreparedArrowBody,
+        leading: &'ast [Comment],
+        operator: u32,
+        source_end: u32,
+    ) -> Option<ArrowJsxComments<'ast>> {
+        let PreparedArrowBody::Expression { content, .. } = body else {
+            return None;
+        };
+        if !matches!(
+            content.data,
+            ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+        ) {
+            return None;
+        }
+        let content_span = content.expression.span(self.ast);
+        let tail_span = Span::new(content_span.end, source_end);
+        let trailing = self.comments.in_range(tail_span);
+        let encloses_tail = trailing
+            .iter()
+            .any(|comment| comment.kind == CommentKind::Line);
+        if leading.is_empty() && !encloses_tail {
+            return None;
+        }
+        let head_binding =
+            self.comment_binding(leading, Span::new(operator + 2, content_span.start), None);
+        if !matches!(head_binding, CommentBinding::Unbound) {
+            return None;
+        }
+        let tail_binding = self.comment_binding(trailing, tail_span, None);
+        if !matches!(tail_binding, CommentBinding::Unbound) {
+            return None;
+        }
+        let tail = if trailing.is_empty() {
+            ArrowJsxTail::Empty
+        } else {
+            let tail = ExpressionTail {
+                source_end: content_span.end,
+                comments: trailing,
+            };
+            if encloses_tail {
+                ArrowJsxTail::Enclosed(tail)
+            } else {
+                ArrowJsxTail::Parent(tail)
+            }
+        };
+        Some(ArrowJsxComments {
+            head: NodeHead {
+                comments: leading,
+                content_start: content_span.start,
+                layout: CommentRunLayout::Leading(content_span.start),
+                gap_end: None,
+            },
+            tail,
+        })
+    }
+
     pub(super) fn format_arrow(
         &mut self,
         arrow: ArrowFunctionExpression,
@@ -929,7 +1025,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             signature_end,
             result,
             before,
-            body,
+            mut body,
             ..
         } = source;
         if context.expression_start.needs_asi_guard()
@@ -1002,6 +1098,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             FlatSeparator::Space,
             Writer::space,
         );
+        body.parent_layout = context.arrow_layout;
+        body.jsx_callback = context.jsx_callback.body(arrow);
         Ok(body)
     }
 
@@ -1061,6 +1159,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn format_arrow_jsx_comments(
+        &mut self,
+        content: ExpressionContent,
+        comments: ArrowJsxComments<'ast>,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let ArrowJsxComments { head, tail } = comments;
+        let (enclosed, pending) = match tail {
+            ArrowJsxTail::Empty => (None, None),
+            ArrowJsxTail::Enclosed(tail) => (Some(tail), None),
+            ArrowJsxTail::Parent(tail) => (None, Some(tail)),
+        };
+        let closing_line = enclosed.as_ref().is_some_and(|tail| {
+            tail.comments
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        });
+        self.comments.claim(head.comments)?;
+        writer.group(
+            matches!(context.jsx_callback, JsxCallbackContext::Body),
+            |writer| {
+                writer.if_break("(");
+                writer.indent(|writer| {
+                    writer.soft_line();
+                    let expression = content.expression;
+                    let content = ExpressionContent {
+                        parentheses: None,
+                        ..content
+                    };
+                    let pending = self.format_prepared_expression_with_leading_comments(
+                        expression,
+                        content,
+                        head,
+                        context.inside_parentheses(),
+                        writer,
+                    )?;
+                    self.format_expression_tail(pending, writer)?;
+                    self.format_expression_tail(enclosed, writer)
+                })?;
+                if closing_line {
+                    writer.hard_line();
+                } else {
+                    writer.soft_line();
+                }
+                writer.if_break(")");
+                Ok(pending)
+            },
+        )
+    }
+
     fn format_arrow_body_content(
         &mut self,
         source: SourceArrowBody<'ast>,
@@ -1068,6 +1217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let SourceArrowBody {
             body,
+            parent_layout,
             body_span,
             operator,
             leading,
@@ -1079,6 +1229,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body_starts_line,
             hug_body,
             flat_conditional_pair,
+            jsx_callback,
+            jsx_comments,
         } = source;
         let first = leading
             .first()
@@ -1094,7 +1246,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let context = ExpressionContext::at(ExpressionPosition::ArrowBody)
                     .with_source_tail_owner(SourceTailOwner::Enclosure)
                     .with_content_mode(mode)
+                    .with_jsx_callback(jsx_callback)
                     .with_tail_owner(TailOwner::ParentOperation);
+                if let Some(comments) = jsx_comments {
+                    return self.format_arrow_jsx_comments(content, comments, context, writer);
+                }
                 self.comments.claim(leading)?;
                 self.format_prepared_expression_with_leading_comments(
                     expression,
@@ -1161,6 +1317,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(write)
             }
         }?;
+        if parent_layout == ArrowLayout::JsxExpression && !hug_body {
+            writer.soft_line();
+        }
         Ok(tail)
     }
 }
@@ -1213,6 +1372,7 @@ impl<'a> RecordedArrowChain<'a> {
                         })
                     }
                     ArrowLayout::Ordinary
+                    | ArrowLayout::JsxExpression
                     | ArrowLayout::Assignment(ArrowHeadGap::LeadingComments) => {
                         writer.indent(write_signatures)
                     }
@@ -1226,6 +1386,8 @@ impl<'a> RecordedArrowChain<'a> {
             }
             if callee {
                 writer.soft_line_if_break(group);
+            } else if layout == ArrowLayout::JsxExpression && !hug_body {
+                writer.soft_line();
             }
         });
     }

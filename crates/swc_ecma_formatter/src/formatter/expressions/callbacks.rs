@@ -3,7 +3,9 @@ use super::arguments::{ArgumentGroup, ArgumentHead};
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
-use super::{ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter};
+use super::{
+    ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
+};
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::functions::FunctionSignatureOwner;
@@ -14,9 +16,9 @@ use crate::{
     document::{FlatFragment, Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression, Expr,
-    ExprData, Function, GetSpan, ObjectExpression, ObjectPropertyKindData, PropertyKeyData,
-    SimpleAssignmentTargetData, Span, SubRange, UnaryOperator,
+    Argument, ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression,
+    CallExpression, Expr, ExprData, Function, GetSpan, ObjectExpression, ObjectPropertyKindData,
+    PropertyKeyData, SimpleAssignmentTargetData, Span, SubRange, UnaryOperator,
 };
 #[derive(Clone, Copy)]
 enum CallbackKind {
@@ -378,7 +380,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 PreparedArrowBody::Expression { content, .. } => content,
             };
             match content.data {
-                ExprData::ObjectExpression(_) | ExprData::ArrayExpression(_) => return Some(root),
+                ExprData::ObjectExpression(_)
+                | ExprData::ArrayExpression(_)
+                | ExprData::JsxElement(_)
+                | ExprData::JsxFragment(_) => return Some(root),
                 ExprData::ArrowFunctionExpression(arrow) => {
                     child = Some(self.prepare_arrow_body(arrow.body(self.ast)));
                 }
@@ -402,6 +407,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         selected: &mut SelectedCallback,
         sole_argument: bool,
+        jsx_call: Option<CallExpression>,
         writer: &mut Writer<'ast>,
     ) -> Result<(RecordedValue<'ast>, Option<ExpressionTail<'ast>>), FormatError> {
         let callback = selected.callback;
@@ -410,7 +416,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             CallbackKind::Arrow(arrow) => {
                 let source = self.source_arrow(arrow)?;
                 let context = ExpressionContext::at(ExpressionPosition::Nested)
-                    .with_arrow_layout(super::arrows::ArrowLayout::Argument);
+                    .with_arrow_layout(super::arrows::ArrowLayout::Argument)
+                    .with_jsx_callback(JsxCallbackContext::argument(
+                        jsx_call,
+                        ExprData::ArrowFunctionExpression(arrow),
+                    ));
                 let recorded = match self.record_arrow(
                     source,
                     selected.prepared_body.take(),
@@ -761,7 +771,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         *function = true;
                     }
                     let (mut value, tail) =
-                        self.record_callback(selected, sole_argument, writer)?;
+                        self.record_callback(selected, sole_argument, head.jsx_call, writer)?;
                     if tail.as_ref().is_some_and(|tail| !tail.comments.is_empty())
                         && let RecordedValue::Callback { normal, .. } = value
                     {
@@ -815,6 +825,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_argument_with_function_fact(
                             argument,
                             item.mode,
+                            head.jsx_call,
                             &mut missing_function,
                             writer,
                         )
