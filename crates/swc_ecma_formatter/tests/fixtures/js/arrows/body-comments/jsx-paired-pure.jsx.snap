@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = () => (/* head */ /*#__PURE__*/ <Panel />);
+---------- Options ----------
+{}
+---------- Output ----------
+const view = () => (/* head */ /*#__PURE__*/ <Panel />);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view =
+  () => (/* head */ /*#__PURE__*/ <Panel />
+  );
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const view = () => (/* head */ /*#__PURE__*/ <Panel />)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"semi":false}
+---------- Output ----------
+const view =
+  () => (/* head */ /*#__PURE__*/ <Panel />
+  )

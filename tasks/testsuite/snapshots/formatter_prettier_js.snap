@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 967/1070 (90.37%)
-Snapshot matched: 967/1070
+Passed: 1015/1070 (94.86%)
+Snapshot matched: 1015/1070
 AST parity: 1069/1069
 AST mismatched: 0/1069
 AST format errors: 0/1070
-Mismatched: 102/1070
+Mismatched: 54/1070
 Format errors: 0/1070
 Panicked: 0/1070
 Not idempotent: 0/1070
@@ -47,8 +47,6 @@ Unsupported option sets: 19
 
 - js/arrays/numbers-with-holes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/arrows/arrow-chain-with-trailing-comments.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/arrows/call.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/arrows/comment.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/assignment/call-with-template.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/assignment/lone-arg.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/break-calls/react.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -56,11 +54,7 @@ Unsupported option sets: 19
 - js/comments-closure-typecast/comment-in-the-middle.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/not-on-same-line.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/with-other-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/comments/flow-types/inline.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/comments/function-declaration.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/issue-11050.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/issue-3532.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/jsdoc.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/return-statement-2.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/return-statement.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/tagged-template-literal.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
@@ -72,9 +66,7 @@ Unsupported option sets: 19
 - js/for-of/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/if/condition-break/boolean-expression.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/import/long-module-name/import-expression.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/last-argument-expansion/jsx.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/multiple-members.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/method-chain/pr-7889.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/preserve-line/parameter-list.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/require-amd/require.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/require/long-module-name.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
@@ -92,21 +84,9 @@ Unsupported option sets: 19
 - js/test-declarations/jest-each-template-string.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/test-declarations/jest-each.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/test-declarations/test_declarations.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/trailing-comma/jsx.js: 3/3 mismatched, 0/3 format errors, 0/3 panicked, 0/3 not idempotent
 - js/unicode/nbsp-jsx.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/comments/eslint-disable.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - jsx/comments/in-attributes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/expression-with-types/expression.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
 - jsx/ignore/spread.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/jsx/array-iter.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/jsx/arrow.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/jsx/expression.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/jsx/hug.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/jsx/open-break.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/jsx/return-statement.js: 4/4 mismatched, 0/4 format errors, 0/4 panicked, 0/4 not idempotent
-- jsx/optional-chaining/optional-chaining.jsx: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/single-attribute-per-line/single-attribute-per-line.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/stateless-arrow-fn/test.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 
