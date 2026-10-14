@@ -26,7 +26,7 @@ use super::{
 use crate::scope::{Scope, ScopeTracker};
 
 impl<'a> SymbolTracker<'a> {
-    pub(crate) fn resolve_ts_aliases<const BUILD_MODEL: bool>(
+    pub(crate) fn resolve_ts_aliases(
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTracker<'a>,
@@ -38,8 +38,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             Vec::new()
         };
-        let import_issues =
-            self.resolve_ts_import_aliases::<BUILD_MODEL>(tree, scopes, check_syntax);
+        let import_issues = self.resolve_ts_import_aliases(tree, scopes, check_syntax);
         (export_issues, import_issues)
     }
 
@@ -162,7 +161,7 @@ impl<'a> SymbolTracker<'a> {
         issues
     }
 
-    fn resolve_ts_import_aliases<const BUILD_MODEL: bool>(
+    fn resolve_ts_import_aliases(
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTracker<'a>,
@@ -239,14 +238,6 @@ impl<'a> SymbolTracker<'a> {
                         }));
                     }
                 }
-            }
-            // Conflict diagnostics only need the resolved alias spaces above.
-            // Public targets, namespace contributions and reference access flags
-            // are consumed by the semantic model, not by syntax checking.
-            if !BUILD_MODEL {
-                drop(resolver);
-                self.ts_scope_view_index = scope_views;
-                return issues;
             }
             let (module_spaces, erased_targets) = resolver.resolve_alias_contributions();
             let aliases = resolver.into_public_index(self.allocator, self.symbols.len());
