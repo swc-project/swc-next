@@ -13,8 +13,7 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstSubRange, AstType, EstreeAttrs, FieldLocation, Layout, LayoutMode, Schema,
-    TypeId,
+    AstStructField, AstSubRange, AstType, FieldLocation, Layout, LayoutMode, Schema, TypeId,
 };
 
 const PAYLOAD_SIZE: usize = 16;
@@ -52,11 +51,13 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
     let mut type_names = IndexSet::new();
     let mut prototypes = Vec::new();
     let mut repr_sizes = HashMap::new();
+    let mut scalar_enums = Vec::new();
 
     for source in file_paths {
         let content =
             fs::read_to_string(source).unwrap_or_else(|_| panic!("Cannot not find {source}"));
-        let file = syn::parse_file(&content).unwrap();
+        let file = syn::parse_file(&content)
+            .unwrap_or_else(|error| panic!("cannot parse {source}: {error}"));
         for item in file.items {
             match item {
                 Item::Struct(item) => {
@@ -75,6 +76,9 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
                     }));
                 }
                 Item::Enum(item) => {
+                    if let Some(enumeration) = crate::estree::scalar(&item) {
+                        scalar_enums.push(enumeration);
+                    }
                     // Collect #[repr(uN)] sizes for all enums (not just #[ast] enums)
                     if let Some(size) = parse_repr_size(&item.attrs) {
                         repr_sizes.insert(item.ident.to_string(), size);
@@ -129,6 +133,7 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
 
     types.extend(parser.extra_types);
     let schema = Schema {
+        scalar_enums,
         types,
         repr_sizes: parser.repr_sizes,
     };
@@ -246,39 +251,13 @@ fn parse_attrs(attrs: &[Attribute]) -> Option<AstAttrs> {
     let mut has_ast_attr = false;
     let mut ast_attrs = HashSet::new();
     let mut generate_derives = HashSet::new();
-    let mut estree = EstreeAttrs::default();
+    if !attrs.iter().any(|attr| attr.path().is_ident("ast")) {
+        return None;
+    }
+    let estree = crate::estree::attrs(attrs);
 
     // Find AST metadata before the proc macro consumes the original fields.
     for attr in attrs {
-        if attr.path().is_ident("estree") {
-            attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("add_fields") {
-                    return meta.parse_nested_meta(|field| {
-                        let name = field
-                            .path
-                            .get_ident()
-                            .ok_or_else(|| field.error("expected field name"))?
-                            .to_string();
-                        let converter: Ident = field.value()?.parse()?;
-                        estree.add_fields.push((name, converter.to_string()));
-                        Ok(())
-                    });
-                }
-                let target = if meta.path.is_ident("ts_alias") {
-                    &mut estree.ts_alias
-                } else if meta.path.is_ident("ts_type") {
-                    &mut estree.ts_type
-                } else if meta.path.is_ident("add_ts_def") {
-                    &mut estree.add_ts_def
-                } else {
-                    return Err(meta.error("unknown ESTree type attribute"));
-                };
-                *target = Some(meta.value()?.parse::<syn::LitStr>()?.value());
-                Ok(())
-            })
-            .expect("Unable to parse ESTree type attributes");
-            continue;
-        }
         match &attr.meta {
             Meta::Path(path) => {
                 if path.is_ident("ast") {
@@ -385,7 +364,11 @@ impl Parser {
             Some(type_id)
         };
 
-        AstEnumVariant { type_id, name }
+        AstEnumVariant {
+            type_id,
+            name,
+            estree: crate::estree::attrs(&variant.attrs),
+        }
     }
 
     fn parse_type_name(&mut self, ty: &Type) -> Option<TypeId> {
@@ -465,45 +448,12 @@ impl Parser {
     }
 
     fn parse_field_attrs(attrs: &[Attribute]) -> AstFieldAttrs {
-        let mut field_attrs = AstFieldAttrs::default();
+        let mut field_attrs = crate::estree::field_attrs(attrs);
 
         for attr in attrs {
             let Meta::List(meta_list) = &attr.meta else {
                 continue;
             };
-            if meta_list.path.is_ident("estree") {
-                let args = meta_list
-                    .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)
-                    .expect("Unable to parse `#[estree]`");
-                for arg in args {
-                    let path = arg.path();
-                    if path.is_ident("skip") {
-                        field_attrs.estree_skip = true;
-                    } else if path.is_ident("ts_skip") && matches!(arg, Meta::Path(_)) {
-                        field_attrs.ts_skip = true;
-                    } else if path.is_ident("ts_optional") && matches!(arg, Meta::Path(_)) {
-                        field_attrs.ts_optional = true;
-                    } else if path.is_ident("ts_type") || path.is_ident("ts_rename") {
-                        let Meta::NameValue(value) = &arg else {
-                            panic!("Expected ESTree string attribute")
-                        };
-                        let syn::Expr::Lit(value) = &value.value else {
-                            panic!("Expected ESTree string literal")
-                        };
-                        let syn::Lit::Str(value) = &value.lit else {
-                            panic!("Expected ESTree string literal")
-                        };
-                        if path.is_ident("ts_type") {
-                            field_attrs.ts_type = Some(value.value());
-                        } else {
-                            field_attrs.ts_rename = Some(value.value());
-                        }
-                    } else {
-                        panic!("Unknown ESTree field attribute: {}", arg.to_token_stream());
-                    }
-                }
-                continue;
-            }
             if meta_list.path.is_ident("ast") {
                 let args = meta_list
                     .parse_args_with(Punctuated::<Meta, Comma>::parse_terminated)

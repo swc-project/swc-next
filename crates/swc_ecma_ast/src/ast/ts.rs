@@ -1,6 +1,6 @@
 use std::mem;
 
-use swc_next_ast_macros::ast;
+use swc_next_ast_macros::{ast, estree};
 
 use crate::{
     ExtraData,
@@ -33,9 +33,13 @@ macro_rules! impl_extra_data_value {
 /// applies to tuple and array types to make their elements immutable.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[estree]
 pub enum TsTypeOperatorKind {
+    #[estree(rename = "keyof")]
     Keyof,
+    #[estree(rename = "unique")]
     Unique,
+    #[estree(rename = "readonly")]
     Readonly,
 }
 
@@ -43,17 +47,24 @@ pub enum TsTypeOperatorKind {
 /// other method signatures use `method`.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[estree]
 pub enum TsMethodSignatureKind {
+    #[estree(rename = "method")]
     Method,
+    #[estree(rename = "get")]
     Get,
+    #[estree(rename = "set")]
     Set,
 }
 
 /// The keyword used to introduce a `ts_module_declaration`.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[estree]
 pub enum TsModuleDeclarationKind {
+    #[estree(rename = "namespace")]
     Namespace,
+    #[estree(rename = "module")]
     Module,
 }
 
@@ -65,10 +76,15 @@ pub enum TsModuleDeclarationKind {
 /// or remove (`-?`, `-readonly`) the modifier from the mapped property.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[estree]
 pub enum TsMappedTypeModifier {
+    #[estree(ts_type = "null")]
     None,
+    #[estree(ts_type = "true")]
     True,
+    #[estree(rename = "+")]
     Plus,
+    #[estree(rename = "-")]
     Minus,
 }
 
@@ -218,8 +234,12 @@ pub enum TsModuleReference {
 /// //                           ^^^ return_type
 /// ```
 #[ast]
-#[estree(ts_type = r#""TSDeclareFunction" | "TSEmptyBodyFunctionExpression""#, add_fields(body = Null, expression = False), add_ts_def = r#"type TSDeclareFunction = TSFunction & { type: "TSDeclareFunction" };
-export type TSEmptyBodyFunctionExpression = TSFunction & { type: "TSEmptyBodyFunctionExpression" };"#)]
+#[estree(
+    ts_type = r#""TSDeclareFunction" | "TSEmptyBodyFunctionExpression""#,
+    add_ts_def = r#"type TSDeclareFunction = TSFunction & { type: "TSDeclareFunction" };
+export type TSEmptyBodyFunctionExpression = TSFunction & { type: "TSEmptyBodyFunctionExpression" };"#,
+    fields(body(ts_type = "null"), expression(ts_type = "boolean"))
+)]
 pub struct TsFunction {
     /// `binding_identifier`. `None` for anonymous default exports and method
     /// definitions.
@@ -227,7 +247,7 @@ pub struct TsFunction {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
-    #[estree(ts_skip)]
+    #[estree(skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -268,15 +288,15 @@ pub struct TsMethodDefinition {
     /// true when the key is written inside `[...]`.
     computed: bool,
     r#static: bool,
-    #[estree(ts_optional)]
+    #[estree(optional)]
     r#override: bool,
     /// true for an optional method (`foo?()`).
-    #[estree(ts_optional)]
+    #[estree(optional)]
     optional: bool,
-    #[estree(ts_skip)]
+    #[estree(skip)]
     r#abstract: bool,
     /// `None` when no accessibility modifier was written.
-    #[estree(ts_optional)]
+    #[estree(optional)]
     accessibility: Accessibility,
 }
 
@@ -1004,7 +1024,7 @@ pub struct TsFunctionType {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
-    #[estree(ts_skip)]
+    #[estree(skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1122,7 +1142,7 @@ pub struct TsMappedType {
     /// is accepted by the grammar).
     type_annotation: Option<TsType>,
     /// the `?` modifier
-    #[estree(ts_type = "boolean | \"+\" | \"-\"")]
+    #[estree(ts_type = r#"boolean | "+" | "-""#)]
     optional: TsMappedTypeModifier,
     /// the `readonly` modifier
     readonly: TsMappedTypeModifier,
@@ -1140,6 +1160,10 @@ pub struct TsMappedType {
 /// //                      ^^^^^^^^ type_annotation
 /// ```
 #[ast]
+#[estree(fields(
+    accessibility(ts_type = "null", optional),
+    static(ts_type = "boolean", optional)
+))]
 pub struct TsPropertySignature {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
@@ -1176,7 +1200,11 @@ pub struct TsPropertySignature {
 /// };
 /// ```
 #[ast]
-#[estree(add_fields(accessibility = Null, readonly = False, static = False))]
+#[estree(fields(
+    accessibility(ts_type = "null"),
+    readonly(ts_type = "boolean"),
+    static(ts_type = "boolean")
+))]
 pub struct TsMethodSignature {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
@@ -1184,7 +1212,7 @@ pub struct TsMethodSignature {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
-    #[estree(ts_skip)]
+    #[estree(skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1213,7 +1241,7 @@ pub struct TsCallSignatureDeclaration {
     /// `ts_type_parameter_declaration`. `None` when absent.
     type_parameters: Option<TsTypeParameterDeclaration>,
     /// The explicit receiver type; does not consume a runtime argument.
-    #[estree(ts_skip)]
+    #[estree(skip)]
     this_param: Option<TsThisParameter>,
     /// `formal_parameters`, excluding the explicit receiver.
     params: FormalParameters,
@@ -1255,12 +1283,14 @@ pub struct TsConstructSignatureDeclaration {
 /// //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ TSIndexSignature (readonly)
 /// ```
 #[ast]
+#[estree(fields(accessibility(ts_type = "null", optional)))]
 pub struct TsIndexSignature {
     parameters: SubRange<TsIndexSignatureParameter>,
     /// `ts_type_annotation`
     type_annotation: TsTypeAnnotation,
     /// true when preceded by the `readonly` modifier.
     readonly: bool,
+    #[estree(optional)]
     r#static: bool,
 }
 
@@ -1413,6 +1443,7 @@ pub struct TsEnumDeclaration {
     /// `ts_enum_body`
     body: TsEnumBody,
     /// true when preceded by the `const` modifier.
+    #[estree(rename = "const")]
     is_const: bool,
     /// true when preceded by the `declare` modifier.
     declare: bool,
@@ -1470,13 +1501,13 @@ pub struct TsEnumMember {
 /// //             ^^^^^^^ id (StringLiteral), kind = module, declare = true
 /// ```
 #[ast]
-#[estree(add_fields(global = False))]
+#[estree(fields(global(ts_type = "boolean")))]
 pub struct TsModuleDeclaration {
     /// `binding_identifier`, `string_literal`, or `ts_qualified_name`.
     id: TsModuleName,
     /// `ts_module_block`. `None` for body-less forward declarations like
     /// `declare module "foo";`.
-    #[estree(ts_optional)]
+    #[estree(optional)]
     body: Option<TsModuleBody>,
     kind: TsModuleDeclarationKind,
     /// true when preceded by the `declare` modifier.
@@ -1494,7 +1525,7 @@ pub struct TsModuleDeclaration {
 /// ```
 #[ast]
 pub struct TsModuleBlock {
-    #[estree(ts_skip)]
+    #[estree(skip)]
     directives: SubRange<Directive>,
     #[estree(ts_type = "Array<Directive | Statement>")]
     body: SubRange<Stmt>,
@@ -1509,7 +1540,10 @@ pub struct TsModuleBlock {
 /// //             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ body
 /// ```
 #[ast]
-#[estree(ts_type = r#""TSModuleDeclaration""#, add_fields(kind = Global, global = True))]
+#[estree(
+    rename = "TSModuleDeclaration",
+    fields(kind(ts_type = r#""global""#), global(ts_type = "boolean"))
+)]
 pub struct TsGlobalDeclaration {
     /// `identifier_name` capturing the span of the `global` keyword.
     id: IdentifierName,
@@ -1540,6 +1574,7 @@ pub struct TsGlobalDeclaration {
 /// }
 /// ```
 #[ast]
+#[estree(fields(static(ts_type = "boolean", optional)))]
 pub struct TsParameterProperty {
     /// `decorator[]`. Decorators preceding the modifier, in source order.
     decorators: SubRange<Decorator>,
@@ -1571,7 +1606,14 @@ pub struct TsParameterProperty {
 /// //              ^^^^^^^^^^ TSThisParameter (type_annotation = TSThisType)
 /// ```
 #[ast]
-#[estree(ts_type = r#""Identifier""#, add_fields(decorators = EmptyArray, name = This, optional = False))]
+#[estree(
+    rename = "Identifier",
+    fields(
+        decorators(ts_type = "Array<Decorator>", optional),
+        name(ts_type = r#""this""#),
+        optional(ts_type = "boolean")
+    )
+)]
 pub struct TsThisParameter {
     /// `ts_type_annotation` wrapping the declared type of `this`. `None`
     /// when the parameter is written as bare `this` with no annotation.

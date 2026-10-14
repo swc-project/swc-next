@@ -3,12 +3,13 @@ use crate::{
     generator::{
         ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
         ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
-        estree_decoder::estree_decoder, estree_encoder::estree_encoder, typescript::typescript,
+        estree_decoder::estree_decoder, estree_encoder::estree_encoder, estree_types::estree_types,
     },
     parse::parse_files,
 };
 
 pub(crate) mod derive;
+pub(crate) mod estree;
 pub(crate) mod generator;
 pub(crate) mod output;
 pub(crate) mod parse;
@@ -16,6 +17,7 @@ pub(crate) mod schema;
 pub(crate) mod util;
 
 const SOURCE_PATHS: &[&str] = &[
+    "crates/swc_ecma_ast/src/ast/mod.rs",
     "crates/swc_ecma_ast/src/ast/js.rs",
     "crates/swc_ecma_ast/src/ast/ts.rs",
     "crates/swc_ecma_ast/src/ast/jsx.rs",
@@ -26,7 +28,7 @@ const AST_CRATE_PATH: &str = "swc_ecma_ast";
 fn main() -> std::io::Result<()> {
     let schema = parse_files(SOURCE_PATHS);
 
-    typescript(&schema).write_to_file()?;
+    estree_types(&schema).write_to_file()?;
 
     let ast_builder = ast_builder(&schema);
     ast_builder.write_to_file().unwrap();

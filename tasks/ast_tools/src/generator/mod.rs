@@ -9,4 +9,4 @@ pub(crate) mod estree_encoder;
 mod js_minifier;
 
 mod estree;
-pub(crate) mod typescript;
+pub(crate) mod estree_types;

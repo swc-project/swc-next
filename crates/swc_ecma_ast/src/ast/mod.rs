@@ -4,6 +4,8 @@
 //! [yuku-toolchain/yuku](https://github.com/yuku-toolchain/yuku).
 //! Modified for SWC Next.
 
+use swc_next_ast_macros::estree;
+
 mod js;
 mod jsx;
 mod ts;
@@ -18,14 +20,19 @@ pub use ts::*;
 /// or a classic script.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
+#[estree]
 pub enum SourceType {
     #[default]
+    #[estree(rename = "module")]
     Module = 0,
+    #[estree(rename = "script")]
     Script = 1,
+    #[estree(rename = "commonjs")]
     CommonJs = 2,
     /// Resolve to a module when module syntax is present, a CommonJS module when
     /// syntax depends on a CommonJS wrapper (such as wrapper-level `return` or
     /// `new.target`), otherwise a script.
+    #[estree(rename = "unambiguous")]
     Unambiguous = 3,
 }
 
@@ -60,12 +67,18 @@ impl SourceType {
 /// syntax features are enabled during parsing.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
+#[estree]
 pub enum Lang {
     #[default]
+    #[estree(rename = "js")]
     Js,
+    #[estree(rename = "ts")]
     Ts,
+    #[estree(rename = "jsx")]
     Jsx,
+    #[estree(rename = "tsx")]
     Tsx,
+    #[estree(rename = "dts")]
     Dts,
 }
 

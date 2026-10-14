@@ -85,6 +85,7 @@ pub struct JsxOpeningElement {
     /// `jsx_identifier`, `jsx_namespaced_name`, or `jsx_member_expression`
     name: JsxElementName,
     /// `ts_type_parameter_instantiation`. `None` when absent.
+    #[estree(optional)]
     type_arguments: Option<TsTypeParameterInstantiation>,
     /// `jsx_attribute` or `jsx_spread_attribute`.
     attributes: SubRange<JsxAttributeItem>,
@@ -236,7 +237,7 @@ pub struct JsxEmptyExpression {}
 /// //   ^^^^^^^^^^^ value
 /// ```
 #[ast]
-#[estree(add_fields(raw = Raw))]
+#[estree(fields(raw(ts_type = "string")))]
 pub struct JsxText {
     value: AstUtf8,
 }

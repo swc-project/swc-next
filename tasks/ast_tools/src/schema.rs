@@ -15,6 +15,7 @@ impl TypeId {
 
 pub struct Schema {
     pub types: IndexVec<TypeId, AstType>,
+    pub scalar_enums: Vec<ScalarEnum>,
     /// Mapping of enum names to their #[repr(uN)] sizes in bytes
     /// e.g., "UnaryOperator" -> 1 for #[repr(u8)]
     pub repr_sizes: HashMap<String, usize>,
@@ -135,6 +136,7 @@ pub struct AstEnum {
 pub struct AstEnumVariant {
     pub type_id: Option<TypeId>,
     pub name: String,
+    pub estree: EstreeAttrs,
 }
 
 #[derive(Debug)]
@@ -172,21 +174,37 @@ pub struct AstAttrs {
     pub estree: EstreeAttrs,
 }
 
-/// Overrides for the public ESTree shape. These never change the binary AST layout.
+/// Overrides for public declarations. These never change the binary AST layout.
 #[derive(Debug, Default)]
 pub struct EstreeAttrs {
+    pub rename: Option<String>,
     pub ts_alias: Option<String>,
     pub ts_type: Option<String>,
     pub add_ts_def: Option<String>,
-    pub add_fields: Vec<(String, String)>,
+    pub fields: Vec<EstreeField>,
+}
+
+#[derive(Debug)]
+pub struct EstreeField {
+    pub name: String,
+    pub ts_type: String,
+    pub optional: bool,
+}
+
+#[derive(Debug)]
+pub struct ScalarEnum {
+    pub name: String,
+    pub attrs: EstreeAttrs,
+    pub variants: Vec<AstEnumVariant>,
 }
 
 #[derive(Debug, Default)]
 pub struct AstFieldAttrs {
+    /// Legacy reason-valued skip consumed by the existing codecs.
     pub estree_skip: bool,
-    pub ts_skip: bool,
-    pub ts_optional: bool,
+    pub skip: bool,
+    pub optional: bool,
     pub ts_type: Option<String>,
-    pub ts_rename: Option<String>,
+    pub rename: Option<String>,
     pub invalidates: Vec<String>,
 }
