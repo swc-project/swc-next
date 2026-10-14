@@ -1,0 +1,132 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const attributes=<Box data={/* prettier-ignore */ { first:  "first",second:"second" }} active/>;
+const child=<Box first second>{/* prettier-ignore */}<Child  first = {left+right} second /></Box>;
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={/* prettier-ignore */ { first:  "first",second:"second" }}
+    active
+  />
+);
+const child = (
+  <Box first second>
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={/* prettier-ignore */ { first:  "first",second:"second" }}
+    active
+  />
+);
+const child = (
+  <Box
+    first
+    second
+  >
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={
+      /* prettier-ignore */ { first:  "first",second:"second" }
+    }
+    active
+  />
+);
+const child = (
+  <Box first second>
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={
+      /* prettier-ignore */ { first:  "first",second:"second" }
+    }
+    active
+  />
+);
+const child = (
+  <Box
+    first
+    second
+  >
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={/* prettier-ignore */ { first:  "first",second:"second" }}
+    active
+  />
+);
+const child = (
+  <Box
+    first
+    second>
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const attributes = (
+  <Box
+    data={
+      /* prettier-ignore */ { first:  "first",second:"second" }
+    }
+    active
+  />
+);
+const child = (
+  <Box
+    first
+    second>
+    {/* prettier-ignore */}
+    <Child  first = {left+right} second />
+  </Box>
+);
+// prettier-ignore
+const ignored=<Box  first = {left+right}  second/>;

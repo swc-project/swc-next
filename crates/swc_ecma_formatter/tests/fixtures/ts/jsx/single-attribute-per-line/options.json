@@ -1,0 +1,8 @@
+[
+  { "singleAttributePerLine": false },
+  { "singleAttributePerLine": true },
+  { "singleAttributePerLine": false, "printWidth": 24 },
+  { "singleAttributePerLine": true, "printWidth": 24 },
+  { "singleAttributePerLine": true, "bracketSameLine": true },
+  { "singleAttributePerLine": true, "bracketSameLine": true, "printWidth": 24 }
+]

@@ -3,19 +3,19 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1015/1070 (94.86%)
-Snapshot matched: 1015/1070
-AST parity: 1069/1069
-AST mismatched: 0/1069
-AST format errors: 0/1070
-Mismatched: 54/1070
-Format errors: 0/1070
-Panicked: 0/1070
-Not idempotent: 0/1070
+Passed: 1017/1072 (94.87%)
+Snapshot matched: 1017/1072
+AST parity: 1071/1071
+AST mismatched: 0/1071
+AST format errors: 0/1072
+Mismatched: 54/1072
+Format errors: 0/1072
+Panicked: 0/1072
+Not idempotent: 0/1072
 Ignored files: 298
-Parse errors: 1/1070
+Parse errors: 1/1072
 Expected parser errors: 19
-Unsupported option sets: 19
+Unsupported option sets: 17
 
 # Parse errors
 
@@ -107,5 +107,3 @@ Unsupported option sets: 19
 - js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/ternaries/parenthesis/format.test.js - unsupported Prettier option experimentalTernaries=true
-- jsx/attribute-blank-lines/format.test.js - unsupported Prettier option singleAttributePerLine=true
-- jsx/single-attribute-per-line/format.test.js - unsupported Prettier option singleAttributePerLine=true

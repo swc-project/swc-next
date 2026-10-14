@@ -1,0 +1,204 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const empty=<Box/>;
+const single=<Box active/>;
+const singleSpread=<Box {...properties}/>;
+const singleText=<Box title="a long string attribute stays together"/>;
+const attributes=<Box active focus value={first+second}/>;
+const spread=<Box {...properties} active {...other}/>;
+const multiline=<Box title="first
+  second" active/>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+const empty = <Box />;
+const single = <Box active />;
+const singleSpread = <Box {...properties} />;
+const singleText = <Box title="a long string attribute stays together" />;
+const attributes = <Box active focus value={first + second} />;
+const spread = <Box {...properties} active {...other} />;
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+const empty = <Box />;
+const single = <Box active />;
+const singleSpread = <Box {...properties} />;
+const singleText = <Box title="a long string attribute stays together" />;
+const attributes = (
+  <Box
+    active
+    focus
+    value={first + second}
+  />
+);
+const spread = (
+  <Box
+    {...properties}
+    active
+    {...other}
+  />
+);
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const empty = <Box />;
+const single = (
+  <Box active />
+);
+const singleSpread = (
+  <Box
+    {...properties}
+  />
+);
+const singleText = (
+  <Box title="a long string attribute stays together" />
+);
+const attributes = (
+  <Box
+    active
+    focus
+    value={
+      first + second
+    }
+  />
+);
+const spread = (
+  <Box
+    {...properties}
+    active
+    {...other}
+  />
+);
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const empty = <Box />;
+const single = (
+  <Box active />
+);
+const singleSpread = (
+  <Box
+    {...properties}
+  />
+);
+const singleText = (
+  <Box title="a long string attribute stays together" />
+);
+const attributes = (
+  <Box
+    active
+    focus
+    value={
+      first + second
+    }
+  />
+);
+const spread = (
+  <Box
+    {...properties}
+    active
+    {...other}
+  />
+);
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+const empty = <Box />;
+const single = <Box active />;
+const singleSpread = <Box {...properties} />;
+const singleText = <Box title="a long string attribute stays together" />;
+const attributes = (
+  <Box
+    active
+    focus
+    value={first + second}
+  />
+);
+const spread = (
+  <Box
+    {...properties}
+    active
+    {...other}
+  />
+);
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const empty = <Box />;
+const single = (
+  <Box active />
+);
+const singleSpread = (
+  <Box
+    {...properties}
+  />
+);
+const singleText = (
+  <Box title="a long string attribute stays together" />
+);
+const attributes = (
+  <Box
+    active
+    focus
+    value={
+      first + second
+    }
+  />
+);
+const spread = (
+  <Box
+    {...properties}
+    active
+    {...other}
+  />
+);
+const multiline = (
+  <Box
+    title="first
+  second"
+    active
+  />
+);
