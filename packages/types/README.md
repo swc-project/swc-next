@@ -87,6 +87,8 @@ Generation rejects duplicate projected fields, including collisions with
 `BaseNode` properties. Bare `skip` affects declarations. The existing
 reason-valued `skip = "..."` form also preserves its codec behavior.
 
-Public input types may be wider than decoder output. These annotations never
-change Rust storage or codec behavior. Assignability from other parsers' AST
-declarations is not guaranteed.
+Public types must include decoder output and stay within the structures that
+can be encoded into the corresponding Rust AST types. Grammar constraints may
+be looser than other parsers' declarations when Rust can represent the data.
+These annotations never change Rust storage or codec behavior. Assignability
+from other parsers' AST declarations is not guaranteed.

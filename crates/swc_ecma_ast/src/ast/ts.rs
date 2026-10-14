@@ -283,6 +283,7 @@ pub struct TsMethodDefinition {
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
     /// `id` is always `None`; `declare` is always `false`.
+    #[estree(ts_type = "TSEmptyBodyFunctionExpression")]
     value: TsFunction,
     kind: MethodDefinitionKind,
     /// true when the key is written inside `[...]`.
@@ -1501,7 +1502,7 @@ pub struct TsEnumMember {
 /// //             ^^^^^^^ id (StringLiteral), kind = module, declare = true
 /// ```
 #[ast]
-#[estree(fields(global(ts_type = "boolean")))]
+#[estree(fields(global(ts_type = "false")))]
 pub struct TsModuleDeclaration {
     /// `binding_identifier`, `string_literal`, or `ts_qualified_name`.
     id: TsModuleName,
@@ -1542,7 +1543,7 @@ pub struct TsModuleBlock {
 #[ast]
 #[estree(
     rename = "TSModuleDeclaration",
-    fields(kind(ts_type = r#""global""#), global(ts_type = "boolean"))
+    fields(kind(ts_type = r#""global""#), global(ts_type = "true"))
 )]
 pub struct TsGlobalDeclaration {
     /// `identifier_name` capturing the span of the `global` keyword.

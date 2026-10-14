@@ -1566,6 +1566,7 @@ pub struct MethodDefinition {
     /// `private_identifier` (class members only), or any expression when `computed = true`
     key: PropertyKey,
     /// `function`
+    #[estree(ts_type = "FunctionExpression")]
     value: Function,
     kind: MethodDefinitionKind,
     /// true when the key is written inside `[...]`.
@@ -1694,7 +1695,6 @@ pub struct Function {
     #[estree(optional)]
     return_type: Option<TsTypeAnnotation>,
     /// `function_body`
-    #[estree(ts_type = "BlockStatement | null")]
     body: FunctionBody,
     generator: bool,
     r#async: bool,
@@ -1789,7 +1789,9 @@ pub struct FormalParameters {
 }
 
 #[ast]
-#[estree(ts_alias = "FormalParameterPattern | AssignmentPattern")]
+#[estree(
+    ts_alias = "FormalParameterPattern | (AssignmentPattern & { left: FormalParameterPattern })"
+)]
 pub struct FormalParameter {
     /// Legacy parameter decorators, in source order.
     decorators: SubRange<Decorator>,
@@ -1806,7 +1808,7 @@ pub struct FormalParameter {
 
 /// A rest parameter collecting the remaining arguments of a call.
 #[ast]
-#[estree(ts_alias = "BindingRestElement")]
+#[estree(ts_alias = "BindingRestElement & { argument: FormalParameterPattern }")]
 pub struct FormalParameterRest {
     decorators: SubRange<Decorator>,
     argument: FormalParameterPattern,

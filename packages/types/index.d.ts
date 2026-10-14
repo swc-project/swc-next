@@ -539,7 +539,7 @@ export interface MethodDefinition extends BaseNode {
   type: "MethodDefinition" | "TSAbstractMethodDefinition";
   decorators: Array<Decorator>;
   key: PropertyKey;
-  value: Function;
+  value: FunctionExpression;
   kind: MethodDefinitionKind;
   computed: boolean;
   static: boolean;
@@ -575,7 +575,7 @@ export interface Function extends BaseNode {
   typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
   returnType?: TSTypeAnnotation | null;
-  body: BlockStatement | null;
+  body: FunctionBody;
   generator: boolean;
   async: boolean;
   expression: boolean;
@@ -612,9 +612,9 @@ export interface WithStatement extends BaseNode {
 
 export type FormalParameters = Array<FormalParameterItem | FormalParameterRest | TSThisParameter>;
 
-export type FormalParameter = FormalParameterPattern | AssignmentPattern;
+export type FormalParameter = FormalParameterPattern | (AssignmentPattern & { left: FormalParameterPattern });
 
-export type FormalParameterRest = BindingRestElement;
+export type FormalParameterRest = BindingRestElement & { argument: FormalParameterPattern };
 
 export interface ArrayExpression extends BaseNode {
   type: "ArrayExpression";
@@ -890,7 +890,7 @@ export interface TSMethodDefinition extends BaseNode {
   type: "MethodDefinition" | "TSAbstractMethodDefinition";
   decorators: Array<Decorator>;
   key: PropertyKey;
-  value: TSFunction;
+  value: TSEmptyBodyFunctionExpression;
   kind: MethodDefinitionKind;
   computed: boolean;
   static: boolean;
@@ -1245,7 +1245,7 @@ export interface TSModuleDeclaration extends BaseNode {
   body?: TSModuleBody | null;
   kind: TSModuleDeclarationKind;
   declare: boolean;
-  global: boolean;
+  global: false;
 }
 
 export interface TSModuleBlock extends BaseNode {
@@ -1259,7 +1259,7 @@ export interface TSGlobalDeclaration extends BaseNode {
   body: TSModuleBlock;
   declare: boolean;
   kind: "global";
-  global: boolean;
+  global: true;
 }
 
 export interface TSParameterProperty extends BaseNode {
