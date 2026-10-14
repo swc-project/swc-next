@@ -271,15 +271,6 @@ importers:
         specifier: 'catalog:'
         version: 1.62.1
 
-  npm/core-browser:
-    dependencies:
-      '@swc-next/decoder':
-        specifier: workspace:*
-        version: link:../../packages/decoder
-      '@swc-next/encoder':
-        specifier: workspace:*
-        version: link:../../packages/encoder
-
   npm/codegen:
     dependencies:
       '@swc-next/encoder':
@@ -333,6 +324,15 @@ importers:
         specifier: 'catalog:'
         version: 0.8.0
 
+  npm/core-browser:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
+
   npm/parser:
     dependencies:
       '@swc-next/decoder':
@@ -349,6 +349,21 @@ importers:
   packages/decoder: {}
 
   packages/encoder: {}
+
+  packages/walker:
+    devDependencies:
+      '@swc-next/core':
+        specifier: workspace:*
+        version: link:../../npm/core
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
 packages:
 

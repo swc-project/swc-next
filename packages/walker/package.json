@@ -1,0 +1,56 @@
+{
+  "name": "@swc-next/walker",
+  "version": "0.2.3",
+  "description": "Synchronous ESTree traversal and editing for JavaScript and TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/walker"
+  },
+  "main": "index.js",
+  "type": "module",
+  "sideEffects": false,
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "child-visitors.js",
+    "visitor-keys.js",
+    "visitor-keys.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "ast",
+    "estree",
+    "javascript",
+    "swc",
+    "typescript",
+    "walker"
+  ],
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "pnpm test:unit && pnpm test:types && pnpm test:integration",
+    "test:unit": "node --test test/*.test.js",
+    "test:types": "tsc --ignoreConfig --noEmit --strict --target esnext --module nodenext --moduleResolution nodenext --types node test/types.ts",
+    "test:integration": "node --test test/integration/*.test.js",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test"
+  },
+  "devDependencies": {
+    "@swc-next/core": "workspace:*",
+    "@types/node": "catalog:",
+    "cross-env": "catalog:",
+    "typescript": "catalog:"
+  }
+}
