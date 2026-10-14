@@ -1,7 +1,9 @@
 //! Callees and source-owned argument delimiters.
 use super::AccessKind;
 use super::arguments::{ArgumentGroup, SourceArguments};
-use super::{ExpressionContext, ExpressionPosition, Formatter, MemberLayout, TailOwner};
+use super::{
+    ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, MemberLayout, TailOwner,
+};
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -175,6 +177,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut arguments =
             source.ok_or_else(|| self.unsupported("call opening boundary", call))?;
         arguments.allow_composition = !matches!(context.position, ExpressionPosition::Decorator);
+        arguments.jsx_call = match context.jsx_callback {
+            JsxCallbackContext::ContainerCall(owner) if owner == call => Some(call),
+            _ => None,
+        };
         arguments.group = if matches!(context.position,
             ExpressionPosition::CallCallee { curried_call: Some(curried), .. } if curried == call)
         {

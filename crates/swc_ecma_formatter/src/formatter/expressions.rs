@@ -25,8 +25,9 @@ mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, CallExpression, Expr, ExprData, GetSpan,
-    IdentifierReference, ObjectExpression, SequenceExpression, Span, UnaryOperator, UpdateOperator,
+    Argument, ArgumentData, ArrayExpression, ArrowFunctionExpression, CallExpression, Expr,
+    ExprData, GetSpan, IdentifierReference, ObjectExpression, SequenceExpression, Span,
+    UnaryOperator, UpdateOperator,
 };
 
 pub(in crate::formatter) use self::for_initializer::ForInitializerGrammar;
@@ -213,6 +214,31 @@ impl ExpressionLayout {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum JsxCallbackContext {
+    Ordinary,
+    ContainerCall(CallExpression),
+    Argument(ArrowFunctionExpression),
+    /// The actual argument arrow has consumed its call/arrow ownership proof.
+    Body,
+}
+
+impl JsxCallbackContext {
+    fn argument(call: Option<CallExpression>, data: ExprData) -> Self {
+        match (call, data) {
+            (Some(_), ExprData::ArrowFunctionExpression(arrow)) => Self::Argument(arrow),
+            _ => Self::Ordinary,
+        }
+    }
+
+    fn body(self, owner: ArrowFunctionExpression) -> Self {
+        match self {
+            Self::Argument(arrow) if arrow == owner => Self::Body,
+            _ => Self::Ordinary,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub(super) struct ExpressionContext {
     position: ExpressionPosition,
     expression_start: ExpressionStart,
@@ -230,6 +256,7 @@ pub(super) struct ExpressionContext {
     member_layout: MemberLayout,
     member_chain_layout: MemberChainLayout,
     arrow_layout: arrows::ArrowLayout,
+    jsx_callback: JsxCallbackContext,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
     tail_boundary: TailBoundary,
@@ -367,6 +394,7 @@ impl ExpressionContext {
             },
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
+            jsx_callback: JsxCallbackContext::Ordinary,
             tail_boundary: TailBoundary::Separated,
         }
     }
@@ -421,6 +449,11 @@ impl ExpressionContext {
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
         self.operand_indent = owner;
+        self
+    }
+
+    fn with_jsx_callback(mut self, context: JsxCallbackContext) -> Self {
+        self.jsx_callback = context;
         self
     }
 

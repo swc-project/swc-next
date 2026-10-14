@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+KEYPAD_NUMBERS.map(num => ( // Buttons 0-9
+  <div />
+));
+---------- Options ----------
+{}
+---------- Output ----------
+KEYPAD_NUMBERS.map((num) => (
+  // Buttons 0-9
+  <div />
+));
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+KEYPAD_NUMBERS.map(
+  (num) => (
+    // Buttons 0-9
+    <div />
+  ),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+KEYPAD_NUMBERS.map((num) => (
+  // Buttons 0-9
+  <div />
+))
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"semi":false}
+---------- Output ----------
+KEYPAD_NUMBERS.map(num => (
+  // Buttons 0-9
+  <div />
+))
