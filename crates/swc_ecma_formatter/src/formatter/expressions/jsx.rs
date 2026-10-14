@@ -459,6 +459,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .in_range(Span::new(span.end, node.span(ast).end))
                         .is_empty()
             });
+        let single_attribute_per_line =
+            self.options.single_attribute_per_line && attributes.len() > 1;
         let name_prefix = Span::new(node.span(ast).start + 1, name_span.start);
         let name_head = self.comments.in_range(name_prefix);
         let name_head_is_formatted = !arguments
@@ -535,6 +537,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         |writer| {
                             if after_attribute && self.next_line_is_empty(end, first) {
                                 writer.hard_line();
+                                writer.hard_line();
+                            } else if single_attribute_per_line {
                                 writer.hard_line();
                             } else {
                                 writer.line();

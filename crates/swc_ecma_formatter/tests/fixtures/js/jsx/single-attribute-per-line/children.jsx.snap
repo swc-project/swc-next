@@ -1,0 +1,164 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const text=<Box first second>alpha beta</Box>;
+const nested=<Box first second><Child active focus/></Box>;
+const template=<Box first second>{`first
+  second`}</Box>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+const text = (
+  <Box first second>
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box first second>
+    <Child active focus />
+  </Box>
+);
+const template = (
+  <Box first second>{`first
+  second`}</Box>
+);
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+const text = (
+  <Box
+    first
+    second
+  >
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box
+    first
+    second
+  >
+    <Child
+      active
+      focus
+    />
+  </Box>
+);
+const template = (
+  <Box
+    first
+    second
+  >{`first
+  second`}</Box>
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const text = (
+  <Box first second>
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box first second>
+    <Child
+      active
+      focus
+    />
+  </Box>
+);
+const template = (
+  <Box
+    first
+    second
+  >{`first
+  second`}</Box>
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const text = (
+  <Box
+    first
+    second
+  >
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box
+    first
+    second
+  >
+    <Child
+      active
+      focus
+    />
+  </Box>
+);
+const template = (
+  <Box
+    first
+    second
+  >{`first
+  second`}</Box>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+const text = (
+  <Box
+    first
+    second>
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box
+    first
+    second>
+    <Child
+      active
+      focus
+    />
+  </Box>
+);
+const template = (
+  <Box
+    first
+    second>{`first
+  second`}</Box>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const text = (
+  <Box
+    first
+    second>
+    alpha beta
+  </Box>
+);
+const nested = (
+  <Box
+    first
+    second>
+    <Child
+      active
+      focus
+    />
+  </Box>
+);
+const template = (
+  <Box
+    first
+    second>{`first
+  second`}</Box>
+);

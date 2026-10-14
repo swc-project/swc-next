@@ -18,6 +18,8 @@ pub struct FormatOptions {
     pub arrow_parentheses: ArrowParentheses,
     pub bracket_spacing: bool,
     pub bracket_same_line: bool,
+    /// Put each JSX attribute on its own line when an element has multiple attributes.
+    pub single_attribute_per_line: bool,
 }
 
 impl FormatOptions {
@@ -36,6 +38,7 @@ impl FormatOptions {
             arrow_parentheses: ArrowParentheses::Always,
             bracket_spacing: true,
             bracket_same_line: false,
+            single_attribute_per_line: false,
         }
     }
 }
