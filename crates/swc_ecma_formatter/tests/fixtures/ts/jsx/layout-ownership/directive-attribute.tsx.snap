@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare function consumeString(value: string): void;
+const view=<Panel value={(value: number)=>// @ts-ignore
+consumeString(value)}/>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare function consumeString(value: string): void;
+const view = (
+  <Panel
+    value={(value: number) =>
+      // @ts-ignore
+      consumeString(value)}/>);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare function consumeString(
+  value: string,
+): void;
+const view = (
+  <Panel
+    value={(value: number) =>
+      // @ts-ignore
+      consumeString(value)}/>);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":40}
+---------- Output ----------
+declare function consumeString(
+  value: string,
+): void;
+const view = (
+  <Panel
+    value={(value: number) =>
+      // @ts-ignore
+      consumeString(value)}/>);
