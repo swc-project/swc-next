@@ -16,7 +16,7 @@ pub(crate) struct SemanticContext<'a> {
     pub scope: ScopeTracker<'a>,
     pub symbols: SymbolTracker<'a>,
     pub module_record: ModuleRecordBuilder<'a>,
-    // Nested type syntax saves and restores this default through the visitor.
+    // Type syntax and erased value expressions save and restore this default.
     default_reference_flags: ReferenceFlags,
     ts_namespace_depth: u32,
     reference_flags: ReferenceFlags,
@@ -35,7 +35,7 @@ impl<'a> SemanticContext<'a> {
         }
     }
 
-    /// True when the walker is currently inside a TS type-only subtree.
+    /// Type syntax uses type defaults; erased computed keys use expression defaults.
     pub fn in_type_position(&self) -> bool {
         self.default_reference_flags.space == ReferenceSpace::Type
     }
@@ -60,6 +60,11 @@ impl<'a> SemanticContext<'a> {
     #[inline]
     pub fn replace_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
         std::mem::replace(&mut self.reference_flags, flags)
+    }
+
+    #[inline]
+    pub fn replace_default_reference_flags(&mut self, flags: ReferenceFlags) -> ReferenceFlags {
+        std::mem::replace(&mut self.default_reference_flags, flags)
     }
 
     #[inline]

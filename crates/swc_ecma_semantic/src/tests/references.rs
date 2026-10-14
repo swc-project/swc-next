@@ -132,6 +132,223 @@ fn access_flags_follow_reference_syntax() {
     assert!(reference.flags.is_read_only());
 }
 
+fn reference_facts(
+    ast: &Ast<'_>,
+    semantic: &Semantic<'_>,
+    name: &str,
+) -> Vec<(ReferenceSpace, bool, bool, Option<u32>)> {
+    semantic
+        .iter_references()
+        .filter(|entry| ast.get_utf8(entry.reference.name) == name)
+        .map(|entry| {
+            let reference = entry.reference;
+            let declaration = reference.symbol.map(|symbol| {
+                let declaration = semantic.declaration(semantic.symbol(symbol).declaration);
+                ast.span(declaration.node).start
+            });
+            (
+                reference.flags.space,
+                reference.flags.is_read(),
+                reference.flags.is_write(),
+                declaration,
+            )
+        })
+        .collect()
+}
+
+macro_rules! assert_references {
+    (
+        $parser:expr, $check:expr,
+        input: $source:expr,
+        $($name:literal => [$(($flags:expr, $declaration:literal)),+ $(,)?]),+ $(,)?
+    ) => {{
+        let source = $source;
+        let allocator = Allocator::new();
+        let (ast, semantic) = analyze_with_options(&allocator, source, $parser, $check);
+        $(
+            let actual = reference_facts(&ast, &semantic, $name);
+            let expected = [
+                $({
+                    let (space, read, write) = $flags;
+                    let declaration = Some(source.find($declaration).unwrap() as u32);
+                    (space, read, write, declaration)
+                }),+
+            ];
+            assert_eq!(actual, expected);
+        )+
+    }};
+}
+
+#[test]
+fn computed_parameter_keys() {
+    let parser = ts_module_options();
+    let check = AnalyzeOptions::default();
+    let queried = (ReferenceSpace::Typeof, false, false);
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type F = ({ [key]: v }: { p: number }) => typeof v;",
+        "key" => [(queried, "key =")],
+        "v" => [(queried, "v }")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "interface key {} const key = 'p'; type F = ({ [key]: v }) => void;",
+        "key" => [(queried, "key {}")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "interface key {} namespace N { const key = 'p'; type F = ({ [key]: v }: { p: number }) => typeof v; }",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type F = ([{ nested: { [key]: v } }]: [{ nested: { p: number } }]) => typeof v;",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "namespace key { export const p = 'p'; } type F = ({ [key.p]: v }) => void;",
+        "key" => [(queried, "key {")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type F = new ({ [key]: v }: { p: number }) => object;",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; interface I { ({ [key]: v }: { p: number }): typeof v; }",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; interface I { new ({ [key]: v }: { p: number }): object; }",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; interface I { method({ [key]: v }: { p: number }): typeof v; }",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; declare function f({ [key]: v }: { p: number }): typeof v;",
+        "key" => [(queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; function f({ [key]: v }: { p: number }): typeof v;",
+        "key" => [(queried, "key =")],
+    );
+}
+
+#[test]
+fn computed_key_expressions() {
+    let parser = ts_module_options();
+    let check = AnalyzeOptions::default();
+    let queried = (ReferenceSpace::Typeof, false, false);
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type F = ({ [key + key]: v }: object) => void;",
+        "key" => [(queried, "key ="), (queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type F = ({ [key[key]]: v }: object) => void;",
+        "key" => [(queried, "key ="), (queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = (v: string) => v; type F = ({ [key(key)]: v }: object) => typeof v;",
+        "key" => [(queried, "key ="), (queried, "key =")],
+    );
+
+    assert_references!(
+        parser, check,
+        input: "const key = 'p'; type T = { [key + key]: number };",
+        "key" => [(queried, "key ="), (queried, "key =")],
+    );
+}
+
+#[test]
+fn computed_key_contexts() {
+    let module = ts_module_options();
+    let script = Options {
+        source_type: SourceType::Script,
+        ..module
+    };
+    let grouped = Options {
+        preserve_parens: true,
+        ..module
+    };
+    let unchecked = AnalyzeOptions::default();
+    let checked = AnalyzeOptions {
+        check_syntax: true,
+        ..unchecked
+    };
+    let queried = (ReferenceSpace::Typeof, false, false);
+    let typed = (ReferenceSpace::Type, false, false);
+    let runtime = (ReferenceSpace::Value, true, false);
+
+    let source = "interface T {} const k = 'p'; type F = ({ [(k as T) + k]: v }) => void;";
+    assert_references!(
+        module, unchecked,
+        input: source,
+        "k" => [(queried, "k ="), (queried, "k =")],
+        "T" => [(typed, "T {}")],
+    );
+
+    assert_references!(
+        module, checked,
+        input: source,
+        "k" => [(queried, "k ="), (queried, "k =")],
+    );
+
+    assert_references!(
+        grouped, unchecked,
+        input: source,
+        "k" => [(queried, "k ="), (queried, "k =")],
+    );
+
+    assert_references!(
+        grouped, checked,
+        input: source,
+        "k" => [(queried, "k ="), (queried, "k =")],
+    );
+
+    assert_references!(
+        script, checked,
+        input: source,
+        "k" => [(queried, "k ="), (queried, "k =")],
+    );
+
+    assert_references!(
+        module, checked,
+        input: "const key = 'p'; function f({ [key]: v }: { p: number }) { return v; }",
+        "key" => [(runtime, "key =")],
+    );
+
+    assert_references!(
+        module, unchecked,
+        input: "const key = 'p'; class C { declare [key]: number; v = key; }",
+        "key" => [(queried, "key ="), (runtime, "key =")],
+    );
+}
+
 #[test]
 fn uncertain_reference_targets() {
     // The bounded property analysis cannot distinguish these keys. Both

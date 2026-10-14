@@ -131,6 +131,16 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     }
 
     #[inline]
+    fn visit_with_reference_context<T>(&mut self, node: T, flags: ReferenceFlags)
+    where
+        T: VisitWith<'a, Self>,
+    {
+        let previous = self.state.replace_default_reference_flags(flags);
+        self.visit_with_reference_flags(node, flags);
+        self.state.replace_default_reference_flags(previous);
+    }
+
+    #[inline]
     fn assignment_reference_flags(&self, read: bool) -> ReferenceFlags {
         let flags = self.state.default_reference_flags();
         if !flags.is_read() {
@@ -170,10 +180,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
     #[inline]
     fn visit_type_member_key(&mut self, key: PropertyKey, computed: bool) {
         if computed {
-            // A computed name on a type-only member still resolves a value
-            // name (including a type-only import), but is never evaluated.
+            // TypeScript checks computed names as expressions in value space,
+            // even on erased declarations. Apply that context to the whole key.
             let flags = self.flags_with_space(ReferenceSpace::Typeof);
-            self.visit_with_reference_flags(key, flags);
+            self.visit_with_reference_context(key, flags);
         } else {
             key.visit_with(self);
         }
@@ -492,7 +502,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     #[inline]
     fn visit_binding_property(&mut self, node: BindingProperty) {
         let node_flags = self.enter_node(node.node_id());
-        node.key(self.ast).visit_with(self);
+        if node_flags.space.in_type_position() {
+            self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
+        } else {
+            node.key(self.ast).visit_with(self);
+        }
         self.visit_with_reference_flags(node.value(self.ast), node_flags);
         self.leave_node(NodeKindData::BindingProperty(node));
     }
@@ -621,7 +635,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         state
             .symbols
             .enter_ts_function(self.ast, node, &state.scope);
-        node.visit_children_with(self);
+        node.id(self.ast).visit_with(self);
+        node.type_parameters(self.ast).visit_with(self);
+        node.this_param(self.ast).visit_with(self);
+        let flags = self.flags_with_space(ReferenceSpace::Typeof);
+        self.visit_with_reference_context(node.params(self.ast), flags);
+        node.return_type(self.ast).visit_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsFunction(node));
