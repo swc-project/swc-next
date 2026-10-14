@@ -1,0 +1,205 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+const value0=<MissingPanel>{' '}
+{' '}{uncoveredAfterSpace}</MissingPanel>;
+
+// @ts-ignore
+const value1=<MissingPanel>{coveredBeforeSpace}{' '}
+{' '}{uncoveredAfterSpace}</MissingPanel>;
+
+// @ts-ignore
+const value2=<MissingPanel>{' '}
+{' '}</MissingPanel>;
+
+// @ts-ignore
+const value3=<MissingPanel>{coveredBeforeSpace}{' '}
+{' '}</MissingPanel>;
+
+// @ts-ignore
+const value4=<MissingPanel>{(
+ ' '
+)}{uncoveredAfterSpace}</MissingPanel>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-ignore
+const value0 = (<MissingPanel>{" "}
+      {
+        uncoveredAfterSpace
+      }
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+      {
+        uncoveredAfterSpace
+      }
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value2 = (<MissingPanel>{" "}
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value4 = (<MissingPanel>{(
+          " "
+        )
+      }
+      {
+        uncoveredAfterSpace
+      }
+    </MissingPanel>
+  );
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+// @ts-ignore
+const value0 = (<MissingPanel>{" "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+      {uncoveredAfterSpace}
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value2 = (<MissingPanel>{" "}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    </MissingPanel>
+  );
+
+// @ts-ignore
+const value4 = (<MissingPanel>{(
+        " "
+      )
+    }
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+// @ts-ignore
+const value0 = (<MissingPanel>{" "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value2 = (<MissingPanel>{" "}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value4 = (<MissingPanel>{(
+        " "
+      )
+    }
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
+---------- Output ----------
+// @ts-ignore
+const value0 = (<MissingPanel>{" "}
+			{
+				uncoveredAfterSpace
+			}
+		</MissingPanel>
+	)
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+			{
+				uncoveredAfterSpace
+			}
+		</MissingPanel>
+	)
+
+// @ts-ignore
+const value2 = (<MissingPanel>{" "}
+		</MissingPanel>
+	)
+
+// @ts-ignore
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+		</MissingPanel>
+	)
+
+// @ts-ignore
+const value4 = (<MissingPanel>{(
+					" "
+				)
+			}
+			{
+				uncoveredAfterSpace
+			}
+		</MissingPanel>
+	)
+
+---------- Options ----------
+{"printWidth":100,"trailingComma":"none"}
+---------- Output ----------
+// @ts-ignore
+const value0 = (<MissingPanel>{" "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value1 = (<MissingPanel>{coveredBeforeSpace}{" "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value2 = (<MissingPanel>{" "}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value3 = (<MissingPanel>{coveredBeforeSpace}{" "}
+  </MissingPanel>
+);
+
+// @ts-ignore
+const value4 = (<MissingPanel>{(
+        " "
+      )
+    }
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);

@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<Panel {/* before marker */ ...props} {.../* before operand */ (first || second)} {...props /* after operand */} />;
+<Panel {
+// before marker
+...props // after operand
+} />;
+<Panel>{...
+// before operand
+props}</Panel>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+<Panel
+  {/* before marker */ ...props}
+  {/* before operand */ ...(first || second)}
+  {...props /* after operand */}
+/>;
+<Panel
+  {
+    // before marker
+    ...props // after operand
+  }
+/>;
+<Panel>
+  {
+    // before operand
+    ...props
+  }
+</Panel>;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+<Panel
+  {
+    /* before marker */ ...props
+  }
+  {
+    /* before operand */ ...(first ||
+      second)
+  }
+  {
+    ...props /* after operand */
+  }
+/>;
+<Panel
+  {
+    // before marker
+    ...props // after operand
+  }
+/>;
+<Panel>
+  {
+    // before operand
+    ...props
+  }
+</Panel>;

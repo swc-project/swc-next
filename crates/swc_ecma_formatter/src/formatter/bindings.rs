@@ -912,13 +912,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.comments.claim(boundary.leading)?;
             self.comments.claim(boundary.trailing)?;
             match content {
-                Some(content) => self.format_prepared_expression_with_leading_comments(
-                    right,
-                    content,
-                    boundary.right_head(),
-                    context,
-                    writer,
-                ),
+                Some(content) => match boundary.resolved_right_head() {
+                    Some(head) => self.format_prepared_expression_with_resolved_head(
+                        right, content, head, context, writer,
+                    ),
+                    None => self.format_prepared_expression_with_leading_comments(
+                        right,
+                        content,
+                        boundary.right_head(),
+                        context,
+                        writer,
+                    ),
+                },
                 None => self.format_expression_with_leading_comments(
                     right,
                     boundary.right_head(),

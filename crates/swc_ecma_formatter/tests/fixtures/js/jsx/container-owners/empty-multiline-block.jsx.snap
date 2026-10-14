@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = <div>{/* block
+continuation */}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const element = (
+  <div>
+    {/* block
+continuation */}
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const element = (
+  <div>
+    {/* block
+continuation */}
+  </div>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const element = (
+  <div>
+    {/* block
+continuation */}
+  </div>
+)

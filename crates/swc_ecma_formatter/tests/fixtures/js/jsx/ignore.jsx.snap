@@ -1,0 +1,137 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a1=<div>{/* prettier-ignore */}
+ <X  odd = { left+ right }/>
+ <Y  ok = { next+last }/></div>;
+const a2=<div>{/* prettier-ignore */} <X  odd = { left+ right }/></div>;
+const a3=<div>{/* prettier-ignore */}bar<X  odd = { left+ right }/></div>;
+const a4=<div>{/* prettier-ignore */}
+ 
+<X  odd = { left+ right }/></div>;
+const a5=<div>{/* prettier-ignore */ (left    + right)}{left + right}</div>;
+function HelloWorld() {
+  return (
+    <div
+      {...{} /*
+      // @ts-ignore */ /* prettier-ignore */}
+      invalidProp="HelloWorld"
+    >
+      test
+    </div>
+  );
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const a1 = (
+  <div>
+    {/* prettier-ignore */}
+    <X  odd = { left+ right }/>
+    <Y ok={next + last} />
+  </div>
+);
+const a2 = (
+  <div>
+    {/* prettier-ignore */} <X odd={left + right} />
+  </div>
+);
+const a3 = (
+  <div>
+    {/* prettier-ignore */}bar
+    <X odd={left + right} />
+  </div>
+);
+const a4 = (
+  <div>
+    {/* prettier-ignore */}
+ 
+<X odd={left + right} />
+  </div>
+);
+const a5 = (
+  <div>
+    {/* prettier-ignore */ left    + right}
+    {left + right}
+  </div>
+);
+function HelloWorld() {
+  return (
+    <div
+      {
+        ...{} /*
+      // @ts-ignore */ /* prettier-ignore */}
+      invalidProp="HelloWorld"
+    >
+      test
+    </div>
+  );
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const a1 = (
+  <div>
+    {/* prettier-ignore */}
+    <X  odd = { left+ right }/>
+    <Y
+      ok={
+        next + last
+      }
+    />
+  </div>
+);
+const a2 = (
+  <div>
+    {/* prettier-ignore */}{" "}
+    <X
+      odd={
+        left + right
+      }
+    />
+  </div>
+);
+const a3 = (
+  <div>
+    {/* prettier-ignore */}
+    bar
+    <X
+      odd={
+        left + right
+      }
+    />
+  </div>
+);
+const a4 = (
+  <div>
+    {/* prettier-ignore */}
+ 
+<X
+      odd={
+        left + right
+      }
+    />
+  </div>
+);
+const a5 = (
+  <div>
+    {
+      /* prettier-ignore */ left    + right
+    }
+    {left + right}
+  </div>
+);
+function HelloWorld() {
+  return (
+    <div
+      {
+        ...{} /*
+      // @ts-ignore */ /* prettier-ignore */}
+      invalidProp="HelloWorld"
+    >
+      test
+    </div>
+  );
+}

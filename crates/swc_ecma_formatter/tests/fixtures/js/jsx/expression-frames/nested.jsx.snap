@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[<Panel first={firstArgument} second={secondArgument}/>, ((<View/>))];
+render(<Panel first={firstArgument} second={secondArgument}/>, ((<View/>)));
+<Panel value={((<View/>))}>{((<View/>))}</Panel>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+[<Panel first={firstArgument} second={secondArgument} />, <View />];
+render(<Panel first={firstArgument} second={secondArgument} />, <View />);
+<Panel value={<View />}>{<View />}</Panel>;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+[
+  <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  />,
+  <View />,
+];
+render(
+  <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  />,
+  <View />,
+);
+<Panel value={<View />}>
+  {<View />}
+</Panel>;

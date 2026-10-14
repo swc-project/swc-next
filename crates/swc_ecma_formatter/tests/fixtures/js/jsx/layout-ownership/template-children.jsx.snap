@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view=<Panel>{`prefix ${firstArgument+secondArgument} suffix`}{/* sibling */}</Panel>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  <Panel>
+    {`prefix ${firstArgument + secondArgument} suffix`}
+    {/* sibling */}
+  </Panel>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const view = (
+  <Panel>
+    {`prefix ${firstArgument + secondArgument} suffix`}
+    {/* sibling */}
+  </Panel>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":40}
+---------- Output ----------
+const view = (
+  <Panel>
+    {`prefix ${firstArgument + secondArgument} suffix`}
+    {/* sibling */}
+  </Panel>
+);
