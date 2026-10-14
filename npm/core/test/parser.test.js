@@ -217,12 +217,24 @@ test("semantic diagnostics preserve Unicode offsets and related labels", () => {
   assert.deepEqual(result.comments, []);
 });
 
-test("semantic checking preserves parser recovery diagnostics", () => {
-  const source = "const = 1; let value; let value;";
-  const unchecked = parseSync(source);
-  const checked = parseSync(source, { semanticErrors: true });
-  assert.deepEqual(checked.diagnostics, unchecked.diagnostics);
-  assert.deepEqual(checked.program, unchecked.program);
+test("semantic checking appends diagnostics after parser recovery", () => {
+  function checkRecovery(source, lang) {
+    const unchecked = parseSync(source, { lang });
+    const checked = parseSync(source, { lang, semanticErrors: true });
+    assert.equal(unchecked.diagnostics.length, 1);
+    assert.equal(checked.diagnostics.length, 2);
+    assert.deepEqual(checked.diagnostics.slice(0, 1), unchecked.diagnostics);
+    assert.equal(checked.diagnostics[1].severity, "error");
+    assert.deepEqual(checked.program, unchecked.program);
+    assert.deepEqual(checked.comments, unchecked.comments);
+    assert.deepEqual(
+      parseStandalone(source, { lang, semanticErrors: true }).diagnostics,
+      checked.diagnostics,
+    );
+  }
+
+  checkRecovery("/* 😀 */ const a; let 文; let 文;", Lang.Js);
+  checkRecovery("/* 😀 */ const a; type Value = string; type Value = number;", Lang.Ts);
 });
 
 test("parseSync reports diagnostics with UTF-16 offsets", () => {

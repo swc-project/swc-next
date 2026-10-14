@@ -18,4 +18,12 @@ test("browser exposes parseSync and printSync", async () => {
   expect(parseSync(duplicate).diagnostics).toEqual([]);
   expect(parseSync(duplicate, { semanticErrors: false }).diagnostics).toEqual([]);
   expect(parseSync(duplicate, { semanticErrors: true }).diagnostics).toHaveLength(1);
+
+  const recovered = "const a; let value; let value;";
+  const unchecked = parseSync(recovered);
+  const checked = parseSync(recovered, { semanticErrors: true });
+  expect(unchecked.diagnostics).toHaveLength(1);
+  expect(checked.diagnostics).toHaveLength(2);
+  expect(checked.diagnostics[0]).toEqual(unchecked.diagnostics[0]);
+  expect(checked.program).toEqual(unchecked.program);
 });

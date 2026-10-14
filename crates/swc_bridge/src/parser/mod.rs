@@ -22,7 +22,8 @@ pub unsafe fn parse_to_buffer(
     let options = options.unwrap_or_default().normalize();
     let result = Parser::init(&allocator, source, options.parser, NoTokenParserConfig).parse();
 
-    let diagnostics = if options.semantic_errors && result.diagnostics.is_empty() {
+    let mut diagnostics = result.diagnostics;
+    if options.semantic_errors {
         let semantic = analyze(
             &result.ast,
             AnalyzeOptions {
@@ -30,10 +31,8 @@ pub unsafe fn parse_to_buffer(
                 ..AnalyzeOptions::default()
             },
         );
-        semantic.diagnostics
-    } else {
-        result.diagnostics
-    };
+        diagnostics.extend(semantic.diagnostics);
+    }
 
     let buffer_size = buffer_size(&result.ast, &diagnostics);
     let mut buffer = vec![0; buffer_size];
