@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = !(/* head */ <Panel value={input} /> /* tail */);
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+const value = !(
+  /* head */ <Panel
+    value={input}
+  /> /* tail */
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const value = !(
+  /* head */ <Panel
+    value={input}
+  /> /* tail */
+)
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+const value = !(/* head */ <Panel value={input} /> /* tail */);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const value = !(/* head */ <Panel value={input} /> /* tail */)

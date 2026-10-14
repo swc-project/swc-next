@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function view(){return await (/* before */ <Panel first={firstArgument} second={secondArgument}/> /* after */);}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function view() {
+  return await (
+    /* before */ <Panel
+      first={firstArgument}
+      second={secondArgument}
+    /> /* after */
+  );
+}
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+async function view() {
+  return await (
+    /* before */ <Panel
+      first={
+        firstArgument
+      }
+      second={
+        secondArgument
+      }
+    /> /* after */
+  );
+}

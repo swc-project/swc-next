@@ -1,0 +1,149 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a1=<Box title='a\b &quot;c&quot; &amp; d' other="&apos;x&apos; &quot;y&quot;" active data={value+1} {...props}/>;
+const a2=<Box title="first
+  second	line &nbsp;
+last"/>;
+const a3=<div title="a
+b">first
+ second</div>;
+const a4=<Box title=
+/* value */
+"foo"/>;
+const a5=<Box title=// value
+"foo"/>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first
+  second	line &nbsp;
+last"
+  />
+);
+const a3 = (
+  <div
+    title="a&#13;&#10;b"
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ "foo" />;
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first
+  second	line &nbsp;
+last"
+  />
+);
+const a3 = (
+  <div
+    title="a&#13;&#10;b"
+  >
+    first second
+  </div>
+);
+const a4 = (
+  <Box title=/* value */ "foo" />
+);
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"jsxSingleQuote":true}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other='&apos;x&apos; "y"'
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title='first
+  second	line &nbsp;
+last'
+  />
+);
+const a3 = (
+  <div
+    title='a&#13;&#10;b'
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ 'foo' />;
+const a5 = (
+  <Box title=// value
+  'foo' />
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+const a1 = (
+  <Box
+    title='a\b "c" &amp; d'
+    other="'x' &quot;y&quot;"
+    active
+    data={value + 1}
+    {...props}
+  />
+);
+const a2 = (
+  <Box
+    title="first&#10;  second	line &nbsp;&#10;last"
+  />
+);
+const a3 = (
+  <div
+    title="a
+b"
+  >
+    first second
+  </div>
+);
+const a4 = <Box title=/* value */ "foo" />;
+const a5 = (
+  <Box title=// value
+  "foo" />
+);
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+const a1 = (  <Box    title='a\b "c" &amp; d'    other="'x' &quot;y&quot;"    active    data={value + 1}    {...props}  />);const a2 = (  <Box    title="first&#10;  second	line &nbsp;&#10;last"  />);const a3 = (  <div    title="a&#13;&#10;b"  >    first second  </div>);const a4 = <Box title=/* value */ "foo" />;const a5 = (  <Box title=// value  "foo" />);

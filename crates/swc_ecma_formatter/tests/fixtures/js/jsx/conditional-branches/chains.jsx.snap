@@ -1,0 +1,177 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const direct = flag ? <Box><Item /><Item /></Box> : null;
+const alternate = flag ? value : other ? <Box><Item /><Item /></Box> : fallback;
+const consequent = flag ? other ? <Box><Item /><Item /></Box> : value : fallback;
+const nil = flag ? null : other ? undefined : <><Item /><Item /></>;
+const receiver = (flag ? <Box><Item /><Item /></Box> : null).value;
+(flag ? <Box><Item /><Item /></Box> : null)();
+const plain = first && second && third ? value : fallback;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const direct = flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null;
+const alternate = flag ? (
+  value
+) : other ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (
+  fallback
+);
+const consequent = flag ? (
+  other ? (
+    <Box>
+      <Item />
+      <Item />
+    </Box>
+  ) : (
+    value
+  )
+) : (
+  fallback
+);
+const nil = flag ? null : other ? undefined : (
+  <>
+    <Item />
+    <Item />
+  </>
+);
+const receiver = (
+  flag ? (
+    <Box>
+      <Item />
+      <Item />
+    </Box>
+  ) : null
+).value;
+(flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null)();
+const plain = first && second && third ? value : fallback;
+
+---------- Options ----------
+{"printWidth":35}
+---------- Output ----------
+const direct = flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null;
+const alternate = flag ? (
+  value
+) : other ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (
+  fallback
+);
+const consequent = flag ? (
+  other ? (
+    <Box>
+      <Item />
+      <Item />
+    </Box>
+  ) : (
+    value
+  )
+) : (
+  fallback
+);
+const nil =
+  flag ? null : other ? undefined : (
+    <>
+      <Item />
+      <Item />
+    </>
+  );
+const receiver = (
+  flag ? (
+    <Box>
+      <Item />
+      <Item />
+    </Box>
+  ) : null
+).value;
+(flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null)();
+const plain =
+  first && second && third
+    ? value
+    : fallback;
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const direct = flag ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : null;
+const alternate = flag ? (
+	value
+) : other ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : (
+	fallback
+);
+const consequent = flag ? (
+	other ? (
+		<Box>
+			<Item />
+			<Item />
+		</Box>
+	) : (
+		value
+	)
+) : (
+	fallback
+);
+const nil =
+	flag ? null : other ? undefined : (
+		<>
+			<Item />
+			<Item />
+		</>
+	);
+const receiver = (
+	flag ? (
+		<Box>
+			<Item />
+			<Item />
+		</Box>
+	) : null
+).value;
+(flag ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : null)();
+const plain =
+	first && second && third
+		? value
+		: fallback;
