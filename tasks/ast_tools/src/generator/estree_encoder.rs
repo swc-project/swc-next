@@ -565,7 +565,10 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
 "#,
@@ -869,8 +872,11 @@ fn write_dispatch(output: &mut String, estree: &str, candidates: &[String]) {
             .iter()
             .any(|candidate| candidate == "TsMethodDefinition")
     {
+        if estree == "TSAbstractMethodDefinition" {
+            output.push_str("        isTs = true;\n");
+        }
         output.push_str(
-            "        if (n.type === \"TSAbstractMethodDefinition\" || n.value?.type === \"TSEmptyBodyFunctionExpression\") return encTsMethodDefinition(n);\n",
+            "        if (n.value?.type === \"TSEmptyBodyFunctionExpression\") return encTsMethodDefinition(n);\n",
         );
     }
     if estree == "TSModuleDeclaration"
@@ -932,7 +938,7 @@ fn accepted_estree_types(name: &str) -> Vec<String> {
             "TSEmptyBodyFunctionExpression".into(),
         ],
         "Class" => vec!["ClassDeclaration".into(), "ClassExpression".into()],
-        "TsMethodDefinition" => vec![
+        "MethodDefinition" | "TsMethodDefinition" => vec![
             "MethodDefinition".into(),
             "TSAbstractMethodDefinition".into(),
         ],

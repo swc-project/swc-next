@@ -74,7 +74,7 @@ discriminator union:
 #[ast]
 #[estree(
     rename = "Literal",
-    fields(value(ts_type = "bigint"), bigint(ts_type = "string"))
+    fields(value(ts_type = "bigint | null"), bigint(ts_type = "string"))
 )]
 pub struct BigIntLiteral {
     raw: AstUtf8,
@@ -90,5 +90,26 @@ reason-valued `skip = "..."` form also preserves its codec behavior.
 Public types must include decoder output and stay within the structures that
 can be encoded into the corresponding Rust AST types. Grammar constraints may
 be looser than other parsers' declarations when Rust can represent the data.
+Cross-field constraints, such as computed keys and arrow function body forms,
+are intentionally left independent to keep annotations and generation simple.
 These annotations never change Rust storage or codec behavior. Assignability
 from other parsers' AST declarations is not guaranteed.
+
+Alignment with `@typescript-eslint/types` 8.71.2 retains decoder-specific differences,
+including nullable TS fields, CommonJS programs, preserved parentheses,
+JSDoc types, source-phase imports, BigInt property names, and error recovery
+nodes. Optional TS fields accept omission only where the encoder can represent
+it safely. Fixed Rust child types remain required even when typescript-eslint
+allows omission or a wider node union.
+
+Some grammar restrictions would exclude current output: chain expressions can
+contain `TSInstantiationExpression`, `TSImportType.options` can be any expression,
+and parameter properties can contain destructuring. Error recovery preserves
+private names outside classes and delegated yields without an argument. These
+shapes stay accepted rather than copying narrower declarations.
+
+The decoder currently emits abstract methods with function bodies. These
+remain in the declarations to cover its output. The encoder selects the Rust
+method structure from the function value's type and preserves the abstract flag
+independently. Directive encoding checks for a string literal before selecting
+the Rust directive structure.

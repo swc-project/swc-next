@@ -251,14 +251,14 @@ export interface NumericLiteral extends BaseNode {
 export interface BigIntLiteral extends BaseNode {
   type: "Literal";
   raw: string;
-  value: bigint;
+  value: bigint | null;
   bigint: string;
 }
 
 export interface BooleanLiteral extends BaseNode {
   type: "Literal";
   value: boolean;
-  raw: string;
+  raw: "false" | "true";
 }
 
 export interface NullLiteral extends BaseNode {
@@ -348,8 +348,8 @@ export interface BindingProperty extends BaseNode {
   shorthand: boolean;
   computed: boolean;
   kind: "init";
-  method: boolean;
-  optional?: boolean;
+  method: false;
+  optional?: false;
 }
 
 export interface BinaryExpression extends BaseNode {
@@ -377,7 +377,7 @@ export interface UnaryExpression extends BaseNode {
   type: "UnaryExpression";
   argument: Expression;
   operator: UnaryOperator;
-  prefix: boolean;
+  prefix: true;
 }
 
 export interface UpdateExpression extends BaseNode {
@@ -578,8 +578,8 @@ export interface Function extends BaseNode {
   body: FunctionBody;
   generator: boolean;
   async: boolean;
-  expression: boolean;
-  declare?: boolean;
+  expression: false;
+  declare?: false;
 }
 
 export type FunctionDeclaration = Function & { type: "FunctionDeclaration" };
@@ -639,7 +639,7 @@ export interface ObjectProperty extends BaseNode {
   method: boolean;
   shorthand: boolean;
   computed: boolean;
-  optional?: boolean;
+  optional?: false;
 }
 
 export interface ParenthesizedExpression extends BaseNode {
@@ -656,7 +656,7 @@ export interface ArrowFunctionExpression extends BaseNode {
   returnType?: TSTypeAnnotation | null;
   body: ArrowFunctionBody;
   id: null;
-  generator: boolean;
+  generator: false;
 }
 
 export interface SequenceExpression extends BaseNode {
@@ -682,7 +682,7 @@ export interface CallExpression extends BaseNode {
 
 export interface ChainExpression extends BaseNode {
   type: "ChainExpression";
-  expression: Expression;
+  expression: CallExpression | MemberExpression | TSNonNullExpression | TSInstantiationExpression;
 }
 
 export interface TaggedTemplateExpression extends BaseNode {
@@ -849,7 +849,7 @@ export type TSLiteral =
   | NumericLiteral
   | StringLiteral
   | TemplateLiteral
-  | UnaryExpression;
+  | UnaryExpression & { operator: "+" | "-" };
 
 export type TSTupleElement = TSNamedTupleMember | TSType;
 
@@ -873,14 +873,14 @@ export type TSModuleReference = TSExternalModuleReference | TSTypeName;
 export interface TSFunction extends BaseNode {
   type: "TSDeclareFunction" | "TSEmptyBodyFunctionExpression";
   id: BindingIdentifier | null;
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
-  returnType: TSTypeAnnotation | null;
+  returnType?: TSTypeAnnotation | null;
   generator: boolean;
   async: boolean;
   declare: boolean;
-  body: null;
-  expression: boolean;
+  body?: null;
+  expression: false;
 }
 
 export type TSDeclareFunction = TSFunction & { type: "TSDeclareFunction" };
@@ -963,7 +963,7 @@ export interface TSThisType extends BaseNode {
 export interface TSTypeReference extends BaseNode {
   type: "TSTypeReference";
   typeName: TSTypeName;
-  typeArguments: TSTypeParameterInstantiation | null;
+  typeArguments?: TSTypeParameterInstantiation | null;
 }
 
 export interface TSQualifiedName extends BaseNode {
@@ -975,7 +975,7 @@ export interface TSQualifiedName extends BaseNode {
 export interface TSTypeQuery extends BaseNode {
   type: "TSTypeQuery";
   exprName: TSTypeQueryExprName;
-  typeArguments: TSTypeParameterInstantiation | null;
+  typeArguments?: TSTypeParameterInstantiation | null;
 }
 
 export interface TSImportType extends BaseNode {
@@ -989,8 +989,8 @@ export interface TSImportType extends BaseNode {
 export interface TSTypeParameter extends BaseNode {
   type: "TSTypeParameter";
   name: BindingIdentifier;
-  constraint: TSType | null;
-  default: TSType | null;
+  constraint?: TSType | null;
+  default?: TSType | null;
   in: boolean;
   out: boolean;
   const: boolean;
@@ -1102,14 +1102,14 @@ export interface TSParenthesizedType extends BaseNode {
 
 export interface TSFunctionType extends BaseNode {
   type: "TSFunctionType";
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
   returnType: TSTypeAnnotation;
 }
 
 export interface TSConstructorType extends BaseNode {
   type: "TSConstructorType";
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
   returnType: TSTypeAnnotation;
   abstract: boolean;
@@ -1132,48 +1132,48 @@ export interface TSMappedType extends BaseNode {
   key: BindingIdentifier;
   constraint: TSType;
   nameType: TSType | null;
-  typeAnnotation: TSType | null;
-  optional: boolean | "+" | "-";
-  readonly: TSMappedTypeModifier;
+  typeAnnotation?: TSType | null;
+  optional?: boolean | "+" | "-";
+  readonly?: TSMappedTypeModifier | false;
 }
 
 export interface TSPropertySignature extends BaseNode {
   type: "TSPropertySignature";
   key: PropertyKey;
-  typeAnnotation: TSTypeAnnotation | null;
+  typeAnnotation?: TSTypeAnnotation | null;
   computed: boolean;
   optional: boolean;
   readonly: boolean;
   accessibility?: null;
-  static?: boolean;
+  static?: false;
 }
 
 export interface TSMethodSignature extends BaseNode {
   type: "TSMethodSignature";
   key: PropertyKey;
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
-  returnType: TSTypeAnnotation | null;
+  returnType?: TSTypeAnnotation | null;
   kind: TSMethodSignatureKind;
   computed: boolean;
   optional: boolean;
-  accessibility: null;
-  readonly: boolean;
-  static: boolean;
+  accessibility?: null;
+  readonly: false;
+  static: false;
 }
 
 export interface TSCallSignatureDeclaration extends BaseNode {
   type: "TSCallSignatureDeclaration";
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
-  returnType: TSTypeAnnotation | null;
+  returnType?: TSTypeAnnotation | null;
 }
 
 export interface TSConstructSignatureDeclaration extends BaseNode {
   type: "TSConstructSignatureDeclaration";
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   params: FormalParameters;
-  returnType: TSTypeAnnotation | null;
+  returnType?: TSTypeAnnotation | null;
 }
 
 export interface TSIndexSignature extends BaseNode {
@@ -1188,7 +1188,7 @@ export interface TSIndexSignature extends BaseNode {
 export interface TSTypeAliasDeclaration extends BaseNode {
   type: "TSTypeAliasDeclaration";
   id: BindingIdentifier;
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   typeAnnotation: TSType;
   declare: boolean;
 }
@@ -1196,7 +1196,7 @@ export interface TSTypeAliasDeclaration extends BaseNode {
 export interface TSInterfaceDeclaration extends BaseNode {
   type: "TSInterfaceDeclaration";
   id: BindingIdentifier;
-  typeParameters: TSTypeParameterDeclaration | null;
+  typeParameters?: TSTypeParameterDeclaration | null;
   extends: Array<TSInterfaceHeritage>;
   body: TSInterfaceBody;
   declare: boolean;
@@ -1210,13 +1210,13 @@ export interface TSInterfaceBody extends BaseNode {
 export interface TSInterfaceHeritage extends BaseNode {
   type: "TSInterfaceHeritage";
   expression: Expression;
-  typeArguments: TSTypeParameterInstantiation | null;
+  typeArguments?: TSTypeParameterInstantiation | null;
 }
 
 export interface TSClassImplements extends BaseNode {
   type: "TSClassImplements";
   expression: Expression;
-  typeArguments: TSTypeParameterInstantiation | null;
+  typeArguments?: TSTypeParameterInstantiation | null;
 }
 
 export interface TSEnumDeclaration extends BaseNode {
@@ -1235,7 +1235,7 @@ export interface TSEnumBody extends BaseNode {
 export interface TSEnumMember extends BaseNode {
   type: "TSEnumMember";
   id: TSEnumMemberName;
-  initializer: Expression | null;
+  initializer?: Expression | null;
   computed: boolean;
 }
 
@@ -1269,15 +1269,15 @@ export interface TSParameterProperty extends BaseNode {
   override: boolean;
   readonly: boolean;
   accessibility: Accessibility;
-  static?: boolean;
+  static?: false;
 }
 
 export interface TSThisParameter extends BaseNode {
   type: "Identifier";
-  typeAnnotation: TSTypeAnnotation | null;
+  typeAnnotation?: TSTypeAnnotation | null;
   decorators?: Array<Decorator>;
   name: "this";
-  optional: boolean;
+  optional: false;
 }
 
 export interface TSAsExpression extends BaseNode {
@@ -1331,7 +1331,7 @@ export interface TSExternalModuleReference extends BaseNode {
   expression: StringLiteral;
 }
 
-export type TSIndexSignatureParameter = Identifier;
+export type TSIndexSignatureParameter = Identifier & { typeAnnotation: TSTypeAnnotation };
 
 export type JSXElementName = JSXIdentifier | JSXMemberExpression | JSXNamespacedName;
 

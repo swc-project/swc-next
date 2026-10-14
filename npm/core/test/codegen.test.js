@@ -71,6 +71,42 @@ test("encoder invalidates stale directive raw text", () => {
   assert.equal(printSync(escaped).code, '"use server";\n');
 });
 
+test("encoder preserves expressions with stale directive metadata", () => {
+  const script = parseSync("1;").program;
+  script.body[0].directive = "foo";
+  assert.equal(printSync(script, {}, { lang: "js" }).code, "1;\n");
+
+  const modified = parseSync('"use strict";', { lang: "ts" }).program;
+  modified.body[0].expression.value = 1;
+  assert.equal(printSync(modified, {}, { lang: "ts" }).code, "1;\n");
+
+  const functionBody = parseSync("function f() { 1; }").program;
+  functionBody.body[0].body.body[0].directive = "foo";
+  assert.equal(printSync(functionBody, {}, { lang: "js" }).code, "function f() {\n  1;\n}\n");
+
+  const namespace = parseSync("namespace N { 1; }", { lang: "ts" }).program;
+  namespace.body[0].body.body[0].directive = "foo";
+  assert.equal(printSync(namespace).code, "namespace N {\n  1;\n}\n");
+});
+
+test("encoder preserves method bodies and signatures", () => {
+  const typescript = { lang: "ts" };
+
+  const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
+  assert.equal(printSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+  assert.equal((new DataView(encode(body).buffer).getUint32(32, true) >> 2) & 7, 1);
+
+  const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
+  assert.equal(printSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
+
+  const signature = parseSync("class C { m(): number; }", typescript).program;
+  assert.equal(printSync(signature).code, "class C {\n  m(): number;\n}\n");
+
+  const modified = parseSync("class C { m() { return 1; } }").program;
+  modified.body[0].body.body[0].type = "TSAbstractMethodDefinition";
+  assert.equal(printSync(modified).code, "class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
+});
+
 test("encoder accepts directive raw escapes with leading zeros", () => {
   const { program } = parseSync('"use\\u{0000020}strict";', {
     sourceType: "script",

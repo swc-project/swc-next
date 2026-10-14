@@ -729,7 +729,7 @@ pub struct NumericLiteral {
 #[ast]
 #[estree(
     rename = "Literal",
-    fields(value(ts_type = "bigint"), bigint(ts_type = "string"))
+    fields(value(ts_type = "bigint | null"), bigint(ts_type = "string"))
 )]
 pub struct BigIntLiteral {
     /// digits without the trailing `n`
@@ -738,7 +738,7 @@ pub struct BigIntLiteral {
 
 /// A `true` or `false` literal.
 #[ast]
-#[estree(rename = "Literal", fields(raw(ts_type = "string")))]
+#[estree(rename = "Literal", fields(raw(ts_type = r#""false" | "true""#)))]
 pub struct BooleanLiteral {
     value: bool,
 }
@@ -1025,8 +1025,8 @@ pub struct ObjectPattern {
     rename = "Property",
     fields(
         kind(ts_type = r#""init""#),
-        method(ts_type = "boolean"),
-        optional(ts_type = "boolean", optional)
+        method(ts_type = "false"),
+        optional(ts_type = "false", optional)
     )
 )]
 pub struct BindingProperty {
@@ -1104,7 +1104,7 @@ pub struct ConditionalExpression {
 /// //     ^^^ argument
 /// ```
 #[ast]
-#[estree(fields(prefix(ts_type = "boolean")))]
+#[estree(fields(prefix(ts_type = "true")))]
 pub struct UnaryExpression {
     /// any expression
     argument: Expr,
@@ -1673,10 +1673,7 @@ pub struct StaticBlock {
     ts_type = "FunctionType",
     add_ts_def = r#"type FunctionDeclaration = Function & { type: "FunctionDeclaration" };
 export type FunctionExpression = Function & { type: "FunctionExpression" };"#,
-    fields(
-        expression(ts_type = "boolean"),
-        declare(ts_type = "boolean", optional)
-    )
+    fields(expression(ts_type = "false"), declare(ts_type = "false", optional))
 )]
 pub struct Function {
     #[estree(skip)]
@@ -1875,7 +1872,7 @@ pub struct SpreadElement {
 /// })
 /// ```
 #[ast]
-#[estree(rename = "Property", fields(optional(ts_type = "boolean", optional)))]
+#[estree(rename = "Property", fields(optional(ts_type = "false", optional)))]
 pub struct ObjectProperty {
     /// `identifier_name`, `string_literal`, `numeric_literal`,
     /// `private_identifier` (class members only), or any expression when `computed = true`
@@ -1920,7 +1917,7 @@ pub struct ParenthesizedExpression {
 /// //                    ^ body (expression = true)
 /// ```
 #[ast]
-#[estree(fields(id(ts_type = "null"), generator(ts_type = "boolean")))]
+#[estree(fields(id(ts_type = "null"), generator(ts_type = "false")))]
 pub struct ArrowFunctionExpression {
     /// true for a concise body `() => expr`. false for a block body
     /// `() => { ... }`.
@@ -2014,6 +2011,9 @@ pub struct CallExpression {
 pub struct ChainExpression {
     /// `call_expression` or `member_expression` containing an optional link
     /// somewhere in the chain.
+    #[estree(
+        ts_type = "CallExpression | MemberExpression | TSNonNullExpression | TSInstantiationExpression"
+    )]
     expression: Expr,
 }
 

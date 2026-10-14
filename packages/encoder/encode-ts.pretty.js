@@ -341,7 +341,10 @@ function encodeTs(program, meta = {}) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
@@ -970,7 +973,10 @@ function encodeTs(program, meta = {}) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
@@ -2006,7 +2012,10 @@ function encodeTs(program, meta = {}) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
@@ -2563,7 +2572,11 @@ function encodeTs(program, meta = {}) {
   function encClassElement(n) {
     switch (n.type) {
       case "MethodDefinition":
-        if (n.type === "TSAbstractMethodDefinition" || n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
+        if (n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
+        return encMethodDefinition(n);
+      case "TSAbstractMethodDefinition":
+        isTs = true;
+        if (n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
         return encMethodDefinition(n);
       case "PropertyDefinition":
         return encPropertyDefinition(n);
@@ -2575,8 +2588,6 @@ function encodeTs(program, meta = {}) {
         return encPropertyDefinition(n);
       case "StaticBlock":
         return encStaticBlock(n);
-      case "TSAbstractMethodDefinition":
-        return encTsMethodDefinition(n);
       case "TSIndexSignature":
         return encTsIndexSignature(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);

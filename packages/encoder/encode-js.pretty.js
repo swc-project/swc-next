@@ -341,7 +341,10 @@ function encodeJs(program, meta = {}) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
@@ -967,7 +970,10 @@ function encodeJs(program, meta = {}) {
     let _directiveCount = 0;
     while (_directiveCount < _length) {
       const statement = _body[_directiveCount];
-      if (statement?.type !== "ExpressionStatement" || statement.directive == null) break;
+      if (statement?.type !== "ExpressionStatement" ||
+          typeof statement.directive !== "string" ||
+          statement.expression?.type !== "Literal" ||
+          typeof statement.expression.value !== "string") break;
       _directiveCount++;
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
