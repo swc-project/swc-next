@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view=<Panel first="first attribute value" second="second attribute value">{`prefix ${firstArgument+secondArgument} suffix`}</Panel>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  <Panel
+    first="first attribute value"
+    second="second attribute value"
+  >{`prefix ${firstArgument + secondArgument} suffix`}</Panel>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const view = (
+  <Panel
+    first="first attribute value"
+    second="second attribute value"
+  >{`prefix ${firstArgument + secondArgument} suffix`}</Panel>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":40}
+---------- Output ----------
+const view = (
+  <Panel
+    first="first attribute value"
+    second="second attribute value">{`prefix ${firstArgument + secondArgument} suffix`}</Panel>
+);

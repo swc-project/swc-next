@@ -1,0 +1,55 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare namespace JSX { interface IntrinsicElements { div: {valid?: string, children?: unknown}; } }
+const element = <div {...{} /*
+ // @ts-ignore */ /* prettier-ignore */}
+ invalidProp="invalid" />;
+---------- Options ----------
+{}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    div: { valid?: string; children?: unknown };
+  }
+}
+const element = (
+  <div
+    {
+      ...{} /*
+ // @ts-ignore */ /* prettier-ignore */}
+    invalidProp="invalid"/>);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    div: {
+      valid?: string;
+      children?: unknown;
+    };
+  }
+}
+const element = (
+  <div
+    {
+      ...{} /*
+ // @ts-ignore */ /* prettier-ignore */}
+    invalidProp="invalid"/>);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    div: { valid?: string; children?: unknown }
+  }
+}
+const element = (
+  <div
+    {
+      ...{} /*
+ // @ts-ignore */ /* prettier-ignore */}
+    invalidProp="invalid"/>)

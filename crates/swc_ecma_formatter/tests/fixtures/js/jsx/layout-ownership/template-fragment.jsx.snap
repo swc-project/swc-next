@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view=<>{tag`prefix ${/* interpolation */ firstArgument+secondArgument} suffix`}</>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = (
+  <>{tag`prefix ${/* interpolation */ firstArgument + secondArgument} suffix`}</>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const view = (
+  <>{tag`prefix ${/* interpolation */ firstArgument + secondArgument} suffix`}</>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":40}
+---------- Output ----------
+const view = (
+  <>{tag`prefix ${/* interpolation */ firstArgument + secondArgument} suffix`}</>
+);

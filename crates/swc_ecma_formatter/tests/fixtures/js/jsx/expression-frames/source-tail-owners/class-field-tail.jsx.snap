@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Render {node=(/* ordinary */ <Item value={61}/> /* source tail */);}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Render {
+  node = /* ordinary */ <Item value={61} />; /* source tail */
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class Render {
+  node = /* ordinary */ <Item value={61} /> /* source tail */
+}
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+class Render {
+  node = (
+    /* ordinary */ <Item
+      value={61}
+    />
+  ); /* source tail */
+}
+
+---------- Options ----------
+{"printWidth":36,"semi":false}
+---------- Output ----------
+class Render {
+  node = (
+    /* ordinary */ <Item
+      value={61}
+    />
+  ) /* source tail */
+}
