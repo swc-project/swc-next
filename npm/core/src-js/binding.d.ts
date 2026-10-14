@@ -11,18 +11,14 @@ export interface CodegenOutput {
   code: string
 }
 
-export declare const enum CommentMode {
-  None = 'none',
-  Flat = 'flat'
-}
+export type CommentMode =  'none'|
+'flat';
 
-export declare const enum Lang {
-  Js = 'js',
-  Ts = 'ts',
-  Jsx = 'jsx',
-  Tsx = 'tsx',
-  Dts = 'dts'
-}
+export type Lang =  'js'|
+'ts'|
+'jsx'|
+'tsx'|
+'dts';
 
 export interface ParserOptions {
   /**
@@ -63,12 +59,10 @@ export interface ParserOptions {
   semanticErrors?: boolean
 }
 
-export declare const enum SourceType {
-  Module = 'module',
-  Script = 'script',
-  CommonJs = 'commonjs',
-  Unambiguous = 'unambiguous'
-}
+export type SourceType =  'module'|
+'script'|
+'commonjs'|
+'unambiguous';
 export declare function langFromPath(path: string): Lang
 
 /**

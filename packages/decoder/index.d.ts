@@ -1,15 +1,4 @@
 import type { Program } from "@swc-next/types";
-export type {
-  Program,
-  Node,
-  Expression,
-  Statement,
-  Declaration,
-  Pattern,
-  Identifier,
-  Literal,
-} from "@swc-next/types";
-export type * as AST from "@swc-next/types";
 
 /** Source metadata, reusable by the encoder. */
 export interface AstMeta {

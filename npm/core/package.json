@@ -38,6 +38,7 @@
   "author": "",
   "license": "Apache-2.0",
   "napi": {
+    "constEnum": false,
     "binaryName": "swc-next-core",
     "packageName": "@swc-next/core-binding",
     "targets": [

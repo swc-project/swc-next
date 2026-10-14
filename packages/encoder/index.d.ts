@@ -1,15 +1,4 @@
 import type { Program } from "@swc-next/types";
-export type {
-  Program,
-  Node,
-  Expression,
-  Statement,
-  Declaration,
-  Pattern,
-  Identifier,
-  Literal,
-} from "@swc-next/types";
-export type * as AST from "@swc-next/types";
 
 /** Language and source type associated with an ESTree Program. */
 export interface AstMeta {

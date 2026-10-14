@@ -1,15 +1,5 @@
 import type { Program } from "@swc-next/types";
-export type {
-  Program,
-  Node,
-  Expression,
-  Statement,
-  Declaration,
-  Pattern,
-  Identifier,
-  Literal,
-} from "@swc-next/types";
-export type * as AST from "@swc-next/types";
+export type * from "@swc-next/types";
 
 import type {
   CodegenOptions,
@@ -19,7 +9,13 @@ import type {
 import type { AstMeta } from "@swc-next/decoder";
 export type { AstMeta } from "@swc-next/decoder";
 
-export * from "./binding.js";
+export { langFromPath, sourceTypeFromPath } from "./binding.js";
+export type {
+  CommentMode,
+  CodegenOptions,
+  CodegenOutput,
+  ParserOptions,
+} from "./binding.js";
 
 export interface Comment {
   type: "Line" | "Block";

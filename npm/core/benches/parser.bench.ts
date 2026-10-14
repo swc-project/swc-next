@@ -18,9 +18,7 @@ import {
   sourceTypeFromPath as yukuSourceTypeFromPath,
 } from "yuku-parser";
 import {
-  CommentMode,
-  Lang,
-  SourceType,
+  type ParserOptions,
   langFromPath,
   parseSync,
   sourceTypeFromPath,
@@ -40,9 +38,8 @@ async function runBenchmark(inputPath: string): Promise<void> {
   const source = await fs.readFile(inputPath, "utf8");
   const lang = langFromPath(inputPath);
   const sourceType = sourceTypeFromPath(inputPath);
-  const isTypeScript =
-    lang === Lang.Ts || lang === Lang.Tsx || lang === Lang.Dts;
-  const hasJsx = lang === Lang.Jsx || lang === Lang.Tsx;
+  const isTypeScript = lang === "ts" || lang === "tsx" || lang === "dts";
+  const hasJsx = lang === "jsx" || lang === "tsx";
 
   const swcOptions: SwcParseOptions = isTypeScript
     ? {
@@ -51,7 +48,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
         decorators: true,
         target: "esnext",
         comments: false,
-        script: sourceType !== SourceType.Module,
+        script: sourceType !== "module",
       }
     : {
         syntax: "ecmascript",
@@ -59,12 +56,12 @@ async function runBenchmark(inputPath: string): Promise<void> {
         decorators: true,
         target: "esnext",
         comments: false,
-        script: sourceType !== SourceType.Module,
+        script: sourceType !== "module",
       };
 
   const oxcOptions: OxcParserOptions = {
     lang:
-      lang === Lang.Dts
+      lang === "dts"
         ? "dts"
         : isTypeScript
           ? hasJsx
@@ -76,7 +73,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
     preserveParens: true,
     showSemanticErrors: false,
     sourceType:
-      sourceType === SourceType.Module
+      sourceType === "module"
         ? ("module" as const)
         : ("script" as const),
   };
@@ -90,18 +87,18 @@ async function runBenchmark(inputPath: string): Promise<void> {
 
   const babelPlugins: ParserPlugin[] = [];
   if (isTypeScript) {
-    babelPlugins.push(["typescript", { dts: lang === Lang.Dts }]);
+    babelPlugins.push(["typescript", { dts: lang === "dts" }]);
   }
   if (hasJsx) {
     babelPlugins.push("jsx");
   }
 
   const currentOptions = {
-    comments: CommentMode.None,
+    comments: "none",
     lang,
     preserveParens: true,
     sourceType,
-  };
+  } satisfies ParserOptions;
 
   const yukuOptions = {
     attachComments: false,
@@ -117,7 +114,7 @@ async function runBenchmark(inputPath: string): Promise<void> {
     errorRecovery: true,
     plugins: babelPlugins,
     sourceType:
-      sourceType === SourceType.Module
+      sourceType === "module"
         ? ("module" as const)
         : ("script" as const),
   };

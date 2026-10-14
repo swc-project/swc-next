@@ -1,17 +1,7 @@
 import type { AstMeta } from "@swc-next/encoder";
 export type { AstMeta } from "@swc-next/encoder";
 import type { Program } from "@swc-next/types";
-export type {
-  Program,
-  Node,
-  Expression,
-  Statement,
-  Declaration,
-  Pattern,
-  Identifier,
-  Literal,
-} from "@swc-next/types";
-export type * as AST from "@swc-next/types";
+export type * from "@swc-next/types";
 
 export interface CodegenOptions {
   asciiOnly?: boolean;
