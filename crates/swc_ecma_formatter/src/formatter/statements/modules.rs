@@ -242,7 +242,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::VariableDeclaration(variable) => {
-                let (end, tail) = self.format_variable_declaration(variable, keyword, writer)?;
+                let (end, tail) = self.format_variable_declaration(
+                    variable,
+                    keyword,
+                    punctuation.tail_boundary(),
+                    writer,
+                )?;
                 self.finish_statement(end, tail, punctuation, writer)
             }
             DeclData::TsInterfaceDeclaration(interface) => {

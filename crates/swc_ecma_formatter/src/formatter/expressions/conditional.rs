@@ -44,6 +44,20 @@ pub(super) enum ConditionalClosing {
     MemberLine,
 }
 
+/// Branches share a root's layout decision; tests begin a separate chain.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ConditionalChain {
+    Root,
+    Standard,
+    Jsx { first: Expr },
+}
+
+impl ConditionalChain {
+    fn is_jsx(self) -> bool {
+        matches!(self, Self::Jsx { .. })
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ConditionalLayout {
     Root,
@@ -122,9 +136,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let prepared = self.prepare_conditional(conditional)?;
+        let chain = self.resolve_conditional_chain(context.conditional_chain, &prepared);
+        let context = context.with_conditional_chain(chain);
         let continuation = context.conditional_envelope == ConditionalEnvelope::OperationHead;
-        let closing_line =
-            continuation || context.conditional_closing == ConditionalClosing::MemberLine;
+        let closing_line = continuation
+            || !chain.is_jsx() && Self::conditional_grammar_pair_has_breakable_close(context);
         writer.group(false, |writer| {
             writer.text("(");
             let mut context = context.with_expression_start(ExpressionStart::None);
@@ -176,12 +192,80 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionPosition::ConditionalAlternate => ConditionalLayout::Alternate,
             _ => ConditionalLayout::Root,
         };
+        let chain = self.resolve_conditional_chain(context.conditional_chain, &prepared);
         let write = |writer: &mut Writer<'ast>| {
-            self.format_conditional_contents(prepared, context, layout, writer)
+            self.format_conditional_contents(prepared, context, layout, chain, writer)
         };
         match layout {
             ConditionalLayout::Root | ConditionalLayout::Test => writer.group(false, write),
             ConditionalLayout::Consequent | ConditionalLayout::Alternate => write(writer),
+        }
+    }
+
+    pub(super) fn conditional_grammar_pair_has_breakable_close(context: ExpressionContext) -> bool {
+        context.conditional_envelope == ConditionalEnvelope::OperationHead
+            || context.conditional_closing == ConditionalClosing::MemberLine
+    }
+
+    fn resolve_conditional_chain(
+        &self,
+        chain: ConditionalChain,
+        prepared: &PreparedConditional<'_>,
+    ) -> ConditionalChain {
+        match chain {
+            ConditionalChain::Root if self.ast.is_jsx() => self.conditional_chain(prepared),
+            ConditionalChain::Root => ConditionalChain::Standard,
+            chain => chain,
+        }
+    }
+
+    fn conditional_chain(&self, prepared: &PreparedConditional<'_>) -> ConditionalChain {
+        fn first_jsx(formatter: &Formatter<'_, '_>, mut expression: Expr) -> Option<Expr> {
+            loop {
+                match formatter.ast.expr_data(expression) {
+                    ExprData::JsxElement(_) | ExprData::JsxFragment(_) => return Some(expression),
+                    ExprData::ParenthesizedExpression(node) => {
+                        expression = node.expression(formatter.ast)
+                    }
+                    ExprData::ConditionalExpression(node) => {
+                        return [
+                            node.test(formatter.ast),
+                            node.consequent(formatter.ast),
+                            node.alternate(formatter.ast),
+                        ]
+                        .into_iter()
+                        .find_map(|expression| first_jsx(formatter, expression));
+                    }
+                    _ => return None,
+                }
+            }
+        }
+        let first = [
+            prepared.test.original,
+            prepared.consequent.original,
+            prepared.alternate.original,
+        ]
+        .into_iter()
+        .find_map(|expression| first_jsx(self, expression));
+        first.map_or(ConditionalChain::Standard, |first| ConditionalChain::Jsx {
+            first,
+        })
+    }
+
+    fn conditional_test_chain(&self, chain: ConditionalChain, test: Expr) -> ConditionalChain {
+        let ConditionalChain::Jsx { first } = chain else {
+            return chain;
+        };
+        let test = test.span(self.ast);
+        let first = first.span(self.ast);
+        // The witness is the first JSX in source-order traversal. Tests before
+        // it were already checked; only tests after it remain unvisited.
+        if test.end <= first.start {
+            ConditionalChain::Standard
+        } else if test.start <= first.start && first.end <= test.end {
+            chain
+        } else {
+            ConditionalChain::Root
         }
     }
 
@@ -218,6 +302,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: PreparedConditional<'ast>,
         context: ExpressionContext,
         layout: ConditionalLayout,
+        chain: ConditionalChain,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let PreparedConditional {
@@ -228,11 +313,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
         } = prepared;
         let operand_indent = match context.position {
-            ExpressionPosition::Nested | ExpressionPosition::RestrictedArgument => {
-                context.operand_indent
-            }
+            ExpressionPosition::Nested
+            | ExpressionPosition::RestrictedArgument
+            | ExpressionPosition::CallCallee { .. }
+            | ExpressionPosition::NewCallee => context.operand_indent,
             _ => OperandIndent::Parent,
         };
+        let test_chain = self.conditional_test_chain(chain, test.original);
         let write_test = |writer: &mut Writer<'ast>| {
             self.format_prepared_expression_with_leading_comments(
                 test.original,
@@ -246,6 +333,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionContext::at(ExpressionPosition::ConditionalTest)
                     .with_parent_head(context)
                     .with_operand_indent(operand_indent)
+                    .with_conditional_chain(test_chain)
                     .with_content_mode(question.previous_mode())
                     .with_tail_owner(TailOwner::ParentOperation),
                 writer,
@@ -267,8 +355,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     boundary: question,
                     following_mode: colon.previous_mode(),
                 },
+                chain,
                 writer,
-                |formatter, tail, writer| {
+                |formatter, tail, _, writer| {
                     formatter.resolve_conditional_boundary(colon, tail, writer)
                 },
             )?;
@@ -280,10 +369,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     boundary: colon,
                     following_mode: ContentMode::Formatted,
                 },
+                chain,
                 writer,
-                |_, tail, _| Ok(tail),
+                |formatter, tail, enclosed, writer| {
+                    if enclosed {
+                        formatter.format_expression_tail(tail, writer)?;
+                        Ok(None)
+                    } else {
+                        Ok(tail)
+                    }
+                },
             )
         };
+        if chain.is_jsx() {
+            return write_branches(writer);
+        }
         match layout {
             ConditionalLayout::Root | ConditionalLayout::Test => writer.indent(write_branches),
             ConditionalLayout::Consequent if options.indent_style == IndentStyle::Space => {
@@ -472,10 +572,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_conditional_branch<T>(
         &mut self,
         branch: ConditionalBranch<'ast>,
+        chain: ConditionalChain,
         writer: &mut Writer<'ast>,
         finish: impl FnOnce(
             &mut Self,
             Option<ExpressionTail<'ast>>,
+            bool,
             &mut Writer<'ast>,
         ) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {
@@ -489,7 +591,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary
             .before_operator
             .write(writer, FlatSeparator::Space, |writer| {
-                writer.line();
+                if chain.is_jsx() {
+                    writer.space();
+                } else {
+                    writer.line();
+                }
             });
         writer.text(boundary.operator);
         writer.space();
@@ -504,7 +610,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             boundary.next_mode
         };
-        let nested_consequent = matches!(position, ExpressionPosition::ConditionalConsequent)
+        let jsx_pair = chain.is_jsx()
+            && mode == ContentMode::Formatted
+            && matches!(boundary.next_binding, CommentBinding::Unbound)
+            && match content.data {
+                ExprData::NullLiteral(_) | ExprData::ParenthesizedExpression(_) => false,
+                ExprData::IdentifierReference(identifier) => {
+                    self.ast.get_utf8(identifier.name(self.ast)) != "undefined"
+                }
+                ExprData::ConditionalExpression(_) => {
+                    !matches!(position, ExpressionPosition::ConditionalAlternate)
+                }
+                _ => true,
+            };
+        let pair_lines = jsx_pair.then(|| {
+            let first = boundary
+                .leading
+                .first()
+                .map_or(content_start, |comment| comment.span.start);
+            let end = content.expression.span(self.ast).end;
+            (
+                self.line_constraint(first, first),
+                self.line_constraint(end, end),
+            )
+        });
+        let nested_consequent = !chain.is_jsx()
+            && matches!(position, ExpressionPosition::ConditionalConsequent)
             && matches!(content.data, ExprData::ConditionalExpression(_))
             && mode == ContentMode::Formatted;
         if nested_consequent {
@@ -540,6 +671,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let context = ExpressionContext::at(position)
                 .with_operand_indent(operand_indent)
+                .with_conditional_chain(chain)
                 .with_content_mode(mode)
                 .with_tail_owner(TailOwner::ParentOperation);
             let generated = boundary.annotation.and_then(|annotation| {
@@ -572,8 +704,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if nested_consequent {
                 writer.if_flat(")");
             }
-            finish(self, tail, writer)
+            finish(self, tail, jsx_pair, writer)
         };
+        if let Some((opening, closing)) = pair_lines {
+            writer.if_break("(");
+            let result = writer.indent(|writer| {
+                opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                write(writer)
+            })?;
+            closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+            writer.if_break(")");
+            return Ok(result);
+        }
+        if chain.is_jsx() {
+            return write(writer);
+        }
         match indent_style {
             IndentStyle::Space => writer.align(2, write),
             IndentStyle::Tab => writer.indent(write),

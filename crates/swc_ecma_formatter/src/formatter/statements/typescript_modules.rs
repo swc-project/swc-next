@@ -153,7 +153,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             prefix_mode
         };
-        let context = ExpressionContext::variable_initializer().with_content_mode(mode);
+        let context = ExpressionContext::variable_initializer()
+            .with_tail_boundary(punctuation.tail_boundary())
+            .with_content_mode(mode);
         writer.text("export");
         let tail = if prefix_mode == ContentMode::Verbatim {
             self.format_verbatim(prefix, writer)?;

@@ -35,7 +35,7 @@ pub(in crate::formatter) use self::typescript::ExpressionTypeArguments;
 use self::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use self::assignment::AssignmentParent;
 use self::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
-use self::conditional::{ConditionalClosing, ConditionalEnvelope};
+use self::conditional::{ConditionalChain, ConditionalClosing, ConditionalEnvelope};
 use self::objects::RecordedObject;
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
@@ -181,6 +181,12 @@ pub(super) enum SourceTailOwner {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum TailBoundary {
+    Separated,
+    Adjacent,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum OperandIndent {
     Expression,
     Parent,
@@ -220,11 +226,13 @@ pub(super) struct ExpressionContext {
     computed_receiver: Option<Expr>,
     conditional_closing: ConditionalClosing,
     conditional_envelope: ConditionalEnvelope,
+    conditional_chain: ConditionalChain,
     member_layout: MemberLayout,
     member_chain_layout: MemberChainLayout,
     arrow_layout: arrows::ArrowLayout,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
+    tail_boundary: TailBoundary,
 }
 
 impl ExpressionContext {
@@ -264,6 +272,11 @@ impl ExpressionContext {
         self
     }
 
+    fn with_conditional_chain(mut self, chain: ConditionalChain) -> Self {
+        self.conditional_chain = chain;
+        self
+    }
+
     fn type_operand(
         self,
         position: ExpressionPosition,
@@ -294,6 +307,7 @@ impl ExpressionContext {
     pub(super) fn binding_initializer() -> Self {
         let mut context = Self::at(ExpressionPosition::Initializer(AssignmentParent::Nested))
             .with_source_tail_owner(SourceTailOwner::Enclosure);
+        context = context.with_tail_boundary(TailBoundary::Adjacent);
         context.conditional_envelope = ConditionalEnvelope::Local;
         context.arrow_layout = arrows::ArrowLayout::Ordinary;
         context
@@ -341,6 +355,7 @@ impl ExpressionContext {
             },
             member_chain_layout: MemberChainLayout::Fluent,
             conditional_closing: ConditionalClosing::Inline,
+            conditional_chain: ConditionalChain::Root,
             conditional_envelope: match position {
                 ExpressionPosition::AssignmentRight(_)
                 | ExpressionPosition::Initializer(_)
@@ -352,6 +367,7 @@ impl ExpressionContext {
             },
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
+            tail_boundary: TailBoundary::Separated,
         }
     }
 
@@ -385,6 +401,11 @@ impl ExpressionContext {
 
     pub(super) fn with_source_tail_owner(mut self, owner: SourceTailOwner) -> Self {
         self.source_tail_owner = owner;
+        self
+    }
+
+    pub(super) fn with_tail_boundary(mut self, boundary: TailBoundary) -> Self {
+        self.tail_boundary = boundary;
         self
     }
 

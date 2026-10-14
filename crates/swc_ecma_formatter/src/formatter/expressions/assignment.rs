@@ -2,7 +2,7 @@
 
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
-use super::parentheses::ExpressionContent;
+use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
@@ -106,6 +106,7 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     pub(in crate::formatter) own_line: bool,
     pub(in crate::formatter) mode: ContentMode,
     cast_leading: Option<CastLeadingLayout>,
+    jsx_head_binding: Option<CommentBinding>,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
@@ -122,6 +123,16 @@ impl<'ast> AssignmentBoundary<'ast> {
 
     fn rhs_starts_on_own_line(&self) -> bool {
         self.own_line
+            && !(self.mode == ContentMode::Formatted
+                && self.moved.is_empty()
+                && matches!(self.jsx_head_binding, Some(CommentBinding::Unbound)))
+    }
+
+    pub(in crate::formatter) fn resolved_right_head(&self) -> Option<ResolvedExpressionHead<'ast>> {
+        self.jsx_head_binding.map(|binding| ResolvedExpressionHead {
+            head: self.right_head(),
+            binding,
+        })
     }
 
     pub(in crate::formatter) fn right_head(&self) -> NodeHead<'ast> {
@@ -200,7 +211,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
                         .with_source_tail_owner(SourceTailOwner::Enclosure)
                         .with_content_mode(source.right)
-                        .with_tail_owner(context.tail_owner),
+                        .with_tail_owner(context.tail_owner)
+                        .with_tail_boundary(context.tail_boundary),
                     writer,
                 )
             });
@@ -222,7 +234,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let right_context = ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_content_mode(boundary.mode)
-            .with_tail_owner(context.tail_owner);
+            .with_tail_owner(context.tail_owner)
+            .with_tail_boundary(context.tail_boundary);
         let mut layout = self.assignment_layout(data, context.position, right_context, &boundary);
         let binding = target.binding();
         if let Some(pattern) = binding {
@@ -341,13 +354,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 self.comments.claim(boundary.leading)?;
                 self.comments.claim(boundary.trailing)?;
-                self.format_prepared_expression_with_leading_comments(
-                    right,
-                    content,
-                    boundary.right_head(),
-                    right_context,
-                    writer,
-                )
+                if let Some(head) = boundary.resolved_right_head() {
+                    self.format_prepared_expression_with_resolved_head(
+                        right,
+                        content,
+                        head,
+                        right_context,
+                        writer,
+                    )
+                } else {
+                    self.format_prepared_expression_with_leading_comments(
+                        right,
+                        content,
+                        boundary.right_head(),
+                        right_context,
+                        writer,
+                    )
+                }
             };
             let separator = |writer: &mut Writer<'ast>| {
                 boundary
@@ -578,6 +601,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             own_line: false,
             mode: ContentMode::Formatted,
             cast_leading: None,
+            jsx_head_binding: None,
         };
         if let ExprData::ParenthesizedExpression(parenthesized) = content.data
             && let Some(child) =
@@ -633,11 +657,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             boundary.before = before;
         }
+        let jsx_head = matches!(
+            content.data,
+            ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+        );
         let mut line_count = 0;
         if !promoted && !before_line && !hugs_comments {
+            let operator_tail_end = content
+                .parentheses
+                .filter(|_| jsx_head)
+                .map_or(right_start, |removed| removed.source.outer.start);
             let mut end = boundary.operator_span.end;
             for (index, comment) in after.iter().enumerate() {
-                if self.line_breaks(end, comment.span.start) != 0 {
+                if comment.span.start >= operator_tail_end
+                    || self.line_breaks(end, comment.span.start) != 0
+                {
                     break;
                 }
                 if comment.kind == CommentKind::Line {
@@ -693,6 +727,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || self.source_line_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.start, comment.span.end) != 0
             });
+        if !leading.is_empty() && jsx_head {
+            let binding = self.expression_head_binding(leading, content.expression);
+            boundary.jsx_head_binding = Some(
+                content
+                    .parentheses
+                    .map_or(binding, |removed| binding.combine(removed.head.binding)),
+            );
+        }
         if !leading.is_empty() && self.parenthesis_has_type_cast(right_start) {
             let breaks = leading.iter().enumerate().any(|(index, comment)| {
                 let next = leading

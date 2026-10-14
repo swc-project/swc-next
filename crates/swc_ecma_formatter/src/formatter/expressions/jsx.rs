@@ -869,23 +869,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 data
             };
-            if !matches!(
-                data,
-                ExprData::IdentifierReference(_)
-                    | ExprData::ThisExpression(_)
-                    | ExprData::Super(_)
-                    | ExprData::StringLiteral(_)
-                    | ExprData::NumericLiteral(_)
-                    | ExprData::BigIntLiteral(_)
-                    | ExprData::BooleanLiteral(_)
-                    | ExprData::NullLiteral(_)
-                    | ExprData::RegExpLiteral(_)
-                    | ExprData::MemberExpression(_)
-                    | ExprData::TemplateLiteral(_)
-                    | ExprData::TaggedTemplateExpression(_)
-            ) {
-                return Err(self.unsupported("JSX expression layout", expression));
-            }
             let core_span = content
                 .as_ref()
                 .map_or(expression_span, |content| content.expression.span(ast));
@@ -896,7 +879,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .comments
                     .in_range(Span::new(core_span.end, closing))
                     .is_empty()
-                && Self::jsx_expression_hugs(data)
+                && self.jsx_expression_hugs(data, role)
         } else {
             false
         };
@@ -1248,11 +1231,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// Template braces retain their interpolation continuation owner.
-    fn jsx_expression_hugs(data: ExprData) -> bool {
-        matches!(
-            data,
-            ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
-        )
+    fn jsx_expression_hugs(&self, mut data: ExprData, role: JsxBraceRole) -> bool {
+        let mut child = matches!(role, JsxBraceRole::Child);
+        loop {
+            match data {
+                ExprData::ObjectExpression(_)
+                | ExprData::ArrayExpression(_)
+                | ExprData::CallExpression(_)
+                | ExprData::Function(_)
+                | ExprData::TemplateLiteral(_)
+                | ExprData::TaggedTemplateExpression(_) => return true,
+                ExprData::BinaryExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::ConditionalExpression(_) => return child,
+                ExprData::AwaitExpression(awaited) => {
+                    let argument = self.expression_content(awaited.argument(self.ast));
+                    let argument_span = argument.expression.span(self.ast);
+                    let awaited_span = awaited.span(self.ast);
+                    if !self
+                        .comments
+                        .in_range(Span::new(awaited_span.start + 5, argument_span.start))
+                        .is_empty()
+                        || !self
+                            .comments
+                            .in_range(Span::new(argument_span.end, awaited_span.end))
+                            .is_empty()
+                    {
+                        return false;
+                    }
+                    data = argument.data;
+                    if matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_)) {
+                        return true;
+                    }
+                    child = false;
+                }
+                _ => return false,
+            }
+        }
     }
 }
 
