@@ -4,7 +4,7 @@ mod options_wire;
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::ffi::ast::{buffer_size, serialize_into};
 use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::check_syntax;
 
 pub use self::options::{CommentMode, Lang, ParserOptions, SourceType};
 
@@ -24,14 +24,7 @@ pub unsafe fn parse_to_buffer(
 
     let mut diagnostics = result.diagnostics;
     if options.semantic_errors {
-        let semantic = analyze(
-            &result.ast,
-            AnalyzeOptions {
-                check_syntax: true,
-                ..AnalyzeOptions::default()
-            },
-        );
-        diagnostics.extend(semantic.diagnostics);
+        diagnostics.extend(check_syntax(&result.ast));
     }
 
     let buffer_size = buffer_size(&result.ast, &diagnostics);
