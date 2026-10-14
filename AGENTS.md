@@ -27,9 +27,9 @@ Run from the workspace root.
 | Assemble browser package | `node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core`                 |
 | Build all WASM packages  | `pnpm build:wasm [--profile wasm-release]`                                                                |
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
-| Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                                   |
-| Test standalone walker | `node --test npm/core/test/ast.test.js` (imports `@swc-next/walker`; no native binding required) |
-| Check JS API types       | `pnpm --filter @swc-next/core test:types` (also included in `pnpm test`)                                  |
+| Test Node.js API         | `pnpm test` (core tests in `npm/core/test`; walker tests in `packages/walker/test`)                                                   |
+| Test standalone walker | `pnpm --filter @swc-next/walker test:unit` (no native binding required) |
+| Check JS API types       | `pnpm --filter @swc-next/walker test:types` (also included in `pnpm test`)                                  |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                                                |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                                  |
 
@@ -109,6 +109,6 @@ Use a small `input.js`/`.ts`/`.tsx` file.
 ### Adding JavaScript Unit Tests
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
-- New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
+- Put core API/FFI tests in `npm/core/test` and walker tests in `packages/walker/test`, including its core integration tests in `test/integration`. Walker unit tests and type checks require no native binding; integration tests require a core build. Root `pnpm test` runs both packages, and `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
 
 Update this file when the commands or workflows above change; otherwise do not edit it.

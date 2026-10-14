@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseSync, printSync } from "../src-js/index.js";
+import { parseSync, printSync } from "@swc-next/core";
 import { walk } from "@swc-next/walker";
 
 const ast = (source) => parseSync(source).program;

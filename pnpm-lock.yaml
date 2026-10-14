@@ -299,9 +299,6 @@ importers:
       '@napi-rs/cli':
         specifier: 'catalog:'
         version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
-      '@swc-next/walker':
-        specifier: workspace:*
-        version: link:../../packages/walker
       '@swc/core':
         specifier: 'catalog:'
         version: 1.15.46(@swc/helpers@0.5.23)
@@ -353,7 +350,20 @@ importers:
 
   packages/encoder: {}
 
-  packages/walker: {}
+  packages/walker:
+    devDependencies:
+      '@swc-next/core':
+        specifier: workspace:*
+        version: link:../../npm/core
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
 packages:
 

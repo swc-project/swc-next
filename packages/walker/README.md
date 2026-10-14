@@ -134,3 +134,19 @@ narrow `node.type`; other fields use the structural `AstNode` interface. This
 first version does not generate complete per-node field declarations. Consumers
 can supply their own discriminated union with `WalkHooks<State, Nodes>` and
 `walk<Root, State, Nodes>(root, hooks, state)` for field-level checking.
+
+## Development
+
+```sh
+# Unit tests and declarations; no native binding required.
+pnpm --filter @swc-next/walker test:unit
+pnpm --filter @swc-next/walker test:types
+
+# All walker tests, including core parse/edit/print integration.
+pnpm --filter @swc-next/core build
+pnpm --filter @swc-next/walker test
+```
+
+Tests live in `test/`; core integration tests live in `test/integration/`.
+The core package is a development-only dependency. Root `pnpm test` and
+`pnpm test:wasm` include both packages. Tests are excluded from the published package.
