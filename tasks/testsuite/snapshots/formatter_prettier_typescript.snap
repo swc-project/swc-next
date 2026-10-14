@@ -3,19 +3,19 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 791/804 (98.38%)
-Snapshot matched: 791/804
-AST parity: 804/804
-AST mismatched: 0/804
-AST format errors: 0/804
-Mismatched: 13/804
-Format errors: 0/804
-Panicked: 0/804
-Not idempotent: 0/804
+Passed: 793/806 (98.39%)
+Snapshot matched: 793/806
+AST parity: 806/806
+AST mismatched: 0/806
+AST format errors: 0/806
+Mismatched: 13/806
+Format errors: 0/806
+Panicked: 0/806
+Not idempotent: 0/806
 Ignored files: 76
-Parse errors: 0/804
+Parse errors: 0/806
 Expected parser errors: 1
-Unsupported option sets: 7
+Unsupported option sets: 5
 
 # Expected parser errors
 
@@ -37,8 +37,6 @@ Unsupported option sets: 7
 
 # Unsupported option sets
 
-- jsx/attribute-blank-lines/format.test.js - unsupported Prettier option singleAttributePerLine=true
-- jsx/single-attribute-per-line/format.test.js - unsupported Prettier option singleAttributePerLine=true
 - typescript/conditional-types/format.test.js - unsupported Prettier option experimentalTernaries=true
 - typescript/intersection/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
 - typescript/method-chain/object/format.test.js - unsupported Prettier option objectWrap="collapse"

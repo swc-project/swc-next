@@ -1,0 +1,150 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const single=<Widget<string, number> value={value}/>;
+const attributes=<Widget<string, number> first second/>;
+const child=<Widget<{ first: number; second: string }> {...properties} active>child</Widget>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+const single = <Widget<string, number> value={value} />;
+const attributes = <Widget<string, number> first second />;
+const child = (
+  <Widget<{ first: number; second: string }> {...properties} active>
+    child
+  </Widget>
+);
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+const single = <Widget<string, number> value={value} />;
+const attributes = (
+  <Widget<string, number>
+    first
+    second
+  />
+);
+const child = (
+  <Widget<{ first: number; second: string }>
+    {...properties}
+    active
+  >
+    child
+  </Widget>
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const single = (
+  <Widget<
+    string,
+    number
+  >
+    value={value}
+  />
+);
+const attributes = (
+  <Widget<
+    string,
+    number
+  >
+    first
+    second
+  />
+);
+const child = (
+  <Widget<{
+    first: number;
+    second: string;
+  }>
+    {...properties}
+    active
+  >
+    child
+  </Widget>
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const single = (
+  <Widget<
+    string,
+    number
+  >
+    value={value}
+  />
+);
+const attributes = (
+  <Widget<
+    string,
+    number
+  >
+    first
+    second
+  />
+);
+const child = (
+  <Widget<{
+    first: number;
+    second: string;
+  }>
+    {...properties}
+    active
+  >
+    child
+  </Widget>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+const single = <Widget<string, number> value={value} />;
+const attributes = (
+  <Widget<string, number>
+    first
+    second
+  />
+);
+const child = (
+  <Widget<{ first: number; second: string }>
+    {...properties}
+    active>
+    child
+  </Widget>
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const single = (
+  <Widget<
+    string,
+    number
+  >
+    value={value}
+  />
+);
+const attributes = (
+  <Widget<
+    string,
+    number
+  >
+    first
+    second
+  />
+);
+const child = (
+  <Widget<{
+    first: number;
+    second: string;
+  }>
+    {...properties}
+    active>
+    child
+  </Widget>
+);

@@ -1,0 +1,205 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const head=<// name
+Box first second/>;
+const between=<Box first /* attribute */ second/>;
+const tail=<Box first second // closing
+>child</Box>;
+const blank=<Box first
+
+second/>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = <Box first /* attribute */ second />;
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+const head = (
+  <
+    // name
+    Box
+    first
+    second
+  />
+);
+const between = (
+  <Box
+    first
+    /* attribute */ second
+  />
+);
+const tail = (
+  <Box
+    first
+    second // closing
+  >
+    child
+  </Box>
+);
+const blank = (
+  <Box
+    first
+
+    second
+  />
+);

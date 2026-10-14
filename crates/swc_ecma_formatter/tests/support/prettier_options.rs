@@ -101,6 +101,9 @@ pub fn apply_prettier_option(
         "bracketSameLine" | "jsxBracketSameLine" => {
             options.bracket_same_line |= value.as_bool().ok_or_else(unsupported)?;
         }
+        "singleAttributePerLine" => {
+            options.single_attribute_per_line = value.as_bool().ok_or_else(unsupported)?;
+        }
         _ => return Err(unsupported()),
     }
     Ok(())
