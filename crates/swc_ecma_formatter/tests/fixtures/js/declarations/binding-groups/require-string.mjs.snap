@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { one, two, three, four, five, six, seven, eight, nine, ten } = require("./my-utils");
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten,
+} = require("./my-utils");
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten,
+} = require("./my-utils");
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const {
+  one,
+  two,
+  three,
+  four,
+  five,
+  six,
+  seven,
+  eight,
+  nine,
+  ten
+} = require("./my-utils")
