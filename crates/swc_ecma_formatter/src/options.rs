@@ -134,6 +134,7 @@ pub enum QuoteStyle {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum QuoteProperties {
     AsNeeded,
+    Consistent,
     Preserve,
 }
 

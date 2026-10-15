@@ -19,7 +19,7 @@ use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuot
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
+use crate::{FormatError, TrailingCommas, document::Writer};
 
 #[derive(Clone, Copy)]
 enum ModuleName {
@@ -936,10 +936,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })
             .transpose()?;
         if let Some(list) = attribute_list.as_mut() {
-            list.key_quoting = match self.options.quote_properties {
-                QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-                QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-            };
+            list.key_quoting = self.property_key_quoting(|| {
+                attributes.iter().any(|id| {
+                    let attribute = ast.get_node_in_sub_range(id);
+                    let key = match ast.module_export_name_data(attribute.key(ast)) {
+                        ModuleExportNameData::IdentifierName(name) => {
+                            PropertyKey::IdentifierName(name)
+                        }
+                        ModuleExportNameData::StringLiteral(literal) => {
+                            PropertyKey::Expr(Expr::StringLiteral(literal))
+                        }
+                    };
+                    self.property_key_requires_quotes(
+                        key,
+                        false,
+                        PropertyKeyContext::ModuleAttribute,
+                    )
+                })
+            });
         }
         if let (Some(list), Some(first)) = (attribute_list.as_mut(), first) {
             let key = first.key(ast);

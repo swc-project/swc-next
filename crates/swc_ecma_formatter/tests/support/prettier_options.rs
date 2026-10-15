@@ -76,6 +76,7 @@ pub fn apply_prettier_option(
         "quoteProps" => {
             options.quote_properties = match value.as_str() {
                 Some("as-needed") => QuoteProperties::AsNeeded,
+                Some("consistent") => QuoteProperties::Consistent,
                 Some("preserve") => QuoteProperties::Preserve,
                 _ => return Err(unsupported()),
             };
