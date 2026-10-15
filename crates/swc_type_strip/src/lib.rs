@@ -23,7 +23,7 @@ use swc_next_ecma_ast::{
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, Span};
 pub use swc_next_ecma_parser::Options;
-use swc_next_ecma_parser::{CommentMode, ParseReturn, Parser, TokenParserConfig, TokenTag};
+use swc_next_ecma_parser::{CommentMode, ParseReturn, Parser, Token, TokenParserConfig, TokenTag};
 
 use crate::token_cursor::TokenCursor;
 
@@ -359,7 +359,7 @@ impl TypeEraser<'_, '_, '_> {
 
     fn preserve_keyword_named_class_field(
         &mut self,
-        key_span: Span,
+        key_token: Option<Token>,
         separator_start: Option<u32>,
         has_value: bool,
     ) {
@@ -369,7 +369,7 @@ impl TypeEraser<'_, '_, '_> {
         let Some(separator_start) = separator_start else {
             return;
         };
-        let Some(key) = self.tokens.first_in_range(key_span.start, key_span.end) else {
+        let Some(key) = key_token else {
             return;
         };
         if !matches!(key.tag(), TokenTag::Get | TokenTag::Set | TokenTag::Static) {
@@ -632,7 +632,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             .or(optional_start)
             .or(definite_start);
         self.preserve_keyword_named_class_field(
-            key_span,
+            key_token,
             separator_start,
             node.value(self.ast).is_some(),
         );
