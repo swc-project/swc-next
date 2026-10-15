@@ -16,6 +16,17 @@ Run from the workspace root.
 | Benchmark wall time                                | `cargo bench -p benchmark --bench <parser\|visit\|semantic>`         |
 | Benchmark instructions (Linux + Valgrind/Gungraun) | `cargo bench -p benchmark --bench gungraun`                          |
 
+Run Gungraun comparisons without a PR after pushing the comparison commits:
+
+```sh
+gh workflow run gungraun.yml --ref <workflow-branch> -f base_ref=<base-sha> -f head_ref=<head-sha> -f filter='<benchmark-filter>'
+```
+
+The workflow must first exist on the default branch. Omit `head_ref` to compare
+against the dispatch revision; omit `filter` to run all benchmarks. Results and
+resolved SHAs are available in the run summary and artifacts. PRs still run the
+base-versus-merge comparison automatically.
+
 ### JavaScript Development
 
 | Task                     | Command                                                                                                   |

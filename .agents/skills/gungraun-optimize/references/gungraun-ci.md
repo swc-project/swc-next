@@ -42,7 +42,20 @@ See the official [CI installation guide](https://gungraun.github.io/gungraun/lat
 
 ## Base and head comparison
 
-Use a pull request workflow with full history. Resolve the base and head from the event payload, not from an ambiguous local branch name.
+Use `workflow_dispatch` to measure experiments before creating a PR. The workflow must exist on the repository's default branch before manual dispatch is available. Land the permanent dispatch support first; if it is unavailable, report the blocker instead of opening experiment PRs to trigger measurements. See the [GitHub manual workflow documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow?tool=cli).
+
+Push the task-owned stack with `gh stack push`, then dispatch with immutable comparison SHAs:
+
+```bash
+gh workflow run gungraun.yml --ref <workflow-branch> \
+  -f base_ref=<base-sha> -f head_ref=<head-sha> -f filter='<benchmark-filter>'
+```
+
+- `--ref` selects the workflow revision. Keep it fixed across the incremental and cumulative runs. `base_ref` is required; `head_ref` defaults to the dispatch revision, and an omitted or empty `filter` runs the whole suite.
+- Run incremental comparisons against the previous accepted SHA and cumulative comparisons against the frozen starting trunk SHA. Reuse a run when both bases are identical.
+- Record dispatch time and workflow branch SHA. Find the matching `workflow_dispatch` run with `gh run list --workflow gungraun.yml --event workflow_dispatch --branch <workflow-branch> --json databaseId,headSha,createdAt,status,url`, then wait with `gh run watch <run-id> --exit-status` and download with `gh run download <run-id>`. Confirm artifact metadata `comparison.base_sha`, `comparison.compare_sha`, and `benchmark.filter` before accepting the result. If concurrent runs are candidates, inspect their metadata rather than guessing from list order.
+- Resolve refs once to commit SHAs before benchmarking. Use the same quoted filter argument for both runs. The existing PR trigger continues to compare the event's base SHA with its merge SHA; it does not replace the exact-head manual evidence.
+- Preserve reporting scripts from the workflow checkout before switching revisions so older benchmark revisions do not need the current reporting code.
 
 Run the base revision first:
 
@@ -53,7 +66,7 @@ cargo bench --quiet -p <package> --bench <bench> -- \
   --save-baseline=base
 ```
 
-Then run the exact pull request head and retain a JSON summary:
+Then run the exact comparison head and retain a JSON summary:
 
 ```bash
 git checkout --detach "$HEAD_SHA"
@@ -67,22 +80,20 @@ cargo bench --quiet -p <package> --bench <bench> -- \
 - Do not add `--callgrind-limits`, `--cachegrind-limits`, or `--dhat-limits` to a new reporting-only workflow.
 - Preserve existing regression limits unless the user asks to change them. Distinguish their exit code from build or harness errors.
 - When bootstrapping a new harness against a base that lacks it, restore only benchmark plumbing from head after checking out base. Never restore the optimized production source. Confirm that the harness calls an API available on base.
-- If benchmark source, features, or inputs differ between revisions, stop and establish a temporary harness-only bottom layer before optimizing. Do not make that layer permanent unless the user explicitly requests a permanent harness.
+- If benchmark source, features, or inputs differ between revisions, stop and establish identical plumbing in a separate temporary measurement stack before optimizing. Do not make that layer permanent unless the user explicitly requests a permanent harness.
 
 See the official [baseline guide](https://gungraun.github.io/gungraun/latest/html/cli_and_env/baselines.html) and [basic CLI reference](https://gungraun.github.io/gungraun/latest/html/cli_and_env/basics.html).
 
 ## Temporary harness stack
 
-Use a temporary harness only when the repository lacks valid measurement plumbing. Manage it as the bottom layer of a dedicated `gh stack`, never as an unrelated prerequisite pull request.
+Use a temporary harness only when existing measurement plumbing is insufficient. Keep it in a separate task-owned measurement stack with no PRs.
 
-- Initialize the temporary branch from trunk with `gh stack init --base <trunk> <temporary-ci-branch>` and publish it as a draft pull request with `gh stack submit --auto`.
-- Keep only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes in the temporary commit. Do not mix production optimizations into it.
-- Record its branch, pull request, commit, paths, and exact manifest hunks before adding optimization layers above it.
-- Use the temporary layer to produce the baseline, summaries, profiles, and artifact URLs needed to judge each optimization pull request.
-- At the end, use `gh stack modify` to drop the temporary layer and cascade-rebase accepted optimization layers onto trunk. Resubmit it with `gh stack submit --auto` so every pull request base is updated.
-- Close the temporary pull request, delete its remote branch, and run `gh stack sync --prune` after the accepted stack has been resubmitted.
-- Verify the temporary commit is unreachable from every accepted branch and the recorded paths and hunks are absent from the cumulative trunk-to-top diff. A cleanup revert commit is not acceptable because it leaves temporary CI in the final history.
-- Retain links to the pre-cleanup CI runs and artifacts as measurement evidence, then run normal correctness CI against the rewritten stack.
+- Initialize it with `gh stack init --base <trunk> <temporary-ci-branch>`. Commit only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes. Record the branch, commit, paths, and exact manifest hunks.
+- Push with `gh stack push` and dispatch the workflow on the measurement branch. Establish initial profiles before editing production code. Do not call `gh stack submit` on this stack.
+- Keep a harness-only counterpart of starting trunk for cumulative comparisons, and use the last accepted measurement revision for incremental comparisons. Both sides must have identical benchmark definitions, inputs, features, and toolchain. Only bootstrap plumbing onto unchanged production code whose API supports it.
+- After each acceptance, switch to the separate publication stack. Create its first layer with `gh stack init --base <trunk> <accepted-branch>` or add later layers with `gh stack add <accepted-branch>`. Cherry-pick only that accepted production optimization commit. Verify one commit per layer, matching production diffs, no harness ancestry or hunks, and correctness before immediately calling `gh stack submit --auto`.
+- Record measured-to-published SHA mappings and attach the comparison evidence to each PR. If transferring the change requires production edits, remeasure that revised patch before publishing it. Continue experiments on the measurement stack.
+- At the end, retain run links and artifacts, remove the task-owned measurement stack with `gh stack modify`, and delete its remote branches. Verify all published diffs and ancestry exclude temporary plumbing. There are no temporary PRs to close.
 
 ## Profiles and machine-readable output
 
@@ -97,8 +108,9 @@ See the official [machine-readable output](https://gungraun.github.io/gungraun/l
 ## GitHub security and reporting
 
 - Use the `pull_request` event to run pull request code. Never use `pull_request_target` for the benchmark job.
+- Gate PR comments explicitly on the `pull_request` event. Manual runs report through job summaries and artifacts, with `pull_request: null` in metadata schema version 2 and common revision fields under `comparison`.
 - Grant `contents: read` by default. Grant `pull-requests: write` only when the workflow publishes a comment.
 - Publish or update a marker-based PR comment only for trusted same-repository branches. Skip write operations for forks and restricted automation users.
 - Make job summary and artifact upload work without write permissions so fork pull requests retain useful results.
-- Use concurrency keyed by pull request number and cancel superseded runs. Associate every result with its head SHA and ignore cancelled older runs.
+- Use concurrency keyed by PR number for PR runs and by run ID for manual runs. Manual incremental and cumulative runs must not cancel each other. Associate every result with its resolved comparison SHAs and ignore cancelled runs.
 - Capture the benchmark exit status before rendering or uploading reports, perform reporting under `always()`, and finally return the original benchmark failure when the harness itself failed.

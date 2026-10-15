@@ -1,6 +1,18 @@
 name: Gungraun Benchmarks
 
 on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: Base branch, tag, or commit SHA
+        required: true
+        type: string
+      head_ref:
+        description: Compare branch, tag, or commit SHA (defaults to dispatch revision)
+        type: string
+      filter:
+        description: Gungraun benchmark filter (empty runs all benchmarks)
+        type: string
   pull_request:
     types: ["opened", "reopened", "synchronize"]
 
@@ -9,7 +21,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: gungraun-${{ github.event.pull_request.number }}
+  group: gungraun-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -17,18 +29,67 @@ jobs:
     name: Compare Gungraun benchmarks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      BENCHMARK_FILTER: ${{ inputs.filter }}
+      ARTIFACT_NAME: gungraun-valgrind-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
+      - name: Resolve comparison revisions and preserve reporting code
+        id: revisions
+        env:
+          BASE_REF: ${{ inputs.base_ref || github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ inputs.head_ref }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          cp .github/scripts/render-gungraun-summary.mjs "$RUNNER_TEMP/render-gungraun-summary.mjs"
+
+          # Cargo appends --bench, so a second -- cannot delimit the filter.
+          if [[ "$BENCHMARK_FILTER" == -* ]]
+          then
+            echo 'filter must be a benchmark pattern, not an option' >&2
+            exit 1
+          fi
+
+          resolve_remote() {
+            git fetch --no-tags -- origin "$1" || return $?
+            git rev-parse --verify 'FETCH_HEAD^{commit}'
+          }
+
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]
+          then
+            [[ -n "$BASE_REF" ]] || { echo 'base_ref is required' >&2; exit 1; }
+            base_sha="$(resolve_remote "$BASE_REF")"
+            if [[ -n "$HEAD_REF" ]]
+            then
+              compare_sha="$(resolve_remote "$HEAD_REF")"
+            else
+              compare_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+            fi
+          else
+            base_sha="$(git rev-parse --verify "${BASE_REF}^{commit}")"
+            compare_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+          fi
+
+          {
+            echo "base_sha=$base_sha"
+            echo "compare_sha=$compare_sha"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "Base SHA: $base_sha"
+            echo "Compare SHA: $compare_sha"
+          } > "$RUNNER_TEMP/gungraun-revisions.txt"
+          cat "$RUNNER_TEMP/gungraun-revisions.txt" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup rust toolchain and cache
         uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
         with:
           cache-save-if: false
 
-      - name: Keep the same Rust toolchain for base and merge
+      - name: Keep the same Rust toolchain for base and compare
         run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
 
       - name: Install Valgrind
@@ -39,8 +100,8 @@ jobs:
 
       - name: Save base benchmark
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
+          BASE_SHA: ${{ steps.revisions.outputs.base_sha }}
+          COMPARE_SHA: ${{ steps.revisions.outputs.compare_sha }}
           GUNGRAUN_COLOR: never
         run: |
           git checkout --detach "$BASE_SHA"
@@ -61,14 +122,19 @@ jobs:
           cargo install --locked --version "$runner_version" gungraun-runner
           gungraun-runner --version
 
+          filter_args=()
+          if [[ -n "$BENCHMARK_FILTER" ]]
+          then
+            filter_args+=("$BENCHMARK_FILTER")
+          fi
           cargo bench --quiet --locked -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --callgrind-metrics=Ir \
-            --save-baseline=base
+            --save-baseline=base "${filter_args[@]}" 2>&1 | tee "$RUNNER_TEMP/gungraun-base.txt"
 
-      - name: Compare merge benchmark
+      - name: Compare head benchmark
         env:
-          COMPARE_SHA: ${{ github.sha }}
+          COMPARE_SHA: ${{ steps.revisions.outputs.compare_sha }}
           GUNGRAUN_COLOR: never
           GUNGRAUN_SHOW_INTERMEDIATE: true
         run: |
@@ -80,15 +146,20 @@ jobs:
 
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
+          filter_args=()
+          if [[ -n "$BENCHMARK_FILTER" ]]
+          then
+            filter_args+=("$BENCHMARK_FILTER")
+          fi
           set +e
           cargo bench --quiet --locked -p benchmark --bench gungraun -- \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
             --callgrind-metrics=Ir \
-            --save-summary=json 2>&1 | tee "$report"
+            --save-summary=json "${filter_args[@]}" 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
-          node .github/scripts/render-gungraun-summary.mjs \
+          node "$RUNNER_TEMP/render-gungraun-summary.mjs" \
             "$RUNNER_TEMP/gungraun" > "$summary"
           summary_status="$?"
           set -e
@@ -105,7 +176,9 @@ jobs:
           {
             echo "## Gungraun benchmark diff"
             echo
-            echo 'Values are shown as `merge | base`.'
+            cat "$RUNNER_TEMP/gungraun-revisions.txt"
+            echo
+            echo 'Values are shown as `compare / base`.'
             echo
             cat "$summary"
             echo
@@ -123,11 +196,10 @@ jobs:
       - name: Prepare Valgrind artifact metadata
         if: always()
         env:
-          ARTIFACT_NAME: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          COMPARE_SHA: ${{ github.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ inputs.base_ref || github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ steps.revisions.outputs.base_sha }}
+          COMPARE_SHA: ${{ steps.revisions.outputs.compare_sha }}
+          HEAD_REF: ${{ inputs.head_ref || github.event.pull_request.head.ref || github.ref }}
           JOB_STATUS: ${{ job.status }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -147,6 +219,8 @@ jobs:
             --arg artifact_name "$ARTIFACT_NAME" \
             --arg base_ref "$BASE_REF" \
             --arg base_sha "$BASE_SHA" \
+            --arg benchmark_filter "$BENCHMARK_FILTER" \
+            --arg benchmark_home "$RUNNER_TEMP/gungraun" \
             --arg cargo_version "$cargo_version" \
             --arg compare_sha "$COMPARE_SHA" \
             --arg event_name "$GITHUB_EVENT_NAME" \
@@ -166,7 +240,7 @@ jobs:
             --arg valgrind_version "$valgrind_version" \
             --arg workflow_name "$GITHUB_WORKFLOW" \
             '{
-              schema_version: 1,
+              schema_version: 2,
               repository: $repository,
               workflow: {
                 name: $workflow_name,
@@ -176,14 +250,20 @@ jobs:
                 run_url: $run_url,
                 job_status: $job_status
               },
-              pull_request: {
+              comparison: {
+                base_ref: $base_ref,
+                head_ref: $head_ref,
+                base_sha: $base_sha,
+                compare_sha: $compare_sha
+              },
+              pull_request: (if $event_name == "pull_request" then {
                 number: ($pr_number | tonumber),
                 base_ref: $base_ref,
                 head_ref: $head_ref,
                 base_sha: $base_sha,
                 head_sha: $pr_head_sha,
                 compare_sha: $compare_sha
-              },
+              } else null end),
               runner: {
                 os: $runner_os,
                 arch: $runner_arch
@@ -198,11 +278,14 @@ jobs:
                 package: "benchmark",
                 bench: "gungraun",
                 baseline: "base",
-                base_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --callgrind-metrics=Ir --save-baseline=base",
-                compare_command: "cargo bench --quiet --locked -p benchmark --bench gungraun -- --home=$RUNNER_TEMP/gungraun --baseline=base --callgrind-metrics=Ir --save-summary=json"
+                filter: $benchmark_filter,
+                base_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--callgrind-metrics=Ir", "--save-baseline=base"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" ")),
+                compare_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--baseline=base", "--callgrind-metrics=Ir", "--save-summary=json"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" "))
               },
               files: {
                 data_root: "gungraun",
+                base_report: "gungraun-base.txt",
+                revisions: "gungraun-revisions.txt",
                 diff_report: "gungraun-diff.txt",
                 rendered_summary: "gungraun-summary.md"
               },
@@ -216,11 +299,11 @@ jobs:
           jq -e \
             --arg base_sha "$BASE_SHA" \
             --arg compare_sha "$COMPARE_SHA" \
-            --arg pr_head_sha "$PR_HEAD_SHA" \
-            '.schema_version == 1 and
-             .pull_request.base_sha == $base_sha and
-             .pull_request.head_sha == $pr_head_sha and
-             .pull_request.compare_sha == $compare_sha and
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            '.schema_version == 2 and
+             .comparison.base_sha == $base_sha and
+             .comparison.compare_sha == $compare_sha and
+             (if $event_name == "pull_request" then .pull_request.number > 0 else .pull_request == null end) and
              .files.data_root == "gungraun" and
              .artifact.retention_days == 90' \
             "$metadata" > /dev/null
@@ -230,9 +313,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: gungraun-valgrind-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: |
             ${{ runner.temp }}/gungraun
+            ${{ runner.temp }}/gungraun-base.txt
+            ${{ runner.temp }}/gungraun-revisions.txt
             ${{ runner.temp }}/gungraun-diff.txt
             ${{ runner.temp }}/gungraun-summary.md
             ${{ runner.temp }}/gungraun-metadata.json
@@ -256,6 +341,7 @@ jobs:
       - name: Publish benchmark diff to pull request
         if: >-
           always() &&
+          github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.user.login != 'dependabot[bot]'
         env:
@@ -275,7 +361,9 @@ jobs:
             echo '<!-- gungraun-benchmark-diff -->'
             echo '## Gungraun benchmark diff'
             echo
-            echo 'Values are shown as `merge | base`.'
+            cat "$RUNNER_TEMP/gungraun-revisions.txt"
+            echo
+            echo 'Values are shown as `compare / base`.'
             echo
             if [[ -n "$ARTIFACT_URL" ]]
             then

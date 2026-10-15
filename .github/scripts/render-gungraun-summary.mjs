@@ -55,10 +55,10 @@ function metricComparison(metrics, event, name, benchmark) {
   }
 
   if (hasOwn(values, "new") && hasOwn(values, "old")) {
-    const mergeValue = integerMetricValue(values.new, name, "merge", benchmark);
+    const compareValue = integerMetricValue(values.new, name, "compare", benchmark);
     const baseValue = integerMetricValue(values.old, name, "base", benchmark);
     return {
-      mergeValue,
+      compareValue,
       baseValue,
       comparison: "both",
       change: parseDiff(String(metric.change?.diff_pct)),
@@ -66,9 +66,9 @@ function metricComparison(metrics, event, name, benchmark) {
   }
 
   if (hasOwn(values, "new")) {
-    const mergeValue = integerMetricValue(values.new, name, "merge", benchmark);
+    const compareValue = integerMetricValue(values.new, name, "compare", benchmark);
     return {
-      mergeValue,
+      compareValue,
       baseValue: null,
       comparison: "new",
       change: null,
@@ -78,7 +78,7 @@ function metricComparison(metrics, event, name, benchmark) {
   if (hasOwn(values, "old")) {
     const baseValue = integerMetricValue(values.old, name, "base", benchmark);
     return {
-      mergeValue: null,
+      compareValue: null,
       baseValue,
       comparison: "removed",
       change: null,
@@ -118,7 +118,7 @@ function summaryRows(summary) {
     return {
       benchmark,
       caseName: label ? `${caseName}/${label}` : caseName,
-      mergeInstructions: instructions.mergeValue,
+      compareInstructions: instructions.compareValue,
       baseInstructions: instructions.baseValue,
       comparison: instructions.comparison,
       change: instructions.change,
@@ -234,7 +234,7 @@ function renderGroupTable(group, rows) {
   for (const row of rows) {
     const label = escapeTableCell(benchmarkLabel(row, includeBenchmark));
     const instructions = formatPair(
-      row.mergeInstructions,
+      row.compareInstructions,
       row.baseInstructions,
       formatInstructionCount,
     );
@@ -319,7 +319,7 @@ export function renderSummary(summaries) {
   return [
     "### Callgrind metric changes",
     "",
-    "Callgrind instruction counts (Ir) for the merge and base revisions. Values are shown as merge / base in K (1,000), truncated to whole thousands. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
+    "Callgrind instruction counts (Ir) for the compare and base revisions. Values are shown as compare / base in K (1,000), truncated to whole thousands. Multi-part profiles use the part numbers from Gungraun and include an aggregated Total. New and Removed identify benchmarks that exist on only one side; the missing value is shown as a dash. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged.",
     "",
     tables,
   ].join("\n");
