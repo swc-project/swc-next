@@ -240,6 +240,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.cursor = start;
                 *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
             }
+            FastClass::Digit => {
+                if !self.scan_decimal_integer(start, target) {
+                    return false;
+                }
+            }
             FastClass::Dot => {
                 if self
                     .source
@@ -313,6 +318,30 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             start,
             pos,
         );
+        true
+    }
+
+    /// Scans a decimal integer without a fraction, exponent, separator,
+    /// suffix, or legacy octal digits. Other numbers use [`Self::scan_number`].
+    #[inline(always)]
+    fn scan_decimal_integer(&mut self, start: u32, target: &mut Token) -> bool {
+        let mut end = start as usize + 1;
+        if self.source[start as usize] != b'0' {
+            while self.source.get(end).is_some_and(u8::is_ascii_digit) {
+                end += 1;
+            }
+        }
+        if let Some(&next) = self.source.get(end)
+            && (!NOT_ASCII_IDENTIFIER_CONTINUE[next as usize]
+                || next == b'.'
+                || next == b'\\'
+                || next >= 0x80)
+        {
+            return false;
+        }
+        self.clear_token_flags();
+        self.cursor = end as u32;
+        *target = self.create_token(TokenTag::NumericLiteral, start, end as u32);
         true
     }
 
@@ -1606,6 +1635,7 @@ enum FastClass {
     Slow,
     Identifier,
     Punctuation,
+    Digit,
     Dot,
     Operator,
 }
@@ -1624,6 +1654,11 @@ const FAST_CLASS: [FastClass; 256] = {
             table[byte] = FastClass::Punctuation;
         }
         byte += 1;
+    }
+    let mut digit = b'0' as usize;
+    while digit <= b'9' as usize {
+        table[digit] = FastClass::Digit;
+        digit += 1;
     }
     table[b'.' as usize] = FastClass::Dot;
     // Slash and minus can start comments and retain the trivia path.
