@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { apiNames, cases, execute, prepare, selectCases, touch } from "./runner.mjs";
-import { compare, render } from "../../../.github/scripts/render-gungraun-js-summary.mjs";
+import { compare, render, validateRepeatability } from "../../../.github/scripts/render-gungraun-js-summary.mjs";
 
 const api = Object.fromEntries(apiNames.map(name => [name, () => ({ diagnostics: [], program: { type: "Program", body: [] } })]));
 
@@ -79,12 +79,13 @@ test("collector rejects missing shards and combines actual summary files", async
     mkdirSync(join(artifact, String(trial)));
     writeFileSync(join(artifact, String(trial), "summary.json"), JSON.stringify(summary(trial, 100, 90)));
   }
-  const collect = names => spawnSync(process.execPath, [resolve(".github/scripts/collect-gungraun-js.mjs"), directory], {
-    env: { ...process.env, GITHUB_STEP_SUMMARY: "", JS_BENCH_MATRIX: JSON.stringify({ include: names.map(name => ({ case: name })) }) },
+  const collect = (names, repeatability = "success") => spawnSync(process.execPath, [resolve(".github/scripts/collect-gungraun-js.mjs"), directory], {
+    env: { ...process.env, GITHUB_STEP_SUMMARY: "", JS_BENCH_REPEATABILITY: repeatability, JS_BENCH_MATRIX: JSON.stringify({ include: names.map(name => ({ case: name })) }) },
   });
   try {
     assert.equal(collect(["parse/fixture"]).status, 0);
     assert.equal(JSON.parse(readFileSync(join(directory, "comparison.json"), "utf8")).length, 1);
+    assert.notEqual(collect(["parse/fixture"], "failure").status, 0);
     assert.notEqual(collect(["parse/fixture", "print/fixture"]).status, 0);
     assert.match(readFileSync(join(directory, "summary.md"), "utf8"), /incomplete/);
   } finally {
@@ -104,4 +105,17 @@ test("PR suite covers all operations while manual runs default to the full suite
   assert.deepEqual(selectCases("full", "parse/cal.com"), ["parse/cal.com.tsx"]);
   assert.throws(() => selectCases("unknown"));
   assert.throws(() => selectCases("representative", "cal.com"));
+});
+
+
+test("same-SHA control rejects disjoint ranges but permits overlapping ranges", () => {
+  const overlap = compare([summary(1, 100, 99), summary(2, 102, 101), summary(3, 101, 103)]);
+  assert.doesNotThrow(() => validateRepeatability(overlap));
+  const touching = compare([summary(1, 100, 102), summary(2, 101, 103), summary(3, 102, 104)]);
+  assert.doesNotThrow(() => validateRepeatability(touching));
+  const lower = compare([summary(1, 100, 90), summary(2, 101, 91), summary(3, 102, 92)]);
+  assert.throws(() => validateRepeatability(lower), /same-SHA ranges do not overlap: parse\/fixture/);
+  const higher = compare([summary(1, 100, 110), summary(2, 101, 111), summary(3, 102, 112)]);
+  assert.throws(() => validateRepeatability(higher), /same-SHA ranges do not overlap/);
+  assert.throws(() => validateRepeatability([]), /no same-SHA comparisons/);
 });

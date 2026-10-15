@@ -86,7 +86,10 @@ threshold. JIT machine code can appear without useful JavaScript source names;
 retained native symbols still expose synchronous N-API and Rust costs.
 Do not apply the optimization skill's acceptance thresholds to an inconclusive
 result. Performance differences never fail CI; missing or invalid comparisons,
-failed API assertions and build failures do.
+failed API assertions and build failures do. The same-SHA control must have
+overlapping ranges. Disjoint control ranges fail the repeatability job and
+prevent publication of a directional comparison; inspect the retained trial
+counts and profiles before rerunning.
 
 ## Harness checks
 

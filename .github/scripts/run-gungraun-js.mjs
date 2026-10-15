@@ -6,7 +6,7 @@ import { cpus } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { selectCases, fixtures } from "../../tasks/benchmark/js/runner.mjs";
 import { loadSummaries } from "./render-gungraun-summary.mjs";
-import { compare, render } from "./render-gungraun-js-summary.mjs";
+import { compare, render, validateRepeatability } from "./render-gungraun-js-summary.mjs";
 
 const root = process.cwd();
 const prepared = resolve(process.env.JS_BENCH_PREPARED ?? "target/gungraun-js-prepared");
@@ -108,6 +108,7 @@ async function measure() {
     }
     const rows = compare(await loadSummaries(data));
     writeFileSync(join(output, "comparison.json"), JSON.stringify(rows, null, 2));
+    if (sameSha) validateRepeatability(rows);
     writeFileSync(join(output, "summary.md"), render(rows));
     metadata.status = "passed";
   } catch (error) {
