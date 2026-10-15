@@ -3,16 +3,24 @@
 use std::borrow::Cow;
 
 pub(crate) fn parse_decimal_literal(raw: &str) -> f64 {
-    let has_separator = raw.as_bytes().contains(&b'_');
-    if raw
-        .as_bytes()
-        .iter()
-        .any(|byte| matches!(byte, b'.' | b'e' | b'E'))
-    {
-        parse_float(raw, has_separator)
-    } else {
-        parse_decimal(raw, has_separator)
+    const MAX_FAST_DECIMAL_LEN: usize = 19;
+
+    if raw.len() <= MAX_FAST_DECIMAL_LEN {
+        let mut value = 0_u64;
+        for byte in raw.bytes() {
+            match byte {
+                b'0'..=b'9' => {
+                    value *= 10;
+                    value += u64::from(decimal_digit(byte));
+                }
+                b'_' => {}
+                _ => return parse_float(raw, raw.as_bytes().contains(&b'_')),
+            }
+        }
+        return value as f64;
     }
+
+    parse_float(raw, raw.as_bytes().contains(&b'_'))
 }
 
 pub(crate) fn parse_hex_literal(raw: &str) -> f64 {
@@ -41,26 +49,6 @@ fn parse_float(raw: &str, has_separator: bool) -> f64 {
     clean
         .parse::<f64>()
         .expect("the lexer only produces valid decimal numeric literals")
-}
-
-fn parse_decimal(raw: &str, has_separator: bool) -> f64 {
-    const MAX_FAST_DECIMAL_LEN: usize = 19;
-
-    if raw.len() > MAX_FAST_DECIMAL_LEN {
-        let clean = without_separators(raw, has_separator);
-        return clean
-            .parse::<f64>()
-            .expect("the lexer only produces valid decimal numeric literals");
-    }
-
-    let mut value = 0_u64;
-    for byte in raw.bytes() {
-        if byte != b'_' {
-            value *= 10;
-            value += u64::from(decimal_digit(byte));
-        }
-    }
-    value as f64
 }
 
 fn parse_radix(raw: &str, radix: u8, max_fast_len: usize, has_separator: bool) -> f64 {
