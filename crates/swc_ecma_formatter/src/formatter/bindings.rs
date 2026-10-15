@@ -4,13 +4,13 @@ use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
 use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
-use super::expressions::objects::PropertyKeyQuoting;
+use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionPosition};
 use super::suppression::{ContentMode, SuppressionPosition};
 use super::types::PreparedBindingAnnotation;
 use super::types::generics::TypeArgumentOwner;
-use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
+use crate::{FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     ArrayPattern, Ast, BindingPattern, BindingPatternData, BindingProperty, Comment, CommentKind,
     Expr, ExprData, FormalParameterPattern, FormalParameterPatternData, GetSpan, ObjectPattern,
@@ -1143,10 +1143,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = object.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
-        let quoting = match self.options.quote_properties {
-            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-        };
+        let quoting = self.property_key_quoting(|| {
+            object.properties(ast).iter().any(|id| {
+                let property = ast.get_node_in_sub_range(id);
+                self.property_key_requires_quotes(
+                    property.key(ast),
+                    property.computed(ast),
+                    PropertyKeyContext::Ordinary,
+                )
+            })
+        });
         let mut properties = object
             .properties(ast)
             .iter()

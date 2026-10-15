@@ -45,6 +45,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(in crate::formatter) fn numeric_literal_text(
+        &self,
+        literal: NumericLiteral,
+    ) -> Cow<'ast, str> {
+        match literal.raw(self.ast) {
+            Some(raw) => number::format_number(self.ast.get_utf8(raw)),
+            None => Cow::Owned(
+                zmij_ecma::Buffer::new()
+                    .format(literal.value(self.ast))
+                    .to_owned(),
+            ),
+        }
+    }
+
     pub(super) fn format_bigint_literal(&self, literal: BigIntLiteral, writer: &mut Writer<'ast>) {
         writer.text(number::lowercase(self.ast.get_utf8(literal.raw(self.ast))));
         writer.text("n");

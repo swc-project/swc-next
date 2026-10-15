@@ -1,8 +1,8 @@
 //! Enum declarations retain real member names, initializer expressions and comma owners.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, GetSpan, Span, SubRange, TsEnumBody, TsEnumDeclaration, TsEnumMember,
-    TsEnumMemberName, TsEnumMemberNameData,
+    BindingIdentifier, Expr, GetSpan, PropertyKey, Span, SubRange, TsEnumBody, TsEnumDeclaration,
+    TsEnumMember, TsEnumMemberName, TsEnumMemberNameData,
 };
 
 use super::Formatter;
@@ -17,7 +17,7 @@ use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::TypeGap;
-use crate::{FormatError, QuoteProperties, TrailingCommas, document::Writer};
+use crate::{FormatError, TrailingCommas, document::Writer};
 
 enum EnumPrefix<'ast> {
     Name(CommentBoundary<'ast>),
@@ -187,10 +187,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = body.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
-        let quoting = match self.options.quote_properties {
-            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-        };
+        let quoting = self.property_key_quoting(|| {
+            body.members(ast).iter().any(|id| {
+                let member = ast.get_node_in_sub_range(id);
+                let TsEnumMemberNameData::StringLiteral(literal) =
+                    ast.ts_enum_member_name_data(member.id(ast))
+                else {
+                    return false;
+                };
+                self.property_key_requires_quotes(
+                    PropertyKey::Expr(Expr::StringLiteral(literal)),
+                    member.computed(ast),
+                    PropertyKeyContext::Ordinary,
+                )
+            })
+        });
         let mut remaining = body.members(ast);
         let Some(first) = remaining.first().map(|id| ast.get_node_in_sub_range(id)) else {
             let comments = self.comments.between(content)?;
@@ -421,7 +432,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_module_gap(computed.start + 1, name.span(ast).start, false, writer)?;
         }
         match ast.ts_enum_member_name_data(name) {
-            TsEnumMemberNameData::IdentifierName(node) => writer.text(ast.get_utf8(node.name(ast))),
+            TsEnumMemberNameData::IdentifierName(node) => self.format_identifier_property_name(
+                ast.get_utf8(node.name(ast)),
+                if computed.is_some() {
+                    PropertyKeyQuoting::Preserve
+                } else {
+                    quoting
+                },
+                writer,
+            ),
             TsEnumMemberNameData::StringLiteral(node) => {
                 if computed.is_some() {
                     self.format_string_literal(node, StringContext::Expression, writer);

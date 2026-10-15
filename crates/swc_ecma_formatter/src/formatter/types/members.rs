@@ -20,7 +20,7 @@ use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuot
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
-use crate::{FormatError, QuoteProperties, Semicolons, document::Writer};
+use crate::{FormatError, Semicolons, document::Writer};
 
 struct MemberKey<'ast> {
     node: PropertyKey,
@@ -270,10 +270,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments: head_comments,
         } = incoming;
         let content = Span::new(span.start + 1, span.end - 1);
-        let quoting = match self.options.quote_properties {
-            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-        };
+        let quoting = self.property_key_quoting(|| {
+            members.iter().any(|id| {
+                let member = ast.get_node_in_sub_range(id);
+                let (key, computed, context) = match ast.ts_type_element_data(member) {
+                    TsTypeElementData::TsPropertySignature(property) => (
+                        property.key(ast),
+                        property.computed(ast),
+                        PropertyKeyContext::TypeProperty,
+                    ),
+                    TsTypeElementData::TsMethodSignature(method) => (
+                        method.key(ast),
+                        method.computed(ast),
+                        PropertyKeyContext::TypeMethod,
+                    ),
+                    _ => return false,
+                };
+                self.property_key_requires_quotes(key, computed, context)
+            })
+        });
         let mut members = members
             .iter()
             .map(|id| {
