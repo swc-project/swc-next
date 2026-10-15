@@ -2,12 +2,24 @@
 use super::AccessKind;
 use super::arguments::{ArgumentGroup, SourceArguments};
 use super::{
-    ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, MemberLayout, TailOwner,
+    CallArgumentOwner, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext,
+    MemberLayout, TailOwner,
 };
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
-use swc_next_ecma_ast::{Argument, CallExpression, Expr, ExprData, GetSpan, Span, SubRange};
+use swc_next_ecma_ast::{
+    Argument, CallExpression, Expr, ExprData, GetSpan, PropertyKeyData, Span, SubRange,
+};
+enum TestCallee {
+    It,
+    Describe,
+    Test,
+    TestDescribe,
+    ParallelOrSerial,
+    Terminal,
+}
+
 pub(super) struct CallCallee {
     pub(super) expression: Expr,
     pub(super) mode: ContentMode,
@@ -124,6 +136,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let arguments = self.source_call(call, context)?;
         let mut callee_context = arguments.callee_context(context);
         let member_callee = arguments.callee_mode == ContentMode::Formatted
+            && !arguments.has_fixed_argument_frame()
             && matches!(
                 self.expression_content(arguments.callee).data,
                 ExprData::MemberExpression(_)
@@ -177,6 +190,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut arguments =
             source.ok_or_else(|| self.unsupported("call opening boundary", call))?;
         arguments.allow_composition = !matches!(context.position, ExpressionPosition::Decorator);
+        if let Some(frame) = self.test_call_frame(call, &arguments) {
+            arguments.frame = frame;
+        } else if matches!(context.call_argument_owner,
+            CallArgumentOwner::AngularTestWrapper(owner) if owner == call)
+            && !call.optional(ast)
+            && let Some(frame) = self.angular_wrapper_frame(&arguments)
+        {
+            arguments.frame = frame;
+        }
         arguments.jsx_call = match context.jsx_callback {
             JsxCallbackContext::ContainerCall(owner) if owner == call => Some(call),
             _ => None,
@@ -195,6 +217,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         Ok(arguments)
     }
+    pub(in crate::formatter) fn call_callee_content_data(&self, callee: Expr) -> ExprData {
+        match self.ast.expr_data(callee) {
+            ExprData::ParenthesizedExpression(_) => self.expression_content(callee).data,
+            data => data,
+        }
+    }
+
+    pub(super) fn is_test_setup_callee(&self, expression: Expr) -> bool {
+        let ast = self.ast;
+        matches!(self.call_callee_content_data(expression), ExprData::IdentifierReference(identifier)
+            if matches!(ast.get_utf8(identifier.name(ast)), "beforeEach" | "beforeAll" | "afterEach" | "afterAll"))
+    }
+
+    pub(super) fn is_test_callee(&self, expression: Expr) -> bool {
+        self.test_callee(expression).is_some()
+    }
+
+    fn test_callee(&self, expression: Expr) -> Option<TestCallee> {
+        let ast = self.ast;
+        match self.call_callee_content_data(expression) {
+            ExprData::IdentifierReference(identifier) => match ast.get_utf8(identifier.name(ast)) {
+                "it" => Some(TestCallee::It),
+                "describe" => Some(TestCallee::Describe),
+                "test" => Some(TestCallee::Test),
+                "skip" | "xit" | "xdescribe" | "xtest" | "fit" | "fdescribe" | "ftest" => {
+                    Some(TestCallee::Terminal)
+                }
+                _ => None,
+            },
+            ExprData::MemberExpression(member)
+                if !member.computed(ast) && !member.optional(ast) =>
+            {
+                let PropertyKeyData::IdentifierName(property) =
+                    ast.property_key_data(member.property(ast))
+                else {
+                    return None;
+                };
+                let receiver = self.test_callee(member.object(ast))?;
+                match (receiver, ast.get_utf8(property.name(ast))) {
+                    (
+                        TestCallee::It
+                        | TestCallee::Describe
+                        | TestCallee::Test
+                        | TestCallee::TestDescribe,
+                        "only" | "skip",
+                    )
+                    | (TestCallee::Test, "fixme" | "step")
+                    | (TestCallee::TestDescribe, "fixme")
+                    | (TestCallee::ParallelOrSerial, "only") => Some(TestCallee::Terminal),
+                    (TestCallee::Test, "describe") => Some(TestCallee::TestDescribe),
+                    (TestCallee::TestDescribe, "parallel" | "serial") => {
+                        Some(TestCallee::ParallelOrSerial)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
     fn curried_call_callee(
         &self,
         callee: Expr,

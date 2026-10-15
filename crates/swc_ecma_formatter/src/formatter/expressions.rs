@@ -239,6 +239,12 @@ impl JsxCallbackContext {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum CallArgumentOwner {
+    Ordinary,
+    AngularTestWrapper(CallExpression),
+}
+
+#[derive(Clone, Copy)]
 pub(super) struct ExpressionContext {
     position: ExpressionPosition,
     expression_start: ExpressionStart,
@@ -257,6 +263,7 @@ pub(super) struct ExpressionContext {
     member_chain_layout: MemberChainLayout,
     arrow_layout: arrows::ArrowLayout,
     jsx_callback: JsxCallbackContext,
+    call_argument_owner: CallArgumentOwner,
     source_parentheses_tail: Option<parentheses::SourceParenthesesTail>,
     source_tail_owner: SourceTailOwner,
     tail_boundary: TailBoundary,
@@ -395,6 +402,7 @@ impl ExpressionContext {
             source_parentheses_tail: None,
             source_tail_owner: SourceTailOwner::Consumer,
             jsx_callback: JsxCallbackContext::Ordinary,
+            call_argument_owner: CallArgumentOwner::Ordinary,
             tail_boundary: TailBoundary::Separated,
         }
     }
@@ -449,6 +457,11 @@ impl ExpressionContext {
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
         self.operand_indent = owner;
+        self
+    }
+
+    fn with_angular_test_wrapper(mut self, wrapper: CallExpression) -> Self {
+        self.call_argument_owner = CallArgumentOwner::AngularTestWrapper(wrapper);
         self
     }
 
