@@ -343,3 +343,15 @@ test("path helpers return string enum values through N-API", () => {
   assert.equal(sourceTypeFromPath("input.cjs"), "commonjs");
   assert.equal(sourceTypeFromPath("input.mjs"), "module");
 });
+
+test("path helpers preserve strings across the native boundary", () => {
+  assert.equal(langFromPath(""), "js");
+  assert.equal(langFromPath("한글😀/input.tsx"), "tsx");
+  assert.equal(langFromPath("x\0.ts"), "ts");
+  assert.equal(langFromPath("\ud800/input.ts"), "ts");
+  assert.equal(sourceTypeFromPath("한글😀/input.cjs"), "commonjs");
+  assert.equal(langFromPath("한".repeat(1362) + ".ts"), "ts");
+  assert.equal(langFromPath("한글😀/".repeat(1000) + "input.tsx"), "tsx");
+  assert.throws(() => langFromPath(123));
+  assert.throws(() => sourceTypeFromPath(null));
+});

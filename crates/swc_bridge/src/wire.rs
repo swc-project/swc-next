@@ -80,7 +80,92 @@ macro_rules! identity_native_abi {
 }
 
 #[cfg(not(target_family = "wasm"))]
-identity_native_abi!((), u32, i32, f64, bool, String);
+identity_native_abi!((), u32, i32, f64, bool);
+
+/// An owned string with a bounded short-input conversion at the N-API boundary.
+#[cfg(not(target_family = "wasm"))]
+#[doc(hidden)]
+pub struct NativeString(String);
+
+#[cfg(not(target_family = "wasm"))]
+impl TypeName for NativeString {
+    fn type_name() -> &'static str {
+        <String as TypeName>::type_name()
+    }
+
+    fn value_type() -> napi::ValueType {
+        <String as TypeName>::value_type()
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl ValidateNapiValue for NativeString {}
+
+#[cfg(not(target_family = "wasm"))]
+impl FromNapiValue for NativeString {
+    unsafe fn from_napi_value(
+        env: napi::sys::napi_env,
+        value: napi::sys::napi_value,
+    ) -> napi::Result<Self> {
+        let mut units = 0;
+        let status = unsafe {
+            napi::sys::napi_get_value_string_utf16(env, value, std::ptr::null_mut(), 0, &mut units)
+        };
+        if status != napi::sys::Status::napi_ok {
+            // Keep napi-rs' detailed type errors and exception handling.
+            return unsafe { String::from_napi_value(env, value) }.map(Self);
+        }
+        // Bound excess capacity for short strings; long inputs retain napi-rs'
+        // exact-size allocation. UTF-8 requires at most three bytes per UTF-16
+        // code unit, including replacement characters for unpaired surrogates.
+        const MAX_BUFFER_SIZE: usize = 4096;
+        if units > (MAX_BUFFER_SIZE - 1) / 3 {
+            return unsafe { String::from_napi_value(env, value) }.map(Self);
+        }
+        let capacity = units * 3 + 1;
+        let mut bytes = Vec::<u8>::with_capacity(capacity);
+        let mut written = 0;
+        let status = unsafe {
+            napi::sys::napi_get_value_string_utf8(
+                env,
+                value,
+                bytes.as_mut_ptr().cast(),
+                capacity,
+                &mut written,
+            )
+        };
+        if status != napi::sys::Status::napi_ok {
+            return unsafe { String::from_napi_value(env, value) }.map(Self);
+        }
+        // N-API initialized exactly `written` UTF-8 bytes, excluding the
+        // terminator. The bound above leaves room for the complete string.
+        unsafe { bytes.set_len(written) };
+        Ok(Self(unsafe { String::from_utf8_unchecked(bytes) }))
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl ToNapiValue for NativeString {
+    unsafe fn to_napi_value(
+        env: napi::sys::napi_env,
+        value: Self,
+    ) -> napi::Result<napi::sys::napi_value> {
+        unsafe { String::to_napi_value(env, value.0) }
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl NativeAbi for String {
+    type Abi = NativeString;
+
+    fn from_native(value: Self::Abi) -> Self {
+        value.0
+    }
+
+    fn into_native(self) -> Self::Abi {
+        NativeString(self)
+    }
+}
 
 #[cfg(not(target_family = "wasm"))]
 impl NativeAbi for Vec<u8> {
