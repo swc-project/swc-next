@@ -1,10 +1,9 @@
 //! Shared source-ordered argument slots and comma/comment boundaries.
-use super::AccessKind;
 
-use super::Formatter;
+use super::callbacks::TestCallback;
 use super::calls::CallCallee;
 use super::typescript::ExpressionTypeArguments;
-use super::{ExpressionContext, ExpressionPosition, JsxCallbackContext};
+use super::{AccessKind, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext};
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
@@ -38,10 +37,14 @@ pub(super) struct ArrayArgumentSlot {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum FollowingItem {
     End,
+    /// The enclosing syntax prepared the real owner beyond this closing delimiter.
     ResolvedTerminal(DelimitedSuppression),
     Node(Span),
     ModuleSpecifier(Span),
-    Elision { node: Option<Span>, holes: usize },
+    Elision {
+        node: Option<Span>,
+        holes: usize,
+    },
 }
 
 impl FollowingItem {
@@ -233,39 +236,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         trailing_comma: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
-        self.prepare_delimited_item_with_head(
+        self.prepare_delimited_item_with_comments(
             item_span,
             following,
             span,
             trailing_comma,
-            CommentRunLayout::Source,
+            ItemComments {
+                head: CommentRunLayout::Source,
+                array: None,
+            },
             writer,
         )
     }
-    pub(super) fn prepare_call_argument_item(
+
+    pub(in crate::formatter) fn prepare_call_argument_item(
         &mut self,
         item_span: Span,
         following: FollowingItem,
         span: Span,
         trailing_comma: bool,
-        writer: &mut Writer<'ast>,
-    ) -> Result<PreparedItem, FormatError> {
-        self.prepare_delimited_item_with_head(
-            item_span,
-            following,
-            span,
-            trailing_comma,
-            CommentRunLayout::GroupedLeading(item_span.start),
-            writer,
-        )
-    }
-    pub(in crate::formatter) fn prepare_delimited_item_with_head(
-        &mut self,
-        item_span: Span,
-        following: FollowingItem,
-        span: Span,
-        trailing_comma: bool,
-        head_layout: CommentRunLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         self.prepare_delimited_item_with_comments(
@@ -274,12 +263,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             span,
             trailing_comma,
             ItemComments {
-                head: head_layout,
+                head: CommentRunLayout::GroupedLeading(item_span.start),
                 array: None,
             },
             writer,
         )
     }
+
     fn prepare_delimited_item_with_comments(
         &mut self,
         item_span: Span,
@@ -310,6 +300,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let leading = self
             .comments
             .between(Span::new(span.start, item_span.start))?;
+        let has_leading_comments = !leading.is_empty();
         let leading = self.comments.take(leading.len());
         let leading_mode = self.content_mode(leading);
         let mode = if leading_mode == ContentMode::Verbatim
@@ -327,35 +318,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_binding(
                     leading,
                     Span::new(span.start, item_span.start),
-                    Some(item_span)
+                    Some(item_span),
                 ),
                 CommentBinding::Unbound
             );
-        self.format_comment_run_with_array_comments(
-            leading,
-            if source_head {
+        let head = NodeHead {
+            comments: leading,
+            content_start: item_span.start,
+            layout: if source_head {
                 CommentRunLayout::Source
             } else {
                 comments.head
             },
+            gap_end: source_head.then_some(item_span.start),
+        };
+        self.format_comment_run_with_array_comments(
+            head.comments,
+            head.layout,
             comments.array,
             writer,
         )?;
-        if source_head && let Some(last) = leading.last() {
-            self.comment_gap(last.span.end, item_span.start, writer);
+        if let Some(end) = head.gap_end
+            && let Some(last) = head.comments.last()
+        {
+            self.comment_gap(last.span.end, end, writer);
         }
         Ok(PreparedItem {
             item_span,
             following,
             span,
             mode,
+            has_leading_comments,
             trailing_comma: if trailing_comma {
                 TrailingCommaPolicy::IfBreak
             } else {
                 TrailingCommaPolicy::Forbidden
             },
             suppression,
-            has_leading_comments: !leading.is_empty(),
         })
     }
 
@@ -367,6 +366,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ItemBoundary, FormatError> {
         self.finish_delimited_item_with_array_comments(item, tail, None, writer)
     }
+
     fn finish_delimited_item_with_array_comments(
         &mut self,
         item: PreparedItem,
@@ -415,7 +415,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let comments = self.comments.between(gap)?;
-        let comma = self.find_token(gap, comments, ",");
+        let comma = self.find_comma(gap, comments);
         let constrained = self.diagnostic_range_is_sensitive(span);
         let preserve_comma = constrained || matches!(following, FollowingItem::Elision { .. });
         // A directive-covered separator owns the comments on its source side.
@@ -623,28 +623,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 }
 
-pub(super) struct ArgumentHead {
-    pub(super) jsx_call: Option<CallExpression>,
-    pub(super) source_opening: Option<SourceArgumentOpening>,
-    pub(super) first_mode: ContentMode,
-    pub(super) ordinary_group: ArgumentGroup,
-}
-#[derive(Clone, Copy)]
-pub(super) struct SourceArgumentOpening {
-    pub(super) span: Span,
-    pub(super) following: LineConstraint,
-}
-
-struct ArgumentPunctuation {
-    operator: Option<Span>,
-    opening: u32,
-}
-fn argument_opening_gap(prefix_start: u32, first: Option<Span>, end: u32) -> Span {
-    Span::new(prefix_start, first.map_or(end - 1, |span| span.start))
-}
+/// An actual source argument list and its borrowed pre-opener comment owner.
 pub(super) struct SourceArguments<'ast> {
-    pub(super) jsx_call: Option<CallExpression>,
-    pub(super) allow_composition: bool,
     arguments: SubRange<Argument>,
     first: Option<SourceFirstArgument>,
     delimiters: Span,
@@ -655,52 +635,100 @@ pub(super) struct SourceArguments<'ast> {
     prefix: SourceArgumentPrefix<'ast>,
     pub(super) callee_mode: ContentMode,
     pub(super) group: ArgumentGroup,
+    pub(super) frame: CallArgumentFrame,
     pub(super) curried_callee: Option<CallExpression>,
+    pub(super) allow_composition: bool,
+    pub(super) jsx_call: Option<CallExpression>,
 }
+
+struct ArgumentPunctuation {
+    operator: Option<Span>,
+    opening: u32,
+}
+
+fn argument_opening_gap(prefix_start: u32, first: Option<Span>, end: u32) -> Span {
+    Span::new(prefix_start, first.map_or(end - 1, |span| span.start))
+}
+
 #[derive(Clone, Copy)]
 struct SourceFirstArgument {
     node: Argument,
     mode: ContentMode,
 }
-/// An argument owner also reports the boundary actually emitted to its chain.
-pub(super) struct FormattedArguments<'ast> {
-    pub(super) tail: Option<ExpressionTail<'ast>>,
-    pub(super) has_outside_prefix: bool,
+
+struct CallArgumentSlot {
+    node: Argument,
+    following: Option<Argument>,
 }
-enum ArgumentPrefix<'ast> {
-    Outside(&'ast [Comment]),
-    Arguments(&'ast [Comment]),
+
+pub(super) struct ArgumentHead {
+    pub(super) first_mode: ContentMode,
+    pub(super) source_opening: Option<SourceArgumentOpening>,
+    pub(super) ordinary_group: ArgumentGroup,
+    pub(super) jsx_call: Option<CallExpression>,
 }
-impl<'ast> ArgumentPrefix<'ast> {
-    fn comments(&self) -> &'ast [Comment] {
+
+#[derive(Clone, Copy)]
+pub(super) struct SourceArgumentOpening {
+    pub(super) span: Span,
+    pub(super) following: LineConstraint,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CallArgumentFrame {
+    Ordinary,
+    Fixed { role: CallFrameRole },
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum CallFrameRole {
+    TestCallback(TestCallback),
+    TestWrapper {
+        expression: Expr,
+        call: CallExpression,
+    },
+    AngularWrapper,
+}
+
+impl CallArgumentFrame {
+    pub(super) fn fixed(role: CallFrameRole) -> Self {
+        Self::Fixed { role }
+    }
+
+    fn is_fixed(self) -> bool {
+        matches!(self, Self::Fixed { .. })
+    }
+
+    fn angular_wrapper(self) -> Option<(Expr, CallExpression)> {
         match self {
-            Self::Outside(c) | Self::Arguments(c) => c,
+            Self::Fixed {
+                role: CallFrameRole::TestWrapper { expression, call },
+                ..
+            } => Some((expression, call)),
+            _ => None,
         }
     }
-    fn belongs_to_arguments(&self) -> bool {
-        matches!(self, Self::Arguments(_))
-    }
-}
-enum SourceArgumentPrefix<'ast> {
-    Direct(ArgumentPrefix<'ast>),
-    Optional {
-        operator: Span,
-        before: &'ast [Comment],
-        after: ArgumentPrefix<'ast>,
-    },
-    Empty {
-        operator: Option<Span>,
-        comments: &'ast [Comment],
-    },
-}
-impl SourceArgumentPrefix<'_> {
-    fn has_comments(&self) -> bool {
+
+    fn test_callback(self) -> Option<TestCallback> {
         match self {
-            Self::Direct(prefix) => !prefix.comments().is_empty(),
-            Self::Optional { before, after, .. } => {
-                !before.is_empty() || !after.comments().is_empty()
-            }
-            Self::Empty { .. } => true,
+            Self::Fixed {
+                role: CallFrameRole::TestCallback(callback),
+                ..
+            } => Some(callback),
+            _ => None,
+        }
+    }
+
+    fn separator(self, separator: Separator, constraint: LineConstraint, writer: &mut Writer<'_>) {
+        match self {
+            Self::Ordinary => ArgumentLayout::Lines.separator(separator, constraint, writer),
+            Self::Fixed { .. } => match separator {
+                Separator::Source(source) => {
+                    source.write(writer, FlatSeparator::Space, Writer::line);
+                }
+                Separator::OwnLineComment | Separator::TrailingLine => writer.hard_line(),
+                _ => constraint.write(writer, FlatSeparator::Space, Writer::space),
+            },
         }
     }
 }
@@ -729,11 +757,13 @@ impl<'ast> SourceArguments<'ast> {
     pub(super) fn arguments(&self) -> SubRange<Argument> {
         self.arguments
     }
+
     /// An empty call has no first argument that could own this ordinary packet.
     pub(super) fn empty_call_head(&self) -> Option<NodeHead<'ast>> {
         if !self.arguments.is_empty()
             || self.type_arguments.is_some()
             || self.callee_mode != ContentMode::Formatted
+            || self.frame.is_fixed()
         {
             return None;
         }
@@ -799,6 +829,11 @@ impl<'ast> SourceArguments<'ast> {
         }
     }
 
+    /// The selected argument frame preserves the callee's independent break.
+    pub(super) fn has_fixed_argument_frame(&self) -> bool {
+        self.frame.is_fixed()
+    }
+
     pub(super) fn has_outside_prefix(&self) -> bool {
         if self
             .type_arguments
@@ -817,56 +852,71 @@ impl<'ast> SourceArguments<'ast> {
             SourceArgumentPrefix::Empty { .. } => true,
         }
     }
+
     pub(super) fn callee_head(&self) -> CallCallee {
         CallCallee {
             expression: self.callee,
             access: self.access(),
-            mode: self.callee_mode,
             curried_call: self.curried_callee,
+            mode: self.callee_mode,
         }
     }
+
     pub(super) fn callee_context(&self, context: ExpressionContext) -> ExpressionContext {
         self.callee_head().context(context)
     }
 }
-impl<'ast, 'source> Formatter<'ast, 'source> {
-    /// The enclosing chain has already proved that this argument boundary is
-    /// comment- and diagnostic-clear. Preserve the actual source token geometry.
-    pub(super) fn source_clear_argument_opening(
-        &self,
-        arguments: SubRange<Argument>,
-        callee: Expr,
-        end: u32,
-        access: AccessKind,
-    ) -> bool {
-        let ast = self.ast;
-        let first = arguments.first().map(|id| {
-            let argument: Argument = ast.get_node_in_sub_range(id);
-            argument.span(ast)
-        });
-        let gap = argument_opening_gap(callee.span(ast).end, first, end);
-        self.source_argument_punctuation(gap, access, &[]).is_some()
+
+/// The actual prefix owner reports its emitted boundary after receiving a tail.
+/// Its ordinary caller only needs the tail; a chain also consumes the layout fact.
+pub(super) struct FormattedArguments<'ast> {
+    pub(super) tail: Option<ExpressionTail<'ast>>,
+    pub(super) has_outside_prefix: bool,
+}
+
+enum ArgumentPrefix<'ast> {
+    Outside(&'ast [Comment]),
+    Arguments(&'ast [Comment]),
+}
+
+impl<'ast> ArgumentPrefix<'ast> {
+    fn comments(&self) -> &'ast [Comment] {
+        match self {
+            Self::Outside(comments) | Self::Arguments(comments) => comments,
+        }
     }
 
-    fn source_argument_punctuation(
-        &self,
-        gap: Span,
-        access: AccessKind,
-        comments: &[Comment],
-    ) -> Option<ArgumentPunctuation> {
-        let operator = match access {
-            AccessKind::Ordinary => None,
-            AccessKind::Optional => {
-                let start = self.find_token(gap, comments, "?.")?;
-                Some(Span::new(start, start + 2))
+    fn belongs_to_arguments(&self) -> bool {
+        matches!(self, Self::Arguments(_))
+    }
+}
+
+enum SourceArgumentPrefix<'ast> {
+    Direct(ArgumentPrefix<'ast>),
+    Optional {
+        operator: Span,
+        before: &'ast [Comment],
+        after: ArgumentPrefix<'ast>,
+    },
+    Empty {
+        operator: Option<Span>,
+        comments: &'ast [Comment],
+    },
+}
+
+impl SourceArgumentPrefix<'_> {
+    fn has_comments(&self) -> bool {
+        match self {
+            Self::Direct(prefix) => !prefix.comments().is_empty(),
+            Self::Optional { before, after, .. } => {
+                !before.is_empty() || !after.comments().is_empty()
             }
-        };
-        let opening_start = operator.map_or(gap.start, |operator| operator.end);
-        let opening_gap = Span::new(opening_start, gap.end);
-        let opening = self.find_token(opening_gap, comments, "(")?;
-        Some(ArgumentPunctuation { operator, opening })
+            Self::Empty { .. } => true,
+        }
     }
+}
 
+impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_arguments(
         &self,
         arguments: SubRange<Argument>,
@@ -887,6 +937,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.prepare_source_arguments(arguments, callee, end, AccessKind::Ordinary, Some(types))
     }
 
+    /// The enclosing chain has already proved that this argument boundary is
+    /// comment- and diagnostic-clear. Preserve the actual source token geometry.
+    pub(super) fn source_clear_argument_opening(
+        &self,
+        arguments: SubRange<Argument>,
+        callee: Expr,
+        end: u32,
+        access: AccessKind,
+    ) -> bool {
+        let ast = self.ast;
+        let first = arguments.first().map(|id| {
+            let argument: Argument = ast.get_node_in_sub_range(id);
+            argument.span(ast)
+        });
+        let gap = argument_opening_gap(callee.span(ast).end, first, end);
+        self.source_argument_punctuation(gap, access, &[]).is_some()
+    }
+
     /// A packet moves into an empty call only if that prefix can own it again.
     pub(super) fn empty_call_prefix_can_relocate(
         &self,
@@ -903,481 +971,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.source_cast_head(callee).is_none()
     }
 
-    #[inline]
-    fn argument_prefix(
+    fn source_argument_punctuation(
         &self,
-        first: Option<&mut SourceFirstArgument>,
-        span: Span,
-        comments: &'ast [Comment],
-    ) -> ArgumentPrefix<'ast> {
-        let Some(first) = first else {
-            return ArgumentPrefix::Outside(comments);
-        };
-        let target = self.has_suppression.then(|| first.node.span(self.ast));
-        let binding = self.comment_binding(comments, Span::new(span.start, span.end + 1), target);
-        let outside_line = comments.iter().any(|comment| {
-            comment.kind == CommentKind::Line
-                && (!self.source_line_starts_line(comment.span.start)
-                    || !matches!(binding, CommentBinding::Unbound))
-        });
-        let prefix = if comments.is_empty() || outside_line || !binding.allows_relocation(target) {
-            ArgumentPrefix::Outside(comments)
-        } else {
-            ArgumentPrefix::Arguments(comments)
-        };
-        if !prefix.belongs_to_arguments() {
-            self.prepare_first_argument_suppression(Some(first), comments, span.end);
-        }
-        prefix
-    }
-
-    fn prepare_first_argument_suppression(
-        &self,
-        first: Option<&mut SourceFirstArgument>,
+        gap: Span,
+        access: AccessKind,
         comments: &[Comment],
-        following_start: u32,
-    ) {
-        if !self.has_suppression {
-            return;
-        }
-        let Some(first) = first else {
-            return;
-        };
-        // Relocation and consumption are separate: an own-line marker before
-        // the opener still targets this actual argument when it stays outside.
-        if self
-            .suppression_positions(comments, following_start)
-            .any(|position| matches!(position, SuppressionPosition::OwnLine))
-        {
-            first.mode = ContentMode::Verbatim;
-        }
-    }
-
-    fn format_empty_argument_prefix(
-        &self,
-        comments: &'ast [Comment],
-        operator: Option<Span>,
-        source_end: u32,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let mut previous_end = source_end;
-        let mut pending_line = false;
-        for comment in comments {
-            let own_line = self.source_position_starts_line(comment.span.start);
-            let gap_start = operator
-                .filter(|operator| {
-                    previous_end <= operator.start && operator.end <= comment.span.start
-                })
-                .map_or(previous_end, |operator| operator.end);
-            if pending_line || own_line {
-                writer.hard_line();
-                if self.next_line_is_empty(gap_start, comment.span.start) {
-                    writer.hard_line();
-                }
-            } else {
-                writer.space();
-            }
-            self.format_comment_run(
-                std::slice::from_ref(comment),
-                CommentRunLayout::Source,
-                writer,
-            )?;
-            pending_line = own_line || comment.kind == CommentKind::Line;
-            previous_end = comment.span.end;
-        }
-        if pending_line {
-            writer.hard_line();
-        }
-        Ok(())
-    }
-
-    pub(super) fn format_argument_with_function_fact(
-        &mut self,
-        argument: Argument,
-        mode: ContentMode,
-        jsx_call: Option<CallExpression>,
-        missing_function: &mut Option<&mut bool>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if missing_function.is_none() && (jsx_call.is_none() || mode == ContentMode::Verbatim) {
-            return self.format_argument(argument, mode, writer);
-        }
-        let data = self.ast.argument_data(argument);
-        let content = match data {
-            ArgumentData::Expr(expression) => Some(self.expression_content(expression)),
-            ArgumentData::SpreadElement(_) => None,
-        };
-        let has_function = matches!(
-            content.as_ref().map(|content| content.data),
-            Some(ExprData::Function(_) | ExprData::ArrowFunctionExpression(_))
-        );
-        if has_function && let Some(function) = missing_function.take() {
-            *function = true;
-        }
-        let jsx_callback = content
-            .as_ref()
-            .map_or(JsxCallbackContext::Ordinary, |content| {
-                JsxCallbackContext::argument(
-                    jsx_call.filter(|_| mode == ContentMode::Formatted),
-                    content.data,
-                )
-            });
-        let context = ExpressionContext::at(ExpressionPosition::Nested)
-            .with_content_mode(mode)
-            .with_arrow_layout(super::arrows::ArrowLayout::Argument)
-            .with_jsx_callback(jsx_callback);
-        match data {
-            ArgumentData::Expr(expression) => self.format_expression_prepared_with_array_comments(
-                expression, content, context, None, writer,
-            ),
-            ArgumentData::SpreadElement(_) => {
-                self.format_argument_data_with_array_comments(data, mode, None, writer)
-            }
-        }
-    }
-
-    pub(super) fn format_source_arguments(
-        &mut self,
-        list: SourceArguments<'ast>,
-        tail: Option<ExpressionTail<'ast>>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let output = self.format_source_arguments_with_function_fact(list, tail, None, writer)?;
-        Ok(output.tail)
-    }
-
-    pub(super) fn format_source_arguments_with_function_fact(
-        &mut self,
-        list: SourceArguments<'ast>,
-        tail: Option<ExpressionTail<'ast>>,
-        mut missing_function: Option<&mut bool>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<FormattedArguments<'ast>, FormatError> {
-        let ast = self.ast;
-        let SourceArguments {
-            jsx_call,
-            allow_composition,
-            arguments,
-            first,
-            delimiters,
-            callee_span,
-            type_arguments,
-            source_opening,
-            prefix,
-            group,
-            ..
-        } = list;
-        let first_mode = first.map_or(ContentMode::Formatted, |argument| argument.mode);
-        let opening = delimiters.start;
-        let mut has_outside_prefix = false;
-        let (prefix_start, tail) = if let Some(types) = type_arguments {
-            // The angle owner prints this pending tail before its opener.
-            has_outside_prefix =
-                types.has_comments() || tail.as_ref().is_some_and(|tail| !tail.comments.is_empty());
-            let end = types.node.span(ast).end;
-            self.format_expression_type_arguments(types, tail, writer)?;
-            (end, None)
-        } else {
-            (callee_span.end, tail)
-        };
-        let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
-        let content_start = match prefix {
-            SourceArgumentPrefix::Empty { operator, comments } => {
-                let comments = if tail.is_some() {
-                    self.comments.between(Span::new(source_end, opening))?
-                } else {
-                    comments
-                };
-                has_outside_prefix |= !comments.is_empty();
-                self.comments.claim(comments)?;
-                self.format_empty_argument_prefix(comments, operator, source_end, writer)?;
-                if operator.is_some() {
-                    writer.text("?.");
-                }
-                opening + 1
-            }
-            SourceArgumentPrefix::Direct(prefix) => {
-                let before = self.comments.between(Span::new(source_end, opening))?;
-                let prefix_belongs_to_arguments = prefix.belongs_to_arguments();
-                let move_tail = first.is_some()
-                    && (prefix.comments().is_empty() || prefix_belongs_to_arguments)
-                    && tail.as_ref().is_some_and(|tail| {
-                        tail.comments
-                            .iter()
-                            .all(|comment| comment.kind == CommentKind::Block)
-                            && self
-                                .comment_binding(
-                                    tail.comments,
-                                    Span::new(source_end, opening + 1),
-                                    None,
-                                )
-                                .allows_relocation(None)
-                    });
-                let outside_count = if move_tail {
-                    0
-                } else if prefix_belongs_to_arguments {
-                    tail.as_ref().map_or(0, |tail| tail.comments.len())
-                } else {
-                    before.len()
-                };
-                let (outside, inside) = before.split_at(outside_count);
-                has_outside_prefix |= !outside.is_empty();
-                let boundary = self.prepare_comment_boundary(outside, source_end, opening);
-                self.format_comment_boundary(&boundary, writer)?;
-                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
-                if inside.is_empty() {
-                    opening + 1
-                } else if move_tail {
-                    source_end
-                } else {
-                    prefix_start
-                }
-            }
-            SourceArgumentPrefix::Optional {
-                operator,
-                before,
-                after,
-            } => {
-                let before = if tail.is_some() {
-                    self.comments
-                        .between(Span::new(source_end, operator.start))?
-                } else {
-                    before
-                };
-
-                has_outside_prefix |= !before.is_empty();
-                let boundary = self.prepare_comment_boundary(before, source_end, operator.start);
-                self.format_comment_boundary(&boundary, writer)?;
-                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
-                writer.text("?.");
-                if after.belongs_to_arguments() {
-                    operator.end
-                } else {
-                    let after = after.comments();
-                    has_outside_prefix |= !after.is_empty();
-
-                    let boundary = self.prepare_comment_boundary(after, operator.end, opening);
-                    self.format_comment_boundary(&boundary, writer)?;
-                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
-                    opening + 1
-                }
+    ) -> Option<ArgumentPunctuation> {
+        let operator = match access {
+            AccessKind::Ordinary => None,
+            AccessKind::Optional => {
+                let start = self.find_token(gap, comments, "?.")?;
+                Some(Span::new(start, start + 2))
             }
         };
-        let content_start = source_opening.map_or(content_start, |opening| opening.span.end);
-        let content = Span::new(content_start, delimiters.end - 1);
-        if first.is_none() {
-            let comments = self.comments.in_range(content);
-            if self.content_mode(comments) == ContentMode::Verbatim {
-                self.format_verbatim(Span::new(opening, delimiters.end), writer)?;
-                return Ok(FormattedArguments {
-                    tail: None,
-                    has_outside_prefix,
-                });
-            }
-            if comments.is_empty() {
-                writer.text("(");
-                self.format_argument_dangling(content, writer)?;
-                writer.text(")");
-                return Ok(FormattedArguments {
-                    tail: None,
-                    has_outside_prefix,
-                });
-            }
-        }
-        let hugged = source_opening.is_none()
-            && arguments.len() == 1
-            && self.comments.in_range(content).is_empty()
-            && !self.diagnostic_range_is_sensitive(content)
-            && first.is_some_and(|argument| match ast.argument_data(argument.node) {
-                ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
-                ArgumentData::SpreadElement(_) => false,
-            });
-        let expand = arguments
-            .iter()
-            .map(|id| ast.get_node_in_sub_range::<Argument>(id))
-            .scan(content.start, |previous, argument| {
-                let span = argument.span(ast);
-                let empty = self.next_line_is_empty(*previous, span.start);
-                *previous = span.end;
-                Some(empty)
-            })
-            .any(|empty| empty)
-            || allow_composition && self.arguments_are_function_composition(arguments);
-        if !expand && let Some(selected) = self.select_argument_layout(arguments, !hugged) {
-            let tail = self.format_selected_arguments(
-                arguments,
-                content,
-                ArgumentHead {
-                    jsx_call,
-                    first_mode,
-                    source_opening,
-                    ordinary_group: group,
-                },
-                selected,
-                missing_function,
-                writer,
-            )?;
-            return Ok(FormattedArguments {
-                tail,
-                has_outside_prefix,
-            });
-        }
-        let tail = group.write(expand, writer, |writer| {
-            if let Some(opening) = source_opening {
-                self.format_verbatim(opening.span, writer)?;
-            } else {
-                writer.text("(");
-            }
-            let mut write_items = |writer: &mut Writer<'ast>| {
-                if !hugged && (first.is_some() || !self.comments.in_range(content).is_empty()) {
-                    if let Some(opening) = source_opening {
-                        opening
-                            .following
-                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
-                    } else {
-                        self.opening_line_constraint(content).write(
-                            writer,
-                            FlatSeparator::Empty,
-                            Writer::soft_line,
-                        );
-                    }
-                }
-                let mut arguments = arguments
-                    .iter()
-                    .map(|id| ast.get_node_in_sub_range(id))
-                    .peekable();
-                let mut previous = None;
-                while let Some(argument) = arguments.next() {
-                    let mut item = self.prepare_argument_slot(
-                        argument,
-                        arguments.peek().copied(),
-                        previous,
-                        content,
-                        !hugged && self.options.trailing_commas == TrailingCommas::All,
-                        writer,
-                    )?;
-                    if previous.is_none() && first_mode == ContentMode::Verbatim {
-                        item.set_leading_mode(first_mode);
-                    }
-                    let tail = self.format_argument_with_function_fact(
-                        argument,
-                        item.mode,
-                        jsx_call,
-                        &mut missing_function,
-                        writer,
-                    )?;
-                    previous = Some(self.finish_delimited_item(item, tail, writer)?);
-                }
-                let end = previous.map_or(content.start, |boundary| boundary.end);
-                self.format_argument_dangling(Span::new(end, content.end), writer)
-            };
-            let end = if hugged {
-                write_items(writer)?
-            } else {
-                writer.indent(write_items)?
-            };
-            if !hugged && (first.is_some() || end != content.start) {
-                self.line_constraint(end, content.end).write(
-                    writer,
-                    FlatSeparator::Empty,
-                    Writer::soft_line,
-                );
-            }
-            writer.text(")");
-            Ok(None)
-        })?;
-        Ok(FormattedArguments {
-            tail,
-            has_outside_prefix,
-        })
-    }
-    pub(super) fn prepare_argument_slot(
-        &mut self,
-        node: Argument,
-        following: Option<Argument>,
-        previous: Option<ItemBoundary>,
-        content: Span,
-        trailing_comma: bool,
-        writer: &mut Writer<'ast>,
-    ) -> Result<PreparedItem, FormatError> {
-        let span = node.span(self.ast);
-        let end = previous.map_or(content.start, |boundary| boundary.end);
-        if let Some(previous) = previous {
-            let leading = self.comments.between(Span::new(end, span.start))?;
-            let next = leading
-                .first()
-                .map_or(span.start, |comment| comment.span.start);
-            ArgumentLayout::Lines.separator(
-                previous.separator,
-                self.line_constraint(end, next),
-                writer,
-            );
-        }
-        let following = following.map_or(FollowingItem::End, |argument| {
-            FollowingItem::Node(argument.span(self.ast))
-        });
-        let mut item = self.prepare_call_argument_item(
-            span,
-            following,
-            Span::new(end, content.end),
-            trailing_comma,
-            writer,
-        )?;
-        if let Some(previous) = previous {
-            item.set_leading_mode(previous.following_mode);
-        }
-        Ok(item)
-    }
-    /// Reads the unconsumed outside boundary of this actual argument slot.
-    /// Object-internal comments remain owned by the value formatter.
-    pub(super) fn argument_has_boundary_comments(&self, item: &PreparedItem) -> bool {
-        if item.has_leading_comments {
-            return true;
-        }
-        let end = item
-            .following
-            .node()
-            .map_or(item.span.end, |span| span.start);
-        !self
-            .comments
-            .in_range(Span::new(item.item_span.end, end))
-            .is_empty()
-    }
-
-    pub(super) fn first_callback_has_boundary_comments(&self, item: &PreparedItem) -> bool {
-        if item.has_leading_comments {
-            return true;
-        }
-        let end = item
-            .following
-            .node()
-            .map_or(item.span.end, |span| span.start);
-        let gap = Span::new(item.item_span.end, end);
-        let comments = self.comments.in_range(gap);
-        let Some(comment) = comments.first() else {
-            return false;
-        };
-        let comma = self.find_token(gap, comments, ",");
-        comma.is_none_or(|comma| comment.span.start < comma)
-    }
-
-    pub(super) fn format_argument_dangling(
-        &mut self,
-        span: Span,
-        writer: &mut Writer<'ast>,
-    ) -> Result<u32, FormatError> {
-        let dangling = self.comments.between(span)?;
-        self.comments.claim(dangling)?;
-        if dangling
-            .iter()
-            .any(|comment| comment.kind == CommentKind::Line)
-        {
-            writer.break_parent();
-        }
-        self.format_comment_run(dangling, CommentRunLayout::Lines, writer)?;
-        Ok(dangling
-            .last()
-            .map_or(span.start, |comment| comment.span.end))
+        let opening_start = operator.map_or(gap.start, |operator| operator.end);
+        let opening_gap = Span::new(opening_start, gap.end);
+        let opening = self.find_token(opening_gap, comments, "(")?;
+        Some(ArgumentPunctuation { operator, opening })
     }
 
     fn prepare_source_arguments(
@@ -1506,8 +1116,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             callee_mode = types.callee_mode;
         }
-        Some(SourceArguments {
-            allow_composition: true,
+        let list = SourceArguments {
             arguments,
             first,
             delimiters: Span::new(opening, end),
@@ -1518,8 +1127,586 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prefix,
             callee_mode,
             group: ArgumentGroup::Local,
+            frame: CallArgumentFrame::Ordinary,
+            allow_composition: true,
             curried_callee: None,
             jsx_call: None,
+        };
+        Some(list)
+    }
+
+    pub(super) fn format_argument_with_function_fact(
+        &mut self,
+        argument: Argument,
+        mode: ContentMode,
+        jsx_call: Option<CallExpression>,
+        missing_function: &mut Option<&mut bool>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if missing_function.is_none() && (jsx_call.is_none() || mode == ContentMode::Verbatim) {
+            return self.format_argument(argument, mode, writer);
+        }
+        let data = self.ast.argument_data(argument);
+        let content = match data {
+            ArgumentData::Expr(expression) => Some(self.expression_content(expression)),
+            ArgumentData::SpreadElement(_) => None,
+        };
+        let has_function = matches!(
+            content.as_ref().map(|content| content.data),
+            Some(ExprData::Function(_) | ExprData::ArrowFunctionExpression(_))
+        );
+        if has_function && let Some(function) = missing_function.take() {
+            *function = true;
+        }
+        let jsx_callback = content
+            .as_ref()
+            .map_or(JsxCallbackContext::Ordinary, |content| {
+                JsxCallbackContext::argument(
+                    jsx_call.filter(|_| mode == ContentMode::Formatted),
+                    content.data,
+                )
+            });
+        let context = ExpressionContext::at(ExpressionPosition::Nested)
+            .with_content_mode(mode)
+            .with_arrow_layout(super::arrows::ArrowLayout::Argument)
+            .with_jsx_callback(jsx_callback);
+        match data {
+            ArgumentData::Expr(expression) => self.format_expression_prepared_with_array_comments(
+                expression, content, context, None, writer,
+            ),
+            ArgumentData::SpreadElement(_) => {
+                self.format_argument_data_with_array_comments(data, mode, None, writer)
+            }
+        }
+    }
+
+    #[inline]
+    fn argument_prefix(
+        &self,
+        first: Option<&mut SourceFirstArgument>,
+        span: Span,
+        comments: &'ast [Comment],
+    ) -> ArgumentPrefix<'ast> {
+        let Some(first) = first else {
+            return ArgumentPrefix::Outside(comments);
+        };
+        let target = self.has_suppression.then(|| first.node.span(self.ast));
+        let binding = self.comment_binding(comments, Span::new(span.start, span.end + 1), target);
+        let outside_line = comments.iter().any(|comment| {
+            comment.kind == CommentKind::Line
+                && (!self.source_line_starts_line(comment.span.start)
+                    || !matches!(binding, CommentBinding::Unbound))
+        });
+        let prefix = if comments.is_empty() || outside_line || !binding.allows_relocation(target) {
+            ArgumentPrefix::Outside(comments)
+        } else {
+            ArgumentPrefix::Arguments(comments)
+        };
+        if !prefix.belongs_to_arguments() {
+            self.prepare_first_argument_suppression(Some(first), comments, span.end);
+        }
+        prefix
+    }
+
+    fn prepare_first_argument_suppression(
+        &self,
+        first: Option<&mut SourceFirstArgument>,
+        comments: &[Comment],
+        following_start: u32,
+    ) {
+        if !self.has_suppression {
+            return;
+        }
+        let Some(first) = first else {
+            return;
+        };
+        // Relocation and consumption are separate: an own-line marker before
+        // the opener still targets this actual argument when it stays outside.
+        if self
+            .suppression_positions(comments, following_start)
+            .any(|position| matches!(position, SuppressionPosition::OwnLine))
+        {
+            first.mode = ContentMode::Verbatim;
+        }
+    }
+
+    fn format_empty_argument_prefix(
+        &self,
+        comments: &'ast [Comment],
+        operator: Option<Span>,
+        source_end: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let mut previous_end = source_end;
+        let mut pending_line = false;
+        for comment in comments {
+            let own_line = self.source_position_starts_line(comment.span.start);
+            let gap_start = operator
+                .filter(|operator| {
+                    previous_end <= operator.start && operator.end <= comment.span.start
+                })
+                .map_or(previous_end, |operator| operator.end);
+            if pending_line || own_line {
+                writer.hard_line();
+                if self.next_line_is_empty(gap_start, comment.span.start) {
+                    writer.hard_line();
+                }
+            } else {
+                writer.space();
+            }
+            self.format_comment_run(
+                std::slice::from_ref(comment),
+                CommentRunLayout::Source,
+                writer,
+            )?;
+            pending_line = own_line || comment.kind == CommentKind::Line;
+            previous_end = comment.span.end;
+        }
+        if pending_line {
+            writer.hard_line();
+        }
+        Ok(())
+    }
+
+    /// Only the list boundaries belong to the call frame. Comments inside an
+    /// argument (including a callback body) remain that expression's concern.
+    pub(super) fn argument_boundaries_are_clear(&self, list: &SourceArguments<'ast>) -> bool {
+        if list.source_opening.is_some()
+            || list.callee_mode != ContentMode::Formatted
+            || list
+                .first
+                .is_some_and(|first| first.mode != ContentMode::Formatted)
+            || list.has_outside_prefix()
+        {
+            return false;
+        }
+        let content = Span::new(list.callee_span.end, list.delimiters.end - 1);
+        if self.diagnostic_range_is_sensitive(content) {
+            return false;
+        }
+        let mut previous = content.start;
+        for id in list.arguments.iter() {
+            let argument: Argument = self.ast.get_node_in_sub_range(id);
+            let span = argument.span(self.ast);
+            if !self
+                .comments
+                .in_range(Span::new(previous, span.start))
+                .is_empty()
+            {
+                return false;
+            }
+            previous = span.end;
+        }
+        self.comments
+            .in_range(Span::new(previous, content.end))
+            .is_empty()
+    }
+
+    pub(super) fn format_source_arguments(
+        &mut self,
+        list: SourceArguments<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let output = self.format_source_arguments_with_function_fact(list, tail, None, writer)?;
+        Ok(output.tail)
+    }
+
+    pub(super) fn format_source_arguments_with_function_fact(
+        &mut self,
+        list: SourceArguments<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        mut missing_function: Option<&mut bool>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<FormattedArguments<'ast>, FormatError> {
+        let ast = self.ast;
+        let SourceArguments {
+            arguments,
+            first,
+            delimiters,
+            callee_span,
+            type_arguments,
+            source_opening,
+            prefix,
+            group,
+            frame,
+            jsx_call,
+            allow_composition,
+            ..
+        } = list;
+        let first_mode = first.map_or(ContentMode::Formatted, |argument| argument.mode);
+        let opening = delimiters.start;
+        let mut has_outside_prefix = false;
+        let (prefix_start, tail) = if let Some(types) = type_arguments {
+            // The angle owner prints this pending tail before its opener.
+            has_outside_prefix =
+                types.has_comments() || tail.as_ref().is_some_and(|tail| !tail.comments.is_empty());
+            let end = types.node.span(ast).end;
+            self.format_expression_type_arguments(types, tail, writer)?;
+            (end, None)
+        } else {
+            (callee_span.end, tail)
+        };
+        let source_end = tail.as_ref().map_or(prefix_start, |tail| tail.source_end);
+        let content_start = match prefix {
+            SourceArgumentPrefix::Empty { operator, comments } => {
+                let comments = if tail.is_some() {
+                    self.comments.between(Span::new(source_end, opening))?
+                } else {
+                    comments
+                };
+                has_outside_prefix |= !comments.is_empty();
+                self.comments.claim(comments)?;
+                self.format_empty_argument_prefix(comments, operator, source_end, writer)?;
+                if operator.is_some() {
+                    writer.text("?.");
+                }
+                opening + 1
+            }
+            SourceArgumentPrefix::Direct(prefix) => {
+                let before = self.comments.between(Span::new(source_end, opening))?;
+                let prefix_belongs_to_arguments = prefix.belongs_to_arguments();
+                let move_tail = first.is_some()
+                    && (prefix.comments().is_empty() || prefix_belongs_to_arguments)
+                    && tail.as_ref().is_some_and(|tail| {
+                        tail.comments
+                            .iter()
+                            .all(|comment| comment.kind == CommentKind::Block)
+                            && self
+                                .comment_binding(
+                                    tail.comments,
+                                    Span::new(source_end, opening + 1),
+                                    None,
+                                )
+                                .allows_relocation(None)
+                    });
+                let outside_count = if move_tail {
+                    0
+                } else if prefix_belongs_to_arguments {
+                    tail.as_ref().map_or(0, |tail| tail.comments.len())
+                } else {
+                    before.len()
+                };
+                let (outside, inside) = before.split_at(outside_count);
+                has_outside_prefix |= !outside.is_empty();
+                let boundary = self.prepare_comment_boundary(outside, source_end, opening);
+                self.format_comment_boundary(&boundary, writer)?;
+                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                if inside.is_empty() {
+                    opening + 1
+                } else if move_tail {
+                    source_end
+                } else {
+                    prefix_start
+                }
+            }
+            SourceArgumentPrefix::Optional {
+                operator,
+                before,
+                after,
+            } => {
+                let before = if tail.is_some() {
+                    self.comments
+                        .between(Span::new(source_end, operator.start))?
+                } else {
+                    before
+                };
+                has_outside_prefix |= !before.is_empty();
+                let boundary = self.prepare_comment_boundary(before, source_end, operator.start);
+                self.format_comment_boundary(&boundary, writer)?;
+                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                writer.text("?.");
+                if after.belongs_to_arguments() {
+                    operator.end
+                } else {
+                    let after = after.comments();
+                    has_outside_prefix |= !after.is_empty();
+                    let boundary = self.prepare_comment_boundary(after, operator.end, opening);
+                    self.format_comment_boundary(&boundary, writer)?;
+                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    opening + 1
+                }
+            }
+        };
+        let content_start = source_opening.map_or(content_start, |opening| opening.span.end);
+        let content = Span::new(content_start, delimiters.end - 1);
+        if first.is_none() {
+            let comments = self.comments.in_range(content);
+            if self.content_mode(comments) == ContentMode::Verbatim {
+                self.format_verbatim(Span::new(opening, delimiters.end), writer)?;
+                return Ok(FormattedArguments {
+                    tail: None,
+                    has_outside_prefix,
+                });
+            }
+            if comments.is_empty() {
+                writer.text("(");
+                self.format_argument_dangling(content, writer)?;
+                writer.text(")");
+                return Ok(FormattedArguments {
+                    tail: None,
+                    has_outside_prefix,
+                });
+            }
+        }
+        let fixed_frame = frame.is_fixed();
+        let hugged = fixed_frame
+            || source_opening.is_none()
+                && arguments.len() == 1
+                && self.comments.in_range(content).is_empty()
+                && !self.diagnostic_range_is_sensitive(content)
+                && first.is_some_and(|argument| match ast.argument_data(argument.node) {
+                    ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
+                    ArgumentData::SpreadElement(_) => false,
+                });
+        let expand = !fixed_frame
+            && (arguments
+                .iter()
+                .map(|id| ast.get_node_in_sub_range(id))
+                .scan(content.start, |previous, argument| {
+                    let span = argument.span(ast);
+                    let empty = self.next_line_is_empty(*previous, span.start);
+                    *previous = span.end;
+                    Some(empty)
+                })
+                .any(|empty| empty)
+                || allow_composition && self.arguments_are_function_composition(arguments));
+        if !fixed_frame
+            && !expand
+            && let Some(selected) = self.select_argument_layout(arguments, !hugged)
+        {
+            let tail = self.format_selected_arguments(
+                arguments,
+                content,
+                ArgumentHead {
+                    first_mode,
+                    source_opening,
+                    ordinary_group: group,
+                    jsx_call,
+                },
+                selected,
+                missing_function,
+                writer,
+            )?;
+            return Ok(FormattedArguments {
+                tail,
+                has_outside_prefix,
+            });
+        }
+        let tail = group.write(expand, writer, |writer| {
+            if let Some(opening) = source_opening {
+                self.format_verbatim(opening.span, writer)?;
+            } else {
+                writer.text("(");
+            }
+            let mut write_items = |writer: &mut Writer<'ast>| {
+                if !hugged && (first.is_some() || !self.comments.in_range(content).is_empty()) {
+                    if let Some(opening) = source_opening {
+                        opening
+                            .following
+                            .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    } else {
+                        self.opening_line_constraint(content).write(
+                            writer,
+                            FlatSeparator::Empty,
+                            Writer::soft_line,
+                        );
+                    }
+                }
+                let mut arguments = arguments
+                    .iter()
+                    .map(|id| ast.get_node_in_sub_range(id))
+                    .peekable();
+                let mut previous = None;
+                while let Some(argument) = arguments.next() {
+                    let slot = CallArgumentSlot {
+                        node: argument,
+                        following: arguments.peek().copied(),
+                    };
+                    let mut item = self.prepare_argument_slot_with_frame(
+                        slot,
+                        previous,
+                        content,
+                        !hugged && self.options.trailing_commas == TrailingCommas::All,
+                        frame,
+                        writer,
+                    )?;
+                    if previous.is_none() && first_mode == ContentMode::Verbatim {
+                        item.set_leading_mode(first_mode);
+                    }
+                    let tail = if let Some(callback) = frame.test_callback()
+                        && callback.argument == argument && item.mode == ContentMode::Formatted
+                    {
+                        self.format_test_callback(callback, jsx_call, &mut missing_function, writer)?
+                    } else if let Some((wrapper_expression, wrapper)) = frame.angular_wrapper()
+                        && matches!(ast.argument_data(argument), ArgumentData::Expr(expression) if expression == wrapper_expression)
+                    {
+                        self.format_expression(
+                            wrapper_expression,
+                            ExpressionContext::at(ExpressionPosition::Nested)
+                                .with_content_mode(item.mode)
+                                .with_angular_test_wrapper(wrapper),
+                            writer,
+                        )?
+                    } else {
+                        self.format_argument_with_function_fact(
+                            argument,
+                            item.mode,
+                            jsx_call,
+                            &mut missing_function,
+                            writer,
+                        )?
+                    };
+                    previous = Some(self.finish_delimited_item(item, tail, writer)?);
+                }
+                let end = previous.map_or(content.start, |boundary| boundary.end);
+                self.format_argument_dangling(Span::new(end, content.end), writer)
+            };
+            let end = if hugged {
+                write_items(writer)?
+            } else {
+                writer.indent(write_items)?
+            };
+            if !hugged && (first.is_some() || end != content.start) {
+                self.line_constraint(end, content.end).write(
+                    writer,
+                    FlatSeparator::Empty,
+                    Writer::soft_line,
+                );
+            }
+            writer.text(")");
+            Ok(None)
+        })?;
+        Ok(FormattedArguments {
+            tail,
+            has_outside_prefix,
         })
+    }
+    pub(super) fn prepare_argument_slot(
+        &mut self,
+        argument: Argument,
+        following: Option<Argument>,
+        previous: Option<ItemBoundary>,
+        content: Span,
+        trailing_comma: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedItem, FormatError> {
+        let slot = CallArgumentSlot {
+            node: argument,
+            following,
+        };
+        self.prepare_argument_slot_with_frame(
+            slot,
+            previous,
+            content,
+            trailing_comma,
+            CallArgumentFrame::Ordinary,
+            writer,
+        )
+    }
+
+    fn prepare_argument_slot_with_frame(
+        &mut self,
+        slot: CallArgumentSlot,
+        previous: Option<ItemBoundary>,
+        content: Span,
+        trailing_comma: bool,
+        frame: CallArgumentFrame,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PreparedItem, FormatError> {
+        let CallArgumentSlot { node, following } = slot;
+        let span = node.span(self.ast);
+        let end = previous.map_or(content.start, |boundary| boundary.end);
+        if let Some(previous) = previous {
+            let leading = self.comments.between(Span::new(end, span.start))?;
+            let next = leading
+                .first()
+                .map_or(span.start, |comment| comment.span.start);
+            let separator = if matches!(frame, CallArgumentFrame::Fixed { .. })
+                && (matches!(previous.separator, Separator::EmptyLine)
+                    && leading
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                    || leading.first().is_some_and(|comment| {
+                        self.source_position_starts_line(comment.span.start)
+                    }) && leading
+                        .last()
+                        .is_some_and(|comment| self.line_breaks(comment.span.end, span.start) != 0))
+            {
+                Separator::OwnLineComment
+            } else {
+                previous.separator
+            };
+            frame.separator(separator, self.line_constraint(end, next), writer);
+        }
+        let following = following.map_or(FollowingItem::End, |argument| {
+            FollowingItem::Node(argument.span(self.ast))
+        });
+        let mut item = self.prepare_call_argument_item(
+            span,
+            following,
+            Span::new(end, content.end),
+            trailing_comma,
+            writer,
+        )?;
+        if let Some(previous) = previous {
+            item.set_leading_mode(previous.following_mode);
+        }
+        Ok(item)
+    }
+
+    /// Reads the unconsumed outside boundary of this actual argument slot.
+    /// Object-internal comments remain owned by the value formatter.
+    pub(super) fn argument_has_boundary_comments(&self, item: &PreparedItem) -> bool {
+        if item.has_leading_comments {
+            return true;
+        }
+        let end = item
+            .following
+            .node()
+            .map_or(item.span.end, |span| span.start);
+        !self
+            .comments
+            .in_range(Span::new(item.item_span.end, end))
+            .is_empty()
+    }
+
+    /// Inline blocks after the comma may stay with the following argument.
+    /// Effective trailing ignore targets are already excluded by the item's mode;
+    /// mandatory line breaks are checked on the recorded fragments.
+    pub(super) fn first_callback_has_boundary_comments(&self, item: &PreparedItem) -> bool {
+        if item.has_leading_comments {
+            return true;
+        }
+        let end = item
+            .following
+            .node()
+            .map_or(item.span.end, |span| span.start);
+        let gap = Span::new(item.item_span.end, end);
+        let comments = self.comments.in_range(gap);
+        let Some(comment) = comments.first() else {
+            return false;
+        };
+        let comma = self.find_comma(gap, comments);
+        comma.is_none_or(|comma| comment.span.start < comma)
+    }
+
+    pub(super) fn format_argument_dangling(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<u32, FormatError> {
+        let dangling = self.comments.between(span)?;
+        self.comments.claim(dangling)?;
+        if dangling
+            .iter()
+            .any(|comment| comment.kind == CommentKind::Line)
+        {
+            writer.break_parent();
+        }
+        self.format_comment_run(dangling, CommentRunLayout::Lines, writer)?;
+        Ok(dangling
+            .last()
+            .map_or(span.start, |comment| comment.span.end))
     }
 }

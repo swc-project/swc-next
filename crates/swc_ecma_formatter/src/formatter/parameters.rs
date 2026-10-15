@@ -187,7 +187,14 @@ impl CallbackParameterShape {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum ParameterFrame {
+    Ordinary,
+    Fixed,
+}
+
 pub(super) struct SourceParameters {
+    frame: ParameterFrame,
     node: FormalParameters,
     source: ParameterSource,
     first: Option<RuntimeParameterHead>,
@@ -209,6 +216,10 @@ pub(super) struct FunctionParameters {
 }
 
 impl SourceParameters {
+    pub(super) fn set_frame(&mut self, frame: ParameterFrame) {
+        self.frame = frame;
+    }
+
     pub(super) fn span(&self, ast: &Ast<'_>) -> Span {
         self.node.span(ast)
     }
@@ -465,6 +476,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_single_parameter,
             force_break,
             source: SourceParameters {
+                frame: ParameterFrame::Ordinary,
                 node,
                 source,
                 first: first_head,
@@ -495,6 +507,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let ast = self.ast;
         let SourceParameters {
+            frame,
             node,
             source,
             first,
@@ -588,7 +601,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     next = parameters.next().transpose()?;
                     let span = parameter.span;
                     if has_previous {
-                        if matches!(separator, Separator::EmptyLine) {
+                        if frame == ParameterFrame::Ordinary
+                            && matches!(separator, Separator::EmptyLine)
+                        {
                             writer.break_parent();
                         }
                         let next = self
@@ -597,7 +612,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .first()
                             .map_or(span.start, |comment| comment.span.start);
                         let constraint = self.line_constraint(end, next);
-                        ArgumentLayout::Lines.separator(separator, constraint, writer);
+                        match (frame, separator) {
+                            (ParameterFrame::Fixed, Separator::Line | Separator::EmptyLine) => {
+                                constraint.write(writer, FlatSeparator::Space, Writer::space);
+                            }
+                            _ => ArgumentLayout::Lines.separator(separator, constraint, writer),
+                        }
                     }
                     let following = next
                         .map(|parameter| parameter.span)
