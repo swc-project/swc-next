@@ -272,13 +272,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    /// Scan a line feed and its indentation without entering the trivia scanner.
-    /// Leave the cursor at the line feed when the following token needs the slow path.
+    /// Scan a line feed, blank lines, and space or tab indentation without
+    /// entering the trivia scanner. Leave the cursor at the first line feed
+    /// when the following token needs the slow path.
     #[inline]
     fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
         let line_feed = self.cursor;
         let mut start = line_feed as usize + 1;
-        while self.source.get(start) == Some(&b' ') {
+        while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
             start += 1;
         }
         let Some(&byte) = self.source.get(start) else {
