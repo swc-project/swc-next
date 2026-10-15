@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+const record = { "quoted-key": { plain: 1, "simple": 2 }, plain: { "quoted-key": 3, nested: 4 }, after: 5 };
+---------- Options ----------
+{}
+---------- Output ----------
+const record = {
+  "quoted-key": { plain: 1, simple: 2 },
+  plain: { "quoted-key": 3, nested: 4 },
+  after: 5,
+};
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+const record = {
+  "quoted-key": { plain: 1, "simple": 2 },
+  plain: { "quoted-key": 3, nested: 4 },
+  after: 5,
+};
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+const record = {
+  "quoted-key": { plain: 1, simple: 2 },
+  "plain": { "quoted-key": 3, "nested": 4 },
+  "after": 5,
+};
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+const record = {
+  'quoted-key': { plain: 1, simple: 2 },
+  'plain': { 'quoted-key': 3, 'nested': 4 },
+  'after': 5,
+}

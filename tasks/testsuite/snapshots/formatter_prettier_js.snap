@@ -3,19 +3,19 @@ formatter * prettier 3.9.9 * js
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 794
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1017/1072 (94.87%)
-Snapshot matched: 1017/1072
-AST parity: 1071/1071
-AST mismatched: 0/1071
-AST format errors: 0/1072
-Mismatched: 54/1072
-Format errors: 0/1072
-Panicked: 0/1072
-Not idempotent: 0/1072
+Passed: 1028/1083 (94.92%)
+Snapshot matched: 1028/1083
+AST parity: 1082/1082
+AST mismatched: 0/1082
+AST format errors: 0/1083
+Mismatched: 54/1083
+Format errors: 0/1083
+Panicked: 0/1083
+Not idempotent: 0/1083
 Ignored files: 298
-Parse errors: 1/1072
+Parse errors: 1/1083
 Expected parser errors: 19
-Unsupported option sets: 17
+Unsupported option sets: 14
 
 # Parse errors
 
@@ -95,13 +95,10 @@ Unsupported option sets: 17
 - js/call/boolean/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
 - js/conditional/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/cursor/require-pragma/format.test.js - unsupported Prettier option requirePragma=true
-- js/import-attributes/quote-props/format.test.js - unsupported Prettier option quoteProps="consistent"
 - js/logical-expressions/multiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
 - js/multiparser-html/format.test.js - unsupported Prettier option htmlWhitespaceSensitivity="ignore"
 - js/multiparser-markdown/format.test.js - unsupported Prettier option proseWrap="always"
 - js/object-multiline/format.test.js - unsupported Prettier option objectWrap="collapse"
-- js/quote-props/format.test.js - unsupported Prettier option quoteProps="consistent"
-- js/quote-props/format.test.js - unsupported Prettier option quoteProps="consistent"
 - js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true

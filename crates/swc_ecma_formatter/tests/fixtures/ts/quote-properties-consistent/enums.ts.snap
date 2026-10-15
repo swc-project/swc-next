@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+enum RecordType { plain = 1, "quoted-key" = 2, "simple" = 3 }
+---------- Options ----------
+{}
+---------- Output ----------
+enum RecordType {
+  plain = 1,
+  "quoted-key" = 2,
+  simple = 3,
+}
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+enum RecordType {
+  plain = 1,
+  "quoted-key" = 2,
+  "simple" = 3,
+}
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+enum RecordType {
+  "plain" = 1,
+  "quoted-key" = 2,
+  "simple" = 3,
+}
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+enum RecordType {
+  'plain' = 1,
+  'quoted-key' = 2,
+  'simple' = 3,
+}
