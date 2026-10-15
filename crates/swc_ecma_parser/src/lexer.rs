@@ -211,7 +211,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         if self.mode != LexerMode::Normal {
-            return false;
+            return self.try_next_jsx_tag_token(target);
         }
 
         let mut start = self.cursor;
@@ -268,6 +268,66 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             FastClass::Slow => return false,
         }
+        self.handle_token(*target, HandleTokenMode::Append);
+        true
+    }
+
+    /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
+    /// `/>`, `{`, and attribute strings. On failure, the cursor is unchanged.
+    #[inline(never)]
+    fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
+        debug_assert_eq!(self.mode, LexerMode::JsxTag);
+        let src = self.source;
+        let mut start = self.cursor as usize;
+        let mut line_break = false;
+        loop {
+            match src.get(start) {
+                Some(b' ' | b'\t') => start += 1,
+                Some(b'\n') => {
+                    line_break = true;
+                    start += 1;
+                }
+                Some(_) => break,
+                None => return false,
+            }
+        }
+
+        let byte = src[start];
+        let (tag, end) = match byte {
+            b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' => {
+                let mut end = start + 1;
+                while let Some(&byte) = src.get(end) {
+                    match ASCII_IDENTIFIER_CLASS[byte as usize] {
+                        IdentifierClass::Continue => {}
+                        IdentifierClass::End if byte == b'-' => {}
+                        IdentifierClass::End => break,
+                        IdentifierClass::Slow => return false,
+                    }
+                    end += 1;
+                }
+                (TokenTag::JsxIdentifier, end)
+            }
+            b'>' => (TokenTag::GreaterThan, start + 1),
+            b'{' => (TokenTag::LeftBrace, start + 1),
+            b'=' if matches!(src.get(start + 1), Some(b'{' | b'"' | b'\'')) => {
+                (TokenTag::Assign, start + 1)
+            }
+            b'/' if src.get(start + 1) == Some(&b'>') => (TokenTag::Slash, start + 1),
+            b'"' | b'\'' => {
+                let Some(offset) = memchr(byte, &src[start + 1..]) else {
+                    return false;
+                };
+                (TokenTag::StringLiteral, start + offset + 2)
+            }
+            _ => return false,
+        };
+
+        self.clear_token_flags();
+        if line_break {
+            self.set_token_flag(TokenFlag::LineTerminatorBefore);
+        }
+        self.cursor = end as u32;
+        *target = self.create_token(tag, start as u32, end as u32);
         self.handle_token(*target, HandleTokenMode::Append);
         true
     }
