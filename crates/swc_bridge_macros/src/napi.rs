@@ -96,3 +96,70 @@ pub(super) fn expand_function(function: &ItemFn, arguments: Vec<Meta>) -> syn::R
         };
     })
 }
+
+/// Use the one-byte N-API constructor for enum spellings known to be ASCII.
+/// Other spellings and explicit variant overrides retain napi-rs conversion.
+pub(super) fn ascii_enum_conversion(enumeration: &syn::ItemEnum) -> Option<TokenStream> {
+    if enumeration.variants.is_empty()
+        || enumeration.variants.iter().any(|variant| {
+            !variant
+                .ident
+                .to_string()
+                .bytes()
+                .all(|byte| byte.is_ascii_alphabetic())
+                || variant
+                    .attrs
+                    .iter()
+                    .any(|attribute| attribute.path().is_ident("napi"))
+        })
+    {
+        return None;
+    }
+    let ident = &enumeration.ident;
+    let arms = enumeration.variants.iter().map(|variant| {
+        let name = &variant.ident;
+        let spelling = name.to_string().to_ascii_lowercase();
+        let bytes = syn::LitByteStr::new(spelling.as_bytes(), name.span());
+        quote!(#ident::#name => #bytes)
+    });
+    Some(quote! {
+        #[cfg(not(target_family = "wasm"))]
+        const _: () = {
+            use ::swc_next_bridge::napi;
+
+            impl napi::bindgen_prelude::ToNapiValue for &#ident {
+                unsafe fn to_napi_value(
+                    env: napi::sys::napi_env,
+                    value: Self,
+                ) -> napi::Result<napi::sys::napi_value> {
+                    let bytes: &[u8] = match value { #(#arms,)* };
+                    let mut result = ::std::ptr::null_mut();
+                    napi::check_status!(unsafe {
+                        napi::sys::napi_create_string_latin1(
+                            env, bytes.as_ptr().cast(), bytes.len() as isize, &mut result,
+                        )
+                    }, "Failed to convert rust `&str` into napi `string`")?;
+                    Ok(result)
+                }
+            }
+
+            impl napi::bindgen_prelude::ToNapiValue for #ident {
+                unsafe fn to_napi_value(
+                    env: napi::sys::napi_env,
+                    value: Self,
+                ) -> napi::Result<napi::sys::napi_value> {
+                    unsafe { napi::bindgen_prelude::ToNapiValue::to_napi_value(env, &value) }
+                }
+            }
+
+            impl napi::bindgen_prelude::ToNapiValue for &mut #ident {
+                unsafe fn to_napi_value(
+                    env: napi::sys::napi_env,
+                    value: Self,
+                ) -> napi::Result<napi::sys::napi_value> {
+                    unsafe { napi::bindgen_prelude::ToNapiValue::to_napi_value(env, &*value) }
+                }
+            }
+        };
+    })
+}

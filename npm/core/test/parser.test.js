@@ -333,3 +333,13 @@ test("parseSync preserves source encoding at the API boundary", () => {
   assert.throws(() => parseSync(123), TypeError);
   assert.throws(() => parseStandalone(null), TypeError);
 });
+
+test("path helpers return string enum values through N-API", () => {
+  assert.equal(langFromPath("input.js"), "js");
+  assert.equal(langFromPath("input.jsx"), "jsx");
+  assert.equal(langFromPath("input.ts"), "ts");
+  assert.equal(langFromPath("input.tsx"), "tsx");
+  assert.equal(langFromPath("input.d.ts"), "dts");
+  assert.equal(sourceTypeFromPath("input.cjs"), "commonjs");
+  assert.equal(sourceTypeFromPath("input.mjs"), "module");
+});

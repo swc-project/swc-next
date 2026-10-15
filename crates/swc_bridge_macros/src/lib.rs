@@ -249,6 +249,21 @@ fn expand_enum(
         }
     }
 
+    let ascii_conversion = if arguments
+        .iter()
+        .any(|argument| argument.path().is_ident("object_to_js"))
+    {
+        None
+    } else {
+        napi::ascii_enum_conversion(&enumeration)
+    };
+    let napi = if ascii_conversion.is_some() {
+        let mut arguments = arguments.clone();
+        arguments.push(parse_quote!(object_to_js = false));
+        napi_meta(&arguments)
+    } else {
+        napi
+    };
     let ident = &enumeration.ident;
     let variants = enumeration.variants.iter().map(|variant| &variant.ident);
     let encode_arms = variants.clone().enumerate().map(|(index, variant)| {
@@ -263,6 +278,7 @@ fn expand_enum(
     Ok(quote! {
         #[cfg_attr(not(target_family = "wasm"), #napi)]
         #enumeration
+        #ascii_conversion
 
         impl ::swc_next_bridge::private::Sealed for #ident {}
         impl ::swc_next_bridge::BridgeWire for #ident {}
