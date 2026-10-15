@@ -19,7 +19,25 @@ SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a 
 - **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript enable writing plugins in JavaScript.
 - **Correctness:** Tested against Test262, TypeScript, and Babel, supplemented by additional unit tests.
 
-This project is still in a very early stage; please continue to use SWC for production.
+The Rust API is still in a very early stage; please continue to use SWC's Rust API for production.
+
+## Usage
+
+The JavaScript API is available from [`@swc-next/core`](npm/core). Install it with `npm install @swc-next/core`:
+
+```sh
+npm install @swc-next/core
+```
+
+Then parse and print a program:
+
+```js
+import { parseSync, printSync } from "@swc-next/core";
+
+const { program, diagnostics } = parseSync("const answer = 42;");
+console.log(diagnostics);
+console.log(printSync(program).code);
+```
 
 ## Roadmap
 
@@ -29,7 +47,7 @@ See the [project roadmap](https://github.com/swc-project/swc-next/issues/181).
 
 See the [Flattening AST design](docs/FlatteningAST.md) and other documents.
 
-## Soundness
+## Rust API Soundness
 
 The current Rust AST API has known soundness issues:
 
