@@ -10809,6 +10809,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // Expose member parsing to the caller so the hot dot path does not save
+    // parser state across a separate call.
+    #[inline(always)]
     fn parse_static_member_expression(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Dot);
         self.advance()?;
