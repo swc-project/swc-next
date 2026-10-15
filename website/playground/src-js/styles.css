@@ -1,0 +1,111 @@
+@import "tailwindcss";
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  color-scheme: dark;
+  --background: #08090a;
+  --card: #0b0c0d;
+  --sidebar: #08090a;
+  --foreground: #d0d6e0;
+  --heading: #f7f8f8;
+  --muted: #8a8f98;
+  --subtle: #747983;
+  --border: #ffffff0f;
+  --hover: #ffffff08;
+  --input: #ffffff04;
+  --accent: #e4ae77;
+  --ring: #6e79d6;
+  --green: #91b49e;
+  --red: #df858b;
+  --ast-key: #b1b5c1;
+  --ast-type: #c9bbe5;
+  --ast-string: #a8c3a0;
+  --ast-number: #d4ba8c;
+  font-synthesis: none;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #fcfcfc;
+  --card: #fff;
+  --sidebar: #fcfcfc;
+  --foreground: #393a40;
+  --heading: #202124;
+  --muted: #62666e;
+  --subtle: #797d85;
+  --border: #0000000e;
+  --hover: #00000005;
+  --input: #fff;
+  --accent: #ac672b;
+  --ring: #5e6ad2;
+  --green: #437b55;
+  --red: #b84550;
+  --ast-key: #565d70;
+  --ast-type: #8653a0;
+  --ast-string: #47793d;
+  --ast-number: #9b6830;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-sidebar: var(--sidebar);
+  --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-hover: var(--hover);
+  --color-input: var(--input);
+  --color-accent: var(--accent);
+  --color-ring: var(--ring);
+  --color-ast-key: var(--ast-key);
+  --color-ast-type: var(--ast-type);
+  --color-ast-string: var(--ast-string);
+  --color-ast-number: var(--ast-number);
+  --color-success: var(--green);
+  --color-error: var(--red);
+  --font-sans:
+    "Inter Variable", Inter, "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  body {
+    @apply m-0 bg-background font-sans text-base text-foreground antialiased;
+  }
+  button,
+  a,
+  input,
+  select,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  select {
+    @apply outline-offset-3;
+  }
+  button {
+    @apply cursor-pointer disabled:cursor-default disabled:opacity-35;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  svg {
+    @apply shrink-0;
+  }
+  summary {
+    @apply cursor-pointer list-none select-none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}

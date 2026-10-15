@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://swc.rs/">
-    <img alt="SWC" src="./docs/images/swc.png" width="546">
+    <img alt="SWC" src="./website/docs/images/swc.png" width="546">
   </a>
 </p>
 
@@ -47,7 +47,7 @@ See the [project roadmap](https://github.com/swc-project/swc-next/issues/181) fo
 
 ## Design & Architecture
 
-See the [Flattening AST design](docs/FlatteningAST.md) and other documents.
+See the [Flattening AST design](website/docs/FlatteningAST.md) and other documents.
 
 ## Rust API Soundness
 

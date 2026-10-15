@@ -1921,6 +1921,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 
 [[package]]
+name = "playground"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "swc_next_allocator",
+ "swc_next_bridge",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
+ "swc_next_ecma_semantic",
+ "swc_next_ecma_transformer",
+]
+
+[[package]]
 name = "plotters"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

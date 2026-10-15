@@ -45,7 +45,7 @@ pub(super) fn read(component: &str, output_dir: &Path) -> Result<Workspace> {
         .verbose(true)
         .other_options(vec!["--locked".into()])
         .exec()?;
-    let mut components = discover_components(&root, &metadata)?;
+    let mut components = discover_components(&metadata)?;
     components.retain(|candidate| candidate.name == component);
     ensure!(!components.is_empty(), "no Wasm packages found");
 
@@ -55,16 +55,10 @@ pub(super) fn read(component: &str, output_dir: &Path) -> Result<Workspace> {
     Ok(Workspace { root, components })
 }
 
-fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component>> {
-    let npm = root.join("npm");
-    let mut entries = fs::read_dir(&npm)?.collect::<Result<Vec<_>, _>>()?;
-    entries.sort_by_key(|entry| entry.file_name());
+fn discover_components(metadata: &Metadata) -> Result<Vec<Component>> {
     let mut components = Vec::new();
-    for entry in entries {
-        if !entry.file_type()?.is_dir() {
-            continue;
-        }
-        let directory = entry.path();
+    for package in &metadata.packages {
+        let directory = package.manifest_path.as_std_path().parent().unwrap();
         let manifest_path = directory.join("package.json");
         let source = match fs::read(manifest_path) {
             Ok(source) => source,
@@ -79,23 +73,17 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
             .version
             .filter(|version| !version.is_empty())
             .context("missing package version")?;
-        let cargo_manifest = directory.join("Cargo.toml");
-        let package = metadata
-            .packages
-            .iter()
-            .find(|package| package.manifest_path.as_std_path() == cargo_manifest)
-            .context("missing Cargo package")?;
         let library = package
             .targets
             .iter()
             .find(|target| target.is_cdylib())
             .context("missing cdylib target")?;
         components.push(Component {
-            name: entry
+            name: directory
                 .file_name()
-                .into_string()
-                .ok()
-                .context("npm directory name must be UTF-8")?,
+                .and_then(|name| name.to_str())
+                .context("Wasm package directory name must be UTF-8")?
+                .to_owned(),
             output_dir: PathBuf::default(),
             cargo_package: package.name.to_string(),
             input: PathBuf::from(format!("{}.wasm", library.name)),
@@ -103,5 +91,6 @@ fn discover_components(root: &Path, metadata: &Metadata) -> Result<Vec<Component
             version,
         });
     }
+    components.sort_by(|left, right| left.name.cmp(&right.name));
     Ok(components)
 }

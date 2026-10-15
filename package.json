@@ -13,7 +13,9 @@
     "test:wasm": "pnpm --filter @swc-next/core test:wasm",
     "test:browser": "pnpm --filter @swc-next/core-browser test:browser",
     "test:conformance": "pnpm --filter @swc-next/core test:conformance",
-    "test:codec": "pnpm --filter @swc-next/core test:codec"
+    "test:codec": "pnpm --filter @swc-next/core test:codec",
+    "dev:playground": "pnpm --filter playground dev",
+    "build:playground": "pnpm --filter playground build"
   },
   "keywords": [],
   "author": "",

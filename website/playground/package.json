@@ -1,0 +1,36 @@
+{
+  "name": "playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm build:wasm && rsbuild dev",
+    "build": "pnpm build:wasm --profile wasm-release && rsbuild build",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build playground --output-dir wasm",
+    "check": "tsc --noEmit",
+    "preview": "rsbuild preview"
+  },
+  "dependencies": {
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/types": "workspace:*",
+    "jotai": "^2.20.3",
+    "lucide-react": "^1.46.0",
+    "monaco-editor": "^0.57.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "^2.2.13",
+    "@rsbuild/plugin-react": "^2.1.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "catalog:",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "catalog:"
+  },
+  "wasm": {
+    "binaryName": "playground"
+  }
+}

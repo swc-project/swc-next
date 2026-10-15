@@ -1,6 +1,6 @@
 [workspace]
 exclude  = ["npm/core-browser"]
-members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/bridge_cli", "tasks/testsuite"]
+members  = ["crates/*", "npm/*", "tasks/ast_tools", "tasks/benchmark", "tasks/bridge_cli", "tasks/testsuite", "website/playground"]
 resolver = "3"
 
 [workspace.package]
