@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+import value from "module" with { type: "json", "quoted-key": "value", "1": "numeric" };
+---------- Options ----------
+{}
+---------- Output ----------
+import value from "module" with {
+  type: "json",
+  "quoted-key": "value",
+  "1": "numeric",
+};
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+import value from "module" with {
+  type: "json",
+  "quoted-key": "value",
+  "1": "numeric",
+};
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+import value from "module" with {
+  "type": "json",
+  "quoted-key": "value",
+  "1": "numeric",
+};
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+import value from 'module' with {
+  'type': 'json',
+  'quoted-key': 'value',
+  '1': 'numeric',
+}
