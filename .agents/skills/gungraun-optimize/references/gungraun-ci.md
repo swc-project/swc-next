@@ -114,3 +114,26 @@ See the official [machine-readable output](https://gungraun.github.io/gungraun/l
 - Make job summary and artifact upload work without write permissions so fork pull requests retain useful results.
 - Use concurrency keyed by PR number for PR runs and by run ID for manual runs. Manual incremental and cumulative runs must not cancel each other. Associate every result with its resolved comparison SHAs and ignore cancelled runs.
 - Capture the benchmark exit status before rendering or uploading reports, perform reporting under `always()`, and finally return the original benchmark failure when the harness itself failed.
+
+## Permanent JavaScript API CI
+
+Use `.github/workflows/gungraun-js.yml` for Node.js N-API comparisons. The
+workflow accepts `base`, `head`, and a literal case-substring `filter` on manual
+runs. PR runs compare the event's exact base and head SHAs. The standalone
+`tasks/benchmark/js` harness is copied from head for both runs, without
+replacing either revision's product manifests or dependencies.
+
+Keep JIT enabled and retain the three trial counts, median and range. A range
+overlap is inconclusive, including in same-SHA checks. The benchmark-only N-API
+helper uses Callgrind client requests around the synchronous JS callback;
+startup, input preparation and warmup are excluded. Preserve the native symbol
+and debug build settings. Use the artifact metadata hashes to verify workload
+identity before comparing results across runs. See the harness README for
+filters, local Linux commands and limitations of JIT profile symbolization.
+
+The JS workflow builds both revisions once and fans out to five representative
+case jobs on PRs. Manual runs cover all 24 cases unless filtered. Keep
+all three base/head trials for one case on the same runner. The aggregate report
+must reject missing or duplicate case artifacts and mismatched harness hashes.
+Use the per-case CPU metadata when comparing profiles across runs. The same-SHA
+check runs in parallel; do not wait for it before starting unrelated case jobs.

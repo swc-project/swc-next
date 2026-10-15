@@ -1,0 +1,20 @@
+# Standalone so the same harness can measure revisions that predate it.
+[workspace]
+
+[package]
+name = "js-api-benchmark"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dev-dependencies]
+gungraun = "=0.20.0"
+
+[[bench]]
+name = "gungraun_js"
+path = "gungraun_js.rs"
+harness = false
+
+[profile.bench]
+debug = true
+strip = "none"

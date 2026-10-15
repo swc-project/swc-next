@@ -1,6 +1,6 @@
 ---
 name: gungraun-optimize
-description: "Don't trigger if not asked explicitly. Autonomously profile and optimize Rust code with Gungraun benchmarks in GitHub Actions using Callgrind, Cachegrind, DHAT, PR-free manual comparisons, and one accepted optimization per stacked pull request. Use when asked to make Rust code faster, reduce instructions, cache misses, or allocations, investigate a Gungraun CI performance regression, analyze where Rust code spends work, or create a temporary Gungraun benchmark and GitHub Actions harness before optimization."
+description: "Don't trigger if not asked explicitly. Autonomously profile and optimize Rust code and the Node.js JavaScript API with Gungraun benchmarks in GitHub Actions using Callgrind, Cachegrind, DHAT, PR-free manual comparisons, and one accepted optimization per stacked pull request. Use when asked to make Rust code faster, reduce instructions, cache misses, or allocations, investigate a Gungraun CI performance regression, analyze where Rust code spends work, or create a temporary Gungraun benchmark and GitHub Actions harness before optimization."
 ---
 
 # Gungraun Optimize
@@ -36,6 +36,28 @@ Act as a performance engineer. Measure provisional changes in GitHub Actions wit
 4. Search manifests, benchmark targets, Gungraun macros and configuration, GitHub workflows, summary renderers, and wall-time suites. Prefer `rg` and `git grep`.
 5. Confirm GitHub authentication, runner access, the workflow trigger, and the installed `gh stack` commands. Never substitute another stacked-pull-request tool.
 6. Freeze the starting trunk SHA for cumulative comparisons. Record the benchmark filter, base revision, Rust toolchain, Gungraun library version, runner version and architecture, build features, and relevant environment. Keep these invariant across comparisons.
+
+## JavaScript API measurements
+
+For `@swc-next/core` JavaScript API work, use the permanent `JavaScript API
+Gungraun` workflow and `gungraun_js` binary harness. Read
+[tasks/benchmark/js/README.md](../../../tasks/benchmark/js/README.md) for commands,
+case filters and the measurement boundary. PRs run five representative cases;
+use manual dispatch without a filter for all 24 cases. Use the N-API public JS entry point;
+a Rust library-only result does not measure JS encoding, lazy decoding or FFI.
+
+Keep V8 JIT enabled. Compare exact base/head SHAs with the same head harness,
+fixtures, Node flags and release settings. The workflow reports three fresh
+processes per case. Check the individual trials and median/range before applying
+the optimization thresholds below. Overlapping ranges are inconclusive; do not
+accept an optimization from those counts. Repeat the matching CI comparison and
+inspect profiles. JS JIT frames may lack source names. These main-thread Ir
+profiles do not establish wall-time speedups or background V8 costs.
+
+Select `parse` for the lazy API return, `parse_full` for AST materialization,
+`print` for JS AST encoding and native printing, or the path helper cases.
+Record `comparison.json`, `metadata.json`, base summaries, run URL and raw
+profiles as evidence. Keep a missing/failed baseline distinct from a regression.
 
 ## Establish a valid CI harness
 

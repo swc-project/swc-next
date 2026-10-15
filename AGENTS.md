@@ -27,6 +27,13 @@ against the dispatch revision; omit `filter` to run all benchmarks. Results and
 resolved SHAs are available in the run summary and artifacts. PRs still run the
 base-versus-merge comparison automatically.
 
+For JavaScript API instruction profiles, use the `JavaScript API Gungraun`
+workflow or, on Linux with Valgrind,
+`BASE_REF=main HEAD_REF=HEAD node .github/scripts/run-gungraun-js.mjs`.
+PRs run five representative cases; manual workflow runs default to all 24.
+Set `JS_BENCH_FILTER` to a case substring such as `parse/underscore`.
+See `tasks/benchmark/js/README.md` for setup and artifact interpretation.
+
 ### JavaScript Development
 
 | Task                     | Command                                                                                                   |
@@ -38,7 +45,7 @@ base-versus-merge comparison automatically.
 | Assemble browser package | `node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core`                 |
 | Build all WASM packages  | `pnpm build:wasm [--profile wasm-release]`                                                                |
 | Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
-| Test Node.js API         | `pnpm test` (all Node.js tests live in `npm/core/test`)                                                   |
+| Test Node.js API         | `pnpm test` (Node.js API tests live in `npm/core/test`)                                                   |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                                                |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                                  |
 
