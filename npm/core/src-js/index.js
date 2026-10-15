@@ -18,7 +18,11 @@ const canTransferToFixedLength =
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 
 export function parseSync(source, options) {
-  const sourceBuffer = new Uint8Array(source.length * 3);
+  // Every byte read below is initialized by encodeInto; avoid zeroing the
+  // oversized scratch buffer on Node. Keep the portable allocation for browsers.
+  const sourceBuffer = typeof source === "string" && typeof Buffer === "function"
+    ? new Uint8Array(Buffer.allocUnsafeSlow(source.length * 3).buffer)
+    : new Uint8Array(source.length * 3);
   const { written } = textEncoder.encodeInto(source, sourceBuffer);
   // Lazy decoder getters retain sourceBytes, so drop the unused capacity of
   // the encodeInto buffer instead of keeping it alive through a subarray.

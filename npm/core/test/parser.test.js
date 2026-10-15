@@ -307,3 +307,29 @@ test("parseSync decodes diagnostic arrays and optional metadata", () => {
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);
 });
+
+test("parseSync preserves source encoding at the API boundary", () => {
+  const empty = parseSync("");
+  assert.deepEqual(empty.program.body, []);
+  assert.equal(empty.program.end, 0);
+
+  const source = 'const 값 = "한글😀";';
+  const result = parseSync(source);
+  const standalone = parseStandalone(source);
+  assert.equal(typeof Object.getOwnPropertyDescriptor(result, "program").get, "function");
+  assert.equal(result.program.end, source.length);
+  assert.equal(result.program.body[0].declarations[0].init.value, "한글😀");
+  assert.deepEqual(standalone.program, result.program);
+
+  const high = parseSync('"\ud800";');
+  assert.equal(high.program.body[0].expression.value, "�");
+  assert.equal(high.program.end, 4);
+
+  const low = parseSync('"\udc00";');
+  assert.equal(low.program.body[0].expression.value, "�");
+  assert.equal(low.program.end, 4);
+
+  assert.throws(() => parseSync(undefined), TypeError);
+  assert.throws(() => parseSync(123), TypeError);
+  assert.throws(() => parseStandalone(null), TypeError);
+});
