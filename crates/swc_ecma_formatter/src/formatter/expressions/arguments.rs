@@ -14,7 +14,7 @@ use crate::formatter::suppression::{
 use crate::{FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
     Argument, ArgumentData, CallExpression, Comment, CommentKind, Expr, ExprData, GetSpan, Span,
-    SubRange,
+    SubRange, TemplateElement,
 };
 
 #[derive(Clone, Copy)]
@@ -677,22 +677,31 @@ pub(super) struct SourceArgumentOpening {
 #[derive(Clone, Copy)]
 pub(super) enum CallArgumentFrame {
     Ordinary,
-    Fixed { role: CallFrameRole },
+    Fixed {
+        role: CallFrameRole,
+        closing: LineConstraint,
+    },
 }
 
 #[derive(Clone, Copy)]
 pub(super) enum CallFrameRole {
+    Module,
     TestCallback(TestCallback),
     TestWrapper {
         expression: Expr,
         call: CallExpression,
     },
     AngularWrapper,
+    MultilineTemplate,
+    CallbackDependencies,
 }
 
 impl CallArgumentFrame {
     pub(super) fn fixed(role: CallFrameRole) -> Self {
-        Self::Fixed { role }
+        Self::Fixed {
+            role,
+            closing: LineConstraint::Unconstrained,
+        }
     }
 
     fn is_fixed(self) -> bool {
@@ -1116,7 +1125,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             callee_mode = types.callee_mode;
         }
-        let list = SourceArguments {
+        let mut list = SourceArguments {
             arguments,
             first,
             delimiters: Span::new(opening, end),
@@ -1132,6 +1141,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             curried_callee: None,
             jsx_call: None,
         };
+        list.frame = self.structural_argument_frame(&list);
         Some(list)
     }
 
@@ -1268,6 +1278,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    fn structural_argument_frame(&self, list: &SourceArguments<'ast>) -> CallArgumentFrame {
+        let Some(first) = list.first else {
+            return CallArgumentFrame::Ordinary;
+        };
+        if list.source_opening.is_some()
+            || list.callee_mode != ContentMode::Formatted
+            || first.mode != ContentMode::Formatted
+        {
+            return CallArgumentFrame::Ordinary;
+        }
+        let ast = self.ast;
+        if list.arguments.len() == 1 {
+            let ArgumentData::Expr(expression) = ast.argument_data(first.node) else {
+                return CallArgumentFrame::Ordinary;
+            };
+            let content = Span::new(list.delimiters.start + 1, list.delimiters.end - 1);
+            if self.sole_multiline_template(expression, content) {
+                return CallArgumentFrame::fixed(CallFrameRole::MultilineTemplate);
+            }
+        } else if self.callback_dependency_arguments(list.arguments)
+            && self.argument_boundaries_are_clear(list)
+        {
+            return CallArgumentFrame::fixed(CallFrameRole::CallbackDependencies);
+        }
+        CallArgumentFrame::Ordinary
+    }
+
+    /// Raw template quasis retain their source lines; interpolation documents
+    /// keep their independent groups inside the fixed argument frame.
+    pub(super) fn sole_multiline_template(&self, expression: Expr, content: Span) -> bool {
+        let ast = self.ast;
+        let prepared = self.expression_content(expression);
+        let template = match prepared.data {
+            ExprData::TemplateLiteral(template) => template,
+            ExprData::TaggedTemplateExpression(tagged) => tagged.quasi(ast),
+            _ => return false,
+        };
+        if self.source_position_starts_line(prepared.expression.span(ast).start) {
+            return false;
+        }
+        let multiline = template.quasis(ast).iter().any(|id| {
+            let quasi: TemplateElement = ast.get_node_in_sub_range(id);
+            ast.get_utf8(quasi.raw(ast))
+                .bytes()
+                .any(|byte| matches!(byte, b'\n' | b'\r'))
+        });
+        if !multiline || self.diagnostic_range_is_sensitive(content) {
+            return false;
+        }
+        let span = prepared.expression.span(ast);
+        self.comments
+            .in_range(Span::new(content.start, span.start))
+            .is_empty()
+            && self
+                .comments
+                .in_range(Span::new(span.end, content.end))
+                .is_empty()
+    }
+
     /// Only the list boundaries belong to the call frame. Comments inside an
     /// argument (including a callback body) remain that expression's concern.
     pub(super) fn argument_boundaries_are_clear(&self, list: &SourceArguments<'ast>) -> bool {
@@ -1300,6 +1369,81 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comments
             .in_range(Span::new(previous, content.end))
             .is_empty()
+    }
+
+    /// The module frame owns delimiters; each argument retains its document
+    /// and source/comment boundaries, including an AMD dependency array.
+    pub(super) fn module_argument_frame(
+        &self,
+        list: &SourceArguments<'ast>,
+        commented_first: bool,
+    ) -> CallArgumentFrame {
+        let Some(first) = list.first else {
+            return CallArgumentFrame::Ordinary;
+        };
+        if list.source_opening.is_some()
+            || list.callee_mode == ContentMode::Verbatim
+            || first.mode == ContentMode::Verbatim
+        {
+            return CallArgumentFrame::Ordinary;
+        }
+        let ast = self.ast;
+        if !commented_first {
+            if matches!(&list.prefix, SourceArgumentPrefix::Direct(prefix)
+            if prefix.belongs_to_arguments() && !prefix.comments().is_empty())
+            {
+                return CallArgumentFrame::Ordinary;
+            }
+            let span = first.node.span(ast);
+            if !self
+                .comments
+                .in_range(Span::new(list.delimiters.start + 1, span.start))
+                .is_empty()
+            {
+                return CallArgumentFrame::Ordinary;
+            }
+            let mut remaining = list.arguments;
+            let following = remaining
+                .split_off(1)
+                .first()
+                .map(|id| ast.get_node_in_sub_range(id));
+            let following_start = following.map(|argument: Argument| argument.span(ast).start);
+            let gap = Span::new(span.end, following_start.unwrap_or(list.delimiters.end - 1));
+            let trailing = self.comments.in_range(gap);
+            if !trailing.is_empty() {
+                let comma = self.find_comma(gap, trailing);
+                let before_separator = comma.map_or(trailing.len(), |comma| {
+                    trailing.partition_point(|comment| comment.span.end <= comma)
+                });
+                let (owned, _) = self.split_separator_comments(
+                    trailing,
+                    before_separator,
+                    span.end,
+                    following_start,
+                );
+                if following.is_none() || !owned.is_empty() {
+                    return CallArgumentFrame::Ordinary;
+                }
+            }
+        }
+        let mut closing = LineConstraint::Unconstrained;
+        if !self.ast.comments().is_empty()
+            && let Some(last) = list.arguments.last()
+        {
+            let last: Argument = ast.get_node_in_sub_range(last);
+            let trailing = self
+                .comments
+                .in_range(Span::new(last.span(ast).end, list.delimiters.end - 1));
+            if let Some(comment) = trailing.last()
+                && comment.kind == CommentKind::Line
+            {
+                closing = self.source_line_constraint(comment.span.end, list.delimiters.end - 1);
+            }
+        }
+        CallArgumentFrame::Fixed {
+            role: CallFrameRole::Module,
+            closing,
+        }
     }
 
     pub(super) fn format_source_arguments(
@@ -1573,6 +1717,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FlatSeparator::Empty,
                     Writer::soft_line,
                 );
+            }
+            if let CallArgumentFrame::Fixed { closing, .. } = frame {
+                closing.write(writer, FlatSeparator::Empty, |_| {});
             }
             writer.text(")");
             Ok(None)

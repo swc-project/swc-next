@@ -1,6 +1,6 @@
 //! Callees and source-owned argument delimiters.
 use super::AccessKind;
-use super::arguments::{ArgumentGroup, SourceArguments};
+use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
 use super::{
     CallArgumentOwner, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext,
     MemberLayout, TailOwner,
@@ -8,6 +8,7 @@ use super::{
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
+use swc_next_ecma_ast::ArgumentData;
 use swc_next_ecma_ast::{
     Argument, CallExpression, Expr, ExprData, GetSpan, PropertyKeyData, Span, SubRange,
 };
@@ -17,6 +18,14 @@ enum TestCallee {
     Test,
     TestDescribe,
     ParallelOrSerial,
+    Terminal,
+}
+
+enum ModuleCallee {
+    Define,
+    Require,
+    Resolve,
+    ImportMeta,
     Terminal,
 }
 
@@ -210,6 +219,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ArgumentGroup::Local
         };
+        if !arguments.has_fixed_argument_frame()
+            && let Some(frame) = self.module_call_frame(call, context, &arguments)
+        {
+            arguments.frame = frame;
+        }
         arguments.curried_callee = self.curried_call_callee(
             arguments.callee,
             call.arguments(self.ast),
@@ -269,6 +283,86 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     (TestCallee::Test, "describe") => Some(TestCallee::TestDescribe),
                     (TestCallee::TestDescribe, "parallel" | "serial") => {
                         Some(TestCallee::ParallelOrSerial)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn module_call_frame(
+        &self,
+        call: CallExpression,
+        context: ExpressionContext,
+        list: &SourceArguments<'ast>,
+    ) -> Option<CallArgumentFrame> {
+        let ast = self.ast;
+        if call.optional(ast) || list.callee_mode != ContentMode::Formatted {
+            return None;
+        }
+        let module = self.module_callee(list.callee)?;
+        if matches!(module, ModuleCallee::ImportMeta)
+            || matches!(module, ModuleCallee::Define)
+                && !matches!(context.position, ExpressionPosition::Statement)
+        {
+            return None;
+        }
+        let arguments = list.arguments();
+        let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
+        let first = items.next()?;
+        let data = match ast.argument_data(first) {
+            ArgumentData::Expr(expression) => Some(self.expression_content(expression).data),
+            ArgumentData::SpreadElement(_) => None,
+        };
+        let definition = matches!(module, ModuleCallee::Define);
+        let shape = if definition {
+            arguments.len() == 1
+                || arguments.len() == 2 && matches!(data, Some(ExprData::ArrayExpression(_)))
+                || arguments.len() == 3 && matches!(data, Some(ExprData::StringLiteral(_)))
+                    && items.next().is_some_and(|argument| matches!(ast.argument_data(argument), ArgumentData::Expr(expression)
+                        if matches!(self.expression_content(expression).data, ExprData::ArrayExpression(_))))
+        } else {
+            matches!(module, ModuleCallee::Require) && arguments.len() > 1
+                || arguments.len() == 1 && matches!(data, Some(ExprData::StringLiteral(_)))
+        };
+        shape.then(|| self.module_argument_frame(list, definition))
+    }
+
+    pub(in crate::formatter) fn is_require_callee(&self, expression: Expr) -> bool {
+        matches!(self.module_callee(expression), Some(ModuleCallee::Require))
+    }
+
+    fn module_callee(&self, expression: Expr) -> Option<ModuleCallee> {
+        let ast = self.ast;
+        match self.call_callee_content_data(expression) {
+            ExprData::IdentifierReference(identifier) => match ast.get_utf8(identifier.name(ast)) {
+                "require" => Some(ModuleCallee::Require),
+                "define" => Some(ModuleCallee::Define),
+                _ => None,
+            },
+            ExprData::MetaProperty(meta)
+                if ast.get_utf8(meta.meta(ast).name(ast)) == "import"
+                    && ast.get_utf8(meta.property(ast).name(ast)) == "meta" =>
+            {
+                Some(ModuleCallee::ImportMeta)
+            }
+            ExprData::MemberExpression(member)
+                if !member.computed(ast) && !member.optional(ast) =>
+            {
+                let PropertyKeyData::IdentifierName(property) =
+                    ast.property_key_data(member.property(ast))
+                else {
+                    return None;
+                };
+                let property = ast.get_utf8(property.name(ast));
+                if !matches!(property, "resolve" | "paths") {
+                    return None;
+                }
+                match (self.module_callee(member.object(ast))?, property) {
+                    (ModuleCallee::Require, "resolve") => Some(ModuleCallee::Resolve),
+                    (ModuleCallee::ImportMeta, "resolve") | (ModuleCallee::Resolve, "paths") => {
+                        Some(ModuleCallee::Terminal)
                     }
                     _ => None,
                 }

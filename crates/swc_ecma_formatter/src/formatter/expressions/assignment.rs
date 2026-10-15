@@ -817,12 +817,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return RhsLayout::BreakAfterOperator;
         }
         // A removable ignored source pair prints its child in this RHS scope.
-        let data =
-            self.source_parentheses_rhs_content(data, context.with_content_mode(boundary.mode));
-        if matches!(
-            data,
-            ExprData::BooleanLiteral(_) | ExprData::NumericLiteral(_)
-        ) {
+        let data = self
+            .source_parentheses_head_content(data, context.with_content_mode(boundary.mode))
+            .data;
+        if matches!(data, ExprData::CallExpression(call)
+            if !call.optional(self.ast) && self.is_require_callee(call.callee(self.ast)))
+            || matches!(
+                data,
+                ExprData::BooleanLiteral(_) | ExprData::NumericLiteral(_)
+            )
+        {
             return RhsLayout::NeverBreakAfterOperator;
         }
         let prefix_start = boundary

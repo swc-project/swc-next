@@ -403,6 +403,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return (group, rhs_layout);
         }
+        if let ExprData::CallExpression(call) = data
+            && self.is_require_callee(call.callee(ast))
+        {
+            return (group, RhsLayout::NeverBreakAfterOperator);
+        }
         let arrow_variable = matches!(owner, BindingInitializerOwner::Variable { .. })
             && shape.nonempty
             && matches!(data, ExprData::ArrowFunctionExpression(_));
