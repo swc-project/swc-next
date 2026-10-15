@@ -2,7 +2,7 @@
 
 The `JavaScript API Gungraun` workflow compares exact base/head revisions on
 Ubuntu 24.04 with Node 24.16.0 and Gungraun 0.20.0. It measures the public
-`@swc-next/core` N-API entry point with JIT enabled, including synchronous JS,
+`@swc-next/core` N-API entry point with JIT disabled (`--jitless`), including synchronous JS,
 encoding/decoding and Rust work. WASM is not measured.
 
 `parse` returns the lazy result; `parse_full` also reads every enumerable AST
@@ -10,7 +10,7 @@ property. `print` uses an already materialized AST. `lang` and `source_type`
 exercise the path helpers. Each case gets 100 warmup calls and three fresh
 processes. Each measured batch has 10 AST calls or 10,000 path calls. Results
 are retained until collection ends. Setup, explicit GC, warmup and validation
-are outside the measured region. GC or JIT work triggered on the main thread
+are outside the measured region. GC work triggered on the main thread
 during that region remains part of the measurement. Background V8 threads
 are not part of this synchronous API metric.
 
@@ -79,11 +79,14 @@ tool versions, Node flags, build settings and SHA-256 hashes of the harness and
 fixtures. `base-summaries.json` preserves baseline summaries before the head run.
 The release build retains symbols and debug information on both sides.
 
-Ir is an instruction count under Valgrind, not wall time. JIT remains enabled;
+Ir is an instruction count under Valgrind, not wall time. JIT is disabled;
 three samples do not guarantee statistical significance. Overlapping ranges
 are inconclusive. Inspect profiles and repeat comparisons near an optimization
-threshold. JIT machine code can appear without useful JavaScript source names;
+threshold. Interpreter frames may lack useful JavaScript source names;
 retained native symbols still expose synchronous N-API and Rust costs.
+These counts do not represent normal JIT-enabled execution speed. Do not compare
+them directly with older JIT-enabled profiles. Disabling JIT does not eliminate
+GC or other sources of measurement variation.
 Do not apply the optimization skill's acceptance thresholds to an inconclusive
 result. Performance differences never fail CI; missing or invalid comparisons,
 failed API assertions and build failures do. The same-SHA control must have

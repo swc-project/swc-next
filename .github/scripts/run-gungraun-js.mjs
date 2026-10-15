@@ -26,7 +26,7 @@ function prepare() {
   const head = sha(process.env.HEAD_REF);
   const metadata = {
     schema_version: 1, base_sha: base, head_sha: head, harness_sha: head,
-    node: process.version, node_flags: ["--expose-gc", "--random-seed=42"], jit: true,
+    node: process.version, node_flags: ["--jitless", "--expose-gc", "--random-seed=42"], jit: false,
     rustc: read("rustc", ["--version"]), gungraun: read("gungraun-runner", ["--version"]),
     pnpm: read("pnpm", ["--version"]), platform: process.platform, arch: process.arch,
     warmup: 100, iterations: { ast: 10, path: 10000 }, trials: 3,

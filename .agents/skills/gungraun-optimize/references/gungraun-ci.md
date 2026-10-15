@@ -123,13 +123,15 @@ runs. PR runs compare the event's exact base and head SHAs. The standalone
 `tasks/benchmark/js` harness is copied from head for both runs, without
 replacing either revision's product manifests or dependencies.
 
-Keep JIT enabled and retain the three trial counts, median and range. A range
+Disable JIT with `--jitless` and retain the three trial counts, median and range. A range
 overlap is inconclusive, including in same-SHA checks. The benchmark-only N-API
 helper uses Callgrind client requests around the synchronous JS callback;
 startup, input preparation and warmup are excluded. Preserve the native symbol
 and debug build settings. Use the artifact metadata hashes to verify workload
 identity before comparing results across runs. See the harness README for
-filters, local Linux commands and limitations of JIT profile symbolization.
+filters, local Linux commands and limitations of interpreter profile symbolization.
+Do not compare these counts directly with JIT-enabled runs or interpret them as
+normal JIT-enabled speed.
 
 The JS workflow builds both revisions once and fans out to five representative
 case jobs on PRs. Manual runs cover all 24 cases unless filtered. Keep

@@ -46,12 +46,13 @@ case filters and the measurement boundary. PRs run five representative cases;
 use manual dispatch without a filter for all 24 cases. Use the N-API public JS entry point;
 a Rust library-only result does not measure JS encoding, lazy decoding or FFI.
 
-Keep V8 JIT enabled. Compare exact base/head SHAs with the same head harness,
+Disable V8 JIT with `--jitless`. Compare exact base/head SHAs with the same head harness,
 fixtures, Node flags and release settings. The workflow reports three fresh
 processes per case. Check the individual trials and median/range before applying
 the optimization thresholds below. Overlapping ranges are inconclusive; do not
 accept an optimization from those counts. Repeat the matching CI comparison and
-inspect profiles. JS JIT frames may lack source names. These main-thread Ir
+inspect profiles. Interpreter frames may lack JS source names. Do not compare
+these counts directly with JIT-enabled profiles. These main-thread Ir
 profiles do not establish wall-time speedups or background V8 costs.
 
 Select `parse` for the lazy API return, `parse_full` for AST materialization,

@@ -38,7 +38,7 @@ binary_benchmark_group!(
                         Bench::new(format!("{}_trial_{trial}", case.replace(['.', '-'], "_")))
                             .command(
                                 Command::new(&node)
-                                    .args(["--expose-gc", "--random-seed=42"])
+                                    .args(["--jitless", "--expose-gc", "--random-seed=42"])
                                     .arg(format!("{harness}/runner.mjs"))
                                     .args([&entry, operation, case])
                                     .env("JS_BENCH_HARNESS", &harness),

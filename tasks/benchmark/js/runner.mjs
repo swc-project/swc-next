@@ -76,6 +76,7 @@ export function execute(workload, measure, gc) {
 }
 
 async function main() {
+  assert(process.execArgv.includes("--jitless"), "benchmark requires --jitless");
   const [entry, operation, name] = process.argv.slice(2);
   assert(entry && operation && name, "usage: runner.mjs <entry> <operation> <case>");
   const harness = process.env.JS_BENCH_HARNESS ?? dirname(fileURLToPath(import.meta.url));

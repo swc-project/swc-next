@@ -46,7 +46,7 @@ export function render(rows) {
   const interval = s => `${s.median} (${s.min}–${s.max})`;
   return [
     "## JavaScript API Gungraun comparison", "",
-    "JIT enabled. Main-thread Callgrind Ir includes synchronous JS, N-API and Rust work, plus the measurement callback/loop. Node startup, fixture setup and warmup are excluded. These are instruction counts, not elapsed time. Each row shows the median and range of three fresh processes; overlapping ranges are inconclusive.", "",
+    "JIT disabled (--jitless). Do not compare these counts with JIT-enabled runs or interpret them as normal JIT-enabled execution speed. Main-thread Callgrind Ir includes synchronous JS, N-API and Rust work, plus the measurement callback/loop. Node startup, fixture setup and warmup are excluded. These are instruction counts, not elapsed time. Each row shows the median and range of three fresh processes; overlapping ranges are inconclusive.", "",
     "| Case | Base Ir: median (range) | Head Ir: median (range) | Change | Assessment |",
     "| --- | ---: | ---: | ---: | --- |",
     ...rows.map(r => `| ${r.name} | ${interval(r.base)} | ${interval(r.head)} | ${r.change.toFixed(3)}% | ${r.assessment} |`), "",
