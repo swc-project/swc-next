@@ -7,6 +7,7 @@ use swc_next_ecma_ast::{
     TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
     TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
+use swc_next_ecma_semantic::scope::ScopeKind;
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
 
 use crate::{
@@ -66,6 +67,15 @@ impl Transformer {
         options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         debug_assert!(options.typescript.is_none());
+        // Static blocks are the only runtime transform. Their scopes already
+        // identify whether the traversal can produce any work.
+        if !options.es2022.static_blocks
+            || !semantic
+                .iter_scopes()
+                .any(|entry| entry.scope.kind == ScopeKind::StaticBlock)
+        {
+            return TransformerReturn { semantic };
+        }
         let program = ast.root_program();
 
         let mut transformer = Self {
