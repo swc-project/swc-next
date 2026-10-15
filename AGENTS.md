@@ -48,6 +48,15 @@ See `tasks/benchmark/js/README.md` for setup and artifact interpretation.
 | Test Node.js API         | `pnpm test` (Node.js API tests live in `npm/core/test`)                                                   |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                                                |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                                  |
+| Develop playground       | `pnpm dev:playground` (requires `wasm32-unknown-unknown`)                                                  |
+| Build playground         | `pnpm build:playground`                                                                                  |
+| Check playground types   | `pnpm --filter playground check`                                                                         |
+| Deploy playground        | `gh workflow run deploy-playground.yml --ref main`                                                       |
+
+The Deploy Playground workflow builds and deploys to `https://play.next.swc.rs`
+only when run manually. It requires the `CLOUDFLARE_ACCOUNT_ID` and
+`CLOUDFLARE_API_TOKEN` Actions secrets. See `website/playground/README.md` for
+Cloudflare setup and deployment details.
 
 Wasm builds use `cargo run --locked -p bridge_cli -- build <component> --output-dir <directory> [cargo build options...]`.
 `core` into `target/wasm-package/core`; explicitly run the browser assembly command afterward.

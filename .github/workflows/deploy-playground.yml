@@ -1,0 +1,57 @@
+name: Deploy Playground
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-playground-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy playground
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+        with:
+          target: wasm32-unknown-unknown
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24.16.0
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check playground types
+        run: pnpm --filter playground check
+      - name: Build playground
+        run: pnpm build:playground
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: 4.151.0
+          command: >-
+            pages deploy website/playground/dist
+            --project-name=swc-next-playground
+            --branch=main
+            --commit-hash=${{ github.sha }}
+      - name: Record deployment
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          {
+            echo '## Playground deployment'
+            echo "Commit: $GITHUB_SHA"
+            echo "Deployment: $DEPLOYMENT_URL"
+            echo 'Production: https://play.next.swc.rs'
+          } >> "$GITHUB_STEP_SUMMARY"

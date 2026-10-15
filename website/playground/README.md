@@ -74,3 +74,43 @@ ignores responses superseded by newer edits.
 Bridge is enabled only for WASM targets. Native builds expose the ordinary Rust
 function without generating N-API bindings; the playground has no `napi-build`
 dependency or build script.
+
+## Production deployment
+
+The production site is https://play.next.swc.rs, hosted on Cloudflare Pages.
+The `Deploy Playground` GitHub Actions workflow builds the WASM binary and static
+site, checks TypeScript types, and uploads `dist` with Wrangler. It runs only
+when started manually. Pushes and pull requests do not deploy the site.
+
+One-time setup:
+
+1. In the Cloudflare account that manages `swc.rs`, create a Direct Upload Pages
+   project named `swc-next-playground` with production branch `main`.
+2. Add `play.next.swc.rs` to the project's custom domains, then create or confirm
+   its CNAME record in the `swc.rs` zone. Point it to the project's actual Pages
+   hostname (`swc-next-playground.pages.dev`). Wait for the custom domain and
+   HTTPS certificate to become active.
+3. Add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` to the repository's
+   GitHub Actions secrets. Limit the token to this account with
+   `Account > Cloudflare Pages > Edit` permission. DNS permissions are not
+   required for routine deployments.
+
+After the workflow is merged into the default branch, open **Actions > Deploy
+Playground > Run workflow**, leave the branch set to `main`, and start the run.
+The equivalent command from the repository root is:
+
+```sh
+gh workflow run deploy-playground.yml --ref main
+```
+
+The selected workflow branch supplies the source revision. Every run publishes
+to production (`--branch=main`); selecting another branch also replaces the
+production site and does not create a preview. Concurrent runs share a deployment
+group and do not cancel an active run. GitHub may replace an older pending run
+with a newer pending run.
+
+The run summary records the commit, deployment URL, and production URL.
+Dependency installation, type checks, and the production build must all succeed
+before upload starts. A failed build leaves the existing deployment in place.
+After deployment, check Code and AST results in the browser and confirm that
+the WASM binary and Workers load without errors.
