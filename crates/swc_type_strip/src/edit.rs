@@ -201,7 +201,7 @@ fn push_blank(output: &mut String, source: &str) {
                 }
 
                 let control_whitespace: mask8x16 =
-                    bytes.simd_ge(u8x16::splat(b'\t')) & bytes.simd_le(u8x16::splat(b'\r'));
+                    (bytes - u8x16::splat(b'\t')).simd_le(u8x16::splat(b'\r' - b'\t'));
                 let blanked = control_whitespace
                     .select(bytes, u8x16::splat(b' '))
                     .to_array();
@@ -326,6 +326,22 @@ mod tests {
         let output = edits.render(source);
 
         assert_eq!(output, " \t \r\n \u{2028} \u{2029} \u{00A0}");
+    }
+
+    #[test]
+    fn blank_preserves_ascii_whitespace_in_vector_chunks() {
+        let source: String = (0u8..=127).map(char::from).collect();
+        let mut output = String::with_capacity(source.len());
+        push_blank(&mut output, &source);
+        let expected: String = source
+            .chars()
+            .map(|character| match character {
+                '\t'..='\r' | ' ' => character,
+                _ => ' ',
+            })
+            .collect();
+
+        assert_eq!(output, expected);
     }
 
     #[test]
