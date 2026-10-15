@@ -41,7 +41,9 @@ console.log(printSync(program).code);
 
 ## Roadmap
 
-See the [project roadmap](https://github.com/swc-project/swc-next/issues/181).
+As a ground-up rewrite, SWC Next is being developed in a separate repository and published as separate packages. We are gradually bringing its capabilities in line with SWC, with the long-term goal of becoming SWC's next major version and merging back into the SWC repository.
+
+See the [project roadmap](https://github.com/swc-project/swc-next/issues/181) for planned milestones and progress.
 
 ## Design & Architecture
 
