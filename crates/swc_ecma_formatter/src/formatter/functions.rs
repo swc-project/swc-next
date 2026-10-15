@@ -4,7 +4,7 @@ mod methods;
 use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::parameters::{CallbackParameterShape, FunctionParameters};
+use super::parameters::{CallbackParameterShape, FunctionParameters, ParameterFrame};
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use super::types::TypeGap;
@@ -111,6 +111,11 @@ impl SourceFunctionSignature<'_> {
         } else {
             ContentMode::Formatted
         }
+    }
+
+    pub(super) fn with_parameter_frame(mut self, frame: ParameterFrame) -> Self {
+        self.parameters.source.set_frame(frame);
+        self
     }
 
     pub(super) fn enclosing_mode(&self) -> ContentMode {

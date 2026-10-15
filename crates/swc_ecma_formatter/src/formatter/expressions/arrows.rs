@@ -15,7 +15,7 @@ use super::{
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::functions::{FunctionBodyAttachment, SignatureBoundaryRole};
-use crate::formatter::parameters::{ArrowParameterParentheses, SourceParameters};
+use crate::formatter::parameters::{ArrowParameterParentheses, ParameterFrame, SourceParameters};
 use crate::formatter::statements::{IncomingStatement, StatementBodyLeading};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::callable::{
@@ -146,6 +146,15 @@ pub(super) struct FormattedArrowHead<'a> {
 pub(super) enum SourceArrow<'a> {
     Verbatim(VerbatimArrow),
     Formatted(FormattedArrowHead<'a>),
+}
+
+impl SourceArrow<'_> {
+    pub(super) fn with_parameter_frame(mut self, frame: ParameterFrame) -> Self {
+        if let Self::Formatted(head) = &mut self {
+            head.parameters.set_frame(frame);
+        }
+        self
+    }
 }
 
 pub(super) struct FormattedSourceArrow<'a> {

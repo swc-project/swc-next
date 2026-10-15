@@ -1,5 +1,16 @@
-//! Callback argument selection and immutable layouts over source-owned slots.
-use super::arguments::{ArgumentGroup, ArgumentHead};
+//! Typed argument selection and immutable layouts over source-owned slots.
+
+use crate::formatter::functions::FunctionSignatureOwner;
+
+use swc_next_ecma_ast::{
+    Argument, ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression,
+    CallExpression, Expr, ExprData, Function, GetSpan, ObjectExpression, ObjectPropertyKindData,
+    PropertyKeyData, SimpleAssignmentTargetData, Span, SubRange, UnaryOperator,
+};
+
+use super::arguments::{
+    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, SourceArguments,
+};
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
 use super::objects::RecordedObject;
@@ -8,18 +19,13 @@ use super::{
 };
 use crate::formatter::comments::ExpressionTail;
 use crate::formatter::diagnostics::FlatSeparator;
-use crate::formatter::functions::FunctionSignatureOwner;
-use crate::formatter::parameters::CallbackParameterShape;
+use crate::formatter::parameters::{CallbackParameterShape, ParameterFrame};
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, TrailingCommas,
     document::{FlatFragment, Fragment, Writer},
 };
-use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, ArrowFunctionBodyData, ArrowFunctionExpression,
-    CallExpression, Expr, ExprData, Function, GetSpan, ObjectExpression, ObjectPropertyKindData,
-    PropertyKeyData, SimpleAssignmentTargetData, Span, SubRange, UnaryOperator,
-};
+
 #[derive(Clone, Copy)]
 enum CallbackKind {
     Arrow(ArrowFunctionExpression),
@@ -33,9 +39,16 @@ struct Callback {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum CallbackRole {
+pub(super) enum CallbackRole {
     First,
     Last,
+    Test,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct TestCallback {
+    pub(super) argument: Argument,
+    callback: Callback,
 }
 
 pub(super) struct SelectedCallback {
@@ -44,6 +57,7 @@ pub(super) struct SelectedCallback {
     role: CallbackRole,
     prepared_body: Option<PreparedArrowBody>,
 }
+
 pub(super) struct SelectedObject {
     argument: Argument,
     expression: Expr,
@@ -63,6 +77,13 @@ pub(super) enum SelectedArgument {
     FinalArray(SelectedArray),
 }
 
+enum SelectionOutcome {
+    Callback,
+    FinalObject { has_forced: bool },
+    FinalArray { has_forced: bool },
+    Ordinary,
+}
+
 #[derive(Clone, Copy)]
 enum GroupingPolicy {
     Callback,
@@ -70,12 +91,6 @@ enum GroupingPolicy {
     FinalArray,
 }
 
-enum SelectionOutcome {
-    Callback,
-    FinalObject { has_forced: bool },
-    FinalArray { has_forced: bool },
-    Ordinary,
-}
 enum RecordedValue<'a> {
     Ordinary(Fragment<'a>),
     FinalObject(RecordedObject<'a>),
@@ -178,6 +193,161 @@ fn grouping_view(fragment: Fragment<'_>, policy: GroupingPolicy) -> Option<FlatF
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn test_call_frame(
+        &self,
+        call: CallExpression,
+        list: &SourceArguments<'ast>,
+    ) -> Option<CallArgumentFrame> {
+        let ast = self.ast;
+        if call.optional(ast) {
+            return None;
+        }
+        let arguments = call.arguments(ast);
+        let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
+        let first = items.next()?;
+        let role = if arguments.len() == 1 {
+            if !self.is_test_setup_callee(call.callee(ast)) {
+                return None;
+            }
+            let (expression, call) = self.angular_test_wrapper(first)?;
+            CallFrameRole::TestWrapper { expression, call }
+        } else {
+            if !matches!(arguments.len(), 2 | 3) || !self.is_test_callee(call.callee(ast)) {
+                return None;
+            }
+            if !matches!(
+                self.call_argument_data(first),
+                Some(ExprData::StringLiteral(_) | ExprData::TemplateLiteral(_))
+            ) {
+                return None;
+            }
+            let argument = items.next()?;
+            let timeout = items.next();
+            if timeout.is_some_and(|argument| {
+                !matches!(
+                    self.call_argument_data(argument),
+                    Some(ExprData::NumericLiteral(_))
+                )
+            }) {
+                return None;
+            }
+            if let Some((expression, call)) = self.angular_test_wrapper(argument) {
+                CallFrameRole::TestWrapper { expression, call }
+            } else {
+                let callback = self.callback(argument)?;
+                if timeout.is_some() {
+                    if !self.callback_has_block(callback) {
+                        return None;
+                    }
+                    let (parameters, this_parameter) = match callback.kind {
+                        CallbackKind::Arrow(arrow) => (arrow.params(ast), false),
+                        CallbackKind::Function(function) => {
+                            (function.params(ast), function.this_param(ast).is_some())
+                        }
+                    };
+                    let count = parameters.items(ast).len()
+                        + usize::from(parameters.rest(ast).is_some())
+                        + usize::from(this_parameter);
+                    if count > 1 {
+                        return None;
+                    }
+                }
+                CallFrameRole::TestCallback(TestCallback { argument, callback })
+            }
+        };
+        self.argument_boundaries_are_clear(list)
+            .then(|| CallArgumentFrame::fixed(role))
+    }
+
+    fn call_argument_data(&self, argument: Argument) -> Option<ExprData> {
+        let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+            return None;
+        };
+        let content = self.expression_content(expression);
+        if let Some(boundary) = content.parentheses.map(|removed| removed.source)
+            && (!self
+                .comments
+                .in_range(Span::new(boundary.outer.start, boundary.inner.start))
+                .is_empty()
+                || !self
+                    .comments
+                    .in_range(Span::new(boundary.inner.end, boundary.outer.end))
+                    .is_empty())
+        {
+            return None;
+        }
+        Some(content.data)
+    }
+
+    fn angular_test_wrapper(&self, argument: Argument) -> Option<(Expr, CallExpression)> {
+        let ast = self.ast;
+        let ArgumentData::Expr(expression) = ast.argument_data(argument) else {
+            return None;
+        };
+        let Some(ExprData::CallExpression(call)) = self.call_argument_data(argument) else {
+            return None;
+        };
+        let ExprData::IdentifierReference(identifier) =
+            self.call_callee_content_data(call.callee(ast))
+        else {
+            return None;
+        };
+        matches!(
+            ast.get_utf8(identifier.name(ast)),
+            "async" | "inject" | "fakeAsync" | "waitForAsync"
+        )
+        .then_some((expression, call))
+    }
+
+    pub(super) fn angular_wrapper_frame(
+        &self,
+        list: &SourceArguments<'ast>,
+    ) -> Option<CallArgumentFrame> {
+        let arguments = list.arguments();
+        if arguments.len() != 1 || !self.argument_boundaries_are_clear(list) {
+            return None;
+        }
+        let argument = self.ast.get_node_in_sub_range(arguments.first()?);
+        self.callback(argument)?;
+        Some(CallArgumentFrame::fixed(CallFrameRole::AngularWrapper))
+    }
+
+    pub(super) fn format_test_callback(
+        &mut self,
+        callback: TestCallback,
+        jsx_call: Option<CallExpression>,
+        missing_function: &mut Option<&mut bool>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let Some(function) = missing_function.take() {
+            *function = true;
+        }
+        let mut selected = SelectedCallback {
+            argument: callback.argument,
+            callback: callback.callback,
+            role: CallbackRole::Test,
+            prepared_body: None,
+        };
+        let (value, tail) = self.record_callback(&mut selected, false, jsx_call, writer)?;
+        match value {
+            RecordedValue::Callback {
+                signature: Some(GroupedSignature::Flat(signature)),
+                body: CallbackBody::Retained(body),
+                ..
+            } => {
+                writer.write_flat_fragment(signature);
+                writer.write_fragment(body);
+            }
+            RecordedValue::Callback { normal, .. } | RecordedValue::Ordinary(normal) => {
+                writer.write_fragment(normal);
+            }
+            RecordedValue::FinalObject(_) | RecordedValue::FinalArray(_) => unreachable!(
+                "record_callback only records callback or source-owned ordinary content"
+            ),
+        }
+        Ok(tail)
+    }
+
     fn callback(&self, argument: Argument) -> Option<Callback> {
         self.callback_data(self.ast.argument_data(argument))
     }
@@ -370,6 +540,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prepared_body,
         }))
     }
+
     fn callback_can_expand(&self, arrow: ArrowFunctionExpression) -> Option<PreparedArrowBody> {
         let root = self.prepare_arrow_body(arrow.body(self.ast));
         let mut child = None;
@@ -401,118 +572,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => return None,
             }
         }
-    }
-
-    fn record_callback(
-        &mut self,
-        selected: &mut SelectedCallback,
-        sole_argument: bool,
-        jsx_call: Option<CallExpression>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(RecordedValue<'ast>, Option<ExpressionTail<'ast>>), FormatError> {
-        let callback = selected.callback;
-        let layout = self.expression_layout(callback.expression);
-        let (signature, body, normal, tail, independent) = match callback.kind {
-            CallbackKind::Arrow(arrow) => {
-                let source = self.source_arrow(arrow)?;
-                let context = ExpressionContext::at(ExpressionPosition::Nested)
-                    .with_arrow_layout(super::arrows::ArrowLayout::Argument)
-                    .with_jsx_callback(JsxCallbackContext::argument(
-                        jsx_call,
-                        ExprData::ArrowFunctionExpression(arrow),
-                    ));
-                let recorded = match self.record_arrow(
-                    source,
-                    selected.prepared_body.take(),
-                    context,
-                    writer,
-                )? {
-                    RecordedArrow::Verbatim(value) => {
-                        let (value, ()) = writer.record_with_value(|writer| {
-                            layout.write(writer, |writer| writer.write_fragment(value));
-                            Ok::<_, FormatError>(())
-                        })?;
-                        return Ok((RecordedValue::Ordinary(value), None));
-                    }
-                    RecordedArrow::Formatted(recorded) => recorded,
-                };
-                (
-                    recorded.signature,
-                    if selected.role == CallbackRole::Last
-                        && recorded.body_layout == ArrowBodyLayout::Expression
-                    {
-                        CallbackBody::Terminal(recorded.body.contents())
-                    } else {
-                        CallbackBody::Retained(if recorded.body_layout == ArrowBodyLayout::Hug {
-                            recorded.body.contents()
-                        } else {
-                            recorded.body.grouped()
-                        })
-                    },
-                    recorded.normal,
-                    recorded.tail,
-                    recorded.independent_signature,
-                )
-            }
-            CallbackKind::Function(function) => {
-                let source =
-                    self.source_function_signature(function, FunctionSignatureOwner::Function)?;
-                if source.enclosing_mode() == ContentMode::Verbatim {
-                    let (value, ()) = writer.record_with_value(|writer| {
-                        layout.write(writer, |writer| {
-                            self.format_verbatim(function.span(self.ast), writer)
-                        })
-                    })?;
-                    return Ok((RecordedValue::Ordinary(value), None));
-                }
-                let independent = !source.has_parameters()
-                    && !source.has_generics()
-                    && function.return_type(self.ast).is_none();
-                let mut shape = (selected.role == CallbackRole::Last
-                    && sole_argument
-                    && layout == ExpressionLayout::Normal)
-                    .then_some(CallbackParameterShape::Identifiers);
-                let (signature, body) = writer.record_with_value(|writer| {
-                    self.format_function_head_with_shape(function, source, shape.as_mut(), writer)
-                })?;
-                let (body, ()) = writer
-                    .record_with_value(|writer| self.format_function_body_boundary(body, writer))?;
-                let (normal, ()) = writer.record_with_value(|writer| {
-                    writer.write_fragment(signature);
-                    writer.write_fragment(body);
-                    Ok::<_, FormatError>(())
-                })?;
-                (
-                    signature,
-                    CallbackBody::Retained(body),
-                    normal,
-                    None,
-                    independent || shape == Some(CallbackParameterShape::Other),
-                )
-            }
-        };
-        let (normal, ()) = writer.record_with_value(|writer| {
-            layout.write(writer, |writer| writer.write_fragment(normal));
-            Ok::<_, FormatError>(())
-        })?;
-        let signature = match (selected.role, callback.kind, layout) {
-            (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
-                Some(GroupedSignature::Independent(signature))
-            }
-            _ if selected.role == CallbackRole::Last && independent => {
-                Some(GroupedSignature::Independent(signature))
-            }
-            _ => signature.try_flat().map(GroupedSignature::Flat),
-        };
-        Ok((
-            RecordedValue::Callback {
-                signature,
-                body,
-                normal,
-                layout,
-            },
-            tail,
-        ))
     }
 
     fn callback_has_block(&self, callback: Callback) -> bool {
@@ -693,6 +752,138 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             data = self.expression_content(next).data;
         }
+    }
+
+    fn record_callback(
+        &mut self,
+        selected: &mut SelectedCallback,
+        sole_argument: bool,
+        jsx_call: Option<CallExpression>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(RecordedValue<'ast>, Option<ExpressionTail<'ast>>), FormatError> {
+        let callback = selected.callback;
+        let frame = if selected.role == CallbackRole::Test {
+            let parameters = match callback.kind {
+                CallbackKind::Arrow(arrow) => arrow.params(self.ast),
+                CallbackKind::Function(function) => function.params(self.ast),
+            };
+            // A line-comment packet owns its following separator, including an empty line.
+            if self
+                .comments
+                .in_range(parameters.span(self.ast))
+                .iter()
+                .any(|comment| comment.kind == swc_next_ecma_ast::CommentKind::Line)
+            {
+                ParameterFrame::Ordinary
+            } else {
+                ParameterFrame::Fixed
+            }
+        } else {
+            ParameterFrame::Ordinary
+        };
+        let layout = self.expression_layout(callback.expression);
+        let (signature, body, normal, tail, independent) = match callback.kind {
+            CallbackKind::Arrow(arrow) => {
+                let source = self.source_arrow(arrow)?.with_parameter_frame(frame);
+                let context = ExpressionContext::at(ExpressionPosition::Nested)
+                    .with_arrow_layout(super::arrows::ArrowLayout::Argument)
+                    .with_jsx_callback(JsxCallbackContext::argument(
+                        jsx_call,
+                        ExprData::ArrowFunctionExpression(arrow),
+                    ));
+                let recorded = match self.record_arrow(
+                    source,
+                    selected.prepared_body.take(),
+                    context,
+                    writer,
+                )? {
+                    RecordedArrow::Verbatim(value) => {
+                        let (value, ()) = writer.record_with_value(|writer| {
+                            layout.write(writer, |writer| writer.write_fragment(value));
+                            Ok::<_, FormatError>(())
+                        })?;
+                        return Ok((RecordedValue::Ordinary(value), None));
+                    }
+                    RecordedArrow::Formatted(recorded) => recorded,
+                };
+                (
+                    recorded.signature,
+                    if selected.role == CallbackRole::Last
+                        && recorded.body_layout == ArrowBodyLayout::Expression
+                    {
+                        CallbackBody::Terminal(recorded.body.contents())
+                    } else {
+                        CallbackBody::Retained(if recorded.body_layout == ArrowBodyLayout::Hug {
+                            recorded.body.contents()
+                        } else {
+                            recorded.body.grouped()
+                        })
+                    },
+                    recorded.normal,
+                    recorded.tail,
+                    recorded.independent_signature,
+                )
+            }
+            CallbackKind::Function(function) => {
+                let source = self
+                    .source_function_signature(function, FunctionSignatureOwner::Function)?
+                    .with_parameter_frame(frame);
+                if source.enclosing_mode() == ContentMode::Verbatim {
+                    let (value, ()) = writer.record_with_value(|writer| {
+                        layout.write(writer, |writer| {
+                            self.format_verbatim(function.span(self.ast), writer)
+                        })
+                    })?;
+                    return Ok((RecordedValue::Ordinary(value), None));
+                }
+                let independent = !source.has_parameters()
+                    && !source.has_generics()
+                    && function.return_type(self.ast).is_none();
+                let mut shape = (selected.role == CallbackRole::Last
+                    && sole_argument
+                    && layout == ExpressionLayout::Normal)
+                    .then_some(CallbackParameterShape::Identifiers);
+                let (signature, body) = writer.record_with_value(|writer| {
+                    self.format_function_head_with_shape(function, source, shape.as_mut(), writer)
+                })?;
+                let (body, ()) = writer
+                    .record_with_value(|writer| self.format_function_body_boundary(body, writer))?;
+                let (normal, ()) = writer.record_with_value(|writer| {
+                    writer.write_fragment(signature);
+                    writer.write_fragment(body);
+                    Ok::<_, FormatError>(())
+                })?;
+                (
+                    signature,
+                    CallbackBody::Retained(body),
+                    normal,
+                    None,
+                    independent || shape == Some(CallbackParameterShape::Other),
+                )
+            }
+        };
+        let (normal, ()) = writer.record_with_value(|writer| {
+            layout.write(writer, |writer| writer.write_fragment(normal));
+            Ok::<_, FormatError>(())
+        })?;
+        let signature = match (selected.role, callback.kind, layout) {
+            (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
+                Some(GroupedSignature::Independent(signature))
+            }
+            _ if selected.role == CallbackRole::Last && independent => {
+                Some(GroupedSignature::Independent(signature))
+            }
+            _ => signature.try_flat().map(GroupedSignature::Flat),
+        };
+        Ok((
+            RecordedValue::Callback {
+                signature,
+                body,
+                normal,
+                layout,
+            },
+            tail,
+        ))
     }
 
     pub(super) fn format_selected_arguments(
