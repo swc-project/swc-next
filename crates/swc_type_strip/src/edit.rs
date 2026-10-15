@@ -193,26 +193,26 @@ fn push_blank(output: &mut String, source: &str) {
         let destination = output.as_mut_ptr().add(output_start);
 
         while offset < source.len() {
-            while offset + u8x16::LEN <= source.len() {
-                let bytes = u8x16::from_slice(&source.as_bytes()[offset..]);
-                let non_ascii = bytes.simd_ge(u8x16::splat(0x80));
-                if non_ascii.any() {
+            let mut vectors = 0;
+            let (chunks, _) = source.as_bytes()[offset..].as_chunks::<{ u8x16::LEN }>();
+            for chunk in chunks {
+                let bytes = u8x16::from_array(*chunk);
+                if bytes.simd_gt(u8x16::splat(0x7F)).any() {
                     break;
                 }
 
-                let control_whitespace: mask8x16 =
-                    (bytes - u8x16::splat(b'\t')).simd_le(u8x16::splat(b'\r' - b'\t'));
-                let blanked = control_whitespace
-                    .select(bytes, u8x16::splat(b' '))
-                    .to_array();
+                let blank: mask8x16 =
+                    (bytes - u8x16::splat(b'\t')).simd_gt(u8x16::splat(b'\r' - b'\t'));
+                let blanked = blank.select(u8x16::splat(b' '), bytes).to_array();
                 std::ptr::copy_nonoverlapping(
                     blanked.as_ptr(),
-                    destination.add(written),
+                    destination.add(written + vectors * u8x16::LEN),
                     u8x16::LEN,
                 );
-                written += u8x16::LEN;
-                offset += u8x16::LEN;
+                vectors += 1;
             }
+            written += vectors * u8x16::LEN;
+            offset += vectors * u8x16::LEN;
 
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
