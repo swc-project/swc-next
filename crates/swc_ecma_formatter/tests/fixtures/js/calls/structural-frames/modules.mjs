@@ -1,0 +1,10 @@
+require.resolve("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+require.resolve.paths("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+import.meta.resolve("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+other.resolve("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+require.resolve?.("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+require["resolve"]("a/very/long/module/name/that/does/not/fit/inside/the/usual/argument/list");
+define(["first/dependency/with/a/long/name", "second/dependency"], function (first, second) { work(first, second); });
+define("name", ["first/dependency/with/a/long/name", "second/dependency"], function (first, second) { work(first, second); });
+const nested = define(["first/dependency/with/a/long/name", "second/dependency"], function (first, second) { work(first, second); });
+define(["dependency"], /* factory */ function (dependency) { work(dependency); });
