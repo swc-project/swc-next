@@ -11024,6 +11024,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   `...` AssignmentExpression[+In, ?Yield, ?Await]
     //   ArgumentList[?Yield, ?Await] `,` AssignmentExpression[+In, ?Yield, ?Await]
     //   ArgumentList[?Yield, ?Await] `,` `...` AssignmentExpression[+In, ?Yield, ?Await]
+    #[inline(always)]
     fn parse_arguments(&mut self) -> Option<SubRange<Argument>> {
         let checkpoint = self.scratch_a.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
