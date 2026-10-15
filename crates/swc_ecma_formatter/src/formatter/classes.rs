@@ -958,10 +958,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_verbatim(span, writer);
         }
         let content = Span::new(span.start + 1, span.end - 1);
-        let quoting = match self.options.quote_properties {
-            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-        };
+        let quoting = self.property_key_quoting(|| {
+            body.body(ast).iter().any(|id| {
+                let member = ast.get_node_in_sub_range(id);
+                let (key, computed, context) = match ast.class_element_data(member) {
+                    ClassElementData::MethodDefinition(method) => (
+                        method.key(ast),
+                        method.computed(ast),
+                        ClassMemberPrefixOwner::Method(method).key_context(ast),
+                    ),
+                    ClassElementData::TsMethodDefinition(method) => (
+                        method.key(ast),
+                        method.computed(ast),
+                        ClassMemberPrefixOwner::Bodyless(method).key_context(ast),
+                    ),
+                    ClassElementData::PropertyDefinition(field) => (
+                        field.key(ast),
+                        field.computed(ast),
+                        PropertyKeyContext::ClassField,
+                    ),
+                    ClassElementData::StaticBlock(_) | ClassElementData::TsIndexSignature(_) => {
+                        return false;
+                    }
+                };
+                self.property_key_requires_quotes(key, computed, context)
+            })
+        });
         let mut members = body
             .body(ast)
             .iter()
@@ -1452,6 +1474,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quoting: PropertyKeyQuoting,
     ) -> Result<Option<SourceClassField<'ast>>, FormatError> {
         let ast = self.ast;
+        // TypeScript checks initialization of identifier fields and accessors, but
+        // skips quoted declarations. Keep the original key kind in both directions.
+        let quoting = if ast.lang().is_typescript()
+            && self.options.quote_properties == QuoteProperties::Consistent
+        {
+            PropertyKeyQuoting::Preserve
+        } else {
+            quoting
+        };
         let span = node.span(ast);
         let key = node.key(ast);
         let key_span = key.span(ast);

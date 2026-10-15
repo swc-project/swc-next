@@ -15,7 +15,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
-    FormatError, QuoteProperties, TrailingCommas,
+    FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
     document::{Fragment, GroupRequest, Writer},
 };
 
@@ -24,6 +24,7 @@ use crate::{
 pub(in crate::formatter) enum PropertyKeyQuoting {
     AsNeeded,
     Preserve,
+    Quote,
 }
 
 #[derive(Clone, Copy)]
@@ -176,10 +177,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = object.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
-        let quoting = match self.options.quote_properties {
-            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
-            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
-        };
+        let quoting = self.property_key_quoting(|| {
+            object.properties(ast).iter().any(|id| {
+                let property = ast.get_node_in_sub_range(id);
+                match ast.object_property_kind_data(property) {
+                    ObjectPropertyKindData::ObjectProperty(property) => self
+                        .property_key_requires_quotes(
+                            property.key(ast),
+                            property.computed(ast),
+                            PropertyKeyContext::Ordinary,
+                        ),
+                    ObjectPropertyKindData::SpreadElement(_) => false,
+                }
+            })
+        });
         let mut remaining = object.properties(ast);
         let Some(first) = remaining.first().map(|id| ast.get_node_in_sub_range(id)) else {
             let comments = self.comments.between(content)?;
@@ -899,7 +910,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quoting: PropertyKeyQuoting,
     ) -> Option<&'ast str> {
         match self.ast.property_key_data(key) {
-            PropertyKeyData::IdentifierName(identifier) => {
+            PropertyKeyData::IdentifierName(identifier)
+                if quoting != PropertyKeyQuoting::Quote || mode == ContentMode::Verbatim =>
+            {
                 Some(self.ast.get_utf8(identifier.name(self.ast)))
             }
             PropertyKeyData::Expr(expression) if mode == ContentMode::Formatted => {
@@ -933,6 +946,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return ContentMode::Formatted;
         }
         mode
+    }
+
+    pub(in crate::formatter) fn property_key_quoting(
+        &self,
+        requires_quotes: impl FnOnce() -> bool,
+    ) -> PropertyKeyQuoting {
+        match self.options.quote_properties {
+            QuoteProperties::AsNeeded => PropertyKeyQuoting::AsNeeded,
+            QuoteProperties::Preserve => PropertyKeyQuoting::Preserve,
+            QuoteProperties::Consistent if requires_quotes() => PropertyKeyQuoting::Quote,
+            QuoteProperties::Consistent => PropertyKeyQuoting::AsNeeded,
+        }
+    }
+
+    pub(in crate::formatter) fn property_key_requires_quotes(
+        &self,
+        key: PropertyKey,
+        computed: bool,
+        context: PropertyKeyContext,
+    ) -> bool {
+        !computed
+            && matches!(self.ast.property_key_data(key), PropertyKeyData::Expr(expression)
+                if matches!(self.ast.expr_data(expression), ExprData::StringLiteral(literal)
+                    if self.unquoted_string_key_content(literal, context).is_none()))
+    }
+
+    pub(in crate::formatter) fn format_identifier_property_name(
+        &self,
+        name: &'ast str,
+        quoting: PropertyKeyQuoting,
+        writer: &mut Writer<'ast>,
+    ) {
+        if quoting == PropertyKeyQuoting::Quote {
+            let quote = match self.options.quote_style {
+                QuoteStyle::Double => "\"",
+                QuoteStyle::Single => "'",
+            };
+            writer.text(quote);
+            writer.text(name);
+            writer.text(quote);
+        } else {
+            writer.text(name);
+        }
     }
 
     pub(in crate::formatter) fn property_key_quoting_context(
@@ -1018,11 +1074,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match ast.property_key_data(key) {
             PropertyKeyData::IdentifierName(identifier) => {
-                writer.text(ast.get_utf8(identifier.name(ast)));
+                self.format_identifier_property_name(
+                    ast.get_utf8(identifier.name(ast)),
+                    quoting,
+                    writer,
+                );
             }
             PropertyKeyData::Expr(expression) => match ast.expr_data(expression) {
                 ExprData::StringLiteral(literal) => {
-                    self.format_string_property_name(literal, context, quoting, writer)
+                    if let Some(content) = self.unquoted_string_key(literal, context, quoting) {
+                        writer.text(content);
+                    } else {
+                        self.format_string_literal(literal, StringContext::Expression, writer);
+                    }
+                }
+                ExprData::NumericLiteral(literal)
+                    if quoting == PropertyKeyQuoting::Quote && !ast.lang().is_typescript() =>
+                {
+                    let text = self.numeric_literal_text(literal);
+                    if numeric_property_name(&text) {
+                        let quote = match self.options.quote_style {
+                            QuoteStyle::Double => "\"",
+                            QuoteStyle::Single => "'",
+                        };
+                        writer.text(quote);
+                        writer.text(text);
+                        writer.text(quote);
+                    } else {
+                        writer.text(text);
+                    }
                 }
                 ExprData::NumericLiteral(literal) => self.format_numeric_literal(literal, writer),
                 ExprData::BigIntLiteral(literal) => self.format_bigint_literal(literal, writer),
