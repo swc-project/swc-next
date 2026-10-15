@@ -1,0 +1,180 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it(`a deliberately long template name that exceeds the ordinary call frame width`, () => { run(); });
+test.describe.parallel.only("case", (done) => { done(); }, 1000);
+beforeEach(fakeAsync(() => { /* body */ run(); }));
+afterAll(waitForAsync(() => value));
+it("case", inject(function (first, second, third) { return first(second, third); }));
+other("case", fakeAsync(() => { run(); }));
+describe?.("a deliberately long optional call name that exceeds the ordinary frame width", (done) => {});
+it("case", /* boundary */ () => { run(); });
+it("case", () => { /* body */ run(); });
+it("case", (first, second) => { run(); }, 1000);
+it("case", (first, second) => { run(); }, timeout);
+beforeEach(fakeAsync?.(() => { run(); }));
+it("a long test label which should keep its callback header attached", (fakeAsync(() => { run(); })));
+it(("a long test label which should keep its callback header attached"), () => { run(); });
+(it)("a long test label which should keep its callback header attached", () => { run(); }, (1000));
+beforeEach(fakeAsync?.((firstLongParameter, secondLongParameter) => { /* ordinary body */ run(); }));
+it("a long test label which should keep its callback header attached", (fakeAsync(() => { run(); }) /* wrapper */));
+---------- Options ----------
+{}
+---------- Output ----------
+it(`a deliberately long template name that exceeds the ordinary call frame width`, () => {
+  run();
+});
+test.describe.parallel.only("case", (done) => {
+  done();
+}, 1000);
+beforeEach(fakeAsync(() => {
+  /* body */ run();
+}));
+afterAll(waitForAsync(() => value));
+it("case", inject(function (first, second, third) {
+  return first(second, third);
+}));
+other(
+  "case",
+  fakeAsync(() => {
+    run();
+  }),
+);
+describe?.(
+  "a deliberately long optional call name that exceeds the ordinary frame width",
+  (done) => {},
+);
+it(
+  "case",
+  /* boundary */ () => {
+    run();
+  },
+);
+it("case", () => {
+  /* body */ run();
+});
+it(
+  "case",
+  (first, second) => {
+    run();
+  },
+  1000,
+);
+it(
+  "case",
+  (first, second) => {
+    run();
+  },
+  timeout,
+);
+beforeEach(
+  fakeAsync?.(() => {
+    run();
+  }),
+);
+it("a long test label which should keep its callback header attached", fakeAsync(() => {
+  run();
+}));
+it("a long test label which should keep its callback header attached", () => {
+  run();
+});
+it("a long test label which should keep its callback header attached", () => {
+  run();
+}, 1000);
+beforeEach(
+  fakeAsync?.((firstLongParameter, secondLongParameter) => {
+    /* ordinary body */ run();
+  }),
+);
+it(
+  "a long test label which should keep its callback header attached",
+  fakeAsync(() => {
+    run();
+  }) /* wrapper */,
+);
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40}
+---------- Output ----------
+it(`a deliberately long template name that exceeds the ordinary call frame width`, () => {
+  run();
+});
+test.describe.parallel
+  .only("case", done => {
+  done();
+}, 1000);
+beforeEach(fakeAsync(() => {
+  /* body */ run();
+}));
+afterAll(waitForAsync(() => value));
+it("case", inject(function (
+  first,
+  second,
+  third,
+) {
+  return first(second, third);
+}));
+other(
+  "case",
+  fakeAsync(() => {
+    run();
+  }),
+);
+describe?.(
+  "a deliberately long optional call name that exceeds the ordinary frame width",
+  done => {},
+);
+it(
+  "case",
+  /* boundary */ () => {
+    run();
+  },
+);
+it("case", () => {
+  /* body */ run();
+});
+it(
+  "case",
+  (first, second) => {
+    run();
+  },
+  1000,
+);
+it(
+  "case",
+  (first, second) => {
+    run();
+  },
+  timeout,
+);
+beforeEach(
+  fakeAsync?.(() => {
+    run();
+  }),
+);
+it("a long test label which should keep its callback header attached", fakeAsync(() => {
+  run();
+}));
+it("a long test label which should keep its callback header attached", () => {
+  run();
+});
+it("a long test label which should keep its callback header attached", () => {
+  run();
+}, 1000);
+beforeEach(
+  fakeAsync?.(
+    (
+      firstLongParameter,
+      secondLongParameter,
+    ) => {
+      /* ordinary body */ run();
+    },
+  ),
+);
+it(
+  "a long test label which should keep its callback header attached",
+  fakeAsync(() => {
+    run();
+  }) /* wrapper */,
+);

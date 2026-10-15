@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+it("test", function(done,
+
+result) { return function(a,
+
+b) { return a + b; }; });
+---------- Options ----------
+{}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b;
+  };
+});
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b;
+  };
+});
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+it("test", function (done, result) {
+  return function (
+    a,
+
+    b,
+  ) {
+    return a + b
+  }
+})
