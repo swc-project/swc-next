@@ -46,7 +46,7 @@ case filters and the measurement boundary. PRs run five representative cases;
 use manual dispatch without a filter for all 24 cases. Use the N-API public JS entry point;
 a Rust library-only result does not measure JS encoding, lazy decoding or FFI.
 
-Disable V8 JIT with `--jitless`. Compare exact base/head SHAs with the same head harness,
+Use `--jitless --predictable` to disable JIT and reduce GC scheduling variation. Compare exact base/head SHAs with the same head harness,
 fixtures, Node flags and release settings. The workflow reports three fresh
 processes per case. Check the individual trials and median/range before applying
 the optimization thresholds below. Overlapping ranges are inconclusive; do not

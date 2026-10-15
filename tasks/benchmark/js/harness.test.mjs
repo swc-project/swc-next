@@ -45,6 +45,7 @@ test("three trial comparison retains exact counts and marks overlap inconclusive
   assert.equal(rows[0].assessment, "Inconclusive (ranges overlap)");
   assert.match(render(rows), /100–102/);
   assert.match(render(rows), /JIT disabled \(--jitless\)/);
+  assert.match(render(rows), /predictable mode enabled \(--predictable\)/);
   assert.equal(compare([summary(1, 100, 90), summary(2, 102, 91), summary(3, 101, 92)])[0].assessment, "Lower Ir");
 });
 

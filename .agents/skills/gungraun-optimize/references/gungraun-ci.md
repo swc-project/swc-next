@@ -123,7 +123,7 @@ runs. PR runs compare the event's exact base and head SHAs. The standalone
 `tasks/benchmark/js` harness is copied from head for both runs, without
 replacing either revision's product manifests or dependencies.
 
-Disable JIT with `--jitless` and retain the three trial counts, median and range. A range
+Use `--jitless --predictable` to disable JIT and reduce GC scheduling variation; retain the three trial counts, median and range. A range
 overlap is inconclusive, including in same-SHA checks. The benchmark-only N-API
 helper uses Callgrind client requests around the synchronous JS callback;
 startup, input preparation and warmup are excluded. Preserve the native symbol

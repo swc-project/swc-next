@@ -3,7 +3,9 @@
 The `JavaScript API Gungraun` workflow compares exact base/head revisions on
 Ubuntu 24.04 with Node 24.16.0 and Gungraun 0.20.0. It measures the public
 `@swc-next/core` N-API entry point with JIT disabled (`--jitless`), including synchronous JS,
-encoding/decoding and Rust work. WASM is not measured.
+encoding/decoding and Rust work. `--predictable` disables concurrent and parallel
+GC tasks and the memory reducer to reduce scheduling-dependent variation.
+WASM is not measured.
 
 `parse` returns the lazy result; `parse_full` also reads every enumerable AST
 property. `print` uses an already materialized AST. `lang` and `source_type`
@@ -86,7 +88,8 @@ threshold. Interpreter frames may lack useful JavaScript source names;
 retained native symbols still expose synchronous N-API and Rust costs.
 These counts do not represent normal JIT-enabled execution speed. Do not compare
 them directly with older JIT-enabled profiles. Disabling JIT does not eliminate
-GC or other sources of measurement variation.
+GC or other sources of measurement variation. Predictable mode reduces these
+sources but does not guarantee identical counts for every workload.
 Do not apply the optimization skill's acceptance thresholds to an inconclusive
 result. Performance differences never fail CI; missing or invalid comparisons,
 failed API assertions and build failures do. The same-SHA control must have
