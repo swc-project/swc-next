@@ -307,17 +307,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, target: &mut Token) -> bool {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
-        if (pos as usize) < self.source.len()
-            && (self.source[pos as usize] == b'\\' || self.source[pos as usize] >= 0x80)
+        if self
+            .source
+            .get(pos as usize)
+            .is_some_and(|byte| ASCII_IDENTIFIER_CLASS[*byte as usize] == IdentifierClass::Slow)
         {
             return false;
         }
+        // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
+        // after it that is at most `source.len()`.
+        let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
         self.cursor = pos;
-        *target = self.create_token(
-            get_keyword_type(&self.source[start as usize..pos as usize]),
-            start,
-            pos,
-        );
+        *target = self.create_token(get_keyword_type(lexeme), start, pos);
         true
     }
 
@@ -332,10 +333,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
         if let Some(&next) = self.source.get(end)
-            && (!NOT_ASCII_IDENTIFIER_CONTINUE[next as usize]
-                || next == b'.'
-                || next == b'\\'
-                || next >= 0x80)
+            && (ASCII_IDENTIFIER_CLASS[next as usize] != IdentifierClass::End || next == b'.')
         {
             return false;
         }
@@ -1673,25 +1671,34 @@ const FAST_CLASS: [FastClass; 256] = {
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 
-const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
-    let mut table = [true; 256];
-    let mut byte = b'0' as usize;
-    while byte <= b'9' as usize {
-        table[byte] = false;
+/// How a byte after an ASCII identifier prefix affects the identifier.
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum IdentifierClass {
+    /// An ASCII identifier part.
+    Continue,
+    /// A byte that ends the identifier.
+    End,
+    /// An escape or non-ASCII byte that needs the full identifier scanner.
+    Slow,
+}
+
+const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
+    let mut table = [IdentifierClass::End; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        if (byte >= b'0' as usize && byte <= b'9' as usize)
+            || (byte >= b'A' as usize && byte <= b'Z' as usize)
+            || (byte >= b'a' as usize && byte <= b'z' as usize)
+            || byte == b'_' as usize
+            || byte == b'$' as usize
+        {
+            table[byte] = IdentifierClass::Continue;
+        } else if byte == b'\\' as usize || byte >= 0x80 {
+            table[byte] = IdentifierClass::Slow;
+        }
         byte += 1;
     }
-    byte = b'A' as usize;
-    while byte <= b'Z' as usize {
-        table[byte] = false;
-        byte += 1;
-    }
-    byte = b'a' as usize;
-    while byte <= b'z' as usize {
-        table[byte] = false;
-        byte += 1;
-    }
-    table[b'_' as usize] = false;
-    table[b'$' as usize] = false;
     table
 };
 
@@ -1711,13 +1718,15 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
         // guarantees that `batch_end` is within `source`.
         let batch = unsafe { source.get_unchecked(position..batch_end) };
         for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
+            if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
                 return (position + offset) as u32;
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
-    while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
+    while position < source.len()
+        && ASCII_IDENTIFIER_CLASS[source[position] as usize] == IdentifierClass::Continue
+    {
         position += 1;
     }
 
