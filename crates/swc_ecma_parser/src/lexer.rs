@@ -1636,8 +1636,6 @@ const FAST_CLASS: [FastClass; 256] = {
     table
 };
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
-
 const NOT_ASCII_IDENTIFIER_CONTINUE: [bool; 256] = {
     let mut table = [true; 256];
     let mut byte = b'0' as usize;
@@ -1668,23 +1666,12 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
     // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
-    let mut position = start as usize;
-
-    while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch_end = position + IDENTIFIER_BATCH_SIZE;
-        // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
-        // guarantees that `batch_end` is within `source`.
-        let batch = unsafe { source.get_unchecked(position..batch_end) };
-        for (offset, byte) in batch.iter().enumerate() {
-            if NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize] {
-                return (position + offset) as u32;
-            }
-        }
-        position += IDENTIFIER_BATCH_SIZE;
-    }
-    while position < source.len() && !NOT_ASCII_IDENTIFIER_CONTINUE[source[position] as usize] {
-        position += 1;
-    }
+    let remaining = &source[start as usize..];
+    let offset = remaining
+        .iter()
+        .position(|byte| NOT_ASCII_IDENTIFIER_CONTINUE[*byte as usize])
+        .unwrap_or(remaining.len());
+    let position = start as usize + offset;
 
     debug_assert!(position >= start as usize);
     debug_assert!(position <= source.len());
