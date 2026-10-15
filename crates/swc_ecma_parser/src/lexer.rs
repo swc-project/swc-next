@@ -235,10 +235,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     return false;
                 }
             }
-            FastClass::Punctuation => {
+            FastClass::Punctuation(tag) => {
                 self.clear_token_flags();
                 self.cursor = start;
-                *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
+                *target = self.punc_token(1, tag, start);
             }
             FastClass::Dot => {
                 if self
@@ -280,20 +280,24 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return false;
         };
         let class = FAST_CLASS[byte as usize];
-        if !matches!(class, FastClass::Identifier | FastClass::Punctuation) {
+        if !matches!(class, FastClass::Identifier | FastClass::Punctuation(_)) {
             return false;
         }
 
         self.clear_token_flags();
         self.set_token_flag(TokenFlag::LineTerminatorBefore);
-        if class == FastClass::Identifier {
-            if !self.scan_ascii_identifier(start as u32, target) {
-                self.cursor = line_feed;
-                return false;
+        match class {
+            FastClass::Identifier => {
+                if !self.scan_ascii_identifier(start as u32, target) {
+                    self.cursor = line_feed;
+                    return false;
+                }
             }
-        } else {
-            self.cursor = start as u32;
-            *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start as u32);
+            FastClass::Punctuation(tag) => {
+                self.cursor = start as u32;
+                *target = self.punc_token(1, tag, start as u32);
+            }
+            _ => unreachable!(),
         }
         self.handle_token(*target, HandleTokenMode::Append);
         true
@@ -404,8 +408,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn scan_simple_punctuation(&mut self) -> Token {
         debug_assert!((self.cursor as usize) < self.source.len());
         let start = self.cursor;
-        let tag = SIMPLE_PUNCT_TAG[self.source[self.cursor as usize] as usize];
-        debug_assert_ne!(tag, TokenTag::Eof);
+        let FastClass::Punctuation(tag) = FAST_CLASS[self.source[self.cursor as usize] as usize]
+        else {
+            unreachable!();
+        };
         self.cursor += 1;
         self.create_token(tag, start, self.cursor)
     }
@@ -1585,27 +1591,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 }
 
-const SIMPLE_PUNCT_TAG: [TokenTag; 256] = {
-    let mut table = [TokenTag::Eof; 256];
-    table[b'~' as usize] = TokenTag::BitwiseNot;
-    table[b'(' as usize] = TokenTag::LeftParen;
-    table[b')' as usize] = TokenTag::RightParen;
-    table[b'{' as usize] = TokenTag::LeftBrace;
-    table[b'}' as usize] = TokenTag::RightBrace;
-    table[b'[' as usize] = TokenTag::LeftBracket;
-    table[b']' as usize] = TokenTag::RightBracket;
-    table[b';' as usize] = TokenTag::Semicolon;
-    table[b',' as usize] = TokenTag::Comma;
-    table[b':' as usize] = TokenTag::Colon;
-    table[b'@' as usize] = TokenTag::At;
-    table
-};
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum FastClass {
     Slow,
     Identifier,
-    Punctuation,
+    Punctuation(TokenTag),
     Dot,
     Operator,
 }
@@ -1620,11 +1610,20 @@ const FAST_CLASS: [FastClass; 256] = {
             || byte == b'$' as usize
         {
             table[byte] = FastClass::Identifier;
-        } else if !matches!(SIMPLE_PUNCT_TAG[byte], TokenTag::Eof) {
-            table[byte] = FastClass::Punctuation;
         }
         byte += 1;
     }
+    table[b'~' as usize] = FastClass::Punctuation(TokenTag::BitwiseNot);
+    table[b'(' as usize] = FastClass::Punctuation(TokenTag::LeftParen);
+    table[b')' as usize] = FastClass::Punctuation(TokenTag::RightParen);
+    table[b'{' as usize] = FastClass::Punctuation(TokenTag::LeftBrace);
+    table[b'}' as usize] = FastClass::Punctuation(TokenTag::RightBrace);
+    table[b'[' as usize] = FastClass::Punctuation(TokenTag::LeftBracket);
+    table[b']' as usize] = FastClass::Punctuation(TokenTag::RightBracket);
+    table[b';' as usize] = FastClass::Punctuation(TokenTag::Semicolon);
+    table[b',' as usize] = FastClass::Punctuation(TokenTag::Comma);
+    table[b':' as usize] = FastClass::Punctuation(TokenTag::Colon);
+    table[b'@' as usize] = FastClass::Punctuation(TokenTag::At);
     table[b'.' as usize] = FastClass::Dot;
     // Slash and minus can start comments and retain the trivia path.
     let operators = b"+*%<>=!&|^?";
