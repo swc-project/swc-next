@@ -17,6 +17,7 @@ import {
 import { useEffect, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { CSSProperties, KeyboardEvent } from "react";
+import swcLogo from "../../docs/images/swc.png";
 import AstTree from "./components/AstTree";
 import CodeEditor from "./components/CodeEditor";
 import OptionsPanel from "./components/OptionsPanel";
@@ -155,24 +156,13 @@ export default function App() {
   return (
     <div className="flex h-dvh min-h-115 flex-col max-[720px]:h-auto max-[720px]:min-h-dvh">
       <header className="flex h-16 shrink-0 items-center justify-between gap-5 border-b border-border px-7 max-[720px]:gap-2 max-[720px]:px-4">
-        <div className="flex items-center gap-3.5 whitespace-nowrap max-[720px]:gap-2">
-          <span
-            className="mr-0.75 text-[23px] font-[850] italic tracking-[-1.8px] text-accent max-[720px]:text-[22px] [&>span]:pr-1 [&>span]:text-[26px] [&>span]:tracking-[-4px]"
-            aria-hidden="true"
-          >
-            swc<span>»</span>
-          </span>
-          <span className="text-base font-semibold tracking-[-0.2px] text-heading max-[720px]:text-sm">
-            SWC Next
-          </span>
-          <span className="mx-0.75 text-base text-subtle">/</span>
-          <h1 className="text-base font-medium text-muted max-[720px]:text-sm">
-            Playground
-          </h1>
-          <span className="ml-px rounded-[5px] border border-border px-2 py-0.5 text-xs text-muted max-[720px]:hidden">
-            Preview
-          </span>
-        </div>
+        <img
+          className="h-7 w-auto shrink-0"
+          src={swcLogo}
+          alt="SWC"
+          width={4070}
+          height={1443}
+        />
         <div className="flex items-center gap-1.5 max-[720px]:gap-0">
           <span className="mr-2.5 flex items-center gap-1.75 text-[13px] text-muted tabular-nums max-[720px]:hidden">
             <Clock3 size={13} />
