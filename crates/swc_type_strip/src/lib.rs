@@ -449,6 +449,12 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         self.ast
     }
 
+    fn visit_expr(&mut self, node: Expr) {
+        if !node.is_identifier_reference(self.ast) {
+            node.visit_children_with(self);
+        }
+    }
+
     fn visit_program(&mut self, node: Program) {
         self.visit_statement_list(node.body(self.ast), true);
     }
