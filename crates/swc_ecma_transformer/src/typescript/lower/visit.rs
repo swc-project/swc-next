@@ -77,10 +77,13 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
-        if let Some(value) = self.analysis.inline_const_enum_use(expression.node_id()) {
-            return Some(self.inline_enum_constant(expression, value));
-        }
         let inner = match self.ast_ref().expr_data(expression) {
+            ExprData::MemberExpression(_) => {
+                if let Some(value) = self.analysis.inline_const_enum_use(expression.node_id()) {
+                    return Some(self.inline_enum_constant(expression, value));
+                }
+                None
+            }
             ExprData::IdentifierReference(identifier) => {
                 return self.namespace_identifier_reference(identifier);
             }
