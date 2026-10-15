@@ -176,9 +176,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (_, options) => options,
         };
         let hugged = options.is_none()
-            && matches!(source.content.data, ExprData::StringLiteral(_))
-            && self.comments.in_range(content).is_empty()
-            && !self.diagnostic_range_is_sensitive(content);
+            && (matches!(source.content.data, ExprData::StringLiteral(_))
+                && self.comments.in_range(content).is_empty()
+                && !self.diagnostic_range_is_sensitive(content)
+                || self.sole_multiline_template(source.expression, content));
         writer.group(!hugged && expand, |writer| {
             writer.text("(");
             let write_items = |writer: &mut Writer<'ast>| {

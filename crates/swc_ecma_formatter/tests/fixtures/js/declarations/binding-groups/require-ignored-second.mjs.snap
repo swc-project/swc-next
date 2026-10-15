@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { alpha, beta: renamed, gamma } = require("first-long-module-name",
+ // prettier-ignore
+ (( "second-long-module-name" )));
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const {
+  alpha,
+  beta: renamed,
+  gamma,
+} = require("first-long-module-name",
+// prettier-ignore
+"second-long-module-name");
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const { alpha, beta: renamed, gamma } = require("first-long-module-name",
+// prettier-ignore
+"second-long-module-name");
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+const {
+  alpha,
+  beta: renamed,
+  gamma
+} = require("first-long-module-name",
+// prettier-ignore
+"second-long-module-name")

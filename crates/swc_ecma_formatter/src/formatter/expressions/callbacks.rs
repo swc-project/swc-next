@@ -259,6 +259,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .then(|| CallArgumentFrame::fixed(role))
     }
 
+    pub(super) fn callback_dependency_arguments(&self, arguments: SubRange<Argument>) -> bool {
+        if !matches!(arguments.len(), 2 | 3) {
+            return false;
+        }
+        let ast = self.ast;
+        let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
+        if arguments.len() == 3
+            && !items.next().is_some_and(|argument| {
+                matches!(
+                    self.call_argument_data(argument),
+                    Some(ExprData::IdentifierReference(_))
+                )
+            })
+        {
+            return false;
+        }
+        let Some(ExprData::ArrowFunctionExpression(callback)) = items
+            .next()
+            .and_then(|argument| self.call_argument_data(argument))
+        else {
+            return false;
+        };
+        let parameters = callback.params(ast);
+        parameters.items(ast).is_empty()
+            && parameters.rest(ast).is_none()
+            && matches!(
+                ast.arrow_function_body_data(callback.body(ast)),
+                ArrowFunctionBodyData::FunctionBody(_)
+            )
+            && items.next().is_some_and(|argument| {
+                matches!(
+                    self.call_argument_data(argument),
+                    Some(ExprData::ArrayExpression(_))
+                )
+            })
+    }
+
     fn call_argument_data(&self, argument: Argument) -> Option<ExprData> {
         let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
             return None;
