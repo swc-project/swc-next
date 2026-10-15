@@ -15,7 +15,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use crate::{
     AnalyzeOptions, ExportOrigin, ExportTarget, NameResolution, ReferenceSpace, Semantic,
-    SemanticReturn, SymbolFlags, analyze, check_syntax,
+    SemanticReturn, SymbolFlags, SyntaxChecks, analyze, check_syntax,
 };
 
 #[track_caller]
@@ -39,8 +39,11 @@ fn analyze_with_options<'a>(
     assert!(parse.diagnostics.is_empty());
 
     let result = analyze(&ast, analyze_options);
-    if analyze_options.check_syntax {
-        assert_eq!(check_syntax(&ast), result.diagnostics);
+    if !analyze_options.check_syntax.is_empty() {
+        assert_eq!(
+            check_syntax(&ast, analyze_options.check_syntax),
+            result.diagnostics
+        );
     }
     assert!(result.diagnostics.is_empty());
     (ast, result.semantic)
@@ -57,11 +60,14 @@ fn analyze_syntax_source<'a>(
     let result = analyze(
         &parse.ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             ..AnalyzeOptions::default()
         },
     );
-    assert_eq!(check_syntax(&parse.ast), result.diagnostics);
+    assert_eq!(
+        check_syntax(&parse.ast, SyntaxChecks::all()),
+        result.diagnostics
+    );
     (parse.ast, result)
 }
 

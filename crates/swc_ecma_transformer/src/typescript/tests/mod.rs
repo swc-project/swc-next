@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 
 use super::{TypeScriptOptions, transform};
 use crate::normalize::Normalizer;
@@ -72,7 +72,7 @@ pub(super) fn with_output_semantic(
     let analyzed = analyze(
         &parsed.ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             build_module_record: false,
         },
     );

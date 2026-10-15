@@ -836,7 +836,7 @@ mod tests {
     use swc_next_ecma_ast::{Lang, ScopeId, SourceType};
     use swc_next_ecma_codegen::{Options as PrintOptions, print};
     use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-    use swc_next_ecma_semantic::{AnalyzeOptions, ReferenceSpace, analyze};
+    use swc_next_ecma_semantic::{AnalyzeOptions, ReferenceSpace, SyntaxChecks, analyze};
 
     use super::TypeUsageAnalyzer;
     use crate::transform;
@@ -862,7 +862,7 @@ mod tests {
         let result = analyze(
             &ast,
             AnalyzeOptions {
-                check_syntax: true,
+                check_syntax: SyntaxChecks::all(),
                 ..AnalyzeOptions::default()
             },
         );

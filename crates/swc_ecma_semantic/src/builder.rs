@@ -38,7 +38,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceFlags, ReferenceSpace, SymbolFlags,
+    ReferenceFlags, ReferenceSpace, SymbolFlags, SyntaxChecks,
     binder::PreparedDeclaration,
     context::SemanticContext,
     ecmascript,
@@ -52,12 +52,16 @@ pub struct SemanticBuilder<'traverse, 'a> {
     state: SemanticContext<'a>,
     ast: &'traverse Ast<'a>,
     path: Vec<NodeId>,
-    check_syntax: bool,
+    check_syntax: SyntaxChecks,
     in_ts_module_name: bool,
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: bool, build_module_record: bool) -> Self {
+    pub fn new(
+        ast: &'traverse Ast<'a>,
+        check_syntax: SyntaxChecks,
+        build_module_record: bool,
+    ) -> Self {
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
@@ -78,7 +82,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 .symbols
                 .resolve_ts_aliases(self.ast, &state.scope, check_syntax)
         };
-        if check_syntax {
+        if check_syntax.ts_aliases() {
             ts::check_ts_alias_issues(&mut self, export_alias_issues, import_alias_issues);
         }
         debug_assert!(self.path.is_empty());
@@ -290,7 +294,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     #[inline(always)]
     fn leave_node(&mut self, node: NodeKindData) {
-        if self.check_syntax {
+        if !self.check_syntax.is_empty() {
             self.check(node);
         }
         let current = self.path.pop();
@@ -400,7 +404,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
         // This leaf has no children. Only syntax checks inspect its ancestry;
         // binding still consumes the pending reference flags in either mode.
-        if self.check_syntax {
+        if self.check_syntax.identifier_references() {
             let flags = self.enter_node(node.node_id());
             self.record_identifier_reference(node, flags);
             self.check(NodeKindData::IdentifierReference(node));
@@ -415,7 +419,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_binding_identifier(&mut self, node: BindingIdentifier) {
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        let prepared = if self.check_syntax {
+        let prepared = if self.check_syntax.binding_identifiers() {
             let tree = self.ast;
             let name = tree.get_utf8(node.name(tree)).as_bytes();
             let prepared = js::check_binding_identifier(self, node, name);
@@ -959,7 +963,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             .symbols
             .prepare_ts_enum_member(self.ast, node, &state.scope);
         if let Some(prepared) = prepared {
-            if self.check_syntax {
+            if self.check_syntax.redeclarations() {
                 declarations::check_prepared_redeclaration(self, prepared);
             }
             self.state
@@ -981,7 +985,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         name.visit_with(self);
         self.in_ts_module_name = was_in_ts_module_name;
         let declarations = self.state.symbols.enter_ts_module_body(self.ast, node);
-        if self.check_syntax {
+        if self.check_syntax.redeclarations() {
             for prepared in declarations {
                 declarations::check_prepared_redeclaration(self, prepared);
             }
@@ -1263,7 +1267,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_optional_type(&mut self, node: TsOptionalType) {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
-        if self.check_syntax {
+        if !self.check_syntax.is_empty() {
             ts::check_tuple_optional_type(self, node);
         }
         node.visit_children_with(self);
@@ -1275,7 +1279,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_rest_type(&mut self, node: TsRestType) {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
-        if self.check_syntax {
+        if !self.check_syntax.is_empty() {
             ts::check_tuple_rest_type(self, node);
         }
         node.visit_children_with(self);

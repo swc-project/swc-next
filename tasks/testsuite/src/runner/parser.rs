@@ -1,7 +1,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze, check_syntax};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 
 use crate::{
     cases::Case,
@@ -37,11 +37,11 @@ impl<C: Case> Runner<C> for ParserRunner {
             let semantic_ret = analyze(
                 &ast,
                 AnalyzeOptions {
-                    check_syntax: true,
+                    check_syntax: SyntaxChecks::all(),
                     ..AnalyzeOptions::default()
                 },
             );
-            let diagnostics = check_syntax(&ast);
+            let diagnostics = check_syntax(&ast, SyntaxChecks::all());
             if diagnostics != semantic_ret.diagnostics {
                 return Err(format!(
                     "{}: syntax checking and semantic analysis diagnostics differ",

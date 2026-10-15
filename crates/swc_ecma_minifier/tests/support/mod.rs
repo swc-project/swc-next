@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 
 #[derive(Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -125,7 +125,7 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
     let analysis = analyze(
         &ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             ..AnalyzeOptions::default()
         },
     );

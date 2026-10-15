@@ -64,7 +64,7 @@ fn module_records_link_imports_and_exports() {
 fn default_exports() {
     let allocator = Allocator::new();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         build_module_record: true,
     };
     let ts = ts_module_options();
@@ -124,7 +124,7 @@ fn default_binding_spaces() {
     let allocator = Allocator::new();
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         build_module_record: true,
     };
 
@@ -174,7 +174,7 @@ fn default_namespace_aliases() {
     let allocator = Allocator::new();
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         build_module_record: true,
     };
 
@@ -218,7 +218,7 @@ fn source_exports() {
     let ts = ts_module_options();
     let dts = dts_module_options();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         build_module_record: true,
     };
 
@@ -291,7 +291,7 @@ fn assert_forward_namespace_export(source: &str, target_name: &[u8]) {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -367,7 +367,7 @@ fn public_alias_conflict_meanings() {
 #[track_caller]
 fn assert_public_alias_conflict_meanings(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let _ = analyze_with_options(
             &allocator,
             source,
@@ -384,7 +384,7 @@ fn assert_public_alias_conflict_meanings(source: &str) {
 fn static_composed_exports() {
     let allocator = Allocator::new();
     let source = "export {}; class C { static x = 1; } declare namespace C { export namespace Y { interface T { t: true; } } interface Original { own: true; } export { Original as Y }; export { Y as x }; } import Alias = C.x; const value: number = Alias; const typed: Alias = { own: true }; const nested: Alias.T = { t: true };\n";
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -421,7 +421,7 @@ fn static_composed_exports() {
 fn static_values_do_not_become_namespace_locals() {
     let source = "export {};\nconst x = 2;\nclass C { static x = 1; }\nnamespace C { export const y = x; }\n";
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -454,7 +454,7 @@ fn composed_namespace_export_recovery() {
 #[track_caller]
 fn assert_composed_namespace_export_recovery(source: &str, runtime_read: bool) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let parse =
             Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
         assert!(parse.diagnostics.is_empty());
@@ -514,7 +514,7 @@ fn assert_composed_namespace_export(source: &str) {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -640,7 +640,7 @@ fn assert_namespace_export_reference(
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -1053,10 +1053,10 @@ fn assert_global_augmentation_export(source: &str, value: bool) {
             assert!(semantic.uses(target).contains(&reference));
         }
     };
-    check(false, false);
-    check(true, false);
-    check(false, true);
-    check(true, true);
+    check(SyntaxChecks::empty(), false);
+    check(SyntaxChecks::all(), false);
+    check(SyntaxChecks::empty(), true);
+    check(SyntaxChecks::all(), true);
 }
 
 fn nested_namespace_exports() -> String {

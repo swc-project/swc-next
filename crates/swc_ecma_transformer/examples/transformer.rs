@@ -12,7 +12,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Diagnostic, Lang, Severity, SourceType};
 use swc_next_ecma_codegen::print;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
-use swc_next_ecma_semantic::{AnalyzeOptions, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,
@@ -68,7 +68,7 @@ fn main() -> Result<(), String> {
     let analyzed = analyze(
         &ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             build_module_record: false,
         },
     );

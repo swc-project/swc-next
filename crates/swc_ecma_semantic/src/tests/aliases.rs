@@ -25,7 +25,7 @@ fn assert_alias_reference_access(source: &str, name: &[u8], space: ReferenceSpac
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -167,7 +167,7 @@ fn assert_namespace_shadowing(source: &str, name: &[u8]) {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -266,7 +266,7 @@ fn member_alias_visibility() {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -274,7 +274,7 @@ fn member_alias_visibility() {
 #[track_caller]
 fn assert_import_target(source: &str, name: Option<&[u8]>) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let options = AnalyzeOptions {
             check_syntax,
             ..AnalyzeOptions::default()
@@ -329,7 +329,7 @@ enum InitializerReference {
 #[track_caller]
 fn assert_import_initializer(source: &str, expected: InitializerReference) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let options = AnalyzeOptions {
             check_syntax,
             ..AnalyzeOptions::default()
@@ -446,7 +446,7 @@ fn unrelated_aliases_preserve_external_import_lookup() {
 fn assert_import_root_access(source: &str, name: &[u8], read: bool) {
     let allocator = Allocator::new();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
     let (ast, semantic) = analyze_with_options(&allocator, source, ts_module_options(), checked);
@@ -531,7 +531,7 @@ fn anonymous_class_import_members() {
 #[track_caller]
 fn assert_qualified_alias_bindings(source: &str, alias_is_value: bool) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -675,7 +675,7 @@ fn assert_namespace_owner_binding(source: &str, declaration: &str, import_root: 
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }

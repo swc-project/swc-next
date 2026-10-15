@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
     Visit, VisitWith, YieldExpression,
 };
 use swc_next_ecma_parser::{Options, Parser, Token, TokenParserConfig, TokenTag};
-use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
 
 pub fn run(src: &'static str) {
     let allocator = Allocator::new();
@@ -40,7 +40,7 @@ fn run_semantic<'a>(ast: &Ast<'a>) -> Semantic<'a> {
     analyze(
         ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             build_module_record: false,
         },
     )

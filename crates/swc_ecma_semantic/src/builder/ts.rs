@@ -7,6 +7,9 @@ pub(super) fn check_method_definition(
     builder: &mut SemanticBuilder<'_, '_>,
     method: MethodDefinition,
 ) {
+    if !builder.check_syntax.ts_abstract_methods() {
+        return;
+    }
     if method.r#abstract(builder.ast) {
         builder.report(
             builder.ast.span(method.node_id()),
@@ -17,6 +20,9 @@ pub(super) fn check_method_definition(
 }
 
 pub(super) fn check_tuple_rest_type(builder: &mut SemanticBuilder<'_, '_>, rest: TsRestType) {
+    if !builder.check_syntax.ts_tuple_rest() {
+        return;
+    }
     if let Some(member) = rest
         .type_annotation(builder.ast)
         .as_ts_named_tuple_member(builder.ast)
@@ -45,6 +51,9 @@ pub(super) fn check_tuple_optional_type(
     builder: &mut SemanticBuilder<'_, '_>,
     optional: TsOptionalType,
 ) {
+    if !builder.check_syntax.ts_tuple_optional() {
+        return;
+    }
     if let Some(parent) = builder.parent()
         && builder.ast.node_kind(parent) == NodeKind::TsNamedTupleMember
     {
@@ -60,6 +69,9 @@ pub(super) fn check_ts_module_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: TsModuleDeclaration,
 ) {
+    if !builder.check_syntax.ts_module_declarations() {
+        return;
+    }
     let Some((node, message)) = ts_module_declaration_context_error(builder, declaration) else {
         return;
     };
@@ -100,6 +112,9 @@ pub(super) fn check_ts_global_declaration(
     builder: &mut SemanticBuilder<'_, '_>,
     declaration: TsGlobalDeclaration,
 ) {
+    if !builder.check_syntax.ts_global_declarations() {
+        return;
+    }
     if !declaration.declare(builder.ast) && !in_ts_syntactic_ambient_context(builder) {
         builder.report(
             builder.ast.span(declaration.id(builder.ast).node_id()),
@@ -253,6 +268,9 @@ fn check_ts_namespace_export_alias_missing(
     name: swc_next_ecma_ast::AstUtf8,
     node: NodeId,
 ) {
+    if !builder.check_syntax.unresolved_exports() {
+        return;
+    }
     let name = builder.ast.get_utf8(name).as_bytes();
     builder.report_unresolved_export(builder.ast, name, node);
 }
@@ -262,6 +280,9 @@ fn check_ts_namespace_export_alias_non_local(
     name: swc_next_ecma_ast::AstUtf8,
     node: NodeId,
 ) {
+    if !builder.check_syntax.ts_non_local_exports() {
+        return;
+    }
     let name = builder.ast.get_utf8(name).as_bytes();
     builder.report_non_local_export(builder.ast, name, node);
 }
@@ -271,6 +292,9 @@ fn check_ts_namespace_export_alias_duplicate(
     node: NodeId,
     previous: NodeId,
 ) {
+    if !builder.check_syntax.ts_duplicate_export_aliases() {
+        return;
+    }
     check_ts_namespace_export_alias_conflict_with_kind(builder, node, previous, true);
 }
 
@@ -279,6 +303,9 @@ fn check_ts_namespace_export_alias_conflict(
     node: NodeId,
     previous: NodeId,
 ) {
+    if !builder.check_syntax.ts_export_alias_conflicts() {
+        return;
+    }
     check_ts_namespace_export_alias_conflict_with_kind(builder, node, previous, false);
 }
 
@@ -300,6 +327,9 @@ fn check_ts_import_alias_conflict(
     builder: &mut SemanticBuilder<'_, '_>,
     issue: crate::binder::TsImportAliasConflictIssue,
 ) {
+    if !builder.check_syntax.ts_import_alias_conflicts() {
+        return;
+    }
     let name = builder.ast.get_wtf8(issue.name).as_bytes();
     builder.report_redeclaration(
         builder.ast,
@@ -315,6 +345,9 @@ fn check_ts_import_alias_type_only_export(
     node: NodeId,
     export: NodeId,
 ) {
+    if !builder.check_syntax.ts_type_only_import_aliases() {
+        return;
+    }
     builder.report_ts_import_alias_type_only_export(builder.ast, node, export);
 }
 
@@ -390,6 +423,9 @@ pub(super) fn check_ts_ambient_export_assignment_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: NodeId,
 ) {
+    if !builder.check_syntax.ts_ambient_export_assignments() {
+        return;
+    }
     if !builder.state.symbols.in_ambient_context()
         || is_ts_entity_name_expression(builder.ast, expression)
         || !is_export_assignment_container(builder)
@@ -491,6 +527,9 @@ pub(super) fn check_contextual_await(
     node: NodeId,
     message: &'static str,
 ) {
+    if !checker.check_syntax.ts_contextual_await() {
+        return;
+    }
     let context = &*checker;
     if context.state.in_type_position()
         || context.state.symbols.in_ambient_context()
@@ -520,6 +559,9 @@ pub(super) fn check_parameter_property(
     checker: &mut SemanticBuilder<'_, '_>,
     property: TsParameterProperty,
 ) {
+    if !checker.check_syntax.ts_parameter_properties() {
+        return;
+    }
     let Some(binding) = parameter_property_binding(checker.ast, property) else {
         checker.report(
             checker.ast.span(property.node_id()),

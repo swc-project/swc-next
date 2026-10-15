@@ -101,7 +101,7 @@ fn namespace_instantiation() {
 #[track_caller]
 fn assert_namespace_type_export_does_not_shadow(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -146,7 +146,7 @@ fn namespace_instantiation_names() {
 #[test]
 fn global_export_aliases() {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let source = "export as namespace Foo; export declare const Foo: number; export type Value = typeof Foo;";
         let (ast, semantic) = analyze_with_options(
             &allocator,
@@ -480,7 +480,7 @@ fn enum_merging() {
     let allocator = Allocator::new();
     let ts_module = ts_module_options();
     let syntax_check = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
 
@@ -541,7 +541,7 @@ fn contextual_await() {
         ..Options::default()
     };
     let syntax = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
 

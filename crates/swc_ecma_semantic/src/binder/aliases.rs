@@ -23,22 +23,25 @@ use super::{
     TsResolvedAliasSpaces, TsResolvedExportAliasTarget, TsResolvedImportTarget, TsScopeViewIndex,
     ts_resolved_alias_spaces,
 };
-use crate::scope::{Scope, ScopeTracker};
+use crate::{
+    SyntaxChecks,
+    scope::{Scope, ScopeTracker},
+};
 
 impl<'a> SymbolTracker<'a> {
     pub(crate) fn resolve_ts_aliases(
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTracker<'a>,
-        check_syntax: bool,
+        checks: SyntaxChecks,
     ) -> (Vec<TsNamespaceExportAliasIssue>, Vec<TsImportAliasIssue>) {
         self.resolve_ts_namespace_export_aliases(tree, scopes);
-        let export_issues = if check_syntax {
+        let export_issues = if checks.ts_export_aliases() {
             self.check_ts_namespace_export_aliases(tree, scopes)
         } else {
             Vec::new()
         };
-        let import_issues = self.resolve_ts_import_aliases(tree, scopes, check_syntax);
+        let import_issues = self.resolve_ts_import_aliases(tree, scopes, checks);
         (export_issues, import_issues)
     }
 
@@ -165,7 +168,7 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast<'a>,
         scopes: &ScopeTracker<'a>,
-        check_conflicts: bool,
+        checks: SyntaxChecks,
     ) -> Vec<TsImportAliasIssue> {
         if self.ts_import_alias_targets.is_empty() {
             return Vec::new();
@@ -179,7 +182,7 @@ impl<'a> SymbolTracker<'a> {
             let mut resolver =
                 TsImportAliasResolver::new(self, tree, &scopes.scopes, scope_views.as_ref());
             let mut issues = Vec::new();
-            if check_conflicts {
+            if checks.ts_import_aliases() {
                 for (index, &alias) in self.ts_import_alias_targets.iter().enumerate() {
                     // Import aliases inherit the union of all public target
                     // contributions. Type-only provenance is kept separately
@@ -188,11 +191,16 @@ impl<'a> SymbolTracker<'a> {
                     let Some(target) = resolver.space_graph.targets[index] else {
                         continue;
                     };
-                    if let Some(export) = target.type_only_export {
+                    if checks.ts_type_only_import_aliases()
+                        && let Some(export) = target.type_only_export
+                    {
                         issues.push(TsImportAliasIssue::TypeOnlyExport {
                             node: alias.declaration.module_reference(tree).node_id(),
                             export,
                         });
+                    }
+                    if !checks.ts_import_alias_conflicts() {
+                        continue;
                     }
                     let alias_name = self.symbols[alias.alias.index()].name;
                     let alias_scope = self.references[alias.root_reference.index()].scope;

@@ -40,6 +40,7 @@ mod module_record;
 pub mod name_resolver;
 pub mod scope;
 mod scope_model;
+mod syntax_checks;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
@@ -50,6 +51,7 @@ pub use module_record::{
 };
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
+pub use syntax_checks::SyntaxChecks;
 
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -688,10 +690,10 @@ pub struct SemanticReturn<'a> {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct AnalyzeOptions {
-    /// Whether to check and report scope-dependent syntax errors.
+    /// Which scope-dependent syntax errors to check and report.
     ///
-    /// Disabled by default.
-    pub check_syntax: bool,
+    /// Disabled by default. Use [`SyntaxChecks::all`] to enable every check.
+    pub check_syntax: SyntaxChecks,
     /// Whether to collect the source text module's export occurrences and
     /// resolved targets in [`Semantic::module_record`].
     ///
@@ -701,8 +703,8 @@ pub struct AnalyzeOptions {
 
 /// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
 ///
-/// When [`AnalyzeOptions::check_syntax`] is enabled, scope-dependent early
-/// errors are returned separately from parser diagnostics. Their messages use
+/// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
+/// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
 /// When [`AnalyzeOptions::build_module_record`] is disabled, the returned
 /// module record is empty.
@@ -721,11 +723,15 @@ pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a>
 /// Checks scope-dependent syntax errors without building a [`Semantic`] model.
 ///
 /// Returns the same diagnostics as [`analyze`] with
-/// [`AnalyzeOptions::check_syntax`] enabled, including TypeScript alias checks.
+/// [`AnalyzeOptions::check_syntax`] set to `checks`. Use [`SyntaxChecks::all`]
+/// to include every check, including TypeScript aliases.
 /// Reference resolution and the model's use indexes are not needed for these
 /// checks and are skipped. Messages borrow the tree's arena.
-pub fn check_syntax<'a>(ast: &Ast<'a>) -> Vec<Diagnostic<'a>> {
-    let mut visitor = SemanticBuilder::new(ast, true, false);
+pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'a>> {
+    if checks.is_empty() {
+        return Vec::new();
+    }
+    let mut visitor = SemanticBuilder::new(ast, checks, false);
     ast.root_program().visit_with(&mut visitor);
     visitor.finish().0
 }

@@ -18,14 +18,14 @@ fn abstract_method_syntax_check() {
     // Conformance accepts parser errors and always enables syntax checking.
     // AST consumers must still be able to parse and analyze without that check.
     let options = AnalyzeOptions {
-        check_syntax: false,
+        check_syntax: SyntaxChecks::empty(),
         ..AnalyzeOptions::default()
     };
     let unchecked = analyze(ast, options);
     assert!(unchecked.diagnostics.is_empty());
 
     let checked_options = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..options
     };
     let checked = analyze(ast, checked_options);
@@ -36,7 +36,7 @@ fn abstract_method_syntax_check() {
 #[track_caller]
 fn assert_static_alias_spaces(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -210,7 +210,7 @@ fn exported_static_alias_member_view() {
 #[track_caller]
 fn assert_exported_static_alias_member_view(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -236,7 +236,7 @@ fn assert_exported_static_alias_member_view(source: &str) {
 fn static_alias_namespace_lookup() {
     let source = "export {};\nclass C { static x = 1; }\nnamespace C { export interface T {} }\nnamespace A { export interface T { outer: true } }\nnamespace N {\n    import A = C.x;\n    import B = A;\n    export const typed: B.T = { outer: true };\n    export const runtime = A;\n}\n";
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -276,7 +276,7 @@ fn static_values_preserve_type_contributions() {
 #[track_caller]
 fn assert_static_values_preserve_type_contributions(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -312,7 +312,7 @@ fn import_alias_value_shadowing() {
 #[track_caller]
 fn assert_partial_property_alias(source: &str) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -500,7 +500,7 @@ fn qualified_expando_ownership() {
 fn assert_unbound_expando(source: &str) {
     let allocator = Allocator::new();
     for preserve_parens in [false, true] {
-        for check_syntax in [false, true] {
+        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
             let options = Options {
                 preserve_parens,
                 ..ts_module_options()
@@ -601,7 +601,7 @@ fn partial_property_contributions() {
 #[test]
 fn property_exports_exclude_inherited_values() {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let source = "export {}; class Base { static x = 1; } class C extends Base {} namespace C { export interface x { own: true; } } import Alias = C.x; const typed: Alias = { own: true };";
         let (ast, semantic) = analyze_with_options(
             &allocator,
@@ -626,7 +626,7 @@ fn property_exports_exclude_inherited_values() {
 #[test]
 fn expando_receiver_identity() {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let source = "export {}; function C() {} namespace C { export interface x { own: true } } function write(C: { x: number }) { C.x = 1; } import Alias = C.x; const typed: Alias = { own: true };";
         let (ast, semantic) = analyze_with_options(
             &allocator,

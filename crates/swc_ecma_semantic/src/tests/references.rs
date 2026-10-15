@@ -297,7 +297,7 @@ fn computed_key_contexts() {
     };
     let unchecked = AnalyzeOptions::default();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..unchecked
     };
     let queried = (ReferenceSpace::Typeof, false, false);
@@ -430,7 +430,7 @@ fn assert_const_assertion_references(source: &str, count: usize) {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -456,7 +456,7 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
             preserve_parens,
             ..ts_module_options()
         };
-        for check_syntax in [false, true] {
+        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
             for build_module_record in [false, true] {
                 let options = AnalyzeOptions {
                     check_syntax,
@@ -594,7 +594,7 @@ fn export_value_references() {
 #[track_caller]
 fn assert_alias_value_reference(source: &str, value: bool, read: bool) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let options = AnalyzeOptions {
             check_syntax,
             ..AnalyzeOptions::default()
@@ -661,7 +661,7 @@ fn alias_value_references() {
 #[track_caller]
 fn assert_jsx_value_roots(source: &str, names: &[&[u8]]) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,

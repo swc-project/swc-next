@@ -14,7 +14,7 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, Semantic, analyze, name_resolver::resolver as resolve_names,
+    AnalyzeOptions, Semantic, SyntaxChecks, analyze, name_resolver::resolver as resolve_names,
 };
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
@@ -95,7 +95,7 @@ fn bench_syntax_check(ast: Ast<'static>) {
     black_box(analyze(
         &ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             ..AnalyzeOptions::default()
         },
     ));

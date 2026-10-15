@@ -8,7 +8,7 @@ fn annex_b_if_bindings() {
         ..Options::default()
     };
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
 
@@ -66,7 +66,7 @@ fn expression_name_bindings() {
     let allocator = Allocator::new();
     let js = Options::default();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
 
@@ -210,7 +210,7 @@ fn merged_type_parameters_keep_occurrence_visibility() {
     let allocator = Allocator::new();
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     };
 
@@ -290,7 +290,7 @@ fn default_type_parameters() {
     let allocator = Allocator::new();
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         build_module_record: true,
     };
 

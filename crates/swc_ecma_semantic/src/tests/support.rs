@@ -65,7 +65,7 @@ pub(super) fn assert_uncertain_alias_targets(source: &str, declarations: &[&str]
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -138,7 +138,7 @@ pub(super) fn assert_named_declaration_targets(
         check(
             parser_options,
             AnalyzeOptions {
-                check_syntax: true,
+                check_syntax: SyntaxChecks::all(),
                 ..AnalyzeOptions::default()
             },
         );

@@ -11,7 +11,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser as EcmaParser};
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, Semantic, SymbolFlags, analyze,
+    AnalyzeOptions, Semantic, SymbolFlags, SyntaxChecks, analyze,
     scope::{Scope, ScopeKind},
 };
 
@@ -171,7 +171,7 @@ fn main() -> Result<(), String> {
     let semantic = analyze(
         &parse.ast,
         AnalyzeOptions {
-            check_syntax: true,
+            check_syntax: SyntaxChecks::all(),
             ..AnalyzeOptions::default()
         },
     );

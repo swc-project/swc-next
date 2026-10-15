@@ -174,7 +174,7 @@ fn assert_decorator_target(source: &str, name: &[u8], declaration: &str) {
     };
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
-        check_syntax: true,
+        check_syntax: SyntaxChecks::all(),
         ..AnalyzeOptions::default()
     });
 }
@@ -251,7 +251,7 @@ fn decorator_lexical_bindings() {
 #[track_caller]
 fn assert_type_name_targets(source: &str, name: &[u8], outer_targets: &[bool]) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -437,7 +437,7 @@ fn infer_declaration_merging() {
             preserve_parens,
             ..ts_module_options()
         };
-        for check_syntax in [false, true] {
+        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
             let options = AnalyzeOptions {
                 check_syntax,
                 ..AnalyzeOptions::default()
@@ -802,7 +802,7 @@ fn parameter_initializer_environment() {
 #[track_caller]
 fn assert_signature_references(source: &str, name: &[u8], parameters: &[bool]) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (ast, semantic) = analyze_with_options(
             &allocator,
             source,
@@ -843,7 +843,7 @@ fn assert_signature_references(source: &str, name: &[u8], parameters: &[bool]) {
 #[track_caller]
 fn assert_header_value_query(source: &str, outer: bool) {
     let allocator = Allocator::new();
-    for check_syntax in [false, true] {
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let (_, semantic) = analyze_with_options(
             &allocator,
             source,
