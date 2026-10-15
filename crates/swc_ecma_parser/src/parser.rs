@@ -11029,11 +11029,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
-        let result = (|| {
-            while self.current_token.tag() != TokenTag::RightParen
-                && self.current_token.tag() != TokenTag::Eof
-            {
-                let argument = if self.eat(TokenTag::Spread)? {
+        let result = self.parse_argument_list(checkpoint);
+        self.ts_context = ts_context;
+        self.context = grammar_context;
+        self.scratch_a.reset(checkpoint);
+        result
+    }
+
+    // Inline the list loop into its context-restoring wrapper.
+    #[inline(always)]
+    fn parse_argument_list(&mut self, checkpoint: usize) -> Option<SubRange<Argument>> {
+        while self.current_token.tag() != TokenTag::RightParen
+            && self.current_token.tag() != TokenTag::Eof
+        {
+            let argument =
+                if self.eat(TokenTag::Spread)? {
                     let start = self.lexer.state.prev_token_end - 3;
                     let expression =
                         self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
@@ -11046,17 +11056,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?,
                     )
                 };
-                self.scratch_a.append(argument);
-                if !self.eat(TokenTag::Comma)? {
-                    break;
-                }
+            self.scratch_a.append(argument);
+            if !self.eat(TokenTag::Comma)? {
+                break;
             }
-            Some(self.add_extra_from_scratch_a(checkpoint))
-        })();
-        self.ts_context = ts_context;
-        self.context = grammar_context;
-        self.scratch_a.reset(checkpoint);
-        result
+        }
+        Some(self.add_extra_from_scratch_a(checkpoint))
     }
 
     fn parse_new_expression(&mut self) -> Option<Expr> {
