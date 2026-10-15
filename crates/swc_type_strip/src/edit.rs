@@ -180,6 +180,8 @@ fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
     normalized
 }
 
+const HIGH_BITS: u64 = 0x8080_8080_8080_8080;
+
 fn push_blank(output: &mut String, source: &str) {
     debug_assert!(output.capacity() - output.len() >= source.len());
     let output_start = output.len();
@@ -213,6 +215,25 @@ fn push_blank(output: &mut String, source: &str) {
             }
             written += vectors * u8x16::LEN;
             offset += vectors * u8x16::LEN;
+
+            while let Some(word) = source.as_bytes().get(offset..offset + 8) {
+                let word = u64::from_le_bytes(word.try_into().unwrap());
+                if word & HIGH_BITS != 0 {
+                    break;
+                }
+                // Per byte, bit 7 is set when the byte is outside `\t..=\r`.
+                let below = !(word + 0x7777_7777_7777_7777) & HIGH_BITS;
+                let above = (word + 0x7272_7272_7272_7272) & HIGH_BITS;
+                let blank = ((below | above) >> 7) * 0xFF;
+                let blanked = (word & !blank) | (0x2020_2020_2020_2020 & blank);
+                std::ptr::copy_nonoverlapping(
+                    blanked.to_le_bytes().as_ptr(),
+                    destination.add(written),
+                    8,
+                );
+                written += 8;
+                offset += 8;
+            }
 
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
@@ -333,6 +354,24 @@ mod tests {
         let source: String = (0u8..=127).map(char::from).collect();
         let mut output = String::with_capacity(source.len());
         push_blank(&mut output, &source);
+        let expected: String = source
+            .chars()
+            .map(|character| match character {
+                '\t'..='\r' | ' ' => character,
+                _ => ' ',
+            })
+            .collect();
+
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn blank_preserves_ascii_whitespace_in_word_tail() {
+        let source: String = (0u8..=127).map(char::from).collect();
+        let mut output = String::with_capacity(source.len());
+        for chunk in source.as_bytes().chunks(11) {
+            push_blank(&mut output, std::str::from_utf8(chunk).unwrap());
+        }
         let expected: String = source
             .chars()
             .map(|character| match character {
