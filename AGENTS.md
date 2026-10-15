@@ -16,6 +16,21 @@ Run from the workspace root.
 | Benchmark wall time                                | `cargo bench -p benchmark --bench <parser\|visit\|semantic>`         |
 | Benchmark instructions (Linux + Valgrind/Gungraun) | `cargo bench -p benchmark --bench gungraun`                          |
 
+### CodSpeed Benchmarks
+
+Install the CLI with `cargo install --locked cargo-codspeed --version 5.0.3`.
+
+| Task | Command |
+| --- | --- |
+| Build parser (simulation + walltime) | `cargo codspeed build -p benchmark --bench parser --features codspeed --measurement-mode simulation,walltime` |
+| Build visit or semantic (simulation) | `cargo codspeed build -p benchmark --bench <visit\|semantic> --features codspeed --measurement-mode simulation` |
+| Run a built benchmark | `cargo codspeed run --bench <parser\|visit\|semantic>` |
+
+The CodSpeed workflow runs on pull requests, pushes to `main`, and manual dispatches.
+Parser measurements use the `codspeed-macro` runner; visit and semantic use a GitHub-hosted runner.
+CI collects and uploads measurements through `CodSpeedHQ/action` without an upload token for this public repository.
+Local runs without a CodSpeed measurement environment only check benchmark execution.
+
 ### JavaScript Development
 
 | Task                     | Command                                                                                                   |
