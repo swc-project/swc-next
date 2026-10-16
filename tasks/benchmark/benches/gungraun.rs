@@ -35,8 +35,6 @@ const UNDERSCORE: &str = include_str!("../files/underscore-1.5.2.js");
 const THREE: &str = include_str!("../files/three-0.138.3.js");
 const YUI: &str = include_str!("../files/yui-3.12.0.js");
 const TYPESCRIPT: &str = include_str!("../files/typescript.js");
-// Pinned fixture used to reproduce the semantic lookup regression in #937:
-// https://github.com/yuku-toolchain/parser-benchmark-files/blob/e25ab06730f743838b2c693d2126ea0162a661c6/checker.ts
 const TYPESCRIPT_CHECKER: &str = include_str!("../files/checker.ts");
 const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
