@@ -30,7 +30,7 @@ base-versus-merge comparison automatically.
 For JavaScript API instruction profiles, use the `JavaScript API Gungraun`
 workflow or, on Linux with Valgrind,
 `BASE_REF=main HEAD_REF=HEAD node .github/scripts/run-gungraun-js.mjs`.
-PRs run five representative cases; manual workflow runs default to all 24.
+PRs run four representative cases; manual workflow runs default to all 20.
 Set `JS_BENCH_FILTER` to a case substring such as `parse/underscore`.
 See `tasks/benchmark/js/README.md` for setup and artifact interpretation.
 

@@ -7,14 +7,18 @@ encoding/decoding and Rust work. `--predictable` disables concurrent and paralle
 GC tasks and the memory reducer to reduce scheduling-dependent variation.
 WASM is not measured.
 
-`parse` returns the lazy result; `parse_full` also reads every enumerable AST
-property. `print` uses an already materialized AST. `lang` and `source_type`
+`parse` parses the source and reads every enumerable AST property, including
+lazy getters and strings. `print` uses an already materialized AST. `lang` and `source_type`
 exercise the path helpers. Each case gets 100 warmup calls and three fresh
 processes. Each measured batch has 10 AST calls or 10,000 path calls. Results
 are retained until collection ends. Setup, explicit GC, warmup and validation
 are outside the measured region. GC work triggered on the main thread
 during that region remains part of the measurement. Background V8 threads
 are not part of this synchronous API metric.
+
+`parse` replaces the former `parse_full` case. Its counts are not comparable
+with older lazy-only `parse` reports. Both revisions in a comparison use the
+same head harness.
 
 Callgrind collection is controlled by `measure.c`, a benchmark-only N-API
 addon. The callback and its loop have a small shared measurement cost. No
@@ -24,10 +28,10 @@ lockfiles or product code. Both revisions use the head harness and fixtures.
 
 ## Parallel CI
 
-Every PR runs five representative cases: `parse`, `parse_full`, and `print` on
+Every PR runs four representative cases: `parse` and `print` on
 `underscore-1.5.2.js`, plus `lang/tsx` and `source_type/mjs`. Manual runs execute
-all 24 cases unless a `filter` is supplied. Cases run in separate jobs, up to
-24 at once subject to the account's runner concurrency. One preparation job builds both N-API revisions,
+all 20 cases unless a `filter` is supplied. Cases run in separate jobs, up to
+20 at once subject to the account's runner concurrency. One preparation job builds both N-API revisions,
 the benchmark driver and the profiling helper. Jobs download that frozen runtime
 bundle and compare base/head on the same runner, with three fresh processes per
 side. CPU models are recorded per case. The same-SHA check runs independently

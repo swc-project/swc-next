@@ -12,7 +12,7 @@ binary_benchmark_group!(
         let filter = std::env::var("JS_BENCH_FILTER").unwrap_or_default();
         let exact_case = std::env::var("JS_BENCH_CASE").ok();
         let mut selected = 0;
-        for operation in ["parse", "parse_full", "print", "lang", "source_type"] {
+        for operation in ["parse", "print", "lang", "source_type"] {
             let cases: &[&str] = if matches!(operation, "lang" | "source_type") {
                 &["js", "ts", "tsx", "mjs", "cjs", "unknown"]
             } else {
