@@ -268,7 +268,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             FastClass::Slow => return false,
         }
-        self.handle_token(*target, HandleTokenMode::Append);
+        self.handle_fast_token(*target);
         true
     }
 
@@ -328,7 +328,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
         self.cursor = end as u32;
         *target = self.create_token(tag, start as u32, end as u32);
-        self.handle_token(*target, HandleTokenMode::Append);
+        self.handle_fast_token(*target);
         true
     }
 
@@ -373,7 +373,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.cursor = start as u32;
             *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start as u32);
         }
-        self.handle_token(*target, HandleTokenMode::Append);
+        self.handle_fast_token(*target);
         true
     }
 
@@ -468,6 +468,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         if self.processed_comments < self.comments.len() {
             self.attach_pending_comments(token);
+        }
+        self.state.previous_token_tag = Some(token.tag());
+        self.state.had_line_break = false;
+    }
+
+    /// Records a token read by a fast path. Fast paths never skip comments,
+    /// and the scanner that does attaches its comments to the token it reads.
+    #[inline(always)]
+    fn handle_fast_token(&mut self, token: Token) {
+        debug_assert_eq!(self.processed_comments, self.comments.len());
+        if self.config.tokens() {
+            self.tokens.push(token);
         }
         self.state.previous_token_tag = Some(token.tag());
         self.state.had_line_break = false;
