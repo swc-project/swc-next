@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +11,8 @@ const root = path.resolve(
   "../../..",
 );
 const work = path.join(root, "target/website-benchmark");
+const swcCoreVersion = "82.1.0";
+const fastStripVersion = "59.0.1";
 const files = ["typescript.js", "effect-schema-ast.ts"];
 const features = [
   ["Rust parse", "parse"],
@@ -39,7 +35,7 @@ function run(command, args, options = {}) {
   return result.stdout?.trimEnd() ?? "";
 }
 
-function build(swc) {
+function build() {
   const collector = path.join(work, "cli");
   mkdirSync(collector, { recursive: true });
   const crates = [
@@ -56,10 +52,10 @@ function build(swc) {
       `swc_next_${name} = { path = ${JSON.stringify(path.join(root, "crates", `swc_${name}`))} }`,
   );
   dependencies.push(
-    `swc_core = { path = ${JSON.stringify(path.join(swc, "crates/swc_core"))}, features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_codegen", "ecma_transforms", "ecma_visit", "typescript"] }`,
+    `swc_core = { version = "=${swcCoreVersion}", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_codegen", "ecma_transforms", "ecma_visit", "typescript"] }`,
   );
   dependencies.push(
-    `swc_ts_fast_strip = { path = ${JSON.stringify(path.join(swc, "crates/swc_ts_fast_strip"))} }`,
+    `swc_ts_fast_strip = "=${fastStripVersion}"`,
   );
   const bins = [
     ["swc-next", "swc_next.rs"],
@@ -73,12 +69,6 @@ function build(swc) {
     manifest,
     `[workspace]\n[package]\nname = "benchmark-cli"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n${bins.join("\n")}\n[dependencies]\n${dependencies.join("\n")}\n[profile.release]\nopt-level = 3\nlto = "fat"\ncodegen-units = 1\npanic = "abort"\nstrip = "symbols"\n`,
   );
-  if (!existsSync(path.join(collector, "Cargo.lock"))) {
-    copyFileSync(
-      path.join(swc, "Cargo.lock"),
-      path.join(collector, "Cargo.lock"),
-    );
-  }
   const env = { ...process.env, RUSTFLAGS: "", CARGO_TARGET_DIR: work };
   run("cargo", ["build", "--release", "--manifest-path", manifest, "-j", "6"], {
     env,
@@ -91,7 +81,6 @@ function build(swc) {
 
 function main() {
   const options = {
-    "--swc-dir": path.resolve(root, "../swc"),
     "--runs": "200",
     "--warmup": "20",
     "--native-iterations": "10",
@@ -103,7 +92,7 @@ function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 200] [--warmup 20] [--native-iterations 10] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
+      "Usage: node website/docs/scripts/benchmark.js [--runs 200] [--warmup 20] [--native-iterations 10] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
     );
     return;
   }
@@ -139,44 +128,32 @@ function main() {
       Number(options["--js-time-ms"]) > 0,
     "--js-time-ms must be positive",
   );
-  const swc = path.resolve(options["--swc-dir"]);
-  const commits = [root, swc].map((dir) => {
-    assert.equal(
-      run("git", [
-        "-C",
-        dir,
-        "status",
-        "--porcelain",
-        "--untracked-files=no",
-        "--",
-        "crates",
-        "npm",
-        "bindings",
-        "packages",
-        "Cargo.toml",
-        "Cargo.lock",
-      ]),
-      "",
-      `Tracked sources must be clean: ${dir}`,
-    );
-    return run("git", ["-C", dir, "rev-parse", "HEAD"]);
-  });
+  assert.equal(
+    run("git", [
+      "-C",
+      root,
+      "status",
+      "--porcelain",
+      "--untracked-files=no",
+      "--",
+      "crates",
+      "npm",
+      "bindings",
+      "packages",
+      "Cargo.toml",
+      "Cargo.lock",
+    ]),
+    "",
+    `Tracked sources must be clean: ${root}`,
+  );
+  const commit = run("git", ["rev-parse", "HEAD"]);
   const require = createRequire(
     path.join(root, "tasks/benchmark/package.json"),
   );
   const coreVersion = require("@swc/core/package.json").version;
-  const nextVersion = JSON.parse(
-    readFileSync(path.join(root, "npm/core/package.json"), "utf8"),
-  ).version;
-  const coreCommit = run("git", [
-    "-C", swc, "rev-parse", `v${coreVersion}^{commit}`,
-  ]);
-  const jsNames = [
-    `@swc-next/core@${nextVersion} (${commits[0]})`,
-    `@swc/core@${coreVersion} (${coreCommit})`,
-  ];
+  const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`];
   run("hyperfine", ["--version"]);
-  build(swc);
+  build();
 
   // Keep the benchmark commands on the same CPU.
   const expand = (list) =>
@@ -229,7 +206,11 @@ function main() {
               options["--native-iterations"],
             ],
       );
-      let names = [`swc-next@${commits[0]}`, `swc@${commits[1]}`].map(
+      const swcName =
+        feature === "type-strip"
+          ? `swc_ts_fast_strip@${fastStripVersion}`
+          : `swc_core@${swcCoreVersion}`;
+      let names = [`swc-next@${commit}`, swcName].map(
         (name) => `${name}; ${options["--native-iterations"]} iterations`,
       );
       if (isJs) {
