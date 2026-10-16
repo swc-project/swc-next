@@ -1,19 +1,19 @@
 formatter * prettier 3.9.9 * typescript
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 657
+Fixture files: 652
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 803/811 (99.01%)
-Snapshot matched: 803/811
-AST parity: 811/811
-AST mismatched: 0/811
-AST format errors: 0/811
-Mismatched: 8/811
-Format errors: 0/811
-Panicked: 0/811
-Not idempotent: 0/811
-Ignored files: 76
-Parse errors: 0/811
+Passed: 803/805 (99.75%)
+Snapshot matched: 803/805
+AST parity: 805/805
+AST mismatched: 0/805
+AST format errors: 0/805
+Mismatched: 2/805
+Format errors: 0/805
+Panicked: 0/805
+Not idempotent: 0/805
+Ignored files: 81
+Parse errors: 0/805
 Expected parser errors: 1
 Unsupported option sets: 4
 
@@ -23,13 +23,8 @@ Unsupported option sets: 4
 
 # Failed
 
-- jsx/comments/in-attributes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - jsx/ignore/spread.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/call/callee-comments.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/method_types.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/import-type/long-module-name/long-module-name4.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/satisfies-operators/comments-unstable.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- typescript/union/consistent-with-flow/single-type.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 
