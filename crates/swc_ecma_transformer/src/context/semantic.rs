@@ -175,7 +175,7 @@ impl<'a> TransformCtx<'_, 'a> {
         binding: BindingIdentifier,
         flags: SymbolFlags,
     ) -> SymbolId {
-        let name = binding.name(self.ast);
+        let name = self.ast.intern_utf8(binding.name(self.ast));
         let text = self.ast.get_utf8(name);
         self.state.semantic.grow_to(self.ast.node_count());
         self.state
@@ -202,7 +202,7 @@ impl<'a> TransformCtx<'_, 'a> {
         flags: ReferenceFlags,
     ) -> ReferenceId {
         let reference = Reference {
-            name: reference.name(self.ast),
+            name: self.ast.intern_utf8(reference.name(self.ast)),
             node: reference.node_id(),
             scope,
             symbol: target,

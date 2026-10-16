@@ -465,7 +465,7 @@ impl TypeScriptLowerer<'_, '_> {
         // decide whether its declaration emits code.
         let symbol = reference.resolution().candidate()?;
         if self.namespaces.has_export_aliases() {
-            return self.namespace_parameter_for_export_alias(reference.name, symbol);
+            return self.namespace_parameter_for_export_alias(reference.name.into(), symbol);
         }
         for context in self.namespaces.contexts.iter().rev() {
             if context.members.declared.contains(&symbol) {
