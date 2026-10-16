@@ -1,0 +1,17 @@
+# List only paths with clear ownership.
+
+/crates/swc_allocator/ @CPunisher
+/crates/swc_ast_macros/ @CPunisher
+/crates/swc_ecma_ast/ @CPunisher @magic-akari
+/crates/swc_ecma_codegen/ @CPunisher @magic-akari @kdy1
+/crates/swc_ecma_minifier/ @kdy1
+/crates/swc_ecma_parser/ @CPunisher @magic-akari @kdy1
+/crates/swc_ecma_semantic/ @CPunisher @magic-akari
+/crates/swc_ecma_transformer/src/typescript/ @magic-akari
+/crates/swc_isolated_declarations/ @magic-akari
+/crates/swc_simd/ @magic-akari
+/crates/swc_type_strip/ @magic-akari @kdy1
+
+/tasks/ast_tools/ @CPunisher
+/tasks/benchmark/ @CPunisher
+/tasks/testsuite/ @CPunisher @magic-akari
