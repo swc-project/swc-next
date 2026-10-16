@@ -81,13 +81,13 @@ Benchmark 2: @swc/core@1.15.46 (93831621baf6fe999ec5fcc6fc96388f072c19f1) (50 ru
 ### effect-schema-ast.ts
 
 ```text
-Benchmark 1: @swc-next/core@0.2.4 (961215dbfb4035fe63d711bc801d59d58ff4236b) (50 runs)
+Benchmark 1: @swc-next/core@0.2.4 (e3003751d600ede233b43d23b1b5a00b02a3c2d6) (50 runs)
                 mean     ±       σ          min     …     max
-  Wall Time     40.8 ms  ±     2.7 ms      34.6 ms  …    48.7 ms
-  Memory        67.1 MiB ±     2.3 MiB     60.8 MiB …    72.7 MiB
+  Wall Time     41.2 ms  ±     2.1 ms      38.9 ms  …    47.7 ms
+  Memory        67.2 MiB ±     1.6 MiB     66.1 MiB …    72.7 MiB
 
 Benchmark 2: @swc/core@1.15.46 (93831621baf6fe999ec5fcc6fc96388f072c19f1) (50 runs)
                 mean     ±       σ          min     …     max
-  Wall Time     36.2 ms  ±     1.2 ms      34.2 ms  …    39.3 ms           -11.2%
-  Memory        79.7 MiB ±     0.1 MiB     79.6 MiB …    79.8 MiB          +18.7%
+  Wall Time     36.6 ms  ±     1.2 ms      34.5 ms  …    40.1 ms           -11.0%
+  Memory        79.7 MiB ±     0.1 MiB     79.6 MiB …    79.8 MiB          +18.6%
 ```
