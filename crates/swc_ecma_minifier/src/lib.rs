@@ -4,8 +4,9 @@
 //! `swc_next_ecma_parser` and `swc_next_ecma_codegen`. Use the code generator's
 //! `minify` option to print the optimized AST compactly.
 //!
-//! Compression currently shortens boolean expressions: `true` becomes `!0`
-//! and `false` becomes `!1`.
+//! Compression shortens booleans, unshadowed global constants, and safe local
+//! `typeof` comparisons, and removes unused local variables. Enabled semantic
+//! optimizations share one analysis and one compression traversal.
 
 #![deny(clippy::all)]
 #![deny(unused)]
@@ -31,7 +32,10 @@ impl Minifier {
     /// Recompute semantic analysis before querying the transformed program;
     /// do not reuse a model computed before minification.
     ///
-    /// With `compress: None`, the AST is left unchanged.
+    /// Semantic optimizations build their own model before the single compression
+    /// traversal. Dynamic lookup (`eval` references or `with`) disables them.
+    ///
+    /// With `compress: None`, the AST is left unchanged and analysis is skipped.
     ///
     /// # Panics
     ///

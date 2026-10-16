@@ -5,11 +5,36 @@
 print it with `swc_next_ecma_codegen` and `minify: true`. Recompute semantic
 analysis if it is needed after minification.
 
-Compression currently shortens boolean expressions: `true` becomes `!0` and
-`false` becomes `!1`. `MinifierOptions::default()` enables compression with
-`CompressOptions { booleans: true }`; setting `booleans: false` disables this
-optimization, while `compress: None` leaves the entire AST unchanged. Parsing,
-TypeScript/JSX lowering, mangling, and printing are separate concerns.
+Compression uses one AST visitor for all four optimizations. Each option in
+`CompressOptions` defaults to `true`:
+
+- `booleans`: `true` becomes `!0` and `false` becomes `!1`.
+- `global_defs`: unshadowed global reads of `undefined`, `Infinity`, and `NaN`
+  become `void 0`, `1/0`, and `0/0`. Writes and operands within `delete` stay
+  unchanged. Object shorthand keeps its original property name.
+- `typeofs`: comparisons between `typeof x` and `"undefined"` become strict
+  comparisons between `x` and `void 0`, in either operand order. This requires a
+  single function-local `var` declaration, no writes, and an absent or primitive
+  literal initializer in a standalone declaration. Unknown values stay unchanged
+  because `document.all` also has a `typeof` result of `"undefined"`.
+- `unused`: remove unreferenced, singly declared function-local `var`, `let`, and
+  `const` identifiers with absent or primitive literal initializers. Preserve
+  destructuring, loop headers, top-level declarations, and potentially effectful
+  initializers. Empty statements preserve statement positions and prevent a
+  following string from becoming a directive.
+
+Semantic optimizations share one analysis before compression. Candidate lookup
+uses semantic indexes, without another AST traversal. Forward `typeof` uses are
+recorded during that same visitor and patched on program exit after initializer
+facts are known; the recorded nodes are not visited again. New nodes are never
+queried through the original semantic model. Any `eval` reference or `with` scope
+disables all three semantic optimizations for the program; boolean shortening
+remains enabled.
+
+Setting all three semantic options to `false` skips analysis. `compress: None`
+skips both analysis and compression. Parsing, TypeScript/JSX lowering, mangling,
+and printing remain separate concerns. Callers must still validate the input
+and recompute semantic analysis if they need it after minification.
 
 ## Local fixtures
 

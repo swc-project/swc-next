@@ -23,10 +23,21 @@ pub struct CompressOptions {
     /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
     /// Enabled by default.
     pub booleans: bool,
+    /// Shorten unshadowed global constants. Enabled by default.
+    pub global_defs: bool,
+    /// Shorten undefined typeof comparisons for local var bindings. Enabled by default.
+    pub typeofs: bool,
+    /// Remove unused local variables with inert initializers. Enabled by default.
+    pub unused: bool,
 }
 
 impl Default for CompressOptions {
     fn default() -> Self {
-        Self { booleans: true }
+        Self {
+            booleans: true,
+            global_defs: true,
+            typeofs: true,
+            unused: true,
+        }
     }
 }

@@ -1,0 +1,1 @@
+use(undefined, Infinity, NaN);

@@ -1,0 +1,9 @@
+{
+  "minify": {
+    "compress": {
+      "global_defs": false,
+      "typeofs": false,
+      "unused": false
+    }
+  }
+}
