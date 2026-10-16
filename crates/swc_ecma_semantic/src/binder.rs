@@ -67,23 +67,6 @@ pub struct Symbol {
     pub declaration: DeclarationId,
 }
 
-pub(crate) fn find_internal_name(
-    symbols: &[Symbol],
-    declarations: &[Declaration],
-    scope: ScopeId,
-    binding: SymbolId,
-) -> Option<SymbolId> {
-    let name = symbols[binding.index()].name;
-    symbols.iter().enumerate().find_map(|(index, symbol)| {
-        let id = SymbolId::from_usize(index);
-        (id != binding
-            && symbol.flags.intersects(SymbolFlags::INTERNAL_NAME)
-            && symbol.name == name
-            && declarations[symbol.declaration.index()].scope == scope)
-            .then_some(id)
-    })
-}
-
 /// One declaration contributing to a [`Symbol`].
 ///
 /// Unlike the aggregate flags on a symbol, `flags` describes only this
@@ -1140,7 +1123,7 @@ impl TsMemberIndex<'_> {
         let lexical = LexicalLookup {
             scopes: &semantic.scopes.list,
             symbols: &semantic.symbols,
-            declarations: &semantic.declarations,
+            internal_names: &semantic.internal_names,
             scope_maps: &semantic.scope_maps,
         };
         let ts = TsNameLookup {
@@ -1808,6 +1791,7 @@ impl TsSourceExports<'_> {
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
+    internal_names: crate::InternalNames<'a>,
     symbols: ArenaVec<'a, Symbol>,
     references: ArenaVec<'a, Reference>,
     jsx_usages: ArenaVec<'a, crate::JsxUsage>,
@@ -2022,6 +2006,7 @@ impl<'a> SymbolTracker<'a> {
         node_semantic.resize(nodes, NodeSemanticId::None);
         let mut tracker = Self {
             allocator,
+            internal_names: crate::InternalNames::new_in(allocator),
             symbols: ArenaVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             references: ArenaVec::with_capacity_in(16usize.max(nodes / 4), allocator),
             jsx_usages: ArenaVec::new_in(allocator),
@@ -3008,6 +2993,7 @@ impl<'a> SymbolTracker<'a> {
                 scope: target,
                 flags: declaration_flags,
             });
+            self.record_internal_name(id);
             self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
             return id;
         }
@@ -3603,6 +3589,7 @@ impl<'a> SymbolTracker<'a> {
             scope: binding.scope,
             flags: declaration_flags,
         });
+        self.record_internal_name(id);
         if record_node {
             debug_assert!(matches!(
                 self.node_semantic[node.index()],
@@ -3611,6 +3598,16 @@ impl<'a> SymbolTracker<'a> {
             self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
         }
         id
+    }
+
+    fn record_internal_name(&mut self, id: SymbolId) {
+        let symbol = self.symbols[id.index()];
+        if symbol.flags.intersects(SymbolFlags::INTERNAL_NAME) {
+            let scope = self.declarations[symbol.declaration.index()].scope;
+            self.internal_names
+                .entry((scope, symbol.name))
+                .or_insert(id);
+        }
     }
 
     #[inline(always)]
@@ -4319,6 +4316,7 @@ impl<'a> SymbolTracker<'a> {
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,
+            internal_names: self.internal_names,
             hoisting_variables: self.hoisting_variables,
             node_semantic,
             ts_members: TsMemberIndex {
@@ -4429,7 +4427,7 @@ impl<'a> SymbolTracker<'a> {
                 LexicalLookup {
                     scopes: &scopes.list,
                     symbols: &self.symbols,
-                    declarations: &self.declarations,
+                    internal_names: &self.internal_names,
                     scope_maps: &self.scope_maps,
                 },
                 &TsNameLookup {
@@ -4525,7 +4523,7 @@ impl<'a> SymbolTracker<'a> {
             let lexical = LexicalLookup {
                 scopes: &scopes.list,
                 symbols: &self.symbols,
-                declarations: &self.declarations,
+                internal_names: &self.internal_names,
                 scope_maps: &self.scope_maps,
             };
             let resolved = if PRECISE_IMPORT_ALIASES {

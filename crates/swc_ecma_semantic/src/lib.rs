@@ -24,7 +24,7 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::Vec as ArenaVec,
 };
-use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
     binder::{Range, TsMemberIndex},
@@ -57,6 +57,9 @@ oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
     pub struct DeclarationId;
 }
+
+// Internal names survive replacement of their scope's ordinary binding.
+type InternalNames<'a> = ArenaHashMap<'a, (ScopeId, AstWtf8), SymbolId>;
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 // Most scopes have no var declarations hoisting through them.
@@ -97,6 +100,7 @@ pub struct Semantic<'a> {
     use_ids: ArenaVec<'a, ReferenceId>,
     use_ranges: ArenaVec<'a, Range>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
+    internal_names: InternalNames<'a>,
     hoisting_variables: ArenaVec<'a, HoistingMap<'a>>,
 
     /// Each node records one binding, reference, or created scope identity.

@@ -149,6 +149,27 @@ fn expression_name_visibility() {
         b"a",
         &[Some("a>(x"), Some("a = 1")],
     );
+
+    assert_named_declaration_targets(
+        "namespace N { export const f = function n<n>(x: n) { return n; }; }",
+        ts,
+        b"n",
+        &[Some("n>(x"), Some("n<n>")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { export const C = class Inner<Inner> { value!: Inner; self = Inner; }; }",
+        ts,
+        b"Inner",
+        &[Some("Inner>"), Some("Inner<")],
+    );
+
+    assert_named_declaration_targets(
+        "interface Type {} function check() { var Type; let value: Type; return Type; }",
+        ts,
+        b"Type",
+        &[Some("Type {}"), Some("Type; let")],
+    );
 }
 
 #[track_caller]

@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use std::hint::black_box;
+use std::{fmt::Write, hint::black_box};
 
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
@@ -112,6 +112,17 @@ fn setup_minifier(source: &'static str) -> Ast<'static> {
     ast
 }
 
+fn setup_shadowed_types() -> Ast<'static> {
+    let mut source = String::from("interface Type {} function check() { var Type;\n");
+    // Like TypeScript's checker.ts, each type reference skips a value-only binding.
+    // Keep enough symbols to expose a full symbol-table scan on every fallback.
+    for index in 0..1000 {
+        writeln!(source, "let value{index}: Type;").unwrap();
+    }
+    source.push('}');
+    setup_program(Box::leak(source.into_boxed_str()), Lang::Ts)
+}
+
 #[library_benchmark]
 #[bench::underscore(setup_minifier(UNDERSCORE))]
 #[bench::angular(setup_minifier(ANGULAR))]
@@ -127,6 +138,7 @@ fn bench_minifier(ast: Ast<'static>) -> Ast<'static> {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
+#[bench::shadowed_types(setup_shadowed_types())]
 fn bench_analyze(ast: Ast<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
@@ -134,6 +146,7 @@ fn bench_analyze(ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
+#[bench::shadowed_types(setup_shadowed_types())]
 fn bench_syntax_check(ast: Ast<'static>) {
     black_box(analyze(
         &ast,

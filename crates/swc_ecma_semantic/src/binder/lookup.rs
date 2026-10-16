@@ -6,9 +6,9 @@ use oxc_index::Idx;
 use swc_next_ecma_ast::{ScopeId, SymbolId};
 
 use super::{
-    BindingVisibility, Declaration, NameResolution, ReferenceSpace, ScopeMap, Symbol, SymbolFlags,
+    BindingVisibility, NameResolution, ReferenceSpace, ScopeMap, Symbol, SymbolFlags,
     TsLocalExportMap, TsMemberEnvironments, TsMemberView, TsResolvedAliasSpaces, TsScopeViewIndex,
-    TsSourceExports, find_internal_name,
+    TsSourceExports,
 };
 use crate::scope::{Scope, ScopeKind};
 
@@ -30,7 +30,7 @@ impl NameLookupQuery<'_> {
 pub(super) struct LexicalLookup<'lookup, 'arena> {
     pub(super) scopes: &'lookup [Scope],
     pub(super) symbols: &'lookup [Symbol],
-    pub(super) declarations: &'lookup [Declaration],
+    pub(super) internal_names: &'lookup crate::InternalNames<'arena>,
     pub(super) scope_maps: &'lookup [ScopeMap<'arena>],
 }
 
@@ -445,7 +445,12 @@ fn lookup_scope_binding<const TS_LOOKUP: bool>(
     }
     // Flattened internal names remain an outer fallback when a same-named
     // type parameter or a declaration hidden from a signature is rejected.
-    let internal_name = find_internal_name(symbols, lexical.declarations, current, symbol)?;
+    let &internal_name = lexical
+        .internal_names
+        .get(&(current, symbols[symbol.index()].name))?;
+    if internal_name == symbol {
+        return None;
+    }
     accept_visible(internal_name).then_some(internal_name)
 }
 
