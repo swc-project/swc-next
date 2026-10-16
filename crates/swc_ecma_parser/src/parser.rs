@@ -8061,6 +8061,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[inline]
     fn infix_precedence(&self, token: Token) -> Precedence {
+        let precedence = token.tag().precedence();
+        // Most expression terminators have no infix precedence at all.
+        if precedence == Precedence::Lowest {
+            return precedence;
+        }
         match token.tag() {
             TokenTag::Increment | TokenTag::Decrement | TokenTag::As | TokenTag::Satisfies
                 if token.has_line_terminator_before() =>
@@ -8072,7 +8077,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             {
                 Precedence::Lowest
             }
-            _ => token.tag().precedence(),
+            _ => precedence,
         }
     }
 
