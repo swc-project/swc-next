@@ -339,6 +339,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
         let line_feed = self.cursor;
         let mut start = line_feed as usize + 1;
+        if self.source.get(start) == Some(&b' ') {
+            // Skip a run of spaces eight bytes at a time. The first byte that differs from a
+            // space ends the run, wherever it falls in the word.
+            while let Some(word) = self.source.get(start..start + 8) {
+                let differing =
+                    u64::from_le_bytes(word.try_into().unwrap()) ^ 0x2020_2020_2020_2020;
+                start += (differing.trailing_zeros() / 8) as usize;
+                if differing != 0 {
+                    break;
+                }
+            }
+        }
         while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
             start += 1;
         }
