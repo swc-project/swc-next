@@ -17,7 +17,7 @@ const root = path.resolve(
   "../../..",
 );
 const work = path.join(root, "target/website-benchmark");
-const files = ["astro-config.ts", "effect-schema-ast.ts", "hono-types.ts"];
+const files = ["typescript.js", "effect-schema-ast.ts"];
 const features = [
   ["Rust parse", "parse"],
   ["Isolated declaration", "isolated-declaration"],
@@ -160,8 +160,7 @@ function main() {
   run("hyperfine", ["--version"]);
   build(swc);
 
-  // Keep counters on one CPU; generic perf events can return zero after
-  // migration between core and atom PMUs on Intel hybrid processors.
+  // Keep the benchmark commands on the same CPU.
   const expand = (list) =>
     list
       .trim()
@@ -193,6 +192,7 @@ function main() {
   for (const [title, feature] of features) {
     lines.push(`## ${title}`, "");
     for (const file of files) {
+      if (file === "typescript.js" && feature !== "parse") continue;
       console.error(`${title}: ${file}`);
       const input = path.join("tasks/benchmark/files", file);
       const commands = ["swc_next", "swc"].map((engine) =>
@@ -224,7 +224,7 @@ function main() {
           "--runs",
           options["--runs"],
           "--metrics",
-          "time_wall_clock:ms,instructions,memory_peak_resident:MiB",
+          "time_wall_clock:ms,memory_peak_resident:MiB",
           "--command-name",
           title === "JS parser" ? jsNames[0] : `swc-next@${commits[0]}`,
           commands[0].map(quote).join(" "),
