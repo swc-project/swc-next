@@ -10,7 +10,6 @@ const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../..",
 );
-const work = path.join(root, "target/website-benchmark");
 const swcCoreVersion = "82.1.0";
 const fastStripVersion = "59.0.1";
 const files = ["typescript.js", "effect-schema-ast.ts"];
@@ -36,44 +35,13 @@ function run(command, args, options = {}) {
 }
 
 function build() {
-  const collector = path.join(work, "cli");
-  mkdirSync(collector, { recursive: true });
-  const crates = [
-    "allocator",
-    "ecma_ast",
-    "ecma_parser",
-    "ecma_codegen",
-    "ecma_semantic",
-    "isolated_declarations",
-    "type_strip",
-  ];
-  const dependencies = crates.map(
-    (name) =>
-      `swc_next_${name} = { path = ${JSON.stringify(path.join(root, "crates", `swc_${name}`))} }`,
+  run(
+    "cargo",
+    ["build", "--locked", "-p", "benchmark", "--release", "--bins"],
+    {
+      stdio: "inherit",
+    },
   );
-  dependencies.push(
-    `swc_core = { version = "=${swcCoreVersion}", features = ["common", "ecma_ast", "ecma_parser", "ecma_parser_typescript", "ecma_codegen", "ecma_transforms", "ecma_visit", "typescript"] }`,
-  );
-  dependencies.push(
-    `swc_ts_fast_strip = "=${fastStripVersion}"`,
-  );
-  const bins = [
-    ["swc-next", "swc_next.rs"],
-    ["swc", "swc.rs"],
-  ].map(
-    ([name, file]) =>
-      `[[bin]]\nname = "${name}"\npath = ${JSON.stringify(path.join(root, "tasks/benchmark/bin", file))}`,
-  );
-  const manifest = path.join(collector, "Cargo.toml");
-  writeFileSync(
-    manifest,
-    `[workspace]\n[package]\nname = "benchmark-cli"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n${bins.join("\n")}\n[dependencies]\n${dependencies.join("\n")}\n[profile.release]\nopt-level = 3\nlto = "fat"\ncodegen-units = 1\npanic = "abort"\nstrip = "symbols"\n`,
-  );
-  const env = { ...process.env, RUSTFLAGS: "", CARGO_TARGET_DIR: work };
-  run("cargo", ["build", "--release", "--manifest-path", manifest, "-j", "6"], {
-    env,
-    stdio: "inherit",
-  });
   run("pnpm", ["--filter", "@swc-next/core", "build", "--release"], {
     stdio: "inherit",
   });
@@ -89,63 +57,6 @@ function main() {
     "--cpu": undefined,
     "--output": path.join(root, "website/docs/Benchmark.md"),
   };
-  const args = process.argv.slice(2);
-  if (args.includes("--help")) {
-    console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--runs 200] [--warmup 20] [--native-iterations 10] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
-    );
-    return;
-  }
-  for (let i = 0; i < args.length; i += 2) {
-    assert(
-      Object.hasOwn(options, args[i]) && args[i + 1],
-      `Invalid option: ${args[i]}`,
-    );
-    options[args[i]] = args[i + 1];
-  }
-  assert(
-    Number.isInteger(Number(options["--runs"])) &&
-      Number(options["--runs"]) >= 2,
-    "--runs must be at least 2",
-  );
-  assert(
-    Number.isInteger(Number(options["--warmup"])) &&
-      Number(options["--warmup"]) >= 0,
-    "--warmup must be non-negative",
-  );
-  assert(
-    Number.isSafeInteger(Number(options["--native-iterations"])) &&
-      Number(options["--native-iterations"]) > 0,
-    "--native-iterations must be positive",
-  );
-  assert(
-    Number.isInteger(Number(options["--js-runs"])) &&
-      Number(options["--js-runs"]) >= 2,
-    "--js-runs must be at least 2",
-  );
-  assert(
-    Number.isInteger(Number(options["--js-time-ms"])) &&
-      Number(options["--js-time-ms"]) > 0,
-    "--js-time-ms must be positive",
-  );
-  assert.equal(
-    run("git", [
-      "-C",
-      root,
-      "status",
-      "--porcelain",
-      "--untracked-files=no",
-      "--",
-      "crates",
-      "npm",
-      "bindings",
-      "packages",
-      "Cargo.toml",
-      "Cargo.lock",
-    ]),
-    "",
-    `Tracked sources must be clean: ${root}`,
-  );
   const commit = run("git", ["rev-parse", "HEAD"]);
   const require = createRequire(
     path.join(root, "tasks/benchmark/package.json"),
@@ -200,7 +111,7 @@ function main() {
               feature,
             ]
           : [
-              `target/website-benchmark/release/${engine.replace("_", "-")}`,
+              `target/release/${engine.replace("_", "-")}`,
               input,
               feature,
               options["--native-iterations"],
@@ -233,7 +144,9 @@ function main() {
           Math.ceil(Number(options["--js-time-ms"]) / Math.min(...timings)),
         );
         for (const command of commands) command.push(String(iterations));
-        names = jsNames.map((name) => `${name}; ${iterations} parses + 5 warmups`);
+        names = jsNames.map(
+          (name) => `${name}; ${iterations} parses + 5 warmups`,
+        );
         console.error(
           `JS batch: ${iterations} parses per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/parse`,
         );
