@@ -62,7 +62,10 @@ pub fn ast_compare(schema: &Schema) -> RawOutput {
                 });
             }
             AstType::Primitive(primitive) => {
-                if matches!(primitive.name, "AstUtf8" | "AstWtf8" | "f64" | "Span") {
+                if matches!(
+                    primitive.name,
+                    "AstInternedUtf8" | "AstUtf8" | "AstWtf8" | "f64" | "Span"
+                ) {
                     continue;
                 }
                 impls.extend(quote! { compare_value!(#name); });

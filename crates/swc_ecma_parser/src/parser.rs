@@ -1246,9 +1246,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ///
     /// This strips `#` from private identifiers and decodes Unicode escapes.
     #[inline]
-    fn identifier_name(&mut self, token: Token) -> AstUtf8 {
+    fn identifier_name(&mut self, token: Token) -> AstInternedUtf8 {
         if token.tag() != TokenTag::PrivateIdentifier && !token.is_escaped() {
-            return self.ast.source_slice(token.start(), token.end());
+            let name = self.ast.source_slice(token.start(), token.end());
+            return self.ast.intern_utf8(name);
         }
 
         self.identifier_name_slow(token)
@@ -1256,13 +1257,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn identifier_name_slow(&mut self, token: Token) -> AstUtf8 {
+    fn identifier_name_slow(&mut self, token: Token) -> AstInternedUtf8 {
         let start = token.start() + u32::from(token.tag() == TokenTag::PrivateIdentifier);
         if token.is_escaped() {
             return self.decode_escaped_identifier(start, token.end());
         }
 
-        self.ast.source_slice(start, token.end())
+        let name = self.ast.source_slice(start, token.end());
+        self.ast.intern_utf8(name)
     }
 
     /// Returns the decoded string value without the surrounding quotes.
@@ -1303,14 +1305,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.decode_escaped_string(span.start, span.end)
     }
 
-    fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> AstUtf8 {
+    fn decode_escaped_identifier(&mut self, start: u32, end: u32) -> AstInternedUtf8 {
         let raw = &self.source[start as usize..end as usize];
         let mut buffer = [0u8; 256];
         if let Some(value) = decode_identifier_escapes(raw, &mut buffer) {
             // Safety: the lexer rejects lone surrogates and invalid identifier escapes.
             return self
                 .ast
-                .add_utf8(unsafe { std::str::from_utf8_unchecked(value) });
+                .add_interned_utf8(unsafe { std::str::from_utf8_unchecked(value) });
         }
 
         let mut buffer = vec![0u8; raw.len()];
@@ -1321,7 +1323,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Lone surrogates are not valid in identifiers.
         // All of them are rejected by the lexer with `LexicalError::InvalidIdentifierContinue`
         let value = unsafe { std::str::from_utf8_unchecked(value) };
-        self.ast.add_utf8(value)
+        self.ast.add_interned_utf8(value)
     }
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
@@ -13334,6 +13336,46 @@ mod tests {
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
             .collect()
+    }
+
+    #[test]
+    fn interns_identifier_names_during_parsing() {
+        let allocator = Allocator::new();
+        let source = r"let value; v\u0061lue; value;";
+        let parsed =
+            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty());
+        let ast = parsed.ast;
+        let body = ast.root_program().body(&ast);
+
+        let declaration = body
+            .get_node(&ast, 0)
+            .unwrap()
+            .as_declaration(&ast)
+            .unwrap()
+            .as_variable_declaration(&ast)
+            .unwrap();
+        let declarator = declaration.declarators(&ast).get_node(&ast, 0).unwrap();
+        let binding = declarator
+            .id(&ast)
+            .as_binding_identifier(&ast)
+            .unwrap()
+            .name(&ast);
+
+        let reference_name = |index| {
+            body.get_node(&ast, index)
+                .unwrap()
+                .as_expression_statement(&ast)
+                .unwrap()
+                .expression(&ast)
+                .as_identifier_reference(&ast)
+                .unwrap()
+                .name(&ast)
+        };
+
+        assert_eq!(binding, reference_name(1));
+        assert_eq!(binding, reference_name(2));
+        assert_eq!(ast.get_utf8(binding), "value");
     }
 
     #[test]

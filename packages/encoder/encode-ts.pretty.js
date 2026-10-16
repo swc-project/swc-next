@@ -81,6 +81,7 @@ function encodeTs(program, meta = {}) {
   let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
+  const internedStrings = new Map();
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
@@ -206,6 +207,26 @@ function encodeTs(program, meta = {}) {
     }
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, poolLength, true);
+  }
+
+  function encInternedStr(value, view, offset) {
+    if (value == null || value === "") {
+      view.setUint32(offset, 0, true);
+      view.setUint32(offset + 4, 0, true);
+      return;
+    }
+    if (typeof value !== "string") value = String(value);
+    const existing = internedStrings.get(value);
+    if (existing !== undefined) {
+      view.setUint32(offset, existing[0], true);
+      view.setUint32(offset + 4, existing[1], true);
+      return;
+    }
+    encStr(value, view, offset);
+    internedStrings.set(value, [
+      view.getUint32(offset, true),
+      view.getUint32(offset + 4, true),
+    ]);
   }
 
   function ensurePool(additionalBytes) {
@@ -459,35 +480,35 @@ function encodeTs(program, meta = {}) {
   function encIdentifierReference(n) {
     const v_0 = n.name;
     const index = allocNode(11, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encPrivateIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(12, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encBindingIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(13, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encIdentifierName(n) {
     const v_0 = n.name;
     const index = allocNode(14, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encLabelIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(15, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
@@ -2213,7 +2234,7 @@ function encodeTs(program, meta = {}) {
   function encJsxIdentifier(n) {
     const v_0 = n.name;
     const index = allocNode(167, asStart(n), asEnd(n));
-    encStr(v_0, payload, index * 16 + 0);
+    encInternedStr(v_0, payload, index * 16 + 0);
     return index;
   }
 

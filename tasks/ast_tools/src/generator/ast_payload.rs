@@ -32,6 +32,7 @@ pub fn direct_payload_field(ty: &AstType, schema: &Schema) -> bool {
                     | "u64"
                     | "f64"
                     | "Span"
+                    | "AstInternedUtf8"
                     | "AstUtf8"
                     | "AstWtf8"
             ) || schema.repr_sizes.contains_key(primitive.name)

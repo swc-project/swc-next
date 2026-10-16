@@ -847,7 +847,7 @@ fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameSta
 }
 
 fn private_name(names: &mut UsedNameState<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
-    let name = ctx.ast.add_utf8(names.next_name("_", 2));
+    let name = ctx.ast.add_interned_utf8(names.next_name("_", 2));
     PropertyKey::Expr(Expr::PrivateIdentifier(
         ctx.add_node(|ast| ast.private_identifier(DUMMY_SP, name)),
     ))

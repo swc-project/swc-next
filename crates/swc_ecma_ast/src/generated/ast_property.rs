@@ -2436,11 +2436,11 @@ impl TemplateElement {
 }
 impl IdentifierReference {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).identifier_reference.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes
                 .data_mut_unchecked(self.0)
@@ -2451,11 +2451,11 @@ impl IdentifierReference {
 }
 impl PrivateIdentifier {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).private_identifier.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).private_identifier.name = name;
         }
@@ -2463,11 +2463,11 @@ impl PrivateIdentifier {
 }
 impl BindingIdentifier {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).binding_identifier.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).binding_identifier.name = name;
         }
@@ -2475,11 +2475,11 @@ impl BindingIdentifier {
 }
 impl IdentifierName {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).identifier_name.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).identifier_name.name = name;
         }
@@ -2487,11 +2487,11 @@ impl IdentifierName {
 }
 impl LabelIdentifier {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).label_identifier.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).label_identifier.name = name;
         }
@@ -10687,11 +10687,11 @@ impl JsxOpeningFragment {}
 impl JsxClosingFragment {}
 impl JsxIdentifier {
     #[inline]
-    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstUtf8 {
+    pub fn name<'a>(self, ast: &crate::Ast<'a>) -> AstInternedUtf8 {
         unsafe { ast.nodes.data_unchecked(self.0).jsx_identifier.name }
     }
     #[inline]
-    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
+    pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstInternedUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).jsx_identifier.name = name;
         }

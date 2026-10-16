@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    Accessibility, ArrowFunctionBody, AssignmentOperator, AssignmentTarget, Ast, AstUtf8,
+    Accessibility, ArrowFunctionBody, AssignmentOperator, AssignmentTarget, Ast, AstInternedUtf8,
     BindingPattern, Class, DUMMY_SP, Expr, FormalParameterItem, FormalParameterKind, Function,
     FunctionBody, GetSpan, MethodDefinitionKind, PropertyKey, SimpleAssignmentTarget, Stmt,
     StmtData, SubRange, VariableKind, VisitMut, VisitMutWith,
@@ -9,7 +9,7 @@ use super::TypeScriptLowerer;
 
 #[derive(Clone, Copy)]
 struct ParameterProperty {
-    name: AstUtf8,
+    name: AstInternedUtf8,
     span: swc_next_ecma_ast::Span,
 }
 
@@ -171,7 +171,7 @@ fn make_assignment(ast: &mut Ast<'_>, property: ParameterProperty) -> Expr {
 struct SuperInjector<'lower, 'visit, 'ast> {
     lowerer: &'lower mut TypeScriptLowerer<'visit, 'ast>,
     properties: &'lower [ParameterProperty],
-    initializer: Option<AstUtf8>,
+    initializer: Option<AstInternedUtf8>,
 }
 
 impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
@@ -246,7 +246,7 @@ impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
         self.finish_super_sequence(vec![expression, call])
     }
 
-    fn prepend_initializer(&mut self, body: FunctionBody, name: AstUtf8) {
+    fn prepend_initializer(&mut self, body: FunctionBody, name: AstInternedUtf8) {
         let mut assignments = Vec::with_capacity(self.properties.len());
         for &property in self.properties {
             assignments.push(make_assignment(self.lowerer.ast(), property));

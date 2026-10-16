@@ -213,31 +213,31 @@ pub(crate) struct TemplateElementPayload {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct IdentifierReferencePayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct PrivateIdentifierPayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BindingIdentifierPayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct IdentifierNamePayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct LabelIdentifierPayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
@@ -1239,7 +1239,7 @@ pub(crate) struct JsxFragmentPayload {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct JsxIdentifierPayload {
-    pub(crate) name: AstUtf8,
+    pub(crate) name: AstInternedUtf8,
     pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
@@ -1331,19 +1331,19 @@ const _: () = {
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TemplateElementPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<IdentifierReferencePayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(IdentifierReferencePayload, name) == 0usize);
     assert!(std::mem::size_of::<PrivateIdentifierPayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(PrivateIdentifierPayload, name) == 0usize);
     assert!(std::mem::size_of::<BindingIdentifierPayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(BindingIdentifierPayload, name) == 0usize);
     assert!(std::mem::size_of::<IdentifierNamePayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(IdentifierNamePayload, name) == 0usize);
     assert!(std::mem::size_of::<LabelIdentifierPayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(LabelIdentifierPayload, name) == 0usize);
     assert!(std::mem::size_of::<AssignmentPatternPayload>() == 16);
     assert!(std::mem::size_of::<BindingPattern>() == 4usize);
@@ -2176,7 +2176,7 @@ const _: () = {
     assert!(std::mem::size_of::<JsxClosingFragment>() == 4usize);
     assert!(std::mem::offset_of!(JsxFragmentPayload, closing_fragment) == 12usize);
     assert!(std::mem::size_of::<JsxIdentifierPayload>() == 16);
-    assert!(std::mem::size_of::<AstUtf8>() == 8usize);
+    assert!(std::mem::size_of::<AstInternedUtf8>() == 8usize);
     assert!(std::mem::offset_of!(JsxIdentifierPayload, name) == 0usize);
     assert!(std::mem::size_of::<JsxNamespacedNamePayload>() == 16);
     assert!(std::mem::size_of::<JsxIdentifier>() == 4usize);

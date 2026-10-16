@@ -24,7 +24,9 @@ use swc_next_allocator::{
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::Vec as ArenaVec,
 };
-use swc_next_ecma_ast::{Ast, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
+use swc_next_ecma_ast::{
+    Ast, AstInternedUtf8, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith,
+};
 
 use crate::{
     binder::{Range, TsMemberIndex},
@@ -56,6 +58,58 @@ pub use syntax_checks::SyntaxChecks;
 oxc_index::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
     pub struct DeclarationId;
+}
+
+/// Canonical name stored for a semantic symbol.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum SymbolName {
+    Utf8(AstInternedUtf8),
+    Wtf8(AstWtf8),
+}
+
+impl From<AstInternedUtf8> for SymbolName {
+    #[inline]
+    fn from(name: AstInternedUtf8) -> Self {
+        Self::Utf8(name)
+    }
+}
+
+impl From<SymbolName> for AstWtf8 {
+    #[inline]
+    fn from(name: SymbolName) -> Self {
+        match name {
+            SymbolName::Utf8(name) => name.into(),
+            SymbolName::Wtf8(name) => name,
+        }
+    }
+}
+
+impl SymbolName {
+    /// Canonicalizes a WTF-8 name into the UTF-8 representation used by
+    /// ordinary bindings whenever its bytes are valid UTF-8.
+    #[inline]
+    pub fn intern_wtf8(ast: &Ast<'_>, name: AstWtf8) -> Self {
+        if let Some(name) = ast.as_utf8(name) {
+            return Self::Utf8(ast.intern_utf8(name));
+        }
+        Self::Wtf8(ast.intern_wtf8(name))
+    }
+
+    #[inline]
+    pub fn as_utf8(self) -> Option<AstInternedUtf8> {
+        match self {
+            Self::Utf8(name) => Some(name),
+            Self::Wtf8(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_wtf8(self) -> Option<AstWtf8> {
+        match self {
+            Self::Utf8(_) => None,
+            Self::Wtf8(name) => Some(name),
+        }
+    }
 }
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;

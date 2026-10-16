@@ -216,7 +216,7 @@ struct Resolver<'ast> {
 }
 
 impl<'ast> Resolver<'ast> {
-    fn name(&self, name: AstUtf8) -> &'ast [u8] {
+    fn name(&self, name: impl Into<AstUtf8>) -> &'ast [u8] {
         self.ast.get_utf8(name).as_bytes()
     }
 

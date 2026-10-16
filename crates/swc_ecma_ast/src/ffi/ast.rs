@@ -38,7 +38,7 @@ use swc_next_allocator::Allocator;
 
 use crate::{
     Ast, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId, NodeKind,
-    NodePayload, SourceType, Span,
+    NodeKindData, NodePayload, SourceType, Span,
 };
 
 const HEADER_SIZE: usize = 40;
@@ -400,6 +400,7 @@ pub fn deserialize_from<'a>(
 
     // =================== String Pool ====================
     tree.strings.initialize_extra(&buf[source_end..pool_end]);
+    initialize_interned_strings(&tree)?;
 
     // ================= Source Metadata =================
     let source_type = match flags & 3 {
@@ -419,6 +420,27 @@ pub fn deserialize_from<'a>(
     tree.set_source_metadata(source_type, lang);
 
     Ok(tree)
+}
+
+fn initialize_interned_strings(tree: &Ast<'_>) -> Result<(), DeserializeError> {
+    for index in 0..tree.node_count() {
+        let node = NodeId::from_usize(index);
+        let name = match tree.kind_data(node) {
+            NodeKindData::IdentifierReference(identifier) => identifier.name(tree),
+            NodeKindData::PrivateIdentifier(identifier) => identifier.name(tree),
+            NodeKindData::BindingIdentifier(identifier) => identifier.name(tree),
+            NodeKindData::IdentifierName(identifier) => identifier.name(tree),
+            NodeKindData::LabelIdentifier(identifier) => identifier.name(tree),
+            NodeKindData::JsxIdentifier(identifier) => identifier.name(tree),
+            _ => continue,
+        };
+        if tree.intern_utf8(name.into()) != name {
+            return Err(DeserializeError(
+                "AST buffer contains a non-canonical interned string",
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[inline]
@@ -685,7 +707,7 @@ mod tests {
         ast.set_root_program(program);
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
-        serialize_into(&ast, &[], &mut buffer, 0);
+        serialize_into(&ast, &[], &mut buffer, ast.source().encode_utf16().count());
 
         let decoded_allocator = Allocator::new();
         let decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();
@@ -698,6 +720,42 @@ mod tests {
         assert_eq!(decoded_program.span(&decoded), Span::new(1, 4));
         assert_eq!(decoded_statement.span(&decoded), Span::new(2, 3));
         assert!(decoded_statement.is_empty_statement(&decoded));
+    }
+
+    #[test]
+    fn deserialize_restores_interned_string_index() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let first = ast.add_interned_utf8("value");
+        let second = ast.add_interned_utf8("value");
+        assert_eq!(first, second);
+
+        let first = ast.expr_identifier_reference(Span::new(0, 5), first);
+        let second = ast.expr_identifier_reference(Span::new(6, 11), second);
+        let first = ast.stmt_expression_statement(Span::new(0, 5), first);
+        let second = ast.stmt_expression_statement(Span::new(6, 11), second);
+        let body = ast.add_sub_range([first, second]);
+        let program = ast.program(Span::new(0, 11), SubRange::empty(), body, None);
+        ast.set_root_program(program);
+
+        let mut buffer = vec![0; buffer_size(&ast, &[])];
+        serialize_into(&ast, &[], &mut buffer, 0);
+
+        let decoded_allocator = Allocator::new();
+        let mut decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();
+        let body = decoded.root_program().body(&decoded);
+        let first = body
+            .get_node(&decoded, 0)
+            .unwrap()
+            .as_expression_statement(&decoded)
+            .unwrap()
+            .expression(&decoded)
+            .as_identifier_reference(&decoded)
+            .unwrap()
+            .name(&decoded);
+        let generated = decoded.add_interned_utf8("value");
+
+        assert_eq!(generated, first);
     }
 
     #[test]

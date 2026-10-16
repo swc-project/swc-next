@@ -193,6 +193,7 @@ impl Parser {
             "Span" => primitive("Span"),
             "ScopeId" => primitive("ScopeId"),
             "SymbolId" => primitive("SymbolId"),
+            "AstInternedUtf8" => primitive("AstInternedUtf8"),
             "AstUtf8" => primitive("AstUtf8"),
             "AstWtf8" => primitive("AstWtf8"),
             "ImportPhase" => primitive("ImportPhase"),
@@ -498,7 +499,7 @@ impl Parser {
                 None | Some(AstType::Struct(_) | AstType::Enum(_)) => Some(4),
                 Some(AstType::SubRange(_)) => Some(8),
                 Some(AstType::Primitive(primitive)) => match primitive.name {
-                    "Span" | "AstUtf8" => Some(8),
+                    "Span" | "AstInternedUtf8" | "AstUtf8" => Some(8),
                     "ScopeId" | "SymbolId" => Some(4),
                     _ => None,
                 },
@@ -508,7 +509,7 @@ impl Parser {
                 "bool" | "u8" | "i8" => Some(1),
                 "u16" | "i16" => Some(2),
                 "u32" | "i32" => Some(4),
-                "u64" | "f64" | "Span" | "AstUtf8" | "AstWtf8" => Some(8),
+                "u64" | "f64" | "Span" | "AstInternedUtf8" | "AstUtf8" | "AstWtf8" => Some(8),
                 name => self.repr_sizes.get(name).copied(),
             },
         }

@@ -7,8 +7,8 @@ use swc_next_allocator::{
     Allocator, boxed::Box as ArenaBox, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec,
 };
 use swc_next_ecma_ast::{
-    AssignmentExpression, AssignmentOperator, Ast, AstUtf8, AstWtf8, BindingIdentifier, Class,
-    ClassType, ExportNamedDeclaration, ExportSpecifier, Function, FunctionType,
+    AssignmentExpression, AssignmentOperator, Ast, AstInternedUtf8, AstWtf8, BindingIdentifier,
+    Class, ClassType, ExportNamedDeclaration, ExportSpecifier, Function, FunctionType,
     IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
     JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
     JsxOpeningElement, MemberExpression, ModuleExportName, ModuleExportNameData, NodeId, NodeKind,
@@ -20,7 +20,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic, SymbolName,
     module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
@@ -61,7 +61,7 @@ use module_instance::{TsModuleInstanceMemo, TsModuleInstanceState, ts_module_ins
 pub struct Symbol {
     /// Same-named declarations that shadow an internal name reuse its name
     /// handle, so lexical lookup can compare names without reading the AST.
-    pub name: AstWtf8,
+    pub name: SymbolName,
     pub flags: SymbolFlags,
     /// The first declaration contributing to this symbol.
     pub declaration: DeclarationId,
@@ -404,7 +404,7 @@ impl Excludes {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Reference {
-    pub name: AstUtf8,
+    pub name: AstInternedUtf8,
     /// The scope the reference appears in.
     pub scope: ScopeId,
     /// The referencing node.
@@ -1442,8 +1442,8 @@ impl<'a> TsResolvedImportTarget<'a> {
 
 #[derive(Clone, Copy)]
 pub(crate) enum TsNamespaceExportAliasIssue {
-    Missing { name: AstUtf8, node: NodeId },
-    NonLocal { name: AstUtf8, node: NodeId },
+    Missing { name: AstInternedUtf8, node: NodeId },
+    NonLocal { name: AstInternedUtf8, node: NodeId },
     Duplicate { node: NodeId, previous: NodeId },
     Conflict { node: NodeId, previous: NodeId },
 }
@@ -2966,7 +2966,7 @@ impl<'a> SymbolTracker<'a> {
                         symbol_name,
                     )
                 }
-                entry => (entry, name),
+                entry => (entry, SymbolName::intern_wtf8(tree, name)),
             };
             let entry = match entry {
                 hashbrown::hash_map::RawEntryMut::Occupied(entry) => Ok(*entry.get()),
@@ -3336,7 +3336,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
-    ) -> Option<(NodeId, AstUtf8)> {
+    ) -> Option<(NodeId, AstInternedUtf8)> {
         self.sync_scope_maps_from(scope);
         // The declaration role comes from the enclosing syntax, independently
         // of whether references in that syntax produce runtime access.
@@ -3350,7 +3350,7 @@ impl<'a> SymbolTracker<'a> {
     fn finish_binding_identifier(
         &mut self,
         tree: &Ast<'a>,
-        name: AstUtf8,
+        name: AstInternedUtf8,
         symbol: SymbolId,
         scope: &ScopeTracker<'a>,
     ) {
@@ -3590,7 +3590,7 @@ impl<'a> SymbolTracker<'a> {
                     .and_then(|bindings| bindings.get(tree.get_wtf8(name).as_bytes()))
                     .map(|&symbol| self.symbols[symbol.index()])
                     .filter(|symbol| symbol.flags.intersects(SymbolFlags::INTERNAL_NAME))
-                    .map_or(name, |symbol| symbol.name),
+                    .map_or_else(|| SymbolName::intern_wtf8(tree, name), |symbol| symbol.name),
                 flags: declaration_flags,
                 declaration: declaration_id,
             });
@@ -3863,11 +3863,11 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    /// Records an identifier reference at `node` in `scope`.
+    /// Records a reference to an already canonicalized name at `node` in `scope`.
     pub fn add_reference(
         &mut self,
         tree: &Ast<'a>,
-        name: AstUtf8,
+        name: AstInternedUtf8,
         scope: ScopeId,
         node: NodeId,
         flags: ReferenceFlags,

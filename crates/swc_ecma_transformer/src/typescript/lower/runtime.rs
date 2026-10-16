@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    Argument, AssignmentOperator, AssignmentTarget, AstUtf8, DUMMY_SP, Directive, Expr,
+    Argument, AssignmentOperator, AssignmentTarget, AstInternedUtf8, DUMMY_SP, Directive, Expr,
     FormalParameterItem, FormalParameterKind, FormalParameterPattern, FunctionType,
     LogicalOperator, PropertyKey, SimpleAssignmentTarget, Span, Stmt, SubRange, VisitMut,
 };
@@ -8,25 +8,28 @@ use super::TypeScriptLowerer;
 
 #[derive(Clone, Copy)]
 pub(super) enum RuntimeTarget {
-    Identifier(AstUtf8),
+    Identifier(AstInternedUtf8),
     IdentifierAndProperty {
-        identifier: AstUtf8,
-        object: AstUtf8,
-        property: AstUtf8,
+        identifier: AstInternedUtf8,
+        object: AstInternedUtf8,
+        property: AstInternedUtf8,
     },
 }
 
 /// A single location which supports both reads and assignments.
 #[derive(Clone, Copy)]
 enum RuntimeReference {
-    Identifier(AstUtf8),
-    Property { object: AstUtf8, property: AstUtf8 },
+    Identifier(AstInternedUtf8),
+    Property {
+        object: AstInternedUtf8,
+        property: AstInternedUtf8,
+    },
 }
 
 impl TypeScriptLowerer<'_, '_> {
     pub(super) fn object_iife_statement(
         &mut self,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         directives: SubRange<Directive>,
         statements: SubRange<Stmt>,
         target: RuntimeTarget,
@@ -139,8 +142,8 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn runtime_target_member(
         &mut self,
-        object: AstUtf8,
-        property: AstUtf8,
+        object: AstInternedUtf8,
+        property: AstInternedUtf8,
     ) -> swc_next_ecma_ast::MemberExpression {
         let object = self.ast().expr_identifier_reference(DUMMY_SP, object);
         let property = self.ast().identifier_name(DUMMY_SP, property);

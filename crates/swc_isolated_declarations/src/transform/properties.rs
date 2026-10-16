@@ -207,7 +207,7 @@ impl<'ast> Transformer<'_, 'ast> {
         {
             return (key, true);
         }
-        let symbol_name = ast.add_utf8("Symbol");
+        let symbol_name = ast.add_interned_utf8("Symbol");
         let symbol = ast.expr_identifier_reference(symbol_member.span(ast), symbol_name);
         let expression = ast.expr_member_expression(
             member.span(ast),
@@ -232,7 +232,7 @@ impl<'ast> Transformer<'_, 'ast> {
         if !is_identifier(value.as_bytes()) {
             return key;
         }
-        let name = ast.add_utf8(value);
+        let name = ast.add_interned_utf8(value);
         ast.property_key_identifier_name(literal.span(ast), name)
     }
 }

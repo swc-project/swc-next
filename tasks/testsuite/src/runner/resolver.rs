@@ -83,7 +83,7 @@ struct ResolverDisplayVisitor<'a, 'ast> {
 }
 
 impl ResolverDisplayVisitor<'_, '_> {
-    fn write_identifier(&mut self, node: SymbolNode, name: AstUtf8) {
+    fn write_identifier(&mut self, node: SymbolNode, name: impl Into<AstUtf8>) {
         let name = self.ast.get_utf8(name);
         let context = self.resolver.symbol_scope(node).raw();
         writeln!(self.output, "{name} ({name:?}) -> ScopeId({context})").unwrap();

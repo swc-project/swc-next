@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, AstWtf8, DUMMY_SP, Expr, ExprData, GetSpan,
-    ObjectProperty, PropertyKey, SimpleAssignmentTarget, Stmt, SubRange, SymbolId,
-    TsEnumDeclaration, UnaryOperator, VisitMut, VisitMutWith,
+    AssignmentOperator, AssignmentTarget, Ast, AstInternedUtf8, AstUtf8, AstWtf8, DUMMY_SP, Expr,
+    ExprData, GetSpan, ObjectProperty, PropertyKey, SimpleAssignmentTarget, Stmt, SubRange,
+    SymbolId, TsEnumDeclaration, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
 
@@ -45,7 +45,7 @@ impl TypeScriptLowerer<'_, '_> {
     pub(super) fn lower_namespace_enum(
         &mut self,
         declaration: TsEnumDeclaration,
-        namespace: AstUtf8,
+        namespace: AstInternedUtf8,
         output: &mut Vec<Stmt>,
     ) {
         if declaration.declare(self.ast_ref()) {
@@ -89,7 +89,7 @@ impl TypeScriptLowerer<'_, '_> {
         &mut self,
         declaration: TsEnumDeclaration,
         owner: SymbolId,
-        enum_name: AstUtf8,
+        enum_name: AstInternedUtf8,
         target: RuntimeTarget,
     ) -> Stmt {
         let parameter = self.container_parameter(enum_name, owner);
@@ -119,7 +119,7 @@ impl TypeScriptLowerer<'_, '_> {
             };
             statements.push(self.enum_member_statement(
                 parameter,
-                member_name,
+                member_name.into(),
                 initializer,
                 value.is_string(),
             ));
@@ -131,7 +131,7 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn enum_member_statement(
         &mut self,
-        enum_name: AstUtf8,
+        enum_name: AstInternedUtf8,
         member_name: AstWtf8,
         initializer: Expr,
         string_member: bool,
@@ -174,7 +174,7 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn enum_member_access(
         &mut self,
-        enum_name: AstUtf8,
+        enum_name: AstInternedUtf8,
         member_name: AstWtf8,
     ) -> swc_next_ecma_ast::MemberExpression {
         let object = self.ast().expr_identifier_reference(DUMMY_SP, enum_name);
@@ -218,7 +218,7 @@ impl TypeScriptLowerer<'_, '_> {
         &mut self,
         initializer: Expr,
         owner: SymbolId,
-        enum_name: AstUtf8,
+        enum_name: AstInternedUtf8,
     ) -> Expr {
         let members = self
             .enum_member_symbols
@@ -242,7 +242,7 @@ struct EnumInitializerRewriter<'visit, 'ast> {
     semantic: &'visit Semantic<'ast>,
     semantic_node_count: usize,
     members: &'visit FxHashSet<SymbolId>,
-    enum_name: AstUtf8,
+    enum_name: AstInternedUtf8,
 }
 
 impl<'ast> VisitMut<'ast> for EnumInitializerRewriter<'_, 'ast> {

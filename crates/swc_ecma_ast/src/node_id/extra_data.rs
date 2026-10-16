@@ -1,4 +1,4 @@
-use crate::{AstNode, AstUtf8, AstWtf8, SubRange};
+use crate::{AstInternedUtf8, AstNode, AstUtf8, AstWtf8, SubRange};
 
 use super::{NodeId, sealed::ExtraDataValue as SealedExtraDataValue};
 
@@ -101,6 +101,20 @@ impl<T> ExtraDataValue for SubRange<T> {
 impl SealedExtraDataValue for AstUtf8 {}
 
 impl ExtraDataValue for AstUtf8 {
+    #[inline]
+    fn into_extra_data(self) -> ExtraData {
+        ExtraData::from_raw(self.raw())
+    }
+
+    #[inline]
+    unsafe fn from_extra_data(data: &ExtraData) -> Self {
+        Self::from_raw(data.raw())
+    }
+}
+
+impl SealedExtraDataValue for AstInternedUtf8 {}
+
+impl ExtraDataValue for AstInternedUtf8 {
     #[inline]
     fn into_extra_data(self) -> ExtraData {
         ExtraData::from_raw(self.raw())

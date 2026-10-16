@@ -463,7 +463,7 @@ fn synthesized_number_formats() {
 fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> String {
     let allocator = Allocator::new();
     let mut ast = Ast::new("", &allocator);
-    let name = ast.add_utf8("x");
+    let name = ast.add_interned_utf8("x");
     let left = ast.expr_identifier_reference(DUMMY_SP, name);
     let right = ast.expr_numeric_literal(DUMMY_SP, value, None);
     let expression = ast.expr_binary_expression(DUMMY_SP, left, right, BinaryOperator::Subtract);
@@ -610,7 +610,7 @@ fn print_negative_number_contexts(options: PrintOptions) -> String {
     let mut ast = Ast::new("", &allocator);
 
     let member_object = ast.expr_numeric_literal(DUMMY_SP, -2.0, None);
-    let property_name = ast.add_utf8("toString");
+    let property_name = ast.add_interned_utf8("toString");
     let property = ast.identifier_name(DUMMY_SP, property_name);
     let member = ast.expr_member_expression(
         DUMMY_SP,
