@@ -92,9 +92,9 @@ function build(swc) {
 function main() {
   const options = {
     "--swc-dir": path.resolve(root, "../swc"),
-    "--runs": "50",
+    "--runs": "200",
     "--warmup": "20",
-    "--js-runs": "3",
+    "--js-runs": "2",
     "--js-time-ms": "1000",
     "--cpu": undefined,
     "--output": path.join(root, "website/docs/Benchmark.md"),
@@ -102,7 +102,7 @@ function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 50] [--warmup 20] [--js-runs 3] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
+      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 200] [--warmup 20] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
     );
     return;
   }
@@ -248,33 +248,28 @@ function main() {
           `JS batch: ${iterations} parses per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/parse`,
         );
       }
-      // Each JS process warms its own V8 state. Repeat in reverse order to
-      // expose drift without relying on hyperfine warmups in other processes.
-      const orders = isJs ? [[0, 1], [1, 0]] : [[0, 1]];
-      const output = orders
-        .map((order) =>
-          run("taskset", [
-            "--cpu-list",
-            String(cpu),
-            "hyperfine",
-            "--style",
-            "basic",
-            "--shell",
-            "none",
-            "--warmup",
-            isJs ? "0" : options["--warmup"],
-            "--runs",
-            isJs ? options["--js-runs"] : options["--runs"],
-            "--metrics",
-            "time_wall_clock:ms,memory_peak_resident:MiB",
-            ...order.flatMap((index) => [
-              "--command-name",
-              names[index],
-              commands[index].map(quote).join(" "),
-            ]),
-          ]),
-        )
-        .join("\n\n");
+      // Each JS process warms its own V8 state; hyperfine warmups would use
+      // separate processes and would not warm the measured parser.
+      const output = run("taskset", [
+        "--cpu-list",
+        String(cpu),
+        "hyperfine",
+        "--style",
+        "basic",
+        "--shell",
+        "none",
+        "--warmup",
+        isJs ? "0" : options["--warmup"],
+        "--runs",
+        isJs ? options["--js-runs"] : options["--runs"],
+        "--metrics",
+        "time_wall_clock:ms,memory_peak_resident:MiB",
+        ...commands.flatMap((command, index) => [
+          "--command-name",
+          names[index],
+          command.map(quote).join(" "),
+        ]),
+      ]);
       lines.push(
         `### ${file}`,
         "",
