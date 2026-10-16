@@ -6,7 +6,9 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, ExprContext, OperatorCode};
-use crate::util::{next_code_point, push_code_point_escape, push_u16_escape, quote_into};
+use crate::util::{
+    is_ident_continue_ascii, next_code_point, push_code_point_escape, push_u16_escape, quote_into,
+};
 
 use crate::{
     SourceMap,

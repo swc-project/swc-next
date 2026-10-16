@@ -3,6 +3,22 @@ use swc_next_simd::prelude::*;
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
+const IDENT_CONTINUE_ASCII: [bool; 256] = {
+    let mut table = [false; 256];
+    let mut byte = 0;
+    while byte < 128 {
+        let b = byte as u8;
+        table[byte] = b.is_ascii_alphanumeric() || b == b'_' || b == b'$';
+        byte += 1;
+    }
+    table
+};
+
+#[inline(always)]
+pub(crate) fn is_ident_continue_ascii(byte: u8) -> bool {
+    IDENT_CONTINUE_ASCII[byte as usize]
+}
+
 pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32) {
     out.extend_from_slice(b"\\u{");
     let mut shift = 28;
