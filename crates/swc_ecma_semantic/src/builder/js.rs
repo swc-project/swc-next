@@ -675,6 +675,9 @@ pub(super) fn check_variable_declaration(
         return;
     }
     let kind = declaration.kind(builder.ast);
+    if !matches!(kind, VariableKind::Using | VariableKind::AwaitUsing) {
+        return;
+    }
     if kind == VariableKind::AwaitUsing && is_inside_static_block(builder) {
         builder.report(
             builder.ast.span(declaration.node_id()),
@@ -682,8 +685,19 @@ pub(super) fn check_variable_declaration(
             ReportOptions::default(),
         );
     }
-    if matches!(kind, VariableKind::Using | VariableKind::AwaitUsing)
-        && builder.ast.source_type() == swc_next_ecma_ast::SourceType::Script
+    if builder.state.symbols.in_ambient_context() {
+        let message = builder.fmt(format_args!(
+            "'{}' declarations are not allowed in ambient contexts",
+            kind.as_str()
+        ));
+        builder.report(
+            builder.ast.span(declaration.node_id()),
+            message,
+            ReportOptions::default(),
+        );
+        return;
+    }
+    if builder.ast.source_type() == swc_next_ecma_ast::SourceType::Script
         && is_at_program_level(builder)
     {
         let message = builder.fmt(format_args!(
@@ -1674,12 +1688,9 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 }
 
 fn is_at_program_level(builder: &SemanticBuilder<'_, '_>) -> bool {
-    builder.parent().is_none_or(|parent| {
-        matches!(
-            builder.ast.node_kind(parent),
-            NodeKind::Program | NodeKind::TsModuleBlock
-        )
-    })
+    builder
+        .parent()
+        .is_some_and(|parent| builder.ast.node_kind(parent) == NodeKind::Program)
 }
 
 fn import_attribute_name<'a>(tree: &'a Ast<'_>, key: NodeId) -> Option<&'a [u8]> {

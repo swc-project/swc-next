@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2271/2274 (99.87%)
-Negative Passed: 1691/1791 (94.42%)
+Negative Passed: 1692/1791 (94.47%)
 Panicked: 0/4065 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
@@ -45,7 +45,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/in
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-let/input.ts - typescript/declare/invalid-definite-pattern-assignment-let: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-var/input.ts - typescript/declare/invalid-definite-pattern-assignment-var: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-class-method-implementation/input.ts - typescript/declare/invalid-namespace-class-method-implementation: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-using/input.ts - typescript/declare/invalid-namespace-using: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-var/input.ts - typescript/declare/invalid-namespace-var: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/module-class/input.ts - typescript/declare/module-class: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/namespace-class/input.ts - typescript/declare/namespace-class: expected a parse or early error, but pipeline succeeded

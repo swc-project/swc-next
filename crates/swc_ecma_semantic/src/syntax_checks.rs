@@ -45,7 +45,7 @@ bitflags::bitflags! {
         const IMPORT_META = 1 << 17;
         /// `new.target` outside an environment that provides it.
         const NEW_TARGET = 1 << 18;
-        /// Resource declarations in invalid script or static-block contexts.
+        /// Resource declarations in invalid script, static-block, or ambient contexts.
         const USING_DECLARATIONS = 1 << 19;
         /// Multiple default clauses in a switch statement.
         const DUPLICATE_SWITCH_DEFAULTS = 1 << 20;
