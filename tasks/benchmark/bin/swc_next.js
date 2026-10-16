@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { langFromPath, parseSync } from "../../../npm/core/src-js/index.js";
+import { langFromPath, parseSync } from "@swc-next/core";
 
 const [file, operation] = process.argv.slice(2);
 assert(file && operation === "parse", "usage: node swc_next.js <file> parse");

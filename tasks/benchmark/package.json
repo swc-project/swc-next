@@ -1,0 +1,9 @@
+{
+  "name": "@swc-next/benchmark",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@swc/core": "catalog:",
+    "@swc-next/core": "workspace:*"
+  }
+}

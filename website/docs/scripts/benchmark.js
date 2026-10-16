@@ -41,9 +41,7 @@ function run(command, args, options = {}) {
 
 function build(swc) {
   const collector = path.join(work, "cli");
-  const coreJs = path.join(work, "core-js");
   mkdirSync(collector, { recursive: true });
-  mkdirSync(coreJs, { recursive: true });
   const crates = [
     "allocator",
     "ecma_ast",
@@ -86,72 +84,23 @@ function build(swc) {
     env,
     stdio: "inherit",
   });
-  run(
-    "cargo",
-    [
-      "build",
-      "--locked",
-      "--release",
-      "--manifest-path",
-      path.join(swc, "Cargo.toml"),
-      "-p",
-      "binding_core_node",
-      "--no-default-features",
-      "--features",
-      "swc_v1",
-      "-j",
-      "6",
-    ],
-    { env, stdio: "inherit" },
-  );
   run("pnpm", ["--filter", "@swc-next/core", "build", "--release"], {
     stdio: "inherit",
   });
-
-  // Build the public JS wrapper from the same checkout as the native binding.
-  const require = createRequire(path.join(root, "npm/core/package.json"));
-  const transpiler = require("@swc/core");
-  for (const name of ["index", "spack"]) {
-    const source = readFileSync(
-      path.join(swc, `packages/core/src/${name}.ts`),
-      "utf8",
-    );
-    const { code } = transpiler.transformSync(source, {
-      filename: `${name}.ts`,
-      jsc: { parser: { syntax: "typescript" }, target: "es2022" },
-      module: { type: "commonjs" },
-    });
-    writeFileSync(path.join(coreJs, `${name}.js`), code);
-  }
-  copyFileSync(
-    path.join(work, "release/libbinding_core_node.so"),
-    path.join(coreJs, "swc.node"),
-  );
-  writeFileSync(
-    path.join(coreJs, "binding.js"),
-    'module.exports = require("./swc.node");\n',
-  );
-  const { version } = JSON.parse(
-    readFileSync(path.join(swc, "packages/core/package.json"), "utf8"),
-  );
-  writeFileSync(
-    path.join(coreJs, "package.json"),
-    JSON.stringify({ type: "commonjs", version }),
-  );
 }
 
 function main() {
   const options = {
     "--swc-dir": path.resolve(root, "../swc"),
-    "--runs": "10",
-    "--warmup": "3",
+    "--runs": "50",
+    "--warmup": "20",
     "--cpu": undefined,
     "--output": path.join(root, "website/docs/Benchmark.md"),
   };
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 10] [--warmup 3] [--cpu N] [--output website/docs/Benchmark.md]",
+      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 50] [--warmup 20] [--cpu N] [--output website/docs/Benchmark.md]",
     );
     return;
   }
@@ -194,6 +143,20 @@ function main() {
     );
     return run("git", ["-C", dir, "rev-parse", "HEAD"]);
   });
+  const require = createRequire(
+    path.join(root, "tasks/benchmark/package.json"),
+  );
+  const coreVersion = require("@swc/core/package.json").version;
+  const nextVersion = JSON.parse(
+    readFileSync(path.join(root, "npm/core/package.json"), "utf8"),
+  ).version;
+  const coreCommit = run("git", [
+    "-C", swc, "rev-parse", `v${coreVersion}^{commit}`,
+  ]);
+  const jsNames = [
+    `@swc-next/core@${nextVersion} (${commits[0]})`,
+    `@swc/core@${coreVersion} (${coreCommit})`,
+  ];
   run("hyperfine", ["--version"]);
   build(swc);
 
@@ -263,19 +226,12 @@ function main() {
           "--metrics",
           "time_wall_clock:ms,instructions,memory_peak_resident:MiB",
           "--command-name",
-          `swc-next@${commits[0]}`,
+          title === "JS parser" ? jsNames[0] : `swc-next@${commits[0]}`,
           commands[0].map(quote).join(" "),
           "--command-name",
-          `swc@${commits[1]}`,
+          title === "JS parser" ? jsNames[1] : `swc@${commits[1]}`,
           commands[1].map(quote).join(" "),
         ],
-        {
-          env: {
-            ...process.env,
-            SWC_CORE_ENTRY: path.join(work, "core-js/index.js"),
-            SWC_BINARY_PATH: path.join(work, "core-js/swc.node"),
-          },
-        },
       );
       lines.push(
         `### ${file}`,
