@@ -85,3 +85,28 @@ internal compression visitor. Use the visitor's expression replacement return
 value when changing expression kinds and preserve source spans. Add small
 fixtures for the transformation, its disabled option, and relevant syntax or
 precedence boundaries. Keep printing policy in the code generator.
+
+## Instruction-count benchmarks
+
+On Linux with Valgrind and the matching `gungraun-runner` installed, run:
+
+```sh
+cargo bench --locked -p benchmark --bench gungraun -- minifier
+```
+
+The `minifier` group measures `Minifier::minify` with default options, including
+its internal semantic analysis. Parsing and input validation happen in setup;
+printing and AST destruction are outside the measured function. Each invocation
+starts with a fresh AST. The arena follows the existing harness's process-lifetime
+allocation pattern.
+
+Cases cover Underscore, Angular, the JavaScript TypeScript compiler bundle, and
+`semantic/combined/input.js` from the minifier fixtures. The combined fixture
+exercises all three semantic optimizations and boolean shortening; the existing
+fixture test checks its expected output.
+
+The existing Gungraun workflow reports Callgrind executed instructions (`Ir`) and
+retains raw profiles and JSON summaries. The first PR adding these cases reports
+`New` because its base has no minifier benchmarks. Those results establish
+initial counts, not a performance improvement. Later comparisons can select this
+group with the workflow's `filter: minifier` input.

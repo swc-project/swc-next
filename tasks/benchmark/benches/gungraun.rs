@@ -12,6 +12,7 @@ use swc_next_ecma_ast::{
     VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
     AnalyzeOptions, Semantic, SyntaxChecks, analyze, name_resolver::resolver as resolve_names,
@@ -21,6 +22,9 @@ use swc_next_ecma_transformer::{
     proposal::ProposalOptions, typescript::TypeScriptOptions,
 };
 use swc_next_type_strip::strip_types;
+
+const MINIFIER_SEMANTIC: &str =
+    include_str!("../../../crates/swc_ecma_minifier/tests/fixtures/semantic/combined/input.js");
 
 const ANGULAR: &str = include_str!("../files/angular-1.2.5.js");
 const BACKBONE: &str = include_str!("../files/backbone-1.1.0.js");
@@ -79,6 +83,45 @@ fn setup_program(source: &'static str, lang: Lang) -> Ast<'static> {
     .parse();
     assert!(result.diagnostics.is_empty());
     result.ast
+}
+
+fn setup_minifier(source: &'static str) -> Ast<'static> {
+    let allocator = Box::leak(Box::new(Allocator::new()));
+    let result = Parser::init(
+        allocator,
+        source,
+        Options {
+            source_type: SourceType::Script,
+            lang: Lang::Js,
+            preserve_parens: false,
+            comments: CommentMode::None,
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(result.diagnostics.is_empty());
+    let ast = result.ast;
+    let analysis = analyze(
+        &ast,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
+        },
+    );
+    assert!(analysis.diagnostics.is_empty());
+    ast
+}
+
+#[library_benchmark]
+#[bench::underscore(setup_minifier(UNDERSCORE))]
+#[bench::angular(setup_minifier(ANGULAR))]
+#[bench::typescript(setup_minifier(TYPESCRIPT))]
+#[bench::semantic(setup_minifier(MINIFIER_SEMANTIC))]
+fn bench_minifier(ast: Ast<'static>) -> Ast<'static> {
+    let mut ast = black_box(ast);
+    Minifier::minify(&mut ast, black_box(MinifierOptions::default()));
+    // Return the AST so its drop is outside the measured function.
+    black_box(ast)
 }
 
 #[library_benchmark]
@@ -348,6 +391,8 @@ library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
 
 library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 
+library_benchmark_group!(name = minifier, benchmarks = bench_minifier);
+
 library_benchmark_group!(name = transform, benchmarks = bench_transform);
 
 library_benchmark_group!(name = type_strip, benchmarks = bench_type_strip);
@@ -363,6 +408,6 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, resolver, codegen, transform, type_strip, visit
+        parser, semantic, resolver, codegen, minifier, transform, type_strip, visit
     ]
 );
