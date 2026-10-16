@@ -199,7 +199,10 @@ function main() {
   console.error(`Benchmark CPU: ${cpu}`);
 
   // Hyperfine executes these arguments directly, without a shell.
-  const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+  const quote = (value) =>
+    /^[\w@%+=:,./-]+$/.test(value)
+      ? value
+      : `'${value.replaceAll("'", "'\\''")}'`;
   const lines = ["# Benchmark", ""];
   for (const [title, feature] of features) {
     lines.push(`## ${title}`, "");
@@ -211,7 +214,7 @@ function main() {
       const commands = ["swc_next", "swc"].map((engine) =>
         isJs
           ? [
-              process.execPath,
+              path.relative(root, process.execPath),
               `tasks/benchmark/bin/${engine}.js`,
               input,
               feature,
@@ -250,28 +253,33 @@ function main() {
       }
       // Each JS process warms its own V8 state; hyperfine warmups would use
       // separate processes and would not warm the measured parser.
+      const hyperfineArgs = [
+        ["--style", "basic"],
+        ["--shell", "none"],
+        ["--warmup", isJs ? "0" : options["--warmup"]],
+        ["--runs", isJs ? options["--js-runs"] : options["--runs"]],
+        ["--metrics", "time_wall_clock:ms,memory_peak_resident:MiB"],
+        ...commands.flatMap((command, index) => [
+          ["--command-name", names[index]],
+          [command.map(quote).join(" ")],
+        ]),
+      ];
+      const invocation = [
+        `taskset --cpu-list ${cpu} hyperfine`,
+        ...hyperfineArgs.map((args) => `  ${args.map(quote).join(" ")}`),
+      ].join(" \\\n");
       const output = run("taskset", [
         "--cpu-list",
         String(cpu),
         "hyperfine",
-        "--style",
-        "basic",
-        "--shell",
-        "none",
-        "--warmup",
-        isJs ? "0" : options["--warmup"],
-        "--runs",
-        isJs ? options["--js-runs"] : options["--runs"],
-        "--metrics",
-        "time_wall_clock:ms,memory_peak_resident:MiB",
-        ...commands.flatMap((command, index) => [
-          "--command-name",
-          names[index],
-          command.map(quote).join(" "),
-        ]),
+        ...hyperfineArgs.flat(),
       ]);
       lines.push(
         `### ${file}`,
+        "",
+        "```sh",
+        invocation,
+        "```",
         "",
         "```text",
         output.replace(/[ \t]+$/gm, ""),
