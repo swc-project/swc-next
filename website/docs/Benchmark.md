@@ -5,29 +5,29 @@
 ### typescript.js
 
 ```text
-Benchmark 1: swc-next@a4c7f78959abefca0510a3def442dec07e129635; 10 iterations (200 runs)
+Benchmark 1: swc-next@e06ead61165c3a6de44205764ef0da2973c34189; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time    193.1 ms  ±     1.4 ms     191.0 ms  …   204.0 ms
+  Wall Time    193.8 ms  ±     2.0 ms     191.4 ms  …   209.0 ms
   Memory        37.8 MiB ±     0.1 MiB     37.6 MiB …    38.1 MiB
 
-Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 runs)
+Benchmark 2: swc_core@82.1.0; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time    711.1 ms  ±     4.5 ms     704.5 ms  …   732.6 ms          +268.3%  (3.7x slower)
-  Memory        98.3 MiB ±     0.1 MiB     98.1 MiB …    98.4 MiB         +159.9%  (2.6x more)
+  Wall Time    720.5 ms  ±    11.2 ms     706.7 ms  …   780.6 ms          +271.8%  (3.7x slower)
+  Memory        98.9 MiB ±     0.1 MiB     98.7 MiB …    99.1 MiB         +161.6%  (2.6x more)
 ```
 
 ### effect-schema-ast.ts
 
 ```text
-Benchmark 1: swc-next@a4c7f78959abefca0510a3def442dec07e129635; 10 iterations (200 runs)
+Benchmark 1: swc-next@e06ead61165c3a6de44205764ef0da2973c34189; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time      4.7 ms  ±     0.1 ms       4.5 ms  …     4.9 ms
-  Memory         4.1 MiB ±     0.1 MiB      4.0 MiB …     4.3 MiB
+  Wall Time      4.7 ms  ±     0.1 ms       4.5 ms  …     5.8 ms
+  Memory         4.1 MiB ±     0.1 MiB      3.9 MiB …     4.3 MiB
 
-Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 runs)
+Benchmark 2: swc_core@82.1.0; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time     12.5 ms  ±     0.1 ms      12.2 ms  …    13.2 ms          +166.3%  (2.7x slower)
-  Memory         6.2 MiB ±     0.1 MiB      6.0 MiB …     6.4 MiB          +48.7%  (1.5x more)
+  Wall Time     12.6 ms  ±     0.1 ms      12.3 ms  …    13.6 ms          +166.6%  (2.7x slower)
+  Memory         7.0 MiB ±     0.1 MiB      6.8 MiB …     7.2 MiB          +68.3%  (1.7x more)
 ```
 
 ## Isolated declaration
@@ -35,15 +35,15 @@ Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 ru
 ### effect-schema-ast.ts
 
 ```text
-Benchmark 1: swc-next@a4c7f78959abefca0510a3def442dec07e129635; 10 iterations (200 runs)
+Benchmark 1: swc-next@e06ead61165c3a6de44205764ef0da2973c34189; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time      9.2 ms  ±     0.1 ms       9.0 ms  …    10.0 ms
-  Memory         5.3 MiB ±     0.1 MiB      5.2 MiB …     5.5 MiB
+  Wall Time      9.2 ms  ±     0.1 ms       9.0 ms  …    10.2 ms
+  Memory         5.3 MiB ±     0.1 MiB      5.1 MiB …     5.5 MiB
 
-Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 runs)
+Benchmark 2: swc_core@82.1.0; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time     17.6 ms  ±     0.1 ms      17.4 ms  …    18.4 ms           +92.3%  (1.9x slower)
-  Memory         7.0 MiB ±     0.1 MiB      6.7 MiB …     7.2 MiB          +30.6%  (1.3x more)
+  Wall Time     17.7 ms  ±     0.1 ms      17.4 ms  …    18.6 ms           +92.5%  (1.9x slower)
+  Memory         7.8 MiB ±     0.1 MiB      7.6 MiB …     8.0 MiB          +45.4%  (1.5x more)
 ```
 
 ## Type strip
@@ -51,15 +51,15 @@ Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 ru
 ### effect-schema-ast.ts
 
 ```text
-Benchmark 1: swc-next@a4c7f78959abefca0510a3def442dec07e129635; 10 iterations (200 runs)
+Benchmark 1: swc-next@e06ead61165c3a6de44205764ef0da2973c34189; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time      5.9 ms  ±     0.1 ms       5.7 ms  …     6.3 ms
+  Wall Time      5.9 ms  ±     0.1 ms       5.7 ms  …     6.6 ms
   Memory         7.6 MiB ±     0.1 MiB      7.4 MiB …     7.8 MiB
 
-Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 runs)
+Benchmark 2: swc_ts_fast_strip@59.0.1; 10 iterations (200 runs)
                 mean     ±       σ          min     …     max
-  Wall Time     14.1 ms  ±     0.1 ms      13.8 ms  …    14.6 ms          +137.6%  (2.4x slower)
-  Memory         7.3 MiB ±     0.1 MiB      7.0 MiB …     7.6 MiB           -4.0%
+  Wall Time     14.3 ms  ±     0.1 ms      14.1 ms  …    15.0 ms          +140.5%  (2.4x slower)
+  Memory         7.7 MiB ±     0.1 MiB      7.4 MiB …     7.9 MiB           +0.9%
 ```
 
 ## JS parser
@@ -67,27 +67,27 @@ Benchmark 2: swc@ff6a3c3b198d0d31a5e3a84dc0bf41542be534da; 10 iterations (200 ru
 ### typescript.js
 
 ```text
-Benchmark 1: @swc-next/core@0.2.4 (a4c7f78959abefca0510a3def442dec07e129635); 24 parses + 5 warmups (2 runs)
+Benchmark 1: @swc-next/core@e06ead61165c3a6de44205764ef0da2973c34189; 23 parses + 5 warmups (2 runs)
                 mean     ±       σ          min     …     max
-  Wall Time   3773.4 ms  ±   596.0 ms    3351.9 ms  …  4194.8 ms
-  Memory      1263.5 MiB ±    38.8 MiB   1236.0 MiB …  1290.9 MiB
+  Wall Time   3269.9 ms  ±   121.6 ms    3183.9 ms  …  3355.9 ms
+  Memory      1277.3 MiB ±     1.9 MiB   1275.9 MiB …  1278.6 MiB
 
-Benchmark 2: @swc/core@1.15.46 (93831621baf6fe999ec5fcc6fc96388f072c19f1); 24 parses + 5 warmups (2 runs)
+Benchmark 2: @swc/core@1.15.46; 23 parses + 5 warmups (2 runs)
                 mean     ±       σ          min     …     max
-  Wall Time  19873.7 ms  ±    51.3 ms   19837.4 ms  … 19910.0 ms          +426.7%  (5.3x slower)
-  Memory      2600.4 MiB ±     0.7 MiB   2599.9 MiB …  2600.9 MiB         +105.8%  (2.1x more)
+  Wall Time  19229.6 ms  ±   111.3 ms   19150.9 ms  … 19308.4 ms          +488.1%  (5.9x slower)
+  Memory      2600.0 MiB ±     1.7 MiB   2598.8 MiB …  2601.1 MiB         +103.6%  (2.0x more)
 ```
 
 ### effect-schema-ast.ts
 
 ```text
-Benchmark 1: @swc-next/core@0.2.4 (a4c7f78959abefca0510a3def442dec07e129635); 743 parses + 5 warmups (2 runs)
+Benchmark 1: @swc-next/core@e06ead61165c3a6de44205764ef0da2973c34189; 737 parses + 5 warmups (2 runs)
                 mean     ±       σ          min     …     max
-  Wall Time   2925.7 ms  ±    35.3 ms    2900.8 ms  …  2950.6 ms
-  Memory       651.5 MiB ±     1.6 MiB    650.4 MiB …   652.7 MiB
+  Wall Time   2922.5 ms  ±   168.5 ms    2803.4 ms  …  3041.7 ms
+  Memory       652.9 MiB ±     3.7 MiB    650.3 MiB …   655.6 MiB
 
-Benchmark 2: @swc/core@1.15.46 (93831621baf6fe999ec5fcc6fc96388f072c19f1); 743 parses + 5 warmups (2 runs)
+Benchmark 2: @swc/core@1.15.46; 737 parses + 5 warmups (2 runs)
                 mean     ±       σ          min     …     max
-  Wall Time   6396.3 ms  ±    11.2 ms    6388.4 ms  …  6404.2 ms          +118.6%  (2.2x slower)
-  Memory       101.5 MiB ±     0.1 MiB    101.5 MiB …   101.6 MiB          -84.4%  (6.4x less)
+  Wall Time   6488.3 ms  ±     8.0 ms    6482.7 ms  …  6494.0 ms          +122.0%  (2.2x slower)
+  Memory       101.5 MiB ±     0.0 MiB    101.5 MiB …   101.5 MiB          -84.4%  (6.4x less)
 ```
