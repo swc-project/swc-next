@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Boolean(firstLongName || secondLongName || thirdLongName);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+Boolean(
+  firstLongName ||
+  secondLongName ||
+  thirdLongName,
+);
