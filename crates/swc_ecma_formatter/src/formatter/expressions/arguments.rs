@@ -3,7 +3,9 @@
 use super::callbacks::TestCallback;
 use super::calls::CallCallee;
 use super::typescript::ExpressionTypeArguments;
-use super::{AccessKind, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext};
+use super::{
+    AccessKind, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, OperandIndent,
+};
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
@@ -639,6 +641,7 @@ pub(super) struct SourceArguments<'ast> {
     pub(super) curried_callee: Option<CallExpression>,
     pub(super) allow_composition: bool,
     pub(super) jsx_call: Option<CallExpression>,
+    pub(super) binary_indent: OperandIndent,
 }
 
 struct ArgumentPunctuation {
@@ -667,6 +670,7 @@ pub(super) struct ArgumentHead {
     pub(super) ordinary_group: ArgumentGroup,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) independent_callback: Option<ArrowFunctionExpression>,
+    pub(super) binary_indent: OperandIndent,
 }
 
 #[derive(Clone, Copy)]
@@ -1152,6 +1156,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             allow_composition: true,
             curried_callee: None,
             jsx_call: None,
+            binary_indent: OperandIndent::Expression,
         };
         list.frame = self.structural_argument_frame(&list);
         Some(list)
@@ -1161,11 +1166,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         argument: Argument,
         mode: ContentMode,
+        binary_indent: OperandIndent,
         jsx_call: Option<CallExpression>,
         missing_function: &mut Option<&mut bool>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if missing_function.is_none() && (jsx_call.is_none() || mode == ContentMode::Verbatim) {
+        if binary_indent == OperandIndent::Expression
+            && missing_function.is_none()
+            && (jsx_call.is_none() || mode == ContentMode::Verbatim)
+        {
             return self.format_argument(argument, mode, writer);
         }
         let data = self.ast.argument_data(argument);
@@ -1188,7 +1197,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     content.data,
                 )
             });
+        let operand_indent = match content.as_ref().map(|content| content.data) {
+            Some(
+                ExprData::BinaryExpression(_)
+                | ExprData::LogicalExpression(_)
+                | ExprData::ParenthesizedExpression(_),
+            ) => binary_indent,
+            _ => OperandIndent::Expression,
+        };
         let context = ExpressionContext::at(ExpressionPosition::Nested)
+            .with_operand_indent(operand_indent)
             .with_content_mode(mode)
             .with_arrow_layout(super::arrows::ArrowLayout::Argument)
             .with_jsx_callback(jsx_callback);
@@ -1487,6 +1505,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             group,
             frame,
             jsx_call,
+            binary_indent,
             allow_composition,
             ..
         } = list;
@@ -1640,6 +1659,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ordinary_group: group,
                     jsx_call,
                     independent_callback: frame.independent_callback(),
+                    binary_indent,
                 },
                 selected,
                 missing_function,
@@ -1709,6 +1729,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_argument_with_function_fact(
                             argument,
                             item.mode,
+                            binary_indent,
                             jsx_call,
                             &mut missing_function,
                             writer,

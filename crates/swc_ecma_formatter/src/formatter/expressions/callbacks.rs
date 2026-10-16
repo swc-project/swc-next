@@ -1063,6 +1063,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_argument_with_function_fact(
                             argument,
                             item.mode,
+                            head.binary_indent,
                             head.jsx_call,
                             &mut missing_function,
                             writer,
