@@ -1,7 +1,7 @@
 //! Callees and source-owned argument delimiters.
-use super::AccessKind;
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
 use super::parentheses::ExpressionContent;
+use super::{AccessKind, OperandIndent};
 use super::{
     CallArgumentOwner, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext,
     MemberLayout, TailOwner,
@@ -201,6 +201,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut arguments =
             source.ok_or_else(|| self.unsupported("call opening boundary", call))?;
         arguments.allow_composition = !matches!(context.position, ExpressionPosition::Decorator);
+        // Keep Boolean coercion operands aligned with ! and !!.
+        // https://github.com/prettier/prettier/commit/c93e014c288aa94c22aa5641a71bf8d8be76d4ce
+        if !call.optional(ast)
+            && call_arguments.len() == 1
+            && matches!(self.call_callee_content_data(callee), ExprData::IdentifierReference(identifier)
+                if ast.get_utf8(identifier.name(ast)) == "Boolean")
+        {
+            arguments.binary_indent = OperandIndent::Parent;
+        }
         if let Some(frame) = self.test_call_frame(call, &arguments) {
             arguments.frame = frame;
         } else if matches!(context.call_argument_owner,
