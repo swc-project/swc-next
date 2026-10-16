@@ -1,19 +1,19 @@
 formatter * prettier 3.9.9 * typescript
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 652
+Fixture files: 651
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 803/805 (99.75%)
-Snapshot matched: 803/805
-AST parity: 805/805
-AST mismatched: 0/805
-AST format errors: 0/805
-Mismatched: 2/805
-Format errors: 0/805
-Panicked: 0/805
-Not idempotent: 0/805
-Ignored files: 81
-Parse errors: 0/805
+Passed: 803/804 (99.88%)
+Snapshot matched: 803/804
+AST parity: 804/804
+AST mismatched: 0/804
+AST format errors: 0/804
+Mismatched: 1/804
+Format errors: 0/804
+Panicked: 0/804
+Not idempotent: 0/804
+Ignored files: 82
+Parse errors: 0/804
 Expected parser errors: 1
 Unsupported option sets: 4
 
@@ -23,7 +23,6 @@ Unsupported option sets: 4
 
 # Failed
 
-- jsx/ignore/spread.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/method_types.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets

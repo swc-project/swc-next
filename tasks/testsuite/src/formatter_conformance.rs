@@ -172,6 +172,21 @@ const IGNORE: &[IgnorePattern] = &[
     // Type query and call type-argument comments move on the second pass.
     IgnorePattern::Exact("typescript/import-type/long-module-name/long-module-name4.ts"),
     IgnorePattern::Exact("typescript/call/callee-comments.ts"),
+    // Semantic differences verified with TypeScript 6.0.3 against Prettier 3.9.9.
+    // Preserve the active JSDoc cast on the member receiver.
+    IgnorePattern::Exact("js/comments-closure-typecast/comment-in-the-middle.js"),
+    // The ASI guard must precede the active cast's full leading comment packet.
+    IgnorePattern::Exact("js/comments-closure-typecast/no-semi/not-on-same-line.js"),
+    // Keep the ASI guard before the cast and its intervening ordinary comment.
+    IgnorePattern::Exact("js/comments-closure-typecast/no-semi/with-other-comments.js"),
+    // Preserve the covered and uncovered signature lines of active TS directives.
+    IgnorePattern::Exact("js/comments/issue-11050.js"),
+    // Prettier wraps NBSP text onto separate lines.
+    // TypeScript 6.0.3 then drops both NBSP edges; preserve their Unicode value.
+    IgnorePattern::Exact("js/unicode/nbsp-jsx.js"),
+    // Keep the spread closing brace on the active @ts-ignore comment line.
+    // A separate brace line removes coverage of the following attribute.
+    IgnorePattern::Exact("jsx/ignore/spread.js"),
     // Choose chain layout from canonical contents. Collapsing this fixture's
     // object literal makes Prettier change its output on the second pass.
     IgnorePattern::Exact("js/method-chain/multiple-members.js"),
