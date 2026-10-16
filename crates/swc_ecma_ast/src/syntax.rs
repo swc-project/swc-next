@@ -223,12 +223,36 @@ pub fn is_identifier(text: &[u8]) -> bool {
         })
 }
 
+const IDENT_START_ASCII: [bool; 256] = {
+    let mut table = [false; 256];
+    let mut byte = 0;
+    while byte < 128 {
+        let b = byte as u8;
+        table[byte] = b.is_ascii_alphabetic() || b == b'_' || b == b'$';
+        byte += 1;
+    }
+    table
+};
+
+const IDENT_CONTINUE_ASCII: [bool; 256] = {
+    let mut table = [false; 256];
+    let mut byte = 0;
+    while byte < 128 {
+        let b = byte as u8;
+        table[byte] = b.is_ascii_alphanumeric() || b == b'_' || b == b'$';
+        byte += 1;
+    }
+    table
+};
+
+#[inline(always)]
 pub fn is_ident_start_ascii(byte: u8) -> bool {
-    byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$'
+    IDENT_START_ASCII[byte as usize]
 }
 
+#[inline(always)]
 pub fn is_ident_continue_ascii(byte: u8) -> bool {
-    is_ident_start_ascii(byte) || byte.is_ascii_digit()
+    IDENT_CONTINUE_ASCII[byte as usize]
 }
 
 pub fn is_identifier_es5_and_esnext(text: &[u8]) -> bool {
