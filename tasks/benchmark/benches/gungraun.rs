@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use std::{fmt::Write, hint::black_box};
+use std::hint::black_box;
 
 use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
@@ -35,6 +35,9 @@ const UNDERSCORE: &str = include_str!("../files/underscore-1.5.2.js");
 const THREE: &str = include_str!("../files/three-0.138.3.js");
 const YUI: &str = include_str!("../files/yui-3.12.0.js");
 const TYPESCRIPT: &str = include_str!("../files/typescript.js");
+// Pinned fixture used to reproduce the semantic lookup regression in #937:
+// https://github.com/yuku-toolchain/parser-benchmark-files/blob/e25ab06730f743838b2c693d2126ea0162a661c6/checker.ts
+const TYPESCRIPT_CHECKER: &str = include_str!("../files/checker.ts");
 const CAL_COM_TSX: &str = include_str!("../files/cal.com.tsx");
 const ASTRO_CONFIG: &str = include_str!("../files/astro-config.ts");
 const EFFECT_SCHEMA_AST: &str = include_str!("../files/effect-schema-ast.ts");
@@ -112,17 +115,6 @@ fn setup_minifier(source: &'static str) -> Ast<'static> {
     ast
 }
 
-fn setup_shadowed_types() -> Ast<'static> {
-    let mut source = String::from("interface Type {} function check() { var Type;\n");
-    // Like TypeScript's checker.ts, each type reference skips a value-only binding.
-    // Keep enough symbols to expose a full symbol-table scan on every fallback.
-    for index in 0..1000 {
-        writeln!(source, "let value{index}: Type;").unwrap();
-    }
-    source.push('}');
-    setup_program(Box::leak(source.into_boxed_str()), Lang::Ts)
-}
-
 #[library_benchmark]
 #[bench::underscore(setup_minifier(UNDERSCORE))]
 #[bench::angular(setup_minifier(ANGULAR))]
@@ -138,7 +130,7 @@ fn bench_minifier(ast: Ast<'static>) -> Ast<'static> {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-#[bench::shadowed_types(setup_shadowed_types())]
+#[bench::typescript_checker(setup_program(TYPESCRIPT_CHECKER, Lang::Ts))]
 fn bench_analyze(ast: Ast<'static>) {
     black_box(analyze(&ast, AnalyzeOptions::default()));
 }
@@ -146,7 +138,7 @@ fn bench_analyze(ast: Ast<'static>) {
 #[library_benchmark]
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
-#[bench::shadowed_types(setup_shadowed_types())]
+#[bench::typescript_checker(setup_program(TYPESCRIPT_CHECKER, Lang::Ts))]
 fn bench_syntax_check(ast: Ast<'static>) {
     black_box(analyze(
         &ast,
