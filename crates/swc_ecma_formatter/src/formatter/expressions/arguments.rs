@@ -13,8 +13,8 @@ use crate::formatter::suppression::{
 };
 use crate::{FormatError, TrailingCommas, document::Writer};
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, CallExpression, Comment, CommentKind, Expr, ExprData, GetSpan, Span,
-    SubRange, TemplateElement,
+    Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
+    ExprData, GetSpan, Span, SubRange, TemplateElement,
 };
 
 #[derive(Clone, Copy)]
@@ -666,6 +666,7 @@ pub(super) struct ArgumentHead {
     pub(super) source_opening: Option<SourceArgumentOpening>,
     pub(super) ordinary_group: ArgumentGroup,
     pub(super) jsx_call: Option<CallExpression>,
+    pub(super) independent_callback: Option<ArrowFunctionExpression>,
 }
 
 #[derive(Clone, Copy)]
@@ -677,6 +678,8 @@ pub(super) struct SourceArgumentOpening {
 #[derive(Clone, Copy)]
 pub(super) enum CallArgumentFrame {
     Ordinary,
+    /// The selected block arrow retains its complete signature's own groups.
+    DecoratedFunction(ArrowFunctionExpression),
     Fixed {
         role: CallFrameRole,
         closing: LineConstraint,
@@ -708,6 +711,13 @@ impl CallArgumentFrame {
         matches!(self, Self::Fixed { .. })
     }
 
+    fn independent_callback(self) -> Option<ArrowFunctionExpression> {
+        match self {
+            Self::DecoratedFunction(callback) => Some(callback),
+            Self::Ordinary | Self::Fixed { .. } => None,
+        }
+    }
+
     fn angular_wrapper(self) -> Option<(Expr, CallExpression)> {
         match self {
             Self::Fixed {
@@ -730,7 +740,9 @@ impl CallArgumentFrame {
 
     fn separator(self, separator: Separator, constraint: LineConstraint, writer: &mut Writer<'_>) {
         match self {
-            Self::Ordinary => ArgumentLayout::Lines.separator(separator, constraint, writer),
+            Self::Ordinary | Self::DecoratedFunction(_) => {
+                ArgumentLayout::Lines.separator(separator, constraint, writer)
+            }
             Self::Fixed { .. } => match separator {
                 Separator::Source(source) => {
                     source.write(writer, FlatSeparator::Space, Writer::line);
@@ -1627,6 +1639,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     source_opening,
                     ordinary_group: group,
                     jsx_call,
+                    independent_callback: frame.independent_callback(),
                 },
                 selected,
                 missing_function,

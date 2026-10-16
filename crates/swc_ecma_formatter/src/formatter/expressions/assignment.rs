@@ -16,8 +16,9 @@ use crate::{
     document::{Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    ArgumentData, AssignmentExpression, CallExpression, Comment, CommentKind, Expr, ExprData,
-    GetSpan, Span, TemplateElement,
+    ArgumentData, AssignmentExpression, AssignmentTarget, AssignmentTargetData, CallExpression,
+    Comment, CommentKind, Expr, ExprData, GetSpan, PropertyKeyData, SimpleAssignmentTargetData,
+    Span, TemplateElement,
 };
 
 #[derive(Clone, Copy)]
@@ -165,6 +166,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let mut target = self.assignment_source_target(assignment)?;
         let right = assignment.right(self.ast);
+        let decorated_function = self
+            .assignment_target_is_module_exports(assignment.left(self.ast))
+            .then(|| self.decorated_function_call(right))
+            .flatten();
         let suppression = if self.has_suppression {
             self.prepare_assignment_suppression(
                 Span::new(target.span().end, right.span(self.ast).start),
@@ -193,14 +198,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
                 let tail = self.format_source_target(
                     &target,
-                    ExpressionContext::at(ExpressionPosition::AssignmentTarget)
+                    ExpressionContext::at(ExpressionPosition::MemberAssignmentObject)
                         .with_parent_head(context)
                         .with_content_mode(source.left),
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;
-                self.format_delimited_source_gap(source.gap, DelimitedFollowing::Node, writer)?
-                    .following
+                let gap =
+                    self.format_delimited_source_gap(source.gap, DelimitedFollowing::Node, writer)?;
+                gap.following
                     .write(writer, FlatSeparator::Space, Writer::space);
                 let parent = match context.position {
                     ExpressionPosition::Statement => AssignmentParent::Statement,
@@ -212,15 +218,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .with_source_tail_owner(SourceTailOwner::Enclosure)
                         .with_content_mode(source.right)
                         .with_tail_owner(context.tail_owner)
-                        .with_tail_boundary(context.tail_boundary),
+                        .with_tail_boundary(context.tail_boundary)
+                        .with_decorated_function_call(decorated_function),
                     writer,
                 )
             });
         }
         let content = self.expression_content(right);
         let data = content.data;
-        let operator = target.operator();
         let head = self.assignment_expression_head(&content);
+        let operator = target.operator();
         let boundary = self.assignment_boundary(
             target.left_end(),
             head.as_ref().unwrap_or(&content),
@@ -235,7 +242,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_source_tail_owner(SourceTailOwner::Enclosure)
             .with_content_mode(boundary.mode)
             .with_tail_owner(context.tail_owner)
-            .with_tail_boundary(context.tail_boundary);
+            .with_tail_boundary(context.tail_boundary)
+            .with_decorated_function_call(decorated_function);
         let mut layout = self.assignment_layout(data, context.position, right_context, &boundary);
         let binding = target.binding();
         if let Some(pattern) = binding {
@@ -268,7 +276,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             let tail = formatter.format_source_target(
                 &target,
-                ExpressionContext::at(ExpressionPosition::AssignmentTarget)
+                ExpressionContext::at(ExpressionPosition::MemberAssignmentObject)
                     .with_parent_head(context),
                 writer,
             )?;
@@ -310,7 +318,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             let mut right_context = right_context;
             if matches!(layout, AssignmentLayout::ChainTail) {
-                right_context.arrow_layout = super::arrows::ArrowLayout::AssignmentContinuation;
+                right_context = right_context
+                    .with_arrow_layout(super::arrows::ArrowLayout::AssignmentContinuation);
             }
             if right_context.is_formatted_conditional_rhs(data) {
                 let operand_indent = match layout {
@@ -355,22 +364,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comments.claim(boundary.leading)?;
                 self.comments.claim(boundary.trailing)?;
                 if let Some(head) = boundary.resolved_right_head() {
-                    self.format_prepared_expression_with_resolved_head(
+                    return self.format_prepared_expression_with_resolved_head(
                         right,
                         content,
                         head,
                         right_context,
                         writer,
-                    )
-                } else {
-                    self.format_prepared_expression_with_leading_comments(
-                        right,
-                        content,
-                        boundary.right_head(),
-                        right_context,
-                        writer,
-                    )
+                    );
                 }
+                self.format_prepared_expression_with_leading_comments(
+                    right,
+                    content,
+                    boundary.right_head(),
+                    right_context,
+                    writer,
+                )
             };
             let separator = |writer: &mut Writer<'ast>| {
                 boundary
@@ -436,6 +444,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// The ordinary operator packet and its complete operand share one layout decision.
+    fn assignment_target_is_module_exports(&self, target: AssignmentTarget) -> bool {
+        let ast = self.ast;
+        let AssignmentTargetData::SimpleAssignmentTarget(target) =
+            ast.assignment_target_data(target)
+        else {
+            return false;
+        };
+        let SimpleAssignmentTargetData::MemberExpression(member) =
+            ast.simple_assignment_target_data(target)
+        else {
+            return false;
+        };
+        if member.computed(ast) || member.optional(ast) {
+            return false;
+        }
+        matches!(
+            (ast.expr_data(member.object(ast)), ast.property_key_data(member.property(ast))),
+            (ExprData::IdentifierReference(object), PropertyKeyData::IdentifierName(property))
+                if ast.get_utf8(object.name(ast)) == "module"
+                    && ast.get_utf8(property.name(ast)) == "exports"
+        )
+    }
+
     pub(in crate::formatter) fn format_operator_comment_tail(
         &self,
         boundary: &AssignmentBoundary<'ast>,
