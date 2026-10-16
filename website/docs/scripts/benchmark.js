@@ -94,6 +94,7 @@ function main() {
     "--swc-dir": path.resolve(root, "../swc"),
     "--runs": "200",
     "--warmup": "20",
+    "--native-iterations": "10",
     "--js-runs": "2",
     "--js-time-ms": "1000",
     "--cpu": undefined,
@@ -102,7 +103,7 @@ function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 200] [--warmup 20] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
+      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 200] [--warmup 20] [--native-iterations 10] [--js-runs 2] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
     );
     return;
   }
@@ -122,6 +123,11 @@ function main() {
     Number.isInteger(Number(options["--warmup"])) &&
       Number(options["--warmup"]) >= 0,
     "--warmup must be non-negative",
+  );
+  assert(
+    Number.isSafeInteger(Number(options["--native-iterations"])) &&
+      Number(options["--native-iterations"]) > 0,
+    "--native-iterations must be positive",
   );
   assert(
     Number.isInteger(Number(options["--js-runs"])) &&
@@ -199,10 +205,7 @@ function main() {
   console.error(`Benchmark CPU: ${cpu}`);
 
   // Hyperfine executes these arguments directly, without a shell.
-  const quote = (value) =>
-    /^[\w@%+=:,./-]+$/.test(value)
-      ? value
-      : `'${value.replaceAll("'", "'\\''")}'`;
+  const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
   const lines = ["# Benchmark", ""];
   for (const [title, feature] of features) {
     lines.push(`## ${title}`, "");
@@ -214,7 +217,7 @@ function main() {
       const commands = ["swc_next", "swc"].map((engine) =>
         isJs
           ? [
-              path.relative(root, process.execPath),
+              process.execPath,
               `tasks/benchmark/bin/${engine}.js`,
               input,
               feature,
@@ -223,9 +226,12 @@ function main() {
               `target/website-benchmark/release/${engine.replace("_", "-")}`,
               input,
               feature,
+              options["--native-iterations"],
             ],
       );
-      let names = [`swc-next@${commits[0]}`, `swc@${commits[1]}`];
+      let names = [`swc-next@${commits[0]}`, `swc@${commits[1]}`].map(
+        (name) => `${name}; ${options["--native-iterations"]} iterations`,
+      );
       if (isJs) {
         const timings = commands.map((command) =>
           Number(
@@ -253,33 +259,28 @@ function main() {
       }
       // Each JS process warms its own V8 state; hyperfine warmups would use
       // separate processes and would not warm the measured parser.
-      const hyperfineArgs = [
-        ["--style", "basic"],
-        ["--shell", "none"],
-        ["--warmup", isJs ? "0" : options["--warmup"]],
-        ["--runs", isJs ? options["--js-runs"] : options["--runs"]],
-        ["--metrics", "time_wall_clock:ms,memory_peak_resident:MiB"],
-        ...commands.flatMap((command, index) => [
-          ["--command-name", names[index]],
-          [command.map(quote).join(" ")],
-        ]),
-      ];
-      const invocation = [
-        `taskset --cpu-list ${cpu} hyperfine`,
-        ...hyperfineArgs.map((args) => `  ${args.map(quote).join(" ")}`),
-      ].join(" \\\n");
       const output = run("taskset", [
         "--cpu-list",
         String(cpu),
         "hyperfine",
-        ...hyperfineArgs.flat(),
+        "--style",
+        "basic",
+        "--shell",
+        "none",
+        "--warmup",
+        isJs ? "0" : options["--warmup"],
+        "--runs",
+        isJs ? options["--js-runs"] : options["--runs"],
+        "--metrics",
+        "time_wall_clock:ms,memory_peak_resident:MiB",
+        ...commands.flatMap((command, index) => [
+          "--command-name",
+          names[index],
+          command.map(quote).join(" "),
+        ]),
       ]);
       lines.push(
         `### ${file}`,
-        "",
-        "```sh",
-        invocation,
-        "```",
         "",
         "```text",
         output.replace(/[ \t]+$/gm, ""),

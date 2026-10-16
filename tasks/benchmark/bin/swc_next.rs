@@ -6,11 +6,14 @@ use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    assert_eq!(
-        args.len(),
-        3,
-        "usage: swc-next <file.ts> <parse|isolated-declaration|type-strip>"
+    assert!(
+        matches!(args.len(), 3 | 4),
+        "usage: swc-next <file.ts> <parse|isolated-declaration|type-strip> [iterations]"
     );
+    let iterations = args.get(3).map_or(10, |value| {
+        value.parse::<usize>().expect("invalid iterations")
+    });
+    assert!(iterations > 0, "iterations must be positive");
     let operation = args[2].as_str();
     assert!(matches!(
         operation,
@@ -24,27 +27,29 @@ fn main() {
         ..Options::default()
     };
 
-    if operation == "type-strip" {
-        let result = swc_next_type_strip::strip_types(&source, options);
-        assert!(result.diagnostics.is_empty(), "type stripping failed");
-        black_box(result);
-        return;
-    }
+    for _ in 0..iterations {
+        if operation == "type-strip" {
+            let result = swc_next_type_strip::strip_types(&source, options);
+            assert!(result.diagnostics.is_empty(), "type stripping failed");
+            black_box(result);
+            continue;
+        }
 
-    let allocator = Allocator::default();
-    let parsed = Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
-    assert!(parsed.diagnostics.is_empty(), "parse failed");
-    let mut ast = parsed.ast;
-    if operation == "isolated-declaration" {
-        let semantic = swc_next_ecma_semantic::analyze(&ast, Default::default()).semantic;
-        black_box(swc_next_isolated_declarations::transform(
-            &mut ast, &semantic,
-        ));
-        black_box(swc_next_ecma_codegen::print(
-            &allocator,
-            &ast,
-            Default::default(),
-        ));
+        let allocator = Allocator::default();
+        let parsed = Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty(), "parse failed");
+        let mut ast = parsed.ast;
+        if operation == "isolated-declaration" {
+            let semantic = swc_next_ecma_semantic::analyze(&ast, Default::default()).semantic;
+            black_box(swc_next_isolated_declarations::transform(
+                &mut ast, &semantic,
+            ));
+            black_box(swc_next_ecma_codegen::print(
+                &allocator,
+                &ast,
+                Default::default(),
+            ));
+        }
+        black_box(ast);
     }
-    black_box(ast);
 }

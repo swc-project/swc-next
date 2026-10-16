@@ -14,11 +14,14 @@ use swc_core::{
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    assert_eq!(
-        args.len(),
-        3,
-        "usage: swc <file.ts> <parse|isolated-declaration|type-strip>"
+    assert!(
+        matches!(args.len(), 3 | 4),
+        "usage: swc <file.ts> <parse|isolated-declaration|type-strip> [iterations]"
     );
+    let iterations = args.get(3).map_or(10, |value| {
+        value.parse::<usize>().expect("invalid iterations")
+    });
+    assert!(iterations > 0, "iterations must be positive");
     let operation = args[2].as_str();
     assert!(matches!(
         operation,
@@ -43,52 +46,54 @@ fn main() {
         })
     };
 
-    if operation == "parse" {
-        let lexer = Lexer::new(
-            syntax,
-            EsVersion::latest(),
-            StringInput::new(&source, BytePos(1), BytePos(1 + source.len() as u32)),
-            None,
-        );
-        let mut parser = Parser::new_from(lexer);
-        black_box(parser.parse_module().expect("parse failed"));
-        assert!(parser.take_errors().is_empty(), "parse diagnostics");
-        return;
-    }
-
-    GLOBALS.set(&Globals::default(), || {
-        let cm: Lrc<SourceMap> = Default::default();
-        if operation == "type-strip" {
-            assert!(typescript, "type-strip requires TypeScript input");
-            let handler = Handler::with_emitter_writer(Box::new(io::sink()), Some(cm.clone()));
-            black_box(
-                swc_ts_fast_strip::operate(
-                    &cm,
-                    &handler,
-                    source,
-                    swc_ts_fast_strip::Options {
-                        module: Some(true),
-                        parser: ts_syntax,
-                        ..Default::default()
-                    },
-                )
-                .expect("type stripping failed"),
+    for _ in 0..iterations {
+        if operation == "parse" {
+            let lexer = Lexer::new(
+                syntax,
+                EsVersion::latest(),
+                StringInput::new(&source, BytePos(1), BytePos(1 + source.len() as u32)),
+                None,
             );
-            assert!(!handler.has_errors(), "type stripping diagnostics");
-            return;
+            let mut parser = Parser::new_from(lexer);
+            black_box(parser.parse_module().expect("parse failed"));
+            assert!(parser.take_errors().is_empty(), "parse diagnostics");
+            continue;
         }
-        let filename = FileName::Real(args[1].clone().into());
-        let file = cm.new_source_file(filename.clone().into(), source);
-        let lexer = Lexer::new(syntax, EsVersion::latest(), StringInput::from(&*file), None);
-        let mut parser = Parser::new_from(lexer);
-        let mut program = Program::Module(parser.parse_module().expect("parse failed"));
-        assert!(parser.take_errors().is_empty(), "parse diagnostics");
-        let unresolved = Mark::new();
-        program.visit_mut_with(&mut resolver(unresolved, Mark::new(), typescript));
-        black_box(
-            FastDts::new(filename.into(), unresolved, FastDtsOptions::default())
-                .transform(&mut program),
-        );
-        black_box(to_code_default(cm, None, &program));
-    });
+
+        GLOBALS.set(&Globals::default(), || {
+            let cm: Lrc<SourceMap> = Default::default();
+            if operation == "type-strip" {
+                assert!(typescript, "type-strip requires TypeScript input");
+                let handler = Handler::with_emitter_writer(Box::new(io::sink()), Some(cm.clone()));
+                black_box(
+                    swc_ts_fast_strip::operate(
+                        &cm,
+                        &handler,
+                        source.clone(),
+                        swc_ts_fast_strip::Options {
+                            module: Some(true),
+                            parser: ts_syntax,
+                            ..Default::default()
+                        },
+                    )
+                    .expect("type stripping failed"),
+                );
+                assert!(!handler.has_errors(), "type stripping diagnostics");
+                return;
+            }
+            let filename = FileName::Real(args[1].clone().into());
+            let file = cm.new_source_file(filename.clone().into(), source.clone());
+            let lexer = Lexer::new(syntax, EsVersion::latest(), StringInput::from(&*file), None);
+            let mut parser = Parser::new_from(lexer);
+            let mut program = Program::Module(parser.parse_module().expect("parse failed"));
+            assert!(parser.take_errors().is_empty(), "parse diagnostics");
+            let unresolved = Mark::new();
+            program.visit_mut_with(&mut resolver(unresolved, Mark::new(), typescript));
+            black_box(
+                FastDts::new(filename.into(), unresolved, FastDtsOptions::default())
+                    .transform(&mut program),
+            );
+            black_box(to_code_default(cm, None, &program));
+        });
+    }
 }
