@@ -155,7 +155,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let context = ExpressionContext::variable_initializer()
             .with_tail_boundary(punctuation.tail_boundary())
-            .with_content_mode(mode);
+            .with_content_mode(mode)
+            .with_decorated_function_call(self.decorated_function_call(expression));
         writer.text("export");
         let tail = if prefix_mode == ContentMode::Verbatim {
             self.format_verbatim(prefix, writer)?;

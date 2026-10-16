@@ -242,6 +242,7 @@ impl JsxCallbackContext {
 pub(super) enum CallArgumentOwner {
     Ordinary,
     AngularTestWrapper(CallExpression),
+    DecoratedFunction(CallExpression),
 }
 
 #[derive(Clone, Copy)]
@@ -457,6 +458,14 @@ impl ExpressionContext {
 
     pub(super) fn with_operand_indent(mut self, owner: OperandIndent) -> Self {
         self.operand_indent = owner;
+        self
+    }
+
+    pub(super) fn with_decorated_function_call(mut self, call: Option<CallExpression>) -> Self {
+        self.call_argument_owner = call.map_or(
+            CallArgumentOwner::Ordinary,
+            CallArgumentOwner::DecoratedFunction,
+        );
         self
     }
 
@@ -1510,7 +1519,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             ExprData::CallExpression(call) => {
-                if !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
+                if !matches!(context.call_argument_owner,
+                    CallArgumentOwner::DecoratedFunction(owner) if owner == call)
+                    && !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
                     && matches!(
                         self.fluent_chain_eligibility(
                             self.ast.expr_data(expression),

@@ -365,7 +365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             role: CallbackRole::Test,
             prepared_body: None,
         };
-        let (value, tail) = self.record_callback(&mut selected, false, jsx_call, writer)?;
+        let (value, tail) = self.record_callback(&mut selected, false, jsx_call, None, writer)?;
         match value {
             RecordedValue::Callback {
                 signature: Some(GroupedSignature::Flat(signature)),
@@ -796,6 +796,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         selected: &mut SelectedCallback,
         sole_argument: bool,
         jsx_call: Option<CallExpression>,
+        independent_callback: Option<ArrowFunctionExpression>,
         writer: &mut Writer<'ast>,
     ) -> Result<(RecordedValue<'ast>, Option<ExpressionTail<'ast>>), FormatError> {
         let callback = selected.callback;
@@ -907,7 +908,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
                 Some(GroupedSignature::Independent(signature))
             }
-            _ if selected.role == CallbackRole::Last && independent => {
+            _ if selected.role == CallbackRole::Last
+                && (independent
+                    || matches!(callback.kind, CallbackKind::Arrow(arrow)
+                        if independent_callback == Some(arrow))) =>
+            {
                 Some(GroupedSignature::Independent(signature))
             }
             _ => signature.try_flat().map(GroupedSignature::Flat),
@@ -998,8 +1003,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let Some(function) = missing_function.take() {
                         *function = true;
                     }
-                    let (mut value, tail) =
-                        self.record_callback(selected, sole_argument, head.jsx_call, writer)?;
+                    let (mut value, tail) = self.record_callback(
+                        selected,
+                        sole_argument,
+                        head.jsx_call,
+                        head.independent_callback,
+                        writer,
+                    )?;
                     if tail.as_ref().is_some_and(|tail| !tail.comments.is_empty())
                         && let RecordedValue::Callback { normal, .. } = value
                     {

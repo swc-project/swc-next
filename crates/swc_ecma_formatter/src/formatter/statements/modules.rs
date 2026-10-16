@@ -720,7 +720,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .filter(|_| !comments.is_empty()),
                     },
                     ExpressionContext::at(ExpressionPosition::ExportDefault)
-                        .with_content_mode(mode),
+                        .with_content_mode(mode)
+                        .with_decorated_function_call(self.decorated_function_call(expression)),
                     None,
                     writer,
                 )?;
