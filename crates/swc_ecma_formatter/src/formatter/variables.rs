@@ -104,6 +104,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .peekable();
         let start = keyword.map_or(declaration.span(ast).start, |keyword| keyword.span.start);
         let kind = declaration.kind(ast);
+        // The actual declarator resolves this proof using its prepared RHS.
+        let definition_owner =
+            (kind == VariableKind::Const && remaining.is_empty()).then_some(first);
         let trivia_start = if kind == VariableKind::AwaitUsing {
             let gap = Span::new(start + 5, first.span(ast).start);
             let comments = self.comments.in_range(gap);
@@ -205,8 +208,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if keyword.is_some_and(|keyword| keyword.suppresses_variable(declarator)) {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
-                    let tail =
-                        self.format_variable_declarator(declarator, item.mode, context, writer)?;
+                    let tail = self.format_variable_declarator(
+                        declarator,
+                        item.mode,
+                        context,
+                        definition_owner,
+                        writer,
+                    )?;
                     if matches!(following, FollowingItem::End) {
                         Ok(ControlFlow::Break(tail))
                     } else {
@@ -237,6 +245,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declarator: VariableDeclarator,
         mode: ContentMode,
         context: VariableContext,
+        definition_owner: Option<VariableDeclarator>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -246,7 +255,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let annotation = declarator.type_annotation(ast);
         if annotation.is_some() || declarator.definite(ast) {
-            return self.format_typed_variable_declarator(declarator, annotation, context, writer);
+            return self.format_typed_variable_declarator(
+                declarator,
+                annotation,
+                context,
+                definition_owner,
+                writer,
+            );
         }
         let left = declarator.id(ast);
         let Some(right) = declarator.init(ast) else {
@@ -260,6 +275,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Err(self.unsupported("variable initializer boundary", declarator));
         };
         let content = self.expression_content(right);
+        let decorated_function = if definition_owner == Some(declarator) {
+            self.decorated_function_call_content(&content)
+        } else {
+            None
+        };
         let mut boundary = self.assignment_boundary(
             left_end,
             &content,
@@ -283,20 +303,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let initializer_context = self.variable_initializer_context(right, context);
+        let initializer_context = self
+            .variable_initializer_context(right, context)
+            .with_decorated_function_call(decorated_function);
         let mut rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
-        if matches!(rhs_layout, RhsLayout::Fluid)
+        let fixed_left_policy = matches!(rhs_layout, RhsLayout::Fluid)
             && boundary.mode == ContentMode::Formatted
-            && left_mode == ContentMode::Formatted
-            && matches!(
-                ast.binding_pattern_data(left),
-                BindingPatternData::BindingIdentifier(_)
-            )
             && matches!(
                 content.data,
                 ExprData::TemplateLiteral(_)
                     | ExprData::TaggedTemplateExpression(_)
                     | ExprData::Class(_)
+            );
+        if fixed_left_policy
+            && left_mode == ContentMode::Formatted
+            && matches!(
+                ast.binding_pattern_data(left),
+                BindingPatternData::BindingIdentifier(_)
             )
             && !matches!(content.data, ExprData::Class(class) if !class.decorators(ast).is_empty())
         {

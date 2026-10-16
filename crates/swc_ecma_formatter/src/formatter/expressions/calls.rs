@@ -1,6 +1,7 @@
 //! Callees and source-owned argument delimiters.
 use super::AccessKind;
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
+use super::parentheses::ExpressionContent;
 use super::{
     CallArgumentOwner, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext,
     MemberLayout, TailOwner,
@@ -10,7 +11,8 @@ use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::ArgumentData;
 use swc_next_ecma_ast::{
-    Argument, CallExpression, Expr, ExprData, GetSpan, PropertyKeyData, Span, SubRange,
+    Argument, ArrowFunctionBodyData, ArrowFunctionExpression, CallExpression, Expr, ExprData,
+    GetSpan, PropertyKeyData, Span, SubRange,
 };
 enum TestCallee {
     It,
@@ -224,11 +226,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             arguments.frame = frame;
         }
-        arguments.curried_callee = self.curried_call_callee(
-            arguments.callee,
-            call.arguments(self.ast),
-            arguments.callee_mode,
-        );
+        if matches!(arguments.frame, CallArgumentFrame::Ordinary)
+            && matches!(context.call_argument_owner,
+                CallArgumentOwner::DecoratedFunction(owner) if owner == call)
+            && arguments.callee_mode == ContentMode::Formatted
+            && let Some(callback) = self.decorated_function_callback(call)
+        {
+            arguments.frame = CallArgumentFrame::DecoratedFunction(callback);
+        }
+        arguments.curried_callee =
+            self.curried_call_callee(callee, call_arguments, arguments.callee_mode);
         Ok(arguments)
     }
     pub(in crate::formatter) fn call_callee_content_data(&self, callee: Expr) -> ExprData {
@@ -366,6 +373,71 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     _ => None,
                 }
+            }
+            _ => None,
+        }
+    }
+
+    pub(in crate::formatter) fn decorated_function_call(
+        &self,
+        expression: Expr,
+    ) -> Option<CallExpression> {
+        self.decorated_function_call_content(&self.expression_content(expression))
+    }
+
+    pub(in crate::formatter) fn decorated_function_call_content(
+        &self,
+        content: &ExpressionContent,
+    ) -> Option<CallExpression> {
+        let ExprData::CallExpression(call) = content.data else {
+            return None;
+        };
+        self.decorated_function_callback(call)?;
+        Some(call)
+    }
+
+    fn decorated_function_callback(&self, call: CallExpression) -> Option<ArrowFunctionExpression> {
+        let ast = self.ast;
+        let arguments = call.arguments(ast);
+        if call.optional(ast) || arguments.len() != 1 {
+            return None;
+        }
+        let argument = ast.get_node_in_sub_range(arguments.first()?);
+        let ArgumentData::Expr(expression) = ast.argument_data(argument) else {
+            return None;
+        };
+        let ExprData::ArrowFunctionExpression(arrow) = self.expression_content(expression).data
+        else {
+            return None;
+        };
+        if !matches!(
+            ast.arrow_function_body_data(arrow.body(ast)),
+            ArrowFunctionBodyData::FunctionBody(_)
+        ) {
+            return None;
+        }
+        let ExprData::CallExpression(factory) = self.call_callee_content_data(call.callee(ast))
+        else {
+            return None;
+        };
+        if factory.optional(ast) {
+            return None;
+        }
+        match self.call_callee_content_data(factory.callee(ast)) {
+            ExprData::IdentifierReference(_) => Some(arrow),
+            ExprData::MemberExpression(member)
+                if !member.computed(ast)
+                    && !member.optional(ast)
+                    && matches!(
+                        self.call_callee_content_data(member.object(ast)),
+                        ExprData::IdentifierReference(_)
+                    )
+                    && matches!(
+                        ast.property_key_data(member.property(ast)),
+                        PropertyKeyData::IdentifierName(_)
+                    ) =>
+            {
+                Some(arrow)
             }
             _ => None,
         }

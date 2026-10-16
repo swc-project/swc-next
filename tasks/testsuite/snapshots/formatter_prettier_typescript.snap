@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 802/811 (98.89%)
-Snapshot matched: 802/811
+Passed: 803/811 (99.01%)
+Snapshot matched: 803/811
 AST parity: 811/811
 AST mismatched: 0/811
 AST format errors: 0/811
-Mismatched: 9/811
+Mismatched: 8/811
 Format errors: 0/811
 Panicked: 0/811
 Not idempotent: 0/811
@@ -28,7 +28,6 @@ Unsupported option sets: 4
 - typescript/call/callee-comments.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/method_types.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/import-type/long-module-name/long-module-name4.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/last-argument-expansion/decorated-function.tsx: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/satisfies-operators/comments-unstable.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/union/consistent-with-flow/single-type.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 

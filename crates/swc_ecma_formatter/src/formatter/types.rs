@@ -2295,6 +2295,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declarator: VariableDeclarator,
         annotation: Option<TsTypeAnnotation>,
         context: VariableContext,
+        definition_owner: Option<VariableDeclarator>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -2367,7 +2368,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let context = self.variable_initializer_context(right, context);
+        let mut context = self.variable_initializer_context(right, context);
         let is_identifier_annotation = annotation.is_some()
             && matches!(
                 ast.binding_pattern_data(pattern),
@@ -2380,62 +2381,79 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeArgumentOwner::Ordinary
             }
         };
-        let (group, layout, type_argument_owner) =
-            if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
-                let group = if left_mode == ContentMode::Formatted {
-                    self.bound_initializer_binding_group(pattern)
-                } else {
-                    BindingGroup::Auto
-                };
-                let type_argument_owner =
-                    if left_mode == ContentMode::Formatted && is_identifier_annotation {
-                        let content = self.expression_content(right);
-                        annotation_owner(self.source_parentheses_rhs_content(
-                            content.data,
-                            context.with_content_mode(right_mode),
-                        ))
-                    } else {
-                        TypeArgumentOwner::Ordinary
-                    };
-                (
-                    group,
-                    InitializerLayout::Bound { gap, right_mode },
-                    type_argument_owner,
+        let (group, layout, type_argument_owner) = if left_mode == ContentMode::Verbatim
+            || right_mode == ContentMode::Verbatim
+        {
+            let group = if left_mode == ContentMode::Formatted {
+                self.bound_initializer_binding_group(pattern)
+            } else {
+                BindingGroup::Auto
+            };
+            let content = (left_mode == ContentMode::Formatted && is_identifier_annotation
+                || right_mode == ContentMode::Formatted && definition_owner == Some(declarator))
+            .then(|| self.expression_content(right));
+            if right_mode == ContentMode::Formatted && definition_owner == Some(declarator) {
+                context = context.with_decorated_function_call(
+                    content
+                        .as_ref()
+                        .and_then(|content| self.decorated_function_call_content(content)),
+                );
+            }
+            let type_argument_owner = match content.as_ref() {
+                Some(content)
+                    if left_mode == ContentMode::Formatted && is_identifier_annotation =>
+                {
+                    let data = self.source_parentheses_rhs_content(
+                        content,
+                        context.with_content_mode(right_mode),
+                    );
+                    annotation_owner(data)
+                }
+                _ => TypeArgumentOwner::Ordinary,
+            };
+            (
+                group,
+                InitializerLayout::Bound { gap, right_mode },
+                type_argument_owner,
+            )
+        } else {
+            let content = self.expression_content(right);
+            if definition_owner == Some(declarator) {
+                context = context
+                    .with_decorated_function_call(self.decorated_function_call_content(&content));
+            }
+            let boundary = self.assignment_boundary(
+                left_end,
+                &content,
+                Span::new(operator, operator + 1),
+                right.span(self.ast).end,
+            )?;
+            let data = if is_identifier_annotation {
+                self.source_parentheses_rhs_content(
+                    &content,
+                    context.with_content_mode(boundary.mode),
                 )
             } else {
-                let content = self.expression_content(right);
-                let boundary = self.assignment_boundary(
-                    left_end,
-                    &content,
-                    Span::new(operator, operator + 1),
-                    right.span(self.ast).end,
-                )?;
-                let data = if is_identifier_annotation {
-                    self.source_parentheses_rhs_content(
-                        content.data,
-                        context.with_content_mode(boundary.mode),
-                    )
-                } else {
-                    content.data
-                };
-                let type_argument_owner = annotation_owner(data);
-                let rhs_layout = self.ordinary_rhs_layout(content.data, context, &boundary);
-                let (group, rhs_layout) = self.binding_initializer_layout(
-                    pattern,
-                    BindingInitializerOwner::Variable { annotation },
-                    content.data,
-                    &boundary,
-                    rhs_layout,
-                );
-                (
-                    group,
-                    InitializerLayout::Formatted {
-                        boundary,
-                        rhs_layout,
-                    },
-                    type_argument_owner,
-                )
+                content.data
             };
+            let type_argument_owner = annotation_owner(data);
+            let rhs_layout = self.ordinary_rhs_layout(content.data, context, &boundary);
+            let (group, rhs_layout) = self.binding_initializer_layout(
+                pattern,
+                BindingInitializerOwner::Variable { annotation },
+                content.data,
+                &boundary,
+                rhs_layout,
+            );
+            (
+                group,
+                InitializerLayout::Formatted {
+                    boundary,
+                    rhs_layout,
+                },
+                type_argument_owner,
+            )
+        };
         group.with_initializer_group(writer, |writer| {
             if left_mode == ContentMode::Verbatim {
                 self.format_verbatim(owner, writer)?;

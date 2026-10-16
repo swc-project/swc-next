@@ -665,10 +665,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: &ExpressionContent,
         mode: ContentMode,
     ) -> ExprData {
-        self.source_parentheses_rhs_content(
-            content.data,
-            ExpressionContext::at(ExpressionPosition::PropertyValue).with_content_mode(mode),
-        )
+        let context =
+            ExpressionContext::at(ExpressionPosition::PropertyValue).with_content_mode(mode);
+        self.source_parentheses_rhs_content(content, context)
     }
 
     pub(in crate::formatter) fn source_parentheses_head_content(
@@ -736,10 +735,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(in crate::formatter) fn source_parentheses_rhs_content(
         &self,
-        data: ExprData,
+        content: &ExpressionContent,
         context: ExpressionContext,
     ) -> ExprData {
-        self.source_parentheses_head_content(data, context).data
+        self.source_parentheses_head_content(content.data, context)
+            .data
     }
 
     /// Only the printer that emits this pair can claim its removed source tail.
