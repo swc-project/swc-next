@@ -59,8 +59,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes valgrind
           cargo install --locked --version 0.20.0 gungraun-runner
-      - name: Test harness and reporting
-        run: node --test tasks/benchmark/js/*.test.mjs
       - name: Prepare both revisions and frozen harness
         id: prepare
         run: node .github/scripts/run-gungraun-js.mjs --prepare
@@ -191,14 +189,44 @@ jobs:
           JS_BENCH_REPEATABILITY: ${{ needs.repeatability.result }}
         run: node .github/scripts/collect-gungraun-js.mjs "$RUNNER_TEMP/reports"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        id: upload-results
         if: always()
         with:
           name: gungraun-js-report
-          path: |
-            ${{ runner.temp }}/reports/*.json
-            ${{ runner.temp }}/reports/summary.md
+          path: ${{ runner.temp }}/reports
           retention-days: 90
           overwrite: true
+      - name: Render benchmark review
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.upload-results.outputs.artifact-url }}
+          BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha || inputs.head }}
+        run: |
+          summary="$RUNNER_TEMP/reports/summary.md"
+          test -f "$summary" || exit 0
+          review="$RUNNER_TEMP/gungraun-js-review.md"
+          {
+            echo '<!-- gungraun-js-api -->'
+            echo '## JavaScript API Gungraun benchmark diff'
+            echo
+            if [[ -f "$RUNNER_TEMP/reports/revisions.txt" ]]
+            then
+              cat "$RUNNER_TEMP/reports/revisions.txt"
+            else
+              echo "Base: \`$BASE_REF\`; compare: \`$HEAD_REF\`"
+            fi
+            echo
+            echo 'Values are shown as `compare / base`.'
+            echo
+            if [[ -n "$ARTIFACT_URL" ]]
+            then
+              echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
+              echo
+            fi
+            cat "$summary"
+          } > "$review"
+          cat "$review" >> "$GITHUB_STEP_SUMMARY"
       - name: Publish comparison
         if: >-
           always() && github.event_name == 'pull_request' &&
@@ -207,18 +235,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          test -f "$RUNNER_TEMP/reports/summary.md" || exit 0
-          comment="$RUNNER_TEMP/gungraun-js-comment.md"
-          {
-            echo '<!-- gungraun-js-api -->'
-            cat "$RUNNER_TEMP/reports/summary.md"
-            echo
-            echo "Base: $BASE_SHA; head: $HEAD_SHA"
-            echo "[Profiles, metadata and repeatability check]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
-          } > "$comment"
+          comment="$RUNNER_TEMP/gungraun-js-review.md"
+          test -f "$comment" || exit 0
           id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- gungraun-js-api -->"))) | .id' | head -1)"
           if [[ -n "$id" ]]; then
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@"$comment"

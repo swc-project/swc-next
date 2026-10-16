@@ -5,7 +5,7 @@ import { appendFileSync, closeSync, copyFileSync, mkdirSync, openSync, readFileS
 import { cpus } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { selectCases, fixtures } from "../../tasks/benchmark/js/runner.mjs";
-import { loadSummaries } from "./render-gungraun-summary.mjs";
+import { loadSummaries, renderFailureSummary } from "./render-gungraun-summary.mjs";
 import { compare, render, validateRepeatability } from "./render-gungraun-js-summary.mjs";
 
 const root = process.cwd();
@@ -114,7 +114,7 @@ async function measure() {
   } catch (error) {
     metadata.status = "failed";
     metadata.error = error.message;
-    writeFileSync(join(output, "summary.md"), "## JavaScript API Gungraun comparison\n\nComparison failed. See workflow logs and metadata.json.\n");
+    writeFileSync(join(output, "summary.md"), renderFailureSummary(error.message));
     throw error;
   } finally {
     saveMetadata();

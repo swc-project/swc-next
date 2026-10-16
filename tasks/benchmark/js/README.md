@@ -81,6 +81,20 @@ tool versions, Node flags, build settings and SHA-256 hashes of the harness and
 fixtures. `base-summaries.json` preserves baseline summaries before the head run.
 The release build retains symbols and debug information on both sides.
 
+The review follows the native Gungraun structure: revisions, a raw-data download
+link, Callgrind tables grouped by operation, and collapsed benchmark details.
+The PR comment and Actions summary use the same content. The report artifact
+includes all downloaded result shards, so its download link contains the raw
+profiles and logs as well as the combined comparison, retained for 90 days.
+
+Tables share the native renderer: `Benchmark`, `Ir (K)` and `Change`.
+Instruction counts are three-process medians shown as compare / base,
+truncated to whole thousands. Changes use the exact medians and are rounded to
+at most three decimal places. Green means lower Ir, red means higher Ir, and
+white means unchanged at the displayed precision or inconclusive due to
+overlapping ranges. Exact medians and ranges are shown in the collapsed
+benchmark results; `comparison.json` also retains every trial.
+
 Ir is an instruction count under Valgrind, not wall time. JIT is disabled;
 three samples do not guarantee statistical significance. Overlapping ranges
 are inconclusive. Inspect profiles and repeat comparisons near an optimization
@@ -100,7 +114,6 @@ counts and profiles before rerunning.
 ## Harness checks
 
 ```sh
-node --test tasks/benchmark/js/*.test.mjs
 cargo check --locked --manifest-path tasks/benchmark/js/Cargo.toml --benches
 ```
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { appendFileSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { loadSummaries } from "./render-gungraun-summary.mjs";
+import { loadSummaries, renderFailureSummary } from "./render-gungraun-summary.mjs";
 import { compare, render } from "./render-gungraun-js-summary.mjs";
 
 const directory = process.argv[2];
@@ -22,12 +22,12 @@ try {
   assert.deepEqual(rows.map(row => row.name).sort(), expected.map(name => name.replace(/[.-]/g, "_")).sort());
   writeFileSync(join(directory, "comparison.json"), JSON.stringify(rows, null, 2));
   writeFileSync(join(directory, "metadata.json"), JSON.stringify(metadata, null, 2));
+  writeFileSync(join(directory, "revisions.txt"), `Base: \`${metadata[0].base_sha}\`; compare: \`${metadata[0].head_sha}\`\n`);
   summary = render(rows);
 } catch (error) {
-  summary = "## JavaScript API Gungraun comparison\n\nComparison incomplete or invalid. See shard logs and artifacts.\n";
+  summary = renderFailureSummary(error.message);
   console.error(error);
   process.exitCode = 1;
 } finally {
   writeFileSync(join(directory, "summary.md"), summary);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
 }

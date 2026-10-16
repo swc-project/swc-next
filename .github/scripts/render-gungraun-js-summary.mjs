@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
-import { loadSummaries } from "./render-gungraun-summary.mjs";
+import { loadSummaries, renderGroupTable } from "./render-gungraun-summary.mjs";
 
 export function compare(summaries) {
   const groups = new Map();
@@ -43,13 +43,34 @@ export function validateRepeatability(rows) {
 }
 
 export function render(rows) {
-  const interval = s => `${s.median} (${s.min}–${s.max})`;
+  const groups = new Map();
+  for (const row of rows) {
+    const [operation, ...fixture] = row.name.split("/");
+    const group = groups.get(operation) ?? [];
+    group.push({
+      benchmark: `js_api::${operation}`,
+      caseName: fixture.join("/"),
+      compareInstructions: row.head.median,
+      baseInstructions: row.base.median,
+      comparison: "both",
+      change: row.change,
+      inconclusive: row.assessment === "Inconclusive (ranges overlap)",
+    });
+    groups.set(operation, group);
+  }
+  const interval = stats => `${stats.median} (${stats.min}–${stats.max})`;
   return [
-    "## JavaScript API Gungraun comparison", "",
-    "JIT disabled (--jitless); V8 predictable mode enabled (--predictable). Do not compare these counts with JIT-enabled runs or interpret them as normal JIT-enabled execution speed. Main-thread Callgrind Ir includes synchronous JS, N-API and Rust work, plus the measurement callback/loop. Node startup, fixture setup and warmup are excluded. These are instruction counts, not elapsed time. Each row shows the median and range of three fresh processes; overlapping ranges are inconclusive.", "",
-    "| Case | Base Ir: median (range) | Head Ir: median (range) | Change | Assessment |",
-    "| --- | ---: | ---: | ---: | --- |",
-    ...rows.map(r => `| ${r.name} | ${interval(r.base)} | ${interval(r.head)} | ${r.change.toFixed(3)}% | ${r.assessment} |`), "",
+    "### Callgrind metric changes", "",
+    "Median instruction counts from three processes, shown as compare / base in K (1,000), truncated to whole thousands. Percentages are rounded to at most three decimal places. Lower is better: 🟢 improvement, 🔴 regression, ⚪ unchanged or overlapping ranges (inconclusive).", "",
+    "JIT disabled (--jitless); predictable mode enabled (--predictable). Counts are not wall time. Exact counts, ranges and profiles are retained in artifacts.", "",
+    ...[...groups].map(([operation, group]) => renderGroupTable(operation, group)),
+    "<details>",
+    "<summary>Benchmark results</summary>", "",
+    "Exact instruction counts: median (min–max).", "",
+    "| Benchmark | Compare Ir | Base Ir | Assessment |",
+    "| --- | ---: | ---: | --- |",
+    ...rows.map(row => `| \`${row.name}\` | ${interval(row.head)} | ${interval(row.base)} | ${row.assessment} |`), "",
+    "</details>", "",
   ].join("\n");
 }
 

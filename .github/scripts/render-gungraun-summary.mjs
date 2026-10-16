@@ -188,7 +188,7 @@ function formatChange(row) {
     return "0% ⚪";
   }
 
-  const marker = row.change < 0 ? "🟢" : "🔴";
+  const marker = row.inconclusive ? "⚪" : row.change < 0 ? "🟢" : "🔴";
   if (!Number.isFinite(row.change)) {
     const change = row.change < 0 ? "−∞" : "+∞";
     return `${change}% ${marker}`;
@@ -222,7 +222,7 @@ function groupRows(rows) {
   return groups;
 }
 
-function renderGroupTable(group, rows) {
+export function renderGroupTable(group, rows) {
   const benchmarkCount = new Set(rows.map((row) => row.benchmark)).size;
   const includeBenchmark = benchmarkCount > 1;
   const lines = [
