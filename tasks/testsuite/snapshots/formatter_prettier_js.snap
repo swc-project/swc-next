@@ -1,19 +1,19 @@
 formatter * prettier 3.9.9 * js
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 794
+Fixture files: 787
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1055/1083 (97.41%)
-Snapshot matched: 1055/1083
-AST parity: 1082/1082
-AST mismatched: 0/1082
-AST format errors: 0/1083
-Mismatched: 27/1083
-Format errors: 0/1083
-Panicked: 0/1083
-Not idempotent: 0/1083
-Ignored files: 298
-Parse errors: 1/1083
+Passed: 1055/1073 (98.32%)
+Snapshot matched: 1055/1073
+AST parity: 1072/1072
+AST mismatched: 0/1072
+AST format errors: 0/1073
+Mismatched: 17/1073
+Format errors: 0/1073
+Panicked: 0/1073
+Not idempotent: 0/1073
+Ignored files: 305
+Parse errors: 1/1073
 Expected parser errors: 19
 Unsupported option sets: 14
 
@@ -46,25 +46,18 @@ Unsupported option sets: 14
 # Failed
 
 - js/arrays/numbers-with-holes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/arrows/arrow-chain-with-trailing-comments.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments-closure-typecast/comment-in-the-middle.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/not-on-same-line.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments-closure-typecast/no-semi/with-other-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/comments/issue-11050.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/return-statement.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/comments/tagged-template-literal.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/embeded/indention/19518.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/embeded/indention/indention-2.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/embeded/indention/indention.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/for-of/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/multiple-members.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/parenthesized-trailing-comment-unstable.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/sequence-expression/parenthesized.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/template-literals/expression-break.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/test-declarations/jest-each-template-string.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/test-declarations/jest-each.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/unicode/nbsp-jsx.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- jsx/comments/in-attributes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - jsx/ignore/spread.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
