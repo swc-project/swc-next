@@ -5958,9 +5958,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return self.parse_type_operator();
             }
             TokenTag::Infer if !token.is_escaped() => return self.parse_infer_type(),
-            TokenTag::TemplateHead if !token.is_escaped() => {
-                return self.parse_template_literal_type();
-            }
+            TokenTag::TemplateHead => return self.parse_template_literal_type(),
             TokenTag::Typeof if !token.is_escaped() => return self.parse_type_query(),
             TokenTag::Import if !token.is_escaped() => return self.parse_import_type(),
             TokenTag::Question if !token.is_escaped() => {
