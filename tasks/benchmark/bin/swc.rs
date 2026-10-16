@@ -1,0 +1,94 @@
+use std::{env, fs, hint::black_box, io};
+
+use swc_core::{
+    common::{BytePos, FileName, GLOBALS, Globals, Mark, SourceMap, errors::Handler, sync::Lrc},
+    ecma::{
+        ast::{EsVersion, Program},
+        codegen::to_code_default,
+        parser::{EsSyntax, Parser, StringInput, Syntax, TsSyntax, lexer::Lexer},
+        transforms::base::resolver,
+        visit::VisitMutWith,
+    },
+    typescript::fast_dts::{FastDts, FastDtsOptions},
+};
+
+fn main() {
+    let args: Vec<_> = env::args().collect();
+    assert_eq!(
+        args.len(),
+        3,
+        "usage: swc <file.ts> <parse|isolated-declaration|type-strip>"
+    );
+    let operation = args[2].as_str();
+    assert!(matches!(
+        operation,
+        "parse" | "isolated-declaration" | "type-strip"
+    ));
+    let source = fs::read_to_string(&args[1]).expect("failed to read input");
+    let extension = std::path::Path::new(&args[1])
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+    let typescript = matches!(extension, "ts" | "tsx" | "mts" | "cts");
+    let ts_syntax = TsSyntax {
+        tsx: extension == "tsx",
+        ..Default::default()
+    };
+    let syntax = if typescript {
+        Syntax::Typescript(ts_syntax)
+    } else {
+        Syntax::Es(EsSyntax {
+            jsx: extension == "jsx",
+            ..Default::default()
+        })
+    };
+
+    if operation == "parse" {
+        let lexer = Lexer::new(
+            syntax,
+            EsVersion::latest(),
+            StringInput::new(&source, BytePos(1), BytePos(1 + source.len() as u32)),
+            None,
+        );
+        let mut parser = Parser::new_from(lexer);
+        black_box(parser.parse_module().expect("parse failed"));
+        assert!(parser.take_errors().is_empty(), "parse diagnostics");
+        return;
+    }
+
+    GLOBALS.set(&Globals::default(), || {
+        let cm: Lrc<SourceMap> = Default::default();
+        if operation == "type-strip" {
+            assert!(typescript, "type-strip requires TypeScript input");
+            let handler = Handler::with_emitter_writer(Box::new(io::sink()), Some(cm.clone()));
+            black_box(
+                swc_ts_fast_strip::operate(
+                    &cm,
+                    &handler,
+                    source,
+                    swc_ts_fast_strip::Options {
+                        module: Some(true),
+                        parser: ts_syntax,
+                        ..Default::default()
+                    },
+                )
+                .expect("type stripping failed"),
+            );
+            assert!(!handler.has_errors(), "type stripping diagnostics");
+            return;
+        }
+        let filename = FileName::Real(args[1].clone().into());
+        let file = cm.new_source_file(filename.clone().into(), source);
+        let lexer = Lexer::new(syntax, EsVersion::latest(), StringInput::from(&*file), None);
+        let mut parser = Parser::new_from(lexer);
+        let mut program = Program::Module(parser.parse_module().expect("parse failed"));
+        assert!(parser.take_errors().is_empty(), "parse diagnostics");
+        let unresolved = Mark::new();
+        program.visit_mut_with(&mut resolver(unresolved, Mark::new(), typescript));
+        black_box(
+            FastDts::new(filename.into(), unresolved, FastDtsOptions::default())
+                .transform(&mut program),
+        );
+        black_box(to_code_default(cm, None, &program));
+    });
+}
