@@ -136,16 +136,7 @@ impl TypeEraser<'_, '_, '_> {
         Some(token.start())
     }
 
-    fn erase_optional_parameter(
-        &mut self,
-        optional: bool,
-        type_annotation: Option<TsTypeAnnotation>,
-        span: Span,
-    ) {
-        if !optional {
-            return;
-        }
-
+    fn erase_optional_parameter(&mut self, type_annotation: Option<TsTypeAnnotation>, span: Span) {
         let marker_end =
             type_annotation.map_or(span.end, |annotation| annotation.span(self.ast).start);
         if let Some(marker) = self
@@ -891,11 +882,9 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     }
 
     fn visit_formal_parameter(&mut self, node: FormalParameter) {
-        self.erase_optional_parameter(
-            node.optional(self.ast),
-            node.type_annotation(self.ast),
-            node.span(self.ast),
-        );
+        if node.optional(self.ast) {
+            self.erase_optional_parameter(node.type_annotation(self.ast), node.span(self.ast));
+        }
         node.visit_children_with(self);
     }
 }
