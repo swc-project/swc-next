@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/types",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "ESTree types shared by SWC Next parsers and code generators",
   "type": "module",
   "types": "./index.d.ts",

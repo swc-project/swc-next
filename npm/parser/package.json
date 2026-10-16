@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/parser",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "The focused JavaScript and TypeScript parser for SWC Next",
   "repository": {
     "type": "git",
