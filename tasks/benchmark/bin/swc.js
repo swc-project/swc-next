@@ -2,16 +2,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { parseSync } from "@swc/core";
+import { bench } from "./bench.js";
 
-const [file, operation] = process.argv.slice(2);
-assert(file && operation === "parse", "usage: node swc.js <file> parse");
+const [file, operation, iterations] = process.argv.slice(2);
+assert(
+  file && operation === "parse",
+  "usage: node swc.js <file> parse [iterations|--calibrate]",
+);
+const source = readFileSync(file, "utf8");
 const extension = extname(file);
 const options = /\.[cm]?tsx?$/.test(extension)
   ? { syntax: "typescript", tsx: extension === ".tsx" }
   : { syntax: "ecmascript", jsx: extension === ".jsx" };
-parseSync(readFileSync(file, "utf8"), {
+const parserOptions = {
   ...options,
   isModule: true,
   comments: false,
   target: "esnext",
-});
+};
+bench(() => parseSync(source, parserOptions).body.length, iterations);

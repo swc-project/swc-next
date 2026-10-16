@@ -94,13 +94,15 @@ function main() {
     "--swc-dir": path.resolve(root, "../swc"),
     "--runs": "50",
     "--warmup": "20",
+    "--js-runs": "3",
+    "--js-time-ms": "1000",
     "--cpu": undefined,
     "--output": path.join(root, "website/docs/Benchmark.md"),
   };
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     console.log(
-      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 50] [--warmup 20] [--cpu N] [--output website/docs/Benchmark.md]",
+      "Usage: node website/docs/scripts/benchmark.js [--swc-dir ../swc] [--runs 50] [--warmup 20] [--js-runs 3] [--js-time-ms 1000] [--cpu N] [--output website/docs/Benchmark.md]",
     );
     return;
   }
@@ -120,6 +122,16 @@ function main() {
     Number.isInteger(Number(options["--warmup"])) &&
       Number(options["--warmup"]) >= 0,
     "--warmup must be non-negative",
+  );
+  assert(
+    Number.isInteger(Number(options["--js-runs"])) &&
+      Number(options["--js-runs"]) >= 2,
+    "--js-runs must be at least 2",
+  );
+  assert(
+    Number.isInteger(Number(options["--js-time-ms"])) &&
+      Number(options["--js-time-ms"]) > 0,
+    "--js-time-ms must be positive",
   );
   const swc = path.resolve(options["--swc-dir"]);
   const commits = [root, swc].map((dir) => {
@@ -194,9 +206,10 @@ function main() {
     for (const file of files) {
       if (file === "typescript.js" && feature !== "parse") continue;
       console.error(`${title}: ${file}`);
+      const isJs = title === "JS parser";
       const input = path.join("tasks/benchmark/files", file);
       const commands = ["swc_next", "swc"].map((engine) =>
-        title === "JS parser"
+        isJs
           ? [
               process.execPath,
               `tasks/benchmark/bin/${engine}.js`,
@@ -209,30 +222,59 @@ function main() {
               feature,
             ],
       );
-      const output = run(
-        "taskset",
-        [
-          "--cpu-list",
-          String(cpu),
-          "hyperfine",
-          "--style",
-          "basic",
-          "--shell",
-          "none",
-          "--warmup",
-          options["--warmup"],
-          "--runs",
-          options["--runs"],
-          "--metrics",
-          "time_wall_clock:ms,memory_peak_resident:MiB",
-          "--command-name",
-          title === "JS parser" ? jsNames[0] : `swc-next@${commits[0]}`,
-          commands[0].map(quote).join(" "),
-          "--command-name",
-          title === "JS parser" ? jsNames[1] : `swc@${commits[1]}`,
-          commands[1].map(quote).join(" "),
-        ],
-      );
+      let names = [`swc-next@${commits[0]}`, `swc@${commits[1]}`];
+      if (isJs) {
+        const timings = commands.map((command) =>
+          Number(
+            run("taskset", [
+              "--cpu-list",
+              String(cpu),
+              ...command,
+              "--calibrate",
+            ]),
+          ),
+        );
+        assert(
+          timings.every((ms) => Number.isFinite(ms) && ms > 0),
+          "Invalid JS calibration",
+        );
+        const iterations = Math.max(
+          5,
+          Math.ceil(Number(options["--js-time-ms"]) / Math.min(...timings)),
+        );
+        for (const command of commands) command.push(String(iterations));
+        names = jsNames.map((name) => `${name}; ${iterations} parses + 5 warmups`);
+        console.error(
+          `JS batch: ${iterations} parses per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/parse`,
+        );
+      }
+      // Each JS process warms its own V8 state. Repeat in reverse order to
+      // expose drift without relying on hyperfine warmups in other processes.
+      const orders = isJs ? [[0, 1], [1, 0]] : [[0, 1]];
+      const output = orders
+        .map((order) =>
+          run("taskset", [
+            "--cpu-list",
+            String(cpu),
+            "hyperfine",
+            "--style",
+            "basic",
+            "--shell",
+            "none",
+            "--warmup",
+            isJs ? "0" : options["--warmup"],
+            "--runs",
+            isJs ? options["--js-runs"] : options["--runs"],
+            "--metrics",
+            "time_wall_clock:ms,memory_peak_resident:MiB",
+            ...order.flatMap((index) => [
+              "--command-name",
+              names[index],
+              commands[index].map(quote).join(" "),
+            ]),
+          ]),
+        )
+        .join("\n\n");
       lines.push(
         `### ${file}`,
         "",
