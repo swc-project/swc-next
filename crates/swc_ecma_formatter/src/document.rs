@@ -498,6 +498,7 @@ impl FormatElement<'_> {
 }
 
 pub(crate) struct Doc<'a> {
+    allocator: &'a swc_next_allocator::Allocator,
     elements: &'a [FormatElement<'a>],
     group_count: usize,
     conditional_lines: bool,
@@ -507,6 +508,7 @@ impl Doc<'_> {
     pub(crate) fn print(self, options: FormatOptions) -> String {
         printer::print(
             self.elements,
+            self.allocator,
             self.group_count,
             self.conditional_lines,
             options,
