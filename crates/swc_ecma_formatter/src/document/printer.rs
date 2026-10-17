@@ -789,15 +789,17 @@ impl<'a> Probe<'a> {
         }
         // Only active text and reserved spaces advance the probe column.
         while let Some((element, flat)) = cursor.next(&mut mode) {
+            let flattened;
             let element = if flat {
                 let Some(element) = element.flattened() else {
                     continue;
                 };
-                element
+                flattened = element;
+                &flattened
             } else {
-                *element
+                element
             };
-            match element {
+            match *element {
                 FormatElement::Text(text)
                 | FormatElement::IfBreak(text)
                 | FormatElement::IfFlat(text)
