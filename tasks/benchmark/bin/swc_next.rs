@@ -30,9 +30,8 @@ fn main() {
         let mut ast = parsed.ast;
         if args.operation == Operation::IsolatedDeclaration {
             let semantic = swc_next_ecma_semantic::analyze(&ast, Default::default()).semantic;
-            black_box(swc_next_isolated_declarations::transform(
-                &mut ast, &semantic,
-            ));
+            let diagnostics = swc_next_isolated_declarations::transform(&mut ast, &semantic);
+            assert!(diagnostics.is_empty(), "isolated declaration diagnostics");
             black_box(swc_next_ecma_codegen::print(
                 &allocator,
                 &ast,

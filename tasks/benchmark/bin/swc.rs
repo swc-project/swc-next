@@ -78,10 +78,9 @@ fn main() {
             assert!(parser.take_errors().is_empty(), "parse diagnostics");
             let unresolved = Mark::new();
             program.visit_mut_with(&mut resolver(unresolved, Mark::new(), typescript));
-            black_box(
-                FastDts::new(filename.into(), unresolved, FastDtsOptions::default())
-                    .transform(&mut program),
-            );
+            let diagnostics = FastDts::new(filename.into(), unresolved, FastDtsOptions::default())
+                .transform(&mut program);
+            assert!(diagnostics.is_empty(), "isolated declaration diagnostics");
             black_box(to_code_default(cm, None, &program));
         });
     }

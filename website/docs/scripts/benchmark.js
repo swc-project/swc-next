@@ -32,7 +32,7 @@ const benchmarks = [
     title: "Isolated declaration",
     type: "native",
     operation: "isolated-declaration",
-    files: ["effect-schema-ast.ts"],
+    files: ["hono-types.ts"],
   },
   {
     title: "Type strip",
@@ -75,7 +75,13 @@ function build() {
 }
 
 function main() {
-  const commit = run("git", ["rev-parse", "HEAD"]);
+  const commit = run("git", [
+    "describe",
+    "--always",
+    "--abbrev=40",
+    "--dirty",
+    "--exclude=*",
+  ]);
   const require = createRequire(path.join(root, "tasks/benchmark/package.json"));
   const coreVersion = require("@swc/core/package.json").version;
   const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`];
@@ -137,34 +143,40 @@ function main() {
       }
       // Each JS process warms its own V8 state; hyperfine warmups would use
       // separate processes and would not warm the measured parser.
-      const output = run("taskset", [
-        "--cpu-list",
-        cpu,
-        "hyperfine",
-        "--style",
-        "basic",
-        "--shell",
-        "none",
-        "--warmup",
-        isJs ? 0 : warmup,
-        "--runs",
-        isJs ? jsRuns : runs,
-        "--metrics",
-        "time_wall_clock:ms,memory_peak_resident:MiB",
-        ...commands.flatMap((command, index) => [
-          "--command-name",
-          names[index],
-          command.map(quote).join(" "),
-        ]),
-      ]);
-      lines.push(
-        `### ${file}`,
-        "",
-        "```text",
-        output.replace(/[ \t]+$/gm, ""),
-        "```",
-        "",
-      );
+      lines.push(`### ${file}`, "");
+      for (const [trial, order] of [
+        ["SWC Next first", [0, 1]],
+        ["SWC first", [1, 0]],
+      ]) {
+        const result = run("taskset", [
+          "--cpu-list",
+          cpu,
+          "hyperfine",
+          "--style",
+          "basic",
+          "--shell",
+          "none",
+          "--warmup",
+          isJs ? 0 : warmup,
+          "--runs",
+          isJs ? jsRuns : runs,
+          "--metrics",
+          "time_wall_clock:ms,memory_peak_resident:MiB",
+          ...order.flatMap((index) => [
+            "--command-name",
+            names[index],
+            commands[index].map(quote).join(" "),
+          ]),
+        ]);
+        lines.push(
+          `#### ${trial}`,
+          "",
+          "```text",
+          result.replace(/[ \t]+$/gm, ""),
+          "```",
+          "",
+        );
+      }
     }
   }
   writeFileSync(output, lines.join("\n"));

@@ -32,19 +32,7 @@ Benchmark 2: swc_core@82.1.0; 10 iterations (200 runs)
 
 ## Isolated declaration
 
-### effect-schema-ast.ts
-
-```text
-Benchmark 1: swc-next@e06ead61165c3a6de44205764ef0da2973c34189; 10 iterations (200 runs)
-                mean     ±       σ          min     …     max
-  Wall Time      9.2 ms  ±     0.1 ms       9.0 ms  …    10.2 ms
-  Memory         5.3 MiB ±     0.1 MiB      5.1 MiB …     5.5 MiB
-
-Benchmark 2: swc_core@82.1.0; 10 iterations (200 runs)
-                mean     ±       σ          min     …     max
-  Wall Time     17.7 ms  ±     0.1 ms      17.4 ms  …    18.6 ms           +92.5%  (1.9x slower)
-  Memory         7.8 MiB ±     0.1 MiB      7.6 MiB …     8.0 MiB          +45.4%  (1.5x more)
-```
+### hono-types.ts
 
 ## Type strip
 
