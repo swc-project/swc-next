@@ -315,6 +315,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             ContentMode::Formatted
         };
+        let item = PreparedItem {
+            item_span,
+            following,
+            span,
+            mode,
+            has_leading_comments,
+            trailing_comma: if trailing_comma {
+                TrailingCommaPolicy::IfBreak
+            } else {
+                TrailingCommaPolicy::Forbidden
+            },
+            suppression,
+        };
+        if !has_leading_comments {
+            return Ok(item);
+        }
         let source_head = matches!(comments.head, CommentRunLayout::Source)
             || !matches!(
                 self.comment_binding(
@@ -345,19 +361,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             self.comment_gap(last.span.end, end, writer);
         }
-        Ok(PreparedItem {
-            item_span,
-            following,
-            span,
-            mode,
-            has_leading_comments,
-            trailing_comma: if trailing_comma {
-                TrailingCommaPolicy::IfBreak
-            } else {
-                TrailingCommaPolicy::Forbidden
-            },
-            suppression,
-        })
+        Ok(item)
     }
 
     pub(in crate::formatter) fn finish_delimited_item(
