@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/usr/bin/env node
+
+// license
+---------- Options ----------
+{}
+---------- Output ----------
+#!/usr/bin/env node
+
+// license
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+#!/usr/bin/env node
+
+// license
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+#!/usr/bin/env node// license

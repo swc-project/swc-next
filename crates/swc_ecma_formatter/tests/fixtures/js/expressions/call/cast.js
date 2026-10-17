@@ -1,0 +1,1 @@
+callee(/** @type {number} */ (unknown));

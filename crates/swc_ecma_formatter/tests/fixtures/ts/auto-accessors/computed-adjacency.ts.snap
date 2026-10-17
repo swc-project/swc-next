@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Fields { field = value; accessor [key] = other; [next] = third; }
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+class Fields {
+  field = value;
+  accessor [key] = other;
+  [next] = third;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Fields {
+  field = value
+  accessor [key] =
+    other;
+  [next] = third
+}

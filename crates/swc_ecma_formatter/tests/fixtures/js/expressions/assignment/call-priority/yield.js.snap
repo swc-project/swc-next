@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* task(){const assignedValueName = yield receiver.branch.method();}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function* task() {
+  const assignedValueName =
+    yield receiver.branch.method();
+}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function* task() {
+  const assignedValueName =
+    yield receiver.branch.method();
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function* task() {
+  const assignedValueName = yield receiver.branch.method();
+}

@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { public /* prettier-ignore */ readonly value: number =  7; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  public readonly /* prettier-ignore */ value: number = 7;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  public readonly /* prettier-ignore */ value: number = 7;
+}

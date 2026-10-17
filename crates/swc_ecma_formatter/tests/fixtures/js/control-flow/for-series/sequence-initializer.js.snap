@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (var value = (first, second /* tail */);;) consume(value);
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (
+  var value =
+    (first,
+    second /* tail */);
+  ;
+)
+  consume(value);
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (var value = (first, second /* tail */); ;) consume(value);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  var value =
+    (first,
+    second /* tail */);
+  ;
+)
+  consume(value)
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (var value = (first, second /* tail */); ;) consume(value)

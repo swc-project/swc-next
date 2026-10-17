@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Name<T> extends Base<  T  > /* prettier-ignore */ implements Other<T> { value :  T; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Name<T> extends Base<  T  > /* prettier-ignore */ implements Other<T> {
+  value: T;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Name<T>
+  extends Base<  T  > /* prettier-ignore */
+  implements
+    Other<T>
+{
+  value: T
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+class Name<T>
+	extends Base<  T  > /* prettier-ignore */
+	implements
+		Other<T>
+{
+	value: T;
+}

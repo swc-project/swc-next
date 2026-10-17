@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example { method? /* prettier-ignore */ < T >(value: T): T { return value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Example {
+  method? /* prettier-ignore */< T >(value: T): T { return value; }
+}

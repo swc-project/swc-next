@@ -1,0 +1,42 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for(a=()=> (b in c);test();step()){break;}
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (
+  a = () =>
+    (b in c);
+  test();
+  step()
+) {
+  break;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (a = () => (b in c); test(); step()) {
+  break;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (
+  a = () =>
+    (b in c);
+  test();
+  step()
+) {
+  break
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (a = () => (b in c); test(); step()) {
+  break
+}

@@ -41,6 +41,7 @@ path = "bin/swc.rs"
 [dev-dependencies]
 oxc                       = { workspace = true }
 oxc_allocator             = { workspace = true }
+swc_next_ecma_formatter   = { workspace = true }
 swc_next_ecma_minifier    = { workspace = true }
 swc_next_ecma_parser      = { workspace = true, features = ["unstable"] }
 swc_next_ecma_transformer = { workspace = true }

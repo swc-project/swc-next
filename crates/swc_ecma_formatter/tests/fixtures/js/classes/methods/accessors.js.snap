@@ -1,0 +1,76 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {get value(){return this.x;}set value(x){this.x=x;}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  get value() {
+    return this.x;
+  }
+  set value(x) {
+    this.x = x;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  get value() {
+    return this.x;
+  }
+  set value(x) {
+    this.x = x;
+  }
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  get value() {
+    return this.x
+  }
+  set value(x) {
+    this.x = x
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  get value() {
+    return this.x
+  }
+  set value(x) {
+    this.x = x
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	get value() {
+		return this.x;
+	}
+	set value(x) {
+		this.x = x;
+	}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  get value() {
+    return this.x
+  }
+  set value(x) {
+    this.x = x
+  }
+}

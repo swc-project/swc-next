@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import 'module';
+---------- Options ----------
+{}
+---------- Output ----------
+import "module";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import "module";
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+import 'module'

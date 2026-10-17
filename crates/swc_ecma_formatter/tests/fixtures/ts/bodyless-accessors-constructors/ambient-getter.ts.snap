@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare class Readable { get value(): number | undefined; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare class Readable {
+  get value(): number | undefined;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare class Readable {
+  get value():
+    | number
+    | undefined;
+}

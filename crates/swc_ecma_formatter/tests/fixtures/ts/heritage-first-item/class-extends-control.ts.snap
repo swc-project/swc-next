@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Subject extends
+// head
+Base {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Subject
+  // head
+  extends Base {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Subject
+  // head
+  extends Base {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class Subject
+	// head
+	extends Base {}

@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace N { export interface I<T> { x: T; } }
+class C implements N . I /* prettier-ignore */ <  number  > { x = 7; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+namespace N {
+  export interface I<T> {
+    x: T;
+  }
+}
+class C implements N.I /* prettier-ignore */ <  number  > {
+  x = 7;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+namespace N {
+  export interface I<
+    T,
+  > {
+    x: T;
+  }
+}
+class C implements N.I /* prettier-ignore */ <  number  > {
+  x = 7;
+}

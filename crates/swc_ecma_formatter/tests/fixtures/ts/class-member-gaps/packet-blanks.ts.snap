@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Value {
+  first() {} /* trailing */
+
+  /* leading */
+
+  second() {}
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Value {
+  first() {} /* trailing */
+
+  /* leading */
+
+  second() {}
+}
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+class Value {
+  first() {} /* trailing */
+
+  /* leading */
+
+  second() {}
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+class Value {
+  first() {} /* trailing */
+
+  /* leading */
+
+  second() {}
+}

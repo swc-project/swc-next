@@ -1,0 +1,49 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = (a ? consume(1) : consume(2) /* before */ /* first
+second */) as number;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = (
+  a ? consume(1) : consume(2) /* before */ /* first
+second */
+) as number;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const x = (
+  a ? consume(1) : consume(2) /* before */ /* first
+second */
+) as number
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const x = (
+  a
+    ? consume(1)
+    : consume(2) /* before */ /* first
+second */
+) as number;
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const x = (
+  a ? consume(1) : consume(2) /* before */ /* first
+second */
+) as number;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const x = (
+  a
+    ? consume(1)
+    : consume(2) /* before */ /* first
+second */
+) as number

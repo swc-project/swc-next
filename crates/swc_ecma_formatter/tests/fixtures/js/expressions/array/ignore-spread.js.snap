@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* prettier-ignore */... first    +second];
+---------- Options ----------
+{}
+---------- Output ----------
+[/* prettier-ignore */ ... first    +second];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[/* prettier-ignore */ ... first    +second]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* prettier-ignore */ ... first    +second,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  /* prettier-ignore */ ... first    +second,
+];

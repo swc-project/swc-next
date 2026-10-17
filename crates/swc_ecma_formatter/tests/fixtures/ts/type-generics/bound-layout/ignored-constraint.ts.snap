@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Alias<T extends
+/* prettier-ignore */
+12.00 | 13.00 = // suffix
+Default> = T;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Alias<
+  T extends
+/* prettier-ignore */
+12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type Alias<
+  T extends
+/* prettier-ignore */
+12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Alias<
+  T extends
+/* prettier-ignore */
+12.00 | 13.0 = // suffix
+    Default,
+> = T;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Alias<
+	T extends
+/* prettier-ignore */
+12.00 | 13.0 = // suffix
+		Default
+> = T;

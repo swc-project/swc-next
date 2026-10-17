@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(readonly private /* access */ public override value: number) {} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  constructor(public override readonly /* access */ value: number) {}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    public override readonly /* access */ value: number,
+  ) {}
+}

@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a(); // prettier-ignore
+; /* next */
+b (  );
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+a(); // prettier-ignore
+/* next */
+b();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+a(); // prettier-ignore
+/* next */
+b()

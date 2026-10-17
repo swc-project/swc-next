@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/pattern/yusmigd;
+---------- Options ----------
+{}
+---------- Output ----------
+/pattern/dgimsuy;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/pattern/dgimsuy
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/pattern/dgimsuy;
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+/pattern/dgimsuy;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/pattern/dgimsuy;
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+/pattern/dgimsuy;
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/pattern/dgimsuy;

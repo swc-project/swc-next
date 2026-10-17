@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer = middle = tail = final;
+---------- Options ----------
+{}
+---------- Output ----------
+outer = middle = tail = final;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+outer = middle = tail = final
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer =
+  middle =
+  tail =
+    final;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+outer =
+  middle =
+  tail =
+    final;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+outer =
+    middle =
+    tail =
+        final;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+outer =
+	middle =
+	tail =
+		final;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+outer =
+ middle =
+ tail =
+  final;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+outer = middle = tail = final;

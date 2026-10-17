@@ -1,0 +1,70 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Methods={convert<T extends string=string>(this:Receiver,value?:T,...rest:[number,string]):T};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Methods = {
+  convert<T extends string = string>(
+    this: Receiver,
+    value?: T,
+    ...rest: [number, string]
+  ): T;
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Methods = {
+  convert<
+    T extends
+      string =
+      string,
+  >(
+    this: Receiver,
+    value?: T,
+    ...rest: [
+      number,
+      string,
+    ]
+  ): T;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Methods =
+  {
+    convert<
+      T extends
+        string =
+        string,
+    >(
+      this: Receiver,
+      value?: T,
+      ...rest: [
+        number,
+        string,
+      ]
+    ): T
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Methods = {
+	convert<
+		T extends
+			string =
+			string,
+	>(
+		this: Receiver,
+		value?: T,
+		...rest: [
+			number,
+			string,
+		]
+	): T;
+};

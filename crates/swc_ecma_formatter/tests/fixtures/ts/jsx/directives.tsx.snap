@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a1=<Box>{
+// @ts-expect-error
+Missing
+}</Box>;
+const a2=<div>{/* prettier-ignore */ value   + other}{value + other}</div>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const a1 = (
+  <Box>
+    {
+      // @ts-expect-error
+      Missing
+    }
+  </Box>
+);
+const a2 = (
+  <div>
+    {/* prettier-ignore */ value   + other}
+    {value + other}
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const a1 = (
+  <Box>
+    {
+      // @ts-expect-error
+      Missing
+    }
+  </Box>
+);
+const a2 = (
+  <div>
+    {
+      /* prettier-ignore */ value   + other
+    }
+    {value + other}
+  </div>
+);

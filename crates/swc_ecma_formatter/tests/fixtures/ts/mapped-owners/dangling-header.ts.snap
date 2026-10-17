@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M<T> = { readonly /* a */ /* b */ [K in keyof T]: T[K] };
+---------- Options ----------
+{}
+---------- Output ----------
+type M<T> = {
+  /* a */
+  /* b */ readonly [K in keyof T]: T[K];
+};
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+type M<T> = {
+  /* a */
+  /* b */ readonly [
+    K in keyof T
+  ]: T[K];
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":18,"semi":false}
+---------- Output ----------
+type M<T> = {
+  /* a */
+  /* b */
+  readonly [
+    K in keyof T
+  ]: T[K]
+}

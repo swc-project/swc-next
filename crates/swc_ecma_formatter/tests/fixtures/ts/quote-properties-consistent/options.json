@@ -1,0 +1,14 @@
+[
+  {},
+  {
+    "quoteProps": "preserve"
+  },
+  {
+    "quoteProps": "consistent"
+  },
+  {
+    "quoteProps": "consistent",
+    "singleQuote": true,
+    "semi": false
+  }
+]

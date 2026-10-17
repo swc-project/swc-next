@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const longVariableName = ! /* prettier-ignore */ object . firstLongProperty . secondLongProperty;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const longVariableName = !(
+  /* prettier-ignore */ object . firstLongProperty . secondLongProperty
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const longVariableName =
+	!(
+		/* prettier-ignore */ object . firstLongProperty . secondLongProperty
+	)
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+const longVariableName = !(
+  /* prettier-ignore */ object . firstLongProperty . secondLongProperty
+);
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const longVariableName = !(/* prettier-ignore */ object . firstLongProperty . secondLongProperty);

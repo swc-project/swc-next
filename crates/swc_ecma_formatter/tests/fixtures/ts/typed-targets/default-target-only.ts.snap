@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({p:(/* prettier-ignore */ object  ['field'] as  T) = compute(   1,2 )} = source);
+---------- Options ----------
+{}
+---------- Output ----------
+({ p: (/* prettier-ignore */ object  ['field'] as  T) = compute(1, 2) } =
+  source);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  p: (/* prettier-ignore */ object  ['field'] as  T) = compute(
+    1,
+    2,
+  ),
+} = source);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  p: (/* prettier-ignore */ object  ['field'] as  T) = compute(
+    1,
+    2,
+  ),
+} = source)

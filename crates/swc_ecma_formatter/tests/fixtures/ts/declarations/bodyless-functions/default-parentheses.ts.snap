@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(x: number = (1 + 2) * 3, y = (a, b)): number;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+function f(
+  x: number = (1 +
+    2) *
+    3,
+  y = (a, b),
+): number;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function f(
+  x: number = (1 +
+    2) *
+    3,
+  y = (a, b),
+): number
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+function f(x: number = (1 + 2) * 3, y = (a, b)): number;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+function f(x: number = (1 + 2) * 3, y = (a, b)): number

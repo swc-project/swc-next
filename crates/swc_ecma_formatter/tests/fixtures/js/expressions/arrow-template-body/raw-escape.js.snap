@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const create = () => `escaped\n ${value}`;
+---------- Options ----------
+{}
+---------- Output ----------
+const create = () => `escaped\n ${value}`;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const create = () =>
+  `escaped\n ${value}`;
+
+---------- Options ----------
+{"arrowParens":"avoid"}
+---------- Output ----------
+const create = () => `escaped\n ${value}`;

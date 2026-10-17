@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class OptionalKeyIgnore { public /* prettier-ignore */ method?(): number { return 7; } }
+const result = new OptionalKeyIgnore().method?.();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class OptionalKeyIgnore {
+  public /* prettier-ignore */ method?(): number {
+    return 7;
+  }
+}
+const result = new OptionalKeyIgnore().method?.();

@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer /* @__PURE__ */:
+/** @type {number} */
+for (;;) break outer;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer /* @__PURE__ */:
+  /** @type {number} */
+  for (;;) break outer;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer /* @__PURE__ */:
+  /** @type {number} */
+  for (;;)
+    break outer;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer /* @__PURE__ */:
+  /** @type {number} */
+  for (;;)
+    break outer

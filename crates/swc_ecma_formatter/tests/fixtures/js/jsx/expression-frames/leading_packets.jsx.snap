@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = (
+  /* element */
+  <Foo>word</Foo>
+);
+
+const fragment = (
+  /* fragment */
+  <>word</>
+);
+
+const packet = (
+  /* first */ /* second */
+  <Foo />
+);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const element = (
+  /* element */
+  <Foo>word</Foo>
+);
+
+const fragment = (
+  /* fragment */
+  <>word</>
+);
+
+const packet = /* first */ /* second */ <Foo />;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const element = (
+  /* element */
+  <Foo>word</Foo>
+);
+
+const fragment = (
+  /* fragment */
+  <>word</>
+);
+
+const packet = (
+  /* first */ /* second */
+  <Foo />
+);

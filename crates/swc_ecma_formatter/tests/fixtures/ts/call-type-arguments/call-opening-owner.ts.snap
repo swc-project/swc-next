@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = fn<number>(// prettier-ignore
+ invoke( 1 ));---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result = fn<number>(// prettier-ignore
+  invoke(1),
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  fn<number>(// prettier-ignore
+    invoke(1),
+  );
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+result =
+  fn<number>(// prettier-ignore
+    invoke(
+      1,
+    ),
+  )
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+result =
+	fn<number>(// prettier-ignore
+		invoke(1),
+	);

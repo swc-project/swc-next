@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const element = <div // tail
+ id="value">child</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+const element = (
+  <div // tail
+    id="value"
+  >
+    child
+  </div>
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const element = (
+  <div // tail
+    id="value"
+  >
+    child
+  </div>
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const element = (
+  <div // tail
+    id="value"
+  >
+    child
+  </div>
+)

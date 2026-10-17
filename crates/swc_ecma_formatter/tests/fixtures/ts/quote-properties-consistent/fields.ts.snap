@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+class RecordType { field: string; "quoted": string; accessor value: string; accessor "other": string; "quoted-key" = 1; method(): void {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  method(): void {}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  method(): void {}
+}
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+class RecordType {
+  field: string;
+  "quoted": string;
+  accessor value: string;
+  accessor "other": string;
+  "quoted-key" = 1;
+  "method"(): void {}
+}
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+class RecordType {
+  field: string
+  'quoted': string
+  accessor value: string
+  accessor 'other': string
+  'quoted-key' = 1
+  'method'(): void {}
+}

@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const pick = (value: boolean): number => value ? 11 : 23;
+---------- Options ----------
+{}
+---------- Output ----------
+const pick = (value: boolean): number => (value ? 11 : 23);
+
+---------- Options ----------
+{"printWidth":28}
+---------- Output ----------
+const pick = (
+  value: boolean,
+): number =>
+  value ? 11 : 23;
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+const pick = (
+  value: boolean,
+): number =>
+  value ? 11 : 23
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const pick = (value: boolean): number =>
+	value ? 11 : 23;

@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(callee /* tail */)(argument);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+callee(
+  /* tail */ argument,
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+callee(/* tail */ argument);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+callee(
+  /* tail */ argument,
+)
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+callee(
+  /* tail */ argument
+);

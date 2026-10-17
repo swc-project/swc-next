@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+left << <T>((/* head */ receiver).method() /* tail */)();
+---------- Options ----------
+{}
+---------- Output ----------
+left <<
+  (<T> /* head */ receiver
+    .method() /* tail */());
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+left <<
+  (<
+    T
+  > /* head */ receiver
+    .method() /* tail */());
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+left <<
+  (<
+    T
+  > /* head */ receiver
+    .method() /* tail */())
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+left <<
+	(<
+		T
+	> /* head */ receiver
+		.method() /* tail */());

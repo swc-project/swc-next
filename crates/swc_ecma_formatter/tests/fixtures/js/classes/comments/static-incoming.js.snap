@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {static
+// prettier-ignore
+{call(1+2);other(3+4);}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  static
+  // prettier-ignore
+  {
+    call(1+2);
+    other(3 + 4);
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  static
+  // prettier-ignore
+  {
+    call(1+2);
+    other(3 + 4);
+  }
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  static
+  // prettier-ignore
+  {
+    call(1+2)
+    other(3 + 4)
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  static
+  // prettier-ignore
+  {
+    call(1+2)
+    other(3 + 4)
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	static
+	// prettier-ignore
+	{
+		call(1+2);
+		other(3 + 4);
+	}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  static
+  // prettier-ignore
+  {
+    call(1+2)
+    other(3 + 4)
+  }
+}

@@ -1,0 +1,2 @@
+target = // after
+[first, second];

@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Record={readonly identifier?:number;"display name":string};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Record = { readonly identifier?: number; "display name": string };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Record = {
+  readonly identifier?: number;
+  "display name": string;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Record =
+  {
+    readonly identifier?: number
+    "display name": string
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Record = {
+	readonly identifier?: number;
+	"display name": string;
+};

@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (key
+// header
+in object);
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+for (key in // header
+object);
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+for (key in // header
+object);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+for (key in // header
+object);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+for (key in // header
+object);

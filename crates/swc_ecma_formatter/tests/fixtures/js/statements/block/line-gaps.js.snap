@@ -1,0 +1,52 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+{ value;
+
+// next
+
+ debugger; }
+---------- Options ----------
+{}
+---------- Output ----------
+{
+  value;
+
+  // next
+
+  debugger;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+{
+  value
+
+  // next
+
+  debugger
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+{
+  value;
+
+  // next
+
+  debugger;
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+{
+	value;
+
+	// next
+
+	debugger;
+}

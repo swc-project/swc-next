@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer:
+/*#__PURE__*/ -call();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/*#__PURE__*/ outer: -call();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/*#__PURE__*/ outer: -call();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+/*#__PURE__*/ outer: -call()

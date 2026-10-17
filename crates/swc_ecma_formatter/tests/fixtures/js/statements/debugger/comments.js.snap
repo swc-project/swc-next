@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* leading */ debugger /* before semicolon */; // trailing
+---------- Options ----------
+{}
+---------- Output ----------
+/* leading */ debugger; /* before semicolon */ // trailing
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/* leading */ debugger /* before semicolon */ // trailing
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/* leading */ debugger; /* before semicolon */ // trailing
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/* leading */ debugger; /* before semicolon */ // trailing

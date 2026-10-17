@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({[a]: /*x*/
+/* prettier-ignore */
+[ 1,2 ]})
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [a]: /*x*/
+  /* prettier-ignore */
+  [ 1,2 ],
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({
+  [a]: /*x*/
+  /* prettier-ignore */
+  [ 1,2 ],
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  [a]: /*x*/
+  /* prettier-ignore */
+  [ 1,2 ],
+})

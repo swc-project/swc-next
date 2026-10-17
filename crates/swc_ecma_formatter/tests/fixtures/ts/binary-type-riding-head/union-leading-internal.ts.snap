@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = input as (// type
+| /* first */ number /* before */ | /* after */ string);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const chosen = input as // type
+  | /* first */ number /* before */
+  | /* after */ string;
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const chosen = input as // type
+	| /* first */ number /* before */
+	| /* after */ string;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const chosen =
+  input as // type
+    | /* first */ number /* before */
+    | /* after */ string
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const chosen = input as // type
+  /* first */ number /* before */ | /* after */ string;

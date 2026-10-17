@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /* name */ interface Alpha {}
+---------- Options ----------
+{}
+---------- Output ----------
+declare interface /* name */ Alpha {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare interface /* name */ Alpha {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare interface /* name */ Alpha {}

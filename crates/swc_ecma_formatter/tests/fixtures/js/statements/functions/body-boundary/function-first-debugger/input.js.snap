@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(a)// prettier-ignore
+{debugger;g(3+4);}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(a) // prettier-ignore
+{
+  debugger;
+  g(3 + 4);
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(a) // prettier-ignore
+{
+  debugger;
+  g(3 + 4);
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false}
+---------- Output ----------
+function f(a) // prettier-ignore
+{
+  debugger
+  g(3 + 4)
+}

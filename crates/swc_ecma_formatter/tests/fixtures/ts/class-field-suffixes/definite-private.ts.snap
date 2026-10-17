@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Definite { #value!: number; read(){return this.#value;} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Definite {
+  #value!: number;
+  read() {
+    return this.#value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+class Definite {
+  #value!: number
+  read() {
+    return this.#value
+  }
+}
+
+---------- Options ----------
+{"printWidth":24,"useTabs":true}
+---------- Output ----------
+class Definite {
+	#value!: number;
+	read() {
+		return this.#value;
+	}
+}

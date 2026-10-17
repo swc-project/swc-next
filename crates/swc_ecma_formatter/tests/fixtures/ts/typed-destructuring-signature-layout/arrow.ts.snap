@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = ({ a }: { a: string }) => a;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const f = ({
+  a,
+}: {
+  a: string;
+}) => a;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const f = ({ a }: { a: string }) => a;

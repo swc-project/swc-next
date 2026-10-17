@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new (class {})();
+new (class Named {})();
+new Factory(class {});
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+new (class {})();
+new (class Named {})();
+new Factory(class {});
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+new (class {})()
+new (class Named {})()
+new Factory(class {})
+
+---------- Options ----------
+{"printWidth":80,"useTabs":true}
+---------- Output ----------
+new (class {})();
+new (class Named {})();
+new Factory(class {});
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+new (class {})();
+new (class Named {})();
+new Factory(class {});

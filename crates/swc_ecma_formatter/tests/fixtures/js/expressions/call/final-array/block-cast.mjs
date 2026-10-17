@@ -1,0 +1,1 @@
+f(first,[/** @type {number} */ /* ordinary */ (1),2]);

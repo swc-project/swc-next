@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare /*#__PURE__*/ namespace Alpha {}
+---------- Options ----------
+{}
+---------- Output ----------
+declare /*#__PURE__*/ namespace Alpha {}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare /*#__PURE__*/ namespace Alpha {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+declare /*#__PURE__*/ namespace Alpha {}

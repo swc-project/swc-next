@@ -1,0 +1,83 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a1 = </* open */><Child/></ /* close */>;
+const b1=< // open
+><Child/></ // close
+>;
+const c1=<a><// before slash
+/a>;
+const c2=<a></* before slash *//a /* after name */>;
+const c3=<><// before slash
+/>;
+const c4=<></* before slash *// /* after slash */>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const a1 = (
+  </* open */>
+    <Child />
+  </ /* close */>
+);
+const b1 = (
+  <
+    // open
+  >
+    <Child />
+  </
+    // close
+  >
+);
+const c1 = (
+  <a></
+    // before slash
+    a
+  >
+);
+const c2 = <a></ /* before slash */ a /* after name */>;
+const c3 = (
+  <></
+    // before slash
+  >
+);
+const c4 = (
+  <></ /* before slash */
+    /* after slash */>
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const a1 = (
+  </* open */>
+    <Child />
+  </ /* close */>
+);
+const b1 = (
+  <
+    // open
+  >
+    <Child />
+  </
+    // close
+  >
+);
+const c1 = (
+  <a></
+    // before slash
+    a
+  >
+);
+const c2 = (
+  <a></ /* before slash */ a /* after name */>
+);
+const c3 = (
+  <></
+    // before slash
+  >
+);
+const c4 = (
+  <></ /* before slash */
+    /* after slash */>
+);

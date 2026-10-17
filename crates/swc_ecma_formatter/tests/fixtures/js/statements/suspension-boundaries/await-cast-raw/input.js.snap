@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { return await (/* prettier-ignore */ /** @type {number} */ (first(  ))); }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  return await (/* prettier-ignore */ /** @type {number} */ (first(  ))
+  );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  return await (/* prettier-ignore */ /** @type {number} */ (first(  ))
+  )
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  return await (/* prettier-ignore */ /** @type {number} */ (first(  )));
+}

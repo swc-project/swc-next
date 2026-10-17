@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+await /*note*/ using resource=createResource();
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+await using /*note*/ resource =
+    createResource();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+await using /*note*/ resource =
+    createResource()
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+await using /*note*/ resource = createResource();
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+await using /*note*/ resource = createResource()

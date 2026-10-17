@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** 漢@type語 */ (first);
+---------- Options ----------
+{}
+---------- Output ----------
+/** 漢@type語 */ (first);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/** 漢@type語 */ (first)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/** 漢@type語 */ (first);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** 漢@type語 */ (
+  first
+);
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/** 漢@type語 */ (
+  first
+);
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/** 漢@type語 */ (
+	first
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/** 漢@type語 */ (first);
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+/** 漢@type語 */ (first);

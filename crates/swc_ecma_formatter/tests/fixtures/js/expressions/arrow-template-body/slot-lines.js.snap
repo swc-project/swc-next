@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const create = () => `${foo(
+  first,
+  second,
+)}`;
+---------- Options ----------
+{}
+---------- Output ----------
+const create = () => `${foo(first, second)}`;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const create = () =>
+  `${foo(
+    first,
+    second,
+  )}`;
+
+---------- Options ----------
+{"arrowParens":"avoid"}
+---------- Output ----------
+const create = () => `${foo(first, second)}`;

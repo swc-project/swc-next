@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A=import(/* prettier-ignore */ "\u006d").Value;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A = import(
+  /* prettier-ignore */ "\u006d"
+).Value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A = import(/* prettier-ignore */ "\u006d").Value;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+type A = import(/* prettier-ignore */ "\u006d").Value

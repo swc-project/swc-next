@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(<Panel first={firstArgument} second={secondArgument}/>) as View;
+(<Panel first={firstArgument} second={secondArgument}/>) satisfies View;
+(<Panel first={firstArgument} second={secondArgument}/>)!;
+<Panel {...(props as Props)} {...(props satisfies Props)} />;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(<Panel first={firstArgument} second={secondArgument} />) as View;
+(<Panel first={firstArgument} second={secondArgument} />) satisfies View;
+(<Panel first={firstArgument} second={secondArgument} />)!;
+<Panel {...(props as Props)} {...(props satisfies Props)} />;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+(
+  <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  />
+) as View;
+(
+  <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  />
+) satisfies View;
+(
+  <Panel
+    first={
+      firstArgument
+    }
+    second={
+      secondArgument
+    }
+  />
+)!;
+<Panel
+  {...(props as Props)}
+  {...(props satisfies Props)}
+/>;

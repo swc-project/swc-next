@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { set value(input : number) { use(input); } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  set value(input: number) {
+    use(input);
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  set value(
+    input: number,
+  ) {
+    use(input);
+  }
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+class C {
+  set value(
+    input: number,
+  ) {
+    use(
+      input,
+    )
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+class C {
+	set value(
+		input: number,
+	) {
+		use(input);
+	}
+}

@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import local,* as namespace from "module";
+---------- Options ----------
+{}
+---------- Output ----------
+import local, * as namespace from "module";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import local, * as namespace from "module";
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+import local, * as namespace from 'module'

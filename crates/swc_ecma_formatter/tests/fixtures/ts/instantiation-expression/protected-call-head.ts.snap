@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume();
+/*#__PURE__*/(function factory(){ trace.push("callee"); return factory; })()<number>;---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+  trace.push("callee");
+  return factory;
+})()<number>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+  trace.push(
+    "callee",
+  );
+  return factory;
+})()<number>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+consume()
+;
+/*#__PURE__*/ (function factory() {
+  trace.push(
+    "callee",
+  )
+  return factory
+})()<number>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+consume();
+/*#__PURE__*/ (function factory() {
+	trace.push(
+		"callee",
+	);
+	return factory;
+})()<number>;

@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f({[// prettier-ignore
+first+second]: value=1+2}) { return value; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f({
+  [// prettier-ignore
+first+second]: value=1+2,
+}) {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f({
+  [// prettier-ignore
+first+second]: value=1+2,
+}) {
+  return value;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function f({
+  [// prettier-ignore
+first+second]: value=1+2
+}) {
+  return value
+}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+function f({
+  [// prettier-ignore
+first+second]: value=1+2,
+}) {
+  return value
+}
