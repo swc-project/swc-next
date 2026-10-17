@@ -408,6 +408,13 @@ impl<'ast> CommentCursor<'ast> {
 
     /// Prepares a later boundary without consuming comments inside its child.
     pub(super) fn in_range(&self, span: Span) -> &'ast [Comment] {
+        if self
+            .remaining
+            .first()
+            .is_none_or(|comment| comment.span.end > span.end)
+        {
+            return &self.remaining[..0];
+        }
         let first = self
             .remaining
             .partition_point(|comment| comment.span.start < span.start);
