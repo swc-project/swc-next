@@ -99,20 +99,6 @@ impl<'a> Frame<'a> {
             measurement: Measurement::Display,
         }
     }
-
-    fn next(&mut self) -> Option<FormatElement<'a>> {
-        while let Some((&element, remaining)) = self.remaining.split_first() {
-            self.remaining = remaining;
-            if self.flat {
-                if let Some(element) = element.flattened() {
-                    return Some(element);
-                }
-            } else {
-                return Some(element);
-            }
-        }
-        None
-    }
 }
 
 struct Cursor<'a> {
@@ -130,10 +116,11 @@ impl<'a> Cursor<'a> {
         };
     }
 
-    fn next(&mut self, mode: &mut Mode) -> Option<FormatElement<'a>> {
+    fn next(&mut self, mode: &mut Mode) -> Option<(&'a FormatElement<'a>, bool)> {
         loop {
-            if let Some(element) = self.current.next() {
-                return Some(element);
+            if let Some((element, remaining)) = self.current.remaining.split_first() {
+                self.current.remaining = remaining;
+                return Some((element, self.current.flat));
             }
             if let Some(restore) = self.current.restore_mode {
                 *mode = restore;
@@ -336,8 +323,18 @@ pub(super) fn print(
     };
     let mut fills = Vec::new();
     let mut entries = Vec::new();
-    while let Some(element) = cursor.next(&mut mode) {
-        match element {
+    while let Some((element, flat)) = cursor.next(&mut mode) {
+        let flattened;
+        let element = if flat {
+            let Some(element) = element.flattened() else {
+                continue;
+            };
+            flattened = element;
+            &flattened
+        } else {
+            element
+        };
+        match *element {
             FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
             FormatElement::FlatFragment(fragment) => cursor.enter(fragment.0.elements, true, None),
             FormatElement::Alternatives(alternatives)
