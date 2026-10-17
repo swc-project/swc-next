@@ -750,11 +750,13 @@ fn pending_whitespace() {
 
 #[test]
 fn deep_indentation() {
+    let allocator = Allocator::new();
     let mut elements = vec![FormatElement::StartIndent; 1025];
     elements.push(FormatElement::HardLine);
     elements.push(FormatElement::Text(super::text::Text::new("value")));
     elements.extend(std::iter::repeat_n(FormatElement::EndIndent, 1025));
     let document = Doc {
+        allocator: &allocator,
         elements: &elements,
         group_count: 0,
         conditional_lines: false,

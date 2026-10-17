@@ -681,6 +681,7 @@ impl<'a> Writer<'a> {
 
     pub(crate) fn finish(self) -> Doc<'a> {
         Doc {
+            allocator: self.allocator,
             elements: self.elements.into_bump_slice(),
             group_count: self.group_count,
             conditional_lines: self.conditional_lines,
