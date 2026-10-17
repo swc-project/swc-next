@@ -2,6 +2,7 @@
 
 use super::{FormatElement, Measurement, SpaceKind, text::Text};
 use crate::{FormatOptions, IndentStyle};
+use swc_next_allocator::{Allocator, vec::Vec as ArenaVec};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -293,8 +294,9 @@ impl Indentation {
     }
 }
 
-pub(super) fn print(
-    elements: &[FormatElement<'_>],
+pub(super) fn print<'a>(
+    elements: &'a [FormatElement<'a>],
+    allocator: &'a Allocator,
     group_count: usize,
     conditional_lines: bool,
     options: FormatOptions,
@@ -309,13 +311,19 @@ pub(super) fn print(
     };
     let mut suffixes = Vec::new();
     let mut indent = Indentation::default();
-    let mut indents = Vec::new();
-    let mut modes = Vec::new();
-    let mut group_modes = vec![Mode::Flat; group_count];
+    let mut indents = ArenaVec::with_capacity_in(8, allocator);
+    let mut modes = ArenaVec::with_capacity_in(8, allocator);
+    let mut group_modes = ArenaVec::with_capacity_in(group_count, allocator);
+    group_modes.resize(group_count, Mode::Flat);
+    let group_modes = group_modes.into_bump_slice_mut();
     let mut mode = Mode::Break;
     let mut probe = Probe {
         track_groups: conditional_lines,
-        ..Probe::default()
+        group_writes: Vec::new(),
+        modes: Vec::new(),
+        frames: Vec::new(),
+        fills: Vec::new(),
+        entries: Vec::new(),
     };
     let mut cursor = Cursor {
         current: Frame::new(elements),
@@ -361,7 +369,7 @@ pub(super) fn print(
                         &output,
                         options,
                         mode,
-                        &group_modes,
+                        group_modes,
                     )
                 });
                 let (fragment, selected_mode) = selected
@@ -438,7 +446,7 @@ pub(super) fn print(
                             &output,
                             options,
                             mode,
-                            &group_modes,
+                            group_modes,
                         ));
                 let group_mode = if flat { Mode::Flat } else { Mode::Break };
                 output.record_group_mode(group_mode, inherit_flat);
@@ -469,7 +477,7 @@ pub(super) fn print(
                             &output,
                             options,
                             mode,
-                            &group_modes,
+                            group_modes,
                         );
                 let group_mode = if flat { Mode::Flat } else { Mode::Break };
                 output.record_group_mode(group_mode, inherit_flat);
@@ -580,7 +588,7 @@ pub(super) fn print(
                             &output,
                             options,
                             mode,
-                            &group_modes,
+                            group_modes,
                         );
                         if pair_fits {
                             fills[fill_index].separator_mode = Mode::Flat;
@@ -605,7 +613,7 @@ pub(super) fn print(
                                     &output,
                                     options,
                                     mode,
-                                    &group_modes,
+                                    group_modes,
                                 )
                             {
                                 Mode::Flat
@@ -717,7 +725,6 @@ struct ProbeRequest<'a, 'pending, K> {
     entries: &'pending [Mode],
 }
 
-#[derive(Default)]
 struct Probe<'a> {
     track_groups: bool,
     group_writes: Vec<(super::GroupId, Mode)>,
