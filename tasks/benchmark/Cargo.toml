@@ -10,7 +10,7 @@ tracy    = []
 
 [dependencies]
 clap = { workspace = true }
-swc_core = { version = "=82.1.0", features = [
+swc_core = { workspace = true, features = [
   "common",
   "ecma_ast",
   "ecma_parser",
@@ -20,7 +20,7 @@ swc_core = { version = "=82.1.0", features = [
   "ecma_visit",
   "typescript",
 ] }
-swc_ts_fast_strip = "=59.0.1"
+swc_ts_fast_strip = { workspace = true }
 
 swc_next_allocator             = { workspace = true }
 swc_next_ecma_ast              = { workspace = true }
