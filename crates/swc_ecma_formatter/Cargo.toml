@@ -9,6 +9,7 @@ repository.workspace  = true
 version               = "0.1.0"
 
 [dependencies]
+memchr               = { workspace = true }
 swc_next_allocator   = { workspace = true }
 swc_next_ecma_ast    = { workspace = true }
 swc_next_ecma_parser = { workspace = true }

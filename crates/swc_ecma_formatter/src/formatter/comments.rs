@@ -771,32 +771,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 .is_some_and(|rest| rest.starts_with([' ', '\t', '/', '>']))
                         })
             }
-            CommentKind::Block => {
-                raw.contains('@')
-                    && raw.char_indices().any(|(offset, character)| {
-                        if character != '@' {
-                            return false;
-                        }
-                        let tag = raw[offset + 1..]
-                            .split(super::source::is_source_whitespace)
-                            .next()
-                            .unwrap_or("");
-                        ["jsx", "jsxfrag", "jsximportsource", "jsxruntime"]
-                            .iter()
-                            .any(|name| tag.eq_ignore_ascii_case(name))
+            CommentKind::Block => memchr::memchr_iter(b'@', raw.as_bytes()).any(|offset| {
+                let tag = &raw[offset + 1..];
+                ["jsx", "jsxfrag", "jsximportsource", "jsxruntime"]
+                    .iter()
+                    .any(|name| {
+                        tag.get(..name.len())
+                            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(name))
+                            && tag[name.len()..]
+                                .chars()
+                                .next()
+                                .is_none_or(super::source::is_source_whitespace)
                     })
-            }
+            }),
         }
     }
 
     pub(super) fn comment_is_optimizer_annotation(&self, comment: Comment) -> bool {
         let raw = self.source(comment.span);
-        raw.match_indices('@')
-            .chain(raw.match_indices('#'))
-            .any(|(offset, _)| {
-                let tag = &raw[offset + 1..];
-                tag.starts_with("__PURE__") || tag.starts_with("__NO_SIDE_EFFECTS__")
-            })
+        memchr::memchr2_iter(b'@', b'#', raw.as_bytes()).any(|offset| {
+            let tag = &raw[offset + 1..];
+            tag.starts_with("__PURE__") || tag.starts_with("__NO_SIDE_EFFECTS__")
+        })
     }
 
     pub(super) fn comment_has_target_annotation(&self, comment: Comment) -> bool {
