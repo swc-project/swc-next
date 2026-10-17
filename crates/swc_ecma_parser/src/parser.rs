@@ -11333,13 +11333,44 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.set_lexer_mode(LexerMode::Normal);
     }
 
+    /// Whether the `<` that starts a JSX child is followed by `/`. Common
+    /// shapes are decided from the source bytes; trivia and other bytes use
+    /// full lookahead.
+    #[inline]
+    fn jsx_closing_slash_follows(&mut self) -> Option<bool> {
+        let source = self.source.as_bytes();
+        let end = self.current_token.end() as usize;
+        match source.get(end) {
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'>') => return Some(false),
+            Some(b'/')
+                if source
+                    .get(end + 1)
+                    .is_some_and(|byte| byte.is_ascii_alphabetic()) =>
+            {
+                return Some(true);
+            }
+            _ => {}
+        }
+        Some(self.peek_ahead()?.tag() == TokenTag::Slash)
+    }
+
+    /// Whether the `<` that starts a JSX element is followed by `>`.
+    #[inline]
+    fn jsx_fragment_open_follows(&mut self) -> bool {
+        let source = self.source.as_bytes();
+        match source.get(self.current_token.end() as usize) {
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$') => false,
+            Some(b'>') => true,
+            _ => self
+                .peek_ahead()
+                .is_some_and(|token| token.tag() == TokenTag::GreaterThan),
+        }
+    }
+
     fn parse_jsx_element(&mut self, context: JsxElementContext) -> Option<Expr> {
         let start = self.current_token.start();
         self.enter_jsx_tag();
-        if self
-            .peek_ahead()
-            .is_some_and(|token| token.tag() == TokenTag::GreaterThan)
-        {
+        if self.jsx_fragment_open_follows() {
             return self.parse_jsx_fragment(start, context);
         }
 
@@ -11619,7 +11650,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_b.append(jsx_text);
                     }
                     TokenTag::LessThan => {
-                        if self.peek_ahead()?.tag() == TokenTag::Slash {
+                        if self.jsx_closing_slash_follows()? {
                             break;
                         }
                         let child = self.parse_jsx_element(JsxElementContext::Child)?;
