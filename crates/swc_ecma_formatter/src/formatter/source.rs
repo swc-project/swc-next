@@ -9,7 +9,7 @@ pub(super) fn is_source_whitespace(character: char) -> bool {
 }
 
 pub(super) fn split_line(source: &str) -> (&str, Option<&str>) {
-    let Some(index) = source.find(['\n', '\r']) else {
+    let Some(index) = memchr::memchr2(b'\n', b'\r', source.as_bytes()) else {
         return (source, None);
     };
     let is_crlf =
@@ -47,6 +47,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn find_token(&self, span: Span, comments: &[Comment], token: &str) -> Option<u32> {
+        let token = memchr::memmem::Finder::new(token.as_bytes());
         let mut start = span.start;
         for comment in comments {
             if comment.span.end <= start {
@@ -55,16 +56,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if comment.span.start >= span.end {
                 break;
             }
-            if let Some(offset) = self
-                .source(Span::new(start, comment.span.start))
-                .find(token)
+            if let Some(offset) =
+                token.find(self.source(Span::new(start, comment.span.start)).as_bytes())
             {
                 return Some(start + offset as u32);
             }
             start = comment.span.end;
         }
-        self.source(Span::new(start, span.end))
-            .find(token)
+        token
+            .find(self.source(Span::new(start, span.end)).as_bytes())
             .map(|offset| start + offset as u32)
     }
 
