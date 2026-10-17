@@ -2959,6 +2959,7 @@ name = "swc_next_ecma_formatter"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "memchr",
  "serde_json",
  "swc_next_allocator",
  "swc_next_ecma_ast",

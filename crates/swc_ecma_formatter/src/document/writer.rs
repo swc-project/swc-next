@@ -70,7 +70,7 @@ impl<'a> Writer<'a> {
             Cow::Borrowed(text) => text,
             Cow::Owned(text) => self.allocator.alloc_str(&text),
         };
-        while let Some(index) = text.find(['\r', '\n']) {
+        while let Some(index) = memchr::memchr2(b'\r', b'\n', text.as_bytes()) {
             self.text(&text[..index]);
             self.literal_line();
             let crlf =
