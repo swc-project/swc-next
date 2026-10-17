@@ -170,6 +170,7 @@ dependencies = [
 name = "benchmark"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "codspeed-criterion-compat",
  "gungraun",
  "mimalloc",

@@ -1,5 +1,7 @@
-use std::{env, fs, hint::black_box, io};
+use std::{fs, hint::black_box, io};
 
+use benchmark::{Args, Operation};
+use clap::Parser as _;
 use swc_core::{
     common::{BytePos, FileName, GLOBALS, Globals, Mark, SourceMap, errors::Handler, sync::Lrc},
     ecma::{
@@ -13,22 +15,9 @@ use swc_core::{
 };
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-    assert!(
-        matches!(args.len(), 3 | 4),
-        "usage: swc <file.ts> <parse|isolated-declaration|type-strip> [iterations]"
-    );
-    let iterations = args.get(3).map_or(10, |value| {
-        value.parse::<usize>().expect("invalid iterations")
-    });
-    assert!(iterations > 0, "iterations must be positive");
-    let operation = args[2].as_str();
-    assert!(matches!(
-        operation,
-        "parse" | "isolated-declaration" | "type-strip"
-    ));
-    let source = fs::read_to_string(&args[1]).expect("failed to read input");
-    let extension = std::path::Path::new(&args[1])
+    let args = Args::parse();
+    let source = fs::read_to_string(&args.file).expect("failed to read input");
+    let extension = std::path::Path::new(&args.file)
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("");
@@ -46,8 +35,8 @@ fn main() {
         })
     };
 
-    for _ in 0..iterations {
-        if operation == "parse" {
+    for _ in 0..args.iterations.get() {
+        if args.operation == Operation::Parse {
             let lexer = Lexer::new(
                 syntax,
                 EsVersion::latest(),
@@ -62,7 +51,7 @@ fn main() {
 
         GLOBALS.set(&Globals::default(), || {
             let cm: Lrc<SourceMap> = Default::default();
-            if operation == "type-strip" {
+            if args.operation == Operation::TypeStrip {
                 assert!(typescript, "type-strip requires TypeScript input");
                 let handler = Handler::with_emitter_writer(Box::new(io::sink()), Some(cm.clone()));
                 black_box(
@@ -81,7 +70,7 @@ fn main() {
                 assert!(!handler.has_errors(), "type stripping diagnostics");
                 return;
             }
-            let filename = FileName::Real(args[1].clone().into());
+            let filename = FileName::Real(args.file.clone().into());
             let file = cm.new_source_file(filename.clone().into(), source.clone());
             let lexer = Lexer::new(syntax, EsVersion::latest(), StringInput::from(&*file), None);
             let mut parser = Parser::new_from(lexer);
