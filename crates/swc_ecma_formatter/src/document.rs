@@ -3,12 +3,14 @@
 //! Construction owns a growable instruction buffer in the formatting arena.
 //! Finishing seals an immutable slice; source text remains borrowed from its owner.
 
+mod encode;
 mod printer;
 #[cfg(test)]
 mod tests;
 mod text;
 mod writer;
 
+pub(crate) use encode::encode;
 pub(crate) use writer::{FillEntry, Writer};
 
 use crate::FormatOptions;

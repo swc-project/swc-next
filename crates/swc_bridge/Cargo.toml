@@ -12,14 +12,16 @@ version               = "0.3.0"
 crate-type = ["lib", "cdylib"]
 
 [features]
-codegen = ["dep:swc_next_ecma_codegen"]
-parser  = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
+codegen   = ["dep:swc_next_ecma_codegen"]
+formatter = ["parser", "dep:swc_next_ecma_formatter"]
+parser    = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
 
 [dependencies]
 swc_next_allocator     = { workspace = true }
 swc_next_bridge_macros = { workspace = true }
 swc_next_ecma_ast      = { workspace = true }
 swc_next_ecma_codegen  = { workspace = true, optional = true }
+swc_next_ecma_formatter= { workspace = true, optional = true }
 swc_next_ecma_parser   = { workspace = true, optional = true }
 swc_next_ecma_semantic = { workspace = true, optional = true }
 
