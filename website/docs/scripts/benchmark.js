@@ -17,7 +17,7 @@ const warmup = 20;
 const nativeIterations = 10;
 const jsRuns = 2;
 const jsTimeMs = 1000;
-// Set BENCH_CPU to an available CPU, preferably a performance core.
+// Linux only: set BENCH_CPU to an available CPU, preferably a performance core.
 const cpu = process.env.BENCH_CPU ?? "0";
 const output = path.join(root, "website/docs/Benchmark.md");
 const parseFiles = ["typescript.js", "effect-schema-ast.ts"];
@@ -61,6 +61,13 @@ function run(command, args, options = {}) {
   return result.stdout?.trimEnd() ?? "";
 }
 
+function measure(command, args) {
+  if (process.platform === "linux") {
+    return run("taskset", ["--cpu-list", cpu, command, ...args]);
+  }
+  return run(command, args);
+}
+
 function build() {
   run(
     "cargo",
@@ -85,8 +92,7 @@ function main() {
   const require = createRequire(path.join(root, "tasks/benchmark/package.json"));
   const coreVersion = require("@swc/core/package.json").version;
   const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`];
-  run("taskset", ["--cpu-list", cpu, "hyperfine", "--version"]);
-  console.error(`Benchmark CPU: ${cpu}`);
+  measure("hyperfine", ["--version"]);
   build();
 
   // Hyperfine executes these arguments directly, without a shell.
@@ -120,10 +126,8 @@ function main() {
         (name) => `${name}; ${nativeIterations} iterations`,
       );
       if (isJs) {
-        const timings = commands.map((command) =>
-          Number(
-            run("taskset", ["--cpu-list", cpu, ...command, "--calibrate"]),
-          ),
+        const timings = commands.map(([command, ...args]) =>
+          Number(measure(command, [...args, "--calibrate"])),
         );
         assert(
           timings.every((ms) => Number.isFinite(ms) && ms > 0),
@@ -148,10 +152,7 @@ function main() {
         ["SWC Next first", [0, 1]],
         ["SWC first", [1, 0]],
       ]) {
-        const result = run("taskset", [
-          "--cpu-list",
-          cpu,
-          "hyperfine",
+        const result = measure("hyperfine", [
           "--style",
           "basic",
           "--shell",
