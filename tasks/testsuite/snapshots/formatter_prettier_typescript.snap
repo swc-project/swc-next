@@ -1,33 +1,25 @@
 formatter * prettier 3.9.9 * typescript
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 661
+Fixture files: 657
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 809/815 (99.26%)
-Snapshot matched: 809/815
-AST parity: 815/815
-AST mismatched: 0/815
-AST format errors: 0/815
-Mismatched: 6/815
-Format errors: 0/815
-Panicked: 0/815
-Not idempotent: 0/815
-Ignored files: 72
-Parse errors: 0/815
+Passed: 810/810 (100.00%)
+Snapshot matched: 810/810
+AST parity: 810/810
+AST mismatched: 0/810
+AST format errors: 0/810
+Mismatched: 0/810
+Format errors: 0/810
+Panicked: 0/810
+Not idempotent: 0/810
+Ignored files: 76
+Parse errors: 0/810
 Expected parser errors: 1
 Unsupported option sets: 4
 
 # Expected parser errors
 
 - typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
-
-# Failed
-
-- typescript/comments/method_types.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/prettier-ignore/issue-16927.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/prettier-ignore/no-semi/prettier-ignore-parenthesized-type.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- typescript/prettier-ignore/prettier-ignore-nested-unions.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/prettier-ignore/prettier-ignore-parenthesized-type.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 

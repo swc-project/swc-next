@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function run() {
+  (
+    // prettier-ignore
+    await  task()
+  ).property;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+async function run() {
+  (
+    // prettier-ignore
+    await  task()
+  ).property;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+async function run() {
+  ;(
+    // prettier-ignore
+    await  task()
+  ).property
+}
