@@ -164,10 +164,11 @@ impl<'a> ProbeCursor<'a, '_> {
         };
     }
 
-    fn next(&mut self, mode: &mut Mode) -> Option<FormatElement<'a>> {
+    fn next(&mut self, mode: &mut Mode) -> Option<(&'a FormatElement<'a>, bool)> {
         loop {
-            if let Some(element) = self.current.next() {
-                return Some(element);
+            if let Some((element, remaining)) = self.current.remaining.split_first() {
+                self.current.remaining = remaining;
+                return Some((element, self.current.flat));
             }
             if let Some(restore) = self.current.restore_mode {
                 *mode = restore;
@@ -787,7 +788,15 @@ impl<'a> Probe<'a> {
             return false;
         }
         // Only active text and reserved spaces advance the probe column.
-        while let Some(element) = cursor.next(&mut mode) {
+        while let Some((element, flat)) = cursor.next(&mut mode) {
+            let element = if flat {
+                let Some(element) = element.flattened() else {
+                    continue;
+                };
+                element
+            } else {
+                *element
+            };
             match element {
                 FormatElement::Text(text)
                 | FormatElement::IfBreak(text)
