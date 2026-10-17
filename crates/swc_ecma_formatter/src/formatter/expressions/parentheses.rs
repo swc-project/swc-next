@@ -1302,14 +1302,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        context.expression_start = self.format_expression_head(
-            expression,
-            head,
-            binding,
-            context,
-            array_comments.as_deref_mut(),
-            writer,
-        )?;
+        if !head.comments.is_empty() {
+            context.expression_start = self.format_expression_head(
+                expression,
+                head,
+                binding,
+                context,
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+        }
         if let Some(owner) = generated {
             return self.format_generated_enclosure(
                 owner,
