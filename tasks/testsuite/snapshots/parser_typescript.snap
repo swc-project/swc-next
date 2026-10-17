@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13048/13145 (99.26%)
-Negative Passed: 1628/2992 (54.41%)
+Negative Passed: 1637/2992 (54.71%)
 Panicked: 0/16137 (0.00%)
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -41,7 +41,6 @@ Failed: fixtures/typescript/tests/cases/compiler/ambientExternalModuleWithRelati
 Failed: fixtures/typescript/tests/cases/compiler/ambientGetters.ts - ambientGetters.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/ambientStatement1.ts - ambientStatement1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/amdDependencyCommentName4.ts - amdDependencyCommentName4.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/anyDeclare.ts - anyDeclare.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/anyIdenticalToItself.ts - anyIdenticalToItself.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/argumentsBindsToFunctionScopeArgumentList.ts - argumentsBindsToFunctionScopeArgumentList.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/argumentsReferenceInObjectLiteral_Js.ts - /a.js: expected a parse or early error, but pipeline succeeded
@@ -92,8 +91,6 @@ Failed: fixtures/typescript/tests/cases/compiler/classWithDuplicateIdentifier.ts
 Failed: fixtures/typescript/tests/cases/compiler/classWithOverloadImplementationOfWrongName.ts - classWithOverloadImplementationOfWrongName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/classWithOverloadImplementationOfWrongName2.ts - classWithOverloadImplementationOfWrongName2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/cloduleTest2.ts - cloduleTest2.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/cloduleWithDuplicateMember1.ts - cloduleWithDuplicateMember1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/cloduleWithDuplicateMember2.ts - cloduleWithDuplicateMember2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/cloduleWithPriorInstantiatedModule.ts - cloduleWithPriorInstantiatedModule.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionArgumentsArrowFunctions.ts - collisionArgumentsArrowFunctions.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/collisionArgumentsFunction.ts - collisionArgumentsFunction.ts: expected a parse or early error, but pipeline succeeded
@@ -112,7 +109,6 @@ Failed: fixtures/typescript/tests/cases/compiler/computedPropertiesInDestructuri
 Failed: fixtures/typescript/tests/cases/compiler/computedPropertiesInDestructuring1_ES6.ts - computedPropertiesInDestructuring1_ES6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/conflictingDeclarationsImportFromNamespace1.ts - index.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/conflictingDeclarationsImportFromNamespace2.ts - index.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/conflictingTypeAnnotatedVar.ts - conflictingTypeAnnotatedVar.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/constDeclarations-access.ts - file2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/constDeclarations-access2.ts - constDeclarations-access2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/constDeclarations-ambient-errors.ts - constDeclarations-ambient-errors.ts: expected a parse or early error, but pipeline succeeded
@@ -265,7 +261,6 @@ Failed: fixtures/typescript/tests/cases/compiler/exportEqualErrorType.ts - expor
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualMemberMissing.ts - exportEqualMemberMissing_1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsClassRedeclarationError.ts - exportEqualsClassRedeclarationError.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportEqualsDefaultProperty.ts - imp.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/exportSameNameFuncVar.ts - exportSameNameFuncVar.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportSpecifierReferencingOuterDeclaration1.ts - exportSpecifierReferencingOuterDeclaration1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/exportStarFromEmptyModule.ts - exportStarFromEmptyModule_module4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/expressionWithJSDocTypeArguments.ts - expressionWithJSDocTypeArguments.ts: expected a parse or early error, but pipeline succeeded
@@ -582,7 +577,6 @@ Failed: fixtures/typescript/tests/cases/compiler/superInConstructorParam1.ts - s
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccess2.ts - superPropertyAccess2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/superPropertyAccessInSuperCall01.ts - superPropertyAccessInSuperCall01.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/systemModule9.ts - systemModule9.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/targetTypeCastTest.ts - targetTypeCastTest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/targetTypeTest1.ts - targetTypeTest1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/templateLiteralsInTypes.ts - templateLiteralsInTypes.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/temporal.ts - temporal.ts: expected a parse or early error, but pipeline succeeded
@@ -629,7 +623,6 @@ Failed: fixtures/typescript/tests/cases/compiler/uniqueSymbolJs.ts - ./a.js: exp
 Failed: fixtures/typescript/tests/cases/compiler/unknownSymbolOffContextualType1.ts - unknownSymbolOffContextualType1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/unknownSymbols1.ts - unknownSymbols1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/useBeforeDeclaration_classDecorators.2.ts - useBeforeDeclaration_classDecorators.2.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/compiler/varAndFunctionShareName.ts - varAndFunctionShareName.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/variableDeclaratorResolvedDuringContextualTyping.ts - variableDeclaratorResolvedDuringContextualTyping.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/varianceReferences.ts - varianceReferences.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/compiler/voidAsNonAmbiguousReturnType.ts - voidAsNonAmbiguousReturnType_0.ts: expected a parse or early error, but pipeline succeeded
@@ -854,7 +847,6 @@ Failed: fixtures/typescript/tests/cases/conformance/es6/functionDeclarations/Fun
 Failed: fixtures/typescript/tests/cases/conformance/es6/moduleExportsSystem/topLevelVarHoistingCommonJS.ts - topLevelVarHoistingCommonJS.ts: semantic: 'with' statements are not allowed in strict mode at 534..561
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/multipleDefaultExports01.ts - m1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/multipleDefaultExports02.ts - m1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/es6/modules/multipleDefaultExports04.ts - multipleDefaultExports04.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/modules/multipleDefaultExports05.ts - multipleDefaultExports05.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/newTarget/invalidNewTarget.es5.ts - invalidNewTarget.es5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/es6/newTarget/invalidNewTarget.es6.ts - invalidNewTarget.es6.ts: expected a parse or early error, but pipeline succeeded
@@ -1003,7 +995,6 @@ Failed: fixtures/typescript/tests/cases/conformance/externalModules/valuesMergin
 Failed: fixtures/typescript/tests/cases/conformance/externalModules/verbatimModuleSyntaxRestrictionsCJS.ts - /main2.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/fixSignatureCaching.ts - fixSignatureCaching.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/functions/functionImplementationErrors.ts - functionImplementationErrors.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tests/cases/conformance/functions/functionNameConflicts.ts - functionNameConflicts.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/functions/functionOverloadCompatibilityWithVoid01.ts - functionOverloadCompatibilityWithVoid01.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tests/cases/conformance/functions/functionWithUseStrictAndSimpleParameterList.ts - functionWithUseStrictAndSimpleParameterList.ts: semantic: Illegal 'use strict' directive in function with non-simple parameter list at 25..38
 Failed: fixtures/typescript/tests/cases/conformance/functions/parameterInitializersForwardReferencing.2.ts - parameterInitializersForwardReferencing.2.ts: expected a parse or early error, but pipeline succeeded

@@ -15,7 +15,7 @@ fn annex_b_if_visibility() {
         "if (condition) function f() { return f; } f;",
         script,
         b"f",
-        &[Some("f()"), None],
+        &[Some("f()"), Some("f()")],
     );
 
     assert_named_declaration_targets(
@@ -58,6 +58,225 @@ fn annex_b_if_visibility() {
         ts_script,
         b"f",
         &[Some("f():"), Some("f; return")],
+    );
+}
+
+#[test]
+fn annex_b_companion_visibility() {
+    for lang in [Lang::Js, Lang::Ts] {
+        let script = Options {
+            lang,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let module = Options {
+            source_type: SourceType::Module,
+            ..script
+        };
+
+        assert_named_declaration_targets(
+            "let f; if (condition) function f() { return f; } f;",
+            script,
+            b"f",
+            &[Some("f()"), Some("f; if")],
+        );
+
+        assert_named_declaration_targets(
+            "if (condition) function f() { return f; } let f; f;",
+            script,
+            b"f",
+            &[Some("f()"), Some("f; f;")],
+        );
+
+        assert_named_declaration_targets(
+            "{ let f; if (condition) function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "{ if (condition) function f() { return f; } let f; } f;",
+            script,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "{ let f; if (condition) function f(value) { return f; } } { if (condition) function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f(value)"), Some("f()"), Some("f()")],
+        );
+
+        assert_named_declaration_targets(
+            "function outer(f) { if (condition) function f() { return f; } return f; }",
+            script,
+            b"f",
+            &[Some("f()"), Some("f) {")],
+        );
+
+        assert_named_declaration_targets(
+            "function outer(f = 1) { if (condition) function f() { return f; } return f; }",
+            script,
+            b"f",
+            &[Some("f()"), Some("f = 1")],
+        );
+
+        assert_named_declaration_targets(
+            "function outer(value = () => f) { if (condition) function f() { return f; } return f; }",
+            script,
+            b"f",
+            &[None, Some("f()"), Some("f()")],
+        );
+
+        assert_named_declaration_targets(
+            "try {} catch ([f]) { if (condition) function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "try {} catch ([f = 1]) { if (condition) function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "try {} catch ([value = f]) { function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), Some("f()"), Some("f()")],
+        );
+
+        assert_named_declaration_targets(
+            "{ async function f() {} if (condition) function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f() { return"), None],
+        );
+
+        assert_named_declaration_targets(
+            "if (condition) function f() { return f; } else function f(value) { return f; } f;",
+            script,
+            b"f",
+            &[Some("f()"), Some("f(value)"), Some("f()")],
+        );
+
+        assert_named_declaration_targets(
+            "function outer() { if (condition) function arguments() {} arguments; }",
+            script,
+            b"arguments",
+            &[None],
+        );
+
+        assert_named_declaration_targets(
+            "function outer() { var arguments; if (condition) function arguments() {} arguments; }",
+            script,
+            b"arguments",
+            &[Some("arguments; if")],
+        );
+
+        assert_named_declaration_targets(
+            "if (condition) function arguments() {} arguments;",
+            script,
+            b"arguments",
+            &[Some("arguments()")],
+        );
+
+        assert_named_declaration_targets(
+            "'use strict'; { function f() { return f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "{ function f() { return f; } } f;",
+            module,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "switch (value) { case 0: function f() { return f; } } f;",
+            module,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "try {} catch { function f() { return f; } } f;",
+            module,
+            b"f",
+            &[Some("f()"), None],
+        );
+
+        assert_named_declaration_targets(
+            "class C { static { { function f() { return f; } } f; } } f;",
+            script,
+            b"f",
+            &[Some("f()"), None, None],
+        );
+    }
+
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    assert_named_declaration_targets("{ function f(): void; } f;", ts_script, b"f", &[None]);
+
+    assert_named_declaration_targets(
+        "try {} catch { function f(): void; function f() { f; } } f;",
+        ts_script,
+        b"f",
+        &[Some("f():"), Some("f() {")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { if (condition) function f() { return f; } f; } f;",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f()"), None],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { export let f; if (condition) function f() { return f; } f; }",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f; if")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { if (condition) function f() { return f; } export let f; f; }",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f; f;")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { export var f; if (condition) function f() { return f; } f; }",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f; if")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { export function f(value) {} if (condition) function f() { return f; } f; }",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f(value)")],
+    );
+
+    assert_named_declaration_targets(
+        "namespace N { export var f; } namespace N { if (condition) function f() { return f; } f; }",
+        ts_script,
+        b"f",
+        &[Some("f()"), Some("f()")],
     );
 }
 

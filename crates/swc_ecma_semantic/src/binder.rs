@@ -26,6 +26,7 @@ use crate::{
 };
 
 mod aliases;
+mod annex_b;
 mod lookup;
 mod member_facts;
 mod module_instance;
@@ -36,6 +37,7 @@ use lookup::{
     precise_import_alias_spaces, symbol_visibility,
 };
 
+use annex_b::AnnexBFunction;
 use member_facts::{PropertyValue, TsExpandoBindingSite, text_member_name};
 use module_instance::{TsModuleInstanceMemo, TsModuleInstanceState, ts_module_instance_state};
 
@@ -72,6 +74,10 @@ pub struct Symbol {
 /// Unlike the aggregate flags on a symbol, `flags` describes only this
 /// declaration. This preserves the distinct type, value, and namespace
 /// meanings of declarations that merge into one symbol.
+///
+/// Annex B functions can also contribute a lexical declaration and a
+/// companion var declaration to distinct symbols. Both retain the same node;
+/// the node's symbol identity belongs to the lexical declaration.
 #[derive(Debug, Clone, Copy)]
 pub struct Declaration {
     pub node: NodeId,
@@ -109,10 +115,9 @@ bitflags::bitflags! {
         const EXPORTED = 1 << 17;
         const IS_DEFAULT = 1 << 18;
         const ENUM_MEMBER = 1 << 19;
-        /// An ordinary (non-async, non-generator) function declaration.
-        /// Used internally to identify Annex B.3.3.4's duplicate-function
-        /// exception.
-        const ANNEX_B_FUNCTION = 1 << 20;
+        /// An async or generator implementation, which cannot participate in
+        /// Annex B's ordinary function duplicate exception.
+        const NON_ANNEX_B_FUNCTION = 1 << 20;
         /// A value module whose runtime declarations are exclusively const
         /// enums or nested const-enum-only modules. It remains visible in
         /// value space even when its default emit is erased.
@@ -131,6 +136,9 @@ bitflags::bitflags! {
         /// The branch-local name of a sloppy if/else function declaration.
         /// Shares the function scope and is shadowed by parameters and locals.
         const ANNEX_B_IF_FUNCTION = 1 << 26;
+        /// A function with a body, distinct from erased overload signatures.
+        /// Used to reject duplicate implementations in lexical scopes.
+        const FUNCTION_IMPLEMENTATION = 1 << 27;
 
         const EXPRESSION_NAME = Self::FUNCTION_EXPRESSION.bits() | Self::CLASS_EXPRESSION.bits();
         const INTERNAL_NAME = Self::EXPRESSION_NAME.bits() | Self::ANNEX_B_IF_FUNCTION.bits();
@@ -166,9 +174,7 @@ bitflags::bitflags! {
             | Self::REGULAR_ENUM.bits()
             | Self::CONST_ENUM.bits();
 
-        const BLOCK_SCOPED_LIKE = Self::BLOCK_SCOPED_VAR.bits()
-            | Self::CLASS.bits()
-            | Self::FUNCTION.bits();
+        const BLOCK_SCOPED_LIKE = Self::VALUE_SPACE.bits() & !Self::FUNCTION_SCOPED_VAR.bits();
     }
 }
 
@@ -244,8 +250,8 @@ impl SymbolFlags {
     }
 
     /// True for declarations a hoisting `var` is forbidden to pass
-    /// through: block-scoped bindings (`let`, `const`), classes, and
-    /// functions.
+    /// through: block-scoped bindings (`let`, `const`), classes,
+    /// functions, enums, and instantiated namespaces.
     pub fn is_block_scoped_like(self) -> bool {
         self.intersects(Self::BLOCK_SCOPED_LIKE)
     }
@@ -291,22 +297,13 @@ pub struct Excludes;
 
 impl Excludes {
     pub const BLOCK_SCOPED_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE;
-    pub const FUNCTION_SCOPED_VAR: SymbolFlags = SymbolFlags::VALUE_SPACE
-        .difference(SymbolFlags::FUNCTION_SCOPED_VAR.union(SymbolFlags::FUNCTION));
-    /// Function in a hoist scope (function/global/static block). TS
-    /// allows function overloads and sloppy JS permits merging with
-    /// `var`. Lexical scopes use the block-scoped excludes instead.
+    pub const FUNCTION_SCOPED_VAR: SymbolFlags = SymbolFlags::BLOCK_SCOPED_LIKE;
+    /// TS functions allow overloads and namespace/class merges. JS hoist
+    /// scopes additionally permit merging with `var`.
     pub const FUNCTION: SymbolFlags = SymbolFlags::VALUE_SPACE.difference(
-        SymbolFlags::FUNCTION_SCOPED_VAR
-            .union(SymbolFlags::FUNCTION)
+        SymbolFlags::FUNCTION
             .union(SymbolFlags::VALUE_MODULE)
             .union(SymbolFlags::CLASS),
-    );
-    /// Annex B.3.3.4 permits duplicate ordinary function declarations in a
-    /// sloppy block. The marker check in `allows_annex_b_function_duplicate`
-    /// narrows this otherwise-all-value-space exclusion to that exact case.
-    pub const ANNEX_B_BLOCK_FUNCTION: SymbolFlags = SymbolFlags::from_bits_retain(
-        SymbolFlags::VALUE_SPACE.bits() | SymbolFlags::ANNEX_B_FUNCTION.bits(),
     );
     /// TypeScript binds class/function declarations into one symbol before
     /// checking whether their ambient/body combination is legal.
@@ -1800,6 +1797,7 @@ pub(crate) struct SymbolTracker<'a> {
     node_semantic: ArenaVec<'a, NodeSemanticId>,
     scope_maps: ArenaVec<'a, ScopeMap<'a>>,
     hoisting_variables: ArenaVec<'a, HoistingMap<'a>>,
+    annex_b_functions: ArenaVec<'a, AnnexBFunction>,
     ts_type_parameter_owners: ArenaHashMap<'a, ScopeId, SymbolId>,
     ts_type_parameters: ArenaHashMap<'a, SymbolId, ScopeMap<'a>>,
     ts_source_exports: Option<TsSourceExports<'a>>,
@@ -1909,10 +1907,16 @@ pub(crate) struct PreparedDeclaration {
 #[derive(Clone, Copy)]
 pub(crate) struct DeclarationConflictCandidate {
     pub(crate) symbol: SymbolId,
+    kind: DeclarationConflictKind,
+}
+
+#[derive(Clone, Copy)]
+enum DeclarationConflictKind {
+    Symbol,
     // A private lexical declaration in a namespace body only conflicts with
     // the canonical member contributions declared in that same body.
-    scope: Option<ScopeId>,
-    default_local: Option<TsDefaultLocal>,
+    Scope(ScopeId),
+    DefaultLocal(TsDefaultLocal),
 }
 
 impl PreparedDeclaration {
@@ -1936,17 +1940,10 @@ impl PreparedDeclaration {
         self.declaration.binding.excludes
     }
 
-    pub(crate) fn allows_annex_b_function_duplicate(self, existing: SymbolFlags) -> bool {
-        self.declaration
-            .binding
-            .allows_annex_b_function_duplicate(existing)
-    }
-
     pub(crate) fn conflict_candidates(self) -> impl Iterator<Item = DeclarationConflictCandidate> {
         let local = self.local.map(|symbol| DeclarationConflictCandidate {
             symbol,
-            scope: None,
-            default_local: None,
+            kind: DeclarationConflictKind::Symbol,
         });
         // A shared default export key is not a lexical redeclaration. TS
         // duplicate exports belong to type checking; the local-name candidate
@@ -1959,25 +1956,18 @@ impl PreparedDeclaration {
             .then_some(self.declaration.binding.scope);
         let shared = distinct_shared.map(|symbol| DeclarationConflictCandidate {
             symbol,
-            scope: shared_scope,
-            default_local: None,
+            kind: shared_scope.map_or(
+                DeclarationConflictKind::Symbol,
+                DeclarationConflictKind::Scope,
+            ),
         });
         let default_local =
             self.default_local
                 .map(|(symbol, local)| DeclarationConflictCandidate {
                     symbol,
-                    scope: None,
-                    default_local: Some(local),
+                    kind: DeclarationConflictKind::DefaultLocal(local),
                 });
         local.into_iter().chain(shared).chain(default_local)
-    }
-}
-
-impl PendingBinding {
-    pub(crate) fn allows_annex_b_function_duplicate(self, existing: SymbolFlags) -> bool {
-        self.excludes == Excludes::ANNEX_B_BLOCK_FUNCTION
-            && self.flags.contains(SymbolFlags::ANNEX_B_FUNCTION)
-            && existing.contains(SymbolFlags::ANNEX_B_FUNCTION)
     }
 }
 
@@ -2015,6 +2005,7 @@ impl<'a> SymbolTracker<'a> {
             node_semantic,
             scope_maps: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
             hoisting_variables: ArenaVec::with_capacity_in(8usize.max(nodes / 16), allocator),
+            annex_b_functions: ArenaVec::new_in(allocator),
             ts_type_parameter_owners: ArenaHashMap::new_in(allocator),
             ts_type_parameters: ArenaHashMap::new_in(allocator),
             ts_source_exports: None,
@@ -2045,7 +2036,7 @@ impl<'a> SymbolTracker<'a> {
 
     fn init_ts_source_exports(&mut self, tree: &Ast<'a>) {
         let program = tree.root_program();
-        let owner = self.declare_symbol(
+        let (owner, _) = self.declare_symbol(
             tree,
             PendingDeclaration {
                 name: tree.empty_wtf8(),
@@ -2122,10 +2113,9 @@ impl<'a> SymbolTracker<'a> {
             VariableKind::Var => {
                 let target = scope.hoist_target();
                 let mut excludes = Excludes::FUNCTION_SCOPED_VAR;
-                // Module-level function declarations are lexical;
-                // everywhere else (and in TS) `var` merges with them.
-                if !tree.is_ts() && scope.get(target).kind == ScopeKind::Module {
-                    excludes.insert(SymbolFlags::FUNCTION);
+                // JS permits var/function merges in hoist scopes, except modules.
+                if !tree.is_ts() && scope.get(target).kind != ScopeKind::Module {
+                    excludes.remove(SymbolFlags::FUNCTION);
                 }
                 PendingBinding {
                     flags: SymbolFlags::FUNCTION_SCOPED_VAR.with(
@@ -2166,61 +2156,58 @@ impl<'a> SymbolTracker<'a> {
     ) {
         self.push_saved_context();
         let is_declaration = function.function_type(tree) == FunctionType::FunctionDeclaration;
+        let enclosing = scope
+            .current_scope()
+            .parent
+            .expect("a function scope has an enclosing scope");
+        // Declaration placement follows the enclosing code, independently
+        // of a "use strict" directive in the function's own body.
+        let strict = scope.get(enclosing).flags.strict;
+        let ordinary = !function.generator(tree) && !function.r#async(tree);
         // Preserve the branch-local binding without allocating an implicit
         // block. Like an expression name, it is distinct from parameters,
         // body declarations and same-named declarations in the outer scope.
-        let branch_local = annex_b_if_body && !scope.current_scope().flags.strict;
+        let branch_local = annex_b_if_body && !strict && ordinary;
         let target = if is_declaration && !branch_local {
-            scope
-                .current_scope()
-                .parent
-                .expect("a function declaration scope has a parent")
+            enclosing
         } else {
             scope.current
         };
 
-        let target_scope = scope.get(target);
-        let target_kind = target_scope.kind;
-        // TS permits var/function merges in ordinary blocks, but not in
-        // catch scopes.
-        let ts_catch_scope =
-            tree.is_ts() && tree.node_kind(target_scope.node) == NodeKind::CatchClause;
-        let annex_b_block_function = !tree.is_ts()
-            && is_declaration
+        let target_kind = scope.get(target).kind;
+        let annex_b_block_function = is_declaration
             && (target_kind == ScopeKind::Block || branch_local)
-            && !target_scope.flags.strict
-            && !function.generator(tree)
-            && !function.r#async(tree);
-        let allow_overload = (tree.is_ts() && !ts_catch_scope)
-            || matches!(
-                target_kind,
-                ScopeKind::Function
-                    | ScopeKind::FunctionBody
-                    | ScopeKind::Global
-                    | ScopeKind::StaticBlock
-            );
-        // TS overloads, sloppy JS Annex B.3.2, and global merge with
-        // var. Lexical scopes use the block-scoped excludes instead.
+            && !strict
+            && ordinary;
+        if annex_b_block_function
+            && !self.ambient
+            && let Some(name) = function.id(tree)
+        {
+            self.annex_b_functions.push(AnnexBFunction {
+                name,
+                scope: enclosing,
+            });
+        }
+        let hoist_scope = target_kind.is_hoist_target() && target_kind != ScopeKind::Module;
+        // TS signatures merge with implementations. Duplicate implementations
+        // follow the same hoist-scope and Annex B rules as JavaScript.
         self.pending = PendingBinding {
-            flags: SymbolFlags::FUNCTION
+            flags: (SymbolFlags::FUNCTION | SymbolFlags::FUNCTION_IMPLEMENTATION)
                 .with(SymbolFlags::FUNCTION_EXPRESSION, !is_declaration)
                 .with(SymbolFlags::ANNEX_B_IF_FUNCTION, branch_local)
-                .with(
-                    SymbolFlags::ANNEX_B_FUNCTION,
-                    is_declaration && !function.generator(tree) && !function.r#async(tree),
-                )
+                .with(SymbolFlags::NON_ANNEX_B_FUNCTION, !ordinary)
                 .with(SymbolFlags::AMBIENT, self.ambient),
-            excludes: if annex_b_block_function {
-                Excludes::ANNEX_B_BLOCK_FUNCTION
-            } else if allow_overload {
-                if tree.is_ts() {
-                    Excludes::FUNCTION
-                } else {
-                    Excludes::FUNCTION.union(SymbolFlags::CLASS)
-                }
-            } else {
-                Excludes::BLOCK_SCOPED_VAR
-            },
+            excludes: Excludes::FUNCTION
+                .with(SymbolFlags::CLASS, !tree.is_ts())
+                .with(
+                    SymbolFlags::FUNCTION_SCOPED_VAR,
+                    tree.is_ts() || !hoist_scope,
+                )
+                .with(
+                    SymbolFlags::FUNCTION_IMPLEMENTATION,
+                    !hoist_scope && !annex_b_block_function,
+                )
+                .with(SymbolFlags::NON_ANNEX_B_FUNCTION, annex_b_block_function),
             scope: target,
         };
         // Expression names are local.
@@ -2558,7 +2545,7 @@ impl<'a> SymbolTracker<'a> {
         self.push_saved_context();
         let identifier = declaration.id(tree);
         let existing = self.ts_global_owner;
-        let owner = self.declare_symbol(
+        let (owner, _) = self.declare_symbol(
             tree,
             PendingDeclaration {
                 name: identifier.name(tree).into(),
@@ -2730,7 +2717,7 @@ impl<'a> SymbolTracker<'a> {
     ) -> PreparedDeclaration {
         let name_text = tree.get_wtf8(name).as_bytes();
         let local = self
-            .binding(self.pending.scope, name_text)
+            .own_binding(self.pending.scope, name_text)
             .filter(|&symbol| {
                 !self.symbols[symbol.index()]
                     .flags
@@ -2823,11 +2810,14 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
-    ) -> Option<SymbolId> {
-        let (node, name) = self.binding_identifier_declaration(tree, identifier, scope)?;
-        let symbol_id = self.declare(tree, name.into(), node);
-        self.finish_binding_identifier(tree, name, symbol_id, scope);
-        Some(symbol_id)
+    ) -> bool {
+        let Some((node, name)) = self.binding_identifier_declaration(tree, identifier, scope)
+        else {
+            return false;
+        };
+        let declaration_id = self.declare(tree, name.into(), node);
+        self.finish_binding_identifier(tree, name, declaration_id, scope);
+        true
     }
 
     pub(crate) fn declare_prepared_binding_identifier(
@@ -2836,13 +2826,16 @@ impl<'a> SymbolTracker<'a> {
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
         prepared: PreparedDeclaration,
-    ) -> Option<SymbolId> {
-        let (node, name) = self.binding_identifier_declaration(tree, identifier, scope)?;
+    ) -> bool {
+        let Some((node, name)) = self.binding_identifier_declaration(tree, identifier, scope)
+        else {
+            return false;
+        };
         debug_assert_eq!(prepared.node(), node);
         debug_assert_eq!(prepared.name(), name.into());
-        let symbol_id = self.declare_prepared(tree, prepared);
-        self.finish_binding_identifier(tree, name, symbol_id, scope);
-        Some(symbol_id)
+        let declaration_id = self.declare_prepared(tree, prepared);
+        self.finish_binding_identifier(tree, name, declaration_id, scope);
+        true
     }
 
     pub(crate) fn prepare_ts_enum_member(
@@ -2874,7 +2867,7 @@ impl<'a> SymbolTracker<'a> {
             .environment(environment)
             .get(name_text)
             .map(|entry| entry.symbol);
-        let local = self.binding(scope.current, name_text);
+        let local = self.own_binding(scope.current, name_text);
         let prepared = PreparedDeclaration {
             declaration: PendingDeclaration {
                 name,
@@ -2913,7 +2906,7 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     // Keep map-entry temporaries out of the visitor shared with syntax checking.
     #[inline(never)]
-    pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> SymbolId {
+    pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> DeclarationId {
         debug_assert!(node.index() < tree.node_count());
 
         let name_text = tree.get_wtf8(name).as_bytes();
@@ -2953,20 +2946,11 @@ impl<'a> SymbolTracker<'a> {
                 }
                 entry => (entry, name),
             };
-            let entry = match entry {
-                hashbrown::hash_map::RawEntryMut::Occupied(entry) => Ok(*entry.get()),
-                hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
-                    let existing = self.hoisting_variables[target.index()]
-                        .as_deref()
-                        .and_then(|bindings| bindings.get(name_text).copied());
-                    existing.map_or_else(|| Err(entry), Ok)
-                }
-            };
             let id = match entry {
-                Ok(existing) => {
+                hashbrown::hash_map::RawEntryMut::Occupied(entry) => {
+                    let existing = *entry.get();
                     let symbol = &mut self.symbols[existing.index()];
-                    let merges = !symbol.flags.intersects(self.pending.excludes)
-                        || self.pending.allows_annex_b_function_duplicate(symbol.flags);
+                    let merges = !symbol.flags.intersects(self.pending.excludes);
                     if merges {
                         symbol.flags = merge_symbol_flags(symbol.flags, declaration_flags);
                     }
@@ -2976,7 +2960,7 @@ impl<'a> SymbolTracker<'a> {
                         .push(declaration_id);
                     existing
                 }
-                Err(vacant) => {
+                hashbrown::hash_map::RawEntryMut::Vacant(vacant) => {
                     let new_id = SymbolId::from_usize(self.symbols.len());
                     self.symbols.push(Symbol {
                         name: symbol_name,
@@ -2995,7 +2979,7 @@ impl<'a> SymbolTracker<'a> {
             });
             self.record_internal_name(id);
             self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
-            return id;
+            return declaration_id;
         }
 
         self.declare_ts_context_binding(tree, name, node)
@@ -3218,7 +3202,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         declaration: PendingDeclaration,
         named: bool,
-    ) -> SymbolId {
+    ) -> DeclarationId {
         let mut source = self
             .ts_source_exports
             .take()
@@ -3227,7 +3211,7 @@ impl<'a> SymbolTracker<'a> {
         let existing = source.default.as_ref().map(|default| default.symbol);
         let merges =
             existing.is_none_or(|existing| self.declaration_merges(existing, declaration.binding));
-        let symbol = self.declare_symbol(tree, declaration, existing, named);
+        let (symbol, declaration_id) = self.declare_symbol(tree, declaration, existing, named);
         let default = source.default.get_or_insert(TsDefaultExport {
             symbol,
             first_local: None,
@@ -3254,7 +3238,7 @@ impl<'a> SymbolTracker<'a> {
         if named {
             self.record_ts_export_local(tree, declaration, symbol);
         }
-        symbol
+        declaration_id
     }
 
     fn record_ts_export_local(
@@ -3337,21 +3321,24 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast<'a>,
         name: AstUtf8,
-        symbol: SymbolId,
+        declaration_id: DeclarationId,
         scope: &ScopeTracker<'a>,
     ) {
         // Register a hoisting var in every block it passes through so
         // block-scoped redeclarations see it.
-        if self.pending.flags.is_hoisting_var() && scope.current != self.pending.scope {
+        let declaration = self.declarations[declaration_id.index()];
+        if declaration.flags.is_hoisting_var() && scope.current != declaration.scope {
             let name = tree.get_utf8(name).as_bytes();
             for scope_id in scope.ancestors(Some(scope.current)) {
-                if scope_id == self.pending.scope {
+                if scope_id == declaration.scope {
                     break;
                 }
                 self.hoisting_variables[scope_id.index()]
-                    .get_or_insert_with(|| self.allocator.boxed(ScopeMap::new_in(self.allocator)))
+                    .get_or_insert_with(|| {
+                        self.allocator.boxed(ArenaHashMap::new_in(self.allocator))
+                    })
                     .entry(name)
-                    .or_insert(symbol);
+                    .or_insert(declaration_id);
             }
         }
     }
@@ -3363,20 +3350,21 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         name: AstWtf8,
         node: NodeId,
-    ) -> SymbolId {
+    ) -> DeclarationId {
         let plan = self.prepare_declaration(tree, name, node);
         self.declare_prepared(tree, plan)
     }
 
     #[inline(always)]
-    fn declare_prepared(&mut self, tree: &Ast<'a>, plan: PreparedDeclaration) -> SymbolId {
+    fn declare_prepared(&mut self, tree: &Ast<'a>, plan: PreparedDeclaration) -> DeclarationId {
         match plan.destination {
             DeclarationDestination::TsDefaultExport => {
                 self.declare_default_export(tree, plan.declaration, true)
             }
             DeclarationDestination::TsTypeParameter { owner } => {
                 let declaration = plan.declaration;
-                let id = self.declare_symbol(tree, declaration, plan.existing, true);
+                let (id, declaration_id) =
+                    self.declare_symbol(tree, declaration, plan.existing, true);
                 if plan.local.is_none() {
                     self.insert_scope_binding(
                         tree,
@@ -3393,10 +3381,11 @@ impl<'a> SymbolTracker<'a> {
                 if !parameters.contains_key(name) {
                     parameters.insert(name, id);
                 }
-                id
+                declaration_id
             }
             DeclarationDestination::Scope => {
-                let id = self.declare_symbol(tree, plan.declaration, plan.existing, true);
+                let (id, declaration_id) =
+                    self.declare_symbol(tree, plan.declaration, plan.existing, true);
                 if plan.existing.is_none() {
                     let declaration = plan.declaration;
                     self.insert_scope_binding(
@@ -3406,7 +3395,7 @@ impl<'a> SymbolTracker<'a> {
                         id,
                     );
                 }
-                id
+                declaration_id
             }
             DeclarationDestination::TsMember {
                 environment,
@@ -3434,7 +3423,7 @@ impl<'a> SymbolTracker<'a> {
         let name_text = tree.get_wtf8(name).as_bytes();
         let environment = self.ts_member_environments.ensure(owner, self.allocator);
         let shared_existing = self.ts_member_environments.member(environment, name_text);
-        let local_existing = actual_scope.and_then(|scope| self.binding(scope, name_text));
+        let local_existing = actual_scope.and_then(|scope| self.own_binding(scope, name_text));
         let target = actual_scope.unwrap_or(declaration.binding.scope);
         let mut declaration = declaration;
         declaration.binding.scope = target;
@@ -3450,7 +3439,8 @@ impl<'a> SymbolTracker<'a> {
             existing: shared_existing,
             default_local: None,
         };
-        let symbol = self.declare_prepared(tree, prepared);
+        let declaration_id = self.declare_prepared(tree, prepared);
+        let symbol = self.declarations[declaration_id.index()].symbol;
         (symbol, prepared)
     }
 
@@ -3462,7 +3452,7 @@ impl<'a> SymbolTracker<'a> {
         projection_scope: Option<ScopeId>,
         mut declaration: PendingDeclaration,
         existing: Option<SymbolId>,
-    ) -> SymbolId {
+    ) -> DeclarationId {
         let name = declaration.name;
         let name_text = tree.get_wtf8(name).as_bytes();
         let kind = if declaration.binding.flags.contains(SymbolFlags::ENUM_MEMBER) {
@@ -3474,7 +3464,7 @@ impl<'a> SymbolTracker<'a> {
         declaration.binding.scope = symbol_scope;
         let merges =
             existing.is_none_or(|existing| self.declaration_merges(existing, declaration.binding));
-        let id = self.declare_symbol(tree, declaration, existing, true);
+        let (id, declaration_id) = self.declare_symbol(tree, declaration, existing, true);
 
         if merges {
             self.record_ts_member(environment, name_text, id, kind, declaration.binding.flags);
@@ -3489,7 +3479,7 @@ impl<'a> SymbolTracker<'a> {
         if kind == TsMemberKinds::MODULE && body_scope.is_some() {
             self.record_ts_export_local(tree, declaration, id);
         }
-        id
+        declaration_id
     }
 
     fn record_ts_member(
@@ -3547,7 +3537,7 @@ impl<'a> SymbolTracker<'a> {
         declaration: PendingDeclaration,
         existing: Option<SymbolId>,
         record_node: bool,
-    ) -> SymbolId {
+    ) -> (SymbolId, DeclarationId) {
         let PendingDeclaration {
             name,
             node,
@@ -3597,7 +3587,7 @@ impl<'a> SymbolTracker<'a> {
             ));
             self.node_semantic[node.index()] = NodeSemanticId::Symbol(id);
         }
-        id
+        (id, declaration_id)
     }
 
     fn record_internal_name(&mut self, id: SymbolId) {
@@ -3906,7 +3896,6 @@ impl<'a> SymbolTracker<'a> {
     fn declaration_merges(&self, existing: SymbolId, binding: PendingBinding) -> bool {
         let existing = self.symbols[existing.index()].flags;
         !existing.intersects(binding.excludes)
-            || binding.allows_annex_b_function_duplicate(existing)
     }
 
     /// The symbol with the given id.
@@ -3914,39 +3903,19 @@ impl<'a> SymbolTracker<'a> {
         self.symbols[id.index()]
     }
 
-    #[cold]
-    #[inline(never)]
-    pub(crate) fn conflict_candidate_flags(
-        &self,
-        candidate: DeclarationConflictCandidate,
-    ) -> SymbolFlags {
-        if let Some(local) = candidate.default_local {
-            return local.flags;
-        }
-        if candidate.scope.is_none() {
-            return self.symbols[candidate.symbol.index()].flags;
-        }
-        let mut declarations = self.conflict_candidate_declarations(candidate);
-        let first = declarations
-            .next()
-            .expect("a scoped conflict candidate has a declaration in that scope");
-        declarations.fold(first.flags, |flags, declaration| {
-            merge_symbol_flags(flags, declaration.flags)
-        })
-    }
-
     #[inline]
     pub(crate) fn conflict_candidate_info(
         &self,
         candidate: DeclarationConflictCandidate,
     ) -> (SymbolFlags, NodeId) {
-        if let Some(local) = candidate.default_local {
-            return (local.flags, local.node);
-        }
-        if candidate.scope.is_none() {
-            let symbol = self.symbols[candidate.symbol.index()];
-            let declaration = self.declarations[symbol.declaration.index()];
-            return (symbol.flags, declaration.node);
+        match candidate.kind {
+            DeclarationConflictKind::DefaultLocal(local) => return (local.flags, local.node),
+            DeclarationConflictKind::Symbol => {
+                let symbol = self.symbols[candidate.symbol.index()];
+                let declaration = self.declarations[symbol.declaration.index()];
+                return (symbol.flags, declaration.node);
+            }
+            DeclarationConflictKind::Scope(_) => {}
         }
         let mut declarations = self.conflict_candidate_declarations(candidate);
         let first = declarations
@@ -3963,16 +3932,7 @@ impl<'a> SymbolTracker<'a> {
     pub(crate) fn has_non_ambient_class_declaration(
         &self,
         candidate: DeclarationConflictCandidate,
-        incoming: SymbolFlags,
     ) -> bool {
-        let existing = self.conflict_candidate_flags(candidate);
-        if incoming.contains(SymbolFlags::CLASS) {
-            return !incoming.contains(SymbolFlags::AMBIENT)
-                && existing.contains(SymbolFlags::FUNCTION);
-        }
-        if !incoming.contains(SymbolFlags::FUNCTION) || !existing.contains(SymbolFlags::CLASS) {
-            return false;
-        }
         self.conflict_candidate_declarations(candidate)
             .any(|declaration| {
                 declaration.flags.contains(SymbolFlags::CLASS)
@@ -3985,18 +3945,20 @@ impl<'a> SymbolTracker<'a> {
         candidate: DeclarationConflictCandidate,
     ) -> impl Iterator<Item = Declaration> + '_ {
         let symbol = self.symbols[candidate.symbol.index()];
-        let first = std::iter::once(self.declarations[symbol.declaration.index()]);
+        let first = std::iter::once(symbol.declaration);
         let rest = self
             .redeclarations
             .get(&candidate.symbol)
             .into_iter()
             .flatten()
-            .map(|&declaration| self.declarations[declaration.index()]);
-        first.chain(rest).filter(move |declaration| {
-            candidate
-                .scope
-                .is_none_or(|scope| declaration.scope == scope)
-        })
+            .copied();
+        first
+            .chain(rest)
+            .map(|declaration| self.declarations[declaration.index()])
+            .filter(move |declaration| match candidate.kind {
+                DeclarationConflictKind::Scope(scope) => declaration.scope == scope,
+                _ => true,
+            })
     }
 
     pub fn symbol_of_node(&self, node: NodeId) -> Option<SymbolId> {
@@ -4105,11 +4067,37 @@ impl<'a> SymbolTracker<'a> {
     /// through on its way to its hoist target.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
         self.own_binding(scope, name).or_else(|| {
-            self.hoisting_variables
-                .get(scope.index())
-                .and_then(Option::as_deref)
-                .and_then(|map| map.get(name).copied())
+            self.hoisting_declaration(scope, name)
+                .map(|declaration| self.declarations[declaration.index()].symbol)
         })
+    }
+
+    fn hoisting_declaration(&self, scope: ScopeId, name: &[u8]) -> Option<DeclarationId> {
+        self.hoisting_variables
+            .get(scope.index())
+            .and_then(Option::as_deref)
+            .and_then(|map| map.get(name).copied())
+    }
+
+    pub(crate) fn hoisting_conflict(
+        &self,
+        prepared: PreparedDeclaration,
+        name: &[u8],
+    ) -> Option<Declaration> {
+        // Passing vars are conflict-only declarations, never binding candidates.
+        // Only declarations that exclude var need the scope's hoisting map.
+        if !prepared
+            .excludes()
+            .contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+        {
+            return None;
+        }
+        let scope = match prepared.destination {
+            DeclarationDestination::TsMember { body_scope, .. } => body_scope?,
+            _ => prepared.target(),
+        };
+        let declaration = self.hoisting_declaration(scope, name)?;
+        Some(self.declarations[declaration.index()])
     }
 
     /// Follow a recorded local ExportValue link without changing the local

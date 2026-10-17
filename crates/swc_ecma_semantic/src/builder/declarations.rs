@@ -1,11 +1,30 @@
 use super::*;
 
+use crate::binder::{DeclarationConflictCandidate, SymbolTracker};
+
 pub(super) fn check_prepared_redeclaration(
     builder: &mut SemanticBuilder<'_, '_>,
     prepared: PreparedDeclaration,
 ) {
     let name = builder.ast.get_wtf8(prepared.name()).as_bytes();
     builder.check_redeclaration(prepared.node(), name, prepared);
+}
+
+#[cold]
+#[inline(never)]
+fn has_class_function_conflict(
+    symbols: &SymbolTracker<'_>,
+    candidate: DeclarationConflictCandidate,
+    incoming: SymbolFlags,
+    existing: SymbolFlags,
+) -> bool {
+    if incoming.contains(SymbolFlags::CLASS) {
+        return !incoming.contains(SymbolFlags::AMBIENT)
+            && existing.contains(SymbolFlags::FUNCTION);
+    }
+    incoming.contains(SymbolFlags::FUNCTION)
+        && existing.contains(SymbolFlags::CLASS)
+        && symbols.has_non_ambient_class_declaration(candidate)
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
@@ -45,13 +64,13 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 && self.ast.is_ts()
                 && flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
                 && existing_flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
-                && self
-                    .state
-                    .symbols
-                    .has_non_ambient_class_declaration(candidate, flags);
-            if (declaration_conflict || invalid_class_function_merge)
-                && !prepared.allows_annex_b_function_duplicate(existing_flags)
-            {
+                && has_class_function_conflict(
+                    &self.state.symbols,
+                    candidate,
+                    flags,
+                    existing_flags,
+                );
+            if declaration_conflict || invalid_class_function_merge {
                 self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 return;
             }
@@ -78,8 +97,13 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             }
         }
 
+        if let Some(existing) = self.state.symbols.hoisting_conflict(prepared, name) {
+            self.report_redeclaration(self.ast, name, node, existing.node, existing.flags);
+            return;
+        }
+
         let flags = prepared.flags();
-        if !flags.intersects(SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::FUNCTION) {
+        if !flags.contains(SymbolFlags::FUNCTION_SCOPED_VAR) {
             self.check_outer_parameter_conflict(node, name, prepared);
         }
         if flags.is_hoisting_var() {
@@ -95,7 +119,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         prepared: PreparedDeclaration,
     ) {
         let target = prepared.target();
-        let flags = prepared.flags();
         let excludes = prepared.excludes();
         // A split body environment keeps the early errors: lexical body names
         // may not duplicate parameter names (15.2.1) or catch parameter names
@@ -103,38 +126,39 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         //
         //   function f(a = 1) { let a }   // still an error
         //   function f(a = 1) { var a }   // legal, var stays out
-        if !flags.intersects(SymbolFlags::FUNCTION_SCOPED_VAR | SymbolFlags::FUNCTION) {
-            let target_scope = self.state.scope.get(target);
-            let outer = target_scope.parent;
-            let outer_holds_parameters = outer.is_some_and(|outer| match target_scope.kind {
-                ScopeKind::FunctionBody => true,
-                ScopeKind::Block => match self.ast.kind_data(self.state.scope.get(outer).node) {
-                    NodeKindData::CatchClause(catch) => {
-                        catch.body(self.ast).node_id() == target_scope.node
-                    }
-                    _ => false,
-                },
-                _ => false,
-            });
-            if outer_holds_parameters
-                && let Some(outer) = outer
-                && let Some(symbol_id) = self.state.symbols.own_binding(outer, name)
-            {
-                let existing = self.state.symbols.symbol(symbol_id);
-                if existing
-                    .flags
-                    .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
-                    && existing.flags.intersects(excludes)
-                {
-                    self.report_redeclaration(
-                        self.ast,
-                        name,
-                        node,
-                        self.state.symbols.first_decl_of(symbol_id),
-                        existing.flags,
-                    );
+        let target_scope = self.state.scope.get(target);
+        let Some(outer) = target_scope.parent else {
+            return;
+        };
+        let outer_holds_parameters = match target_scope.kind {
+            ScopeKind::FunctionBody => true,
+            ScopeKind::Block => match self.ast.kind_data(self.state.scope.get(outer).node) {
+                NodeKindData::CatchClause(catch) => {
+                    catch.body(self.ast).node_id() == target_scope.node
                 }
-            }
+                _ => false,
+            },
+            _ => false,
+        };
+        if !outer_holds_parameters {
+            return;
+        }
+        let Some(symbol_id) = self.state.symbols.own_binding(outer, name) else {
+            return;
+        };
+        let existing = self.state.symbols.symbol(symbol_id);
+        if existing
+            .flags
+            .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
+            && existing.flags.intersects(excludes)
+        {
+            self.report_redeclaration(
+                self.ast,
+                name,
+                node,
+                self.state.symbols.first_decl_of(symbol_id),
+                existing.flags,
+            );
         }
     }
 

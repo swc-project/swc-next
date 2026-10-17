@@ -16,12 +16,12 @@ use super::member_facts::{
     PropertyValue, TsMemberFactsLookup, TsPropertyValues, collect_ts_property_values,
 };
 use super::{
-    DeclarationConflictCandidate, Range, ReferenceSpace, SymbolFlags, SymbolTracker,
-    TsExportAliasResolution, TsExportMember, TsExportTarget, TsImportAliasConflictIssue,
-    TsImportAliasIndex, TsImportAliasIssue, TsImportAliasTarget, TsMemberKinds, TsMemberSpaces,
-    TsMemberVisibility, TsNamespaceExportAliasIssue, TsNamespaceExportAliasLookup,
-    TsResolvedAliasSpaces, TsResolvedExportAliasTarget, TsResolvedImportTarget, TsScopeViewIndex,
-    ts_resolved_alias_spaces,
+    DeclarationConflictCandidate, DeclarationConflictKind, Range, ReferenceSpace, SymbolFlags,
+    SymbolTracker, TsExportAliasResolution, TsExportMember, TsExportTarget,
+    TsImportAliasConflictIssue, TsImportAliasIndex, TsImportAliasIssue, TsImportAliasTarget,
+    TsMemberKinds, TsMemberSpaces, TsMemberVisibility, TsNamespaceExportAliasIssue,
+    TsNamespaceExportAliasLookup, TsResolvedAliasSpaces, TsResolvedExportAliasTarget,
+    TsResolvedImportTarget, TsScopeViewIndex, ts_resolved_alias_spaces,
 };
 use crate::{
     SyntaxChecks,
@@ -216,8 +216,7 @@ impl<'a> SymbolTracker<'a> {
                         .filter(|&member| member != alias.alias)
                         .map(|symbol| DeclarationConflictCandidate {
                             symbol,
-                            scope: Some(alias_scope),
-                            default_local: None,
+                            kind: DeclarationConflictKind::Scope(alias_scope),
                         });
                     if body_member.is_none() && !self.redeclarations.contains_key(&alias.alias) {
                         continue;
@@ -225,8 +224,7 @@ impl<'a> SymbolTracker<'a> {
                     let target_spaces = resolver.resolved_target_conflict_spaces(target);
                     let candidates = std::iter::once(DeclarationConflictCandidate {
                         symbol: alias.alias,
-                        scope: None,
-                        default_local: None,
+                        kind: DeclarationConflictKind::Symbol,
                     })
                     .chain(body_member);
                     let conflict = candidates

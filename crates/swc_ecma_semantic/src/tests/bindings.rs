@@ -1,6 +1,51 @@
 use super::*;
 
 #[test]
+fn hoisting_variables_keep_lexical_bindings() {
+    let module = Options::default();
+    let ts_module = ts_module_options();
+
+    let source = "{ var f; function f() {} f; } f;";
+    assert_separate_lexical_binding(source, module);
+
+    let source = "namespace N { { var f; type f = number; let value: f; } f; }";
+    assert_separate_lexical_binding(source, ts_module);
+}
+
+#[track_caller]
+fn assert_separate_lexical_binding(source: &str, options: Options) {
+    let allocator = Allocator::new();
+    let parse = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert!(parse.diagnostics.is_empty());
+
+    let check = |options| {
+        let result = analyze(&parse.ast, options);
+        let semantic = &result.semantic;
+        let references = reference_symbols(&parse.ast, semantic, b"f");
+        assert_eq!(references.len(), 2);
+        let lexical = references[0].unwrap();
+        let hoisted = references[1].unwrap();
+        assert_ne!(lexical, hoisted);
+        let lexical_scope = semantic.scope_of_symbol(lexical);
+        let hoist_scope = semantic.scope_of_symbol(hoisted);
+        assert_ne!(lexical_scope, hoist_scope);
+        assert_eq!(semantic.binding(lexical_scope, b"f"), Some(lexical));
+        assert_eq!(semantic.binding(hoist_scope, b"f"), Some(hoisted));
+        assert_eq!(semantic.declarations(lexical).len(), 1);
+        assert_eq!(semantic.declarations(hoisted).len(), 1);
+        assert_eq!(
+            semantic.resolve_name(hoist_scope, b"f", ReferenceSpace::Type),
+            NameResolution::Unresolved
+        );
+    };
+    check(AnalyzeOptions::default());
+    check(AnalyzeOptions {
+        check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
+    });
+}
+
+#[test]
 fn annex_b_if_bindings() {
     let allocator = Allocator::new();
     let script = Options {
@@ -13,8 +58,16 @@ fn annex_b_if_bindings() {
     };
 
     let source = "if (condition) function f() { return f; }";
-    let (ast, semantic) = analyze_with_options(&allocator, source, script, checked);
-    let name = symbol_named(&ast, &semantic, b"f");
+    let (_, semantic) = analyze_with_options(&allocator, source, script, checked);
+    let name = expression_name_symbol(&semantic, SymbolFlags::ANNEX_B_IF_FUNCTION);
+    let outer = semantic.binding(ScopeId::ROOT, b"f").unwrap();
+    assert_ne!(name, outer);
+    assert!(
+        semantic
+            .symbol(outer)
+            .flags
+            .contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+    );
     let scope = semantic.scope_of_symbol(name);
     assert!(
         semantic
@@ -29,7 +82,22 @@ fn annex_b_if_bindings() {
     assert_eq!(semantic.scope(scope).parent, Some(ScopeId::ROOT));
     assert_eq!(semantic.iter_scopes().count(), 2);
     assert_eq!(semantic.binding(scope, b"f"), Some(name));
-    assert!(semantic.binding(ScopeId::ROOT, b"f").is_none());
+    assert_eq!(
+        semantic.symbol_of(semantic.declarations(outer).next().unwrap().node),
+        Some(name)
+    );
+
+    let source = "let f = 1; if (condition) function f() { 'use strict'; return f; } f;";
+    let (ast, semantic) = analyze_with_options(&allocator, source, script, checked);
+    let name = expression_name_symbol(&semantic, SymbolFlags::ANNEX_B_IF_FUNCTION);
+    let outer = semantic.binding(ScopeId::ROOT, b"f").unwrap();
+    assert_ne!(name, outer);
+    assert_eq!(
+        reference_symbols(&ast, &semantic, b"f"),
+        [Some(name), Some(outer)]
+    );
+    assert!(semantic.scope(semantic.scope_of_symbol(name)).flags.strict);
+    assert!(!semantic.scope(ScopeId::ROOT).flags.strict);
 
     let source = "if (condition) function f(f) { return f; }";
     let (ast, semantic) = analyze_with_options(&allocator, source, script, checked);
@@ -59,6 +127,228 @@ fn annex_b_if_bindings() {
             .flags
             .contains(SymbolFlags::ANNEX_B_IF_FUNCTION)
     );
+}
+
+#[test]
+fn annex_b_companion_bindings() {
+    for lang in [Lang::Js, Lang::Ts] {
+        let script = Options {
+            lang,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        assert_annex_b_dual_binding("if (condition) function f() { return f; } f;", script);
+
+        assert_annex_b_dual_binding(
+            "if (condition) function f() { return f; } const g = f; f = 1; g();",
+            script,
+        );
+
+        assert_annex_b_dual_binding("if (false) function f() { return f; } f;", script);
+
+        assert_annex_b_dual_binding(
+            "if (condition) function f() { 'use strict'; return f; } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "if (condition) {} else function f() { return f; } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding("{ function f() { return f; } } f;", script);
+
+        assert_annex_b_dual_binding(
+            "{ function f() {} { function f() { return f; } } } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding("{ function f() {} function f() { return f; } } f;", script);
+
+        assert_annex_b_dual_binding(
+            "switch (value) { case 0: function f() { return f; } } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding("try {} catch { function f() { return f; } } f;", script);
+
+        assert_annex_b_dual_binding(
+            "try {} catch ([value = 1]) { function f() { return f; } } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "try {} catch (f) { if (condition) function f() { return f; } } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "function outer() { if (condition) function f() { return f; } return f; }",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "function outer(value = 1) { if (condition) function f() { return f; } return f; }",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "var f; if (condition) function f() { return f; } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "if (condition) function f() { return f; } var f; f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "function f() {} if (condition) function f() { return f; } f;",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "const value = function f() { if (condition) function f() { return f; } return f; };",
+            script,
+        );
+
+        assert_annex_b_dual_binding(
+            "let f; function outer() { if (condition) function f() { return f; } return f; }",
+            script,
+        );
+
+        let allocator = Allocator::new();
+        let source = "if (condition) function f() {} { var g; } g;";
+        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+            let options = AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            };
+            let (ast, semantic) = analyze_with_options(&allocator, source, script, options);
+            let variable = reference_symbol(&ast, &semantic, b"g").unwrap();
+            let block = semantic
+                .iter_scopes()
+                .find(|entry| entry.scope.kind == crate::scope::ScopeKind::Block)
+                .unwrap()
+                .id;
+            assert_eq!(semantic.binding(block, b"g"), Some(variable));
+        }
+    }
+
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    assert_annex_b_dual_binding(
+        "namespace N { export var f; if (condition) function f() { return f; } f; }",
+        ts_script,
+    );
+
+    assert_annex_b_dual_binding(
+        "namespace N { if (condition) function f() { return f; } export var f; f; }",
+        ts_script,
+    );
+
+    assert_annex_b_dual_binding(
+        "namespace N { export function f(value) {} if (condition) function f() { return f; } f; }",
+        ts_script,
+    );
+
+    assert_annex_b_dual_binding(
+        "namespace N { type f = string; export var f; if (condition) function f() { return f; } f; }",
+        ts_script,
+    );
+}
+
+#[track_caller]
+fn assert_annex_b_dual_binding(source: &str, options: Options) {
+    let allocator = Allocator::new();
+    let parse = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert!(parse.diagnostics.is_empty());
+    let mut previous = None;
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let result = analyze(
+            &parse.ast,
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
+        );
+        assert!(result.diagnostics.is_empty());
+        let semantic = result.semantic;
+        let references = reference_symbols(&parse.ast, &semantic, b"f");
+        assert!(references.len() >= 2);
+        let lexical = references[0].unwrap();
+        let outer = references[1].unwrap();
+        assert_ne!(lexical, outer);
+        assert!(
+            references[1..]
+                .iter()
+                .all(|&reference| reference == Some(outer))
+        );
+        assert!(
+            semantic
+                .symbol(lexical)
+                .flags
+                .contains(SymbolFlags::FUNCTION_IMPLEMENTATION)
+        );
+        assert!(
+            semantic
+                .symbol(outer)
+                .flags
+                .contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+        );
+        let companion = semantic
+            .declarations(outer)
+            .find(|declaration| semantic.symbol_of(declaration.node) == Some(lexical))
+            .unwrap();
+        assert_eq!(companion.flags, SymbolFlags::FUNCTION_SCOPED_VAR);
+        assert_eq!(
+            semantic.lookup(companion.scope, b"f", ReferenceSpace::Value),
+            Some(outer)
+        );
+        let starts = semantic
+            .iter_declarations()
+            .map(|entry| parse.ast.span(entry.declaration.node).start)
+            .collect::<Vec<_>>();
+        assert!(starts.is_sorted());
+        let facts = (
+            semantic
+                .iter_symbols()
+                .map(|entry| (entry.id, entry.symbol.flags, entry.symbol.declaration))
+                .collect::<Vec<_>>(),
+            semantic
+                .iter_declarations()
+                .map(|entry| {
+                    (
+                        entry.id,
+                        entry.declaration.node,
+                        entry.declaration.symbol,
+                        entry.declaration.scope,
+                        entry.declaration.flags,
+                    )
+                })
+                .collect::<Vec<_>>(),
+            semantic
+                .iter_references()
+                .map(|entry| {
+                    (
+                        entry.id,
+                        entry.reference.scope,
+                        entry.reference.symbol,
+                        entry.reference.flags,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+        if let Some(previous) = previous.as_ref() {
+            assert_eq!(&facts, previous);
+        }
+        previous = Some(facts);
+    }
 }
 
 #[test]
@@ -133,6 +423,32 @@ fn expression_name_symbol(semantic: &Semantic<'_>, flag: SymbolFlags) -> SymbolI
     let name = names.next().unwrap().id;
     assert!(names.next().is_none());
     name
+}
+
+#[test]
+fn class_function_conflicts() {
+    let allocator = Allocator::new();
+    let script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    let source = "{ class f {} function f() {} function f() {} }";
+    let (_, result) = analyze_syntax_source(&allocator, source, script);
+    assert_eq!(result.diagnostics.len(), 2);
+    assert_eq!(
+        result.diagnostics[1].span.start as usize,
+        source.rfind("f()").unwrap()
+    );
+
+    let source = "{ function f() {} class f {} function f() {} }";
+    let (_, result) = analyze_syntax_source(&allocator, source, script);
+    assert_eq!(result.diagnostics.len(), 2);
+    assert_eq!(
+        result.diagnostics[1].span.start as usize,
+        source.rfind("f()").unwrap()
+    );
 }
 
 #[test]

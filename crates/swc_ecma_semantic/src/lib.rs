@@ -63,7 +63,9 @@ type InternalNames<'a> = ArenaHashMap<'a, (ScopeId, AstWtf8), SymbolId>;
 
 type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 // Most scopes have no var declarations hoisting through them.
-type HoistingMap<'a> = Option<swc_next_allocator::boxed::Box<'a, ScopeMap<'a>>>;
+// Keep the var declaration, since its symbol may also contain functions.
+type HoistingMap<'a> =
+    Option<swc_next_allocator::boxed::Box<'a, ArenaHashMap<'a, &'a [u8], DeclarationId>>>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
 /// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
@@ -424,6 +426,7 @@ impl<'a> Semantic<'a> {
                 self.hoisting_variables[scope_id.index()]
                     .as_deref()
                     .and_then(|bindings| bindings.get(name).copied())
+                    .map(|declaration| self.declarations[declaration.index()].symbol)
             })
             .or_else(|| {
                 (scope_id == ScopeId::MODULE)

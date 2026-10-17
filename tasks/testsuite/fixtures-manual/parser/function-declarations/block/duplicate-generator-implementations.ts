@@ -1,0 +1,10 @@
+/*---
+description: Generators do not receive the Annex B duplicate function exception
+negative:
+  phase: early
+  type: SyntaxError
+---*/
+{
+  function* f() {}
+  function* f() {}
+}

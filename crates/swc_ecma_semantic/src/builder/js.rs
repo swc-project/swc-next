@@ -1107,7 +1107,13 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
     if function.function_type(builder.ast) != FunctionType::FunctionDeclaration {
         return;
     }
-    let strict = builder.state.scope.is_strict();
+    let enclosing = builder
+        .state
+        .scope
+        .current_scope()
+        .parent
+        .expect("a function declaration scope has an enclosing scope");
+    let strict = builder.state.scope.get(enclosing).flags.strict;
     let mut through_labels = false;
     let mut ancestors = builder.ancestors();
     let _ = ancestors.next();

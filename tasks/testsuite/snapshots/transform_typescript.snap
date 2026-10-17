@@ -1,9 +1,9 @@
 transform * typescript
 ========================
-Positive Passed: 12994/14944 (86.95%)
+Positive Passed: 12987/14944 (86.90%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/14944 (0.00%)
-Skipped: 1934/14944 (12.94%)
+Skipped: 1941/14944 (12.99%)
 Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/awaitedTypeStrictNull.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
 Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/circularBaseTypes.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
 Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionArgumentsFunction.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent

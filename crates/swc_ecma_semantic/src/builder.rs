@@ -78,6 +78,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         let check_syntax = self.check_syntax;
         let (export_alias_issues, import_alias_issues) = {
             let state = &mut self.state;
+            state.symbols.bind_annex_b_functions(self.ast, &state.scope);
             state
                 .symbols
                 .resolve_ts_aliases(self.ast, &state.scope, check_syntax)
@@ -439,7 +440,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let direct_export = self.state.symbols.export_state.named();
         let direct_export = direct_export.filter(|_| !self.state.in_ts_namespace());
         let state = &mut self.state;
-        let declaration = if let Some(prepared) = prepared {
+        let declared = if let Some(prepared) = prepared {
             state.symbols.declare_prepared_binding_identifier(
                 self.ast,
                 node,
@@ -451,9 +452,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 .symbols
                 .declare_binding_identifier(self.ast, node, &state.scope)
         };
-        if declaration.is_some()
-            && let Some(statement) = direct_export
-        {
+        if declared && let Some(statement) = direct_export {
             state
                 .module_record
                 .add_direct_export(self.ast, node.node_id(), statement);
