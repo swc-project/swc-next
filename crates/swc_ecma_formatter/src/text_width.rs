@@ -37,6 +37,12 @@ pub(crate) fn width(source: &str) -> usize {
 /// The Unicode branch is retained when a whole Text containing controls is
 /// measured in spans. Reselecting the ASCII shortcut for a span would count DEL.
 pub(crate) fn unicode_width(source: &str) -> usize {
+    if source.is_ascii() {
+        return source
+            .bytes()
+            .filter(|byte| (0x20..0x7f).contains(byte))
+            .count();
+    }
     let mut characters = source.chars();
     let mut width = 0;
     while let Some(character) = characters.next() {
