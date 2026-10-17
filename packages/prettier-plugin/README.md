@@ -52,3 +52,9 @@ code frames. See the [design notes](../../website/docs/PrettierPlugin.md) for de
 
 The binary document format and `formatDocBufferSync` are internal, version-matched
 interfaces. Consumers should use the Prettier plugin API.
+
+Tests compare every local formatter fixture and option set directly with the
+native Rust printer on the same host-normalized input. A test-only N-API addon
+calls `format()` and returns strings directly, preserving CR, LF, and EOF
+whitespace. The test commands build this addon with the `test-native` Cargo
+feature and use it as the native oracle for both native and Wasm plugin bindings.

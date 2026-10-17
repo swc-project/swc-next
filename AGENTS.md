@@ -131,6 +131,13 @@ Run `cargo test -p swc_next_ecma_formatter --locked`. Update snapshots with
 `INSTA_UPDATE=always cargo test -p swc_next_ecma_formatter --test fixtures --locked`,
 then review the `.snap` diffs. See `crates/swc_ecma_formatter/tests/README.md`.
 
+Prettier plugin tests also compare every local fixture and option set directly
+with the native Rust printer on Prettier-normalized input. Run
+`pnpm --filter @swc-next/prettier-plugin-swcfmt test` or `test:wasm` after building
+the corresponding formatter binding. These commands build a test-only N-API
+oracle with the formatter binding's `test-native` feature and receive native
+strings directly, including for Wasm plugin tests. Parity does not read `.snap` files.
+
 ### Adding Rust Unit Tests
 
 - Add tests to the existing module; group related cases by broad feature and use a coarse

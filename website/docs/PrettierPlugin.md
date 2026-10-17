@@ -201,3 +201,13 @@ pnpm --filter @swc-next/prettier-plugin-swcfmt test:wasm
 Tests live in `packages/prettier-plugin/test`. They cover formatting, options,
 source locations, malformed buffers, and whitespace across shared fragments.
 The same tests run against native and Wasm bindings.
+They discover every local Rust formatter fixture and its nearest `options.json`,
+normalize the input as the pinned Prettier host does, and compare exact strings
+with a test-only N-API call to native `format()`. The oracle uses the same fixture
+option decoder as the Rust tests, independent of the plugin's option and Doc
+transport and returns formatted strings directly. No output EOL or EOF
+normalization is applied, and presentation snapshots are not used as an oracle.
+Tests also check the input-normalization boundary against Prettier itself.
+The native oracle addon is built automatically with the `test-native` feature
+into `npm/formatter/test/binding`. Tests load that `.node` file directly,
+including when the plugin binding is forced to Wasm.
