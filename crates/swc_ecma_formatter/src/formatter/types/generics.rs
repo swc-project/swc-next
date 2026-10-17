@@ -537,11 +537,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     _ => simple,
                 };
-            let first_span = first.span(ast);
-            let before = Span::new(content.start, first_span.start);
-            let after = Span::new(first_span.end, content.end);
-            if candidate
-                && [before, after].into_iter().all(|gap| {
+            if candidate {
+                let first_span = first.span(ast);
+                let before = Span::new(content.start, first_span.start);
+                let after = Span::new(first_span.end, content.end);
+                if [before, after].into_iter().all(|gap| {
                     let comments = self.comments.in_range(gap);
                     matches!(
                         self.comment_binding(comments, gap, Some(first_span)),
@@ -552,76 +552,95 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && comments
                             .last()
                             .is_none_or(|comment| !self.comment_run_ends_line(*comment, gap.end))
-                })
-            {
-                let mut body = self.prepare_delimited_type(*prepared)?;
-                let comments = self
-                    .comments
-                    .in_range(Span::new(content.start, first_span.end));
-                let movable = match &body.content {
-                    super::compound::PreparedTypeContent::Parentheses(parentheses) => {
-                        parentheses.movable
-                    }
-                    super::compound::PreparedTypeContent::Compound(single) => single.movable(),
-                    _ => false,
-                };
-                let mut head_inline = true;
-                if movable {
-                    // Claim the complete exterior and moved head in source order.
-                    // The original member span still owns its delimiter protocol.
-                    let (head, (item, normalized)) = writer.record_with_value(|writer| {
-                        let item = self.prepare_delimited_item(
-                            first_span,
-                            FollowingItem::End,
-                            content,
-                            false,
-                            writer,
-                        )?;
-                        let normalized = match body.content {
-                            super::compound::PreparedTypeContent::Compound(single) => {
-                                self.format_single_compound_head(single, TypeContext::Root, writer)?
-                            }
-                            content => self.format_prepared_type_content_head(
-                                content,
-                                &mut PendingTypeHead::new(&[], first_span.start, None),
-                                TypeContext::Root,
-                                writer,
-                            )?,
-                        };
-                        Ok::<_, FormatError>((item, normalized))
-                    })?;
-                    if let super::compound::PreparedTypeContent::Type(node) = &normalized {
-                        let next_start = node.node.span(ast).start;
-                        let count =
-                            comments.partition_point(|comment| comment.span.end <= next_start);
-                        let leading = &comments[..count];
-                        head_inline = !leading
-                            .iter()
-                            .any(|comment| comment.kind == CommentKind::Line)
-                            && leading.last().is_none_or(|comment| {
-                                !self.comment_run_ends_line(*comment, next_start)
-                            });
-                    }
-                    body.content = normalized;
-                    first_packet = Some((item, head));
-                }
-                let simple = matches!(&body.content, super::compound::PreparedTypeContent::Type(node)
-                if node.source_owner.is_none()
-                    && if node.node == prepared.node {
-                        simple
+                }) {
+                    if !type_query
+                        && (simple
+                            || matches!(
+                                prepared.data,
+                                TsTypeData::TsTypeLiteral(_) | TsTypeData::TsMappedType(_)
+                            ))
+                    {
+                        true
                     } else {
-                        simple_owner && self.simple_type_argument(node.data)
-                    });
-                let hug = (body.is_object_type()
-                    || simple
-                    || simple_owner
-                        && matches!(&body.content, super::compound::PreparedTypeContent::Union(union)
-                        if union.hug_head_start().is_some_and(|start| {
-                            comments.first().is_none_or(|comment| comment.span.start >= start)
-                        })))
-                    && head_inline;
-                first_body = Some(body);
-                hug
+                        let mut body = self.prepare_delimited_type(*prepared)?;
+                        let comments = self
+                            .comments
+                            .in_range(Span::new(content.start, first_span.end));
+                        let movable = match &body.content {
+                            super::compound::PreparedTypeContent::Parentheses(parentheses) => {
+                                parentheses.movable
+                            }
+                            super::compound::PreparedTypeContent::Compound(single) => {
+                                single.movable()
+                            }
+                            _ => false,
+                        };
+                        let mut head_inline = true;
+                        if movable {
+                            // Claim the complete exterior and moved head in source order.
+                            // The original member span still owns its delimiter protocol.
+                            let (head, (item, normalized)) =
+                                writer.record_with_value(|writer| {
+                                    let item = self.prepare_delimited_item(
+                                        first_span,
+                                        FollowingItem::End,
+                                        content,
+                                        false,
+                                        writer,
+                                    )?;
+                                    let normalized = match body.content {
+                                        super::compound::PreparedTypeContent::Compound(single) => {
+                                            self.format_single_compound_head(
+                                                single,
+                                                TypeContext::Root,
+                                                writer,
+                                            )?
+                                        }
+                                        content => self.format_prepared_type_content_head(
+                                            content,
+                                            &mut PendingTypeHead::new(&[], first_span.start, None),
+                                            TypeContext::Root,
+                                            writer,
+                                        )?,
+                                    };
+                                    Ok::<_, FormatError>((item, normalized))
+                                })?;
+                            if let super::compound::PreparedTypeContent::Type(node) = &normalized {
+                                let next_start = node.node.span(ast).start;
+                                let count = comments
+                                    .partition_point(|comment| comment.span.end <= next_start);
+                                let leading = &comments[..count];
+                                head_inline = !leading
+                                    .iter()
+                                    .any(|comment| comment.kind == CommentKind::Line)
+                                    && leading.last().is_none_or(|comment| {
+                                        !self.comment_run_ends_line(*comment, next_start)
+                                    });
+                            }
+                            body.content = normalized;
+                            first_packet = Some((item, head));
+                        }
+                        let simple = matches!(&body.content, super::compound::PreparedTypeContent::Type(node)
+                        if node.source_owner.is_none()
+                            && if node.node == prepared.node {
+                                simple
+                            } else {
+                                simple_owner && self.simple_type_argument(node.data)
+                            });
+                        let hug = (body.is_object_type()
+                            || simple
+                            || simple_owner
+                                && matches!(&body.content, super::compound::PreparedTypeContent::Union(union)
+                                if union.hug_head_start().is_some_and(|start| {
+                                    comments.first().is_none_or(|comment| comment.span.start >= start)
+                                })))
+                            && head_inline;
+                        first_body = Some(body);
+                        hug
+                    }
+                } else {
+                    false
+                }
             } else {
                 false
             }
