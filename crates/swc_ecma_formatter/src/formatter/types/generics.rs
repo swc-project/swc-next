@@ -206,6 +206,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         kind: TypeListKind,
     ) -> TypeListPrefix<'ast> {
+        if gap.start == gap.end {
+            return TypeListPrefix {
+                left_mode: ContentMode::Formatted,
+                right_mode: ContentMode::Formatted,
+                layout: TypeListPrefixLayout::Formatted(CommentBoundary::adjacent(gap.start)),
+            };
+        }
         let comments = self.comments.in_range(gap);
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
