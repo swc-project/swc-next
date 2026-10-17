@@ -589,7 +589,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         if let Some(generic) = signature.generics {
             match generic.prefix {
-                FunctionGenericPrefix::Header(prefix) => {
+                FunctionGenericPrefix::Header(ref prefix) => {
                     self.format_type_list_prefix(prefix, writer)?
                 }
                 FunctionGenericPrefix::Anonymous(gap) => {
