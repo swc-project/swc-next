@@ -1754,7 +1754,7 @@ const FAST_CLASS: [FastClass; 256] = {
     table
 };
 
-const IDENTIFIER_BATCH_SIZE: usize = 32;
+const IDENTIFIER_BATCH_SIZE: usize = 16;
 
 /// How a byte after an ASCII identifier prefix affects the identifier.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1798,14 +1798,13 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
     let mut position = start as usize;
 
     while source.len() - position >= IDENTIFIER_BATCH_SIZE {
-        let batch_end = position + IDENTIFIER_BATCH_SIZE;
-        // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
-        // guarantees that `batch_end` is within `source`.
-        let batch = unsafe { source.get_unchecked(position..batch_end) };
-        for (offset, byte) in batch.iter().enumerate() {
-            if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
-                return (position + offset) as u32;
-            }
+        let bytes = u8x16::from_slice(&source[position..]);
+        // Folding bit 5 maps `A-Z` onto `a-z`; no other byte lands in that range.
+        let letter = ((bytes | u8x16::splat(0x20)) - u8x16::splat(b'a')).simd_le(u8x16::splat(25));
+        let digit = (bytes - u8x16::splat(b'0')).simd_le(u8x16::splat(9));
+        let other = bytes.simd_eq(u8x16::splat(b'_')) | bytes.simd_eq(u8x16::splat(b'$'));
+        if let Some(offset) = (!(letter | digit | other)).first_set() {
+            return (position + offset) as u32;
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
