@@ -432,6 +432,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ordinary_attachment = mode == ContentMode::Formatted
             && !constrained
             && !matches!(following, FollowingItem::Elision { .. });
+        if comments.is_empty() && ordinary_attachment {
+            let mut separator = Separator::Line;
+            if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
+                writer.text(",");
+                if let Some(comma) = comma
+                    && self.next_line_is_empty(comma + 1, gap.end)
+                {
+                    separator = Separator::EmptyLine;
+                }
+            } else if matches!(trailing_comma, TrailingCommaPolicy::IfBreak) {
+                writer.if_break(",");
+            }
+            return Ok(ItemBoundary {
+                end: content_end,
+                separator,
+                following_mode,
+                elisions: ElisionLayout::Formatted,
+            });
+        }
         let (trailing_count, physical_break, inline_line) = if ordinary_attachment {
             let before_separator = comma.map_or(comments.len(), |comma| {
                 comments.partition_point(|comment| comment.span.end <= comma)
