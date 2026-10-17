@@ -3,3 +3,9 @@ tasks/testsuite/snapshots/*.snap text=auto eol=lf
 # Generated files
 packages/decoder/index.pretty.js linguist-generated=true
 packages/encoder/index.pretty.js linguist-generated=true
+
+# All JS/TS files are test related
+# Preserve line endings and exclude from GitHub language statistics
+*.[jt]s     -text -linguist-detectable
+*.[jt]sx    -text -linguist-detectable
+*.[cm][jt]s -text -linguist-detectable
