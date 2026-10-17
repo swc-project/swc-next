@@ -1,20 +1,20 @@
 formatter * prettier 3.9.9 * js
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 781
+Fixture files: 825
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1055/1066 (98.97%)
-Snapshot matched: 1055/1066
-AST parity: 1065/1065
-AST mismatched: 0/1065
-AST format errors: 0/1066
-Mismatched: 10/1066
-Format errors: 0/1066
-Panicked: 0/1066
-Not idempotent: 0/1066
-Ignored files: 311
-Parse errors: 1/1066
-Expected parser errors: 19
+Passed: 1097/1114 (98.47%)
+Snapshot matched: 1097/1114
+AST parity: 1113/1113
+AST mismatched: 0/1113
+AST format errors: 0/1114
+Mismatched: 16/1114
+Format errors: 0/1114
+Panicked: 0/1114
+Not idempotent: 0/1114
+Ignored files: 250
+Parse errors: 1/1114
+Expected parser errors: 36
 Unsupported option sets: 14
 
 # Parse errors
@@ -23,6 +23,23 @@ Unsupported option sets: 14
 
 # Expected parser errors
 
+- js/babel-plugins/async-do-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/destructuring-private.js: 1 expected parser error(s)
+- js/babel-plugins/discard-binding.js: 1 expected parser error(s)
+- js/babel-plugins/do-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/export-default-from.js: 1 expected parser error(s)
+- js/babel-plugins/flow.js: 1 expected parser error(s)
+- js/babel-plugins/function-bind.js: 1 expected parser error(s)
+- js/babel-plugins/function-sent.js: 1 expected parser error(s)
+- js/babel-plugins/module-blocks.js: 1 expected parser error(s)
+- js/babel-plugins/optional-chaining-assignment.js: 1 expected parser error(s)
+- js/babel-plugins/partial-application.js: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-fsharp.js: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-hack.cjs: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-minimal.js: 1 expected parser error(s)
+- js/babel-plugins/throw-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/typescript.js: 1 expected parser error(s)
+- js/babel-plugins/v8intrinsic.js: 1 expected parser error(s)
 - js/discard-binding/array-pattern.js: 1 expected parser error(s)
 - js/discard-binding/basic.js: 1 expected parser error(s)
 - js/discard-binding/discard-binding-arrow-params.js: 1 expected parser error(s)
@@ -49,7 +66,12 @@ Unsupported option sets: 14
 - js/embeded/indention/19518.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/embeded/indention/indention-2.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/embeded/indention/indention.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/issue-11077.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/issue-13737.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/issue-14404.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/semi/asi.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/multiple-members.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/strings/template-literals.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/template-literals/expression-break.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/test-declarations/jest-each-template-string.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/test-declarations/jest-each.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent

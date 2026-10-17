@@ -61,6 +61,7 @@ impl IgnorePattern {
 /// Fixture paths excluded from whole-file JS/TS conformance.
 ///
 /// Keep scope exclusions categorical and snapshot exceptions narrowly qualified.
+/// Small mixed suites may retain supported controls to keep exclusions compact.
 /// Ordinary formatting mismatches belong in the report.
 const IGNORE: &[IgnorePattern] = &[
     // Parser-error fixtures.
@@ -69,25 +70,17 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Contains(
         "typescript/conformance/classes/constructorDeclarations/constructorParameters/readonlyReadonly.ts",
     ),
-    IgnorePattern::Contains(
-        "typescript/conformance/parser/ecmascript5/Statements/parserES5ForOfStatement21.ts",
-    ),
     IgnorePattern::Contains("js/call/invalid"),
     IgnorePattern::Contains("typescript/trailing-comma/invalid.ts"),
     IgnorePattern::Contains("typescript/error-recovery/"),
-    // Mixed parser and formatter capability suites.
+    // Syntax proposals not accepted by the parser.
     IgnorePattern::Contains("js/optional-chaining-assignment/"),
     IgnorePattern::Contains("js/async-do-expressions/"),
     IgnorePattern::Contains("js/do"),
     IgnorePattern::Contains("jsx/do/"),
-    IgnorePattern::Contains("jsx/fbt/"),
     IgnorePattern::Contains("js/export-default/export-default-from"),
     IgnorePattern::Contains("js/export-default/escaped"),
     IgnorePattern::Contains("js/module-blocks"),
-    IgnorePattern::Contains("js/tuple"),
-    IgnorePattern::Contains("js/record"),
-    IgnorePattern::Contains("tuple-and-record.js"),
-    IgnorePattern::Contains("jsx/tuple/"),
     IgnorePattern::Contains("js/comments-pipeline-own-line"),
     IgnorePattern::Contains("js/partial-application"),
     IgnorePattern::Contains("js/pipeline-operator"),
@@ -96,17 +89,21 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Contains("js/objects/expression.js"),
     IgnorePattern::Contains("js/no-semi-babylon-extensions/no-semi.js"),
     IgnorePattern::Contains("js/destructuring-private-fields"),
-    IgnorePattern::Contains("js/import-reflection"),
     IgnorePattern::Contains("js/throw_expressions"),
+    // Static import phases parse, but the formatter does not implement them yet.
+    // Keep their small mixed suites together.
     IgnorePattern::Contains("js/deferred-import-evaluation"),
     IgnorePattern::Contains("js/source-phase-imports"),
-    IgnorePattern::Contains("js/babel-plugins"),
+    // Other Babel plugin rejections are declared by the spec as parser errors.
+    IgnorePattern::Exact("js/babel-plugins/deferred-import-evaluation.js"),
+    IgnorePattern::Exact("js/babel-plugins/source-phase-imports.js"),
+    // FBT-specific JSX whitespace formatting is not implemented.
+    IgnorePattern::Contains("jsx/fbt/"),
     // Embedded languages are separate formatters, not JS/TS layout cases.
     IgnorePattern::Contains("js/comments-closure-typecast/styled-components.js"),
     IgnorePattern::Contains("js/multiparser"),
     IgnorePattern::Contains("typescript/multiparser"),
     IgnorePattern::Contains("typescript/angular-component-examples"),
-    IgnorePattern::Contains("js/strings/template-literals.js"),
     IgnorePattern::Contains("js/template-literals/css-prop.js"),
     IgnorePattern::Contains("js/template-literals/styled-components-with-expressions.js"),
     IgnorePattern::Contains("js/template-literals/styled-jsx-with-expressions.js"),
@@ -115,29 +112,19 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Contains("jsx/template/styled-components.js"),
     IgnorePattern::Contains("typescript/as/as-const-embedded.ts"),
     IgnorePattern::Contains("typescript/decorators-ts/angular.ts"),
-    // Legacy auto-accessor modifier exclusions.
-    IgnorePattern::Contains(
-        "typescript/decorator-auto-accessors/decorator-auto-accessors-abstract-class.ts",
-    ),
-    IgnorePattern::Contains(
-        "typescript/decorator-auto-accessors/decorator-auto-accessors-declare-class.ts",
-    ),
-    IgnorePattern::Contains(
-        "typescript/decorator-auto-accessors/decorator-auto-accessors-mixed-modifiers.ts",
-    ),
-    // Ignore directives and fixtures with range/cursor protocols.
-    IgnorePattern::Contains("prettier-ignore"),
-    IgnorePattern::Contains("js/ignore"),
-    IgnorePattern::Contains("range"),
+    // Range and cursor fixtures use selection markers and position-mapping APIs.
+    IgnorePattern::Contains("/range/"),
+    IgnorePattern::Contains("js/eol/range-"),
+    IgnorePattern::Exact("js/module-blocks/range.js"),
+    IgnorePattern::Exact("js/new-target/range.js"),
     IgnorePattern::Contains("cursor"),
     // Parser-mode differences that do not exercise formatter layout.
-    IgnorePattern::Contains("js/top-level-await"),
-    IgnorePattern::Contains("jsx/top-level-await"),
-    IgnorePattern::Contains("typescript/top-level-await"),
-    IgnorePattern::Contains("js/ternaries/parenthesis/await-expression.js"),
-    IgnorePattern::Contains("js/await/like-call.js"),
-    // Legacy identifier-validation fixture exclusion.
-    IgnorePattern::Contains("js/quotes/objects.js"),
+    IgnorePattern::Exact("js/top-level-await/test.js"),
+    IgnorePattern::Exact("jsx/top-level-await/test.jsx"),
+    IgnorePattern::Exact("typescript/top-level-await/test.ts"),
+    IgnorePattern::Exact("typescript/top-level-await/test.tsx"),
+    IgnorePattern::Exact("js/ternaries/parenthesis/await-expression.js"),
+    IgnorePattern::Exact("js/await/like-call.js"),
     // Prettier 3.9.9 output is not idempotent for these fixtures.
     // Listed upstream in tests/config/format-test/failed-format-tests.js.
     // Trailing block comment placement on an arrow chain changes on the second pass.
