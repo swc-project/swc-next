@@ -50,6 +50,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let [byte] = token.as_bytes() {
             return self.find_token_in_gaps(span, comments, |source| memchr::memchr(*byte, source));
         }
+        if comments.is_empty() {
+            return memchr::memmem::find(self.source(span).as_bytes(), token.as_bytes())
+                .map(|offset| span.start + offset as u32);
+        }
         let token = memchr::memmem::Finder::new(token.as_bytes());
         self.find_token_in_gaps(span, comments, |source| token.find(source))
     }
