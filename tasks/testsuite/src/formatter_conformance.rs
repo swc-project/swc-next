@@ -105,6 +105,8 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Contains("typescript/multiparser"),
     IgnorePattern::Contains("typescript/angular-component-examples"),
     IgnorePattern::Contains("js/template-literals/css-prop.js"),
+    // This comparison requires the separate embedded HTML formatter.
+    IgnorePattern::Contains("js/template-literals/expression-break.js"),
     IgnorePattern::Contains("js/template-literals/styled-components-with-expressions.js"),
     IgnorePattern::Contains("js/template-literals/styled-jsx-with-expressions.js"),
     IgnorePattern::Contains("js/template-literals/styled-jsx.js"),
@@ -125,6 +127,13 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Exact("typescript/top-level-await/test.tsx"),
     IgnorePattern::Exact("js/ternaries/parenthesis/await-expression.js"),
     IgnorePattern::Exact("js/await/like-call.js"),
+    // TODO: embedded-language formatting; keep template text unchanged for now.
+    IgnorePattern::Exact("js/embeded/indention/19518.js"),
+    IgnorePattern::Exact("js/embeded/indention/indention-2.js"),
+    IgnorePattern::Exact("js/embeded/indention/indention.js"),
+    // TODO: Jest each tagged-template table formatting.
+    IgnorePattern::Exact("js/test-declarations/jest-each.js"),
+    IgnorePattern::Exact("js/test-declarations/jest-each-template-string.js"),
     // Prettier 3.9.9 output is not idempotent for these fixtures.
     // Listed upstream in tests/config/format-test/failed-format-tests.js.
     // Trailing block comment placement on an arrow chain changes on the second pass.

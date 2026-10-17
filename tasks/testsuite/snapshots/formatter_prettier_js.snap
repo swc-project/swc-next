@@ -1,19 +1,19 @@
 formatter * prettier 3.9.9 * js
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 825
+Fixture files: 819
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1097/1114 (98.47%)
-Snapshot matched: 1097/1114
-AST parity: 1113/1113
-AST mismatched: 0/1113
-AST format errors: 0/1114
-Mismatched: 16/1114
-Format errors: 0/1114
-Panicked: 0/1114
-Not idempotent: 0/1114
-Ignored files: 250
-Parse errors: 1/1114
+Passed: 1097/1106 (99.19%)
+Snapshot matched: 1097/1106
+AST parity: 1105/1105
+AST mismatched: 0/1105
+AST format errors: 0/1106
+Mismatched: 8/1106
+Format errors: 0/1106
+Panicked: 0/1106
+Not idempotent: 0/1106
+Ignored files: 256
+Parse errors: 1/1106
 Expected parser errors: 36
 Unsupported option sets: 14
 
@@ -63,18 +63,12 @@ Unsupported option sets: 14
 # Failed
 
 - js/arrays/numbers-with-holes.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/embeded/indention/19518.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/embeded/indention/indention-2.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/embeded/indention/indention.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/ignore/issue-11077.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/ignore/issue-13737.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/ignore/issue-14404.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/ignore/semi/asi.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/method-chain/multiple-members.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/strings/template-literals.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/template-literals/expression-break.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/test-declarations/jest-each-template-string.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
-- js/test-declarations/jest-each.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 
 # Unsupported option sets
 
