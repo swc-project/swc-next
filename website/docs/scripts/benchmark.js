@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,14 @@ const root = path.resolve(
 );
 const swcCoreVersion = "82.1.0";
 const fastStripVersion = "59.0.1";
+const runs = 200;
+const warmup = 20;
+const nativeIterations = 10;
+const jsRuns = 2;
+const jsTimeMs = 1000;
+// Set BENCH_CPU to an available CPU, preferably a performance core.
+const cpu = process.env.BENCH_CPU ?? "0";
+const output = path.join(root, "website/docs/Benchmark.md");
 const files = ["typescript.js", "effect-schema-ast.ts"];
 const features = [
   ["Rust parse", "parse"],
@@ -21,7 +29,7 @@ const features = [
 ];
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const result = spawnSync(command, args.map(String), {
     cwd: root,
     encoding: "utf8",
     ...options,
@@ -48,52 +56,16 @@ function build() {
 }
 
 function main() {
-  const options = {
-    "--runs": "200",
-    "--warmup": "20",
-    "--native-iterations": "10",
-    "--js-runs": "2",
-    "--js-time-ms": "1000",
-    "--cpu": undefined,
-    "--output": path.join(root, "website/docs/Benchmark.md"),
-  };
   const commit = run("git", ["rev-parse", "HEAD"]);
-  const require = createRequire(
-    path.join(root, "tasks/benchmark/package.json"),
-  );
+  const require = createRequire(path.join(root, "tasks/benchmark/package.json"));
   const coreVersion = require("@swc/core/package.json").version;
   const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`];
-  run("hyperfine", ["--version"]);
+  run("taskset", ["--cpu-list", cpu, "hyperfine", "--version"]);
+  console.error(`Benchmark CPU: ${cpu}`);
   build();
 
-  // Keep the benchmark commands on the same CPU.
-  const expand = (list) =>
-    list
-      .trim()
-      .split(",")
-      .flatMap((range) => {
-        const [first, last = first] = range.split("-").map(Number);
-        return Array.from({ length: last - first + 1 }, (_, i) => first + i);
-      });
-  const allowed = expand(
-    readFileSync("/proc/self/status", "utf8").match(
-      /^Cpus_allowed_list:\s+(\S+)/m,
-    )[1],
-  );
-  const coreCpus = "/sys/bus/event_source/devices/cpu_core/cpus";
-  const preferred = existsSync(coreCpus)
-    ? expand(readFileSync(coreCpus, "utf8"))
-    : allowed;
-  const cpu = Number(
-    options["--cpu"] ??
-      preferred.find((cpu) => allowed.includes(cpu)) ??
-      allowed[0],
-  );
-  assert(allowed.includes(cpu), `CPU ${cpu} is not available`);
-  console.error(`Benchmark CPU: ${cpu}`);
-
   // Hyperfine executes these arguments directly, without a shell.
-  const quote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
+  const quote = (value) => `'${String(value).replaceAll("'", "'\\''")}'`;
   const lines = ["# Benchmark", ""];
   for (const [title, feature] of features) {
     lines.push(`## ${title}`, "");
@@ -102,7 +74,7 @@ function main() {
       console.error(`${title}: ${file}`);
       const isJs = title === "JS parser";
       const input = path.join("tasks/benchmark/files", file);
-      const commands = ["swc_next", "swc"].map((engine) =>
+      const commands = ["swc-next", "swc"].map((engine) =>
         isJs
           ? [
               process.execPath,
@@ -111,10 +83,10 @@ function main() {
               feature,
             ]
           : [
-              `target/release/${engine.replace("_", "-")}`,
+              `target/release/${engine}`,
               input,
               feature,
-              options["--native-iterations"],
+              nativeIterations,
             ],
       );
       const swcName =
@@ -122,17 +94,12 @@ function main() {
           ? `swc_ts_fast_strip@${fastStripVersion}`
           : `swc_core@${swcCoreVersion}`;
       let names = [`swc-next@${commit}`, swcName].map(
-        (name) => `${name}; ${options["--native-iterations"]} iterations`,
+        (name) => `${name}; ${nativeIterations} iterations`,
       );
       if (isJs) {
         const timings = commands.map((command) =>
           Number(
-            run("taskset", [
-              "--cpu-list",
-              String(cpu),
-              ...command,
-              "--calibrate",
-            ]),
+            run("taskset", ["--cpu-list", cpu, ...command, "--calibrate"]),
           ),
         );
         assert(
@@ -141,7 +108,7 @@ function main() {
         );
         const iterations = Math.max(
           5,
-          Math.ceil(Number(options["--js-time-ms"]) / Math.min(...timings)),
+          Math.ceil(jsTimeMs / Math.min(...timings)),
         );
         for (const command of commands) command.push(String(iterations));
         names = jsNames.map(
@@ -155,16 +122,16 @@ function main() {
       // separate processes and would not warm the measured parser.
       const output = run("taskset", [
         "--cpu-list",
-        String(cpu),
+        cpu,
         "hyperfine",
         "--style",
         "basic",
         "--shell",
         "none",
         "--warmup",
-        isJs ? "0" : options["--warmup"],
+        isJs ? 0 : warmup,
         "--runs",
-        isJs ? options["--js-runs"] : options["--runs"],
+        isJs ? jsRuns : runs,
         "--metrics",
         "time_wall_clock:ms,memory_peak_resident:MiB",
         ...commands.flatMap((command, index) => [
@@ -183,8 +150,6 @@ function main() {
       );
     }
   }
-  const output = path.resolve(options["--output"]);
-  mkdirSync(path.dirname(output), { recursive: true });
   writeFileSync(output, lines.join("\n"));
   console.error(`Wrote ${output}`);
 }

@@ -6,7 +6,7 @@ import { bench } from "./bench.js";
 const [file, operation, iterations] = process.argv.slice(2);
 assert(
   file && operation === "parse",
-  "usage: node swc_next.js <file> parse [iterations|--calibrate]",
+  "usage: node swc-next.js <file> parse [iterations|--calibrate]",
 );
 const source = readFileSync(file, "utf8");
 const parserOptions = {
