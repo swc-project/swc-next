@@ -2894,6 +2894,7 @@ dependencies = [
  "swc_next_bridge_macros",
  "swc_next_ecma_ast",
  "swc_next_ecma_codegen",
+ "swc_next_ecma_formatter",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
 ]
@@ -2960,6 +2961,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "memchr",
+ "rustc-hash",
  "serde_json",
  "swc_next_allocator",
  "swc_next_ecma_ast",
@@ -3027,6 +3029,14 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "zmij_ecma",
+]
+
+[[package]]
+name = "swc_next_formatter_bridge"
+version = "0.3.0"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
 ]
 
 [[package]]

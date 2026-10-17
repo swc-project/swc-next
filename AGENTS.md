@@ -40,18 +40,22 @@ See `tasks/benchmark/js/README.md` for setup and artifact interpretation.
 | ------------------------ | --------------------------------------------------------------------------------------------------------- |
 | Install                  | `pnpm install`                                                                                            |
 | Build all N-API packages | `pnpm build [--release]`                                                                                  |
-| Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build [--release]`                   |
+| Build one package        | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen\|@swc-next/formatter> build [--release]`                   |
 | Build browser package    | `pnpm build:browser [--profile wasm-release]`                                                             |
 | Assemble browser package | `node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core`                 |
 | Build all WASM packages  | `pnpm build:wasm [--profile wasm-release]`                                                                |
-| Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen> build:wasm [--profile wasm-release]` |
-| Test Node.js API         | `pnpm test` (Node.js API tests live in `npm/core/test`)                                                   |
+| Build one WASM package   | `pnpm --filter <@swc-next/core\|@swc-next/parser\|@swc-next/codegen\|@swc-next/formatter> build:wasm [--profile wasm-release]` |
+| Test Node.js API         | `pnpm test` (core API and Prettier plugin tests)                                                   |
 | Test Node.js WASM        | `pnpm test:wasm` (after `pnpm build:wasm`)                                                                |
 | Smoke test browser       | `pnpm test:browser` (after building the browser package)                                                  |
 | Develop playground       | `pnpm dev:playground` (requires `wasm32-unknown-unknown`)                                                  |
 | Build playground         | `pnpm build:playground`                                                                                  |
 | Check playground types   | `pnpm --filter playground check`                                                                         |
 | Deploy playground        | `gh workflow run deploy-playground.yml --ref main`                                                       |
+
+The Prettier plugin uses the independent `@swc-next/formatter` binding. Build it before
+running `pnpm --filter @swc-next/prettier-plugin-swcfmt test`; build its Wasm package before
+running `pnpm --filter @swc-next/prettier-plugin-swcfmt test:wasm`.
 
 The Deploy Playground workflow builds and deploys to `https://play.next.swc.rs`
 only when run manually. It requires the `CLOUDFLARE_ACCOUNT_ID` and
@@ -146,6 +150,6 @@ then review the `.snap` diffs. See `crates/swc_ecma_formatter/tests/README.md`.
 ### Adding JavaScript Unit Tests
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
-- New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
+- JavaScript API tests belong to `@swc-next/core`; independent Prettier plugin tests belong to `packages/prettier-plugin/test`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
 
 Update this file when the commands or workflows above change; otherwise do not edit it.

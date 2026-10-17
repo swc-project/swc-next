@@ -32,3 +32,8 @@ pub mod wasm;
     not(all(target_arch = "wasm32", target_os = "unknown"))
 ))]
 compile_error!("only wasm32-unknown-unknown is supported by the WebAssembly bridge");
+
+#[cfg(feature = "formatter")]
+mod formatter;
+#[cfg(feature = "formatter")]
+pub use formatter::format_doc;
