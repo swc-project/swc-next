@@ -123,6 +123,61 @@ fn test_generic_parameter_contexts() {
     );
 }
 
+#[test]
+fn test_type_aliases() {
+    let source = "type T = (intrinsic);";
+    expect_printed_ts(source, "type T = (intrinsic);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic);");
+
+    let source = "type T = (intrinsic)[];";
+    expect_printed_ts(source, "type T = (intrinsic[]);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic[]);");
+
+    let source = "type T = (intrinsic)[\"x\"];";
+    expect_printed_ts(source, "type T = (intrinsic[\"x\"]);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic[\"x\"]);");
+
+    let source = "type T = (intrinsic) | string;";
+    expect_printed_ts(source, "type T = (intrinsic | string);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic | string);");
+
+    let source = "type T = (intrinsic) & string;";
+    expect_printed_ts(source, "type T = (intrinsic & string);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic & string);");
+
+    let source = "type T = (intrinsic) extends string ? 1 : 2;";
+    expect_printed_ts(source, "type T = (intrinsic extends string ? 1 : 2);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic extends string ? 1 : 2);");
+
+    let source = "type T = (intrinsic)[][number] | string;";
+    expect_printed_ts(source, "type T = (intrinsic[][number] | string);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic[][number] | string);");
+
+    let source = "type T = intrinsic;";
+    expect_printed_ts(source, "type T = intrinsic;\n");
+    expect_printed_ts_minify(source, "type T=intrinsic;");
+
+    let source = "type T = (intrinsic.foo);";
+    expect_printed_ts(source, "type T = intrinsic.foo;\n");
+    expect_printed_ts_minify(source, "type T=intrinsic.foo;");
+
+    let source = "type T = (intrinsic<string>);";
+    expect_printed_ts(source, "type T = intrinsic<string>;\n");
+    expect_printed_ts_minify(source, "type T=intrinsic<string>;");
+
+    let source = "type T = string | (intrinsic);";
+    expect_printed_ts(source, "type T = string | intrinsic;\n");
+    expect_printed_ts_minify(source, "type T=string | intrinsic;");
+
+    let source = "type T = keyof (intrinsic);";
+    expect_printed_ts(source, "type T = keyof intrinsic;\n");
+    expect_printed_ts_minify(source, "type T=keyof intrinsic;");
+
+    let source = "type T = Array<(intrinsic)>;";
+    expect_printed_ts(source, "type T = Array<intrinsic>;\n");
+    expect_printed_ts_minify(source, "type T=Array<intrinsic>;");
+}
+
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
     let allocator = Allocator::new();

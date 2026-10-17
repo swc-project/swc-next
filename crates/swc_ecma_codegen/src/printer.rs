@@ -4770,6 +4770,40 @@ impl<'a> Printer<'a> {
         self.print_indent();
         self.print("}");
     }
+
+    // TypeScript parses a bare `intrinsic` at the start of a type alias body as a keyword.
+    // Follow wrappers that print a child type first to find references that need grouping.
+    fn is_leftmost_intrinsic_reference(&self, mut ty: TsType) -> bool {
+        loop {
+            ty = match self.ast.ts_type_data(ty) {
+                TsTypeData::TsTypeReference(reference) => {
+                    return reference.type_arguments(self.ast).is_none()
+                        && matches!(
+                            self.ast.ts_type_name_data(reference.type_name(self.ast)),
+                            TsTypeNameData::IdentifierReference(identifier)
+                                if self.ast.get_utf8(identifier.name(self.ast)) == "intrinsic"
+                        );
+                }
+                TsTypeData::TsArrayType(array) => array.element_type(self.ast),
+                TsTypeData::TsIndexedAccessType(access) => access.object_type(self.ast),
+                TsTypeData::TsUnionType(union) => {
+                    let Some(first) = union.types(self.ast).get_node(self.ast, 0) else {
+                        return false;
+                    };
+                    first
+                }
+                TsTypeData::TsIntersectionType(intersection) => {
+                    let Some(first) = intersection.types(self.ast).get_node(self.ast, 0) else {
+                        return false;
+                    };
+                    first
+                }
+                TsTypeData::TsConditionalType(conditional) => conditional.check_type(self.ast),
+                _ => return false,
+            };
+        }
+    }
+
     fn print_ts_type_alias(&mut self, d: TsTypeAliasDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
         if d.declare(self.ast) {
@@ -4783,7 +4817,15 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print("=");
         self.print_space();
-        self.print_ts_type(d.type_annotation(self.ast), TsTypePrecedence::Lowest);
+        let annotation = d.type_annotation(self.ast);
+        let wrap = self.is_leftmost_intrinsic_reference(annotation);
+        if wrap {
+            self.print("(");
+        }
+        self.print_ts_type(annotation, TsTypePrecedence::Lowest);
+        if wrap {
+            self.print(")");
+        }
     }
     fn print_ts_interface(&mut self, d: TsInterfaceDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
