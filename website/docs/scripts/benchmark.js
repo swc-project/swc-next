@@ -148,11 +148,8 @@ function main() {
       // Each JS process warms its own V8 state; hyperfine warmups would use
       // separate processes and would not warm the measured parser.
       lines.push(`### ${file}`, "");
-      for (const [trial, order] of [
-        ["SWC Next first", [0, 1]],
-        ["SWC first", [1, 0]],
-      ]) {
-        const result = measure("hyperfine", [
+      const [result, reverseResult] = [[0, 1], [1, 0]].map((order) =>
+        measure("hyperfine", [
           "--style",
           "basic",
           "--shell",
@@ -168,16 +165,16 @@ function main() {
             names[index],
             commands[index].map(quote).join(" "),
           ]),
-        ]);
-        lines.push(
-          `#### ${trial}`,
-          "",
-          "```text",
-          result.replace(/[ \t]+$/gm, ""),
-          "```",
-          "",
-        );
-      }
+        ]),
+      );
+      // Keep the reverse-order check in the run log.
+      console.error(reverseResult);
+      lines.push(
+        "```text",
+        result.replace(/[ \t]+$/gm, ""),
+        "```",
+        "",
+      );
     }
   }
   writeFileSync(output, lines.join("\n"));
