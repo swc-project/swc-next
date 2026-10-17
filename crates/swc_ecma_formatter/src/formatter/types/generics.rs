@@ -299,16 +299,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let tail = match prefix.layout {
+        let tail = match &prefix.layout {
             TypeListPrefixLayout::TrailingName(boundary) => {
                 // Claim in source order, then attach the suffix to the completed
                 // angle group so its internal breaks cannot flush this Line.
                 let (tail, ()) = writer
-                    .record_with_value(|writer| self.format_comment_boundary(&boundary, writer))?;
+                    .record_with_value(|writer| self.format_comment_boundary(boundary, writer))?;
                 Some(tail)
             }
-            layout => {
-                self.format_type_list_prefix(TypeListPrefix { layout, ..prefix }, writer)?;
+            _ => {
+                self.format_type_list_prefix(&prefix, writer)?;
                 None
             }
         };
@@ -321,16 +321,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(in crate::formatter) fn format_type_list_prefix(
         &mut self,
-        prefix: TypeListPrefix<'ast>,
+        prefix: &TypeListPrefix<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        match prefix.layout {
-            TypeListPrefixLayout::Source(gap) => self.format_verbatim(gap, writer),
+        match &prefix.layout {
+            TypeListPrefixLayout::Source(gap) => self.format_verbatim(*gap, writer),
             TypeListPrefixLayout::Formatted(boundary) => {
-                self.format_type_comment_gap(&boundary, FlatSeparator::Empty, writer)
+                self.format_type_comment_gap(boundary, FlatSeparator::Empty, writer)
             }
             TypeListPrefixLayout::TrailingName(boundary) => {
-                self.format_comment_boundary(&boundary, writer)
+                self.format_comment_boundary(boundary, writer)
             }
         }
     }
@@ -362,7 +362,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .map_or(ContentMode::Formatted, |(_, prefix)| prefix.left_mode);
         self.format_type_name(name, mode, writer)?;
-        if let Some((arguments, prefix)) = arguments {
+        if let Some((arguments, ref prefix)) = arguments {
             let mode = prefix.right_mode;
             self.format_type_list_prefix(prefix, writer)?;
             self.format_type_arguments_with_owner(arguments, mode, owner, writer)?;

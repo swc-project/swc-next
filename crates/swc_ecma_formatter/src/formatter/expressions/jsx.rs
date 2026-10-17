@@ -482,7 +482,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut end = name_span.end;
-        if let Some((arguments, prefix)) = arguments {
+        if let Some((arguments, ref prefix)) = arguments {
             let mode = prefix.right_mode;
             self.format_type_list_prefix(prefix, writer)?;
             self.format_type_arguments(arguments, mode, writer)?;

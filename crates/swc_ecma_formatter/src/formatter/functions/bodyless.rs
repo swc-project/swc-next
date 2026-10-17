@@ -271,7 +271,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
         }
         if let Some(generic) = signature.generics {
-            if let Some(prefix) = generic.prefix {
+            if let Some(ref prefix) = generic.prefix {
                 self.format_type_list_prefix(prefix, writer)?;
             }
             self.format_type_parameters(

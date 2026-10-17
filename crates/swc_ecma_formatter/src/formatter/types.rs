@@ -752,7 +752,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.text(ast.get_utf8(identifier.name(ast)));
         }
-        if let Some((parameters, prefix)) = parameters {
+        if let Some((parameters, ref prefix)) = parameters {
             let mode = if boundary.left_mode == ContentMode::Verbatim {
                 ContentMode::Verbatim
             } else {
