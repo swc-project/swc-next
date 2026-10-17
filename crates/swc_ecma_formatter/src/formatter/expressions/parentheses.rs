@@ -1567,9 +1567,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionStart, FormatError> {
+        if head.comments.is_empty() {
+            return Ok(start);
+        }
         if start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
-            && !head.comments.is_empty()
             && self.parenthesis_has_type_cast(head.content_start)
         {
             writer.text(";");
