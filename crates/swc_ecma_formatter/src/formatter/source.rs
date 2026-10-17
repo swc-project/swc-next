@@ -47,7 +47,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn find_token(&self, span: Span, comments: &[Comment], token: &str) -> Option<u32> {
+        if let [byte] = token.as_bytes() {
+            return self.find_token_in_gaps(span, comments, |source| memchr::memchr(*byte, source));
+        }
         let token = memchr::memmem::Finder::new(token.as_bytes());
+        self.find_token_in_gaps(span, comments, |source| token.find(source))
+    }
+
+    fn find_token_in_gaps(
+        &self,
+        span: Span,
+        comments: &[Comment],
+        find: impl Fn(&[u8]) -> Option<usize>,
+    ) -> Option<u32> {
         let mut start = span.start;
         for comment in comments {
             if comment.span.end <= start {
@@ -56,16 +68,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if comment.span.start >= span.end {
                 break;
             }
-            if let Some(offset) =
-                token.find(self.source(Span::new(start, comment.span.start)).as_bytes())
+            if let Some(offset) = find(self.source(Span::new(start, comment.span.start)).as_bytes())
             {
                 return Some(start + offset as u32);
             }
             start = comment.span.end;
         }
-        token
-            .find(self.source(Span::new(start, span.end)).as_bytes())
-            .map(|offset| start + offset as u32)
+        find(self.source(Span::new(start, span.end)).as_bytes()).map(|offset| start + offset as u32)
     }
 
     pub(super) fn source(&self, span: Span) -> &'ast str {
