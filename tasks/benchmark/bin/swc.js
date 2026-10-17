@@ -4,11 +4,8 @@ import { extname } from "node:path";
 import { parseSync } from "@swc/core";
 import { bench } from "./bench.js";
 
-const [file, operation, iterations] = process.argv.slice(2);
-assert(
-  file && operation === "parse",
-  "usage: node swc.js <file> parse [iterations|--calibrate]",
-);
+const [file, iterations] = process.argv.slice(2);
+assert(file, "usage: node swc.js <file> [iterations|--calibrate]");
 const source = readFileSync(file, "utf8");
 const extension = extname(file);
 const options = /\.[cm]?tsx?$/.test(extension)
@@ -20,4 +17,5 @@ const parserOptions = {
   comments: false,
   target: "esnext",
 };
+parseSync(source, parserOptions);
 bench(() => parseSync(source, parserOptions).body.length, iterations);

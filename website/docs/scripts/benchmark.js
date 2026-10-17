@@ -20,12 +20,31 @@ const jsTimeMs = 1000;
 // Set BENCH_CPU to an available CPU, preferably a performance core.
 const cpu = process.env.BENCH_CPU ?? "0";
 const output = path.join(root, "website/docs/Benchmark.md");
-const files = ["typescript.js", "effect-schema-ast.ts"];
-const features = [
-  ["Rust parse", "parse"],
-  ["Isolated declaration", "isolated-declaration"],
-  ["Type strip", "type-strip"],
-  ["JS parser", "parse"],
+const parseFiles = ["typescript.js", "effect-schema-ast.ts"];
+const benchmarks = [
+  {
+    title: "Rust parse",
+    type: "native",
+    operation: "parse",
+    files: parseFiles,
+  },
+  {
+    title: "Isolated declaration",
+    type: "native",
+    operation: "isolated-declaration",
+    files: ["effect-schema-ast.ts"],
+  },
+  {
+    title: "Type strip",
+    type: "native",
+    operation: "type-strip",
+    files: ["effect-schema-ast.ts"],
+  },
+  {
+    title: "JS parser",
+    type: "js",
+    files: parseFiles,
+  },
 ];
 
 function run(command, args, options = {}) {
@@ -67,12 +86,11 @@ function main() {
   // Hyperfine executes these arguments directly, without a shell.
   const quote = (value) => `'${String(value).replaceAll("'", "'\\''")}'`;
   const lines = ["# Benchmark", ""];
-  for (const [title, feature] of features) {
+  for (const { title, type, operation, files } of benchmarks) {
     lines.push(`## ${title}`, "");
+    const isJs = type === "js";
     for (const file of files) {
-      if (file === "typescript.js" && feature !== "parse") continue;
       console.error(`${title}: ${file}`);
-      const isJs = title === "JS parser";
       const input = path.join("tasks/benchmark/files", file);
       const commands = ["swc-next", "swc"].map((engine) =>
         isJs
@@ -80,17 +98,16 @@ function main() {
               process.execPath,
               `tasks/benchmark/bin/${engine}.js`,
               input,
-              feature,
             ]
           : [
               `target/release/${engine}`,
               input,
-              feature,
+              operation,
               nativeIterations,
             ],
       );
       const swcName =
-        feature === "type-strip"
+        operation === "type-strip"
           ? `swc_ts_fast_strip@${fastStripVersion}`
           : `swc_core@${swcCoreVersion}`;
       let names = [`swc-next@${commit}`, swcName].map(
@@ -112,7 +129,7 @@ function main() {
         );
         for (const command of commands) command.push(String(iterations));
         names = jsNames.map(
-          (name) => `${name}; ${iterations} parses + 5 warmups`,
+          (name) => `${name}; ${iterations} parses + 1 validation + 5 warmups`,
         );
         console.error(
           `JS batch: ${iterations} parses per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/parse`,
@@ -154,9 +171,4 @@ function main() {
   console.error(`Wrote ${output}`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.stack ?? error);
-  process.exitCode = 1;
-}
+main();
