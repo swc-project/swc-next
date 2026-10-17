@@ -119,6 +119,16 @@ does not widen a child's source interval or change its syntax domain.
 Required token separation and statement guards are decided by syntax formatting
 before printing chooses line breaks or removes optional punctuation.
 
+## Embedded languages
+
+TODO: formatting embedded languages, including HTML, CSS, GraphQL, and other
+tagged-template languages, is deferred. Preserve the template's raw text instead
+of parsing or reformatting it as an embedded language.
+
+JavaScript and TypeScript interpolation expressions continue through the existing
+template-slot formatter, retaining their comment ownership, source delimiters,
+and effective directive scopes.
+
 ## Verification
 
 Use local fixtures for representative syntax, comments, options, and widths.
