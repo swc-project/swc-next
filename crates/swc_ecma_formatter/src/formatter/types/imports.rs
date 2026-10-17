@@ -100,7 +100,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_type_boundary(&boundary, writer)?;
             self.format_import_type_qualifier(node, mode, writer)?;
         }
-        if let Some((node, prefix)) = arguments {
+        if let Some((node, ref prefix)) = arguments {
             let mode = prefix.right_mode;
             self.format_type_list_prefix(prefix, writer)?;
             self.format_type_arguments(node, mode, writer)?;
