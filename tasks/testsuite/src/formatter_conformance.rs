@@ -183,9 +183,31 @@ const IGNORE: &[IgnorePattern] = &[
     // Keep the spread closing brace on the active @ts-ignore comment line.
     // A separate brace line removes coverage of the following attribute.
     IgnorePattern::Exact("jsx/ignore/spread.js"),
+    // Reference comment placement also reproduced on Prettier main:
+    // https://github.com/prettier/prettier/commit/344d6dc42c8057fbf5573326b52dbc8a43635e7e
+    // Keep comments before their elision comma. Moving @ts-expect-error past it
+    // changes diagnostic coverage with TypeScript 7.0.2.
+    IgnorePattern::Exact("js/arrays/numbers-with-holes.js"),
+    // Preserve lexical order around empty constructor parameters. Prettier
+    // swaps comments outside the parameter list with comments inside it.
+    IgnorePattern::Exact("typescript/comments/method_types.ts"),
+    // Keep receiver-bound ignore markers inside their source pair. Moving them
+    // before the statement expands their target from BinaryExpression or
+    // AwaitExpression to the complete ExpressionStatement.
+    IgnorePattern::Exact("js/ignore/issue-11077.js"),
+    IgnorePattern::Exact("js/ignore/issue-14404.js"),
     // Choose chain layout from canonical contents. Collapsing this fixture's
     // object literal makes Prettier change its output on the second pass.
     IgnorePattern::Exact("js/method-chain/multiple-members.js"),
+    // An ignored parenthesized type owns its complete source frame here.
+    // Prettier removes the pair; retain it to honor that ignore contract.
+    IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-parenthesized-type.ts"),
+    IgnorePattern::Exact(
+        "typescript/prettier-ignore/no-semi/prettier-ignore-parenthesized-type.ts",
+    ),
+    // Preserve the ignored union's source pair and internal marker. Prettier
+    // rebuilds the delimiter frame and moves the internal marker outside.
+    IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-nested-unions.ts"),
 ];
 
 #[derive(Clone, Copy)]
