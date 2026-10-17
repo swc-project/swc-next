@@ -110,11 +110,12 @@ fn parser_error_returns_borrowed_code() {
 }
 
 #[test]
-fn parser_error_does_not_block_recovery_edits() {
-    let result = strip_types("let a:T;\nlet b:=1;\nlet c:=2;", options(crate::Lang::Ts));
+fn parser_error_stops_processing() {
+    let source = "let a:T;\nlet b:=1;\nlet c:=2;";
+    let result = strip_types(source, options(crate::Lang::Ts));
 
-    assert_eq!(result.code, "let a  ;\nlet b:=1;\nlet c:=2;");
-    assert!(result.diagnostics.len() > 1);
+    assert!(matches!(result.code, Cow::Borrowed(value) if value == source));
+    assert_eq!(result.diagnostics.len(), 1);
 }
 
 #[test]

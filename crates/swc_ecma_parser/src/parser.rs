@@ -977,8 +977,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.statement_context = source_type.into();
     }
 
-    fn finish_program(mut self, parsed_body: ParsedBody) -> ParseReturn<'a> {
-        let ParsedBody { directives, body } = parsed_body;
+    fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
+        if parsed_body.is_none() && !self.has_unconditional_diagnostics() {
+            self.report(
+                self.current_token.span(),
+                "Invalid statement",
+                ReportOptions::default(),
+            );
+        }
+        // A failed body still needs a program root for callers inspecting diagnostics.
+        let ParsedBody { directives, body } = parsed_body.unwrap_or(ParsedBody {
+            directives: SubRange::empty(),
+            body: SubRange::empty(),
+        });
         self.discard_commonjs_conditional_diagnostics();
 
         // Create the root node and set it as the AST's root.
@@ -1555,7 +1566,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         terminator: Option<TokenTag>,
         statement_context: StatementContext,
-    ) -> ParsedBody {
+    ) -> Option<ParsedBody> {
         debug_assert!(statement_context.permits_declaration());
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
         // `parse_body` is shared by ScriptBody, ModuleBody, FunctionBody, and
@@ -1564,48 +1575,49 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut in_directive_prologue = true;
         let statements_checkpoint = self.scratch_statements.begin();
         let mut directives_end = statements_checkpoint;
-        while !self.is_at_body_end(terminator) {
-            let is_directive = (|| {
-                if in_directive_prologue && self.current_token.tag() == TokenTag::StringLiteral {
-                    // The program or function/static block entry already establishes +In.
-                    let expression =
-                        self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
-                    if let ExprData::StringLiteral(string_literal) = self.ast.expr_data(expression)
+        let result = (|| {
+            while !self.is_at_body_end(terminator) {
+                let is_directive = (|| {
+                    if in_directive_prologue && self.current_token.tag() == TokenTag::StringLiteral
                     {
-                        let directive =
-                            self.parse_directive(string_literal, string_literal.span(&self.ast))?;
-                        self.scratch_statements.append(directive);
-                        return Some(true);
+                        // The program or function/static block entry already establishes +In.
+                        let expression =
+                            self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())?;
+                        if let ExprData::StringLiteral(string_literal) =
+                            self.ast.expr_data(expression)
+                        {
+                            let directive = self
+                                .parse_directive(string_literal, string_literal.span(&self.ast))?;
+                            self.scratch_statements.append(directive);
+                            return Some(true);
+                        }
+                        let start = expression.span(&self.ast).start;
+                        let statement =
+                            self.parse_expression_statement_with_expression(start, expression)?;
+                        self.scratch_statements.append(statement);
+                        return Some(false);
                     }
-                    let start = expression.span(&self.ast).start;
-                    let statement =
-                        self.parse_expression_statement_with_expression(start, expression)?;
+                    let statement = self.parse_statement(self.statement_context)?;
+                    if terminator.is_none() {
+                        self.record_statement_module_syntax(statement);
+                    }
                     self.scratch_statements.append(statement);
-                    return Some(false);
-                }
-                let statement = self.parse_statement(self.statement_context)?;
-                if terminator.is_none() {
-                    self.record_statement_module_syntax(statement);
-                }
-                self.scratch_statements.append(statement);
-                Some(false)
-            })();
-            if let Some(is_directive) = is_directive {
+                    Some(false)
+                })()?;
                 if is_directive {
                     directives_end = self.scratch_statements.items.len();
                 }
                 in_directive_prologue &= is_directive;
-            } else {
-                self.recover(terminator);
             }
-        }
-        let statements_end = self.scratch_statements.items.len();
-        let directives =
-            self.add_extra_from_scratch_statements_range(statements_checkpoint, directives_end);
-        let body = self.add_extra_from_scratch_statements_range(directives_end, statements_end);
+            let statements_end = self.scratch_statements.items.len();
+            let directives =
+                self.add_extra_from_scratch_statements_range(statements_checkpoint, directives_end);
+            let body = self.add_extra_from_scratch_statements_range(directives_end, statements_end);
+            Some(ParsedBody { directives, body })
+        })();
         self.scratch_statements.reset(statements_checkpoint);
         self.statement_context = statement_context;
-        ParsedBody { directives, body }
+        result
     }
 
     fn record_statement_module_syntax(&mut self, statement: Stmt) {
@@ -1941,10 +1953,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.current_token.tag(),
                 TokenTag::RightBrace | TokenTag::Eof
             ) {
-                match self.parse_statement(StatementContext::StatementListItem) {
-                    Some(statement) => self.scratch_statements.append(statement),
-                    None => self.recover(Some(TokenTag::RightBrace)),
-                }
+                let statement = self.parse_statement(StatementContext::StatementListItem)?;
+                self.scratch_statements.append(statement);
             }
             let end = self.current_token.end();
             if !self.expect(
@@ -2849,7 +2859,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         loop {
             let modifier_end = self.current_token.start();
             if self.current_token.tag() == TokenTag::Static
-                && let Some(block) = self.try_static_block(decorators)
+                && let Some(block) = self.try_static_block(decorators)?
             {
                 if has_modifiers {
                     self.report(
@@ -3065,14 +3075,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(ClassModifierStep::Consumed)
     }
 
-    fn try_static_block(&mut self, decorators: SubRange<Decorator>) -> Option<ClassElement> {
+    fn try_static_block(
+        &mut self,
+        decorators: SubRange<Decorator>,
+    ) -> Option<Option<ClassElement>> {
         let static_token = self.current_token;
         if static_token.tag() != TokenTag::Static || static_token.is_escaped() {
-            return None;
+            return Some(None);
         }
-        let next = self.peek_ahead()?;
+        let Some(next) = self.peek_ahead() else {
+            // Normal modifier parsing will report the lexical error.
+            return Some(None);
+        };
         if next.tag() != TokenTag::LeftBrace {
-            return None;
+            return Some(None);
         }
         if !decorators.is_empty() {
             self.report(
@@ -3085,7 +3101,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         self.advance_without_escape_check()?;
-        self.parse_static_block(static_token.start())
+        self.parse_static_block(static_token.start()).map(Some)
     }
 
     // ClassStaticBlock :
@@ -3107,21 +3123,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await, ~Return];
         let boundary_context = mem::take(&mut self.boundary_context);
         let checkpoint = self.scratch_statements.begin();
-        let body = {
+        let body = (|| {
             while !matches!(
                 self.current_token.tag(),
                 TokenTag::RightBrace | TokenTag::Eof
             ) {
-                match self.parse_statement(StatementContext::StatementListItem) {
-                    Some(statement) => self.scratch_statements.append(statement),
-                    None => self.recover(Some(TokenTag::RightBrace)),
-                }
+                let statement = self.parse_statement(StatementContext::StatementListItem)?;
+                self.scratch_statements.append(statement);
             }
-            self.add_extra_from_scratch_statements(checkpoint)
-        };
+            Some(self.add_extra_from_scratch_statements(checkpoint))
+        })();
         self.context = context;
         self.boundary_context = boundary_context;
         self.scratch_statements.reset(checkpoint);
+        let body = body?;
         let end = self.current_token.end();
         if !self.expect(
             TokenTag::RightBrace,
@@ -3855,12 +3870,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let grammar_context = enter_grammar_context![&mut self.context, +In, +Return];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
-        let ParsedBody { directives, body } = self.parse_body(
+        let body = self.parse_body(
             Some(TokenTag::RightBrace),
             StatementContext::StatementListItem,
         );
         self.ts_context = ts_context;
         self.context = grammar_context;
+        let ParsedBody { directives, body } = body?;
         let end = self.current_token.end();
         if !self.expect(
             TokenTag::RightBrace,
@@ -5551,12 +5567,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let in_ts_container_body = self.ts_context.in_ts_container_body();
         self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
         let boundary_context = mem::take(&mut self.boundary_context);
-        let ParsedBody { directives, body } =
-            self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
+        let body = self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
         self.boundary_context = boundary_context;
         self.ts_context
             .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
         self.context = context;
+        let ParsedBody { directives, body } = body?;
         let end = self.current_token.end();
         if !self.expect(
             TokenTag::RightBrace,
@@ -7811,7 +7827,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let cases = self.parse_switch_cases();
+        let cases = self.parse_switch_cases()?;
         let end = self.current_token.end();
         if !self.expect(
             TokenTag::RightBrace,
@@ -7826,17 +7842,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_switch_cases(&mut self) -> SubRange<SwitchCase> {
+    fn parse_switch_cases(&mut self) -> Option<SubRange<SwitchCase>> {
         let checkpoint = self.scratch_a.begin();
-        while matches!(self.current_token.tag(), TokenTag::Case | TokenTag::Default) {
-            match self.parse_switch_case() {
-                Some(case) => self.scratch_a.append(case),
-                None => self.recover(Some(TokenTag::RightBrace)),
+        let result = (|| {
+            while matches!(self.current_token.tag(), TokenTag::Case | TokenTag::Default) {
+                let case = self.parse_switch_case()?;
+                self.scratch_a.append(case);
             }
-        }
-        let cases = self.add_extra_from_scratch_a(checkpoint);
+            Some(self.add_extra_from_scratch_a(checkpoint))
+        })();
         self.scratch_a.reset(checkpoint);
-        cases
+        result
     }
 
     // CaseClause[Yield, Await, Return] :
@@ -7858,7 +7874,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::Colon, "Expected ':' after case", None) {
             return None;
         }
-        let consequent = self.parse_case_consequent();
+        let consequent = self.parse_case_consequent()?;
         let case_end = if consequent.is_empty() {
             colon_end
         } else {
@@ -7874,34 +7890,35 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_case_consequent(&mut self) -> SubRange<Stmt> {
+    fn parse_case_consequent(&mut self) -> Option<SubRange<Stmt>> {
         let checkpoint = self.scratch_b.begin();
-        while !matches!(
-            self.current_token.tag(),
-            TokenTag::Case | TokenTag::Default | TokenTag::RightBrace | TokenTag::Eof
-        ) {
-            let Some(statement) = self.parse_statement(StatementContext::StatementListItem) else {
-                break;
-            };
-            if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
-                && let DeclData::VariableDeclaration(declaration) = self.ast.decl_data(declaration)
-                && matches!(
-                    declaration.kind(&self.ast),
-                    VariableKind::Using | VariableKind::AwaitUsing
-                )
-            {
-                self.report(
-                    statement.span(&self.ast),
-                    "Using declaration cannot appear in the bare case statement.",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
-                        ..ReportOptions::default()
-                    },
-                );
+        let result = (|| {
+            while !matches!(
+                self.current_token.tag(),
+                TokenTag::Case | TokenTag::Default | TokenTag::RightBrace | TokenTag::Eof
+            ) {
+                let statement = self.parse_statement(StatementContext::StatementListItem)?;
+                if let StmtData::Declaration(declaration) = self.ast.stmt_data(statement)
+                    && let DeclData::VariableDeclaration(declaration) =
+                        self.ast.decl_data(declaration)
+                    && matches!(
+                        declaration.kind(&self.ast),
+                        VariableKind::Using | VariableKind::AwaitUsing
+                    )
+                {
+                    self.report(
+                        statement.span(&self.ast),
+                        "Using declaration cannot appear in the bare case statement.",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
+                            ..ReportOptions::default()
+                        },
+                    );
+                }
+                self.scratch_b.append(statement);
             }
-            self.scratch_b.append(statement);
-        }
-        let result = self.add_extra_from_scratch_b(checkpoint);
+            Some(self.add_extra_from_scratch_b(checkpoint))
+        })();
         self.scratch_b.reset(checkpoint);
         result
     }
@@ -12854,38 +12871,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             message: Cow::Borrowed(message),
         }
     }
-
-    fn recover(&mut self, terminator: Option<TokenTag>) {
-        while self.current_token.tag() != TokenTag::Eof {
-            self.current_token = self.recover_next_token();
-            if self.current_token.tag() == TokenTag::Eof {
-                break;
-            }
-            if terminator.is_some_and(|tag| self.current_token.tag() == tag) {
-                break;
-            }
-            if self.current_token.has_line_terminator_before()
-                && self.current_token.tag().is_keyword()
-            {
-                break;
-            }
-        }
-    }
-
-    /// Advances during error recovery, skipping bytes that cause lexical
-    /// errors.
-    fn recover_next_token(&mut self) -> Token {
-        loop {
-            let mut token = Token::eof(self.lexer.cursor);
-            match self.lexer.next_token(&mut token) {
-                Ok(()) => return token,
-                Err(_) if (self.lexer.cursor as usize) < self.source.len() => {
-                    self.lexer.cursor += 1;
-                }
-                Err(_) => return Token::eof(self.source.len() as u32),
-            }
-        }
-    }
 }
 
 fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> bool {
@@ -13355,7 +13340,89 @@ mod tests {
     }
 
     #[test]
-    fn recovery_tokens() {
+    fn syntax_errors() {
+        fn diagnostics(source: &str, options: Options) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            Parser::init(&allocator, source, options, NoTokenParserConfig)
+                .parse()
+                .diagnostics
+        }
+
+        let script = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let module = Options {
+            source_type: SourceType::Module,
+            ..script
+        };
+        let commonjs = Options {
+            source_type: SourceType::CommonJs,
+            ..script
+        };
+        let unambiguous = Options {
+            source_type: SourceType::Unambiguous,
+            ..script
+        };
+        let typescript = Options {
+            lang: Lang::Ts,
+            ..module
+        };
+
+        let errors = diagnostics("function f(,) {\n  return;\n}", script);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].span, Span::new(11, 12));
+
+        let errors = diagnostics("function f(,) {\n  return;\n}", module);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].span, Span::new(11, 12));
+
+        let errors = diagnostics("function f(,) {\n  return;\n}", commonjs);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].span, Span::new(11, 12));
+
+        let errors = diagnostics("function f(,) {\n  return;\n}", unambiguous);
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].span, Span::new(11, 12));
+
+        let errors = diagnostics("{ function f(,) {\n  return;\n} }", script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("function outer() { function f(,) {\n  return;\n} }", script);
+        assert_eq!(errors.len(), 1);
+
+        let source = "class C { static { function f(,) {\n  return;\n} } }";
+        let errors = diagnostics(source, script);
+        assert_eq!(errors.len(), 1);
+
+        let source = "switch (0) { case 0: function f(,) {\n  return;\n} }";
+        let errors = diagnostics(source, script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("switch (0) { case ,:\n  return;\n}", script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("namespace N { function f(,) {\n  return;\n} }", typescript);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("function f() { let # name }", script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("function f() { let # name }", unambiguous);
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn error_tokens() {
+        let allocator = Allocator::new();
+        let source = "function f(,) {\n  return;\n}";
+        let parsed = parse_tokens(&allocator, source);
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["function", "f", "(", ","]
+        );
+
         let allocator = Allocator::new();
         let source = "return 1;\nconst after = 1;";
         let parsed = parse_tokens(&allocator, source);
