@@ -5012,7 +5012,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_module_export_name(&mut self) -> Option<ModuleExportName> {
         let token = self.current_token;
         if token.tag() == TokenTag::StringLiteral {
-            if token.has_lone_surrogates() {
+            let name = self.parse_string_literal()?;
+            // Line continuations can separate surrogate escapes without adding code units.
+            if self.ast.get_wtf8(name.value(&self.ast)).as_str().is_none() {
                 self.report(
                     token.span(),
                     "An export name cannot include a unicode lone surrogate",
@@ -5020,9 +5022,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
                 return None;
             }
-            return Some(ModuleExportName::StringLiteral(
-                self.parse_string_literal()?,
-            ));
+            return Some(ModuleExportName::StringLiteral(name));
         }
         if token.tag().is_identifier_like() {
             return Some(ModuleExportName::IdentifierName(
