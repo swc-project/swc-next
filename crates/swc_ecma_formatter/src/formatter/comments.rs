@@ -115,6 +115,15 @@ pub(super) struct CommentBoundary<'ast> {
 }
 
 impl<'ast> CommentBoundary<'ast> {
+    /// Adjacent tokens have no intervening comments or source line break.
+    pub(super) fn adjacent(position: u32) -> Self {
+        Self {
+            comments: &[],
+            source_end: position,
+            gap: CommentGap::Source(LineConstraint::SameLine),
+        }
+    }
+
     pub(super) fn first_comment_start(&self) -> Option<u32> {
         self.comments.first().map(|comment| comment.span.start)
     }
