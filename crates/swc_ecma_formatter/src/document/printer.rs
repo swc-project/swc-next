@@ -658,16 +658,21 @@ impl Output {
     }
 
     fn write(&mut self, text: Text<'_>, options: FormatOptions, mode: Mode) {
-        let (character, count) = match options.indent_style {
-            IndentStyle::Tab => ('\t', self.pending_indent.levels),
-            IndentStyle::Space => (
-                ' ',
-                self.pending_indent.levels * usize::from(options.indent_width.value()),
-            ),
-        };
-        self.text.extend(std::iter::repeat_n(character, count));
-        self.text
-            .extend(std::iter::repeat_n(' ', self.pending_indent.alignment));
+        if self.pending_indent.levels != 0 || self.pending_indent.alignment != 0 {
+            match options.indent_style {
+                IndentStyle::Space => self.text.extend(std::iter::repeat_n(
+                    ' ',
+                    self.pending_indent.levels * usize::from(options.indent_width.value())
+                        + self.pending_indent.alignment,
+                )),
+                IndentStyle::Tab => {
+                    self.text
+                        .extend(std::iter::repeat_n('\t', self.pending_indent.levels));
+                    self.text
+                        .extend(std::iter::repeat_n(' ', self.pending_indent.alignment));
+                }
+            }
+        }
         if self.pending_gap.has_space() {
             self.text.push(' ');
             self.column += 1;
