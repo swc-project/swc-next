@@ -2980,6 +2980,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_formatter_bridge"
+version = "0.3.0"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+]
+
+[[package]]
 name = "swc_next_formatter_core"
 version = "0.1.0"
 dependencies = [

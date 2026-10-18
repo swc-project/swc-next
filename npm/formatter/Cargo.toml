@@ -1,0 +1,18 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_formatter_bridge"
+repository.workspace  = true
+version               = "0.3.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+swc_next_bridge = { workspace = true, features = ["formatter"] }
+
+[build-dependencies]
+napi-build = { workspace = true }
