@@ -201,6 +201,23 @@ impl StatementItem {
         !matches!(self, Self::Statement(statement) if matches!(ast.stmt_data(statement), StmtData::EmptyStatement(_)))
     }
 
+    fn is_bodyless_function(self, ast: &Ast<'_>) -> bool {
+        let Self::Statement(statement) = self else {
+            return false;
+        };
+        match ast.stmt_data(statement) {
+            StmtData::Declaration(node) => matches!(ast.decl_data(node), DeclData::TsFunction(_)),
+            StmtData::ExportNamedDeclaration(node) => node
+                .declaration(ast)
+                .is_some_and(|node| matches!(ast.decl_data(node), DeclData::TsFunction(_))),
+            StmtData::ExportDefaultDeclaration(node) => matches!(
+                ast.export_default_declaration_kind_data(node.declaration(ast)),
+                ExportDefaultDeclarationKindData::TsFunction(_)
+            ),
+            _ => false,
+        }
+    }
+
     fn span(self, ast: &Ast<'_>) -> Span {
         match self {
             Self::Directive(node) => node.span(ast),
@@ -471,6 +488,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementPunctuation::Source(terminator)
             } else if source_packet.is_some() {
                 StatementPunctuation::SourcePacket
+            } else if self.options.semicolons == Semicolons::AsNeeded
+                && pending.as_ref().is_some_and(|next| {
+                    matches!(next.item, StatementItem::Statement(node)
+                        if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
+                })
+                && statement.is_bodyless_function(ast)
+            {
+                StatementPunctuation::Canonical(Semicolons::Always)
             } else {
                 match source_terminator {
                     Some(terminator) => StatementPunctuation::Source(terminator),

@@ -713,10 +713,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_compound_gap(
                     node.body_head,
                     FlatSeparator::Space,
-                    if block {
-                        Writer::space
-                    } else {
-                        Writer::hard_line
+                    |writer| {
+                        if first.is_some() {
+                            if block {
+                                writer.space();
+                            } else {
+                                writer.hard_line();
+                            }
+                        }
                     },
                     writer,
                 )?;

@@ -73,15 +73,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let operator_end = span.start + operator.as_str().len() as u32;
             self.comments.claim(leading)?;
             self.format_comment_run(leading, CommentRunLayout::SourceAfter(operator_end), writer)?;
-            let previous = leading
-                .last()
-                .map_or(operator_end, |comment| comment.span.end);
             let flat = if leading.is_empty() {
                 FlatSeparator::Empty
             } else {
                 FlatSeparator::Space
             };
-            self.line_constraint(previous, argument_span.start)
+            self.line_constraint_after_comments(leading, operator_end, argument_span.start)
                 .write(writer, flat, |_| {});
             let operand_indent = match content.data {
                 ExprData::BinaryExpression(_)
@@ -129,7 +126,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .inside_parentheses();
                     // A distinct operand pair remains owned by that expression;
                     // otherwise this physical unary pair supplies its frame.
-                    if self.expression_needs_parentheses(
+                    if !matches!(
+                        content.data,
+                        ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+                    ) && self.expression_needs_parentheses(
                         content.data,
                         position,
                         ContentMode::Formatted,

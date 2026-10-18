@@ -18,7 +18,7 @@ function f() {
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 function f() {
-  /* prettier-ignore */ ;("use strict")
+  /* prettier-ignore */;("use strict")
   return (
     this ===
     undefined

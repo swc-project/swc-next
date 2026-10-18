@@ -6,40 +6,40 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
-+(/* boundary */ (+item));
++(/* boundary */ +item);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;+(/* boundary */ (+item))
+;+(/* boundary */ +item)
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 +(
-  /* boundary */ (+item)
+  /* boundary */ +item
 );
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 +(
-  /* boundary */ (+item)
+  /* boundary */ +item
 );
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 +(
-	/* boundary */ (+item)
+	/* boundary */ +item
 );
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-+(/* boundary */ (+item));
++(/* boundary */ +item);
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
-+(/* boundary */ (+item));
++(/* boundary */ +item);

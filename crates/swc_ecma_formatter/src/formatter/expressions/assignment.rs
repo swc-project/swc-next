@@ -579,6 +579,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::ChainExpression(chain) => chain.expression(self.ast),
             ExprData::MemberExpression(member) => member.object(self.ast),
             ExprData::CallExpression(call) => call.callee(self.ast),
+            ExprData::TsInstantiationExpression(node) => node.expression(self.ast),
             _ => return None,
         };
         loop {
@@ -598,6 +599,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::ChainExpression(chain) => chain.expression(self.ast),
                 ExprData::MemberExpression(member) => member.object(self.ast),
                 ExprData::CallExpression(call) => call.callee(self.ast),
+                ExprData::TsInstantiationExpression(node) => node.expression(self.ast),
                 _ => return Some(head),
             };
         }
@@ -634,6 +636,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             cast_leading: None,
             jsx_head_binding: None,
         };
+        if let Some(head) = self.assignment_expression_head(content)
+            && let Some(removed) = head.parentheses
+            && removed.head.has_comments
+        {
+            boundary.own_line = self
+                .comments
+                .in_range(Span::new(
+                    removed.source.outer.start,
+                    head.expression.span(self.ast).start,
+                ))
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line);
+        }
         if let ExprData::ParenthesizedExpression(parenthesized) = content.data
             && let Some(child) =
                 self.ignored_parentheses_child(parenthesized, ContentMode::Formatted)

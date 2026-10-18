@@ -530,11 +530,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.line_constraint(previous_end, comma),
                             writer,
                         ),
-                        (None, false) => self.line_constraint(previous_end, comma).write(
-                            writer,
-                            FlatSeparator::Empty,
-                            |_| {},
-                        ),
+                        // The opening boundary already owns the first elision's gap.
+                        (None, false) => {}
                     }
                     writer.text(",");
                     previous_end = comma + 1;

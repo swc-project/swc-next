@@ -373,9 +373,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             }
                         };
                         let protected_gap = !terminal
-                            && suppression
+                            && (suppression
                                 .as_ref()
-                                .is_some_and(|source| source.preceding.is_some());
+                                .is_some_and(|source| source.preceding.is_some())
+                                || self.diagnostic_range_is_sensitive(Span::new(
+                                    property_span.end,
+                                    next_start,
+                                )));
                         let (end, next_leading) = if protected_gap {
                             let content_end = tail
                                 .as_ref()
@@ -390,11 +394,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 .write(writer, FlatSeparator::Space, Writer::line);
                             (source.end, &[][..])
                         } else {
+                            let comma_before_tail = tail.as_ref().is_some_and(|tail| {
+                                tail.comments
+                                    .last()
+                                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                            });
+                            let trailing_comma =
+                                self.options.trailing_commas != TrailingCommas::None;
+                            let write_comma = |writer: &mut Writer<'ast>| {
+                                if !terminal {
+                                    writer.text(",");
+                                } else if trailing_comma {
+                                    writer.if_break(",");
+                                }
+                            };
+                            if comma_before_tail {
+                                write_comma(writer);
+                            }
                             self.format_expression_tail(tail, writer)?;
                             self.comments.claim(boundary.inline)?;
                             self.format_inline_trailing_comments(boundary.inline, writer)?;
+                            if !comma_before_tail {
+                                write_comma(writer);
+                            }
                             if !terminal {
-                                writer.text(",");
                                 let constraint = self.line_constraint(
                                     boundary.separator.start,
                                     boundary.separator.end,
@@ -409,9 +432,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                     writer.hard_line();
                                 }
                             } else {
-                                if self.options.trailing_commas != TrailingCommas::None {
-                                    writer.if_break(",");
-                                }
                                 self.comments.claim(boundary.own_line)?;
                                 if let Some(first) = boundary.own_line.first() {
                                     let constraint = self

@@ -17,23 +17,22 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":20}
 ---------- Output ----------
 (/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
-    second * third
+  second * third
 );
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 (/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
-    second *
-      third
+  second *
+    third
 );
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 (/* __unrelated__漢@__NO_SIDE_EFFECTS__語 */ first +
-		second *
-			third
+	second * third
 );
 
 ---------- Options ----------

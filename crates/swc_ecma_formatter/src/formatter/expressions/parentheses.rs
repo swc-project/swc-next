@@ -963,6 +963,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let trailing = Span::new(child_span.end, span.end - 1);
+        if matches!(context.position, ExpressionPosition::NonNullOperand)
+            && self.line_breaks(trailing.start, trailing.end) != 0
+            && !self.comments.in_range(trailing).is_empty()
+        {
+            return SourceParenthesesChoice::Retained {
+                kind: RetainedParentheses::Operand,
+                mode: context.content_mode,
+            };
+        }
         let tail_end = comments
             .tail
             .partition_point(|comment| comment.span.end <= trailing.end);
@@ -1516,6 +1525,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionStart, FormatError> {
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
+            && context.content_mode == ContentMode::Verbatim
+            && matches!(head.layout, CommentRunLayout::Source)
+            && head.comments.last().is_some_and(|comment| {
+                comment.kind == CommentKind::Block
+                    && self.line_breaks(comment.span.end, head.content_start) == 0
+            })
+            && self.expression_needs_asi_guard(expression, context)?
+        {
+            head.gap_end = None;
+        }
+        if context.expression_start.needs_asi_guard()
+            && self.options.semicolons == Semicolons::AsNeeded
             && self.has_target_annotations
             && let Some(index) = head
                 .comments
@@ -1907,7 +1928,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let hug = hug
             && !matches!(opening, LineConstraint::NewLine(_))
             && !matches!(closing, LineConstraint::NewLine(_));
-        let operand_indent = if context.operand_indent == OperandIndent::Parent
+        let operand_indent = if (context.operand_indent == OperandIndent::Parent
+            || matches!(kind, RetainedParentheses::Annotation))
             && !matches!(kind, RetainedParentheses::Cast)
             && matches!(boundary.inner_target, ParenthesisInner::Expression(expression) if matches!(self.ast.expr_data(expression), ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_) | ExprData::ParenthesizedExpression(_)))
         {

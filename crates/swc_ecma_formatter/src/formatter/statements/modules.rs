@@ -1006,6 +1006,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
                 let source_comments = (!self.diagnostic_range_is_sensitive(header)
+                    && (self.source(keyword) != "assert"
+                        || comments.iter().all(|comment| {
+                            comment.span.end <= keyword.start
+                                || comment.kind == CommentKind::Block
+                                    && self.line_breaks(comment.span.start, comment.span.end) == 0
+                        }))
                     && (first.is_none()
                         || comments
                             .iter()

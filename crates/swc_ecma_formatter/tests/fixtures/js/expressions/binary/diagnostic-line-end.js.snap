@@ -10,8 +10,8 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 );
 
 ---------- Options ----------
@@ -19,8 +19,8 @@ second + third);
 ---------- Output ----------
 ;(// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 )
 
 ---------- Options ----------
@@ -28,8 +28,8 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 );
 
 ---------- Options ----------
@@ -37,8 +37,8 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 );
 
 ---------- Options ----------
@@ -46,8 +46,8 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
 	first +
-		second +
-		third
+	second +
+	third
 );
 
 ---------- Options ----------
@@ -55,8 +55,8 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 );
 
 ---------- Options ----------
@@ -64,6 +64,6 @@ second + third);
 ---------- Output ----------
 (// @ts-ignore
   first +
-    second +
-    third
+  second +
+  third
 );

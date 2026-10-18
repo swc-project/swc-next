@@ -494,20 +494,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ArgumentData::Expr(expression) = data else {
             return None;
         };
-        let callback = match ast.expr_data(expression) {
-            ExprData::ArrowFunctionExpression(arrow) => Callback {
-                expression,
-                kind: CallbackKind::Arrow(arrow),
-            },
-            ExprData::Function(function) => Callback {
-                expression,
-                kind: CallbackKind::Function(function),
-            },
-            ExprData::ParenthesizedExpression(_) => self.callback_data(data)?,
+        let content = self.expression_content(expression);
+        let allow_final_collection = allow_final_collection
+            && content
+                .parentheses
+                .is_none_or(|removed| !removed.head.has_comments && removed.tail.is_none());
+        let callback = match content.data {
+            ExprData::ArrowFunctionExpression(_)
+            | ExprData::Function(_)
+            | ExprData::ParenthesizedExpression(_) => self.callback_data(data)?,
             ExprData::ObjectExpression(object) if allow_final_collection => {
                 if let Some(previous) = items.next_back()
                     && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
-                        if matches!(ast.expr_data(expression), ExprData::ObjectExpression(_)))
+                        if matches!(self.expression_content(expression).data, ExprData::ObjectExpression(_)))
                 {
                     return None;
                 }
@@ -530,7 +529,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let Some(previous) = items.next_back()
                     && let ArgumentData::Expr(expression) = ast.argument_data(previous)
                 {
-                    let previous = ast.expr_data(expression);
+                    let previous = self.expression_content(expression).data;
                     if matches!(previous, ExprData::ArrayExpression(_))
                         || arguments.len() == 2
                             && matches!(previous, ExprData::ArrowFunctionExpression(_))

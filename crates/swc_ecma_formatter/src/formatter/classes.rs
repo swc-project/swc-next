@@ -883,6 +883,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let tail = if matches!(heritage.caller, ClassCaller::Assignment)
                     && heritage.mode == ContentMode::Formatted
+                    && !formatter
+                        .diagnostic_range_is_sensitive(heritage.expression.span(formatter.ast))
                 {
                     writer.group(false, |writer| {
                         writer.if_break("(");
