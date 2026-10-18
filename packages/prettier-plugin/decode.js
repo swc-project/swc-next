@@ -1,4 +1,5 @@
 import { builders as b } from "prettier/doc";
+import { GroupBindings } from "./groups.js";
 
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const invalid = () => new Error("Invalid SWCFMT document buffer");
@@ -99,7 +100,11 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
         case 20: {
           const length = integer();
           if (length < 1 || length > (end - offset) / 4) throw invalid();
-          ops.push([op, Array.from({ length }, reference)]);
+          ops.push([
+            op,
+            Array.from({ length }, reference),
+            Array.from({ length }, () => Symbol()),
+          ]);
           break;
         }
         default:
@@ -112,14 +117,10 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   const poolStart = offset;
   fragments = suffixPackets(fragments);
   count = fragments.length;
-  const usesParentGroup = parentGroupDependencies(fragments);
+  const order = fragmentOrder(fragments);
+  const usesParentGroup = parentGroupDependencies(fragments, order);
+  const groupBindings = new GroupBindings(fragments, order);
   const canonical = { sourceGroups: new WeakSet(), cache: new WeakMap() };
-  const groups = new Map();
-  const groupId = (id) => {
-    if (id === 0) return undefined;
-    if (!groups.has(id)) groups.set(id, Symbol());
-    return groups.get(id);
-  };
   const strings = new Map();
   const text = (start, length) => {
     if (start + length > stringLength) throw invalid();
@@ -137,13 +138,19 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   // logical group. Shared scopes must preserve which mode their conditions use.
   const cache = Array.from({ length: count }, () => new Map());
   const active = new Uint8Array(count);
-  const statesFor = (id, parentGroup, rawSpace, modeMatchesGroup) => {
+  const statesFor = (id, parentGroup, rawSpace, modeMatchesGroup, bindings) => {
     // Closed scopes do not depend on their caller's logical group. Keeping that
     // irrelevant context would unfold a shared DAG into a tree of alternatives.
     if (!usesParentGroup[id]) parentGroup = undefined;
-    if (!cache[id].has(parentGroup))
-      cache[id].set(parentGroup, [new Map(), new Map(), new Map(), new Map()]);
-    return cache[id].get(parentGroup)[
+    const context = groupBindings.project(
+      bindings,
+      groupBindings.footprints[id],
+    );
+    if (!cache[id].has(parentGroup)) cache[id].set(parentGroup, new Map());
+    const states = cache[id].get(parentGroup);
+    if (!states.has(context))
+      states.set(context, [new Map(), new Map(), new Map(), new Map()]);
+    return states.get(context)[
       Number(rawSpace) | (Number(modeMatchesGroup) << 1)
     ];
   };
@@ -153,20 +160,22 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
     parentGroup,
     rawSpace,
     modeMatchesGroup,
+    bindings,
   ) => ({
     id,
-    cache: statesFor(id, parentGroup, rawSpace, modeMatchesGroup),
+    cache: statesFor(id, parentGroup, rawSpace, modeMatchesGroup, bindings),
     key: pendingSpace,
     iterator: build(
       fragments[id],
       text,
-      groupId,
       pendingSpace,
       parentGroup,
       rawSpace,
       modeMatchesGroup,
       options,
       canonical,
+      groupBindings,
+      bindings,
     ),
     input: undefined,
   });
@@ -184,18 +193,35 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
       work.at(-1).input = step.value;
       continue;
     }
-    const { id, pendingSpace, parentGroup, rawSpace, modeMatchesGroup } =
-      step.value;
-    if (active[id]) throw invalid();
-    const cached = statesFor(id, parentGroup, rawSpace, modeMatchesGroup).get(
+    const {
+      id,
       pendingSpace,
-    );
+      parentGroup,
+      rawSpace,
+      modeMatchesGroup,
+      bindings,
+    } = step.value;
+    if (active[id]) throw invalid();
+    const cached = statesFor(
+      id,
+      parentGroup,
+      rawSpace,
+      modeMatchesGroup,
+      bindings,
+    ).get(pendingSpace);
     if (cached) {
       frame.input = cached;
     } else {
       active[id] = 1;
       work.push(
-        createFrame(id, pendingSpace, parentGroup, rawSpace, modeMatchesGroup),
+        createFrame(
+          id,
+          pendingSpace,
+          parentGroup,
+          rawSpace,
+          modeMatchesGroup,
+          bindings,
+        ),
       );
     }
   }
@@ -357,9 +383,9 @@ function suffixPackets(fragments) {
 
 // Find free nearest-group references once over the encoded graph. A local
 // group binds conditions (and deferred soft-line gaps) in every child fragment.
-function parentGroupDependencies(fragments) {
+function parentGroupDependencies(fragments, order) {
   const dependencies = new Uint8Array(fragments.length);
-  for (const id of fragmentOrder(fragments)) {
+  for (const id of order) {
     let depth = 0;
     for (const [op, first, second] of fragments[id]) {
       if (op === 3) depth++;
@@ -384,14 +410,16 @@ const contents = (parts) => (parts.length === 1 ? parts[0] : parts);
 function* build(
   ops,
   text,
-  groupId,
   pendingSpace,
   parentGroup,
   rawSpace,
   modeMatchesGroup,
   options,
   canonical,
+  groupBindings,
+  bindings,
 ) {
+  let written;
   const stack = [{ op: -1, parts: [] }];
   const append = (doc) => stack.at(-1).parts.push(doc);
   // Defer discardable spaces until content claims them. Carry this
@@ -483,16 +511,33 @@ function* build(
             parts: [],
             parentGroup,
             modeMatchesGroup,
+            binding:
+              op === 7
+                ? first === 0
+                  ? null
+                  : groupBindings.get(bindings, first)
+                : undefined,
           };
           if (op === 12 || op === 13) modeMatchesGroup = false;
           if (op === 3) {
-            parentGroup = frame.group = groupId(second) ?? identity;
+            bindings = groupBindings.define(bindings, second, identity);
+            written = groupBindings.writes(written, second);
+            parentGroup = frame.group = identity;
             modeMatchesGroup = true;
           }
           stack.push(frame);
         }
         break;
-      case 8:
+      case 8: {
+        const nearest = second === 0xffffffff;
+        const binding =
+          second > 0 && !nearest
+            ? groupBindings.get(bindings, second)
+            : nearest
+              ? (parentGroup ?? true)
+              : modeMatchesGroup
+                ? (parentGroup ?? true)
+                : null;
         stack.push({
           op,
           first,
@@ -500,15 +545,24 @@ function* build(
           parts: [],
           pendingSpace,
           rawSpace,
-          group: second === 0xffffffff ? parentGroup : groupId(second),
+          bindings,
+          binding,
           useCurrentMode:
-            second === 0xffffffff &&
-            modeMatchesGroup &&
-            parentGroup !== undefined,
+            second === 0 ||
+            (nearest && modeMatchesGroup && parentGroup !== undefined),
         });
         break;
+      }
       case 14:
-        stack.push({ op, first, parts: [], pendingSpace, rawSpace });
+        stack.push({
+          op,
+          first,
+          parts: [],
+          pendingSpace,
+          rawSpace,
+          bindings,
+          written,
+        });
         if (!first) {
           pendingSpace = false;
           rawSpace = false;
@@ -521,18 +575,27 @@ function* build(
           parentGroup,
           rawSpace,
           modeMatchesGroup,
+          bindings,
         };
         append(result.doc);
         pendingSpace = result.pendingSpace;
         rawSpace = result.rawSpace;
+        bindings = groupBindings.apply(
+          bindings,
+          result.bindings,
+          result.written,
+        );
+        written = groupBindings.union(written, result.written);
         break;
       }
       case 10:
       case 20: {
         const variants = [];
         const gaps = [];
+        const bindingStates = [];
         let variantRawSpace = false;
         let firstProjection;
+        const projections = [];
         for (const [index, id] of first.entries()) {
           const result = yield {
             id,
@@ -540,11 +603,13 @@ function* build(
             parentGroup,
             rawSpace,
             modeMatchesGroup: false,
+            bindings,
           };
           const projection =
             op === 20 && index < Math.max(1, first.length - 1)
               ? canonicalView(result.doc, canonical)
               : undefined;
+          projections.push(projection);
           if (index === 0) firstProjection = projection;
           if (op === 20 && index < first.length - 1) {
             // Fitting sees the flat projection before this local group has a
@@ -562,21 +627,52 @@ function* build(
           } else {
             variants.push(result.doc);
           }
+          bindingStates.push(
+            groupBindings.apply(bindings, result.bindings, result.written),
+          );
+          written = groupBindings.union(written, result.written);
           gaps.push(result.pendingSpace);
           variantRawSpace ||= result.rawSpace;
         }
         rawSpace = variantRawSpace;
-        const id = Symbol();
-        const alternatives = b.conditionalGroup(variants, { id });
-        if (op === 20) canonical.cache.set(alternatives, firstProjection);
-        append(alternatives);
-        pendingSpace = gaps.every((gap) => gap === gaps[0])
-          ? gaps[0]
-          : b.ifBreak(
-              gaps.at(-1) === true ? " " : gaps.at(-1) || "",
-              gaps[0] === true ? " " : gaps[0] || "",
-              { groupId: id },
+        const sharedBindings = bindingStates.every(
+          (state) => state === bindingStates[0],
+        );
+        const sharedGaps = gaps.every((gap) => gap === gaps[0]);
+        if (sharedBindings && sharedGaps) {
+          const alternatives = b.conditionalGroup(variants);
+          if (op === 20) canonical.cache.set(alternatives, firstProjection);
+          append(alternatives);
+          bindings = bindingStates[0];
+          pendingSpace = gaps[0];
+        } else {
+          // A two-way conditional group records which branch was selected on
+          // every execution. Nest these decisions only when outgoing state
+          // differs; no unprinted "selected" marker can retain an old value.
+          let alternatives = variants.at(-1);
+          let selectedBindings = bindingStates.at(-1);
+          const asDoc = (gap) => (gap === true ? " " : gap || "");
+          let selectedGap = asDoc(gaps.at(-1));
+          for (let index = variants.length - 2; index >= 0; index--) {
+            const id = second[index];
+            alternatives = b.conditionalGroup([variants[index], alternatives], {
+              id,
+            });
+            if (op === 20)
+              canonical.cache.set(alternatives, projections[index]);
+            selectedBindings = groupBindings.merge(
+              { binding: id, broken: false },
+              bindingStates[index],
+              selectedBindings,
             );
+            selectedGap = b.ifBreak(selectedGap, asDoc(gaps[index]), {
+              groupId: id,
+            });
+          }
+          append(alternatives);
+          bindings = selectedBindings;
+          pendingSpace = sharedGaps ? gaps[0] : selectedGap;
+        }
         break;
       }
       case 15:
@@ -617,7 +713,11 @@ function* build(
             append(b.align(frame.first, doc));
             break;
           case 7:
-            append(b.indentIfBreak(doc, { groupId: groupId(frame.first) }));
+            append(
+              typeof frame.binding === "symbol"
+                ? b.indentIfBreak(doc, { groupId: frame.binding })
+                : groupBindings.select(frame.binding, doc, b.indent(doc)),
+            );
             break;
           case 19:
             append(
@@ -631,30 +731,36 @@ function* build(
           case 8:
             if (frame.first > 1) throw invalid();
             {
-              const choose = (active, inactive, group) => {
+              const choose = (active, inactive, binding) => {
                 if (active === inactive) return active;
-                if (frame.second === 0xffffffff && frame.group === undefined)
-                  return frame.first ? active : inactive;
                 const asDoc = (gap) => (gap === true ? " " : gap || "");
-                return b.ifBreak(
-                  asDoc(frame.first ? active : inactive),
+                return groupBindings.select(
+                  binding,
                   asDoc(frame.first ? inactive : active),
-                  { groupId: group },
+                  asDoc(frame.first ? active : inactive),
                 );
               };
               // Current-mode conditions participate in Prettier's fit probe;
               // named group modes are only available after a group is printed.
               append(
-                choose(doc, "", frame.useCurrentMode ? undefined : frame.group),
+                choose(doc, "", frame.useCurrentMode ? null : frame.binding),
               );
               // A deferred gap can leave this group before being consumed, so
               // keep its condition bound to the original logical group.
               pendingSpace = choose(
                 pendingSpace,
                 frame.pendingSpace,
-                frame.group,
+                frame.binding,
               );
               rawSpace ||= frame.rawSpace;
+              bindings = groupBindings.merge(
+                {
+                  broken: Boolean(frame.first),
+                  binding: frame.binding,
+                },
+                bindings,
+                frame.bindings,
+              );
             }
             break;
           case 11:
@@ -670,6 +776,10 @@ function* build(
             append(b.lineSuffix(doc));
             pendingSpace = frame.first ? false : frame.pendingSpace;
             rawSpace = frame.rawSpace;
+            if (!frame.first) {
+              bindings = frame.bindings;
+              written = frame.written;
+            }
             break;
           default:
             throw invalid();
@@ -678,14 +788,21 @@ function* build(
       }
       case 18:
         if (first === 0) throw invalid();
-        append(b.group("", { id: groupId(first) }));
+        bindings = groupBindings.define(bindings, first, undefined);
+        written = groupBindings.writes(written, first);
         break;
       default:
         throw invalid();
     }
   }
   if (stack.length !== 1) throw invalid();
-  return { doc: contents(stack[0].parts), pendingSpace, rawSpace };
+  return {
+    doc: contents(stack[0].parts),
+    pendingSpace,
+    rawSpace,
+    bindings,
+    written,
+  };
 }
 
 // Canonical fitting ignores source-only expansion while retaining required lines.

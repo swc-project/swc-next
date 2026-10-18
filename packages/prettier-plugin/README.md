@@ -42,9 +42,9 @@ whole-document fallback. Browser standalone is not yet packaged.
 
 Output inherits SWC formatter's documented differences and existing idempotency
 limitations; it is not a byte-identical replacement for Prettier's built-in JS
-printer. Native layout hints for canonical measurement and forced flat groups
-have no direct public Prettier equivalent, so some width boundaries also differ
-from the native printer. Prettier normalizes input line endings before parsing;
+printer. Native hints for canonical measurement have no direct public Prettier
+equivalent, so some width boundaries also differ from the native printer.
+Forced-flat logical groups are folded into conditional mode bindings. Prettier normalizes input line endings before parsing;
 the resolved output `endOfLine` also reaches Rust document construction. Raw
 trailing spaces, including Markdown hard breaks in comments, are preserved
 through literal line Docs. Errors carry source locations for Prettier's
