@@ -591,6 +591,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(target.span, writer)?;
             return Ok(None);
         }
+        if context.expression_start.needs_asi_guard()
+            && self.options.semicolons == Semicolons::AsNeeded
+            && target
+                .layers
+                .iter()
+                .any(|layer| layer.mode != TargetLayerMode::Remove)
+        {
+            // Retained target pairs require a guard, including when removed
+            // outer layers release comments before the actual opening token.
+            context.expression_start = ExpressionStart::StatementGuard;
+        }
         let context = context.with_member_chain_layout(MemberChainLayout::Local);
         if target.layers.is_empty()
             && let TargetNode::Simple(simple) = target.target
@@ -681,17 +692,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .comments
                         .between(Span::new(boundary.outer.start, boundary.inner.start))?;
                     self.comments.claim(leading)?;
-                    context.expression_start = self.format_node_head(
-                        NodeHead {
-                            comments: leading,
-                            content_start: boundary.inner.start,
-                            layout: CommentRunLayout::FlatLeading(boundary.inner.start),
-                            gap_end: None,
-                        },
-                        context.expression_start,
-                        None,
-                        writer,
-                    )?;
+                    let head = NodeHead {
+                        comments: leading,
+                        content_start: boundary.inner.start,
+                        layout: CommentRunLayout::FlatLeading(boundary.inner.start),
+                        gap_end: None,
+                    };
+                    context.expression_start = match target {
+                        TargetNode::Simple(node) => self.format_expression_head(
+                            node.expression,
+                            head,
+                            self.expression_head_binding(leading, node.expression),
+                            context,
+                            None,
+                            writer,
+                        )?,
+                        TargetNode::Pattern { .. } => {
+                            self.format_node_head(head, context.expression_start, None, writer)?
+                        }
+                    };
                     layers = remaining;
                 }
             }
