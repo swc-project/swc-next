@@ -592,6 +592,102 @@ test("SWCFMT caches shared documents by incoming whitespace state", () => {
   assert.equal(doc[1], doc[2]);
 });
 
+function documentGraphSize(root) {
+  const seen = new Set();
+  const work = [root];
+  while (work.length) {
+    const doc = work.pop();
+    if (doc === undefined || typeof doc === "string" || seen.has(doc)) continue;
+    seen.add(doc);
+    if (Array.isArray(doc)) work.push(...doc);
+    else if (doc.type === "group" && doc.expandedStates)
+      work.push(...doc.expandedStates);
+    else if (doc.type === "fill") work.push(...doc.parts);
+    else if (doc.type === "if-break")
+      work.push(doc.breakContents, doc.flatContents);
+    else work.push(doc.contents);
+  }
+  return seen.size;
+}
+
+test("SWCFMT retains bounded document sharing across nested alternatives", async () => {
+  let source = "done();";
+  for (let depth = 0; depth < 8; depth++)
+    source = `f(x, () => {\n${source}\n});`;
+  let doc;
+  const observer = {
+    ...plugin,
+    printers: {
+      SWCFMT: {
+        ...plugin.printers.SWCFMT,
+        print(path) {
+          doc = plugin.printers.SWCFMT.print(path);
+          return doc;
+        },
+      },
+    },
+  };
+  const actual = await prettier.format(source, { ...js, plugins: [observer] });
+  assert.equal(actual, formatNativeSync(source, "file.js", {}));
+  assert.ok(documentGraphSize(doc) < source.length * 10);
+});
+
+test("SWCFMT shares closed scopes and binds free conditions to their caller", () => {
+  const closed = fragmentBuffer([
+    [
+      ...anonymousGroup(true),
+      ...reference(1),
+      17,
+      3,
+      ...anonymousGroup(false),
+      ...reference(1),
+      17,
+      3,
+    ],
+    [...anonymousGroup(false), ...reference(2), 17, 3],
+    [...nearestCondition(false), ...textB, 17, 8],
+  ]);
+  const doc = decode(closed, "");
+  assert.equal(doc[0].contents, doc[1].contents);
+  assert.equal(printDoc(closed), "bb");
+
+  const free = fragmentBuffer([
+    [
+      ...anonymousGroup(true),
+      11,
+      12,
+      ...reference(1),
+      17,
+      12,
+      17,
+      11,
+      17,
+      3,
+      ...anonymousGroup(false),
+      11,
+      12,
+      ...reference(1),
+      17,
+      12,
+      17,
+      11,
+      17,
+      3,
+    ],
+    [
+      ...nearestCondition(true),
+      ...textA,
+      17,
+      8,
+      ...nearestCondition(false),
+      ...textB,
+      17,
+      8,
+    ],
+  ]);
+  assert.equal(printDoc(free), "ab");
+});
+
 test("SWCFMT preserves logical group conditions across shared fill entries", () => {
   const bytes = fragmentBuffer([
     [
