@@ -556,10 +556,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let boundary_end = boundary
             .last()
             .map_or(content_end, |comment| comment.span.end);
-        let mut separator = if comments[boundary_count..]
-            .iter()
-            .any(|comment| comment.kind == CommentKind::Line)
-        {
+        // Fill must retain the leading packet's own-line attachment for blocks too.
+        let mut separator = if comments[boundary_count..].iter().any(|comment| {
+            comment.kind == CommentKind::Line || self.source_line_starts_line(comment.span.start)
+        }) {
             Separator::OwnLineComment
         } else {
             Separator::Line
