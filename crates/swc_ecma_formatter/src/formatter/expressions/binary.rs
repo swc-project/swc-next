@@ -1319,7 +1319,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let constraint = if entry.suppression.is_some() {
                 self.source_line_constraint(previous, operator_start)
             } else {
-                self.line_constraint(previous, operator_start)
+                self.line_constraint_after_comments(before, left_end, operator_start)
             };
             constraint.write(writer, FlatSeparator::Space, Writer::space);
             writer.text(operator);
@@ -1332,7 +1332,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 constraint: if entry.suppression.is_some() {
                     self.source_line_constraint(previous, right_start)
                 } else {
-                    self.line_constraint(previous, right_start)
+                    self.line_constraint_after_comments(after, operator_end, right_start)
                 },
                 inline,
                 mode: entry

@@ -1078,6 +1078,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 self.comment_gap(start, prepared.span.start, writer);
             }
+            if comment.kind == CommentKind::Line {
+                writer.line_suffix_boundary();
+            }
             if line_suffix {
                 writer.line_suffix(self.source(comment.span).trim_end());
             } else {
@@ -1238,7 +1241,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 prepared.text.write(writer);
             } else {
                 match comment.kind {
-                    CommentKind::Line => writer.line_suffix(self.source(comment.span).trim_end()),
+                    CommentKind::Line => {
+                        writer.line_suffix_boundary();
+                        writer.line_suffix(self.source(comment.span).trim_end());
+                    }
                     CommentKind::Block => {
                         let nestled = previous.as_ref().is_some_and(|previous| {
                             previous.span.end == prepared.span.start

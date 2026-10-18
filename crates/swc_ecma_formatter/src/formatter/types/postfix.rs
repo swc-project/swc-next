@@ -9,7 +9,9 @@ use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::{TypeContext, TypeEnclosure};
 use super::generics::TypeArgumentOwner;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
-use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
+use crate::formatter::comments::{
+    CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail,
+};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
@@ -228,7 +230,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TypeBoundaryLayout::Formatted { before, after } => {
                 self.format_type_comment_gap(&before, FlatSeparator::Empty, writer)?;
                 writer.text("[");
-                self.format_type_comment_gap(&after, FlatSeparator::Empty, writer)?;
+                if !after.is_empty()
+                    && self
+                        .comment_boundary_binding(&after, index.node.span(self.ast))
+                        .allows_relocation(None)
+                {
+                    self.format_comment_boundary_with_layout(
+                        &after,
+                        CommentRunLayout::FlatLeading(index.node.span(self.ast).start),
+                        writer,
+                    )?;
+                } else {
+                    self.format_type_comment_gap(&after, FlatSeparator::Empty, writer)?;
+                }
             }
         }
         let tail = self.format_prepared_type(index, TypeContext::Root, writer)?;

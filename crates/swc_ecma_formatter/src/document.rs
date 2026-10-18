@@ -88,7 +88,10 @@ enum FormatElement<'a> {
     IfFlat(Text<'a>),
     IfCurrentBreak(Text<'a>),
     IfCurrentFlat(Text<'a>),
+    /// Trailing text with one separating space, including at the start of a line.
     LineSuffix(Text<'a>),
+    /// Flushes pending line suffixes before continuing on a new line.
+    LineSuffixBoundary,
     StartGroup {
         effect: BreakEffect,
         id: Option<GroupId>,
@@ -490,6 +493,7 @@ impl FormatElement<'_> {
             }
             element @ (Self::Text(_)
             | Self::Space(_)
+            | Self::LineSuffixBoundary
             | Self::FlatGroup(_)
             | Self::FlatFragment(_)) => Some(element),
             _ => None,

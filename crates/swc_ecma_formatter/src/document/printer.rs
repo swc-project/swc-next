@@ -362,6 +362,7 @@ pub(super) fn print<'a>(
                             pending: &cursor.suspended,
                             continuation: Some(cursor.current),
                             kind: ContinuationProbe::Candidate,
+                            has_line_suffix: !suffixes.is_empty(),
                             fills: &fills,
                             entries: &entries,
                         },
@@ -429,6 +430,12 @@ pub(super) fn print<'a>(
                 }
             }
             FormatElement::LineSuffix(text) => suffixes.push(text),
+            FormatElement::LineSuffixBoundary => {
+                if !suffixes.is_empty() {
+                    flush_suffixes(&mut suffixes, &mut output, options, mode);
+                    output.line(indent, options, mode);
+                }
+            }
             FormatElement::StartGroup { effect, id } => {
                 let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
                 let flat = !effect.preferred_breaks()
@@ -439,6 +446,7 @@ pub(super) fn print<'a>(
                                 pending: &cursor.suspended,
                                 continuation: None,
                                 kind: ContinuationProbe::Group(id),
+                                has_line_suffix: !suffixes.is_empty(),
                                 fills: &fills,
                                 entries: &entries,
                             },
@@ -470,6 +478,7 @@ pub(super) fn print<'a>(
                                 pending: &cursor.suspended,
                                 continuation: None,
                                 kind: ContinuationProbe::Group(None),
+                                has_line_suffix: !suffixes.is_empty(),
                                 fills: &fills,
                                 entries: &entries,
                             },
@@ -581,6 +590,7 @@ pub(super) fn print<'a>(
                                 pending: &[],
                                 continuation: None,
                                 kind: FillProbe,
+                                has_line_suffix: !suffixes.is_empty(),
                                 fills: &[],
                                 entries: &[],
                             },
@@ -606,6 +616,7 @@ pub(super) fn print<'a>(
                                         pending: &[],
                                         continuation: None,
                                         kind: FillProbe,
+                                        has_line_suffix: !suffixes.is_empty(),
                                         fills: &[],
                                         entries: &[],
                                     },
@@ -721,6 +732,7 @@ struct ProbeRequest<'a, 'pending, K> {
     pending: &'pending [Frame<'a>],
     continuation: Option<Frame<'a>>,
     kind: K,
+    has_line_suffix: bool,
     fills: &'pending [FillState],
     entries: &'pending [Mode],
 }
@@ -749,6 +761,7 @@ impl<'a> Probe<'a> {
             pending: pending_frames,
             continuation,
             kind,
+            mut has_line_suffix,
             fills: parent_fills,
             entries: parent_entries,
         } = request;
@@ -850,7 +863,12 @@ impl<'a> Probe<'a> {
                         return false;
                     }
                 }
-                FormatElement::LineSuffix(_) => {}
+                FormatElement::LineSuffix(_) => has_line_suffix = true,
+                FormatElement::LineSuffixBoundary => {
+                    if has_line_suffix {
+                        return false;
+                    }
+                }
                 FormatElement::Space(kind) => match kind {
                     SpaceKind::Deferred => pending_gap.defer(),
                     SpaceKind::Reserved => {

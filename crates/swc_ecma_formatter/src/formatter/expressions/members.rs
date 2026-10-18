@@ -579,24 +579,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator.start,
             computed,
         );
-        let owns_lookup_comments = !computed && {
-            // A receiver tail extends the packet before the member's native gap.
-            // Lookup ownership still comes from that original gap.
-            let lookup_comments = if source_end == object_end {
-                before
-            } else {
-                let first = comments.partition_point(|comment| comment.span.start < object_end);
-                self.member_lookup_comments(
-                    &comments[first..],
-                    Span::new(object_end, member.property_span.start),
-                    operator.start,
-                    false,
-                )
-            };
-            lookup_comments
+        let owns_lookup_comments = !computed
+            && before
                 .iter()
-                .any(|comment| self.source_position_starts_line(comment.span.start))
-        };
+                .any(|comment| self.source_position_starts_line(comment.span.start));
         let after = &comments[before.len()..];
         let move_lines = before
             .iter()

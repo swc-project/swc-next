@@ -139,6 +139,10 @@ impl<'a> Writer<'a> {
         self.break_parent();
     }
 
+    pub(crate) fn line_suffix_boundary(&mut self) {
+        self.elements.push(FormatElement::LineSuffixBoundary);
+    }
+
     pub(crate) fn break_parent(&mut self) {
         self.elements.push(FormatElement::BreakParent);
         self.effect = self.effect.join(BreakEffect::REQUIRED);

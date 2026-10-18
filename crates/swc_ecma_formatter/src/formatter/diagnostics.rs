@@ -173,6 +173,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn line_constraint_after_comments(
+        &self,
+        comments: &[Comment],
+        start: u32,
+        end: u32,
+    ) -> LineConstraint {
+        let previous = comments.last().map_or(start, |comment| comment.span.end);
+        if comments
+            .last()
+            .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            self.source_line_constraint(previous, end)
+        } else {
+            self.line_constraint(previous, end)
+        }
+    }
+
     pub(super) fn diagnostic_range_is_sensitive(&self, span: Span) -> bool {
         let lines = &self.diagnostic_lines.lines;
         let first = lines.partition_point(|line| line.span.end < span.start);

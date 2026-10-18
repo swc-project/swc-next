@@ -360,7 +360,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<SequenceBoundary<'ast>, FormatError> {
         let start = previous.span(self.ast).end;
         let content = self.expression_content(next);
-        let end = if self.sequence_member_pair_is_enclosed(next, &content, position) {
+        let suppression = self.delimited_suppression(
+            previous.span(self.ast),
+            next.span(self.ast).start,
+            DelimitedFollowing::Node,
+        );
+        let end = if self.sequence_member_pair_is_enclosed(next, &content, position)
+            || suppression.as_ref().is_some_and(|source| {
+                source.preceding.is_some() || source.following == ContentMode::Verbatim
+            }) {
             next.span(self.ast).start
         } else {
             content.expression.span(self.ast).start
@@ -392,11 +400,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comma,
             trailing: &[],
             leading: &[],
-            suppression: self.delimited_suppression(
-                previous.span(self.ast),
-                end,
-                DelimitedFollowing::Node,
-            ),
+            suppression,
             before_comma: LineConstraint::Unconstrained,
             separator: LineConstraint::Unconstrained,
         })
@@ -431,15 +435,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.split_separator_comments(comments, before_count, start, Some(end))
         };
         if sensitive {
-            let last = boundary
-                .trailing
-                .last()
-                .map_or(start, |comment| comment.span.end);
             let next = boundary
                 .leading
                 .first()
                 .map_or(end, |comment| comment.span.start);
-            boundary.before_comma = self.line_constraint(last, comma);
+            boundary.before_comma =
+                self.line_constraint_after_comments(boundary.trailing, start, comma);
             boundary.separator = self.line_constraint(comma + 1, next);
         }
         Ok(())

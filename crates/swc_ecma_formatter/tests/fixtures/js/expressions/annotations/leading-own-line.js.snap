@@ -24,7 +24,7 @@ first + second);
 ---------- Output ----------
 (
   /* @__PURE__ */ first +
-    second
+  second
 );
 
 ---------- Options ----------
@@ -32,7 +32,7 @@ first + second);
 ---------- Output ----------
 (
   /* @__PURE__ */ first +
-    second
+  second
 );
 
 ---------- Options ----------
@@ -40,7 +40,7 @@ first + second);
 ---------- Output ----------
 (
 	/* @__PURE__ */ first +
-		second
+	second
 );
 
 ---------- Options ----------

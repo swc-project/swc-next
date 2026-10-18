@@ -694,12 +694,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             MappedTail::Formatted { before, after } => (before, after),
         };
+        if after.is_none() && self.options.semicolons == Semicolons::Always {
+            writer.if_break(";");
+        }
         self.format_comment_boundary(&before, writer)?;
         if after.is_some() {
             before.gap().write(writer, FlatSeparator::Empty, |_| {});
-        }
-        if self.options.semicolons == Semicolons::Always {
-            writer.if_break(";");
+            if self.options.semicolons == Semicolons::Always {
+                writer.if_break(";");
+            }
         }
         if let Some(after) = after {
             self.format_comment_boundary(&after, writer)?;
