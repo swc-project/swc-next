@@ -579,10 +579,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator.start,
             computed,
         );
+        // Ownership follows the emitted packet's gaps after punctuation and
+        // receiver parentheses have been removed, rather than native line starts.
+        let mut previous_end = source_end;
         let owns_lookup_comments = !computed
-            && before
-                .iter()
-                .any(|comment| self.source_position_starts_line(comment.span.start));
+            && before.iter().any(|comment| {
+                let starts_line = self.line_breaks(previous_end, comment.span.start) != 0;
+                previous_end = comment.span.end;
+                starts_line
+            });
         let after = &comments[before.len()..];
         let move_lines = before
             .iter()
