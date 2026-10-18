@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const a = (b as any
+// c
+)!.c;
+---------- Options ----------
+{}
+---------- Output ----------
+const a = (
+  b as any
+  // c
+)!.c;

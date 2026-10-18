@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import "x" assert // c
+{ type: "json" };
+---------- Options ----------
+{}
+---------- Output ----------
+import "x" assert // c
+{ type: "json" };

@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+!
+// c
+x;
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-ignore
+!
+// c
+x;

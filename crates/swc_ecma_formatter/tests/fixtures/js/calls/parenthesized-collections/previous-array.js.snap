@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+b(([a,b]), [veryLongVariableNameNumberTwo,k,kk,kkkkkkkkkkkkkkkkk]);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+b(
+  [a, b],
+  [
+    veryLongVariableNameNumberTwo,
+    k,
+    kk,
+    kkkkkkkkkkkkkkkkk,
+  ],
+);
