@@ -1123,6 +1123,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_expression_head_and_content(
         &mut self,
         expression: Expr,
+        prepared: Option<ExpressionContent>,
+        resolved: ResolvedExpressionHead<'ast>,
+        context: ExpressionContext,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        // An empty head has no packet to place. Source-bound and inherited
+        // protected heads still need the enclosing owner's placement proof.
+        if !resolved.head.comments.is_empty()
+            || matches!(resolved.binding, CommentBinding::SourceBound)
+            || context
+                .protected_head_start
+                .is_some_and(|start| start == expression.span(self.ast).start)
+        {
+            return self.format_expression_head_enclosure(
+                expression,
+                prepared,
+                resolved,
+                context,
+                array_comments,
+                writer,
+            );
+        }
+        self.expression_layout(expression).write(writer, |writer| {
+            self.format_expression_content_prepared(
+                expression,
+                prepared,
+                context,
+                array_comments,
+                writer,
+            )
+        })
+    }
+
+    fn format_expression_head_enclosure(
+        &mut self,
+        expression: Expr,
         mut prepared: Option<ExpressionContent>,
         resolved: ResolvedExpressionHead<'ast>,
         mut context: ExpressionContext,
