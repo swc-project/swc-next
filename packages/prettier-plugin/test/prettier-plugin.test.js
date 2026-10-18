@@ -959,6 +959,214 @@ test("SWCFMT maps absolute indentation and flat named groups", () => {
   );
 });
 
+const namedGroup = (id, broken = false) => [3, Number(broken), ...word(id)];
+const flatGroup = (id) => [18, ...word(id)];
+const namedCondition = (id, broken) => [8, Number(broken), ...word(id)];
+const namedSoftLine = (id) => [...namedCondition(id, true), 2, 1, 17, 8];
+
+test("SWCFMT keeps forced-flat modes independent of print width", () => {
+  const bytes = documentBuffer(
+    [...textAt(0, 2), ...flatGroup(1), ...namedSoftLine(1), ...textAt(2, 1)],
+    "abc",
+  );
+  assert.equal(printDoc(bytes, { printWidth: 0 }), "abc");
+  assert.equal(printDoc(bytes, { printWidth: 1 }), "abc");
+  assert.equal(printDoc(bytes, { printWidth: 2 }), "abc");
+
+  const indented = documentBuffer(
+    [
+      ...textAt(0, 2),
+      ...flatGroup(1),
+      7,
+      ...word(1),
+      2,
+      3,
+      ...textAt(2, 1),
+      17,
+      4,
+    ],
+    "abc",
+  );
+  assert.equal(printDoc(indented, { printWidth: 0 }), "ab\nc");
+  assert.equal(printDoc(indented, { printWidth: 1 }), "ab\nc");
+
+  const gap = documentBuffer(
+    [
+      ...textAt(0, 2),
+      1,
+      ...flatGroup(1),
+      ...namedCondition(1, true),
+      ...textAt(2, 1),
+      17,
+      8,
+      ...namedCondition(1, false),
+      ...textAt(2, 1),
+      17,
+      8,
+    ],
+    "abc",
+  );
+  assert.equal(printDoc(gap, { printWidth: 0 }), "ab c");
+});
+
+test("SWCFMT transports both normal and flattened views of a logical group", () => {
+  const normal = [...namedGroup(1), ...textA, 2, 0, ...textB, 17, 3];
+  const flat = [...flatGroup(1), ...textA, 1, ...textB];
+  const bytes = fragmentBuffer(
+    [
+      [
+        ...reference(1),
+        ...namedSoftLine(1),
+        ...textAt(2, 1),
+        2,
+        3,
+        ...reference(2),
+        ...namedSoftLine(1),
+        ...textAt(3, 1),
+      ],
+      flat,
+      normal,
+    ],
+    "abcd",
+  );
+  assert.equal(printDoc(bytes, { printWidth: 0 }), "a bc\na\nb\nd");
+  assert.equal(printDoc(bytes, { printWidth: 8 }), "a bc\na bd");
+
+  const alternatives = fragmentBuffer(
+    [
+      [
+        10,
+        ...word(3),
+        ...word(1),
+        ...word(2),
+        ...word(3),
+        ...namedSoftLine(1),
+        ...textAt(2, 1),
+      ],
+      [...reference(2), ...textAt(3, 4)],
+      flat,
+      normal,
+    ],
+    "abclong",
+  );
+  assert.equal(printDoc(alternatives, { printWidth: 0 }), "a\nb\nc");
+  assert.equal(printDoc(alternatives, { printWidth: 4 }), "a bc");
+  assert.equal(printDoc(alternatives, { printWidth: 8 }), "a blongc");
+});
+
+test("SWCFMT reselects shared alternatives without retaining old branch modes", () => {
+  const bytes = fragmentBuffer(
+    [
+      [
+        ...flatGroup(1),
+        ...reference(1),
+        ...namedSoftLine(1),
+        ...textAt(2, 1),
+        2,
+        3,
+        ...textAt(7, 6),
+        ...flatGroup(1),
+        ...reference(1),
+        ...namedSoftLine(1),
+        ...textAt(2, 1),
+      ],
+      [10, ...word(3), ...word(2), ...word(3), ...word(4)],
+      [...reference(3), ...textAt(3, 4)],
+      [...flatGroup(1), ...textA, 1, ...textB],
+      [...namedGroup(1), ...textA, 2, 0, ...textB, 17, 3],
+    ],
+    "abclong000000",
+  );
+  assert.equal(printDoc(bytes, { printWidth: 4 }), "a bc\n000000a\nb\nc");
+  assert.equal(printDoc(bytes, { printWidth: 8 }), "a blongc\n000000a\nb\nc");
+});
+
+test("SWCFMT preserves captured predicates and unrelated group effects", () => {
+  const conditional = documentBuffer(
+    [
+      ...namedGroup(1, true),
+      ...textA,
+      17,
+      3,
+      ...namedGroup(2, true),
+      ...textB,
+      17,
+      3,
+      ...namedCondition(1, true),
+      ...flatGroup(2),
+      17,
+      8,
+      ...namedGroup(1),
+      ...textAt(2, 1),
+      17,
+      3,
+      ...namedCondition(2, false),
+      ...textAt(3, 1),
+      17,
+      8,
+    ],
+    "abcd",
+  );
+  assert.equal(printDoc(conditional), "abcd");
+
+  const reader = fragmentBuffer([
+    [
+      ...flatGroup(1),
+      ...reference(1),
+      ...namedGroup(1, true),
+      17,
+      3,
+      ...reference(1),
+    ],
+    [
+      ...namedCondition(1, false),
+      ...textA,
+      17,
+      8,
+      ...namedCondition(1, true),
+      ...textB,
+      17,
+      8,
+    ],
+  ]);
+  assert.equal(printDoc(reader), "ab");
+
+  const effects = fragmentBuffer([
+    [
+      ...reference(2),
+      ...namedGroup(2, true),
+      17,
+      3,
+      ...reference(1),
+      ...namedCondition(2, true),
+      ...textA,
+      17,
+      8,
+      ...namedGroup(2),
+      17,
+      3,
+      ...reference(2),
+      ...reference(1),
+      ...namedCondition(2, false),
+      ...textB,
+      17,
+      8,
+    ],
+    flatGroup(1),
+    [...namedGroup(1, true), 17, 3],
+  ]);
+  assert.equal(printDoc(effects), "ab");
+});
+
+test("SWCFMT renders deep conditional mode bindings without unfolding them", () => {
+  const ops = [...namedGroup(1), 17, 3, ...namedGroup(2, true), 17, 3];
+  for (let index = 0; index < 2500; index++)
+    ops.push(...namedCondition(1, true), ...flatGroup(2), 17, 8);
+  ops.push(...namedCondition(2, false), ...textA, 17, 8);
+  const doc = decode(documentBuffer(ops), "");
+  assert.ok(documentGraphSize(doc) < 10000);
+});
+
 test("SWCFMT rejects malformed formatter option records at the bridge", () => {
   assert.throws(
     () =>
