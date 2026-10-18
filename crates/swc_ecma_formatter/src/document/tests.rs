@@ -1065,6 +1065,76 @@ fn line_suffixes() {
 }
 
 #[test]
+fn line_suffix_boundaries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix_boundary();
+    writer.text("b");
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "ab");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix("// first");
+    writer.line_suffix_boundary();
+    writer.line_suffix("// second");
+    writer.hard_line();
+    writer.text("b");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // first\n // second\nb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix("// first");
+    writer.group(false, |writer| {
+        writer.if_break("(");
+        writer.line_suffix_boundary();
+        writer.text("b");
+        writer.line();
+        writer.text("c");
+        writer.if_break(")");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a( // first\nb\nc)"
+    );
+}
+
+#[test]
+fn flat_line_suffix_boundaries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix("// first");
+    writer.flat(|writer| {
+        writer.line_suffix_boundary();
+        writer.text("b");
+    });
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // first\nb"
+    );
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let fragment = record(&mut writer, |writer| {
+        writer.line_suffix_boundary();
+        writer.text("b");
+    });
+    writer.text("a");
+    writer.line_suffix("// first");
+    writer.write_flat_fragment(fragment.try_flat().unwrap());
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "a // first\nb"
+    );
+}
+
+#[test]
 fn display_columns() {
     assert_eq!(pair_document("世界", "a", 10), "[世界, a];");
 

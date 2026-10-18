@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+Implementation = class extends
+// @ts-expect-error
+MissingBaseFactory(unknownValue)
+{};

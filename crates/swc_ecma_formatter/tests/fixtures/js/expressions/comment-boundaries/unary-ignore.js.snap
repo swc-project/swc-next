@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!// prettier-ignore
+( // @ts-expect-error
+a, b);
+---------- Options ----------
+{}
+---------- Output ----------
+! // prettier-ignore
+( // @ts-expect-error
+a, b);

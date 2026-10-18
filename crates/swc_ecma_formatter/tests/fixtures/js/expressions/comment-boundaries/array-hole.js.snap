@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = /* @ts-ignore */ [
+ ,null, g1 ];
+---------- Options ----------
+{}
+---------- Output ----------
+x = /* @ts-ignore */ [
+  , null, g1,];

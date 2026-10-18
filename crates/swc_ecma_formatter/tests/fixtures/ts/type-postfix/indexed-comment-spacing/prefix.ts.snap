@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Foo = any[( /*! keep */ bigint)[]];
+---------- Options ----------
+{}
+---------- Output ----------
+type Foo = any[/*! keep */ bigint[]];
