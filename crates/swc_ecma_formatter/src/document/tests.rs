@@ -1211,6 +1211,52 @@ fn flat_line_suffix_boundaries() {
     );
 }
 
+fn suffix_continuation_document(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let suffix = record(&mut writer, |writer| {
+        writer.hard_line();
+        writer.group(false, |writer| {
+            writer.text("xx");
+            writer.line();
+            writer.text("yy");
+        });
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line_suffix(|writer| writer.write_fragment(suffix));
+    });
+    writer.indent(|writer| {
+        writer.group(false, |writer| {
+            writer.line_suffix(|writer| {
+                writer.if_break("BBBB");
+                writer.if_flat("F");
+                writer.text("p");
+                writer.line();
+                writer.text("q");
+            });
+        });
+    });
+    writer.text("b");
+    writer.hard_line();
+    writer.text("c");
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn line_suffix_continuations() {
+    assert_eq!(suffix_continuation_document(80), "ab\nxx yyBFp q\nc");
+
+    assert_eq!(suffix_continuation_document(10), "ab\nxx yyBFp q\nc");
+
+    assert_eq!(suffix_continuation_document(9), "ab\nxx\nyyBFp q\nc");
+}
+
 #[test]
 fn display_columns() {
     assert_eq!(pair_document("世界", "a", 10), "[世界, a];");
