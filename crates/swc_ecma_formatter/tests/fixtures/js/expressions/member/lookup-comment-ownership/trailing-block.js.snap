@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a /* before */
+. // after
+p;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+a /* before */
+  // after
+  .p;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+a /* before */
+  // after
+  .p;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+a /* before */
+  // after
+  .p;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+a /* before */
+  // after
+  .p
