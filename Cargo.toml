@@ -38,7 +38,7 @@ unicode-id-start = "1.5.0"
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "=82.1.0", features = [
+swc_core = { version = "=82.1.1", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
@@ -56,7 +56,7 @@ napi-derive = "3.6.12"
 
 # Bridge tooling
 cargo_metadata = "0.23.1"
-wasmparser     = { version = "0.261.0", default-features = false, features = ["std"] }
+wasmparser     = { version = "0.262.0", default-features = false, features = ["std"] }
 
 # Ast tool
 convert_case = "0.12.0"
@@ -64,7 +64,7 @@ phf          = "0.14.0"
 prettyplease = "0.3.0"
 proc-macro2  = "1.0.107"
 quote        = "1.0.47"
-syn          = { version = "3.0.8", default-features = false }
+syn          = { version = "3.0.9", default-features = false }
 
 # Workspace
 swc_next_allocator             = { version = "0.3.0", path = "crates/swc_allocator" }
@@ -85,14 +85,14 @@ swc_next_type_strip            = { version = "0.3.0", path = "crates/swc_type_st
 # Dev
 anyhow        = "1.0.104"
 clap          = { version = "4.6.7", features = ["derive"] }
-criterion     = { package = "codspeed-criterion-compat", version = "5.0.2" }
+criterion     = { package = "codspeed-criterion-compat", version = "5.0.3" }
 gungraun      = "0.20.0"
 jwalk         = "0.9.0"
 libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
-oxc           = { version = "0.153.0", features = ["ast_visit", "semantic"] }
-oxc_allocator = "0.153.0"
-saphyr        = "0.2.1"
+oxc           = { version = "0.154.0", features = ["ast_visit", "semantic"] }
+oxc_allocator = "0.154.0"
+saphyr        = "0.2.2"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 
