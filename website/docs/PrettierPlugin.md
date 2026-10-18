@@ -90,7 +90,8 @@ UTF-8 string pool
 
 Integers are little endian. Each instruction has a one-byte opcode followed by
 its operands. Text uses an offset and length in the string pool; shared fragments
-use numeric IDs. Group IDs become Symbols within each decode call. Scope endings
+use numeric IDs. Group definitions receive stable Symbols within each decode call; logical IDs
+resolve to those definitions or a constant mode. Scope endings
 identify the corresponding scope; normal, absolute, and conditional indents
 share one ending instruction.
 
@@ -121,7 +122,8 @@ Most instructions map directly to Prettier's public Doc builders:
 | Hard / literal line              | `hardlineWithoutBreakParent` / `literallineWithoutBreakParent` |
 | Group                            | `group`, preserving the computed expansion state               |
 | Indent, absolute indent, align   | `indent`, root-relative alignment, `align`                     |
-| Conditional content / indent     | `ifBreak` / `indentIfBreak`                                    |
+| Conditional content / indent     | `ifBreak` / `indentIfBreak`, with constant mode folding          |
+| Forced-flat named group          | Flat logical binding, without a width-dependent host group      |
 | Display / canonical alternatives | `conditionalGroup` (see limitations below)                     |
 | Fill entries and separators      | Alternating `fill` parts                                       |
 | Line suffix scope                | `lineSuffix(contents)`, preserving its complete Doc            |
@@ -174,16 +176,33 @@ current mode belongs to the group. This preserves graph sharing across layout
 alternatives while retaining the context needed by conditions. Explicit work
 stacks handle dependency analysis and deeply nested references.
 
+`FlatGroup` is an existing SWC internal optimization, not a new public Doc
+primitive. It cannot be mapped to Prettier's Auto group: even an empty Auto
+group may break when the current column exceeds the width. Keeping the original
+group after removing soft lines would also change this native contract. The
+adapter therefore resolves the constant mode before emitting public Docs.
+
+Named group modes use immutable bindings. A forced-flat marker assigns Flat
+instead of emitting an empty Auto group that could break under narrow widths.
+Definitions and conditionals return binding effects across shared references;
+only the IDs read or written by a fragment enter its cache context. Persistent
+interned tries project those contexts and overlay effects without copying maps.
+Conditional definitions retain their predicate's binding. Alternatives with
+different outgoing states use nested two-way `conditionalGroup` decisions and
+query those groups' actual modes. This binds subsequent conditions to the
+selected candidate on every execution without adding separate selection markers. Conversion and predicate rendering
+use explicit work stacks; trie operations have the fixed depth of a wire ID.
+
 Line Docs absorb a preceding pending gap. Flat fragments use the native IR's
 flattening rules before encoding. Both encoders and decoders use explicit work
 lists for fragment references.
 
 The adapter emits only public Prettier Doc nodes. The native IR's canonical fit
-measurement, flat-width bounds, and forced-flat named groups are not all directly
-expressible with those builders. The adapter uses Prettier's measurement and
+measurement and flat-width bounds are not directly expressible with those
+builders. The adapter uses Prettier's measurement and
 group selection, so exact width boundaries can differ from the native printer.
-Conditions on unprinted named groups have no host mode, and repeated shared
-canonical choices can retain a mode from an earlier occurrence.
+An unprinted logical group starts Flat, matching the native printer. Repeated
+shared canonical choices can still retain a host mode from an earlier occurrence.
 Prettier also normalizes input line endings before calling the plugin. Raw
 trailing spaces, including Markdown hard breaks in comments, use literal line Docs with
 the active indentation marked as their root. Differences are retained in
