@@ -31,7 +31,7 @@ export function encodeOptions(options) {
     ["all", "es5", "none"].indexOf(options.trailingComma),
     Number(options.arrowParens === "always"),
     Number(options.bracketSpacing),
-    Number(options.bracketSameLine),
+    Number(options.bracketSameLine || options.jsxBracketSameLine),
     Number(options.singleAttributePerLine),
     ["lf", "crlf", "cr"].indexOf(options.endOfLine),
   );
