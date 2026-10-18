@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target // left
++= "long string content";
+---------- Options ----------
+{}
+---------- Output ----------
+target += "long string content"; // left
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+target += // left
+  "long string content";
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target += "long string content"; // left
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target += "long string content" // left
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target += // left
+	"long string content";
