@@ -88,8 +88,6 @@ struct Frame<'a> {
     remaining: &'a [FormatElement<'a>],
     flat: bool,
     restore_mode: Option<Mode>,
-    restore_indent: Option<Indentation>,
-    suffix_group: Option<SuffixGroup>,
     measurement: Measurement,
 }
 
@@ -99,8 +97,6 @@ impl<'a> Frame<'a> {
             remaining: elements,
             flat: false,
             restore_mode: None,
-            restore_indent: None,
-            suffix_group: None,
             measurement: Measurement::Display,
         }
     }
@@ -109,6 +105,7 @@ impl<'a> Frame<'a> {
 struct Cursor<'a> {
     current: Frame<'a>,
     suspended: Vec<Frame<'a>>,
+    suffix_scopes: Vec<SuffixScope>,
 }
 
 impl<'a> Cursor<'a> {
@@ -117,9 +114,12 @@ impl<'a> Cursor<'a> {
         self.current = Frame {
             flat,
             restore_mode,
-            suffix_group: self.current.suffix_group,
             ..Frame::new(elements)
         };
+    }
+
+    fn suffix_group(&self) -> Option<SuffixGroup> {
+        self.suffix_scopes.last().map(|scope| scope.group)
     }
 
     fn next(
@@ -135,8 +135,11 @@ impl<'a> Cursor<'a> {
             if let Some(restore) = self.current.restore_mode {
                 *mode = restore;
             }
-            if let Some(restore) = self.current.restore_indent {
-                *indent = restore;
+            if let Some(scope) = self.suffix_scopes.last()
+                && scope.frame_depth == self.suspended.len()
+            {
+                *indent = scope.restore_indent;
+                self.suffix_scopes.pop();
             }
             self.current = self.suspended.pop()?;
         }
@@ -150,6 +153,8 @@ struct ProbeCursor<'a, 'scratch> {
     frames: &'scratch mut Vec<Frame<'a>>,
     parents: &'scratch [Frame<'a>],
     parent_len: usize,
+    suffix_scopes: &'scratch [SuffixScope],
+    suffix_scope_len: usize,
 }
 
 impl<'a> ProbeCursor<'a, '_> {
@@ -159,10 +164,15 @@ impl<'a> ProbeCursor<'a, '_> {
         self.current = Frame {
             flat,
             restore_mode,
-            suffix_group: self.current.suffix_group,
             measurement,
             ..Frame::new(elements)
         };
+    }
+
+    fn suffix_group(&self) -> Option<SuffixGroup> {
+        self.suffix_scopes[..self.suffix_scope_len]
+            .last()
+            .map(|scope| scope.group)
     }
 
     fn next(&mut self, mode: &mut Mode) -> Option<(&'a FormatElement<'a>, bool)> {
@@ -179,6 +189,13 @@ impl<'a> ProbeCursor<'a, '_> {
             } else {
                 let index = self.parent_len.checked_sub(1)?;
                 self.parent_len = index;
+                // Scratch frames inherit the active suffix; only crossing a
+                // borrowed print boundary can leave its captured group mode.
+                while let Some(scope) = self.suffix_scopes[..self.suffix_scope_len].last()
+                    && scope.frame_depth > index
+                {
+                    self.suffix_scope_len -= 1;
+                }
                 self.current = self.parents[index];
             }
         }
@@ -189,6 +206,13 @@ impl<'a> ProbeCursor<'a, '_> {
 struct SuffixGroup {
     depth: usize,
     mode: Mode,
+}
+
+/// Suffix-only state follows its execution boundary, not every traversed frame.
+struct SuffixScope {
+    frame_depth: usize,
+    restore_indent: Indentation,
+    group: SuffixGroup,
 }
 
 struct LineSuffix<'a> {
@@ -370,19 +394,21 @@ pub(super) fn print<'a>(
     let mut cursor = Cursor {
         current: Frame::new(elements),
         suspended: Vec::new(),
+        suffix_scopes: Vec::new(),
     };
     let mut fills = Vec::new();
     let mut entries = Vec::new();
     loop {
         let Some((source_element, flat)) = cursor.next(&mut mode, &mut indent) else {
-            if flush_suffixes(
-                &mut suffixes,
-                &mut cursor,
-                None,
-                &mut mode,
-                &mut indent,
-                modes.len(),
-            ) {
+            if !suffixes.is_empty() {
+                flush_suffixes(
+                    &mut suffixes,
+                    &mut cursor,
+                    None,
+                    &mut mode,
+                    &mut indent,
+                    modes.len(),
+                );
                 continue;
             }
             break;
@@ -412,10 +438,10 @@ pub(super) fn print<'a>(
                             current: Frame {
                                 restore_mode: Some(mode),
                                 measurement,
-                                suffix_group: cursor.current.suffix_group,
                                 ..Frame::new(fragment.elements)
                             },
                             pending: &cursor.suspended,
+                            suffix_scopes: &cursor.suffix_scopes,
                             continuation: Some(cursor.current),
                             kind: ContinuationProbe::Candidate,
                             has_line_suffix: !suffixes.is_empty(),
@@ -439,14 +465,15 @@ pub(super) fn print<'a>(
             }
             FormatElement::SoftLineIfBreak(id) => {
                 if group_modes[id.0] == Mode::Break && mode == Mode::Break {
-                    if flush_suffixes(
-                        &mut suffixes,
-                        &mut cursor,
-                        Some(source_element),
-                        &mut mode,
-                        &mut indent,
-                        modes.len(),
-                    ) {
+                    if !suffixes.is_empty() {
+                        flush_suffixes(
+                            &mut suffixes,
+                            &mut cursor,
+                            Some(source_element),
+                            &mut mode,
+                            &mut indent,
+                            modes.len(),
+                        );
                         continue;
                     }
                     output.line(indent, options, mode);
@@ -466,33 +493,35 @@ pub(super) fn print<'a>(
                 }
             }
             FormatElement::SoftLine | FormatElement::Line | FormatElement::HardLine => {
-                if flush_suffixes(
-                    &mut suffixes,
-                    &mut cursor,
-                    Some(source_element),
-                    &mut mode,
-                    &mut indent,
-                    modes.len(),
-                ) {
+                if !suffixes.is_empty() {
+                    flush_suffixes(
+                        &mut suffixes,
+                        &mut cursor,
+                        Some(source_element),
+                        &mut mode,
+                        &mut indent,
+                        modes.len(),
+                    );
                     continue;
                 }
                 output.line(indent, options, mode);
             }
             FormatElement::LiteralLine => {
-                if flush_suffixes(
-                    &mut suffixes,
-                    &mut cursor,
-                    Some(source_element),
-                    &mut mode,
-                    &mut indent,
-                    modes.len(),
-                ) {
+                if !suffixes.is_empty() {
+                    flush_suffixes(
+                        &mut suffixes,
+                        &mut cursor,
+                        Some(source_element),
+                        &mut mode,
+                        &mut indent,
+                        modes.len(),
+                    );
                     continue;
                 }
                 output.line(Indentation::default(), options, mode);
             }
             FormatElement::IfBreak(text) | FormatElement::IfFlat(text) => {
-                let group_mode = logical_group_mode(&modes, &[], cursor.current.suffix_group);
+                let group_mode = logical_group_mode(&modes, &[], cursor.suffix_group());
                 let active = match element {
                     FormatElement::IfBreak(_) => group_mode == Mode::Break,
                     _ => group_mode == Mode::Flat,
@@ -516,7 +545,7 @@ pub(super) fn print<'a>(
                     elements: &contents[..contents.len() - 1],
                     mode,
                     indent,
-                    group_mode: logical_group_mode(&modes, &[], cursor.current.suffix_group),
+                    group_mode: logical_group_mode(&modes, &[], cursor.suffix_group()),
                 });
                 cursor.current.remaining = remaining;
             }
@@ -537,6 +566,7 @@ pub(super) fn print<'a>(
                             ProbeRequest {
                                 current: cursor.current,
                                 pending: &cursor.suspended,
+                                suffix_scopes: &cursor.suffix_scopes,
                                 continuation: None,
                                 kind: ContinuationProbe::Group(id),
                                 has_line_suffix: !suffixes.is_empty(),
@@ -569,6 +599,7 @@ pub(super) fn print<'a>(
                             ProbeRequest {
                                 current: cursor.current,
                                 pending: &cursor.suspended,
+                                suffix_scopes: &cursor.suffix_scopes,
                                 continuation: None,
                                 kind: ContinuationProbe::Group(None),
                                 has_line_suffix: !suffixes.is_empty(),
@@ -681,6 +712,7 @@ pub(super) fn print<'a>(
                                     ..cursor.current
                                 },
                                 pending: &[],
+                                suffix_scopes: &cursor.suffix_scopes,
                                 continuation: None,
                                 kind: FillProbe,
                                 has_line_suffix: !suffixes.is_empty(),
@@ -707,6 +739,7 @@ pub(super) fn print<'a>(
                                             ..cursor.current
                                         },
                                         pending: &[],
+                                        suffix_scopes: &cursor.suffix_scopes,
                                         continuation: None,
                                         kind: FillProbe,
                                         has_line_suffix: !suffixes.is_empty(),
@@ -746,6 +779,10 @@ pub(super) fn print<'a>(
     debug_assert!(modes.is_empty(), "document must close every group scope");
     debug_assert!(fills.is_empty(), "document must close every fill scope");
     debug_assert!(entries.is_empty(), "document must close every fill entry");
+    debug_assert!(
+        cursor.suffix_scopes.is_empty(),
+        "document must close every suffix scope"
+    );
     output.text
 }
 
@@ -814,29 +851,30 @@ fn flush_suffixes<'a>(
     mode: &mut Mode,
     indent: &mut Indentation,
     group_depth: usize,
-) -> bool {
-    if suffixes.is_empty() {
-        return false;
-    }
+) {
+    debug_assert!(!suffixes.is_empty(), "flush requires pending suffixes");
     if let Some(line) = line {
         cursor.enter(std::slice::from_ref(line), false, None);
     }
     for suffix in suffixes.drain(..).rev() {
         cursor.enter(suffix.elements, false, Some(*mode));
-        cursor.current.restore_indent = Some(*indent);
-        cursor.current.suffix_group = Some(SuffixGroup {
-            depth: group_depth,
-            mode: suffix.group_mode,
+        cursor.suffix_scopes.push(SuffixScope {
+            frame_depth: cursor.suspended.len(),
+            restore_indent: *indent,
+            group: SuffixGroup {
+                depth: group_depth,
+                mode: suffix.group_mode,
+            },
         });
         *mode = suffix.mode;
         *indent = suffix.indent;
     }
-    true
 }
 
 struct ProbeRequest<'a, 'pending, K> {
     current: Frame<'a>,
     pending: &'pending [Frame<'a>],
+    suffix_scopes: &'pending [SuffixScope],
     continuation: Option<Frame<'a>>,
     kind: K,
     has_line_suffix: bool,
@@ -866,6 +904,7 @@ impl<'a> Probe<'a> {
         let ProbeRequest {
             current,
             pending: pending_frames,
+            suffix_scopes,
             continuation,
             kind,
             mut has_line_suffix,
@@ -901,6 +940,8 @@ impl<'a> Probe<'a> {
             frames,
             parents: pending_frames,
             parent_len: pending_frames.len(),
+            suffix_scopes,
+            suffix_scope_len: suffix_scopes.len(),
         };
         if let Some(ContinuationProbe::Group(id)) = kind.continuation() {
             if *track_groups && let Some(id) = id {
@@ -941,7 +982,7 @@ impl<'a> Probe<'a> {
                         let group_mode = logical_group_mode(
                             modes,
                             &parents[..parent_len],
-                            cursor.current.suffix_group,
+                            cursor.suffix_group(),
                         );
                         let active = match element {
                             FormatElement::IfBreak(_) => group_mode == Mode::Break,
