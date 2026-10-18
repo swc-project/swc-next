@@ -428,6 +428,104 @@ test("SWCFMT preserves suffix boundaries and explicit separating spaces", () => 
   assert.equal(printDoc(shared), "a // first\nb");
 });
 
+test("SWCFMT consumes pending gaps in closed suffix packets", () => {
+  const suffix = [14, ...textAt(2, 1), 17, 14];
+  const boundary = documentBuffer(
+    [...textA, 1, ...suffix, 15, ...textB],
+    "ab!",
+  );
+  assert.equal(printDoc(boundary, { printWidth: 0 }), "a !\nb");
+  assert.equal(printDoc(boundary), "a !\nb");
+
+  const ownGap = [14, 1, ...textAt(2, 1), 17, 14];
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...ownGap, 15, ...textB], "ab!")),
+    "a !\nb",
+  );
+  assert.equal(
+    printDoc(documentBuffer([...textA, ...suffix, 1, 15, 1, ...textB], "ab!")),
+    "a !\n b",
+  );
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...suffix, 2, 3, ...textB], "ab!")),
+    "a !\nb",
+  );
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...suffix], "ab!")),
+    "a !",
+  );
+
+  const empty = [14, 17, 14];
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...empty, 15, ...textB])),
+    "a\nb",
+  );
+  const literal = [14, 2, 4, ...textAt(2, 1), 17, 14];
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...literal, 15, ...textB], "ab!")),
+    "a\n!\nb",
+  );
+
+  const trailingGap = [14, ...textAt(2, 1), 1, 17, 14];
+  const second = [14, ...textAt(3, 1), 17, 14];
+  assert.equal(
+    printDoc(
+      documentBuffer(
+        [...textA, 1, ...trailingGap, ...second, 15, ...textB],
+        "ab!?",
+      ),
+    ),
+    "a ! ?\nb",
+  );
+});
+
+test("SWCFMT keeps gaps with main-stream content before a suffix flush", () => {
+  const suffix = [14, ...textAt(2, 1), 17, 14];
+  assert.equal(
+    printDoc(documentBuffer([...textA, 1, ...suffix, ...textB, 15], "ab!")),
+    "a b!\n",
+  );
+  assert.equal(printDoc(documentBuffer([...textA, 1, 15, 1, ...textB])), "a b");
+});
+
+test("SWCFMT preserves sharing and gaps across suffix packet references", () => {
+  const suffix = [14, ...textAt(2, 1), 17, 14];
+  const shared = fragmentBuffer(
+    [
+      [
+        ...textA,
+        1,
+        ...reference(1),
+        15,
+        ...textB,
+        ...reference(1),
+        15,
+        ...textAt(3, 1),
+      ],
+      suffix,
+    ],
+    "ab!c",
+  );
+  assert.equal(printDoc(shared), "a !\nb!\nc");
+
+  const incoming = fragmentBuffer(
+    [
+      [...textA, 1, ...reference(1)],
+      [...suffix, 15, ...textB],
+    ],
+    "ab!",
+  );
+  assert.equal(printDoc(incoming), "a !\nb");
+
+  const fragments = [[...textA, 1, ...reference(1), 15, ...textB]];
+  for (let id = 1; id < 40; id++)
+    fragments.push([...reference(id + 1), ...reference(id + 1)]);
+  fragments.push(suffix);
+  assert.ok(
+    documentGraphSize(decode(fragmentBuffer(fragments, "ab!"), "")) < 800,
+  );
+});
+
 test("SWCFMT measures current-group conditions during lookahead", () => {
   const bytes = documentBuffer(
     [
