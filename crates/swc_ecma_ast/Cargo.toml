@@ -12,6 +12,8 @@ version               = "0.3.0"
 shared_string_allocator = []
 
 [dependencies]
+cow-utils        = { workspace = true }
+num-bigint       = { workspace = true }
 oxc_index        = { workspace = true }
 unicode-id-start = { workspace = true }
 

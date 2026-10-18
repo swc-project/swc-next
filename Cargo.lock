@@ -2897,6 +2897,8 @@ dependencies = [
 name = "swc_next_ecma_ast"
 version = "0.3.0"
 dependencies = [
+ "cow-utils",
+ "num-bigint 0.5.1",
  "oxc_index",
  "swc_next_allocator",
  "swc_next_ast_macros",
@@ -2969,7 +2971,6 @@ name = "swc_next_ecma_transformer"
 version = "0.3.0"
 dependencies = [
  "clap",
- "num-bigint 0.5.1",
  "rustc-hash",
  "serde",
  "swc_next_allocator",

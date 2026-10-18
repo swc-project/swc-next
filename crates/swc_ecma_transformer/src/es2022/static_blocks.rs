@@ -564,17 +564,7 @@ fn property_key_name(key: PropertyKey, ctx: &mut TransformCtx<'_, '_>) -> Option
         .as_expr(ctx.ast())
         .and_then(|expr| expr.as_big_int_literal(ctx.ast()))
     {
-        let raw = ctx.ast().get_utf8(bigint.raw(ctx.ast()));
-        let digits = raw.replace('_', "");
-        let (radix, digits) = match digits.as_bytes().get(..2) {
-            Some(b"0x" | b"0X") => (16, &digits[2..]),
-            Some(b"0o" | b"0O") => (8, &digits[2..]),
-            Some(b"0b" | b"0B") => (2, &digits[2..]),
-            _ => (10, digits.as_str()),
-        };
-        let value = num_bigint::BigUint::parse_bytes(digits.as_bytes(), radix)
-            .expect("valid BigInt literal")
-            .to_str_radix(10);
+        let value = bigint.value(ctx.ast())?.to_str_radix(10);
         return Some(InferredName::String(
             ctx.ast.add_wtf8(value.as_str().into()),
         ));

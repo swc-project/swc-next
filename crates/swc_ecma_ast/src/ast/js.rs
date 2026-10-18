@@ -1,5 +1,6 @@
 use std::mem;
 
+use cow_utils::CowUtils;
 use swc_next_ast_macros::{ast, estree};
 
 use crate::{
@@ -734,6 +735,23 @@ pub struct NumericLiteral {
 pub struct BigIntLiteral {
     /// digits without the trailing `n`
     raw: AstUtf8,
+}
+
+impl BigIntLiteral {
+    /// Computes the integer value from the raw literal text.
+    ///
+    /// Returns `None` if parsing fails. The raw text must omit the trailing `n`.
+    pub fn value(self, ast: &crate::Ast<'_>) -> Option<num_bigint::BigInt> {
+        let raw = ast.get_utf8(self.raw(ast));
+        let digits = raw.cow_replace('_', "");
+        let (radix, digits) = match digits.as_bytes().get(..2) {
+            Some(b"0x" | b"0X") => (16, &digits[2..]),
+            Some(b"0o" | b"0O") => (8, &digits[2..]),
+            Some(b"0b" | b"0B") => (2, &digits[2..]),
+            _ => (10, digits.as_ref()),
+        };
+        num_bigint::BigInt::parse_bytes(digits.as_bytes(), radix)
+    }
 }
 
 /// A `true` or `false` literal.
@@ -2337,4 +2355,53 @@ pub struct ExportSpecifier {
 #[ast]
 pub struct Hashbang {
     value: AstUtf8,
+}
+
+#[cfg(test)]
+mod tests {
+    use num_bigint::BigInt;
+    use swc_next_allocator::Allocator;
+
+    use crate::{Ast, DUMMY_SP};
+
+    fn bigint_value(raw: &str) -> Option<BigInt> {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let raw = ast.add_utf8(raw);
+        let literal = ast.big_int_literal(DUMMY_SP, raw);
+        literal.value(&ast)
+    }
+
+    #[test]
+    fn bigint_literals() {
+        assert_eq!(bigint_value("0"), Some(BigInt::from(0)));
+
+        assert_eq!(bigint_value("1_000"), Some(BigInt::from(1000)));
+
+        let value = bigint_value("18446744073709551616");
+        assert_eq!(value, Some(BigInt::from(1u128 << 64)));
+
+        assert_eq!(bigint_value("0b1010_0101"), Some(BigInt::from(165)));
+
+        assert_eq!(bigint_value("0B1010"), Some(BigInt::from(10)));
+
+        assert_eq!(bigint_value("0o7_7"), Some(BigInt::from(63)));
+
+        assert_eq!(bigint_value("0O17"), Some(BigInt::from(15)));
+
+        assert_eq!(bigint_value("0xFF_FF"), Some(BigInt::from(65535)));
+
+        assert_eq!(bigint_value("0Xff"), Some(BigInt::from(255)));
+    }
+
+    #[test]
+    fn invalid_bigint_literals() {
+        assert_eq!(bigint_value(""), None);
+
+        assert_eq!(bigint_value("0x"), None);
+
+        assert_eq!(bigint_value("0b2"), None);
+
+        assert_eq!(bigint_value("42n"), None);
+    }
 }
