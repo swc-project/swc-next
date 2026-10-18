@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer = target /* prefix */ // left
+= first + second;
+---------- Options ----------
+{}
+---------- Output ----------
+outer = target = /* prefix */ first + second; // left
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+outer =
+  target = /* prefix */ // left
+    first +
+    second;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+outer = target = /* prefix */ // left
+  first + second;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+outer = target = /* prefix */ first + second // left
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+outer =
+	target = /* prefix */ // left
+		first +
+		second;
