@@ -125,6 +125,26 @@ test("SWCFMT follows formatting options and file inference", async () => {
   });
 });
 
+test("SWCFMT honors both JSX bracket option names with Prettier precedence", async () => {
+  const source = 'const a=<Box a="one" b="two">text</Box>;';
+  await matches(source, tsx, { printWidth: 20, jsxBracketSameLine: true });
+  await matches(source, tsx, {
+    printWidth: 20,
+    bracketSameLine: false,
+    jsxBracketSameLine: true,
+  });
+  await matches(source, tsx, {
+    printWidth: 20,
+    bracketSameLine: true,
+    jsxBracketSameLine: false,
+  });
+  await matches(source, tsx, {
+    printWidth: 20,
+    bracketSameLine: false,
+    jsxBracketSameLine: false,
+  });
+});
+
 test("SWCFMT leaves line endings and BOM to Prettier", async () => {
   await matches("\uFEFFconst x=1;\r\nconst y=2;\r\n", js, {
     endOfLine: "auto",
