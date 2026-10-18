@@ -16,55 +16,43 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-(
-  /** @type {number} */ (
-    first, second
-  ),
-  third
-);
+(/** @type {number} */ (
+  first, second
+),
+  third);
 
 ---------- Options ----------
 {"printWidth":8}
 ---------- Output ----------
-(
-  /** @type {number} */ (
-    first,
-    second
-  ),
-  third
-);
+(/** @type {number} */ (
+  first,
+  second
+),
+  third);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4}
 ---------- Output ----------
-(
-    /** @type {number} */ (
-        first,
-        second
-    ),
-    third
-);
+(/** @type {number} */ (
+    first, second
+),
+    third);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-(
-	/** @type {number} */ (
-		first,
-		second
-	),
-	third
-);
+(/** @type {number} */ (
+	first, second
+),
+	third);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":1}
 ---------- Output ----------
-(
- /** @type {number} */ (
-  first, second
- ),
- third
-);
+(/** @type {number} */ (
+ first, second
+),
+ third);
 
 ---------- Options ----------
 {"endOfLine":"crlf"}

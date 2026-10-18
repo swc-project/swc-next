@@ -18,60 +18,50 @@ test ? (/** @type {number} */ (first), second) : third
 {"printWidth":20}
 ---------- Output ----------
 test
-  ? (
-      /** @type {number} */ (
-        first
-      ),
-      second
-    )
+  ? (/** @type {number} */ (
+      first
+    ),
+    second)
   : third;
 
 ---------- Options ----------
 {"printWidth":8}
 ---------- Output ----------
 test
-  ? (
-      /** @type {number} */ (
-        first
-      ),
-      second
-    )
+  ? (/** @type {number} */ (
+      first
+    ),
+    second)
   : third;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4}
 ---------- Output ----------
 test
-    ? (
-          /** @type {number} */ (
-              first
-          ),
-          second
-      )
+    ? (/** @type {number} */ (
+          first
+      ),
+      second)
     : third;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 test
-	? (
-			/** @type {number} */ (
-				first
-			),
-			second
-		)
+	? (/** @type {number} */ (
+			first
+		),
+		second)
 	: third;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":1}
 ---------- Output ----------
 test
- ? (
-    /** @type {number} */ (
-     first
-    ),
-    second
-   )
+ ? (/** @type {number} */ (
+    first
+   ),
+   second)
  : third;
 
 ---------- Options ----------
