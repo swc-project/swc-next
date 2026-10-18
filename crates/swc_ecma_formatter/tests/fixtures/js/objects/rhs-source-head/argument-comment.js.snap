@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = {longPropertyName: (/* ordinary */ object).method(/* argument */ second())};
+---------- Options ----------
+{}
+---------- Output ----------
+target = {
+  longPropertyName: /* ordinary */ object.method(/* argument */ second()),
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* ordinary */ object.method(
+      /* argument */ second(),
+    ),
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = {
+  longPropertyName:
+    /* ordinary */ object.method(
+      /* argument */ second(),
+    ),
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = {
+  longPropertyName: /* ordinary */ object.method(/* argument */ second()),
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = {
+	longPropertyName:
+		/* ordinary */ object.method(
+			/* argument */ second(),
+		),
+};
