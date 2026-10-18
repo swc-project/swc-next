@@ -1111,6 +1111,77 @@ fn line_suffix_boundaries() {
 }
 
 #[test]
+fn line_suffix_documents() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| writer.text("c"));
+    writer.text("b");
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "abc");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line_suffix(|writer| writer.text("// long suffix"));
+        writer.line();
+        writer.text("b");
+    });
+    let narrow = FormatOptions {
+        line_width: 4,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(writer.finish().print(narrow), "a b// long suffix");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| {
+        writer.text("x");
+        writer.line_suffix(|writer| writer.text("y"));
+        writer.text("z");
+    });
+    writer.text("b");
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "abxzy");
+}
+
+#[test]
+fn line_suffix_contexts() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line_suffix(|writer| {
+            writer.if_break("B");
+            writer.if_flat("F");
+        });
+    });
+    writer.group(true, |writer| {
+        writer.text("b");
+        writer.hard_line();
+        writer.text("c");
+    });
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "abF\nc");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.indent(|writer| {
+        writer.line_suffix(|writer| {
+            writer.text("x");
+            writer.hard_line();
+            writer.text("y");
+        });
+    });
+    writer.text("a");
+    writer.hard_line();
+    writer.text("b");
+    assert_eq!(
+        writer.finish().print(FormatOptions::prettier()),
+        "ax\n  y\nb"
+    );
+}
+
+#[test]
 fn flat_line_suffix_boundaries() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
