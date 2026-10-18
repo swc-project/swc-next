@@ -2683,7 +2683,12 @@ impl<'a> Printer<'a> {
             self.print_ts_type_args(args);
         }
         let arguments = e.arguments(self.ast);
-        if !self.options.minify || !arguments.is_empty() || level >= Precedence::Postfix {
+        // Generic constructors need `()` to disambiguate following operators.
+        if !self.options.minify
+            || !arguments.is_empty()
+            || type_arguments.is_some()
+            || level >= Precedence::Postfix
+        {
             self.print_arguments(arguments, e.span(self.ast).end.saturating_sub(1));
         }
         if wrap {

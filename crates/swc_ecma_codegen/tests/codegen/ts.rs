@@ -330,6 +330,26 @@ fn test_new_expression() {
         "new parent.components!.KeepAlive();",
         "new parent.components!.KeepAlive();\n",
     );
+
+    expect_token_boundary("new C<T>() + x;", "new C<T>()+x;");
+
+    expect_token_boundary("new C<T>() - x;", "new C<T>()-x;");
+
+    expect_token_boundary("new C<T>() > x;", "new C<T>()>x;");
+
+    expect_token_boundary("new C<T>() >= x;", "new C<T>()>=x;");
+
+    expect_token_boundary("new C<T>() >> x;", "new C<T>()>>x;");
+
+    expect_token_boundary("new C<T>() >>> x;", "new C<T>()>>>x;");
+
+    expect_token_boundary("new C<T>();", "new C<T>();");
+
+    expect_token_boundary("new C<T>(x) + x;", "new C<T>(x)+x;");
+
+    expect_token_boundary("new C();", "new C;");
+
+    expect_token_boundary("new C() + x;", "new C+x;");
 }
 
 #[test]
