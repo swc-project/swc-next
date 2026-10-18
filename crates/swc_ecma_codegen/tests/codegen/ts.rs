@@ -162,8 +162,32 @@ fn test_type_aliases() {
     expect_printed_ts_minify(source, "type T=intrinsic.foo;");
 
     let source = "type T = (intrinsic<string>);";
-    expect_printed_ts(source, "type T = intrinsic<string>;\n");
-    expect_printed_ts_minify(source, "type T=intrinsic<string>;");
+    expect_printed_ts(source, "type T = (intrinsic<string>);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic<string>);");
+
+    let source = "type T = (intrinsic<string>)[];";
+    expect_printed_ts(source, "type T = (intrinsic<string>[]);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic<string>[]);");
+
+    let source = "type T = (intrinsic.foo<string>);";
+    expect_printed_ts(source, "type T = intrinsic.foo<string>;\n");
+    expect_printed_ts_minify(source, "type T=intrinsic.foo<string>;");
+
+    let source = "type T = (intrinsic)?;";
+    expect_printed_ts(source, "type T = ((intrinsic)?);\n");
+    expect_printed_ts_minify(source, "type T=((intrinsic)?);");
+
+    let source = "type T = (intrinsic)!;";
+    expect_printed_ts(source, "type T = (intrinsic!);\n");
+    expect_printed_ts_minify(source, "type T=(intrinsic!);");
+
+    let source = "type T = ?(intrinsic);";
+    expect_printed_ts(source, "type T = ?intrinsic;\n");
+    expect_printed_ts_minify(source, "type T=?intrinsic;");
+
+    let source = "type T = !(intrinsic);";
+    expect_printed_ts(source, "type T = !intrinsic;\n");
+    expect_printed_ts_minify(source, "type T=!intrinsic;");
 
     let source = "type T = string | (intrinsic);";
     expect_printed_ts(source, "type T = string | intrinsic;\n");
