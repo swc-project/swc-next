@@ -8,24 +8,20 @@ first = second
 ---------- Options ----------
 {}
 ---------- Output ----------
-((first = second),
-  /* before */
-  /** @type {number} */ (third = fourth));
+((first = second), (/* before */ /** @type {number} */ third = fourth));
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;((first = second),
-  /* before */
-  /** @type {number} */ (third = fourth))
+;((first = second), (/* before */ /** @type {number} */ third = fourth))
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ((first = second),
-  /* before */
-  /** @type {number} */ (
-    third = fourth
+  (
+    /* before */ /** @type {number} */ third =
+      fourth
   ));
 
 ---------- Options ----------
@@ -33,9 +29,8 @@ first = second
 ---------- Output ----------
 ((first =
   second),
-  /* before */
-  /** @type {number} */ (
-    third =
+  (
+    /* before */ /** @type {number} */ third =
       fourth
   ));
 
@@ -43,9 +38,8 @@ first = second
 {"printWidth":20,"tabWidth":4}
 ---------- Output ----------
 ((first = second),
-    /* before */
-    /** @type {number} */ (
-        third =
+    (
+        /* before */ /** @type {number} */ third =
             fourth
     ));
 
@@ -53,9 +47,8 @@ first = second
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 ((first = second),
-	/* before */
-	/** @type {number} */ (
-		third =
+	(
+		/* before */ /** @type {number} */ third =
 			fourth
 	));
 
@@ -63,14 +56,12 @@ first = second
 {"printWidth":20,"tabWidth":1}
 ---------- Output ----------
 ((first = second),
- /* before */
- /** @type {number} */ (
-  third = fourth
+ (
+  /* before */ /** @type {number} */ third =
+   fourth
  ));
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-((first = second),
-  /* before */
-  /** @type {number} */ (third = fourth));
+((first = second), (/* before */ /** @type {number} */ third = fourth));

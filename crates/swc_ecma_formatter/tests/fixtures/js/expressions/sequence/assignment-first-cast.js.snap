@@ -17,56 +17,46 @@ target = (/** @type {number} */ (first), second)
 {"printWidth":20}
 ---------- Output ----------
 target =
-  (
-    /** @type {number} */ (
-      first
-    ),
-    second
-  );
+  (/** @type {number} */ (
+    first
+  ),
+  second);
 
 ---------- Options ----------
 {"printWidth":8}
 ---------- Output ----------
 target =
-  (
-    /** @type {number} */ (
-      first
-    ),
-    second
-  );
+  (/** @type {number} */ (
+    first
+  ),
+  second);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4}
 ---------- Output ----------
 target =
-    (
-        /** @type {number} */ (
-            first
-        ),
-        second
-    );
+    (/** @type {number} */ (
+        first
+    ),
+    second);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 target =
-	(
-		/** @type {number} */ (
-			first
-		),
-		second
-	);
+	(/** @type {number} */ (
+		first
+	),
+	second);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":1}
 ---------- Output ----------
 target =
- (
-  /** @type {number} */ (
-   first
-  ),
-  second
- );
+ (/** @type {number} */ (
+  first
+ ),
+ second);
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
