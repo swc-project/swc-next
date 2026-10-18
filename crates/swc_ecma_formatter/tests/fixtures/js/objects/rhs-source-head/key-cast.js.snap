@@ -1,0 +1,63 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = ({ key
+/** @type {number} */
+: /* multiline
+comment */ (/* ordinary */ object).method(second()) });
+---------- Options ----------
+{}
+---------- Output ----------
+target = {
+  key
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = {
+  key
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = {
+  key
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = {
+  key
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = {
+	key
+	/** @type {number} */:
+		/* multiline
+comment */ /* ordinary */ object.method(
+			second(),
+		),
+};

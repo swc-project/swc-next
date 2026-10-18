@@ -1,0 +1,71 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = ({ [object.method(first()) /* key end */]
+/** @type {number} */
+: /* multiline
+comment */ (/* ordinary */ object).method(second()) });
+---------- Options ----------
+{}
+---------- Output ----------
+target = {
+  [object.method(first()) /* key end */]
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = {
+  [object.method(first()) /* key end */]
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target = {
+  [
+    object.method(
+      first(),
+    ) /* key end */
+  ]
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(
+      second(),
+    ),
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = {
+  [object.method(first()) /* key end */]
+  /** @type {number} */:
+    /* multiline
+comment */ /* ordinary */ object.method(second()),
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = {
+	[
+		object.method(
+			first(),
+		) /* key end */
+	]
+	/** @type {number} */:
+		/* multiline
+comment */ /* ordinary */ object.method(
+			second(),
+		),
+};
