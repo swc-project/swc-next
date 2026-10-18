@@ -732,7 +732,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_clear_right = rhs_comments
             .first()
             .is_none_or(|comment| comment.span.start >= source_right_end);
-        let ordinary_tail = !operator_line.is_empty()
+        let left_tail = !sensitive
+            && !promoted
+            && before_line
+            && after.is_empty()
+            && self
+                .prepare_delimited_trailing_run(before, left_end, operator_start, true, None)
+                .is_some_and(|run| run.len() == before.len());
+        // A movable left suffix and an operator-line suffix have the same
+        // emitted owner. Resolve both before choosing the complete RHS layout.
+        let tail = if left_tail { before } else { operator_line };
+        let ordinary_tail = !tail.is_empty()
             && leading.is_empty()
             && source_clear_right
             && !matches!(
@@ -740,14 +750,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::Function(_) | ExprData::ArrowFunctionExpression(_)
             )
             && matches!(
-                self.comment_binding(operator_line, span, None),
+                self.comment_binding(tail, span, None),
                 CommentBinding::Unbound
             )
             && content
                 .parentheses
                 .is_none_or(|removed| matches!(removed.head.binding, CommentBinding::Unbound));
         let leading = if ordinary_tail {
-            boundary.trailing = operator_line;
+            if left_tail {
+                boundary.before = &[];
+            }
+            boundary.trailing = tail;
             leading
         } else {
             boundary.operator_line = operator_line;
