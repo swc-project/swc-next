@@ -571,7 +571,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     source.expression
                 }
                 ExprData::ParenthesizedExpression(node) => {
-                    self.chain_parentheses_operand(node, context)?
+                    let content = self.prepare_chain_parentheses_head(node, context)?;
+                    let removed = content.parentheses?;
+                    if !matches!(removed.head.binding, CommentBinding::Unbound)
+                        || removed.tail.is_some()
+                        || comments
+                            .first()
+                            .is_some_and(|comment| comment.span.start < removed.source.outer.start)
+                        || self.expression_needs_parentheses(
+                            content.data,
+                            context.position,
+                            context.content_mode,
+                        ) != Some(false)
+                    {
+                        return None;
+                    }
+                    // Released leading trivia is outside the emitted spine.
+                    // Keep comments inside its real nodes for their frame checks.
+                    let start = content.expression.span(self.ast).start;
+                    let count = comments.partition_point(|comment| comment.span.end <= start);
+                    comments = &comments[count..];
+                    content.expression
                 }
                 ExprData::ChainExpression(chain)
                     if matches!(
