@@ -1531,7 +1531,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(comment.span.end, head.content_start) == 0
             })
-            && self.expression_needs_asi_guard(expression, context)?
+            && (context.expression_start == ExpressionStart::StatementGuard
+                || self.expression_needs_asi_guard(expression, context)?)
         {
             head.gap_end = None;
         }
@@ -1542,7 +1543,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comments
                 .iter()
                 .position(|&comment| self.comment_has_target_annotation(comment))
-            && self.expression_needs_asi_guard(expression, context)?
+            && (context.expression_start == ExpressionStart::StatementGuard
+                || self.expression_needs_asi_guard(expression, context)?)
         {
             let ignored_head =
                 self.has_suppression && context.content_mode == ContentMode::Verbatim;
@@ -1554,7 +1556,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     comments: prefix,
                     content_start: protected[0].span.start,
                     layout: head.layout,
-                    gap_end: Some(protected[0].span.start),
+                    gap_end: head.gap_end.map(|_| protected[0].span.start),
                 },
                 ExpressionStart::None,
                 array_comments.as_deref_mut(),
