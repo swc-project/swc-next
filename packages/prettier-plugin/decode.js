@@ -36,10 +36,10 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
     throw error;
   }
   if (magic !== 0x44435753) throw invalid(); // SWCD
-  const count = word();
+  let count = word();
   const stringLength = word();
   if (count === 0 || count > (bytes.length - offset) / 4) throw invalid();
-  const fragments = [];
+  let fragments = [];
   for (let i = 0; i < count; i++) {
     const length = word();
     const end = offset + length;
@@ -110,6 +110,8 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   }
   if (offset + stringLength !== bytes.length) throw invalid();
   const poolStart = offset;
+  fragments = suffixPackets(fragments);
+  count = fragments.length;
   const usesParentGroup = parentGroupDependencies(fragments);
   const canonical = { sourceGroups: new WeakSet(), cache: new WeakMap() };
   const groups = new Map();
@@ -199,53 +201,178 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   }
 }
 
-// Find free nearest-group references once over the encoded graph. A local
-// group binds conditions (and deferred soft-line gaps) in every child fragment.
-// The explicit postorder also validates cycles without recursing on the JS stack.
-function parentGroupDependencies(fragments) {
-  const summaries = fragments.map((ops) => {
-    let depth = 0;
-    let usesParent = false;
-    const references = [];
-    for (const [op, first, second] of ops) {
-      if (op === 3) depth++;
-      else if (op === 17 && first === 3) depth--;
-      else if (
-        depth === 0 &&
-        ((op === 8 && second === 0xffffffff) || (op === 2 && first === 1))
-      ) {
-        usesParent = true;
-      } else if (op === 9) {
-        references.push({ id: first, free: depth === 0 });
-      } else if (op === 10 || op === 20) {
-        for (const id of first) references.push({ id, free: depth === 0 });
-      }
-    }
-    return { references, usesParent };
-  });
+// Validate references and visit shared children before their callers.
+function fragmentOrder(fragments) {
+  const references = fragments.map((ops) =>
+    ops.flatMap(([op, first]) =>
+      op === 9 ? [first] : op === 10 || op === 20 ? first : [],
+    ),
+  );
   const state = new Uint8Array(fragments.length);
-  const dependencies = new Uint8Array(fragments.length);
+  const order = [];
   for (let id = 0; id < fragments.length; id++) {
     if (state[id] === 2) continue;
     const work = [{ id, index: 0 }];
     state[id] = 1;
     while (work.length) {
       const frame = work.at(-1);
-      const summary = summaries[frame.id];
-      if (frame.index === summary.references.length) {
-        dependencies[frame.id] = Number(summary.usesParent);
+      const children = references[frame.id];
+      if (frame.index === children.length) {
         state[frame.id] = 2;
+        order.push(frame.id);
         work.pop();
         continue;
       }
-      const edge = summary.references[frame.index];
-      if (state[edge.id] === 1) throw invalid();
-      if (state[edge.id] === 0) {
-        state[edge.id] = 1;
-        work.push({ id: edge.id, index: 0 });
+      const child = children[frame.index++];
+      if (state[child] === 1) throw invalid();
+      if (state[child] === 0) {
+        state[child] = 1;
+        work.push({ id: child, index: 0 });
+      }
+    }
+  }
+  return order;
+}
+
+function scopeEnds(ops) {
+  const ends = new Map();
+  const scopes = [];
+  for (let index = 0; index < ops.length; index++) {
+    const [op, first] = ops[index];
+    if ([3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 19].includes(op)) {
+      scopes.push(index);
+    } else if (op === 17) {
+      const start = scopes.pop();
+      if (start === undefined) throw invalid();
+      const opening = ops[start][0];
+      if (opening !== first && !(first === 4 && [7, 19].includes(opening)))
+        throw invalid();
+      ends.set(start, index);
+    }
+  }
+  if (scopes.length) throw invalid();
+  return ends;
+}
+
+// A closed packet has no intervening main-stream content: its queued scopes
+// execute together at the following hard boundary (or the program's EOF). Move
+// their whitespace into that execution order before lowering to public Docs.
+// Queue-only references become shared body references, never expanded trees.
+function suffixPackets(fragments) {
+  if (!fragments.some((ops) => ops.some(([op]) => op === 14))) return fragments;
+  const originalCount = fragments.length;
+  const output = [];
+  const packets = [];
+  const endings = fragments.map(scopeEnds);
+  const isMember = ([op, first]) =>
+    op === 1 || op === 14 || (op === 9 && packets[first] !== undefined);
+  for (const id of fragmentOrder(fragments)) {
+    const ops = fragments[id];
+    const ends = endings[id];
+    const body = [];
+    let space = false;
+    let suffix = false;
+    let pure = true;
+    for (let index = 0; index < ops.length;) {
+      const [op, first] = ops[index];
+      if (op === 1) {
+        space = true;
+        index++;
+      } else if (op === 14) {
+        suffix = true;
+        const end = ends.get(index);
+        for (let position = index + 1; position < end; position++)
+          body.push(ops[position]);
+        index = end + 1;
+      } else if (op === 9 && packets[first]) {
+        const child = packets[first];
+        suffix ||= child.suffix;
+        space ||= child.space;
+        if (child.suffix) body.push([9, child.body]);
+        index++;
       } else {
-        summary.usesParent ||= edge.free && Boolean(dependencies[edge.id]);
-        frame.index++;
+        pure = false;
+        break;
+      }
+    }
+    if (pure) {
+      const bodyId = suffix ? originalCount + output.length : undefined;
+      if (suffix) output.push(body);
+      packets[id] = { body: bodyId, space, suffix };
+    }
+  }
+  const normalize = (ops, ends, implicitFlush) => {
+    const result = [];
+    for (let index = 0; index < ops.length;) {
+      if (!isMember(ops[index])) {
+        result.push(ops[index++]);
+        continue;
+      }
+      const start = index;
+      const bodies = [];
+      let space = false;
+      let suffix = false;
+      while (index < ops.length && isMember(ops[index])) {
+        const [op, first] = ops[index];
+        if (op === 1) {
+          space = true;
+          index++;
+        } else if (op === 14) {
+          suffix = true;
+          const end = ends.get(index);
+          for (let position = index + 1; position < end; position++)
+            bodies.push(ops[position]);
+          index = end + 1;
+        } else {
+          const child = packets[first];
+          space ||= child.space;
+          suffix ||= child.suffix;
+          if (child.suffix) bodies.push([9, child.body]);
+          index++;
+        }
+      }
+      const next = ops[index];
+      const flushes =
+        (!next && implicitFlush) ||
+        next?.[0] === 15 ||
+        (next?.[0] === 2 && next[1] >= 2);
+      if (suffix && flushes) {
+        result.push([14, true]);
+        if (space) result.push([1]);
+        for (const op of bodies) result.push(op);
+        result.push([17, 14]);
+      } else {
+        for (let position = start; position < index; position++)
+          result.push(ops[position]);
+      }
+    }
+    return result;
+  };
+  const result = fragments.map((ops, id) =>
+    normalize(ops, endings[id], id === 0),
+  );
+  for (const ops of output) result.push(normalize(ops, scopeEnds(ops), false));
+  return result;
+}
+
+// Find free nearest-group references once over the encoded graph. A local
+// group binds conditions (and deferred soft-line gaps) in every child fragment.
+function parentGroupDependencies(fragments) {
+  const dependencies = new Uint8Array(fragments.length);
+  for (const id of fragmentOrder(fragments)) {
+    let depth = 0;
+    for (const [op, first, second] of fragments[id]) {
+      if (op === 3) depth++;
+      else if (op === 17 && first === 3) depth--;
+      else if (depth === 0) {
+        if (
+          (op === 8 && second === 0xffffffff) ||
+          (op === 2 && first === 1) ||
+          (op === 9 && dependencies[first]) ||
+          ((op === 10 || op === 20) && first.some((id) => dependencies[id]))
+        ) {
+          dependencies[id] = 1;
+        }
       }
     }
   }
@@ -381,9 +508,11 @@ function* build(
         });
         break;
       case 14:
-        stack.push({ op, parts: [], pendingSpace, rawSpace });
-        pendingSpace = false;
-        rawSpace = false;
+        stack.push({ op, first, parts: [], pendingSpace, rawSpace });
+        if (!first) {
+          pendingSpace = false;
+          rawSpace = false;
+        }
         break;
       case 9: {
         const result = yield {
@@ -458,7 +587,7 @@ function* build(
         break;
       case 17: {
         if (stack.length === 1) throw invalid();
-        if (first === 14) flushSpace();
+        if (first === 14 && !stack.at(-1).first) flushSpace();
         const frame = stack.pop();
         if (frame.op !== first && !(first === 4 && [7, 19].includes(frame.op)))
           throw invalid();
@@ -539,7 +668,7 @@ function* build(
             break;
           case 14:
             append(b.lineSuffix(doc));
-            pendingSpace = frame.pendingSpace;
+            pendingSpace = frame.first ? false : frame.pendingSpace;
             rawSpace = frame.rawSpace;
             break;
           default:

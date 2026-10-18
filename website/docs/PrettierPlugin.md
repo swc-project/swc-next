@@ -135,6 +135,13 @@ layout instructions. A suffix boundary flushes pending suffixes with a hard line
 without pending suffixes it leaves the layout unchanged. Fit measurement rejects
 a flat layout that would flush pending suffixes at a boundary.
 
+Before conversion, closed suffix packets at hard boundaries and program EOF
+are normalized into their execution order. Their incoming gap and any spaces
+between queued scopes belong to the packet, coalesce with its own gaps, and are
+discarded if no suffix text consumes them. Queue-only shared fragments become
+shared body fragments, so normalization does not expand their graph. Queues with
+intervening main-stream content retain their original deferred position.
+
 Space needs special handling because the native printer defers it until content
 is written. The decoder keeps a pending-space state to
 merge consecutive spaces and discard spaces before hard lines. Structural scopes
