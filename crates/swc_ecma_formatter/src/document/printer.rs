@@ -88,6 +88,8 @@ struct Frame<'a> {
     remaining: &'a [FormatElement<'a>],
     flat: bool,
     restore_mode: Option<Mode>,
+    restore_indent: Option<Indentation>,
+    suffix_group: Option<SuffixGroup>,
     measurement: Measurement,
 }
 
@@ -97,6 +99,8 @@ impl<'a> Frame<'a> {
             remaining: elements,
             flat: false,
             restore_mode: None,
+            restore_indent: None,
+            suffix_group: None,
             measurement: Measurement::Display,
         }
     }
@@ -113,11 +117,16 @@ impl<'a> Cursor<'a> {
         self.current = Frame {
             flat,
             restore_mode,
+            suffix_group: self.current.suffix_group,
             ..Frame::new(elements)
         };
     }
 
-    fn next(&mut self, mode: &mut Mode) -> Option<(&'a FormatElement<'a>, bool)> {
+    fn next(
+        &mut self,
+        mode: &mut Mode,
+        indent: &mut Indentation,
+    ) -> Option<(&'a FormatElement<'a>, bool)> {
         loop {
             if let Some((element, remaining)) = self.current.remaining.split_first() {
                 self.current.remaining = remaining;
@@ -125,6 +134,9 @@ impl<'a> Cursor<'a> {
             }
             if let Some(restore) = self.current.restore_mode {
                 *mode = restore;
+            }
+            if let Some(restore) = self.current.restore_indent {
+                *indent = restore;
             }
             self.current = self.suspended.pop()?;
         }
@@ -147,6 +159,7 @@ impl<'a> ProbeCursor<'a, '_> {
         self.current = Frame {
             flat,
             restore_mode,
+            suffix_group: self.current.suffix_group,
             measurement,
             ..Frame::new(elements)
         };
@@ -170,6 +183,35 @@ impl<'a> ProbeCursor<'a, '_> {
             }
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct SuffixGroup {
+    depth: usize,
+    mode: Mode,
+}
+
+struct LineSuffix<'a> {
+    elements: &'a [FormatElement<'a>],
+    mode: Mode,
+    indent: Indentation,
+    group_mode: Mode,
+}
+
+fn logical_group_mode(
+    local: &[GroupState],
+    parents: &[GroupState],
+    suffix: Option<SuffixGroup>,
+) -> Mode {
+    if let Some(suffix) = suffix
+        && local.len() + parents.len() <= suffix.depth
+    {
+        return suffix.mode;
+    }
+    local
+        .last()
+        .or_else(|| parents.last())
+        .map_or(Mode::Break, |group| group.mode)
 }
 
 /// Reuses print scopes without copying unrelated ancestors into each fit probe.
@@ -331,16 +373,29 @@ pub(super) fn print<'a>(
     };
     let mut fills = Vec::new();
     let mut entries = Vec::new();
-    while let Some((element, flat)) = cursor.next(&mut mode) {
+    loop {
+        let Some((source_element, flat)) = cursor.next(&mut mode, &mut indent) else {
+            if flush_suffixes(
+                &mut suffixes,
+                &mut cursor,
+                None,
+                &mut mode,
+                &mut indent,
+                modes.len(),
+            ) {
+                continue;
+            }
+            break;
+        };
         let flattened;
         let element = if flat {
-            let Some(element) = element.flattened() else {
+            let Some(element) = source_element.flattened() else {
                 continue;
             };
             flattened = element;
             &flattened
         } else {
-            element
+            source_element
         };
         match *element {
             FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
@@ -357,6 +412,7 @@ pub(super) fn print<'a>(
                             current: Frame {
                                 restore_mode: Some(mode),
                                 measurement,
+                                suffix_group: cursor.current.suffix_group,
                                 ..Frame::new(fragment.elements)
                             },
                             pending: &cursor.suspended,
@@ -383,7 +439,16 @@ pub(super) fn print<'a>(
             }
             FormatElement::SoftLineIfBreak(id) => {
                 if group_modes[id.0] == Mode::Break && mode == Mode::Break {
-                    flush_suffixes(&mut suffixes, &mut output, options, mode);
+                    if flush_suffixes(
+                        &mut suffixes,
+                        &mut cursor,
+                        Some(source_element),
+                        &mut mode,
+                        &mut indent,
+                        modes.len(),
+                    ) {
+                        continue;
+                    }
                     output.line(indent, options, mode);
                 }
             }
@@ -401,17 +466,33 @@ pub(super) fn print<'a>(
                 }
             }
             FormatElement::SoftLine | FormatElement::Line | FormatElement::HardLine => {
-                flush_suffixes(&mut suffixes, &mut output, options, mode);
+                if flush_suffixes(
+                    &mut suffixes,
+                    &mut cursor,
+                    Some(source_element),
+                    &mut mode,
+                    &mut indent,
+                    modes.len(),
+                ) {
+                    continue;
+                }
                 output.line(indent, options, mode);
             }
             FormatElement::LiteralLine => {
-                flush_suffixes(&mut suffixes, &mut output, options, mode);
+                if flush_suffixes(
+                    &mut suffixes,
+                    &mut cursor,
+                    Some(source_element),
+                    &mut mode,
+                    &mut indent,
+                    modes.len(),
+                ) {
+                    continue;
+                }
                 output.line(Indentation::default(), options, mode);
             }
             FormatElement::IfBreak(text) | FormatElement::IfFlat(text) => {
-                let group_mode = modes
-                    .last()
-                    .map_or(Mode::Break, |group: &GroupState| group.mode);
+                let group_mode = logical_group_mode(&modes, &[], cursor.current.suffix_group);
                 let active = match element {
                     FormatElement::IfBreak(_) => group_mode == Mode::Break,
                     _ => group_mode == Mode::Flat,
@@ -429,11 +510,23 @@ pub(super) fn print<'a>(
                     output.write(text, options, mode);
                 }
             }
-            FormatElement::LineSuffix(text) => suffixes.push(text),
+            FormatElement::StartLineSuffix { end_offset } => {
+                let (contents, remaining) = cursor.current.remaining.split_at(end_offset);
+                suffixes.push(LineSuffix {
+                    elements: &contents[..contents.len() - 1],
+                    mode,
+                    indent,
+                    group_mode: logical_group_mode(&modes, &[], cursor.current.suffix_group),
+                });
+                cursor.current.remaining = remaining;
+            }
+            FormatElement::EndLineSuffix => {
+                unreachable!("line suffix scopes are queued as complete content")
+            }
             FormatElement::LineSuffixBoundary => {
                 if !suffixes.is_empty() {
-                    flush_suffixes(&mut suffixes, &mut output, options, mode);
-                    output.line(indent, options, mode);
+                    const HARD_LINE: &[FormatElement<'_>] = &[FormatElement::HardLine];
+                    cursor.enter(HARD_LINE, false, None);
                 }
             }
             FormatElement::StartGroup { effect, id } => {
@@ -644,7 +737,6 @@ pub(super) fn print<'a>(
             }
         }
     }
-    flush_suffixes(&mut suffixes, &mut output, options, mode);
     debug_assert_eq!(indent.levels, 0, "document must close every indent scope");
     debug_assert!(indents.is_empty(), "document must close every indent scope");
     debug_assert_eq!(
@@ -715,16 +807,31 @@ impl Output {
     }
 }
 
-fn flush_suffixes(
-    suffixes: &mut Vec<Text<'_>>,
-    output: &mut Output,
-    options: FormatOptions,
-    mode: Mode,
-) {
-    for text in suffixes.drain(..) {
-        output.pending_gap.defer();
-        output.write(text, options, mode);
+fn flush_suffixes<'a>(
+    suffixes: &mut Vec<LineSuffix<'a>>,
+    cursor: &mut Cursor<'a>,
+    line: Option<&'a FormatElement<'a>>,
+    mode: &mut Mode,
+    indent: &mut Indentation,
+    group_depth: usize,
+) -> bool {
+    if suffixes.is_empty() {
+        return false;
     }
+    if let Some(line) = line {
+        cursor.enter(std::slice::from_ref(line), false, None);
+    }
+    for suffix in suffixes.drain(..).rev() {
+        cursor.enter(suffix.elements, false, Some(*mode));
+        cursor.current.restore_indent = Some(*indent);
+        cursor.current.suffix_group = Some(SuffixGroup {
+            depth: group_depth,
+            mode: suffix.group_mode,
+        });
+        *mode = suffix.mode;
+        *indent = suffix.indent;
+    }
+    true
 }
 
 struct ProbeRequest<'a, 'pending, K> {
@@ -831,11 +938,11 @@ impl<'a> Probe<'a> {
                         element,
                         FormatElement::IfBreak(_) | FormatElement::IfFlat(_)
                     ) {
-                        let group_mode = modes
-                            .last()
-                            .map(|group| group.mode)
-                            .or_else(|| parents[..parent_len].last().map(|group| group.mode))
-                            .unwrap_or(Mode::Break);
+                        let group_mode = logical_group_mode(
+                            modes,
+                            &parents[..parent_len],
+                            cursor.current.suffix_group,
+                        );
                         let active = match element {
                             FormatElement::IfBreak(_) => group_mode == Mode::Break,
                             _ => group_mode == Mode::Flat,
@@ -863,7 +970,13 @@ impl<'a> Probe<'a> {
                         return false;
                     }
                 }
-                FormatElement::LineSuffix(_) => has_line_suffix = true,
+                FormatElement::StartLineSuffix { end_offset } => {
+                    has_line_suffix = true;
+                    cursor.current.remaining = &cursor.current.remaining[end_offset..];
+                }
+                FormatElement::EndLineSuffix => {
+                    unreachable!("fit probes skip complete line suffix scopes")
+                }
                 FormatElement::LineSuffixBoundary => {
                     if has_line_suffix {
                         return false;

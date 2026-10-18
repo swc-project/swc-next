@@ -1,7 +1,9 @@
-//! Flat documents containing borrowed text and explicit line breaks.
+//! Flat instruction streams with borrowed text and explicit layout scopes.
 //!
 //! Construction owns a growable instruction buffer in the formatting arena.
 //! Finishing seals an immutable slice; source text remains borrowed from its owner.
+//! Line suffixes retain complete Docs and their insertion mode and indentation.
+//! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
 mod printer;
 #[cfg(test)]
@@ -88,8 +90,11 @@ enum FormatElement<'a> {
     IfFlat(Text<'a>),
     IfCurrentBreak(Text<'a>),
     IfCurrentFlat(Text<'a>),
-    /// Trailing text with one separating space, including at the start of a line.
-    LineSuffix(Text<'a>),
+    /// A deferred Doc scope; its contents own their spacing and break requests.
+    StartLineSuffix {
+        end_offset: usize,
+    },
+    EndLineSuffix,
     /// Flushes pending line suffixes before continuing on a new line.
     LineSuffixBoundary,
     StartGroup {
@@ -337,8 +342,7 @@ impl<'a> Fragment<'a> {
                     | FormatElement::IfBreak(text)
                     | FormatElement::IfFlat(text)
                     | FormatElement::IfCurrentBreak(text)
-                    | FormatElement::IfCurrentFlat(text)
-                    | FormatElement::LineSuffix(text) => {
+                    | FormatElement::IfCurrentFlat(text) => {
                         if !text.is_single_line() {
                             return true;
                         }
@@ -471,7 +475,11 @@ impl<'a> Alternatives<'a> {
 impl FormatElement<'_> {
     fn permits_flat(self) -> bool {
         match self {
-            Self::HardLine | Self::LiteralLine | Self::LineSuffix(_) | Self::BreakParent => false,
+            Self::HardLine
+            | Self::LiteralLine
+            | Self::StartLineSuffix { .. }
+            | Self::EndLineSuffix
+            | Self::BreakParent => false,
             Self::Text(text) | Self::IfCurrentFlat(text) => text.is_single_line(),
             Self::Fragment(fragment) => fragment.capabilities.permits_flat(),
             Self::Alternatives(alternatives) | Self::CanonicalAlternatives(alternatives) => {

@@ -3,6 +3,12 @@ use swc_next_allocator::Allocator;
 use super::{Doc, FormatElement, GroupRequest, Writer};
 use crate::{FormatOptions, IndentStyle, LineEnding};
 
+fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
+    writer.space();
+    writer.text(text);
+    writer.break_parent();
+}
+
 fn nested_document(options: FormatOptions) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -1002,7 +1008,7 @@ fn reserved_gap_rendering() {
     let mut writer = Writer::new(&allocator);
     writer.text("a");
     writer.reserved_space();
-    writer.line_suffix("// tail");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// tail"));
     writer.hard_line();
     writer.text("b");
     assert_eq!(
@@ -1044,7 +1050,7 @@ fn line_suffixes() {
     let mut writer = Writer::new(&allocator);
     writer.group(false, |writer| {
         writer.text("a");
-        writer.line_suffix("// comment");
+        writer.line_suffix(|writer| write_comment_suffix(writer, "// comment"));
         writer.text(",");
         writer.line();
         writer.text("b");
@@ -1057,7 +1063,7 @@ fn line_suffixes() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.text("a");
-    writer.line_suffix("// last");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// last"));
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
         "a // last"
@@ -1076,9 +1082,9 @@ fn line_suffix_boundaries() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.text("a");
-    writer.line_suffix("// first");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// first"));
     writer.line_suffix_boundary();
-    writer.line_suffix("// second");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// second"));
     writer.hard_line();
     writer.text("b");
     assert_eq!(
@@ -1089,7 +1095,7 @@ fn line_suffix_boundaries() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.text("a");
-    writer.line_suffix("// first");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// first"));
     writer.group(false, |writer| {
         writer.if_break("(");
         writer.line_suffix_boundary();
@@ -1109,7 +1115,7 @@ fn flat_line_suffix_boundaries() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.text("a");
-    writer.line_suffix("// first");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// first"));
     writer.flat(|writer| {
         writer.line_suffix_boundary();
         writer.text("b");
@@ -1126,7 +1132,7 @@ fn flat_line_suffix_boundaries() {
         writer.text("b");
     });
     writer.text("a");
-    writer.line_suffix("// first");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// first"));
     writer.write_flat_fragment(fragment.try_flat().unwrap());
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
@@ -1379,7 +1385,7 @@ fn flat_scopes() {
     writer.flat(|writer| {
         writer.group(false, |writer| {
             writer.text("first");
-            writer.line_suffix("// comment");
+            writer.line_suffix(|writer| write_comment_suffix(writer, "// comment"));
             writer.line();
             writer.text("second");
         });
@@ -1789,7 +1795,7 @@ fn recorded_group_layouts() {
 
 fn write_group_suffix(writer: &mut Writer<'_>) {
     writer.text("first");
-    writer.line_suffix("// trailing");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// trailing"));
     writer.soft_line();
     writer.text("last");
 }
@@ -1923,7 +1929,7 @@ fn completed_delimiter_layouts() {
     let enclosed =
         writer.conditional_group_fragment(prefix, GroupRequest::Expanded, "(", body, ")");
     writer.write_fragment(enclosed);
-    writer.line_suffix("// outside");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// outside"));
     writer.hard_line();
     let doc = writer.finish();
     assert_eq!(doc.group_count, 1);
@@ -1943,7 +1949,7 @@ fn completed_delimiter_layouts() {
     let enclosed =
         writer.conditional_group_fragment(prefix, GroupRequest::Expanded, "(", body, ")");
     writer.write_flat_fragment(enclosed.try_flat().unwrap());
-    writer.line_suffix("// outside");
+    writer.line_suffix(|writer| write_comment_suffix(writer, "// outside"));
     writer.hard_line();
     let doc = writer.finish();
     assert_eq!(doc.group_count, 2);
@@ -2142,7 +2148,7 @@ fn rejected_candidate(options: FormatOptions, alternatives: bool) -> String {
                 writer.text("a");
                 writer.indent(|writer| {
                     writer.align(3, |writer| {
-                        writer.line_suffix("// rejected");
+                        writer.line_suffix(|writer| write_comment_suffix(writer, "// rejected"));
                         writer.text("too wide for the available line");
                         writer.hard_line();
                         writer.text("unselected");
@@ -2300,7 +2306,7 @@ fn retained_flat_scopes() {
 
     let suffix = record(&mut writer, |writer| {
         writer.text("a");
-        writer.line_suffix("// kept");
+        writer.line_suffix(|writer| write_comment_suffix(writer, "// kept"));
         writer.line();
         writer.text("b");
     });

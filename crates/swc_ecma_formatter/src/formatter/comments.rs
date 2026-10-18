@@ -474,6 +474,14 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn format_comment_line_suffix(&self, comment: Comment, writer: &mut Writer<'ast>) {
+        writer.line_suffix(|writer| {
+            writer.space();
+            writer.text(self.source(comment.span).trim_end());
+        });
+        writer.break_parent();
+    }
+
     pub(super) fn prepare_comment_boundary(
         &self,
         comments: &'ast [Comment],
@@ -1082,7 +1090,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.line_suffix_boundary();
             }
             if line_suffix {
-                writer.line_suffix(self.source(comment.span).trim_end());
+                self.format_comment_line_suffix(comment, writer);
             } else {
                 prepared.text.write(writer);
             }
@@ -1243,7 +1251,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 match comment.kind {
                     CommentKind::Line => {
                         writer.line_suffix_boundary();
-                        writer.line_suffix(self.source(comment.span).trim_end());
+                        self.format_comment_line_suffix(comment, writer);
                     }
                     CommentKind::Block => {
                         let nestled = previous.as_ref().is_some_and(|previous| {

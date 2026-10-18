@@ -133,10 +133,15 @@ impl<'a> Writer<'a> {
             .push(FormatElement::IfCurrentFlat(Text::new(text)));
     }
 
-    pub(crate) fn line_suffix(&mut self, text: &'a str) {
+    pub(crate) fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        let start = self.elements.len();
         self.elements
-            .push(FormatElement::LineSuffix(Text::new(text)));
-        self.break_parent();
+            .push(FormatElement::StartLineSuffix { end_offset: 0 });
+        let result = write(self);
+        let end_offset = self.elements.len() - start;
+        self.elements[start] = FormatElement::StartLineSuffix { end_offset };
+        self.elements.push(FormatElement::EndLineSuffix);
+        result
     }
 
     pub(crate) fn line_suffix_boundary(&mut self) {
