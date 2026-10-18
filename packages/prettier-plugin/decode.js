@@ -80,6 +80,9 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
           ops.push([op, byte()]);
           break;
         case 3:
+          // A shared scope keeps its identity in every surrounding layout.
+          ops.push([op, byte(), integer(), Symbol()]);
+          break;
         case 8:
           ops.push([op, byte(), integer()]);
           break;
@@ -107,6 +110,7 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   }
   if (offset + stringLength !== bytes.length) throw invalid();
   const poolStart = offset;
+  const usesParentGroup = parentGroupDependencies(fragments);
   const canonical = { sourceGroups: new WeakSet(), cache: new WeakMap() };
   const groups = new Map();
   const groupId = (id) => {
@@ -132,6 +136,9 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   const cache = Array.from({ length: count }, () => new Map());
   const active = new Uint8Array(count);
   const statesFor = (id, parentGroup, rawSpace, modeMatchesGroup) => {
+    // Closed scopes do not depend on their caller's logical group. Keeping that
+    // irrelevant context would unfold a shared DAG into a tree of alternatives.
+    if (!usesParentGroup[id]) parentGroup = undefined;
     if (!cache[id].has(parentGroup))
       cache[id].set(parentGroup, [new Map(), new Map(), new Map(), new Map()]);
     return cache[id].get(parentGroup)[
@@ -192,6 +199,59 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
   }
 }
 
+// Find free nearest-group references once over the encoded graph. A local
+// group binds conditions (and deferred soft-line gaps) in every child fragment.
+// The explicit postorder also validates cycles without recursing on the JS stack.
+function parentGroupDependencies(fragments) {
+  const summaries = fragments.map((ops) => {
+    let depth = 0;
+    let usesParent = false;
+    const references = [];
+    for (const [op, first, second] of ops) {
+      if (op === 3) depth++;
+      else if (op === 17 && first === 3) depth--;
+      else if (
+        depth === 0 &&
+        ((op === 8 && second === 0xffffffff) || (op === 2 && first === 1))
+      ) {
+        usesParent = true;
+      } else if (op === 9) {
+        references.push({ id: first, free: depth === 0 });
+      } else if (op === 10 || op === 20) {
+        for (const id of first) references.push({ id, free: depth === 0 });
+      }
+    }
+    return { references, usesParent };
+  });
+  const state = new Uint8Array(fragments.length);
+  const dependencies = new Uint8Array(fragments.length);
+  for (let id = 0; id < fragments.length; id++) {
+    if (state[id] === 2) continue;
+    const work = [{ id, index: 0 }];
+    state[id] = 1;
+    while (work.length) {
+      const frame = work.at(-1);
+      const summary = summaries[frame.id];
+      if (frame.index === summary.references.length) {
+        dependencies[frame.id] = Number(summary.usesParent);
+        state[frame.id] = 2;
+        work.pop();
+        continue;
+      }
+      const edge = summary.references[frame.index];
+      if (state[edge.id] === 1) throw invalid();
+      if (state[edge.id] === 0) {
+        state[edge.id] = 1;
+        work.push({ id: edge.id, index: 0 });
+      } else {
+        summary.usesParent ||= edge.free && Boolean(dependencies[edge.id]);
+        frame.index++;
+      }
+    }
+  }
+  return dependencies;
+}
+
 const contents = (parts) => (parts.length === 1 ? parts[0] : parts);
 
 function* build(
@@ -213,7 +273,7 @@ function* build(
     if (pendingSpace) append(pendingSpace === true ? " " : pendingSpace);
     pendingSpace = false;
   };
-  for (const [op, first, second] of ops) {
+  for (const [op, first, second, identity] of ops) {
     switch (op) {
       case 0:
         flushSpace();
@@ -299,7 +359,7 @@ function* build(
           };
           if (op === 12 || op === 13) modeMatchesGroup = false;
           if (op === 3) {
-            parentGroup = frame.group = groupId(second) ?? Symbol();
+            parentGroup = frame.group = groupId(second) ?? identity;
             modeMatchesGroup = true;
           }
           stack.push(frame);

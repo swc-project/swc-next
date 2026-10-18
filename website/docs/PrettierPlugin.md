@@ -159,10 +159,13 @@ Required breaks remain active in both views. The projection uses an explicit
 work stack and shares completed subdocuments with the decoded document graph.
 
 Shared fragments receive the incoming whitespace state and return the outgoing
-state. The decoder caches results by fragment, nearest logical group, incoming
-gap, raw trailing whitespace, and whether the current mode belongs to that
-group. This preserves sharing without assuming a fixed surrounding layout. An
-explicit work stack handles deeply nested references.
+state. Anonymous groups keep the identity of their encoded scope. A linear
+analysis of the fragment graph finds free nearest-group dependencies, so only
+fragments that observe their caller's group include it in their cache key. The
+remaining key records the incoming gap, raw trailing whitespace, and whether the
+current mode belongs to the group. This preserves graph sharing across layout
+alternatives while retaining the context needed by conditions. Explicit work
+stacks handle dependency analysis and deeply nested references.
 
 Line Docs absorb a preceding pending gap. Flat fragments use the native IR's
 flattening rules before encoding. Both encoders and decoders use explicit work
