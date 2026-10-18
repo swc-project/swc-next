@@ -28,6 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
+    "build:test": "napi build --features test-native --output-dir test/binding",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter --output-dir src-js"
   },
   "keywords": [

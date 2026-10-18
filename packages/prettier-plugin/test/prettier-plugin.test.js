@@ -5,6 +5,7 @@ import { builders } from "prettier/doc";
 import { formatDocBufferSync } from "@swc-next/formatter";
 import * as plugin from "../index.js";
 import { decode } from "../decode.js";
+import { formatNativeSync, normalizeInput } from "./native.js";
 
 const js = { parser: "swc", plugins: [plugin] };
 const ts = { ...js, parser: "swc-ts" };
@@ -132,6 +133,22 @@ test("SWCFMT leaves line endings and BOM to Prettier", async () => {
   await matches("", js);
 });
 
+test("native N-API oracle returns exact strings and reports invalid inputs", () => {
+  assert.equal(formatNativeSync("", "file.js", {}), "");
+  assert.equal(
+    formatNativeSync("const x=1;", "file.js", { endOfLine: "crlf" }),
+    "const x = 1;\r\n",
+  );
+  assert.equal(
+    formatNativeSync('const x="😀";', "file.js", { endOfLine: "cr" }),
+    'const x = "😀";\r',
+  );
+  assert.throws(() => formatNativeSync("const =", "file.js", {}));
+  assert.throws(() =>
+    formatNativeSync("", "file.js", { endOfLine: "invalid" }),
+  );
+});
+
 test("SWCFMT forwards line endings during JSX document construction", async () => {
   assert.equal(
     await prettier.format('<Box title="a\nb" />;', { ...js, endOfLine: "lf" }),
@@ -162,6 +179,44 @@ test("SWCFMT forwards line endings during JSX document construction", async () =
     }),
     '<Box\r  title="a&#10;b"\r/>;\r',
   );
+});
+
+async function observedInput(source, options) {
+  let received;
+  const observer = {
+    ...plugin,
+    parsers: {
+      ...plugin.parsers,
+      swc: {
+        ...plugin.parsers.swc,
+        parse(source, options) {
+          received = { source, options: { endOfLine: options.endOfLine } };
+          return plugin.parsers.swc.parse(source, options);
+        },
+      },
+    },
+  };
+  await prettier.format(source, { ...js, ...options, plugins: [observer] });
+  return received;
+}
+
+test("native parity uses the same normalized input and resolved EOL as Prettier", async () => {
+  const auto = { endOfLine: "auto" };
+  const lf = { endOfLine: "lf" };
+  const mixed = "\uFEFFconst x=1;\nconst y=2;\r\n";
+  assert.deepEqual(
+    await observedInput(mixed, auto),
+    normalizeInput(mixed, auto),
+  );
+
+  const cr = "const x=1;\rconst y=2;\n";
+  assert.deepEqual(await observedInput(cr, auto), normalizeInput(cr, auto));
+
+  const crlf = "const x=1;\r\nconst y=2;\r\n";
+  assert.deepEqual(await observedInput(crlf, lf), normalizeInput(crlf, lf));
+
+  const unix = "const x=1;\n";
+  assert.deepEqual(await observedInput(unix, auto), normalizeInput(unix, auto));
 });
 
 test("SWCFMT reports UTF-16 diagnostic columns and rejects unsupported options", async () => {

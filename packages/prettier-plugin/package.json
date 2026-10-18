@@ -33,8 +33,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test"
+    "test": "pnpm --filter @swc-next/formatter build:test && node --test test/*.test.js",
+    "test:wasm": "pnpm --filter @swc-next/formatter build:test && cross-env NAPI_RS_FORCE_WASI=error node --test test/*.test.js"
   },
   "devDependencies": {
     "cross-env": "catalog:",

@@ -11,8 +11,24 @@ version               = "0.3.0"
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+test-native = [
+    "dep:napi",
+    "dep:serde_json",
+    "dep:swc_next_ecma_ast",
+    "dep:swc_next_ecma_formatter",
+    "dep:swc_next_ecma_parser",
+]
+
 [dependencies]
 swc_next_bridge = { workspace = true, features = ["formatter"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+napi                    = { workspace = true, optional = true, features = ["serde-json"] }
+serde_json              = { workspace = true, optional = true }
+swc_next_ecma_ast       = { workspace = true, optional = true }
+swc_next_ecma_formatter = { workspace = true, optional = true }
+swc_next_ecma_parser    = { workspace = true, optional = true }
 
 [build-dependencies]
 napi-build = { workspace = true }
