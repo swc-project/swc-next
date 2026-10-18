@@ -1277,8 +1277,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             binding
         };
+        let inner_cast =
+            if context.content_mode == ContentMode::Formatted
+                && matches!(enclosure_binding, CommentBinding::SourceBound)
+            {
+                self.source_type_cast(head.content_start).and_then(|annotation| {
+                if !matches!(
+                    self.expression_head_binding(std::slice::from_ref(&annotation), expression),
+                    CommentBinding::BoundTo(target) if target != expression.span(self.ast)
+                ) {
+                    return None;
+                }
+                head.comments.iter().position(|comment| *comment == annotation)
+            })
+            } else {
+                None
+            };
+        let generated = if self.has_type_casts
+            && !head.comments.is_empty()
+            && matches!(binding, CommentBinding::Unbound)
+            && context.content_mode == ContentMode::Formatted
+            && context.parentheses_owner == ParenthesesOwner::Expression
+        {
+            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            self.generated_enclosure_owner(expression, content, &head, binding, context)
+        } else {
+            None
+        };
         let parenthesize_head = !head.comments.is_empty()
-            && matches!(enclosure_binding, CommentBinding::BoundTo(_))
+            && (matches!(enclosure_binding, CommentBinding::BoundTo(_))
+                || inner_cast.is_some()
+                || generated.is_some())
             && context.parentheses_owner == ParenthesesOwner::Expression
             && self.expression_needs_parentheses(
                 prepared
@@ -1288,6 +1317,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ContentMode::Formatted,
             ) == Some(true);
         if parenthesize_head {
+            let head = if let Some(index) = inner_cast {
+                // Source constraints and a cast's inner target are independent:
+                // keep the prefix outside, and the cast inside the added pair.
+                let prefix = &head.comments[..index];
+                context.expression_start = self.format_expression_head(
+                    expression,
+                    NodeHead {
+                        comments: prefix,
+                        content_start: head.comments[index].span.start,
+                        layout: head.layout,
+                        gap_end: head.gap_end.map(|_| head.comments[index].span.start),
+                    },
+                    binding,
+                    context,
+                    array_comments.as_deref_mut(),
+                    writer,
+                )?;
+                if context.expression_start.needs_asi_guard()
+                    && self.options.semicolons == Semicolons::AsNeeded
+                {
+                    writer.text(";");
+                    context.expression_start = ExpressionStart::StatementGuarded;
+                }
+                context.protected_head_start = Some(head.content_start);
+                NodeHead {
+                    comments: &head.comments[index..],
+                    ..head
+                }
+            } else {
+                head
+            };
             return self.format_parenthesized_expression(
                 expression,
                 prepared,
@@ -1300,17 +1360,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !head.comments.is_empty() && !matches!(pair_binding, CommentBinding::Unbound) {
             context.protected_head_start = Some(expression.span(self.ast).start);
         }
-        let generated = if self.has_type_casts
-            && !head.comments.is_empty()
-            && matches!(binding, CommentBinding::Unbound)
-            && context.content_mode == ContentMode::Formatted
-            && context.parentheses_owner == ParenthesesOwner::Expression
-        {
-            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
-            self.generated_enclosure_owner(expression, content, &head, binding, context)
-        } else {
-            None
-        };
         if !head.comments.is_empty() {
             context.expression_start = self.format_expression_head(
                 expression,
@@ -1320,15 +1369,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 array_comments.as_deref_mut(),
                 writer,
             )?;
-        }
-        if let Some(owner) = generated {
-            return self.format_generated_enclosure(
-                owner,
-                prepared,
-                context,
-                array_comments.as_deref_mut(),
-                writer,
-            );
         }
         self.expression_layout(expression).write(writer, |writer| {
             self.format_expression_content_prepared(
@@ -2322,6 +2362,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if !head.comments.is_empty() && context.content_mode == ContentMode::Formatted {
+            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            if let ExprData::SequenceExpression(sequence) = content.data {
+                let source_tail = content.parentheses.and_then(|removed| removed.tail);
+                let mut context = context;
+                context.parentheses_owner = ParenthesesOwner::Expression;
+                if context.source_tail_owner == SourceTailOwner::Enclosure {
+                    context.source_parentheses_tail =
+                        source_tail.or(context.source_parentheses_tail);
+                }
+                let tail = self.format_sequence_with_leading_comments(
+                    sequence,
+                    head.comments,
+                    context,
+                    writer,
+                )?;
+                return match source_tail {
+                    Some(source) => self.capture_expression_tail(source.span, tail),
+                    None => Ok(tail),
+                };
+            }
+        }
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
         {
@@ -2342,10 +2404,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             OperandIndent::Expression
         };
+        let protected = context.protected_head_start == Some(head.content_start);
+        let opening = if protected {
+            self.line_constraint(head.content_start, head.content_start)
+        } else {
+            LineConstraint::Unconstrained
+        };
+        let closing = if protected {
+            let end = expression.span(self.ast).end;
+            self.line_constraint(end, end)
+        } else {
+            LineConstraint::Unconstrained
+        };
         writer.group(false, |writer| {
             writer.text("(");
             let tail = writer.indent(|writer| {
-                writer.soft_line();
+                opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 self.format_comment_run_with_array_comments(
                     head.comments,
                     if matches!(
@@ -2385,7 +2459,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Ok(None)
                 }
             })?;
-            writer.soft_line();
+            closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
             writer.text(")");
             Ok(tail)
         })

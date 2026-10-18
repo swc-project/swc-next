@@ -24,8 +24,7 @@ struct SequenceBoundary<'ast> {
 
 struct SequenceItem<'ast> {
     expression: Expr,
-    leading: &'ast [Comment],
-    start: u32,
+    head: NodeHead<'ast>,
     mode: ContentMode,
 }
 
@@ -105,6 +104,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_sequence(
         &mut self,
         sequence: SequenceExpression,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_sequence_with_leading_comments(sequence, &[], context, writer)
+    }
+
+    /// An enclosing pair can lease its claimed head to the first real member.
+    /// That member owns any additional grammar pair before printing the packet.
+    pub(super) fn format_sequence_with_leading_comments(
+        &mut self,
+        sequence: SequenceExpression,
+        inherited: &'ast [Comment],
         mut context: ExpressionContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -139,7 +150,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if enclosed_head {
             context.head_comments = HeadComments::Pending;
         }
-        let leading = if enclosed_head {
+        let leading = if enclosed_head || !inherited.is_empty() {
             &[]
         } else {
             self.comments
@@ -190,18 +201,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        if let Some(enclosure) = generated {
+            return self.format_parenthesized_expression(
+                Expr::SequenceExpression(sequence),
+                Some(enclosure.content),
+                head,
+                context,
+                None,
+                writer,
+            );
+        }
         let start = if enclosed_head {
             context.expression_start
         } else {
             self.format_node_head(head, context.expression_start, None, writer)?
         };
-        if let Some(enclosure) = generated {
-            return self.format_prepared_generated_enclosure(
-                enclosure,
-                context.with_expression_start(start),
-                writer,
-            );
-        }
         if self.options.semicolons == Semicolons::AsNeeded && start.needs_asi_guard() {
             writer.text(";");
         }
@@ -221,8 +235,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let tail = self.format_sequence_item(
                     SequenceItem {
                         expression: first,
-                        leading: &[],
-                        start: first_start,
+                        head: NodeHead {
+                            comments: inherited,
+                            content_start: first_start,
+                            layout: CommentRunLayout::FlatLeading(first_start),
+                            gap_end: None,
+                        },
                         mode: ContentMode::Formatted,
                     },
                     boundary.as_ref(),
@@ -248,11 +266,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .next()
                         .map(|next| self.sequence_boundary(boundary.next, next, item_position))
                         .transpose()?;
+                    self.comments.claim(boundary.leading)?;
                     let tail = self.format_sequence_item(
                         SequenceItem {
                             expression: boundary.next,
-                            leading: boundary.leading,
-                            start: boundary.next_start,
+                            head: NodeHead {
+                                comments: boundary.leading,
+                                content_start: boundary.next_start,
+                                layout: CommentRunLayout::Leading(boundary.next_start),
+                                gap_end: None,
+                            },
                             mode: boundary.suppression.as_ref().map_or_else(
                                 || self.content_mode(boundary.leading),
                                 |source| source.following,
@@ -312,8 +335,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let SequenceItem {
             expression,
-            leading,
-            start,
+            head,
             mode,
         } = item;
         let mode = if mode == ContentMode::Verbatim {
@@ -337,15 +359,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             context.tail_owner
         };
-        self.comments.claim(leading)?;
         self.format_expression_with_leading_comments(
             expression,
-            NodeHead {
-                comments: leading,
-                content_start: start,
-                layout: CommentRunLayout::Leading(start),
-                gap_end: None,
-            },
+            head,
             context.with_content_mode(mode).with_tail_owner(tail_owner),
             None,
             writer,
