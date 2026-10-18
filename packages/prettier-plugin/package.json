@@ -1,0 +1,43 @@
+{
+  "name": "@swc-next/prettier-plugin-swcfmt",
+  "version": "0.3.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "decode.js",
+    "options.js",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@swc-next/formatter": "workspace:*"
+  },
+  "peerDependencies": {
+    "prettier": "3.9.9"
+  },
+  "description": "SWCFMT: SWC formatting documents rendered by Prettier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/prettier-plugin"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test"
+  },
+  "devDependencies": {
+    "cross-env": "catalog:",
+    "prettier": "3.9.9"
+  }
+}
