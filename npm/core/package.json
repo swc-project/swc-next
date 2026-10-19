@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/core",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "The extensible Node.js API for SWC Next",
   "repository": {
     "type": "git",
