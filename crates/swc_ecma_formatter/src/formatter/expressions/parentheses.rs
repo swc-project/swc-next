@@ -1172,6 +1172,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !head.comments.is_empty() {
             context.arrow_layout = context.arrow_layout.with_leading_comments();
         }
+        if self.has_type_casts
+            && !head.comments.is_empty()
+            && matches!(binding, CommentBinding::Unbound)
+            && context.content_mode == ContentMode::Formatted
+        {
+            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            if let ExprData::SequenceExpression(sequence) = content.data
+                && self.sequence_head_has_type_cast(sequence, head.comments)
+                && self.expression_is_parenthesized(content.data, context)
+            {
+                return self.format_parenthesized_expression(
+                    expression,
+                    prepared,
+                    head,
+                    context,
+                    array_comments,
+                    writer,
+                );
+            }
+        }
         if !head.comments.is_empty()
             && matches!(binding, CommentBinding::Unbound)
             && context.content_mode == ContentMode::Formatted

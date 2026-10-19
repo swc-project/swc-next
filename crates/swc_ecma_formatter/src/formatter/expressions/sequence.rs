@@ -101,6 +101,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         .then_some(start)
     }
 
+    pub(super) fn sequence_head_has_type_cast(
+        &self,
+        sequence: SequenceExpression,
+        leading: &[Comment],
+    ) -> bool {
+        self.has_type_casts
+            && (leading
+                .iter()
+                .any(|&comment| self.comment_is_type_cast(comment))
+                || self
+                    .enclosed_sequence_head_start(sequence)
+                    .and_then(|start| self.source_cast_before(start))
+                    .is_some())
+    }
+
     pub(super) fn format_sequence(
         &mut self,
         sequence: SequenceExpression,
