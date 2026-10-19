@@ -558,6 +558,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.comments.claim(comments)?;
         self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
+        let before_operator = if before_operator == LineConstraint::Unconstrained
+            && self.comment_run_has_own_line_tail(trailing, source_end)
+        {
+            // Own-line packets are printed immediately, beyond deferred suffixes.
+            LineConstraint::NewLine(1)
+        } else {
+            before_operator
+        };
         Ok(ResolvedConditionalBoundary {
             operator: boundary.operator,
             leading,
