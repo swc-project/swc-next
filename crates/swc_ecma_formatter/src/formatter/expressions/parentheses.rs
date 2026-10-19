@@ -931,8 +931,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let trailing = Span::new(child_span.end, span.end - 1);
         if matches!(context.position, ExpressionPosition::NonNullOperand)
-            && self.line_breaks(trailing.start, trailing.end) != 0
-            && !self.comments.in_range(trailing).is_empty()
+            && self.comments.in_range(trailing).iter().any(|comment| {
+                comment.kind == CommentKind::Line
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0
+            })
         {
             return SourceParenthesesChoice::Retained {
                 kind: RetainedParentheses::Operand,
