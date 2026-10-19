@@ -1,5 +1,6 @@
 //! Callees and source-owned argument delimiters.
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
+use super::chains::FluentChainEligibility;
 use super::parentheses::ExpressionContent;
 use super::{AccessKind, OperandIndent};
 use super::{
@@ -7,6 +8,7 @@ use super::{
     MemberLayout, TailOwner,
 };
 use crate::formatter::comments::ExpressionTail;
+use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::ArgumentData;
@@ -162,6 +164,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             callee_context.member_layout = MemberLayout::Tight;
             callee_context.member_chain_layout = super::MemberChainLayout::Local;
         }
+        if member_callee
+            && callee_context.member_layout != MemberLayout::Tight
+            && let Some((member, callee_context)) =
+                self.direct_member_callee(arguments.callee, callee_context)
+        {
+            return writer.group(false, |writer| {
+                let (tail, group) = self.format_member_callee(member, callee_context, writer)?;
+                let write = |writer: &mut Writer<'ast>| {
+                    self.format_source_arguments(arguments, tail, writer)
+                };
+                match group {
+                    Some(group) => writer.indent_if_break(group, write),
+                    None => write(writer),
+                }
+            });
+        }
         let group = arguments.curried_callee.map(|_| arguments.group);
         let write = |writer: &mut Writer<'ast>| {
             let tail = self.format_expression(arguments.callee, callee_context, writer)?;
@@ -177,6 +195,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None => write(writer),
             }
         }
+    }
+
+    fn direct_member_callee(
+        &self,
+        expression: Expr,
+        mut context: ExpressionContext,
+    ) -> Option<(swc_next_ecma_ast::MemberExpression, ExpressionContext)> {
+        // Bound heads retain their complete expression-envelope printer.
+        if context.protected_head_start.is_some()
+            || !self.call_span_is_source_clear(expression.span(self.ast))
+        {
+            return None;
+        }
+        let start = expression.span(self.ast).start;
+        let comments = self.ast.comments();
+        let before = comments.partition_point(|comment| comment.span.end <= start);
+        if before != 0
+            && self
+                .source(Span::new(comments[before - 1].span.end, start))
+                .chars()
+                .all(is_source_whitespace)
+        {
+            return None;
+        }
+        let data = self.expression_content(expression).data;
+        let ExprData::MemberExpression(member) = data else {
+            return None;
+        };
+        match self.fluent_chain_eligibility(data, context, self.expression_layout(expression)) {
+            FluentChainEligibility::Fluent => return None,
+            FluentChainEligibility::MemberOnly => {
+                context.member_chain_layout = super::MemberChainLayout::Local;
+            }
+            FluentChainEligibility::Unqualified => {}
+        }
+        Some((member, context))
     }
 
     pub(super) fn source_call(
