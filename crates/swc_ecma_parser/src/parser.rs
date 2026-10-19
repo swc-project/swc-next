@@ -8411,15 +8411,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.current_token.tag(),
             TokenTag::LeftParen | TokenTag::Dot | TokenTag::LeftBracket
         ) {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "'super' must be followed by a call or property access",
-                    ReportOptions::default(),
-                );
-                None
-            };
+            self.report(
+                self.current_token.span(),
+                "'super' must be followed by a call or property access",
+                ReportOptions::default(),
+            );
         }
         Some(self.ast.expr_super(token.span()))
     }
@@ -14188,6 +14184,57 @@ mod tests {
 
         let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Tsx);
         assert_eq!(ends, (17, 18));
+    }
+
+    #[test]
+    fn super_recovery() {
+        fn expression(ast: &Ast<'_>, index: usize) -> Expr {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, index)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+        }
+
+        let allocator = Allocator::new();
+        let source = "super;\nafter;";
+        let parsed = parse_tokens(&allocator, source);
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, Span::new(5, 6));
+        assert_eq!(ast.root_program().body(ast).len(), 2);
+        assert!(expression(ast, 0).is_super(ast));
+        let after = expression(ast, 1).as_identifier_reference(ast).unwrap();
+        assert_eq!(ast.get_utf8(after.name(ast)), "after");
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["super", ";", "after", ";"]
+        );
+
+        let parsed = parse_tokens(&allocator, "super\nafter;");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(ast.root_program().body(ast).len(), 2);
+        assert!(expression(ast, 0).is_super(ast));
+        let after = expression(ast, 1).as_identifier_reference(ast).unwrap();
+        assert_eq!(ast.get_utf8(after.name(ast)), "after");
+
+        let parsed = parse_tokens(&allocator, "super");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, Span::new(5, 5));
+        assert_eq!(ast.root_program().body(ast).len(), 1);
+        assert!(expression(ast, 0).is_super(ast));
+
+        let parsed = parse_tokens(&allocator, "super value;\nafter;");
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let parsed = parse_tokens(&allocator, "super.;\nafter;");
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
     }
 
     #[test]
