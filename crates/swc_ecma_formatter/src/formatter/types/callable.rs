@@ -12,7 +12,7 @@ use super::{
     Formatter, PreparedAnnotation, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout,
     TypeContext, TypeGap, TypeLayout,
 };
-use crate::formatter::bindings::{DefaultOwner, InitializerLayout};
+use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
@@ -1491,43 +1491,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PreparedParameterLeft::Formatted(left) => left,
         };
-        let end = match left.binding {
-            ParameterBinding::This(this) => {
-                writer.text("this");
-                this.span(self.ast).start + 4
-            }
-            ParameterBinding::SignatureObject(pattern) => {
-                if let Some(object) = pattern.as_object_pattern(self.ast) {
-                    self.format_object_binding_contents(object, writer)?;
-                } else {
-                    let tail =
-                        self.format_parameter_pattern(pattern, ContentMode::Formatted, writer)?;
+        let shared_annotation = left.annotation.is_some()
+            && matches!(&left.binding, ParameterBinding::Pattern {
+                node, mode: ContentMode::Formatted, spread: None,
+            } if node.as_object_pattern(self.ast).is_some());
+        let write = |writer: &mut Writer<'ast>| {
+            let end = match left.binding {
+                ParameterBinding::This(this) => {
+                    writer.text("this");
+                    this.span(self.ast).start + 4
+                }
+                ParameterBinding::SignatureObject(pattern) => {
+                    if let Some(object) = pattern.as_object_pattern(self.ast) {
+                        self.format_object_binding_contents(object, writer)?;
+                    } else {
+                        let tail =
+                            self.format_parameter_pattern(pattern, ContentMode::Formatted, writer)?;
+                        self.format_expression_tail(tail, writer)?;
+                    }
+                    pattern.span(self.ast).end
+                }
+                ParameterBinding::Pattern { node, mode, spread } => {
+                    if let Some(gap) = spread {
+                        writer.text("...");
+                        self.format_type_gap(gap, FlatSeparator::Empty, writer)?;
+                    }
+                    let tail = if shared_annotation {
+                        self.format_binding_with_group(node, BindingGroup::Parent, mode, writer)?
+                    } else {
+                        self.format_parameter_pattern(node, mode, writer)?
+                    };
                     self.format_expression_tail(tail, writer)?;
+                    node.span(self.ast).end
                 }
-                pattern.span(self.ast).end
-            }
-            ParameterBinding::Pattern { node, mode, spread } => {
-                if let Some(gap) = spread {
-                    writer.text("...");
-                    self.format_type_gap(gap, FlatSeparator::Empty, writer)?;
+            };
+            let optional = left.optional;
+            if let Some(annotation) = left.annotation {
+                if optional && matches!(&annotation.prefix, TypeBoundaryLayout::Formatted { .. }) {
+                    writer.text("?");
                 }
-                let tail = self.format_parameter_pattern(node, mode, writer)?;
-                self.format_expression_tail(tail, writer)?;
-                node.span(self.ast).end
+                self.format_annotation_content_with_layout(
+                    annotation,
+                    left.annotation_layout,
+                    writer,
+                )
+            } else {
+                if optional {
+                    writer.text("?");
+                }
+                self.format_source_token_gap(end, left.end, false, writer)?;
+                Ok(None)
             }
         };
-        let optional = left.optional;
-        if let Some(annotation) = left.annotation {
-            if optional && matches!(&annotation.prefix, TypeBoundaryLayout::Formatted { .. }) {
-                writer.text("?");
-            }
-            self.format_annotation_content_with_layout(annotation, left.annotation_layout, writer)
+        if shared_annotation {
+            BindingGroup::Auto.write(writer, write)
         } else {
-            if optional {
-                writer.text("?");
-            }
-            self.format_source_token_gap(end, left.end, false, writer)?;
-            Ok(None)
+            write(writer)
         }
     }
 
