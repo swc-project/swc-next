@@ -360,6 +360,8 @@ impl Indentation {
     }
 }
 
+// Keep the interpreter's register allocation independent of syntax construction.
+#[inline(never)]
 pub(super) fn print<'a>(
     elements: &'a [FormatElement<'a>],
     allocator: &'a Allocator,
