@@ -24,6 +24,7 @@ use super::expressions::{
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
+use super::source::is_source_whitespace;
 use super::statements::IncomingStatement;
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
@@ -1464,7 +1465,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comments: &tail.comments[..count],
             })
         });
+        let own_line = before
+            .as_ref()
+            .is_some_and(|tail| self.comment_run_has_own_line_tail(tail.comments, tail.source_end));
         self.format_expression_tail(before, writer)?;
+        if own_line {
+            let source = self.source(span);
+            let whitespace_end =
+                span.end - source.trim_start_matches(is_source_whitespace).len() as u32;
+            if self.line_breaks(span.start, whitespace_end) == 0 {
+                writer.hard_line();
+            }
+        }
         self.format_verbatim(span, writer)
     }
 
