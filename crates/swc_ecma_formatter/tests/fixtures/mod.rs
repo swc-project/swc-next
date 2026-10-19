@@ -3,7 +3,7 @@ use std::{fmt::Write, fs, path::Path};
 use serde_json::{Map, Value};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Lang, SourceType};
-use swc_next_ecma_formatter::{FormatOptions, format, format_ast};
+use swc_next_ecma_formatter::{FormatOptions, LineEnding, format, format_ast};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 
 use super::prettier_options;
@@ -67,6 +67,7 @@ fn format_pass(
 ) -> String {
     let output = format(input, parser_options, options)
         .unwrap_or_else(|error| panic!("{id} text entry point failed: {error}"));
+    assert_line_endings(id, &output, options.line_ending);
 
     let allocator = Allocator::new();
     let parsed = Parser::init(&allocator, input, parser_options, NoTokenParserConfig).parse();
@@ -96,4 +97,29 @@ fn format_pass(
         "{id} formatting must preserve comment count"
     );
     output
+}
+
+fn assert_line_endings(id: &str, output: &str, ending: LineEnding) {
+    let bytes = output.as_bytes();
+    for (index, &byte) in bytes.iter().enumerate() {
+        match (ending, byte) {
+            (LineEnding::Lf, b'\r') | (LineEnding::Cr, b'\n') => {
+                panic!("{id} output must use {ending:?} line endings");
+            }
+            (LineEnding::CrLf, b'\r') => {
+                assert_eq!(
+                    bytes.get(index + 1),
+                    Some(&b'\n'),
+                    "{id} lone CR in CRLF output"
+                );
+            }
+            (LineEnding::CrLf, b'\n') => {
+                assert!(
+                    index > 0 && bytes[index - 1] == b'\r',
+                    "{id} lone LF in CRLF output"
+                );
+            }
+            _ => {}
+        }
+    }
 }
