@@ -901,7 +901,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let annotation_tail = if (self.has_target_annotations || self.has_suppression)
             && item.is_nonempty(self.ast)
         {
-            self.prepare_statement_annotation_tail(span, following)
+            self.prepare_statement_annotation_tail(item, span, following)
         } else {
             None
         };
@@ -919,18 +919,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_statement_annotation_tail(
         &self,
+        statement: StatementItem,
         statement_span: Span,
         following: Option<StatementItem>,
     ) -> Option<StatementAnnotationTail<'ast>> {
         let following = following?;
+        let following_start = following.span(self.ast).start;
+        let comments = self
+            .comments
+            .in_range(Span::new(statement_span.end, following_start));
+        if comments.is_empty() {
+            return None;
+        }
         let target = if following.is_nonempty(self.ast) {
-            if self
-                .ast
-                .source()
-                .as_bytes()
-                .get(statement_span.end as usize - 1)
-                != Some(&b';')
-            {
+            if !matches!(
+                self.statement_content(statement),
+                StatementContent::Semicolon(_)
+            ) {
                 return None;
             }
             None
@@ -947,7 +952,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StatementItem::Directive(node) => node.span(self.ast),
         };
         let span = Span::new(statement_span.end, following_span.start);
-        let comments = self.comments.in_range(span);
+        let comments = if following_span.start < following_start {
+            &comments[..comments.partition_point(|comment| comment.span.end <= span.end)]
+        } else {
+            comments
+        };
         let mut end = span.start;
         let mut count = 0;
         for &comment in comments {
