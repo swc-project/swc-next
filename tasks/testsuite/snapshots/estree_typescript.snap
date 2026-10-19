@@ -1,5 +1,5 @@
 AST Parsed     : 11748/11748 (100.00%)
-Positive Passed: 11630/11748 (99.00%)
+Positive Passed: 11631/11748 (99.00%)
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignToInvalidLHS.ts
@@ -114,7 +114,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conforman
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersWithArrayTypeAnnotations.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/rest/objectRestNegative.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/rest/objectRestPropertyMustBeLast.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/rest/restElementMustBeLast.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/stringLiteral/stringLiteralTypesAsTags02.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/tuple/named/namedTupleMembersErrors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/tuple/restTupleElements1.ts

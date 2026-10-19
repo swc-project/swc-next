@@ -28,6 +28,16 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("encoder preserves array rests", () => {
+  const print = (source, lang) => printSync(parseSync(source).program, {}, { lang }).code;
+
+  assert.equal(print("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
+  assert.equal(print("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
+
+  assert.equal(print("const [...a, b, ...c] = v;", "js"), "const [...a, b, ...c] = v;\n");
+  assert.equal(print("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
+});
+
 test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\u{10400}";

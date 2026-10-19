@@ -510,23 +510,14 @@ function encodeJs(program, meta = {}) {
   function encArrayPattern(n) {
     const _values = n.elements;
     const _length = _values?.length ?? 0;
-    let _itemCount = _length - 0;
-    let _rest = null;
-    for (let i = 0; i < _length; i++) {
-      const value = _values[i];
-      if (value?.type === "RestElement") {
-        _rest = value;
-        _itemCount--;
-      }
-    }
+    const _last = _values?.[_length - 1];
+    const _rest = _last?.type === "RestElement" ? _last : null;
+    const _itemCount = _length - (_rest === null ? 0 : 1);
     const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
-    let slot = _itemsStart;
-    for (let i = 0; i < _length; i++) {
-      const value = _values[i];
-      if (value?.type !== "RestElement") {
-        const id = value == null ? NULL : encBindingPattern(value);
-        setExtraU32(slot++, 0, id);
-      }
+    for (let index = 0; index < _itemCount; index++) {
+      const value = _values[index];
+      const id = value == null ? NULL : encBindingPattern(value);
+      setExtraU32(_itemsStart + index, 0, id);
     }
     const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);

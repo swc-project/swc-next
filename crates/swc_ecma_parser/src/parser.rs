@@ -9628,8 +9628,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             .binding_rest_element(spread.span(&self.ast), argument);
                         // SAFETY: `temporary` is the unattached last node, and
                         // `spread` is retired in favor of the returned handle.
-                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
-                        break;
+                        let rest_element = unsafe { self.ast.replace_data(spread, temporary) };
+                        if index + 1 == source_elements_len {
+                            rest = Some(rest_element);
+                        } else {
+                            self.scratch_cover.append(rest_element);
+                        }
                     }
                 }
             }
@@ -13385,6 +13389,57 @@ mod tests {
 
         let parsed = parse_tokens(&allocator, "type A = typeof import(\"x\").A;");
         assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn array_rest_recovery() {
+        fn text(source: &str, span: Span) -> &str {
+            &source[span.start as usize..span.end as usize]
+        }
+
+        fn parse(source: &str) -> (Vec<&str>, Vec<&str>, Option<&str>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let variable = statement
+                .as_declaration(ast)
+                .unwrap()
+                .as_variable_declaration(ast)
+                .unwrap();
+            let declarator = variable.declarators(ast).get_node(ast, 0).unwrap();
+            let pattern = declarator.id(ast).as_array_pattern(ast).unwrap();
+            let errors = parsed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| text(source, diagnostic.span));
+            let elements = pattern.elements(ast);
+            let elements = elements
+                .iter()
+                .map(|id| text(source, ast.get_node_in_sub_range(id).unwrap().span(ast)));
+            let rest = pattern.rest(ast).map(|rest| text(source, rest.span(ast)));
+            (errors.collect(), elements.collect(), rest)
+        }
+
+        fn is_discarded(source: &str) -> bool {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            parsed.ast.root_program().body(&parsed.ast).is_empty()
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], elements: [$($element:expr),*], rest: $rest:expr) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($element),*], $rest))
+            };
+        }
+
+        check!("const [a, ...b, c, ...d] = v;",
+            errors: ["...b"], elements: ["a", "...b", "c"], rest: Some("...d"));
+
+        check!("const [...a, b] = v;",
+            errors: ["...a"], elements: ["...a", "b"], rest: None);
+
+        assert!(is_discarded("const [...a, 0] = v;"));
     }
 
     #[test]

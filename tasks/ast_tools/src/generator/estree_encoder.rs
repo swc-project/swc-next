@@ -620,19 +620,12 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
 "#,
         ),
         "FormalParameters" => {
-            write_rest_array_prelude(output, "n", "from", "encFormalParameterItem", false, true)
+            write_rest_array_prelude(output, "n", "from", "encFormalParameterItem", true)
         }
-        "ArrayPattern" => {
-            write_rest_array_prelude(output, "n.elements", "0", "encBindingPattern", true, false)
+        "ArrayPattern" => write_array_pattern_prelude(output),
+        "ObjectPattern" => {
+            write_rest_array_prelude(output, "n.properties", "0", "encBindingProperty", false)
         }
-        "ObjectPattern" => write_rest_array_prelude(
-            output,
-            "n.properties",
-            "0",
-            "encBindingProperty",
-            false,
-            false,
-        ),
         "NumericLiteral" => {
             output.push_str("    const _numericRaw = n.raw == null ? null : numericRaw(n);\n")
         }
@@ -640,12 +633,28 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
     }
 }
 
+fn write_array_pattern_prelude(output: &mut String) {
+    output.push_str(
+        r#"    const _values = n.elements;
+    const _length = _values?.length ?? 0;
+    const _last = _values?.[_length - 1];
+    const _rest = _last?.type === "RestElement" ? _last : null;
+    const _itemCount = _length - (_rest === null ? 0 : 1);
+    const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
+    for (let index = 0; index < _itemCount; index++) {
+      const value = _values[index];
+      const id = value == null ? NULL : encBindingPattern(value);
+      setExtraU32(_itemsStart + index, 0, id);
+    }
+"#,
+    );
+}
+
 fn write_rest_array_prelude(
     output: &mut String,
     values: &str,
     from: &str,
     encoder: &str,
-    holes: bool,
     spans: bool,
 ) {
     writeln!(output, "    const _values = {values};").unwrap();
@@ -679,12 +688,7 @@ fn write_rest_array_prelude(
     output.push_str(
         "      const value = _values[i];\n      if (value?.type !== \"RestElement\") {\n",
     );
-    let id = if holes {
-        format!("value == null ? NULL : {encoder}(value)")
-    } else {
-        format!("{encoder}(value)")
-    };
-    writeln!(output, "        const id = {id};").unwrap();
+    writeln!(output, "        const id = {encoder}(value);").unwrap();
     output.push_str("        setExtraU32(slot++, 0, id);\n      }\n    }\n");
 }
 

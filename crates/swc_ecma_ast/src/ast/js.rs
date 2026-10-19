@@ -998,9 +998,10 @@ pub struct BindingRestElement {
     typeAnnotation(ts_type = "TSTypeAnnotation | null", optional)
 ))]
 pub struct ArrayPattern {
-    /// any binding pattern. Entries are `None` for holes.
+    /// any binding pattern. Entries are `None` for holes. Recovery preserves
+    /// nonterminal rest elements here in source order.
     elements: SubRange<Option<BindingPattern>>,
-    /// `binding_rest_element`. `None` when no rest element is present.
+    /// The terminal `binding_rest_element`, if present.
     #[estree(skip)]
     rest: Option<BindingRestElement>,
 }
