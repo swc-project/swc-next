@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+callee((arg /* tail */) /* prettier-ignore */, next);
+---------- Options ----------
+{}
+---------- Output ----------
+callee(arg /* tail */ /* prettier-ignore */, next);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+callee(arg /* tail */ /* prettier-ignore */, next)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+callee(
+  arg /* tail */ /* prettier-ignore */,
+  next,
+);
