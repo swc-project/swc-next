@@ -36,7 +36,7 @@ use crate::{
     document::{Fragment, Writer},
 };
 use swc_next_ecma_ast::{
-    BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan,
+    Ast, BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan,
     IdentifierReference, Span, TsLiteralData, TsParenthesizedType, TsQualifiedName,
     TsQualifiedNameLeft, TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration, TsTypeAnnotation,
     TsTypeData, TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
@@ -2726,5 +2726,56 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comment_binding(comments, prefix, None)
                 .allows_relocation(None);
         DefiniteMarker { source, movable }
+    }
+}
+
+/// A trailing JSDoc question mark can consume a type on the following source line.
+pub(super) fn type_requires_terminator(mut node: TsType, ast: &Ast<'_>) -> bool {
+    let mut context = TypeContext::Root;
+    loop {
+        let data = ast.ts_type_data(node);
+        if context.needs_parentheses(data, ast) {
+            return false;
+        }
+        let (next, next_context) = match data {
+            TsTypeData::TsJsDocUnknownType(_) | TsTypeData::TsOptionalType(_) => return true,
+            TsTypeData::TsJsDocNullableType(node) => {
+                if node.postfix(ast) {
+                    return true;
+                }
+                (node.type_annotation(ast), TypeContext::JsDocNullableOperand)
+            }
+            TsTypeData::TsJsDocNonNullableType(node) if !node.postfix(ast) => {
+                (node.type_annotation(ast), TypeContext::JsDocPrimaryOperand)
+            }
+            TsTypeData::TsParenthesizedType(node) => (node.type_annotation(ast), context),
+            TsTypeData::TsUnionType(node) => {
+                let Some(last) = node.types(ast).last() else {
+                    return false;
+                };
+                (ast.get_node_in_sub_range(last), TypeContext::UnionMember)
+            }
+            TsTypeData::TsIntersectionType(node) => {
+                let Some(last) = node.types(ast).last() else {
+                    return false;
+                };
+                (ast.get_node_in_sub_range(last), TypeContext::CompoundMember)
+            }
+            TsTypeData::TsConditionalType(node) => (node.false_type(ast), TypeContext::Root),
+            TsTypeData::TsFunctionType(node) => (
+                node.return_type(ast).type_annotation(ast),
+                TypeContext::Root,
+            ),
+            TsTypeData::TsConstructorType(node) => (
+                node.return_type(ast).type_annotation(ast),
+                TypeContext::Root,
+            ),
+            TsTypeData::TsTypeOperator(node) => {
+                (node.type_annotation(ast), TypeContext::ModifierOperand)
+            }
+            _ => return false,
+        };
+        node = next;
+        context = next_context;
     }
 }
