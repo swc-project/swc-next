@@ -16,7 +16,10 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
-use crate::{FormatError, document::Writer};
+use crate::{
+    FormatError,
+    document::{GroupId, Writer},
+};
 
 #[derive(Clone, Copy)]
 enum MemberKey {
@@ -211,6 +214,42 @@ pub(super) enum MemberLookupLayout {
 }
 
 impl MemberLookupLayout {
+    fn write_with_group_reference<'ast>(
+        self,
+        mut gap: Option<CommentGap>,
+        writer: &mut Writer<'ast>,
+        access: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
+    ) -> Result<Option<GroupId>, FormatError> {
+        if matches!(gap, Some(CommentGap::LineComment)) {
+            writer.hard_line();
+            gap = None;
+        }
+        let write = |writer: &mut Writer<'ast>| {
+            if let Some(gap) = gap {
+                gap.write(writer, FlatSeparator::Empty, |writer| {
+                    if matches!(self, Self::Grouped) {
+                        writer.soft_line();
+                    }
+                });
+            }
+            access(writer)
+        };
+        match self {
+            Self::Inline => {
+                write(writer)?;
+                Ok(None)
+            }
+            Self::Grouped => {
+                let mut result = Ok(());
+                let group = writer.named_group(false, |writer| {
+                    result = writer.indent(write);
+                });
+                result?;
+                Ok(Some(group))
+            }
+        }
+    }
+
     pub(super) fn write<'ast>(
         self,
         gap: CommentGap,
@@ -353,6 +392,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })?;
         }
         Ok(None)
+    }
+
+    pub(super) fn format_member_callee(
+        &mut self,
+        member: MemberExpression,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(Option<ExpressionTail<'ast>>, Option<GroupId>), FormatError> {
+        let PreparedMember::Formatted(member) = self.source_member(member)? else {
+            let tail = self.format_expression(
+                Expr::MemberExpression(member),
+                context.with_content_mode(ContentMode::Verbatim),
+                writer,
+            )?;
+            return Ok((tail, None));
+        };
+        let tail =
+            self.format_expression(member.object, member.receiver_context(context), writer)?;
+        let boundary = self.prepare_member_boundary(&member, tail)?;
+        let layout =
+            self.member_lookup_layout(&member, &boundary, MemberLookupOwner::from_context(context));
+        let gap = if boundary.owns_lookup_comments {
+            None
+        } else {
+            self.format_member_trailing(&boundary, writer)?;
+            Some(boundary.gap())
+        };
+        let group = layout.write_with_group_reference(gap, writer, |writer| {
+            if boundary.owns_lookup_comments {
+                self.format_member_trailing(&boundary, writer)?;
+                boundary
+                    .gap()
+                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            }
+            self.format_member_access(&member, boundary, writer)
+        })?;
+        Ok((None, group))
     }
 
     pub(super) fn member_lookup_layout(
