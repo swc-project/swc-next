@@ -3597,6 +3597,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "A 'this' parameter is not allowed here",
                     ReportOptions::default(),
                 );
+            }
+            // Unlike constructor functions, arrows cannot retain a receiver.
+            if kind == FormalParameterKind::ArrowFormalParameters {
                 return None;
             }
             let parameter = self.parse_this_parameter()?;
@@ -14083,6 +14086,112 @@ mod tests {
 
         let kinds = parameter_kinds("async (a,b)=>{};");
         assert_eq!(kinds, [FormalParameterKind::ArrowFormalParameters]);
+    }
+
+    #[test]
+    fn constructor_parameters() {
+        fn class_members(ast: &Ast<'_>) -> SubRange<ClassElement> {
+            let class = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_class(ast)
+                .unwrap();
+            class.body(ast).body(ast)
+        }
+
+        let allocator = Allocator::new();
+        let source = "class C { constructor(this: C, value) { return; } }\nafter;";
+        let parsed = parse_tokens(&allocator, source);
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, Span::new(22, 26));
+        let body = ast.root_program().body(ast);
+        assert_eq!(body.len(), 2);
+        let after = body
+            .get_node(ast, 1)
+            .unwrap()
+            .as_expression_statement(ast)
+            .unwrap()
+            .expression(ast)
+            .as_identifier_reference(ast)
+            .unwrap();
+        assert_eq!(ast.get_utf8(after.name(ast)), "after");
+        let members = class_members(ast);
+        assert_eq!(members.len(), 1);
+        let method = members
+            .get_node(ast, 0)
+            .unwrap()
+            .as_method_definition(ast)
+            .unwrap();
+        assert_eq!(method.kind(ast), MethodDefinitionKind::Constructor);
+        let function = method.value(ast);
+        let receiver = function.this_param(ast).unwrap();
+        assert_eq!(receiver.span(ast), Span::new(22, 29));
+        assert!(receiver.type_annotation(ast).is_some());
+        let params = function.params(ast);
+        assert_eq!(params.items(ast).len(), 1);
+        assert!(params.rest(ast).is_none());
+        let parameter = params
+            .items(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_formal_parameter(ast)
+            .unwrap();
+        let binding = parameter.pattern(ast).as_binding_identifier(ast).unwrap();
+        assert_eq!(ast.get_utf8(binding.name(ast)), "value");
+        let statements = function.body(ast).body(ast);
+        assert_eq!(statements.len(), 1);
+        assert!(
+            statements
+                .get_node(ast, 0)
+                .unwrap()
+                .as_return_statement(ast)
+                .is_some()
+        );
+
+        let parsed = parse_tokens(&allocator, "class C { constructor(this: C, ...args); }");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(ast.root_program().body(ast).len(), 1);
+        let members = class_members(ast);
+        assert_eq!(members.len(), 1);
+        let method = members
+            .get_node(ast, 0)
+            .unwrap()
+            .as_ts_method_definition(ast)
+            .unwrap();
+        assert_eq!(method.kind(ast), MethodDefinitionKind::Constructor);
+        let function = method.value(ast);
+        let receiver = function.this_param(ast).unwrap();
+        assert!(receiver.type_annotation(ast).is_some());
+        let params = function.params(ast);
+        assert!(params.items(ast).is_empty());
+        let rest = params.rest(ast).unwrap();
+        let binding = rest.argument(ast).as_binding_identifier(ast).unwrap();
+        assert_eq!(ast.get_utf8(binding.name(ast)), "args");
+    }
+
+    #[test]
+    fn this_parameters() {
+        let allocator = Allocator::new();
+        let source = "(this: C) => {};";
+        let parsed = parse_tokens(&allocator, source);
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let source = "type C = new (this: C) => C;";
+        let parsed = parse_tokens(&allocator, source);
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let source = "interface C { new (this: C): C; }";
+        let parsed = parse_tokens(&allocator, source);
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
     }
 
     #[test]
