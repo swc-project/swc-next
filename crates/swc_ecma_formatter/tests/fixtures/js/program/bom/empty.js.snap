@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+﻿---------- Options ----------
+{}
+---------- Output ----------
+﻿
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+﻿
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+﻿
