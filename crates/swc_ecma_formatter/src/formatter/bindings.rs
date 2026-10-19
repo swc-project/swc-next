@@ -628,9 +628,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         } else {
             let content = self.expression_content(right);
-            let mut boundary =
-                self.assignment_boundary(left_end, &content, operator, right.span(self.ast).end)?;
             let source_comments = self.ast.comments();
+            let right_end = right.span(self.ast).end;
+            let following =
+                source_comments.partition_point(|comment| comment.span.start < right_end);
+            let source_end = source_comments
+                .get(following)
+                .filter(|comment| {
+                    self.line_breaks(right_end, comment.span.start) == 0
+                        && self
+                            .source(Span::new(right_end, comment.span.start))
+                            .chars()
+                            .all(super::source::is_source_whitespace)
+                })
+                .map_or(right_end, |comment| comment.span.end);
+            let mut boundary =
+                self.assignment_boundary(left_end, &content, operator, source_end)?;
             let first = source_comments.partition_point(|comment| comment.span.start < left.start);
             let source_clear_left = source_comments
                 .get(first)
