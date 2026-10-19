@@ -107,7 +107,7 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     pub(in crate::formatter) own_line: bool,
     pub(in crate::formatter) mode: ContentMode,
     cast_leading: Option<CastLeadingLayout>,
-    jsx_head_binding: Option<CommentBinding>,
+    enclosed_head_binding: Option<CommentBinding>,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
@@ -126,14 +126,15 @@ impl<'ast> AssignmentBoundary<'ast> {
         self.own_line
             && !(self.mode == ContentMode::Formatted
                 && self.moved.is_empty()
-                && matches!(self.jsx_head_binding, Some(CommentBinding::Unbound)))
+                && matches!(self.enclosed_head_binding, Some(CommentBinding::Unbound)))
     }
 
     pub(in crate::formatter) fn resolved_right_head(&self) -> Option<ResolvedExpressionHead<'ast>> {
-        self.jsx_head_binding.map(|binding| ResolvedExpressionHead {
-            head: self.right_head(),
-            binding,
-        })
+        self.enclosed_head_binding
+            .map(|binding| ResolvedExpressionHead {
+                head: self.right_head(),
+                binding,
+            })
     }
 
     pub(in crate::formatter) fn right_head(&self) -> NodeHead<'ast> {
@@ -634,7 +635,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             own_line: false,
             mode: ContentMode::Formatted,
             cast_leading: None,
-            jsx_head_binding: None,
+            enclosed_head_binding: None,
         };
         if let Some(head) = self.assignment_expression_head(content)
             && let Some(removed) = head.parentheses
@@ -786,9 +787,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || self.source_line_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.start, comment.span.end) != 0
             });
-        if !leading.is_empty() && jsx_head {
+        if !leading.is_empty()
+            && (jsx_head
+                || matches!(content.data, ExprData::SequenceExpression(sequence)
+                if self.sequence_head_has_type_cast(sequence, leading)
+                    && source_right_end == content.parentheses.map_or(
+                        content.expression.span(self.ast).end,
+                        |removed| removed.source.outer.end,
+                    )))
+        {
             let binding = self.expression_head_binding(leading, content.expression);
-            boundary.jsx_head_binding = Some(
+            boundary.enclosed_head_binding = Some(
                 content
                     .parentheses
                     .map_or(binding, |removed| binding.combine(removed.head.binding)),
