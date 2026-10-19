@@ -216,6 +216,10 @@ pub(super) struct FunctionParameters {
 }
 
 impl SourceParameters {
+    pub(super) fn frame(&self) -> ParameterFrame {
+        self.frame
+    }
+
     pub(super) fn set_frame(&mut self, frame: ParameterFrame) {
         self.frame = frame;
     }
@@ -560,7 +564,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.opening_line_constraint(content).write(
                         writer,
                         FlatSeparator::Empty,
-                        Writer::soft_line,
+                        |writer| {
+                            if frame == ParameterFrame::Ordinary {
+                                writer.soft_line();
+                            }
+                        },
                     );
                 }
                 let mut formal_ids = node.items(ast).iter();
@@ -638,6 +646,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             parameter.node,
                             RuntimeParameter::Callable(CallableParameter::Rest(_))
                         ) && !hug
+                            && frame == ParameterFrame::Ordinary
                             && self.options.trailing_commas == TrailingCommas::All,
                         writer,
                     )?;
@@ -666,7 +675,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 Ok::<_, FormatError>(dangling.last().map_or(end, |comment| comment.span.end))
             };
-            let end = if hug {
+            let end = if hug || frame == ParameterFrame::Fixed {
                 write_items(writer)?
             } else {
                 writer.indent(write_items)?
@@ -678,7 +687,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         || self.line_constraint(end, content.end),
                         |source| source.closing,
                     )
-                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    .write(writer, FlatSeparator::Empty, |writer| {
+                        if frame == ParameterFrame::Ordinary {
+                            writer.soft_line();
+                        }
+                    });
             }
             writer.text(")");
             Ok(())

@@ -596,12 +596,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_type_gap(gap, FlatSeparator::Space, writer)?
                 }
             }
-            self.format_type_parameters(
-                generic.node,
-                TypeParameterContext::Callable,
-                generic.mode,
-                writer,
-            )?;
+            let mut write_generics = |writer: &mut Writer<'ast>| {
+                self.format_type_parameters(
+                    generic.node,
+                    TypeParameterContext::Callable,
+                    generic.mode,
+                    writer,
+                )
+            };
+            if signature.parameters.source.frame() == ParameterFrame::Fixed {
+                writer.flat(write_generics)?;
+            } else {
+                write_generics(writer)?;
+            }
             self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
         }
         match signature.result {
