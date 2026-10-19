@@ -84,10 +84,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             })
         {
-            return self.format_verbatim(Span::new(0, self.ast.source().len() as u32), writer);
-        }
-        if self.ast.source().starts_with('\u{feff}') {
-            writer.text("\u{feff}");
+            let start = if self.ast.source().starts_with('\u{feff}') {
+                3
+            } else {
+                0
+            };
+            return self.format_verbatim(Span::new(start, self.ast.source().len() as u32), writer);
         }
         let hashbang = program.hashbang(self.ast);
         if let Some(hashbang) = hashbang {
