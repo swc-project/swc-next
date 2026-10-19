@@ -405,6 +405,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || preceding.is_some()
                 && (following_span.is_some() || matches!(following, FollowingItem::Elision { .. }))
         {
+            let gap = Span::new(item_span.end, gap.end);
+            let own_line = tail.as_ref().is_some_and(|tail| {
+                self.comment_run_has_own_line_tail(tail.comments, tail.source_end)
+            });
+            self.format_expression_tail_with_array_comments(
+                tail,
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+            if own_line {
+                writer.hard_line();
+            }
             let source = self.format_delimited_source_gap(
                 gap,
                 following_span.map_or(DelimitedFollowing::End, |_| DelimitedFollowing::Node),
