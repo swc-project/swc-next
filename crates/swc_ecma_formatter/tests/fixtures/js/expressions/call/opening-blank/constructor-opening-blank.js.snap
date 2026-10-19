@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new Foo(
+
+  a, b
+);
+---------- Options ----------
+{}
+---------- Output ----------
+new Foo(a, b);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+new Foo(a, b)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new Foo(a, b);
