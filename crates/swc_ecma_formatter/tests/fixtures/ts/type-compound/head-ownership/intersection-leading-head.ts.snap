@@ -12,11 +12,13 @@ type T = /* outer */ /* inner */ A & B;
 ---------- Options ----------
 {"printWidth":24}
 ---------- Output ----------
-type T = /* outer */ /* inner */
-A & B;
+type T =
+  /* outer */ /* inner */
+  A & B;
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":24,"semi":false,"useTabs":true}
 ---------- Output ----------
-type T = /* outer */ /* inner */
-A & B
+type T =
+	/* outer */ /* inner */
+	A & B
