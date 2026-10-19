@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (ready) {}
+// boundary
+/* @__PURE__ */ next()
+---------- Options ----------
+{}
+---------- Output ----------
+if (ready) {
+}
+// boundary
+/* @__PURE__ */ next();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (ready) {
+}
+// boundary
+/* @__PURE__ */ next()
