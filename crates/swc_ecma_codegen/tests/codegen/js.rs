@@ -780,6 +780,58 @@ fn test_parenthesized_comments() {
 }
 
 #[track_caller]
+fn expect_stable_with_parens(source: &str, expected: &str, print_options: &PrintOptions) {
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        preserve_parens: true,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+    let printed = print(&allocator, &original.ast, print_options.clone());
+    assert_eq!(printed.code, expected);
+
+    let reparsed =
+        Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+    assert!(reparsed.diagnostics.is_empty());
+    let repeated = print(&allocator, &reparsed.ast, print_options.clone());
+    assert_eq!(repeated.code, expected);
+}
+
+#[test]
+fn test_yield_comments() {
+    let pretty = PrintOptions::default();
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+
+    expect_stable_with_parens(
+        "function* f() { yield* /*a\nb*/ xs; }",
+        "function* f() {\n  yield* ( /*a\n   b*/\nxs);\n}\n",
+        &pretty,
+    );
+
+    expect_stable_with_parens(
+        "function* f() { yield* // a\nxs; }",
+        "function* f() {\n  yield* ( // a\n  xs);\n}\n",
+        &pretty,
+    );
+
+    expect_stable_with_parens(
+        "function* f() { yield* /*a\nb*/ xs; }",
+        "function*f(){yield* (/*a\nb*/xs)}",
+        &minified,
+    );
+
+    expect_stable_with_parens(
+        "function* f() { yield* // a\nxs; }",
+        "function*f(){yield* (// a\nxs)}",
+        &minified,
+    );
+}
+
+#[track_caller]
 fn expect_export_default_expression(
     source: &str,
     expected: &str,

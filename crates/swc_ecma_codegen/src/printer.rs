@@ -553,7 +553,10 @@ impl<'a> Printer<'a> {
                 }
                 CommentKind::Block => {
                     self.print_indented_block_comment(value);
-                    if statement || value.contains(&b'\n') || comment_at_stmt_start {
+                    if statement
+                        || self.comment_has_line_terminator(comment)
+                        || comment_at_stmt_start
+                    {
                         self.print_newline();
                     } else {
                         self.print_space();
@@ -1967,22 +1970,11 @@ impl<'a> Printer<'a> {
         self.has_leading_line_terminator_before(offset)
     }
 
-    fn print_expr_with_leading_comments_in_parens(&mut self, expr: Expr, level: Precedence) {
-        self.print("(");
-        self.print_newline();
-        self.indent += 1;
-        self.print_comments_before(expr.span(self.ast).start, true, true);
-        self.print_indent();
-        self.print_expr(expr, level);
-        self.print_newline();
-        self.indent -= 1;
-        self.print_indent();
-        self.print(")");
-    }
-
     fn print_expr_without_leading_line_terminator(&mut self, expr: Expr, level: Precedence) {
         if self.expr_has_leading_line_terminator(expr) {
-            self.print_expr_with_leading_comments_in_parens(expr, level);
+            self.print("(");
+            self.print_expr(expr, Precedence::Lowest);
+            self.print(")");
         } else {
             self.print_expr(expr, level);
         }
