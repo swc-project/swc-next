@@ -145,6 +145,12 @@ pub(super) struct PreparedDelimitedType<'ast> {
     content: PreparedTypeContent<'ast>,
 }
 impl PreparedDelimitedType<'_> {
+    pub(super) fn starts_with_type_parameters(&self, ast: &Ast<'_>) -> bool {
+        matches!(&self.content, PreparedTypeContent::Type(node)
+            if matches!(node.data, TsTypeData::TsFunctionType(function)
+                if function.type_parameters(ast).is_some()))
+    }
+
     pub(super) fn is_object_type(&self) -> bool {
         matches!(&self.content, compound::PreparedTypeContent::Type(node)
             if node.source_owner.is_none()
