@@ -4972,7 +4972,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     "An export name cannot include a unicode lone surrogate",
                     ReportOptions::default(),
                 );
-                return None;
             }
             return Some(ModuleExportName::StringLiteral(name));
         }
@@ -14567,6 +14566,44 @@ mod tests {
 
         let fields = parse_fields("class A { a\\u0073ync\nfoo }", Lang::Js);
         assert_eq!(fields, [("async".into(), false), ("foo".into(), false)]);
+    }
+
+    #[test]
+    fn module_names() {
+        fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
+            spans
+                .map(|span| &source[span.start as usize..span.end as usize])
+                .collect()
+        }
+
+        fn parse(source: &str) -> (Vec<&str>, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
+            let body = ast.root_program().body(ast);
+            let statements = body
+                .iter()
+                .map(|id| ast.node_kind(ast.get_node_in_sub_range(id).node_id()));
+            (texts(source, errors), statements.collect())
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], statements: [$($statement:expr),*]) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($statement),*]))
+            };
+        }
+
+        use NodeKind::{ExportAllDeclaration, ExportNamedDeclaration, ImportDeclaration};
+
+        check!(r#"import { "\uD800" as x } from "m";"#,
+            errors: [r#""\uD800""#], statements: [ImportDeclaration]);
+
+        check!(r#"export { x as "\uDC00" };"#,
+            errors: [r#""\uDC00""#], statements: [ExportNamedDeclaration]);
+
+        check!(r#"export * as "\uD800" from "m";"#,
+            errors: [r#""\uD800""#], statements: [ExportAllDeclaration]);
     }
 
     #[test]
