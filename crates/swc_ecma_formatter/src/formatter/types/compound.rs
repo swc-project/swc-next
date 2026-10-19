@@ -332,6 +332,12 @@ pub(super) enum PreparedTypeContent<'ast> {
 }
 
 impl PreparedTypeContent<'_> {
+    pub(super) fn is_object_type(&self) -> bool {
+        matches!(self, Self::Type(node)
+            if node.source_owner.is_none()
+                && matches!(node.data, TsTypeData::TsTypeLiteral(_) | TsTypeData::TsMappedType(_)))
+    }
+
     pub(super) fn opening_layout(&self) -> TypeLayout {
         match self {
             Self::Union(PreparedUnion {
@@ -1614,6 +1620,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 pending.leading = self.type_movable_head(parentheses.child, context);
                 self.format_movable_type_head(parentheses.child, pending, context, writer)
             }
+            PreparedTypeContent::Compound(single) if single.movable => {
+                self.extend_type_head_packet(pending, single.comments, single.first_start);
+                pending.leading = self.type_movable_head(single.current, context);
+                self.format_movable_type_head(single.current, pending, context, writer)
+            }
             content => {
                 self.format_type_head_packet(pending, pending.next_start, writer)?;
                 Ok(content)
@@ -1686,12 +1697,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             comments
         };
-        let layout = if matches!(pending.position, TypeHeadPosition::Emitted) {
-            CommentRunLayout::InlineLeading(next_start)
+        if matches!(pending.position, TypeHeadPosition::Emitted) {
+            self.format_comment_run(
+                comments,
+                CommentRunLayout::InlineLeading(next_start),
+                writer,
+            )
         } else {
-            CommentRunLayout::GroupedLeading(next_start)
-        };
-        self.format_comment_run(comments, layout, writer)
+            self.format_relocated_type_head(comments, next_start, writer)
+        }
     }
 
     pub(super) fn union_head_is_inline(&self, comments: &[Comment], next_start: u32) -> bool {

@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{Comment, CommentKind, Span};
 
 use super::Formatter;
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::source::{lines, split_line};
+use super::source::{is_source_whitespace, lines, split_line};
 use crate::{FormatError, document::Writer};
 
 pub(super) enum PreparedBoundaryComments<'ast> {
@@ -989,6 +989,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             packet.multiline |= self.line_breaks(comment.span.start, comment.span.end) != 0;
         }
         Some(packet)
+    }
+
+    fn relocated_type_head_gap(
+        &self,
+        comment: &PreparedComment<'ast>,
+        next_start: u32,
+        inline: &mut bool,
+        writer: &mut Writer<'ast>,
+    ) {
+        let gap = self.source(Span::new(comment.span.end, next_start));
+        let boundary = gap
+            .find(|character| !is_source_whitespace(character))
+            .filter(|&offset| matches!(gap.as_bytes()[offset], b'&' | b'|'))
+            .map_or(next_start, |offset| comment.span.end + offset as u32);
+        let breaks = self.line_breaks(comment.span.end, boundary);
+        self.leading_comment_gap(comment, boundary, true, *inline, writer);
+        if comment.kind == CommentKind::Line || breaks != 0 {
+            *inline = false;
+        } else if boundary != next_start {
+            // The removed operator joins the following comment to this packet.
+            *inline |= !self.source_position_starts_line(comment.span.start);
+        }
+    }
+
+    pub(super) fn format_relocated_type_head(
+        &self,
+        comments: &[Comment],
+        next_start: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let mut previous: Option<PreparedComment<'ast>> = None;
+        let mut inline = false;
+        for &comment in comments {
+            let prepared = self.prepare_comment(comment)?;
+            if let Some(previous) = previous.as_ref() {
+                let nestled = previous.span.end == prepared.span.start
+                    && previous.is_alignable()
+                    && prepared.is_alignable();
+                if !nestled {
+                    self.relocated_type_head_gap(
+                        previous,
+                        prepared.span.start,
+                        &mut inline,
+                        writer,
+                    );
+                }
+            }
+            if comment.kind == CommentKind::Line {
+                writer.line_suffix_boundary();
+            }
+            prepared.text.write(writer);
+            previous = Some(prepared);
+        }
+        if let Some(previous) = previous {
+            self.relocated_type_head_gap(&previous, next_start, &mut inline, writer);
+        }
+        Ok(())
     }
 
     pub(super) fn format_comment_run(
