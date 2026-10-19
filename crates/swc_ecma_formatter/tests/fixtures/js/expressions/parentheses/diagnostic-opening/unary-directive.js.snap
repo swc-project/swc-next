@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+x = !(a1 +
+b2);
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-ignore
+x = !(a1 +
+  b2
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-ignore
+x = !(a1 +
+  b2
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-ignore
+x = !(a1 +
+  b2
+);
