@@ -5394,7 +5394,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             tag if !computed && tag.is_identifier_like() => {
                 TsEnumMemberName::IdentifierName(self.parse_identifier_name()?)
             }
-            TokenTag::NoSubstitutionTemplate if computed => {
+            TokenTag::NoSubstitutionTemplate => {
+                if !computed {
+                    self.report(
+                        token.span(),
+                        "Template literal enum member names must be computed",
+                        ReportOptions::default(),
+                    );
+                }
                 TsEnumMemberName::TemplateLiteral(self.parse_no_substitution_template(false)?)
             }
             TokenTag::StringLiteral => {
@@ -13623,6 +13630,40 @@ mod tests {
 
         let ambient = is_ambient("export const /* marker\n continued */ enum E { A = 1 }");
         assert!(!ambient);
+    }
+
+    #[test]
+    fn enum_member_names() {
+        fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
+            spans
+                .map(|span| &source[span.start as usize..span.end as usize])
+                .collect()
+        }
+
+        fn parse(source: &str) -> (Vec<&str>, Vec<&str>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let declaration = statement.as_declaration(ast).unwrap();
+            let enumeration = declaration.as_ts_enum_declaration(ast).unwrap();
+            let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
+            let members = enumeration.body(ast).members(ast);
+            let members = members
+                .iter()
+                .map(|id| ast.get_node_in_sub_range(id).id(ast).span(ast));
+            (texts(source, errors), texts(source, members))
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], members: [$($member:expr),*]) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($member),*]))
+            };
+        }
+
+        check!("enum E { `a`, B }", errors: ["`a`"], members: ["`a`", "B"]);
+
+        check!("enum E { [`a`] }", errors: [], members: ["`a`"]);
     }
 
     #[test]
