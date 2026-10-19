@@ -1204,6 +1204,9 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
             .get_node(builder.ast, index)
             .expect("class child exists")
             .node_id();
+        if builder.check_syntax.class_member_names() {
+            check_class_member_name(builder, child);
+        }
         // TypeScript permits constructor overload declarations and leaves duplicate
         // implementation diagnostics to its type checker.
         if builder.check_syntax.duplicate_constructors()
@@ -1278,6 +1281,43 @@ pub(super) fn check_class_body(builder: &mut SemanticBuilder<'_, '_>, body: Clas
             );
             break;
         }
+    }
+}
+
+fn check_class_member_name(builder: &mut SemanticBuilder<'_, '_>, node: NodeId) {
+    let tree = builder.ast;
+    let (key, computed, is_static) = match tree.kind_data(node) {
+        NodeKindData::PropertyDefinition(property) => (
+            property.key(tree),
+            property.computed(tree),
+            property.r#static(tree),
+        ),
+        NodeKindData::MethodDefinition(method) => (
+            method.key(tree),
+            method.computed(tree),
+            method.r#static(tree),
+        ),
+        NodeKindData::TsMethodDefinition(method) => (
+            method.key(tree),
+            method.computed(tree),
+            method.r#static(tree),
+        ),
+        _ => return,
+    };
+    if computed || !is_static || ts::in_ts_syntactic_ambient_context(builder) {
+        return;
+    }
+    let name = match tree.kind_data(key.node_id()) {
+        NodeKindData::IdentifierName(identifier) => tree.get_utf8(identifier.name(tree)).as_bytes(),
+        NodeKindData::StringLiteral(literal) => tree.get_wtf8(literal.value(tree)).as_bytes(),
+        _ => return,
+    };
+    if name == b"prototype" {
+        builder.report(
+            tree.span(key.node_id()),
+            "Classes may not have a static property named 'prototype'",
+            ReportOptions::default(),
+        );
     }
 }
 

@@ -34,6 +34,52 @@ fn abstract_method_syntax_check() {
 }
 
 #[track_caller]
+fn assert_class_member_name_check(source: &str, parser_options: Options) {
+    let allocator = Allocator::new();
+    let parse = Parser::init(&allocator, source, parser_options, NoTokenParserConfig).parse();
+    assert!(parse.diagnostics.is_empty());
+    let ast = &parse.ast;
+
+    let unchecked = analyze(ast, AnalyzeOptions::default());
+    assert!(unchecked.diagnostics.is_empty());
+
+    let excluded = analyze(
+        ast,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all() - SyntaxChecks::CLASS_MEMBER_NAMES,
+            ..AnalyzeOptions::default()
+        },
+    );
+    assert!(excluded.diagnostics.is_empty());
+
+    let checked = analyze(
+        ast,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::CLASS_MEMBER_NAMES,
+            ..AnalyzeOptions::default()
+        },
+    );
+    assert_eq!(checked.diagnostics.len(), 1);
+    assert_eq!(
+        check_syntax(ast, SyntaxChecks::CLASS_MEMBER_NAMES),
+        checked.diagnostics
+    );
+    assert_eq!(check_syntax(ast, SyntaxChecks::all()), checked.diagnostics);
+}
+
+#[test]
+fn class_member_name_syntax_check() {
+    let javascript = Options::default();
+    let typescript = ts_module_options();
+
+    assert_class_member_name_check("class C { static prototype() {} }", javascript);
+
+    assert_class_member_name_check("class C { static prototype; }", javascript);
+
+    assert_class_member_name_check("class C { static prototype(): void; }", typescript);
+}
+
+#[track_caller]
 fn assert_static_alias_spaces(source: &str) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {

@@ -557,12 +557,6 @@ enum ClassModifierStep {
     None,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum StaticMemberKind {
-    Method,
-    Field,
-}
-
 #[derive(Clone, Copy)]
 struct SpecifierParts {
     property_name: Option<ModuleExportName>,
@@ -2917,12 +2911,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         self.validate_private_constructor(key, modifiers.computed);
-        let computed = modifiers.computed;
-        self.detect_constructor_kind(key, &mut modifiers, computed);
-
         let is_method_start = self.current_token.tag() == TokenTag::LeftParen
             || (self.lang.is_typescript() && self.current_token.tag() == TokenTag::LessThan);
         if is_method_start {
+            let computed = modifiers.computed;
+            self.detect_constructor_kind(key, &mut modifiers, computed);
             if modifiers.is_accessor {
                 return {
                     let span = self.current_token.span();
@@ -2960,40 +2953,35 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
 
-        if modifiers.is_async || modifiers.is_generator {
-            self.report_expected(
-                self.current_token.span(),
+        let (message, help) = match modifiers.kind {
+            _ if modifiers.is_async || modifiers.is_generator => (
                 "Expected '(' for method definition",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Method definitions require a parameter list. Use 'method() {}' syntax.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
-        if modifiers.kind != MethodDefinitionKind::Method {
-            self.report_expected(
-                self.current_token.span(),
+                "Method definitions require a parameter list. Use 'method() {}' syntax.",
+            ),
+            MethodDefinitionKind::Get | MethodDefinitionKind::Set => (
                 "Expected '(' for getter/setter definition",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Getters and setters require parentheses. Use 'get prop() {}' or 'set prop(value) {}' syntax.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
-        self.parse_property_definition(
-            element_start,
-            decorators,
-            key,
-            modifiers,
-            optional,
-            definite,
-        )
+                "Getters and setters require parentheses. Use 'get prop() {}' or 'set prop(value) {}' syntax.",
+            ),
+            _ => {
+                return self.parse_property_definition(
+                    element_start,
+                    decorators,
+                    key,
+                    modifiers,
+                    optional,
+                    definite,
+                );
+            }
+        };
+        self.report_expected(
+            self.current_token.span(),
+            message,
+            ReportOptions {
+                help: Some(Cow::Borrowed(help)),
+                ..ReportOptions::default()
+            },
+        );
+        None
     }
 
     fn parse_index_signature_element(
@@ -3228,40 +3216,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn validate_static_prototype_or_constructor(
-        &mut self,
-        key: PropertyKey,
-        kind: StaticMemberKind,
-    ) {
-        if !self.ts_context.ambient()
-            && let Some(span) = self.prop_name_eq(key, "prototype")
-        {
-            self.report(
-                span,
-                "Classes may not have a static property named 'prototype'",
-                ReportOptions::default(),
-            );
-        } else if kind == StaticMemberKind::Field
-            && let Some(span) = self.prop_name_eq(key, "constructor")
-        {
-            self.report(
-                span,
-                "Classes may not have a static field named 'constructor'",
-                ReportOptions::default(),
-            );
-        }
-    }
-
-    fn validate_field_constructor(&mut self, key: PropertyKey) {
-        if let Some(span) = self.prop_name_eq(key, "constructor") {
-            self.report(
-                span,
-                "Classes may not have a non-static field named 'constructor'",
-                ReportOptions::default(),
-            );
-        }
-    }
-
     fn parse_method_definition(
         &mut self,
         start: u32,
@@ -3271,9 +3225,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         optional: bool,
     ) -> Option<ClassElement> {
         self.validate_method_modifiers(key, modifiers);
-        if modifiers.is_static && !modifiers.computed {
-            self.validate_static_prototype_or_constructor(key, StaticMemberKind::Method);
-        }
 
         let function_start = self.current_token.start();
         let context = enter_function_grammar_context(
@@ -3395,12 +3346,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         optional: bool,
         definite: bool,
     ) -> Option<ClassElement> {
-        if !modifiers.computed {
-            if modifiers.is_static {
-                self.validate_static_prototype_or_constructor(key, StaticMemberKind::Field);
-            } else {
-                self.validate_field_constructor(key);
-            }
+        if !modifiers.computed
+            && let Some(span) = self.prop_name_eq(key, "constructor")
+        {
+            self.report(
+                span,
+                "Classes may not have a field named 'constructor'",
+                ReportOptions::default(),
+            );
         }
 
         let type_annotation =
@@ -13399,6 +13352,18 @@ mod tests {
         assert_eq!(errors.len(), 1);
 
         let errors = diagnostics("function f() { let # name }", unambiguous);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("class A { constructor; }", script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("class A { static constructor; }", script);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("class A { \"constructor\" = 1; }", typescript);
+        assert_eq!(errors.len(), 1);
+
+        let errors = diagnostics("class A { static \"constructor\"; }", typescript);
         assert_eq!(errors.len(), 1);
     }
 

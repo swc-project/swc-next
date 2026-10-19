@@ -103,6 +103,8 @@ bitflags::bitflags! {
         const TS_CONTEXTUAL_AWAIT = 1 << 46;
         /// Invalid parameter property bindings and names.
         const TS_PARAMETER_PROPERTIES = 1 << 47;
+        /// Non-computed static class members named `prototype`.
+        const CLASS_MEMBER_NAMES = 1 << 48;
 
         /// Checks that inspect identifier references.
         const IDENTIFIER_REFERENCES = Self::STRICT_RESERVED_WORDS.bits()
@@ -117,9 +119,10 @@ bitflags::bitflags! {
             | Self::DUPLICATE_EXPORTS.bits()
             | Self::TS_CONTEXTUAL_AWAIT.bits();
 
-        /// Checks that inspect class bodies for conflicting elements.
+        /// Checks that inspect class bodies for invalid or conflicting elements.
         const CLASS_BODY = Self::DUPLICATE_CONSTRUCTORS.bits()
-            | Self::DUPLICATE_PRIVATE_NAMES.bits();
+            | Self::DUPLICATE_PRIVATE_NAMES.bits()
+            | Self::CLASS_MEMBER_NAMES.bits();
 
         /// Checks that validate TypeScript namespace export aliases.
         const TS_EXPORT_ALIASES = Self::UNRESOLVED_EXPORTS.bits()
@@ -424,6 +427,12 @@ impl SyntaxChecks {
     #[inline]
     pub const fn ts_parameter_properties(&self) -> bool {
         self.contains(Self::TS_PARAMETER_PROPERTIES)
+    }
+
+    /// Whether [`Self::CLASS_MEMBER_NAMES`] is enabled.
+    #[inline]
+    pub const fn class_member_names(&self) -> bool {
+        self.contains(Self::CLASS_MEMBER_NAMES)
     }
 
     /// Whether any of the [`Self::IDENTIFIER_REFERENCES`] checks are enabled.

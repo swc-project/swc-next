@@ -190,7 +190,7 @@ fn is_ts_module_augmentation_external(
     }
 }
 
-fn in_ts_syntactic_ambient_context(builder: &SemanticBuilder<'_, '_>) -> bool {
+pub(super) fn in_ts_syntactic_ambient_context(builder: &SemanticBuilder<'_, '_>) -> bool {
     if builder.ast.lang() == Lang::Dts {
         return true;
     }
