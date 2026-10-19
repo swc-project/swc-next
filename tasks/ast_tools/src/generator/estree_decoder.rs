@@ -104,9 +104,7 @@ fn write_node_case(
         }
         // These fields are source-backed, and node spans use UTF-16 offsets.
         let expression = match (ast.name.as_str(), field.name.as_str()) {
-            ("StringLiteral" | "TemplateElement", "raw") | ("JsxText", "value") => {
-                "source.slice(start, end)".into()
-            }
+            ("StringLiteral", "raw") | ("JsxText", "value") => "source.slice(start, end)".into(),
             ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
             ("NumericLiteral", "raw") => {
                 let raw_start = read_i32(&location, aligned_i32);

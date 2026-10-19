@@ -336,8 +336,9 @@ export function decodeTs(buffer, source, sourceBuffer) {
         break;
       }
       case 10: {
+        const extraId = _i32[(payload + 12) >> 2];
         const f_cooked = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const f_raw = str(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2]);
         const f_tail = _dv.getUint8(payload + 8) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
         result = { type: "TemplateElement", start: start - 1, end: f_tail ? end + 1 : end + 2, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };

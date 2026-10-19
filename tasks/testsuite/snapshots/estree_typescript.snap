@@ -1,5 +1,5 @@
 AST Parsed     : 11748/11748 (100.00%)
-Positive Passed: 11631/11748 (99.00%)
+Positive Passed: 11630/11748 (99.00%)
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignToInvalidLHS.ts
@@ -60,6 +60,7 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conforman
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/templates/templateStringMultiline3.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-setFunctionName.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/esDecorators/classDeclaration/methods/esDecorators-classDeclaration-methods-staticPrivate.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/expressions/binaryOperators/instanceofOperator/instanceofOperatorWithRHSHasSymbolHasInstance.ts

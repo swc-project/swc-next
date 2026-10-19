@@ -99,6 +99,36 @@ test("parseSync decodes UTF-8 source and pool strings", () => {
   assert.equal(declarations[2].declarations[0].init.value, "\uFEFF");
 });
 
+test("decoder reads template raw strings from source and pool", () => {
+  function templateValue(source, lang) {
+    const result = parseSync(source, { lang });
+    assert.deepEqual(result.diagnostics, []);
+    return result.program.body[0].expression.quasi.quasis[0].value;
+  }
+
+  for (const lang of ["js", "ts"]) {
+    assert.deepEqual(templateValue("/* 😀 */ tag`é\\r`;", lang), {
+      raw: "é\\r",
+      cooked: "é\r",
+    });
+
+    assert.deepEqual(templateValue("/* 😀 */ tag`é\r\n`;", lang), {
+      raw: "é\n",
+      cooked: "é\n",
+    });
+
+    assert.deepEqual(templateValue("tag`\\\r\n`;", lang), {
+      raw: "\\\n",
+      cooked: "",
+    });
+
+    assert.deepEqual(templateValue("tag`\\xZ\r`;", lang), {
+      raw: "\\xZ\n",
+      cooked: null,
+    });
+  }
+});
+
 test("parseSync exposes flat comments lazily", () => {
   const source =
     '#!/usr/bin/env node\nconst emoji = "😀";\n// one 😀\n/* two */';
