@@ -1131,6 +1131,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         self.format_expression_tail_with_array_comments(tail, None, writer)
     }
+
+    /// `SourceAfter` defers inline line comments, but prints own-line comments directly.
+    pub(super) fn comment_run_has_own_line_tail(&self, comments: &[Comment], start: u32) -> bool {
+        let Some((last, previous)) = comments.split_last() else {
+            return false;
+        };
+        last.kind == CommentKind::Line
+            && self.line_breaks(
+                previous.last().map_or(start, |comment| comment.span.end),
+                last.span.start,
+            ) != 0
+    }
     pub(super) fn format_expression_tail_with_array_comments(
         &mut self,
         tail: Option<ExpressionTail<'ast>>,
