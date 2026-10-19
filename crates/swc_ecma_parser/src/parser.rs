@@ -2124,15 +2124,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.start();
         self.advance()?;
         if self.current_token.has_line_terminator_before() {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "Illegal newline after throw",
-                    ReportOptions::default(),
-                );
-                None
-            };
+            self.report(
+                self.current_token.span(),
+                "Illegal newline after throw",
+                ReportOptions::default(),
+            );
         }
         // The program or function/static block entry already establishes +In.
         let argument = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default())?;
@@ -13403,7 +13399,19 @@ mod tests {
     }
 
     #[test]
-    fn error_tokens() {
+    fn error_recovery() {
+        fn throw_argument(ast: &Ast<'_>) -> IdentifierReference {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_throw_statement(ast)
+                .unwrap()
+                .argument(ast)
+                .as_identifier_reference(ast)
+                .unwrap()
+        }
+
         let allocator = Allocator::new();
         let source = "function f(,) {\n  return;\n}";
         let parsed = parse_tokens(&allocator, source);
@@ -13440,6 +13448,47 @@ mod tests {
         let parsed = parse_tokens(&allocator, "");
         assert!(parsed.diagnostics.is_empty());
         assert!(parsed.tokens.is_empty());
+
+        let allocator = Allocator::new();
+        let source = "throw\nvalue;\nafter;";
+        let parsed = parse_tokens(&allocator, source);
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, throw_argument(ast).span(ast));
+        assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
+        let body = ast.root_program().body(ast);
+        assert_eq!(body.len(), 2);
+        let after = body
+            .get_node(ast, 1)
+            .unwrap()
+            .as_expression_statement(ast)
+            .unwrap()
+            .expression(ast)
+            .as_identifier_reference(ast)
+            .unwrap();
+        assert_eq!(ast.get_utf8(after.name(ast)), "after");
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["throw", "value", ";", "after", ";"]
+        );
+
+        let parsed = parse_tokens(&allocator, "throw /*\n*/ value;");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
+
+        let parsed = parse_tokens(&allocator, "throw // comment\nvalue;");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
+
+        let parsed = parse_tokens(&allocator, "throw\n;");
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let parsed = parse_tokens(&allocator, "throw\n");
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
     }
 
     fn parse_typescript_declaration<'a>(
