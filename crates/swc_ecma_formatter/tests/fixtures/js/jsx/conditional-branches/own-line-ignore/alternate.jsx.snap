@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+flag ? <Box/>
+// prettier-ignore
+: fallback;
+---------- Options ----------
+{}
+---------- Output ----------
+flag ? <Box/>
+// prettier-ignore
+: (
+  fallback
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+flag ? <Box/>
+// prettier-ignore
+: (
+  fallback
+)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+flag ? <Box/>
+// prettier-ignore
+: (
+  fallback
+);
