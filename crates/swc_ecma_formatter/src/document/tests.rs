@@ -39,6 +39,36 @@ fn line_document(options: FormatOptions) -> String {
     writer.finish().print(options)
 }
 
+fn independent_document(allocator: &Allocator) -> Doc<'_> {
+    let mut writer = Writer::new(allocator);
+    let group = writer.named_group(false, |writer| {
+        writer.text("first");
+        writer.line();
+        writer.text("second");
+    });
+    writer.indent_if_break(group, |writer| {
+        writer.hard_line();
+        writer.text("last");
+    });
+    writer.finish()
+}
+
+#[test]
+fn independent_documents() {
+    let allocator = Allocator::new();
+    let narrow = independent_document(&allocator);
+    let wide = independent_document(&allocator);
+    let options = FormatOptions {
+        line_width: 8,
+        indent_style: IndentStyle::Tab,
+        line_ending: LineEnding::CrLf,
+        ..FormatOptions::prettier()
+    };
+
+    assert_eq!(narrow.print(options), "first\r\nsecond\r\n\tlast");
+    assert_eq!(wide.print(FormatOptions::prettier()), "first second\nlast");
+}
+
 fn aligned_document(options: FormatOptions) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
