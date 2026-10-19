@@ -14019,6 +14019,19 @@ mod tests {
 
     #[test]
     fn formal_parameters() {
+        fn class_members(ast: &Ast<'_>) -> SubRange<ClassElement> {
+            let class = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_class(ast)
+                .unwrap();
+            class.body(ast).body(ast)
+        }
+
         fn parameter_kinds(source: &str) -> Vec<FormalParameterKind> {
             struct Parameters<'ast, 'a> {
                 ast: &'ast Ast<'a>,
@@ -14086,22 +14099,6 @@ mod tests {
 
         let kinds = parameter_kinds("async (a,b)=>{};");
         assert_eq!(kinds, [FormalParameterKind::ArrowFormalParameters]);
-    }
-
-    #[test]
-    fn constructor_parameters() {
-        fn class_members(ast: &Ast<'_>) -> SubRange<ClassElement> {
-            let class = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_class(ast)
-                .unwrap();
-            class.body(ast).body(ast)
-        }
 
         let allocator = Allocator::new();
         let source = "class C { constructor(this: C, value) { return; } }\nafter;";
@@ -14173,11 +14170,7 @@ mod tests {
         let rest = params.rest(ast).unwrap();
         let binding = rest.argument(ast).as_binding_identifier(ast).unwrap();
         assert_eq!(ast.get_utf8(binding.name(ast)), "args");
-    }
 
-    #[test]
-    fn this_parameters() {
-        let allocator = Allocator::new();
         let source = "(this: C) => {};";
         let parsed = parse_tokens(&allocator, source);
         assert!(!parsed.diagnostics.is_empty());
