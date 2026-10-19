@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_ast_macros"
 repository.workspace  = true
-version               = "0.3.0"
+version               = "0.3.1"
 
 [lib]
 proc-macro = true

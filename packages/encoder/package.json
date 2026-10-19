@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/encoder",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Encode ESTree programs for SWC Next native crates",
   "repository": {
     "type": "git",

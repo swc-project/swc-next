@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_codegen_bridge"
 repository.workspace  = true
-version               = "0.3.0"
+version               = "0.3.1"
 
 [lib]
 crate-type = ["cdylib"]
