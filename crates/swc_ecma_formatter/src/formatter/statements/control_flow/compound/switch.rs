@@ -8,7 +8,9 @@ use crate::formatter::statements::{
     CaseIncoming, EmptyBlock, IncomingStatement, StatementBodyLeading, StatementBoundary,
     StatementItem, StatementSequenceKind,
 };
-use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
+};
 use crate::{FormatError, document::Writer};
 use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, GetSpan, Span, Stmt, StmtData, SwitchCase, SwitchStatement,
@@ -274,6 +276,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let source = gap.source;
         if source.has_suppression() {
+            if !following {
+                self.format_delimited_source_gap(source.span, DelimitedFollowing::End, writer)?;
+                return Ok(());
+            }
             return self.format_compound_gap(
                 source,
                 FlatSeparator::Space,
