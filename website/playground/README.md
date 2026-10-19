@@ -79,8 +79,10 @@ dependency or build script.
 
 The production site is https://play.next.swc.rs, hosted on Cloudflare Pages.
 The `Deploy Playground` GitHub Actions workflow builds the WASM binary and static
-site, checks TypeScript types, and uploads `dist` with Wrangler. It runs only
-when started manually. Pushes and pull requests do not deploy the site.
+site, checks TypeScript types, and uploads `dist` with Wrangler. It runs daily
+at 00:00 Asia/Shanghai (16:00 UTC) and can also be started manually. Scheduled
+runs use the latest commit on the default branch. Pushes and pull requests do
+not deploy the site.
 
 One-time setup:
 

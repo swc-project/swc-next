@@ -2,6 +2,9 @@ name: Deploy Playground
 
 on:
   workflow_dispatch:
+  schedule:
+    # Daily at 00:00 Asia/Shanghai (16:00 UTC).
+    - cron: '0 16 * * *'
 
 permissions:
   contents: read
