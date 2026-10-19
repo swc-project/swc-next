@@ -218,6 +218,38 @@ impl StatementItem {
         }
     }
 
+    fn has_open_type_tail(self, ast: &Ast<'_>) -> bool {
+        let Self::Statement(statement) = self else {
+            return false;
+        };
+        let declaration = match ast.stmt_data(statement) {
+            StmtData::Declaration(node) => node,
+            StmtData::ExportNamedDeclaration(node) => {
+                let Some(node) = node.declaration(ast) else {
+                    return false;
+                };
+                node
+            }
+            _ => return false,
+        };
+        let annotation = match ast.decl_data(declaration) {
+            DeclData::TsTypeAliasDeclaration(node) => Some(node.type_annotation(ast)),
+            DeclData::VariableDeclaration(node) => node.declarators(ast).last().and_then(|id| {
+                let node = ast.get_node_in_sub_range(id);
+                if node.init(ast).is_some() {
+                    return None;
+                }
+                node.type_annotation(ast)
+                    .map(|annotation| annotation.type_annotation(ast))
+            }),
+            DeclData::TsFunction(node) => node
+                .return_type(ast)
+                .map(|annotation| annotation.type_annotation(ast)),
+            _ => None,
+        };
+        annotation.is_some_and(|node| super::types::type_requires_terminator(node, ast))
+    }
+
     fn span(self, ast: &Ast<'_>) -> Span {
         match self {
             Self::Directive(node) => node.span(ast),
@@ -489,11 +521,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else if source_packet.is_some() {
                 StatementPunctuation::SourcePacket
             } else if self.options.semicolons == Semicolons::AsNeeded
-                && pending.as_ref().is_some_and(|next| {
-                    matches!(next.item, StatementItem::Statement(node)
-                        if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
-                })
-                && statement.is_bodyless_function(ast)
+                && (pending.is_some()
+                    && source_terminator.is_none()
+                    && statement.has_open_type_tail(ast)
+                    || pending.as_ref().is_some_and(|next| {
+                        matches!(next.item, StatementItem::Statement(node)
+                            if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
+                    }) && statement.is_bodyless_function(ast))
             {
                 StatementPunctuation::Canonical(Semicolons::Always)
             } else {
