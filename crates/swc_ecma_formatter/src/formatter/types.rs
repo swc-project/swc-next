@@ -152,9 +152,7 @@ impl PreparedDelimitedType<'_> {
     }
 
     pub(super) fn is_object_type(&self) -> bool {
-        matches!(&self.content, compound::PreparedTypeContent::Type(node)
-            if node.source_owner.is_none()
-                && matches!(node.data, TsTypeData::TsTypeLiteral(_) | TsTypeData::TsMappedType(_)))
+        self.content.is_object_type()
     }
 }
 
@@ -888,6 +886,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .write(writer, FlatSeparator::Space, Writer::space);
                 writer.text("=");
                 let (head, content) = writer.record_with_value(|writer| {
+                    if matches!(
+                        self.comment_boundary_binding(after, node.node.span(self.ast)),
+                        CommentBinding::Unbound
+                    ) {
+                        return self.format_prepared_type_content_head(
+                            compound::PreparedTypeContent::Compound(single),
+                            &mut PendingTypeHead::new(
+                                after.comments(),
+                                node.node.span(self.ast).start,
+                                None,
+                            ),
+                            TypeContext::Root,
+                            writer,
+                        );
+                    }
                     self.format_comment_boundary_with_layout(
                         after,
                         CommentRunLayout::Leading(single.start()),
@@ -1163,7 +1176,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let layout = content.alias_layout();
-        let expand = head.preferred_breaks();
+        let expand = head.preferred_breaks() || !content.is_object_type() && head.can_break();
         if expand || layout == TypeLayout::AliasRhs {
             writer.group(false, |writer| {
                 writer.indent(|writer| {
