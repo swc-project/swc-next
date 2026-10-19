@@ -1,5 +1,5 @@
-Cases         : 14591
-Codec Passed  : 14587/14591
+Cases         : 14594
+Codec Passed  : 14590/14594
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/compiler/regularExpressionScanning.ts (regularExpressionScanning.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/templates/templateStringMultiline3.ts (templateStringMultiline3.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings10.ts (unicodeExtendedEscapesInStrings10.ts)
