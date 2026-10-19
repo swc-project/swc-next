@@ -12,10 +12,10 @@ const FIELD_ORDERS_FILE = path.resolve(TEST_HARNESS, "field-orders.json");
 
 // ========================= Runner =============================
 const { makeUnitsFromTest } = await import(
-  path.resolve(TEST_HARNESS, "utils/typescript-make-units-from-test.cjs")
+  path.resolve(TEST_HARNESS, "utils/typescript-make-units-from-test.ts")
 );
 const { stringifyWith, transformerAcorn } = await import(
-  path.resolve(TEST_HARNESS, "utils/json.js")
+  path.resolve(TEST_HARNESS, "utils/json.ts")
 );
 
 export default async function runCase({ oracle, source, file }) {

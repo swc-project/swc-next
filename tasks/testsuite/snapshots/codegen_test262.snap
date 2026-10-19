@@ -1,5 +1,5 @@
 codegen * test262
 ========================
-Positive Passed: 91208/91208 (100.00%)
+Positive Passed: 91615/91615 (100.00%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/91208 (0.00%)
+Panicked: 0/91615 (0.00%)

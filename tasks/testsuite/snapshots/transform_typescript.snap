@@ -1,22 +1,22 @@
 transform * typescript
 ========================
-Positive Passed: 12987/14944 (86.90%)
+Positive Passed: 13553/15613 (86.81%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/14944 (0.00%)
-Skipped: 1941/14944 (12.99%)
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/awaitedTypeStrictNull.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/circularBaseTypes.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionArgumentsFunction.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionRestParameterFunction.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/collisionThisExpressionAndParameter.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/defaultIsNotVisibleInLocalScope.ts - virtual: a.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/destructureOptionalParameter.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/genericMappedTypeAsClause.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/indexSignatureAndMappedType.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/compiler/jsxComplexSignatureHasApplicabilityError.tsx - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/classes/constructorDeclarations/superCalls/derivedClassSuperStatementPosition.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/controlFlow/definiteAssignmentAssertions.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/expressions/superCalls/superCalls.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/intersection/intersectionWithUnionConstraint.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/mapped/mappedTypeRelationships.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
-Failed: tasks/testsuite/fixtures/typescript/tests/cases/conformance/types/mapped/mappedTypesArraysTuples.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Panicked: 0/15613 (0.00%)
+Skipped: 2044/15613 (13.09%)
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/awaitedTypeStrictNull.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/circularBaseTypes.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/collisionArgumentsFunction.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/collisionRestParameterFunction.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/collisionThisExpressionAndParameter.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/defaultIsNotVisibleInLocalScope.ts - virtual: a.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/destructureOptionalParameter.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/genericMappedTypeAsClause.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureAndMappedType.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/jsxComplexSignatureHasApplicabilityError.tsx - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/classes/constructorDeclarations/superCalls/derivedClassSuperStatementPosition.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/controlFlow/definiteAssignmentAssertions.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/expressions/superCalls/superCalls.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/intersection/intersectionWithUnionConstraint.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/mapped/mappedTypeRelationships.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent
+Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/mapped/mappedTypesArraysTuples.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: transformed output is not idempotent

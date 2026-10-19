@@ -1,5 +1,23 @@
 codegen * typescript
 ========================
-Positive Passed: 13145/13145 (100.00%)
+Positive Passed: 13710/13728 (99.87%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/13145 (0.00%)
+Panicked: 0/13728 (0.00%)
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitPatternAmbientModuleImportAttributes.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeArbitraryExtension.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 23..27
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 27..31
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDuplicatePatternMergedResolution.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 27..31
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeDynamicImports.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 99..103
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeModuleAugmentations.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 99..103
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeMostSpecificType.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 36..40
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeType2.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 36..40
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypeReadonly.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 23..27
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributeTypesJsImports.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/importAttributesDeclarationEmit.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/jsdocThisTagWithThisParameter.ts - preserve_parens=false: input parser: 'this' is reserved and cannot be used as a binding identifier at 33..37
+Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/patternAmbientModuleAugmentationMergedSymbol.ts - preserve_parens=false: input parser: Expected a semicolon or an implicit semicolon after a statement, but found 'with' at 25..29
+Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/externalModules/exportNonInitializedVariablesSystem.ts - preserve_parens=false: input parser: Unexpected token ';' in binding pattern at 3..4
+Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/externalModules/exportNonInitializedVariablesUMD.ts - preserve_parens=false: input parser: Unexpected token ';' in binding pattern at 3..4
+Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/externalModules/invalidSyntaxNamespaceImportWithSystem.ts - preserve_parens=false: input parser: Expected 'as' after '*' in namespace import, but found 'from' at 9..13

@@ -8,9 +8,9 @@ const ORACLE_DIR = path.join(FIXTURE_DIR, "estree-conformance/tests");
 const SNAPSHOT_DIR = path.join(ROOT_DIR, "tasks/testsuite/snapshots");
 
 const ORACLE_TEST262 = path.join(ORACLE_DIR, "test262/test");
-const ORACLE_TS = path.join(ORACLE_DIR, "typescript/tests/cases");
+const ORACLE_TS = path.join(ORACLE_DIR, "typescript/tsc/testdata/tests/cases");
 const SOURCE_TEST262 = path.join(FIXTURE_DIR, "test262/test");
-const SOURCE_TS = path.join(FIXTURE_DIR, "typescript/tests/cases");
+const SOURCE_TS = path.join(FIXTURE_DIR, "typescript/tsc/testdata/tests/cases");
 const SNAPSHOT_TEST262 = path.join(SNAPSHOT_DIR, "codec_test262.snap");
 const SNAPSHOT_TS = path.join(SNAPSHOT_DIR, "codec_typescript.snap");
 

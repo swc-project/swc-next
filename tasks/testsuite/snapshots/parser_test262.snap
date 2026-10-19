@@ -1,5 +1,5 @@
 parser * test262
 ========================
-Positive Passed: 91208/91208 (100.00%)
-Negative Passed: 8652/8652 (100.00%)
-Panicked: 0/99860 (0.00%)
+Positive Passed: 91615/91615 (100.00%)
+Negative Passed: 8656/8656 (100.00%)
+Panicked: 0/100271 (0.00%)

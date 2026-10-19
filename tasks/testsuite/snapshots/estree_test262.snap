@@ -1,5 +1,5 @@
-AST Parsed     : 47030/47030 (100.00%)
-Positive Passed: 47012/47030 (99.96%)
+AST Parsed     : 47459/47459 (100.00%)
+Positive Passed: 47440/47459 (99.96%)
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js
@@ -7,6 +7,7 @@ Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assi
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js
 Mismatch: tasks/testsuite/fixtures/test262/test/annexB/language/expressions/assignmenttargettype/callexpression.js
 Mismatch: tasks/testsuite/fixtures/test262/test/built-ins/String/raw/special-characters.js
+Mismatch: tasks/testsuite/fixtures/test262/test/intl402/Locale/prototype/getNumberingSystems/output-array.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/fn-name-lhs-cover.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/assignment/target-cover-id.js
 Mismatch: tasks/testsuite/fixtures/test262/test/language/expressions/postfix-decrement/target-cover-id.js

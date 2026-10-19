@@ -47,7 +47,7 @@ impl Case for TypeScriptParserCase {
     const NAME: &'static str = "typescript";
 
     fn read() -> Vec<Self> {
-        let test_dir = fixtures().join("typescript/tests/cases");
+        let test_dir = fixtures().join("typescript/tsc/testdata/tests/cases");
         let error_codes = read_error_codes(&test_dir);
         let case_paths = compiler_case_paths(&test_dir);
         validate_non_program_test_paths(&case_paths, &test_dir);
@@ -89,9 +89,13 @@ impl Case for TypeScriptParserCase {
 
 impl TypeScriptParserCase {
     fn read_file(path: PathBuf, test_dir: &Path, error_codes: &TestErrorCodes) -> Vec<Self> {
-        let Ok(parsed) = read_test_content(&path) else {
+        let Ok(mut parsed) = read_test_content(&path) else {
             return Vec::new();
         };
+        // TypeScript normalizes relative virtual file names in its baselines.
+        for unit in &mut parsed.test_units {
+            unit.name = normalize_unit_name(&unit.name);
+        }
         let actual_path = path
             .strip_prefix(test_dir)
             .expect("TypeScript case is inside the cases directory")
@@ -313,14 +317,18 @@ fn parse_check_js_directive(comment: &str) -> Option<bool> {
 }
 
 fn read_error_codes(test_dir: &Path) -> TestErrorCodes {
-    let baselines = fixtures().join("typescript/tests/baselines/reference");
+    let baselines = fixtures().join("typescript/tsc/testdata/baselines/reference");
     let case_paths = baseline_case_paths(test_dir);
-    let mut baseline_paths = read_dir(&baselines)
-        .unwrap_or_else(|error| {
-            panic!(
-                "failed to read TypeScript baseline directory `{}`: {error}",
-                baselines.display()
-            )
+    let mut baseline_paths = ["compiler", "conformance"]
+        .into_iter()
+        .flat_map(|suite| {
+            let directory = baselines.join(suite);
+            read_dir(&directory).unwrap_or_else(|error| {
+                panic!(
+                    "failed to read TypeScript baseline directory `{}`: {error}",
+                    directory.display()
+                )
+            })
         })
         .map(|entry| {
             entry.unwrap_or_else(|error| {
@@ -420,6 +428,14 @@ fn baseline_case_paths(test_dir: &Path) -> HashMap<String, PathBuf> {
     case_paths
 }
 
+fn normalize_unit_name(name: &str) -> String {
+    Path::new(name.trim_start_matches("./"))
+        .components()
+        .collect::<PathBuf>()
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
 fn read_unit_error_codes(baseline: &str) -> UnitErrorCodes {
     let mut error_codes = UnitErrorCodes::new();
     let mut current_unit = None;
@@ -429,7 +445,7 @@ fn read_unit_error_codes(baseline: &str) -> UnitErrorCodes {
             if let Some(section) = section.strip_suffix(" ====")
                 && let Some((name, _)) = section.rsplit_once(" (")
             {
-                let name = name.to_string();
+                let name = normalize_unit_name(name);
                 let occurrences = error_codes.entry(name.clone()).or_default();
                 let occurrence = occurrences.len();
                 occurrences.push(HashSet::new());
@@ -466,12 +482,18 @@ fn validate_baseline_units(
     };
     let mut unit_counts = HashMap::<&str, usize>::new();
     for unit in test_units {
+        // Content-mapped assets can be omitted from upstream error baselines.
+        // Validate the JavaScript and TypeScript units that this runner parses.
+        if lang_from_path(&unit.name).is_none() {
+            continue;
+        }
         *unit_counts.entry(unit.name.as_str()).or_default() += 1;
     }
     for variant in variants {
         let baseline_counts = variant
             .error_codes
             .iter()
+            .filter(|(name, _)| lang_from_path(name).is_some())
             .map(|(name, occurrences)| (name.as_str(), occurrences.len()))
             .collect::<HashMap<_, _>>();
         assert_eq!(

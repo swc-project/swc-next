@@ -10,11 +10,11 @@ const SNAPSHOT_DIR = path.resolve(ROOT_DIR, "tasks/testsuite/snapshots");
 
 // ========================== Oracles ==============================
 const ORACLE_TEST262 = path.resolve(ORACLE_DIR, "test262/test");
-const ORACLE_TS = path.resolve(ORACLE_DIR, "typescript/tests/cases");
+const ORACLE_TS = path.resolve(ORACLE_DIR, "typescript/tsc/testdata/tests/cases");
 
 // ========================== Sources ==============================
 const SOURCE_TEST262 = path.resolve(FIXTURE_DIR, "test262/test");
-const SOURCE_TS = path.resolve(FIXTURE_DIR, "typescript/tests/cases");
+const SOURCE_TS = path.resolve(FIXTURE_DIR, "typescript/tsc/testdata/tests/cases");
 
 // ====================== Output Snapshots ==========================
 const SNAPSHOT_TEST262 = path.resolve(SNAPSHOT_DIR, "estree_test262.snap");

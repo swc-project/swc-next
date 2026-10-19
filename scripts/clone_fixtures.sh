@@ -51,9 +51,9 @@ prepare_fixture() {
     echo "✓ Prepared $name"
 }
 
-prepare_fixture "tc39/test262" "tasks/testsuite/fixtures/test262" "d1d583db95a521218f3eb8341a887fd63eda8ff1" "test262"
-prepare_fixture "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "637d5746b70257028fb95aad32ddec6b26ab0a14" "typescript"
-prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "0915316cf4a66e85af77ff9043d2f9c8a439418b" "babel"
-prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "079d13881372c0316b0e0b6552fe5f0ae5528d24" "estree-conformance"
-prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "e4f588ee8744a1a4e3323dfc0f5e1f2f98afb67f" "swc"
-prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "88e085fc5e96b68c4c7d5a6fc97d8de6396ab823" "swc-conformance"
+prepare_fixture "tc39/test262" "tasks/testsuite/fixtures/test262" "d53ebc8b1931d9f1541e43d59650776e4b766248" "test262"
+prepare_fixture "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "5237fd46890956e4bb8177a1a05dcd69e4166560" "typescript"
+prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "93e39e4d0b657efe7f569f9d25acbff96ddb89dc" "babel"
+prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "eb050aeacb0d0588f84829da0a5cbf0c63676637" "estree-conformance"
+prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "4768dbe091a6706a009d2e9c08950cacba107d55" "swc"
+prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "528c158a89553e5ab6c19354acd8479239e8b676" "swc-conformance"

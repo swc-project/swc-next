@@ -9,7 +9,7 @@ import * as binding from "./binding/index.js";
 const ROOT_DIR = path.resolve(import.meta.dirname, "../../..");
 const FIXTURE_DIR = path.join(ROOT_DIR, "tasks/testsuite/fixtures");
 const { makeUnitsFromTest } = await import(
-  path.join(FIXTURE_DIR, "estree-conformance/src/utils/typescript-make-units-from-test.cjs")
+  path.join(FIXTURE_DIR, "estree-conformance/src/utils/typescript-make-units-from-test.ts")
 );
 const textEncoder = new TextEncoder();
 
