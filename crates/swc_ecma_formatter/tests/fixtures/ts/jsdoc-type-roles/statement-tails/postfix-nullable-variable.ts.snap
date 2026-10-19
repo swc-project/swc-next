@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let e: unknown?;
+let f = 1;
+---------- Options ----------
+{}
+---------- Output ----------
+let e: unknown?;
+let f = 1;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let e: unknown?;
+let f = 1
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+let e: unknown?;
+let f = 1

@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = ?;
+b;
+---------- Options ----------
+{}
+---------- Output ----------
+type A = ?;
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type A = ?;
+b
+
+---------- Options ----------
+{"printWidth":16,"semi":false}
+---------- Output ----------
+type A = ?;
+b
