@@ -553,7 +553,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             FlatSeparator::Empty
         };
         match gap {
-            MemberGap::Source(span) => self.format_verbatim(span, writer),
+            MemberGap::Source(span) => {
+                let source =
+                    self.format_delimited_source_gap(span, DelimitedFollowing::Node, writer)?;
+                self.source_line_constraint(source.end, span.end).write(
+                    writer,
+                    flat,
+                    Writer::hard_line,
+                );
+                Ok(())
+            }
             MemberGap::Formatted {
                 trailing,
                 leading,
