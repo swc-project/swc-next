@@ -1111,8 +1111,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = operand.span(self.ast);
         let comments = self.ast.comments();
         let first = comments.partition_point(|comment| comment.span.start < start);
-        let last = comments.partition_point(|comment| comment.span.end <= span.start);
-        self.expression_head_binding(&comments[first..last], operand)
+        let comments = &comments[first..];
+        let count = comments.partition_point(|comment| comment.span.end <= span.start);
+        self.expression_head_binding(&comments[..count], operand)
             .allows_relocation(Some(span))
     }
 }
