@@ -1673,10 +1673,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && (arguments
                 .iter()
                 .map(|id| ast.get_node_in_sub_range(id))
-                .scan(content.start, |previous, argument| {
+                .scan(None, |previous, argument| {
                     let span = argument.span(ast);
-                    let empty = self.next_line_is_empty(*previous, span.start);
-                    *previous = span.end;
+                    let empty = previous
+                        .is_some_and(|previous| self.next_line_is_empty(previous, span.start));
+                    *previous = Some(span.end);
                     Some(empty)
                 })
                 .any(|empty| empty)
