@@ -66,6 +66,18 @@ pub(super) enum BindingGroup {
 }
 
 impl BindingGroup {
+    pub(super) fn write<'ast, T>(
+        self,
+        writer: &mut Writer<'ast>,
+        write: impl FnOnce(&mut Writer<'ast>) -> T,
+    ) -> T {
+        match self {
+            Self::Auto => writer.group(false, write),
+            Self::Expanded => writer.group(true, write),
+            Self::Parent => write(writer),
+        }
+    }
+
     pub(super) fn with_initializer_group<'ast, T>(
         self,
         writer: &mut Writer<'ast>,
@@ -251,29 +263,47 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 annotation,
             } => (pattern, definite, annotation),
         };
-        let tail =
-            self.format_binding_with_group(pattern, group, ContentMode::Formatted, writer)?;
-        self.format_expression_tail(tail, writer)?;
-        if let Some(marker) = definite {
-            if marker.movable && annotation.is_none() {
+        let shared_annotation =
+            annotation.is_some() && pattern.as_object_pattern(self.ast).is_some();
+        let pattern_group = if shared_annotation {
+            BindingGroup::Parent
+        } else {
+            group
+        };
+        let write = |writer: &mut Writer<'ast>| {
+            let tail = self.format_binding_with_group(
+                pattern,
+                pattern_group,
+                ContentMode::Formatted,
+                writer,
+            )?;
+            self.format_expression_tail(tail, writer)?;
+            if let Some(marker) = definite {
+                if marker.movable && annotation.is_none() {
+                    writer.text("!");
+                    let pattern_end = pattern.span(self.ast).end;
+                    let marker_start = marker.source.map_or(pattern_end, |span| span.start);
+                    return Ok(Some(ExpressionTail {
+                        source_end: pattern_end,
+                        comments: self.comments.in_range(Span::new(pattern_end, marker_start)),
+                    }));
+                }
+                if annotation.is_none() {
+                    let pattern_end = pattern.span(self.ast).end;
+                    let marker_start = marker.source.map_or(pattern_end, |span| span.start);
+                    self.format_source_token_gap(pattern_end, marker_start, false, writer)?;
+                }
                 writer.text("!");
-                let pattern_end = pattern.span(self.ast).end;
-                let marker_start = marker.source.map_or(pattern_end, |span| span.start);
-                return Ok(Some(ExpressionTail {
-                    source_end: pattern_end,
-                    comments: self.comments.in_range(Span::new(pattern_end, marker_start)),
-                }));
             }
-            if annotation.is_none() {
-                let pattern_end = pattern.span(self.ast).end;
-                let marker_start = marker.source.map_or(pattern_end, |span| span.start);
-                self.format_source_token_gap(pattern_end, marker_start, false, writer)?;
+            match annotation {
+                Some(annotation) => self.format_binding_annotation_content(annotation, writer),
+                None => Ok(None),
             }
-            writer.text("!");
-        }
-        match annotation {
-            Some(annotation) => self.format_binding_annotation_content(annotation, writer),
-            None => Ok(None),
+        };
+        if shared_annotation {
+            group.write(writer, write)
+        } else {
+            write(writer)
         }
     }
 
@@ -1183,7 +1213,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return self.format_verbatim(span, writer);
         }
-        let mut write = |writer: &mut Writer<'ast>| {
+        let write = |writer: &mut Writer<'ast>| {
             writer.text("{");
             let has_items = properties.peek().is_some() || rest.is_some();
             let has_comments = !self.comments.in_range(content).is_empty();
@@ -1282,11 +1312,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("}");
             Ok(())
         };
-        match group {
-            BindingGroup::Auto => writer.group(false, write),
-            BindingGroup::Expanded => writer.group(true, write),
-            BindingGroup::Parent => write(writer),
-        }
+        group.write(writer, write)
     }
 
     fn binding_brace_line(&self, content: Span, writer: &mut Writer<'ast>) {
