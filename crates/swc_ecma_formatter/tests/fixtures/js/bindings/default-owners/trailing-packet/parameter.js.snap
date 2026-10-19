@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f({ c = // c
+1 /* d */ }) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f({
+  c = // c
+    1 /* d */,
+}) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f({
+  c = // c
+    1 /* d */,
+}) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f({
+  c = // c
+    1 /* d */,
+}) {}
