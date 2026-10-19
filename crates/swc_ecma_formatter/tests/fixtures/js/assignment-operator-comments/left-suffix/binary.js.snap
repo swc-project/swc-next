@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target // left
+= first + second;
+---------- Options ----------
+{}
+---------- Output ----------
+target = first + second; // left
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+target = // left
+  first +
+  second;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = first + second; // left
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = first + second // left
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = // left
+	first + second;

@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value = // result
+  tag`text`;
+---------- Options ----------
+{}
+---------- Output ----------
+let value =
+  // result
+  tag`text`;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+let value =
+  // result
+  tag`text`;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+let value =
+  // result
+  tag`text`

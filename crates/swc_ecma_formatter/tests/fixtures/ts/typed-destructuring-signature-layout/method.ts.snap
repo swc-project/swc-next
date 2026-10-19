@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = { run({ a }: { a: string }): string; };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type F = {
+  run({
+    a,
+  }: {
+    a: string;
+  }): string;
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type F = {
+  run({ a }: { a: string }): string;
+};

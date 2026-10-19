@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value as // first
+Result /* second */ as Other;
+---------- Options ----------
+{}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+value as // first
+  Result /* second */ as Other

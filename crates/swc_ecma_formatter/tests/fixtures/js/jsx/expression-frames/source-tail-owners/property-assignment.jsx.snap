@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+owner.node = (/* ordinary */ <Item value={61} /> /* source tail */);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+owner.node = (
+  /* ordinary */ <Item value={61} /> /* source tail */
+);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+owner.node = /* ordinary */ <Item value={61} /> /* source tail */
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+owner.node = (
+  /* ordinary */ <Item
+    value={61}
+  /> /* source tail */
+);
+
+---------- Options ----------
+{"printWidth":36,"semi":false}
+---------- Output ----------
+owner.node = (
+  /* ordinary */ <Item
+    value={61}
+  /> /* source tail */
+)

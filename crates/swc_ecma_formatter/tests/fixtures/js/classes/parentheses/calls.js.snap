@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class ConstructedBase extends (new Base()) {}
+class TaggedBase extends (make`base`) {}
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+class ConstructedBase extends (new Base()) {}
+class TaggedBase extends (make`base`) {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+class ConstructedBase extends (new Base()) {}
+class TaggedBase extends (make`base`) {}
+
+---------- Options ----------
+{"printWidth":80,"useTabs":true}
+---------- Output ----------
+class ConstructedBase extends (new Base()) {}
+class TaggedBase extends (make`base`) {}
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+class ConstructedBase extends (new Base()) {}
+class TaggedBase extends (make`base`) {}

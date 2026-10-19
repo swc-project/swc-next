@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare class A
+// @ts-expect-error
+{ property: Missing; }
+---------- Options ----------
+{}
+---------- Output ----------
+declare class A
+// @ts-expect-error
+{ property: Missing; }
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare class A
+// @ts-expect-error
+{ property: Missing; }
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"useTabs":true}
+---------- Output ----------
+declare class A
+// @ts-expect-error
+{ property: Missing }

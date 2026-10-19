@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+- /*#__PURE__*/ (a % bbbbbbbbbbbbbbbbbbbbb);
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+-(
+  /*#__PURE__*/ a %
+  bbbbbbbbbbbbbbbbbbbbb
+);

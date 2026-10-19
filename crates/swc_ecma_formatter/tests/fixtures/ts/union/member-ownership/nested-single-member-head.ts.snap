@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = | (
+  /* head */ | (
+    | First
+    // member tail
+    | Second
+  )
+);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T =
+  | /* head */ First
+  // member tail
+  | Second;

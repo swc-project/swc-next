@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function consume() { return condition ? firstLongName ?? secondLongName : no; }
+---------- Options ----------
+{}
+---------- Output ----------
+function consume() {
+  return condition ? (firstLongName ?? secondLongName) : no;
+}
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+function consume() {
+  return condition
+    ? (firstLongName ??
+        secondLongName)
+    : no;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function consume() {
+  return condition ? (firstLongName ?? secondLongName) : no
+}
+

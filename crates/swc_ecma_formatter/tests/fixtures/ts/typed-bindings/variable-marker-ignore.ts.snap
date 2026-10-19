@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value /* prettier-ignore */ ! : ( Alpha | Beta );
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let value! /* prettier-ignore */ : ( Alpha | Beta );
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+let value! /* prettier-ignore */ : ( Alpha | Beta );
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+let value! /* prettier-ignore */ : ( Alpha | Beta )

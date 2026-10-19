@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const chosen = 1 as(
+// @ts-expect-error
+Record<MissingOne,
+MissingTwo>);
+const outsideSentinel: number = "x";
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+const chosen = 1 as (
+// @ts-expect-error
+Record<MissingOne,
+	MissingTwo
+>);
+const outsideSentinel: number = "x";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const chosen =
+  1 as (
+// @ts-expect-error
+Record<MissingOne,
+    MissingTwo
+  >)
+const outsideSentinel: number =
+  "x"
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const chosen = 1 as (
+// @ts-expect-error
+Record<MissingOne,
+  MissingTwo
+>);
+const outsideSentinel: number = "x";

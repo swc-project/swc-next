@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+outer /* before */:
+/* lead */ // note
+while (ready) step();
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+outer /* before */:
+  /* lead */ // note
+  while (ready) step();
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+outer /* before */:
+  /* lead */ // note
+  while (ready)
+    step();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+outer /* before */:
+  /* lead */ // note
+  while (ready)
+    step()

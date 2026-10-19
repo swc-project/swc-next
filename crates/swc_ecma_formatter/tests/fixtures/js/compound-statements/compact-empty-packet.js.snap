@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do /* first */
+// second
+{} while(false);
+---------- Options ----------
+{}
+---------- Output ----------
+do /* first */
+// second
+{} while (false);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+do /* first */
+// second
+{} while (false)
+
+---------- Options ----------
+{"trailingComma":"none","useTabs":true}
+---------- Output ----------
+do /* first */
+// second
+{} while (false);
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+do /* first */
+// second
+{} while (
+  false
+)

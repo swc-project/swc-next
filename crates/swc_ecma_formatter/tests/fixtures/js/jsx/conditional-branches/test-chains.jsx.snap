@@ -1,0 +1,144 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(condition ? first : second) ? <Box><Item /><Item /></Box> : null;
+((condition ? <Item /> : null) ? first : second) ? value : fallback;
+flag ? <Box><Item /><Item /></Box> : (condition ? first : second) ? value : fallback;
+flag ? <Box><Item /><Item /></Box> : (condition ? <Item /> : null) ? value : fallback;
+flag ? render(condition ? <Item /> : null) : fallback;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(condition ? first : second) ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null;
+((condition ? <Item /> : null) ? first : second) ? value : fallback;
+flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (condition ? first : second) ? (
+  value
+) : (
+  fallback
+);
+flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (condition ? <Item /> : null) ? (
+  value
+) : (
+  fallback
+);
+flag ? render(condition ? <Item /> : null) : fallback;
+
+---------- Options ----------
+{"printWidth":35}
+---------- Output ----------
+(condition ? first : second) ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : null;
+(
+  (condition ? <Item /> : null) ? (
+    first
+  ) : (
+    second
+  )
+) ? (
+  value
+) : (
+  fallback
+);
+flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (
+    condition ? first : second
+  ) ? (
+  value
+) : (
+  fallback
+);
+flag ? (
+  <Box>
+    <Item />
+    <Item />
+  </Box>
+) : (
+    condition ? <Item /> : null
+  ) ? (
+  value
+) : (
+  fallback
+);
+flag
+  ? render(
+      condition ? <Item /> : null,
+    )
+  : fallback;
+
+---------- Options ----------
+{"printWidth":35,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+(condition ? first : second) ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : null;
+(
+	(
+		condition ? <Item /> : null
+	) ? (
+		first
+	) : (
+		second
+	)
+) ? (
+	value
+) : (
+	fallback
+);
+flag ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : (
+		condition ? first : second
+  ) ? (
+	value
+) : (
+	fallback
+);
+flag ? (
+	<Box>
+		<Item />
+		<Item />
+	</Box>
+) : (
+		condition ? <Item /> : null
+  ) ? (
+	value
+) : (
+	fallback
+);
+flag
+	? render(
+			condition ? (
+				<Item />
+			) : null,
+		)
+	: fallback;

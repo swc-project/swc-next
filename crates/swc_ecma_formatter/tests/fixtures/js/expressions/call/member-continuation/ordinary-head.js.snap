@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = (/* ordinary */(value ? object : object)).method(value);
+---------- Options ----------
+{}
+---------- Output ----------
+target = /* ordinary */ (value ? object : object).method(value);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = /* ordinary */ (value ? object : object).method(value)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+target = /* ordinary */ (
+  value ? object : object
+).method(value);

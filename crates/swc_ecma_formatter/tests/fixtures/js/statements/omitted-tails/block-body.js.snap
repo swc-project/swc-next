@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+{
+  a;
+  ; /* tail */
+
+  b;
+}
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+{
+  a; /* tail */
+  b;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+{
+  a /* tail */
+  b
+}

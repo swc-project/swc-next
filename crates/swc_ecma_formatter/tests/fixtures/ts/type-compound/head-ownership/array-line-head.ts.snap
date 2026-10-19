@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (// ordinary first
+Left & Right)[];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T =
+  // ordinary first
+  (Left & Right)[];
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+type T =
+  // ordinary first
+  (Left & Right)[];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":24,"semi":false,"useTabs":true}
+---------- Output ----------
+type T =
+	// ordinary first
+	(Left & Right)[]

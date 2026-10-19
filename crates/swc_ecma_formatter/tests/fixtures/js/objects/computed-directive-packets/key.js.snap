@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = { g1 // @ts-ignore
+, [ // @ts-expect-error
+(null) ]: 1 };
+---------- Options ----------
+{}
+---------- Output ----------
+x = {
+  g1 // @ts-ignore
+, [// @ts-expect-error
+    null]: 1, };

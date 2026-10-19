@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { method(value : number) { return value; } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  method(value: number) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  method(
+    value: number,
+  ) {
+    return value;
+  }
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+class C {
+  method(
+    value: number,
+  ) {
+    return value
+  }
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+class C {
+	method(
+		value: number,
+	) {
+		return value;
+	}
+}

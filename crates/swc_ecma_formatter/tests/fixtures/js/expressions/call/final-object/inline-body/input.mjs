@@ -1,0 +1,1 @@
+f(first,{one:1,two:2,three:3});

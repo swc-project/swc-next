@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/** @type {number} */
+: (0, value) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  key
+  /** @type {number} */: (0, value),
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key
+  /** @type {number} */:
+    (0, value),
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  key
+  /** @type {number} */: (0, value),
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  key
+  /** @type {number} */:
+    (0, value),
+})

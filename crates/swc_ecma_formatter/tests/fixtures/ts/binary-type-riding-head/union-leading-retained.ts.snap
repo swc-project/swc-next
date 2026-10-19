@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+type Choice = | /* first */ Missing | number;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+// @ts-expect-error
+type Choice = | /* first */ Missing | number;
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+type Choice = | /* first */ Missing | number;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+type Choice = | /* first */ Missing | number
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+// @ts-expect-error
+type Choice = | /* first */ Missing | number;

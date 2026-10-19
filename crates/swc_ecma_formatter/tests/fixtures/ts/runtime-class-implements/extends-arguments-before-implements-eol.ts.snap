@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+namespace N { export interface I<T> { x: T; } export class Base<T> { x = 7; } }
+class C extends N . Base<  number  > // prettier-ignore
+implements N.I<number> { y = 1; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+namespace N {
+  export interface I<T> {
+    x: T;
+  }
+  export class Base<T> {
+    x = 7;
+  }
+}
+class C extends N . Base<  number  > // prettier-ignore
+implements N.I<number> { y = 1; }
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+namespace N {
+  export interface I<
+    T,
+  > {
+    x: T;
+  }
+  export class Base<
+    T,
+  > {
+    x = 7;
+  }
+}
+class C extends N . Base<  number  > // prettier-ignore
+implements N.I<number> { y = 1; }

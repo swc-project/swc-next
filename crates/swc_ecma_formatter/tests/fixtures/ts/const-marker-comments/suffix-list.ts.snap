@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const values = [1 as // marker
+const, 2];
+---------- Options ----------
+{}
+---------- Output ----------
+const values = [
+  1 as const, // marker
+  2,
+];
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const values = [
+  1 as const, // marker
+  2,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const values = [
+  1 as const, // marker
+  2,
+]

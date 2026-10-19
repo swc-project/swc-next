@@ -1,0 +1,1 @@
+let alpha /* name */ !: number;

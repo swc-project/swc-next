@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (enabled) if( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */; else third();
+---------- Options ----------
+{}
+---------- Output ----------
+if (enabled)
+  if( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */;
+else third();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (enabled)
+  if( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */;
+else third()
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+if (enabled)
+  if( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */;
+else third()
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+if (enabled)
+	if( nested ) first(  1  ); else second(  2  ) /* prettier-ignore */;
+else third();

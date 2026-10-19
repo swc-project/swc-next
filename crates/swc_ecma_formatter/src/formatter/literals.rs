@@ -1,0 +1,82 @@
+//! Literal token emission and normalization.
+
+mod number;
+mod string;
+
+use std::borrow::Cow;
+
+use swc_next_ecma_ast::{BigIntLiteral, NumericLiteral, RegExpLiteral, StringLiteral};
+
+pub(super) use string::StringContext;
+
+use super::Formatter;
+use crate::document::Writer;
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_string_literal(
+        &self,
+        literal: StringLiteral,
+        context: StringContext,
+        writer: &mut Writer<'ast>,
+    ) {
+        writer.literal_text(self.string_literal_text(literal, context));
+    }
+
+    pub(in crate::formatter) fn string_literal_text(
+        &self,
+        literal: StringLiteral,
+        context: StringContext,
+    ) -> Cow<'ast, str> {
+        let raw = self.ast.get_utf8(literal.raw(self.ast));
+        string::format_string(raw, self.options.quote_style, context)
+    }
+
+    pub(super) fn format_numeric_literal(
+        &self,
+        literal: NumericLiteral,
+        writer: &mut Writer<'ast>,
+    ) {
+        match literal.raw(self.ast) {
+            Some(raw) => writer.text(number::format_number(self.ast.get_utf8(raw))),
+            None => {
+                let mut buffer = zmij_ecma::Buffer::new();
+                writer.text_copied(buffer.format(literal.value(self.ast)));
+            }
+        }
+    }
+
+    pub(in crate::formatter) fn numeric_literal_text(
+        &self,
+        literal: NumericLiteral,
+    ) -> Cow<'ast, str> {
+        match literal.raw(self.ast) {
+            Some(raw) => number::format_number(self.ast.get_utf8(raw)),
+            None => Cow::Owned(
+                zmij_ecma::Buffer::new()
+                    .format(literal.value(self.ast))
+                    .to_owned(),
+            ),
+        }
+    }
+
+    pub(super) fn format_bigint_literal(&self, literal: BigIntLiteral, writer: &mut Writer<'ast>) {
+        writer.text(number::lowercase(self.ast.get_utf8(literal.raw(self.ast))));
+        writer.text("n");
+    }
+
+    pub(super) fn format_regexp_literal(&self, literal: RegExpLiteral, writer: &mut Writer<'ast>) {
+        writer.text("/");
+        writer.text(self.ast.get_utf8(literal.pattern(self.ast)));
+        writer.text("/");
+
+        let flags = self.ast.get_utf8(literal.flags(self.ast));
+        if flags.as_bytes().windows(2).all(|pair| pair[0] <= pair[1]) {
+            writer.text(flags);
+        } else {
+            let mut sorted: Vec<_> = flags.chars().collect();
+            sorted.sort_unstable();
+            let sorted: String = sorted.into_iter().collect();
+            writer.text(sorted);
+        }
+    }
+}

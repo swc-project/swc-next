@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(object.missing) = value;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(object.missing) =
+  value;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(object.missing) = value;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(object.missing) = value;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(object.missing) =
+  value

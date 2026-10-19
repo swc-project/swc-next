@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(function (firstValue, secondValue, thirdValue) { return firstValue + secondValue + thirdValue; } /* callback tail */, delay);
+---------- Options ----------
+{"printWidth":32}
+---------- Output ----------
+schedule(
+  function (
+    firstValue,
+    secondValue,
+    thirdValue,
+  ) {
+    return (
+      firstValue +
+      secondValue +
+      thirdValue
+    );
+  } /* callback tail */,
+  delay,
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+schedule(
+  function (
+    firstValue,
+    secondValue,
+    thirdValue,
+  ) {
+    return (
+      firstValue +
+      secondValue +
+      thirdValue
+    );
+  } /* callback tail */,
+  delay,
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+schedule(
+  function (firstValue, secondValue, thirdValue) {
+    return firstValue + secondValue + thirdValue;
+  } /* callback tail */,
+  delay,
+);

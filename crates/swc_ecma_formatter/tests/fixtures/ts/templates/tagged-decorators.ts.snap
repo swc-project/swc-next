@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+tag<string>`x${value}`; (tag<string>)`x`; (value as typeof tag)`x`; @(tag`x`) class C<const T>{ @(factory()<string>`x${value}`) method(){} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+tag<string>`x${value}`;
+(tag<string>)`x`;
+(value as typeof tag)`x`;
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`) method() {}
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+tag<string>`x${value}`
+;(tag<string>)`x`
+;(value as typeof tag)`x`
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`)
+  method() {}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+tag<string>`x${value}`;
+(tag<string>)`x`;
+(value as typeof tag)`x`;
+@(tag`x`)
+class C<const T> {
+  @(factory()<string>`x${value}`)
+  method() {}
+}

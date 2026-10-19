@@ -1,0 +1,44 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {
+[key: string]: number /* result tail */;
+// @ts-ignore
+value = "text";
+}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  [key: string]: number; /* result tail */
+  // @ts-ignore
+  value = "text";
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  [key: string]: number; /* result tail */
+  // @ts-ignore
+  value = "text";
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class C {
+  [key: string]: number /* result tail */
+  // @ts-ignore
+  value = "text"
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class C {
+  [key: string]: number; /* result tail */
+  // @ts-ignore
+  value = "text";
+}

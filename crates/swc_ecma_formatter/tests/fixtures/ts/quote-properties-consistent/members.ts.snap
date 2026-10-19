@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+interface RecordType { "new"(value: string): RecordType; method(): void; get value(): number; set value(next: number); property: string; 1: number; "2": number; [computed]: unknown; }
+---------- Options ----------
+{}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  method(): void;
+  get value(): number;
+  set value(next: number);
+  property: string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"quoteProps":"preserve"}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  method(): void;
+  get value(): number;
+  set value(next: number);
+  property: string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"quoteProps":"consistent"}
+---------- Output ----------
+interface RecordType {
+  "new"(value: string): RecordType;
+  "method"(): void;
+  get "value"(): number;
+  set "value"(next: number);
+  "property": string;
+  1: number;
+  "2": number;
+  [computed]: unknown;
+}
+
+---------- Options ----------
+{"quoteProps":"consistent","semi":false,"singleQuote":true}
+---------- Output ----------
+interface RecordType {
+  'new'(value: string): RecordType
+  'method'(): void
+  get 'value'(): number
+  set 'value'(next: number)
+  'property': string
+  1: number
+  '2': number
+  [computed]: unknown
+}

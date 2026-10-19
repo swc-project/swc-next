@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function view(){return <Panel value={await ({firstKey:/* field */firstArgument,secondKey:secondArgument})}/>;}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function view() {
+  return (
+    <Panel
+      value={await {
+        firstKey: /* field */ firstArgument,
+        secondKey: secondArgument,
+      }}
+    />
+  );
+}
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+async function view() {
+  return (
+    <Panel
+      value={await {
+        firstKey:
+          /* field */ firstArgument,
+        secondKey: secondArgument,
+      }}
+    />
+  );
+}
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":40}
+---------- Output ----------
+async function view() {
+  return (
+    <Panel
+      value={await {
+        firstKey:
+          /* field */ firstArgument,
+        secondKey: secondArgument,
+      }}
+    />
+  );
+}

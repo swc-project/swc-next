@@ -1,0 +1,19 @@
+[
+  {
+    "printWidth": 20,
+    "semi": true
+  },
+  {
+    "printWidth": 80,
+    "semi": true
+  },
+  {
+    "printWidth": 20,
+    "semi": false
+  },
+  {
+    "printWidth": 1,
+    "semi": false,
+    "endOfLine": "crlf"
+  }
+]

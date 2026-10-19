@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f({['a' /* prettier-ignore */]
+:b=1+2}){}
+---------- Options ----------
+{}
+---------- Output ----------
+function f({ ['a' /* prettier-ignore */]: b = 1 + 2 }) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f({
+  [
+    'a' /* prettier-ignore */]: b = 1 +
+    2,
+}) {}
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function f({
+  [
+    'a' /* prettier-ignore */]: b = 1 +
+    2
+}) {}
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+function f({
+  ['a' /* prettier-ignore */]: b = 1 +
+    2,
+}) {}

@@ -1,0 +1,1 @@
+condition ? first || second : alternate;

@@ -1,0 +1,69 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function receiverAndTail(
+  // prettier-ignore
+  this:   { value:number },
+  value?: number,
+  ...rest: number[]
+): number { return this.value + (value ?? rest.length); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function receiverAndTail(
+  // prettier-ignore
+  this:   { value:number },
+  value?: number,
+  ...rest: number[]
+): number {
+  return this.value + (value ?? rest.length);
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function receiverAndTail(
+  // prettier-ignore
+  this:   { value:number },
+  value?: number,
+  ...rest: number[]
+): number {
+  return (
+    this.value +
+    (value ??
+      rest.length)
+  );
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+function receiverAndTail(
+  // prettier-ignore
+  this:   { value:number },
+  value?: number,
+  ...rest: number[]
+): number {
+  return (
+    this.value +
+    (value ??
+      rest.length)
+  )
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+function receiverAndTail(
+  // prettier-ignore
+  this:   { value:number },
+  value?: number,
+  ...rest: number[]
+): number {
+  return (
+    this.value +
+    (value ??
+      rest.length)
+  );
+}

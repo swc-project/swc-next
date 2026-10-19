@@ -1,0 +1,102 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/**@type{(n:number)=>number}*/ (connect(firstArgument, secondArgument, thirdArgument)))(outer);
+---------- Options ----------
+{}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer)
+
+---------- Options ----------
+{"printWidth":40,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+	connect(
+		firstArgument,
+		secondArgument,
+		thirdArgument,
+	)
+)(outer);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(firstArgument, secondArgument, thirdArgument)
+)(outer);
+
+---------- Options ----------
+{"printWidth":30,"trailingComma":"none"}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument
+  )
+)(outer);
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":30}
+---------- Output ----------
+/**@type{(n:number)=>number}*/ (
+  connect(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+  )
+)(outer);

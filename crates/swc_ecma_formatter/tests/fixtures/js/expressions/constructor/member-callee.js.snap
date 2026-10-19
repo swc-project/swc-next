@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new namespace.veryLongNamespace.Constructor(first(), second());
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(
+  first(),
+  second(),
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(first(), second());
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+new namespace.veryLongNamespace.Constructor(
+  first(),
+  second(),
+)

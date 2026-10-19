@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abstract class Base { public abstract readonly value: number; } class C extends Base { public readonly value = 7; }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+abstract class Base {
+  public abstract readonly value: number;
+}
+class C extends Base {
+  public readonly value = 7;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+abstract class Base {
+  public abstract readonly value: number;
+}
+class C extends Base {
+  public readonly value = 7;
+}

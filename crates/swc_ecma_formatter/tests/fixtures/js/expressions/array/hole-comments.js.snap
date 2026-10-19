@@ -1,0 +1,86 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* leading */, value, , /* trailing */];
+---------- Options ----------
+{}
+---------- Output ----------
+[/* leading */ , value, , /* trailing */];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[/* leading */ , value, , /* trailing */]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* leading */ ,
+	value,
+	, /* trailing */
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  /* leading */ ,
+  value,
+  , /* trailing */
+];

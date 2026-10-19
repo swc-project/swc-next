@@ -1,0 +1,82 @@
+formatter * prettier 3.9.9 * js
+========================================
+Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
+Fixture files: 815
+Scope: supported physical fixtures (inline snapshot snippets excluded)
+Passed: 1099/1102 (99.73%)
+Snapshot matched: 1099/1102
+AST parity: 1101/1101
+AST mismatched: 0/1101
+AST format errors: 0/1102
+Mismatched: 2/1102
+Format errors: 0/1102
+Panicked: 0/1102
+Not idempotent: 0/1102
+Ignored files: 260
+Parse errors: 1/1102
+Expected parser errors: 36
+Unsupported option sets: 14
+
+# Parse errors
+
+- js/await/await-with-parens.js: 1 parse error(s)
+
+# Expected parser errors
+
+- js/babel-plugins/async-do-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/destructuring-private.js: 1 expected parser error(s)
+- js/babel-plugins/discard-binding.js: 1 expected parser error(s)
+- js/babel-plugins/do-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/export-default-from.js: 1 expected parser error(s)
+- js/babel-plugins/flow.js: 1 expected parser error(s)
+- js/babel-plugins/function-bind.js: 1 expected parser error(s)
+- js/babel-plugins/function-sent.js: 1 expected parser error(s)
+- js/babel-plugins/module-blocks.js: 1 expected parser error(s)
+- js/babel-plugins/optional-chaining-assignment.js: 1 expected parser error(s)
+- js/babel-plugins/partial-application.js: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-fsharp.js: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-hack.cjs: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator-minimal.js: 1 expected parser error(s)
+- js/babel-plugins/throw-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/typescript.js: 1 expected parser error(s)
+- js/babel-plugins/v8intrinsic.js: 1 expected parser error(s)
+- js/discard-binding/array-pattern.js: 1 expected parser error(s)
+- js/discard-binding/basic.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-arrow-params.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-assignment.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-async-arrow-params.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-bindings.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-for-await-using-binding.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-for-bindings.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-for-lhs.js: 1 expected parser error(s)
+- js/discard-binding/discard-binding-for-using-binding.js: 1 expected parser error(s)
+- js/discard-binding/function-parameter.js: 1 expected parser error(s)
+- js/discard-binding/object-pattern.js: 1 expected parser error(s)
+- js/discard-binding/unary-expression-void.js: 1 expected parser error(s)
+- js/discard-binding/using-variable-declarator.js: 1 expected parser error(s)
+- js/discard-binding/using.js: 1 expected parser error(s)
+- js/explicit-resource-management/valid-module-block-top-level-await-using-binding.js: 1 expected parser error(s)
+- js/explicit-resource-management/valid-module-block-top-level-using-binding.js: 1 expected parser error(s)
+- js/v8_intrinsic/avoid-conflicts-to-pipeline.js: 1 expected parser error(s)
+- js/v8_intrinsic/intrinsic_call.js: 1 expected parser error(s)
+
+# Failed
+
+- js/strings/template-literals.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
+
+# Unsupported option sets
+
+- js/binary-expressions/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/binary-expressions/mutiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/call/boolean/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/conditional/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/cursor/require-pragma/format.test.js - unsupported Prettier option requirePragma=true
+- js/logical-expressions/multiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/multiparser-html/format.test.js - unsupported Prettier option htmlWhitespaceSensitivity="ignore"
+- js/multiparser-markdown/format.test.js - unsupported Prettier option proseWrap="always"
+- js/object-multiline/format.test.js - unsupported Prettier option objectWrap="collapse"
+- js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/ternaries/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/ternaries/parenthesis/format.test.js - unsupported Prettier option experimentalTernaries=true

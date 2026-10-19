@@ -1,0 +1,118 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first
+// @ts-ignore
+,
+,
+second];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	first
+	// @ts-ignore
+	,
+	,
+	second,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  first
+  // @ts-ignore
+  ,
+  ,
+  second,
+];

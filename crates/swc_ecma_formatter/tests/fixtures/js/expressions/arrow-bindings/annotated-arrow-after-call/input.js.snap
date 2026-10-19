@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first();
+/*#__NO_SIDE_EFFECTS__*/ value => first(value);
+---------- Options ----------
+{"arrowParens":"always","printWidth":80,"semi":false}
+---------- Output ----------
+first()
+;
+/*#__NO_SIDE_EFFECTS__*/ (value) => first(value)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":80,"semi":false}
+---------- Output ----------
+first()
+/*#__NO_SIDE_EFFECTS__*/ value => first(value)

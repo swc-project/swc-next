@@ -1,0 +1,14 @@
+[
+  {
+    "printWidth": 80
+  },
+  {
+    "printWidth": 20,
+    "semi": false,
+    "trailingComma": "none"
+  },
+  {
+    "printWidth": 40,
+    "endOfLine": "crlf"
+  }
+]

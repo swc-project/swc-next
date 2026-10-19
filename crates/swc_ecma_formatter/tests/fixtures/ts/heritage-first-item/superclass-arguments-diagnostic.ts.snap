@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T> {}
+class Subject extends Base<number> implements
+// @ts-ignore
+MissingFirst,
+MissingSecond {}
+const outsideSentinel: number = "outside";
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Base<T> {}
+class Subject
+  extends Base<number> implements
+// @ts-ignore
+MissingFirst,
+  MissingSecond {}
+const outsideSentinel: number = "outside";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class Base<T> {}
+class Subject
+  extends Base<number> implements
+// @ts-ignore
+MissingFirst,
+  MissingSecond {}
+const outsideSentinel: number =
+  "outside"
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class Base<T> {}
+class Subject
+	extends Base<number> implements
+// @ts-ignore
+MissingFirst,
+	MissingSecond {}
+const outsideSentinel: number = "outside";

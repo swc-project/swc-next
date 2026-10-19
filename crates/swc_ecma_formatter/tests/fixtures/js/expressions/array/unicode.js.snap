@@ -1,0 +1,78 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[世界, é, 𐀀];
+---------- Options ----------
+{}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[世界, é, 𐀀];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[世界, é, 𐀀]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	世界,
+	é,
+	𐀀,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  世界,
+  é,
+  𐀀,
+];

@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+with (value);
+
+(let[x]).foo();
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+with (value);
+
+;(let)[x].foo()
+
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+with (value);
+
+(let)[x].foo();

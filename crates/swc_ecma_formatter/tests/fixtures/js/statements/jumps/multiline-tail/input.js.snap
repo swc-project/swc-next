@@ -1,0 +1,69 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+label: while(a){ if(b) break label /* marker
+ continued */ ; continue label; }
+after: while(a){ if(b) break after; /* marker
+ continued */ continue after; }
+---------- Options ----------
+{}
+---------- Output ----------
+label: while (a) {
+  if (b) break label; /* marker
+ continued */
+  continue label;
+}
+after: while (a) {
+  if (b) break after;
+  /* marker
+ continued */ continue after;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+label: while (a) {
+  if (b) break label /* marker
+ continued */
+  continue label
+}
+after: while (a) {
+  if (b) break after
+  /* marker
+ continued */ continue after
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+label: while (
+  a
+) {
+  if (b)
+    break label; /* marker
+ continued */
+  continue label;
+}
+after: while (
+  a
+) {
+  if (b)
+    break after;
+  /* marker
+ continued */ continue after;
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+label: while (a) {
+	if (b) break label; /* marker
+ continued */
+	continue label;
+}
+after: while (a) {
+	if (b) break after;
+	/* marker
+ continued */ continue after;
+}

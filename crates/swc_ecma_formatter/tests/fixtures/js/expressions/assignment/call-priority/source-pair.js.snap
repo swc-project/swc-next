@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = /** @type {Callable} */ (receiver.branch.method)();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const assignedValueName =
+  /** @type {Callable} */ (
+    receiver.branch
+      .method
+  )();
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const assignedValueName =
+  /** @type {Callable} */ (
+    receiver.branch.method
+  )();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const assignedValueName = /** @type {Callable} */ (receiver.branch.method)();

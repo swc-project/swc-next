@@ -1,0 +1,94 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[1/* left */,/* right */2,3,4/* last */];
+---------- Options ----------
+{}
+---------- Output ----------
+[1 /* left */, /* right */ 2, 3, 4 /* last */];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[1 /* left */, /* right */ 2, 3, 4 /* last */]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	1 /* left */,
+	/* right */ 2,
+	3,
+	4 /* last */,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  1 /* left */,
+  /* right */ 2,
+  3,
+  4 /* last */,
+];

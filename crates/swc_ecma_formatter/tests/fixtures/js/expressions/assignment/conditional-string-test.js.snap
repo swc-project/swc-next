@@ -1,0 +1,81 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[target = "long string used as the conditional test" ? consequent : alternate];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  (target =
+    "long string used as the conditional test"
+      ? consequent
+      : alternate),
+];
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+[
+  (target =
+    "long string used as the conditional test"
+      ? consequent
+      : alternate),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+[
+    (target =
+        "long string used as the conditional test"
+            ? consequent
+            : alternate),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	(target =
+		"long string used as the conditional test"
+			? consequent
+			: alternate),
+];
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+[
+ (target =
+  "long string used as the conditional test"
+   ? consequent
+   : alternate),
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+[
+  (target = "long string used as the conditional test"
+    ? consequent
+    : alternate),
+];

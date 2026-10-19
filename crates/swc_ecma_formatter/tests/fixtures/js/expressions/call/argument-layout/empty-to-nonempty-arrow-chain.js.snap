@@ -1,0 +1,55 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+execute((
+  // outer parameters
+) => (value // inner parameters
+) => {});
+---------- Options ----------
+{"printWidth":80,"trailingComma":"all"}
+---------- Output ----------
+execute(
+  (
+    // outer parameters
+  ) =>
+    (
+      value, // inner parameters
+    ) => {},
+);
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"es5"}
+---------- Output ----------
+execute(
+  (
+    // outer parameters
+  ) =>
+    (
+      value // inner parameters
+    ) => {}
+);
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+execute(
+  (
+    // outer parameters
+  ) =>
+    (
+      value // inner parameters
+    ) => {}
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+execute(
+  (
+    // outer parameters
+  ) =>
+    (
+      value, // inner parameters
+    ) => {},
+);

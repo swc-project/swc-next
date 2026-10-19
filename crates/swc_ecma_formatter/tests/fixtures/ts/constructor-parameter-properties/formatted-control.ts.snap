@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { constructor(public readonly value: number = 1+  2) {} }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  constructor(public readonly value: number = 1 + 2) {}
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    public readonly value: number = 1 +
+      2,
+  ) {}
+}
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+class C {
+  constructor(
+    public readonly value: number = 1 +
+      2
+  ) {}
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20}
+---------- Output ----------
+class C {
+  constructor(
+    public readonly value: number = 1 +
+      2,
+  ) {}
+}

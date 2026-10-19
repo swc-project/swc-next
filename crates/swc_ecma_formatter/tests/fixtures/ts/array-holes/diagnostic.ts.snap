@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const values = [
+  1,
+  // @ts-expect-error
+  ,
+  missing,
+];
+---------- Options ----------
+{}
+---------- Output ----------
+const values = [
+  1,
+  // @ts-expect-error
+  ,
+  missing,
+];

@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume(value => (// head
+  <Panel value={value} /> /* tail */));
+---------- Options ----------
+{}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel
+      value={value}
+    />
+  ) /* tail */,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+consume(
+  (value) => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+)
+
+---------- Options ----------
+{"arrowParens":"avoid","printWidth":40,"semi":false}
+---------- Output ----------
+consume(
+  value => (
+    // head
+    <Panel value={value} />
+  ) /* tail */,
+)

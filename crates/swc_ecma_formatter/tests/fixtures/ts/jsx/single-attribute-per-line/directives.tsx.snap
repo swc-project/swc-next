@@ -1,0 +1,149 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+declare namespace JSX { interface IntrinsicElements { panel: { first?: boolean; second?: boolean; children?: unknown }; } }
+// @ts-expect-error
+const sameLine=<panel invalid first/>;
+const attribute=<panel first // @ts-expect-error
+invalid second/>;
+const child=<panel first second>{/* @ts-expect-error */ missingValue}</panel>;
+---------- Options ----------
+{"singleAttributePerLine":false}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: { first?: boolean; second?: boolean; children?: unknown };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel first second>
+    {/* @ts-expect-error */ missingValue}</panel>);
+
+---------- Options ----------
+{"singleAttributePerLine":true}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: { first?: boolean; second?: boolean; children?: unknown };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel
+    first
+    second
+  >
+    {/* @ts-expect-error */ missingValue}</panel>);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":false}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: {
+      first?: boolean;
+      second?: boolean;
+      children?: unknown;
+    };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel first second>
+    {
+      /* @ts-expect-error */ missingValue}</panel>);
+
+---------- Options ----------
+{"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: {
+      first?: boolean;
+      second?: boolean;
+      children?: unknown;
+    };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel
+    first
+    second
+  >
+    {
+      /* @ts-expect-error */ missingValue}</panel>);
+
+---------- Options ----------
+{"bracketSameLine":true,"singleAttributePerLine":true}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: { first?: boolean; second?: boolean; children?: unknown };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel
+    first
+    second>
+    {/* @ts-expect-error */ missingValue}</panel>);
+
+---------- Options ----------
+{"bracketSameLine":true,"printWidth":24,"singleAttributePerLine":true}
+---------- Output ----------
+declare namespace JSX {
+  interface IntrinsicElements {
+    panel: {
+      first?: boolean;
+      second?: boolean;
+      children?: unknown;
+    };
+  }
+}
+// @ts-expect-error
+const sameLine = <panel invalid first/>;
+const attribute = (
+  <panel
+    first
+    // @ts-expect-error
+    invalid second/>);
+const child = (
+  <panel
+    first
+    second>
+    {
+      /* @ts-expect-error */ missingValue}</panel>);

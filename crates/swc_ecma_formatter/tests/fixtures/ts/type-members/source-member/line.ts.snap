@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Ignored = {
+// prettier-ignore
+value  :  { inner :number }
+next: string;
+other: number;
+};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Ignored = {
+  // prettier-ignore
+  value  :  { inner :number }
+  next: string;
+  other: number;
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Ignored = {
+  // prettier-ignore
+  value  :  { inner :number }
+  next: string;
+  other: number;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Ignored =
+  {
+    // prettier-ignore
+    value  :  { inner :number }
+    next: string
+    other: number
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Ignored = {
+	// prettier-ignore
+	value  :  { inner :number }
+	next: string;
+	other: number;
+};

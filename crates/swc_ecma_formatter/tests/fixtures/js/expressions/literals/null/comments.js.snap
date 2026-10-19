@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* before */null/* after */;
+---------- Options ----------
+{}
+---------- Output ----------
+/* before */ null; /* after */
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/* before */ null /* after */
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/* before */ null; /* after */
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+/* before */ null; /* after */
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+/* before */ null; /* after */
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+/* before */ null; /* after */
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+/* before */ null; /* after */

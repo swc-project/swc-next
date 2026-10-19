@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+(function(value) { return value; } /* receiver */) /* quasi */
+`result`;
+
+consume((value => value /* receiver */) /* quasi */`result`);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(
+  function (value) {
+    return value;
+  } /* receiver */
+) /* quasi */
+`result`;
+
+consume(((value) => value /* receiver */) /* quasi */ `result`);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+;(
+  function (value) {
+    return value
+  } /* receiver */
+) /* quasi */
+`result`
+
+consume(
+  (
+    (value) =>
+      value /* receiver */
+  ) /* quasi */ `result`,
+)
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40,"useTabs":true}
+---------- Output ----------
+(
+	function (value) {
+		return value;
+	} /* receiver */
+) /* quasi */
+`result`;
+
+consume(
+	(
+		(value) => value /* receiver */
+	) /* quasi */ `result`,
+);

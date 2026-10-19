@@ -1,0 +1,99 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[[first, second] // @ts-expect-error
+, [third, fourth]];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  [first, second] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  [first, second] // @ts-expect-error
+  , [third, fourth],]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  [
+    first,
+    second
+  ] // @ts-expect-error
+  , [third, fourth]];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	[
+		first,
+		second,
+	] // @ts-expect-error
+	, [third, fourth],];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  [
+    first,
+    second,
+  ] // @ts-expect-error
+  , [third, fourth],];

@@ -1,0 +1,57 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function run() {
+  await (
+    // @ts-ignore
+    await source.load(request)
+  ).select(options).finish();
+}
+---------- Options ----------
+{"printWidth":50}
+---------- Output ----------
+async function run() {
+  await (
+    // @ts-ignore
+    await source.load(request)
+  )
+    .select(options)
+    .finish();
+}
+
+---------- Options ----------
+{"printWidth":90}
+---------- Output ----------
+async function run() {
+  await (
+    // @ts-ignore
+    await source.load(request)
+  )
+    .select(options)
+    .finish();
+}
+
+---------- Options ----------
+{"printWidth":50,"semi":false}
+---------- Output ----------
+async function run() {
+  await (
+    // @ts-ignore
+    await source.load(request)
+  )
+    .select(options)
+    .finish()
+}
+
+---------- Options ----------
+{"printWidth":50,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+async function run() {
+	await (
+		// @ts-ignore
+		await source.load(request)
+	)
+		.select(options)
+		.finish();
+}

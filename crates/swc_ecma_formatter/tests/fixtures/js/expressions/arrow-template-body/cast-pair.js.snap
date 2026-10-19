@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const create = () => /** @type {"specific"} */ (`
+  text
+`);
+---------- Options ----------
+{}
+---------- Output ----------
+const create = () =>
+  /** @type {"specific"} */ (
+    `
+  text
+`
+  );
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const create = () =>
+  /** @type {"specific"} */ (
+    `
+  text
+`
+  );
+
+---------- Options ----------
+{"arrowParens":"avoid"}
+---------- Output ----------
+const create = () =>
+  /** @type {"specific"} */ (
+    `
+  text
+`
+  );

@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+expect(pet).to.have.property("address").that.deep.equals({
+  street: "Alexanderstrasse",
+  city: "Berlin",
+  country: "Germany",
+});
+---------- Options ----------
+{}
+---------- Output ----------
+expect(pet).to.have
+  .property("address")
+  .that.deep.equals({
+    street: "Alexanderstrasse",
+    city: "Berlin",
+    country: "Germany",
+  });
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+expect(pet).to.have
+  .property("address")
+  .that.deep.equals({
+    street: "Alexanderstrasse",
+    city: "Berlin",
+    country: "Germany",
+  });

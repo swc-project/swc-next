@@ -1,0 +1,15 @@
+flag && <Box><Item /><Item /></Box>;
+first && second && <Box><Item /><Item /></Box>;
+firstCondition && secondCondition && thirdCondition && <Box><Item /><Item /></Box>;
+const assigned = flag || other && <Box><Item /><Item /></Box>;
+const arrow = () => first && second && <Box><Item /><Item /></Box>;
+<div>{first && second && <Box><Item /><Item /></Box>}</div>;
+flag && (/* operand */ <Box><Item /><Item /></Box>);
+flag && // line
+<Box><Item /><Item /></Box>;
+flag && <><Item /><Item /></>;
+first && (second && <Box><Item /><Item /></Box>);
+const nested = first && (second && (third && <Box><Item /><Item /></Box>));
+first && (/* prefix */ second && <Box><Item /><Item /></Box>);
+first && second // trailing prefix
+&& <Box><Item /><Item /></Box>;

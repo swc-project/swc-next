@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Picked<T> = T extends string ? T extends "x" ? 1 : 2 : T extends number ? 3 : 4;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Picked<T> = T extends string
+  ? T extends "x"
+    ? 1
+    : 2
+  : T extends number
+    ? 3
+    : 4;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Picked<T> =
+  T extends string
+    ? T extends "x"
+      ? 1
+      : 2
+    : T extends number
+      ? 3
+      : 4;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Picked<
+  T,
+> =
+  T extends string
+    ? T extends "x"
+      ? 1
+      : 2
+    : T extends number
+      ? 3
+      : 4
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Picked<T> =
+	T extends string
+		? T extends "x"
+			? 1
+			: 2
+		: T extends number
+			? 3
+			: 4;

@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Math.max((/** @type {number} */ (Math.random()).valueOf()), 2);
+---------- Options ----------
+{"printWidth":24,"semi":true}
+---------- Output ----------
+Math.max(
+  /** @type {number} */ (
+    Math.random()
+  ).valueOf(),
+  2,
+);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+Math.max(
+  /** @type {number} */ (
+    Math.random()
+  ).valueOf(),
+  2,
+)
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+Math.max(/** @type {number} */ (Math.random()).valueOf(), 2);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+Math.max(/** @type {number} */ (Math.random()).valueOf(), 2)

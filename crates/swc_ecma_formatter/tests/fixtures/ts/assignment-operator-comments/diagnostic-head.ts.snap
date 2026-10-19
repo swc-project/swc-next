@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = /* explanation */
+  // @ts-ignore
+  missing;
+---------- Options ----------
+{}
+---------- Output ----------
+const value =
+  /* explanation */
+  // @ts-ignore
+  missing;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const value =
+  /* explanation */
+  // @ts-ignore
+  missing;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value =
+  /* explanation */
+  // @ts-ignore
+  missing

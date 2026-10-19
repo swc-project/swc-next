@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,[1,
+/* block */
+ // line
+2]);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(first, [
+  1, /* block */ // line
+  2,
+]);

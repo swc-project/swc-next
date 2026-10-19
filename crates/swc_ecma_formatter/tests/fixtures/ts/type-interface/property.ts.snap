@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface T{a:number;b?:string;readonly c:12.00}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+interface T {
+  a: number;
+  b?: string;
+  readonly c: 12.0;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface T {
+  a: number;
+  b?: string;
+  readonly c: 12.0;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+interface T {
+  a: number
+  b?: string
+  readonly c: 12.0
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+interface T {
+	a: number;
+	b?: string;
+	readonly c: 12.0;
+}

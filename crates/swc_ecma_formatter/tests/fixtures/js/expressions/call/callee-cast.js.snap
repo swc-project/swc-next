@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @type {Function} */ (unknown))(argument);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {Function} */ (
+  unknown
+)(argument);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/** @type {Function} */ (unknown)(argument);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;/** @type {Function} */ (
+  unknown
+)(argument)
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+/** @type {Function} */ (
+  unknown
+)(argument);

@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@/** @type {any} */ (first + second)
+class C {}
+---------- Options ----------
+{}
+---------- Output ----------
+@(/** @type {any} */ (first + second))
+class C {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+@(
+  /** @type {any} */ (
+    first + second
+  )
+)
+class C {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+@(/** @type {any} */ (first + second))
+class C {}

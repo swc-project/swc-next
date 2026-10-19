@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let value: Registry /* prettier-ignore */ <12.00,13.00>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+let value: Registry /* prettier-ignore */ <12.00,13.00>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let value: Registry /* prettier-ignore */ <12.00,13.00>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+let value: Registry /* prettier-ignore */ <12.00,13.00>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+let value: Registry /* prettier-ignore */ <12.00,13.00>;

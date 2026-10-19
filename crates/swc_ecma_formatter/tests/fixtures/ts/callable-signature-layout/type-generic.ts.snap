@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = <AnExtremelyLongUnconstrainedGenericParameterName>(value: number) => { result: number };
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type F = <
+  AnExtremelyLongUnconstrainedGenericParameterName,
+>(
+  value: number,
+) => { result: number };
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type F = <AnExtremelyLongUnconstrainedGenericParameterName>(value: number) => {
+  result: number;
+};
+
+---------- Options ----------
+{"printWidth":40,"semi":false,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type F = <
+	AnExtremelyLongUnconstrainedGenericParameterName
+>(
+	value: number
+) => { result: number }

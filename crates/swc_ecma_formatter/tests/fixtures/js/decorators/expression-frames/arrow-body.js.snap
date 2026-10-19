@@ -1,0 +1,40 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const build = () => (@decorate class Item { static value = 1; });
+const ordinary = () => (class Item { static value = 2; });
+const value = build().value + ordinary().value;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const build = () =>
+  (
+    @decorate
+    class Item {
+      static value = 1;
+    }
+  );
+const ordinary = () =>
+  class Item {
+    static value = 2;
+  };
+const value =
+  build().value + ordinary().value;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const build = () =>
+  (
+    @decorate
+    class Item {
+      static value = 1
+    }
+  )
+const ordinary = () =>
+  class Item {
+    static value = 2
+  }
+const value =
+  build().value + ordinary().value

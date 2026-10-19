@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {"a b" as "c d",default as value} from "module";
+---------- Options ----------
+{}
+---------- Output ----------
+export { "a b" as "c d", default as value } from "module";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export {
+  "a b" as "c d",
+  default as value,
+} from "module";
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export {
+  'a b' as 'c d',
+  default as value,
+} from 'module'

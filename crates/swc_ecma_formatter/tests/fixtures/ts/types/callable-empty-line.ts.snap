@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = (// empty
+) => void;
+---------- Options ----------
+{}
+---------- Output ----------
+type F = (
+  // empty
+) => void;

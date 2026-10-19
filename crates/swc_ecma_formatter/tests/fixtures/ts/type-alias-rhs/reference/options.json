@@ -1,0 +1,20 @@
+[
+  {
+    "printWidth": 17
+  },
+  {
+    "printWidth": 18
+  },
+  {
+    "printWidth": 19
+  },
+  {
+    "printWidth": 18,
+    "semi": false
+  },
+  {
+    "printWidth": 18,
+    "useTabs": true,
+    "endOfLine": "crlf"
+  }
+]

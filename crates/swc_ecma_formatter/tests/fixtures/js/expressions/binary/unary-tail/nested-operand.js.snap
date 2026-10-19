@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function isValidIndexKeyType(type) {
+  return !!(type.flags & (4 /* String */ | 8 /* Number */ | 4096 /* ESSymbol */));
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function isValidIndexKeyType(type) {
+  return !!(
+    type.flags &
+    (4 /* String */ | 8 /* Number */ | 4096) /* ESSymbol */
+  );
+}

@@ -1,0 +1,48 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {}; declare global { interface A { x: number; } var x: number; }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+export {};
+declare global {
+  interface A {
+    x: number;
+  }
+  var x: number;
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+export {};
+declare global {
+  interface A {
+    x: number;
+  }
+  var x: number;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export {}
+declare global {
+  interface A {
+    x: number
+  }
+  var x: number
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+export {}
+declare global {
+  interface A {
+    x: number
+  }
+  var x: number
+}

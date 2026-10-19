@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const key = "read"; class OptionalComputed { value = 1; [key]?(): number { return this.value + 6; } }
+const result = new OptionalComputed()[key]?.();
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const key = "read"
+class OptionalComputed {
+  value = 1;
+  [key]?(): number {
+    return this.value + 6
+  }
+}
+const result = new OptionalComputed()[key]?.()

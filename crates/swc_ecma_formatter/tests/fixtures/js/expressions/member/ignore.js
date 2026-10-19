@@ -1,0 +1,3 @@
+object
+// prettier-ignore
+. property;

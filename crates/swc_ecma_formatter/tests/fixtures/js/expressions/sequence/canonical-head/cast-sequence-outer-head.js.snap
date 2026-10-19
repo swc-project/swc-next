@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = (/* head */ (/** @type {X} */ t), y);
+---------- Options ----------
+{}
+---------- Output ----------
+x = (/* head */ /** @type {X} */ t, y);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+x = (/* head */ /** @type {X} */ t, y)
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+x =
+  (/* head */ /** @type {X} */ t,
+  y);

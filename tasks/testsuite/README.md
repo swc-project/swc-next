@@ -1,15 +1,16 @@
 # Test suite
 
 This package runs the SWC Next parser, semantic analyzer, code generator,
-and transformer against upstream JavaScript and TypeScript test suites. It is a
-conformance and regression harness: each run writes a deterministic summary to
-`snapshots/`, which can be reviewed and committed like any other source change.
+transformer, and formatter against upstream JavaScript and TypeScript test
+suites. It is a conformance and regression harness: each run writes a
+deterministic summary to `snapshots/`, which can be reviewed and committed like
+any other source change.
 
 Run all commands below from the workspace root.
 
 ## Fixtures
 
-The harness uses pinned upstream repositories under `tasks/testsuite/fixtures`:
+The harnesses use pinned upstream repositories under `tasks/testsuite/fixtures`:
 
 | Directory             | Upstream suite                                                  | Used for                                                |
 | --------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
@@ -19,6 +20,7 @@ The harness uses pinned upstream repositories under `tasks/testsuite/fixtures`:
 | `fixtures/swc`        | [swc-project/swc](https://github.com/swc-project/swc)           | SWC resolver inputs and transform comparisons           |
 | `fixtures/swc-conformance` | [CPunisher/swc-conformance](https://github.com/CPunisher/swc-conformance) | Expected SWC name resolution text              |
 | `fixtures/estree-conformance` | [oxc-project/estree-conformance](https://github.com/oxc-project/estree-conformance) | N-API ESTree comparisons                 |
+| `fixtures/prettier`   | [prettier/prettier](https://github.com/prettier/prettier)       | Formatter output and idempotency                        |
 
 For a fresh checkout, clone the fixtures with:
 
@@ -133,6 +135,36 @@ cargo run --locked -p testsuite --bin conformance --profile conformance
 
 The Babel static-block fixtures use `prevent_extensions=true`, exercising the
 closure lowering; the SWC fixtures exercise the default private-field lowering.
+
+## Formatter conformance
+
+Run the Prettier compatibility matrix:
+
+```sh
+cargo run -p testsuite --bin formatter_conformance --profile conformance
+```
+
+The fixture is pinned to Prettier 3.9.9 at commit
+`cdd17f2288b28b170a76416c72dac56e3ea5daff`. The runner verifies the version,
+reads physical JS/JSX/TS/TSX inputs, discovers options from `runFormatTest`, and
+compares output against committed Jest snapshots. Unsupported options are
+reported explicitly. Shared JSX inputs exercise both parser partitions.
+
+Successful formatting checks output parsing, comment retention, source/AST
+entry-point parity, and second-pass idempotency. These checks do not establish
+full semantic equivalence. Formatting and parser failures remain visible as
+syntax support grows.
+
+Summaries are written to `snapshots/formatter_prettier_{js,typescript}.snap`.
+A normal run can succeed with known mismatches or unsupported syntax; CI checks
+the generated reports against the committed snapshots.
+
+Inspect matching inputs and detailed diffs without changing reports:
+
+```sh
+PRETTIER_FILTER='js/comments/jsx.js' \
+  cargo run -p testsuite --bin formatter_conformance --profile conformance
+```
 
 ## Debug one case
 

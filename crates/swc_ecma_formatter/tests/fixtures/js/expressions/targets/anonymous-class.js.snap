@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(value) = class {};
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(value) = class {};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(value) = class {};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(value) = class {};
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(value) = class {}

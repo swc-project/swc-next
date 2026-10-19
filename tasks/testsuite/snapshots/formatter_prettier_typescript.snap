@@ -1,0 +1,29 @@
+formatter * prettier 3.9.9 * typescript
+========================================
+Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
+Fixture files: 657
+Scope: supported physical fixtures (inline snapshot snippets excluded)
+Passed: 810/810 (100.00%)
+Snapshot matched: 810/810
+AST parity: 810/810
+AST mismatched: 0/810
+AST format errors: 0/810
+Mismatched: 0/810
+Format errors: 0/810
+Panicked: 0/810
+Not idempotent: 0/810
+Ignored files: 76
+Parse errors: 0/810
+Expected parser errors: 1
+Unsupported option sets: 4
+
+# Expected parser errors
+
+- typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
+
+# Unsupported option sets
+
+- typescript/conditional-types/format.test.js - unsupported Prettier option experimentalTernaries=true
+- typescript/intersection/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- typescript/method-chain/object/format.test.js - unsupported Prettier option objectWrap="collapse"
+- typescript/object-type/object-multiline/format.test.js - unsupported Prettier option objectWrap="collapse"

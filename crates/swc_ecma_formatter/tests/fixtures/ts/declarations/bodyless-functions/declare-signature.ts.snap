@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare function fetch<T extends string = string>(this: object, x: T, optional?: number, ...rest: readonly T[]): Promise<T>;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+declare function fetch<
+  T extends string =
+    string,
+>(
+  this: object,
+  x: T,
+  optional?: number,
+  ...rest: readonly T[]
+): Promise<T>;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare function fetch<
+  T extends string =
+    string,
+>(
+  this: object,
+  x: T,
+  optional?: number,
+  ...rest: readonly T[]
+): Promise<T>
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+declare function fetch<T extends string = string>(
+  this: object,
+  x: T,
+  optional?: number,
+  ...rest: readonly T[]
+): Promise<T>;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare function fetch<T extends string = string>(
+  this: object,
+  x: T,
+  optional?: number,
+  ...rest: readonly T[]
+): Promise<T>

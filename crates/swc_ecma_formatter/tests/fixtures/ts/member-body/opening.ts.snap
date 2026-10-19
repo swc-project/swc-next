@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Inline = { /* inline */ value: number };
+type Line = { // line
+value: number };
+type Block = { /* block */
+value: number };
+interface Leading {
+/* leading */ value: number;
+}
+type Callback = (value: { // nested
+first: number;
+second: string;
+}) => void;
+---------- Options ----------
+{}
+---------- Output ----------
+type Inline = { /* inline */ value: number };
+type Line = {
+  // line
+  value: number;
+};
+type Block = {
+  /* block */
+  value: number;
+};
+interface Leading {
+  /* leading */ value: number;
+}
+type Callback = (value: {
+  // nested
+  first: number;
+  second: string;
+}) => void;
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+type Inline = {
+  /* inline */ value: number
+}
+type Line = {
+  // line
+  value: number
+}
+type Block = {
+  /* block */
+  value: number
+}
+interface Leading {
+  /* leading */ value: number
+}
+type Callback = (value: {
+  // nested
+  first: number
+  second: string
+}) => void

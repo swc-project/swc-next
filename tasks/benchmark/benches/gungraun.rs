@@ -12,6 +12,7 @@ use swc_next_ecma_ast::{
     VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
+use swc_next_ecma_formatter::{FormatOptions, format_ast};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{
@@ -158,6 +159,42 @@ fn bench_resolver(ast: Ast<'static>) {
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_codegen(ast: Ast<'static>) {
     black_box(print(ast.allocator(), &ast, CodegenOptions::default()));
+}
+
+fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static Ast<'static> {
+    // Each case runs in its own process. Keep parsing and AST destruction
+    // outside the measured function.
+    let allocator = Box::leak(Box::new(Allocator::new()));
+    let parsed = Parser::init(
+        allocator,
+        source,
+        Options {
+            lang,
+            comments: CommentMode::Flat,
+            preserve_parens: true,
+            ..Options::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    Box::leak(Box::new(parsed.ast))
+}
+
+#[library_benchmark]
+#[bench::angular(setup_formatter_program(ANGULAR, Lang::Js))]
+#[bench::backbone(setup_formatter_program(BACKBONE, Lang::Js))]
+#[bench::jquery_mobile(setup_formatter_program(JQUERY_MOBILE, Lang::Js))]
+#[bench::mootools(setup_formatter_program(MOOTOOLS, Lang::Js))]
+#[bench::underscore(setup_formatter_program(UNDERSCORE, Lang::Js))]
+#[bench::three(setup_formatter_program(THREE, Lang::Js))]
+#[bench::yui(setup_formatter_program(YUI, Lang::Js))]
+#[bench::typescript(setup_formatter_program(TYPESCRIPT, Lang::Js))]
+#[bench::astro_config(setup_formatter_program(ASTRO_CONFIG, Lang::Ts))]
+#[bench::effect_schema_ast(setup_formatter_program(EFFECT_SCHEMA_AST, Lang::Ts))]
+#[bench::hono_types(setup_formatter_program(HONO_TYPES, Lang::Ts))]
+fn bench_formatter(ast: &'static Ast<'static>) -> String {
+    black_box(format_ast(black_box(ast), FormatOptions::prettier()).unwrap())
 }
 
 type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);
@@ -394,6 +431,13 @@ library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
 
 library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 
+library_benchmark_group!(
+    name = formatter,
+    config =
+        LibraryBenchmarkConfig::default().tool(Callgrind::with_args(["--main-stacksize=16777216"])),
+    benchmarks = bench_formatter
+);
+
 library_benchmark_group!(name = minifier, benchmarks = bench_minifier);
 
 library_benchmark_group!(name = transform, benchmarks = bench_transform);
@@ -411,6 +455,6 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, resolver, codegen, minifier, transform, type_strip, visit
+        parser, semantic, resolver, codegen, formatter, minifier, transform, type_strip, visit
     ]
 );

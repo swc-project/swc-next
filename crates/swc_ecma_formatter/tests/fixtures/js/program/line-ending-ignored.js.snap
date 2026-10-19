@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+call(  first,second );
+next( );---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+call(  first,second );
+next();
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// prettier-ignore
+call(  first,second );
+next();
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+// prettier-ignorecall(  first,second );next();

@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first;
+/pattern/yi;
+---------- Options ----------
+{}
+---------- Output ----------
+first;
+/pattern/iy;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first
+;/pattern/iy
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first;
+/pattern/iy;
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+first;
+/pattern/iy;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+first;
+/pattern/iy;
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+first;
+/pattern/iy;
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first;
+/pattern/iy;

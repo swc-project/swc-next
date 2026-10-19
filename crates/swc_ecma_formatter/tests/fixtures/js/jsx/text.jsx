@@ -1,0 +1,64 @@
+const a1=<div>alpha <b>beta</b> gamma {" "}<i>delta</i> &amp; &nbsp; &lt; a\b</div>;
+const a2=<div> first
+ second
+	 third <b> nested </b> last
+ line </div>;
+const a3=<div>	alpha	 beta 
+ gamma​ 	
+ delta	 </div>;
+const a4=<div>
+ alpha
+</div>;
+const a5=<div> alpha beta </div>;
+const a6=<div first="one" second="two">   <b/>   tail   </div>;
+const a7=<Box>{" "}{" "}</Box>;
+const a8=<Box>foo{" "}bar</Box>;
+const a9=<Box>{""}  {" "}<b/>  {" "}</Box>;
+const a10=<Box>{(" ")}</Box>;
+const a11=<Box>{( ("\x20") )}</Box>;
+const a12=<Box>{(/* value */ " ")}</Box>;
+const a13=<Box>{("  ")}{("")}{("x")}</Box>;
+
+const a14=<Box>
+ <A/>
+
+
+
+ <B/>
+</Box>;
+const a15=<Box>
+ <A/>
+
+ <B/>
+
+ tail
+</Box>;
+const a16=<Box>
+ <A/>
+
+  
+ <B/>
+</Box>;
+const a17=<Box>{/* prettier-ignore */}
+ <A   odd = {value+  other}/>
+
+ <B/>
+</Box>;
+const a18=<Box><A/>
+ <B/>
+
+ <C/></Box>;
+
+const ascii_spacing=<Box>	alpha		 betagamma	</Box>;
+const punctuation=<Box>
+<i>first</i>
+-
+<i>second</i>
+{hour}
+:
+{minute}
+</Box>;
+const guarded_text=<Box>{/* prettier-ignore */}
+<Line value={value+  other}> before		 after </Line>
+{ /* text */ " " }
+</Box>;
