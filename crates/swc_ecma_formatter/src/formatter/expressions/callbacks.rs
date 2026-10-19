@@ -368,11 +368,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (value, tail) = self.record_callback(&mut selected, false, jsx_call, None, writer)?;
         match value {
             RecordedValue::Callback {
-                signature: Some(GroupedSignature::Flat(signature)),
+                signature: Some(signature),
                 body: CallbackBody::Retained(body),
                 ..
             } => {
-                writer.write_flat_fragment(signature);
+                match signature {
+                    GroupedSignature::Independent(signature) => writer.write_fragment(signature),
+                    GroupedSignature::Flat(signature) => writer.write_flat_fragment(signature),
+                }
                 writer.write_fragment(body);
             }
             RecordedValue::Callback { normal, .. } | RecordedValue::Ordinary(normal) => {
@@ -904,6 +907,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok::<_, FormatError>(())
         })?;
         let signature = match (selected.role, callback.kind, layout) {
+            (CallbackRole::Test, _, _) => Some(GroupedSignature::Independent(signature)),
             (CallbackRole::First, CallbackKind::Function(_), ExpressionLayout::Normal) => {
                 Some(GroupedSignature::Independent(signature))
             }

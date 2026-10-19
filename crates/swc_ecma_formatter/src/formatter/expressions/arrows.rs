@@ -1077,13 +1077,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FlatSeparator::Empty
                 };
                 self.format_type_gap(generic.prefix, prefix_separator, writer)?;
-                self.format_type_parameters_with_tail(
-                    generic.node,
-                    TypeParameterContext::Callable,
-                    generic.mode,
-                    generic.tail,
-                    writer,
-                )?;
+                let mut write_generics = |writer: &mut Writer<'ast>| {
+                    self.format_type_parameters_with_tail(
+                        generic.node,
+                        TypeParameterContext::Callable,
+                        generic.mode,
+                        generic.tail,
+                        writer,
+                    )
+                };
+                if parameters.frame() == ParameterFrame::Fixed {
+                    writer.flat(write_generics)?;
+                } else {
+                    write_generics(writer)?;
+                }
                 self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
             }
             self.format_source_parameters_with_layout(parameters, None, parameter_layout, writer)?;
