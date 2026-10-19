@@ -1,0 +1,55 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type X<T> = T extends A ? B : T extends { [K in keyof Ref<aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccc>]: Value<K> } ? C : D;
+---------- Options ----------
+{}
+---------- Output ----------
+type X<T> = T extends A
+  ? B
+  : T extends {
+        [
+          K in keyof Ref<
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+            bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+            cccccccccccccccccccccccccccccc
+          >
+        ]: Value<K>;
+      }
+    ? C
+    : D;
+
+---------- Options ----------
+{"useTabs":true}
+---------- Output ----------
+type X<T> = T extends A
+	? B
+	: T extends {
+				[
+					K in keyof Ref<
+						aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+						bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+						cccccccccccccccccccccccccccccc
+					>
+				]: Value<K>;
+		  }
+		? C
+		: D;
+
+---------- Options ----------
+{"tabWidth":4}
+---------- Output ----------
+type X<T> = T extends A
+    ? B
+    : T extends {
+            [
+                K in keyof Ref<
+                    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+                    bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+                    cccccccccccccccccccccccccccccc
+                >
+            ]: Value<K>;
+        }
+      ? C
+      : D;
