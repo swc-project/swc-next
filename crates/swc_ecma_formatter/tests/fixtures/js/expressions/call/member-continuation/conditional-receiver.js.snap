@@ -1,0 +1,58 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH).pipe(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth);
+---------- Options ----------
+{}
+---------- Output ----------
+x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH)
+  .pipe(
+    first,
+    second,
+    third,
+    fourth,
+    fifth,
+    sixth,
+    seventh,
+    eighth,
+    ninth,
+    tenth,
+  );
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH)
+  .pipe(
+    first,
+    second,
+    third,
+    fourth,
+    fifth,
+    sixth,
+    seventh,
+    eighth,
+    ninth,
+    tenth,
+  )
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+x = (
+  isSomethingTrue
+    ? someValueWhenTrueIsHere
+    : someOtherValueWhenFalseIsH
+).pipe(
+  first,
+  second,
+  third,
+  fourth,
+  fifth,
+  sixth,
+  seventh,
+  eighth,
+  ninth,
+  tenth,
+);

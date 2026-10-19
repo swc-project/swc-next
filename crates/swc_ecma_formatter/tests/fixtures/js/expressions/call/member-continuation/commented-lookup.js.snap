@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere)
+  /* lookup */.method(first, second);
+---------- Options ----------
+{}
+---------- Output ----------
+(condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere)
+  /* lookup */
+  .method(first, second);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;(condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere)
+  /* lookup */
+  .method(first, second)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+(condition
+  ? someValueWhenTrueIsHere
+  : someOtherValueWhenFalseIsHere
+)
+  /* lookup */
+  .method(first, second);

@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+consume((condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(firstArgument, secondArgument, thirdArgument, fourthArgument), tail);
+---------- Options ----------
+{}
+---------- Output ----------
+consume(
+  (condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+consume(
+  (condition ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsHere).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+)
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+consume(
+  (condition
+    ? someValueWhenTrueIsHere
+    : someOtherValueWhenFalseIsHere
+  ).method(
+    firstArgument,
+    secondArgument,
+    thirdArgument,
+    fourthArgument,
+  ),
+  tail,
+);
