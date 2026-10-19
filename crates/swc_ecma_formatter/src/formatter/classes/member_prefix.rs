@@ -1,8 +1,8 @@
 //! Class modifiers belong to the member, before its real key and function.
 
 use swc_next_ecma_ast::{
-    Accessibility, Ast, GetSpan, MethodDefinition, MethodDefinitionKind, PropertyDefinition,
-    PropertyKey, PropertyKeyData, Span, TsMethodDefinition,
+    Accessibility, Ast, CommentKind, GetSpan, MethodDefinition, MethodDefinitionKind,
+    PropertyDefinition, PropertyKey, PropertyKeyData, Span, TsMethodDefinition,
 };
 
 use crate::formatter::comments::CommentRunLayout;
@@ -379,7 +379,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || self
                 .suppression_positions(comments, span.end)
                 .all(|position| matches!(position, SuppressionPosition::Inline));
-        let mode = if binding.allows_relocation(target) && inline {
+        let has_line_terminator = comments.iter().any(|comment| {
+            comment.kind == CommentKind::Line
+                || self.line_breaks(comment.span.start, comment.span.end) != 0
+        });
+        let mode = if binding.allows_relocation(target) && inline && !has_line_terminator {
             PrefixMode::Formatted
         } else {
             PrefixMode::Source
