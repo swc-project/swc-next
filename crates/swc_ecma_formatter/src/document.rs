@@ -5,12 +5,14 @@
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
+mod encode;
 mod printer;
 #[cfg(test)]
 mod tests;
 mod text;
 mod writer;
 
+pub(crate) use encode::encode;
 pub(crate) use writer::{FillEntry, Writer};
 
 use crate::FormatOptions;

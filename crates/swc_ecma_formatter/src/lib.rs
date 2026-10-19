@@ -26,6 +26,9 @@ pub use options::{
 /// Prettier version used as the output oracle for [`FormatOptions::prettier`].
 pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.9.9";
 
+/// Version of the serialized formatter document and diagnostic buffers.
+pub const DOCUMENT_FORMAT_VERSION: u32 = 0;
+
 #[derive(Debug)]
 pub enum FormatError {
     Parse(Vec<Diagnostic<'static>>),
@@ -77,13 +80,22 @@ impl Error for FormatError {}
 /// the formatter needs both to preserve annotation boundaries.
 pub fn format(
     source: &str,
-    mut parser_options: ParserOptions,
+    parser_options: ParserOptions,
     options: FormatOptions,
 ) -> Result<String, FormatError> {
     let allocator = Allocator::new();
+    let ast = parse_source(&allocator, source, parser_options)?;
+    format_ast(&ast, options)
+}
+
+fn parse_source<'a>(
+    allocator: &'a Allocator,
+    source: &'a str,
+    mut parser_options: ParserOptions,
+) -> Result<Ast<'a>, FormatError> {
     parser_options.comments = CommentMode::Flat;
     parser_options.preserve_parens = true;
-    let parsed = Parser::init(&allocator, source, parser_options, NoTokenParserConfig).parse();
+    let parsed = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
     if parsed
         .diagnostics
         .iter()
@@ -91,7 +103,7 @@ pub fn format(
     {
         return Err(FormatError::Parse(parsed.diagnostics));
     }
-    format_ast(&parsed.ast, options)
+    Ok(parsed.ast)
 }
 
 /// Format an already parsed program AST.
@@ -117,4 +129,21 @@ pub fn format_ast(ast: &Ast<'_>, options: FormatOptions) -> Result<String, Forma
         output.insert(0, '\u{feff}');
     }
     Ok(output)
+}
+
+/// Parse source and encode an unprinted document for the SWCFMT Prettier adapter.
+///
+/// The binary protocol is internal and must match the JavaScript decoder version.
+/// All borrowed source and document storage is released before returning.
+pub fn format_to_doc_buffer(
+    source: &str,
+    parser_options: ParserOptions,
+    options: FormatOptions,
+) -> Result<Vec<u8>, FormatError> {
+    let allocator = Allocator::new();
+    let ast = parse_source(&allocator, source, parser_options)?;
+    let document_allocator = Allocator::new();
+    let mut writer = document::Writer::new(&document_allocator);
+    formatter::Formatter::new(&ast, options).format_program(&mut writer)?;
+    Ok(document::encode(writer.finish()))
 }
