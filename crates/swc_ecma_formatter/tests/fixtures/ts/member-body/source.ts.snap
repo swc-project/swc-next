@@ -20,7 +20,7 @@ type EmptyCoverage = { /* @ts-expect-error */ };
 type Ignored = {
   // prettier-ignore
   value  :  { inner :number }
-next: string;
+  next: string;
 };
 interface Coverage {
   // @ts-expect-error
@@ -37,7 +37,7 @@ type EmptyCoverage = {/* @ts-expect-error */};
 type Ignored = {
   // prettier-ignore
   value  :  { inner :number }
-next: string
+  next: string
 }
 interface Coverage {
   // @ts-expect-error

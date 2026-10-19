@@ -9,7 +9,7 @@ type Record={/* prettier-ignore */ value:12.00
 ---------- Output ----------
 type Record = {
   /* prettier-ignore */ value:12.00
- next: number;
+  next: number;
 };
 
 ---------- Options ----------
@@ -17,7 +17,7 @@ type Record = {
 ---------- Output ----------
 type Record = {
   /* prettier-ignore */ value:12.00
- next: number;
+  next: number;
 };
 
 ---------- Options ----------
@@ -26,7 +26,7 @@ type Record = {
 type Record =
   {
     /* prettier-ignore */ value:12.00
- next: number
+    next: number
   }
 
 ---------- Options ----------
@@ -34,5 +34,5 @@ type Record =
 ---------- Output ----------
 type Record = {
 	/* prettier-ignore */ value:12.00
- next: number;
+	next: number;
 };
