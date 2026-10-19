@@ -30,6 +30,16 @@ async function runTestSuite(oracle: string, source: string, snapshot: string) {
   const results: TestResult[] = await Promise.all(
     oracles
       .filter((file) => file.endsWith(".json") || file.endsWith(".md"))
+      // Match the Rust Test262 runner: call expressions as assignment targets
+      // in non-strict mode are intentionally unsupported.
+      .filter(
+        (file) =>
+          source !== SOURCE_TEST262 ||
+          !file
+            .split(path.sep)
+            .join("/")
+            .startsWith("annexB/language/expressions/assignmenttargettype/"),
+      )
       .sort()
       .map((file) => pool.run({ oracle, source, file })),
   );
