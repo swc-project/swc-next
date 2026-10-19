@@ -2498,8 +2498,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => false,
         };
         if !breakable
-            || self.line_constraint(boundary.inner.end, boundary.outer.end - 1)
+            || self.line_constraint(boundary.outer.start + 1, boundary.inner.start)
                 != LineConstraint::SameLine
+                && self.line_constraint(boundary.inner.end, boundary.outer.end - 1)
+                    != LineConstraint::SameLine
             || !self.expression_is_parenthesized(content.data, context)
         {
             return None;
