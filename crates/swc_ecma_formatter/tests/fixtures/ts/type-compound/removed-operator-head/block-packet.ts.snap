@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = /* before */ &
+  /* middle */
+  /* after */
+  "value";
+---------- Options ----------
+{}
+---------- Output ----------
+type A =
+  /* before */ /* middle */
+  /* after */
+  "value";
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type A =
+  /* before */ /* middle */
+  /* after */
+  "value"
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A =
+  /* before */ /* middle */
+  /* after */
+  "value";
