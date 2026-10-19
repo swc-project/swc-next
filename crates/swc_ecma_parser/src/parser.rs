@@ -7939,15 +7939,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         if handler.is_none() && finalizer.is_none() {
-            return {
-                let span = self.current_token.span();
-                self.report(
-                    span,
-                    "Try statement requires catch or finally clause",
-                    ReportOptions::default(),
-                );
-                None
-            };
+            self.report(
+                self.current_token.span(),
+                "Try statement requires catch or finally clause",
+                ReportOptions::default(),
+            );
         }
         let end = finalizer.map_or_else(
             || handler.map_or(block.span(&self.ast).end, |node| node.span(&self.ast).end),
@@ -13440,6 +13436,76 @@ mod tests {
         let parsed = parse_tokens(&allocator, "");
         assert!(parsed.diagnostics.is_empty());
         assert!(parsed.tokens.is_empty());
+    }
+
+    #[test]
+    fn try_recovery() {
+        fn first_try(ast: &Ast<'_>) -> TryStatement {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_try_statement(ast)
+                .unwrap()
+        }
+
+        fn expression_name<'a>(ast: &Ast<'a>, statement: Stmt) -> &'a str {
+            let identifier = statement
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+                .as_identifier_reference(ast)
+                .unwrap();
+            ast.get_utf8(identifier.name(ast))
+        }
+
+        let allocator = Allocator::new();
+        let source = "try { inside; }\nafter;";
+        let parsed = parse_tokens(&allocator, source);
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, Span::new(16, 21));
+        let statement = first_try(ast);
+        assert!(statement.handler(ast).is_none());
+        assert!(statement.finalizer(ast).is_none());
+        let block = statement.block(ast).body(ast);
+        assert_eq!(block.len(), 1);
+        assert_eq!(
+            expression_name(ast, block.get_node(ast, 0).unwrap()),
+            "inside"
+        );
+        let body = ast.root_program().body(ast);
+        assert_eq!(body.len(), 2);
+        assert_eq!(
+            expression_name(ast, body.get_node(ast, 1).unwrap()),
+            "after"
+        );
+        assert_eq!(
+            token_texts(source, &parsed.tokens),
+            ["try", "{", "inside", ";", "}", "after", ";"]
+        );
+
+        let parsed = parse_tokens(&allocator, "try {}");
+        let ast = &parsed.ast;
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert_eq!(parsed.diagnostics[0].span, Span::new(6, 6));
+        assert_eq!(ast.root_program().body(ast).len(), 1);
+        let statement = first_try(ast);
+        assert!(statement.block(ast).body(ast).is_empty());
+        assert!(statement.handler(ast).is_none());
+        assert!(statement.finalizer(ast).is_none());
+
+        let parsed = parse_tokens(&allocator, "try { inside;");
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let parsed = parse_tokens(&allocator, "try {} catch (error)");
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let parsed = parse_tokens(&allocator, "try {} finally");
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
     }
 
     fn parse_typescript_declaration<'a>(
