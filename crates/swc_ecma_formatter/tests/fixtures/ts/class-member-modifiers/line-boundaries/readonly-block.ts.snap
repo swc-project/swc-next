@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A { static /* c
+ */ readonly x: number; }
+---------- Options ----------
+{}
+---------- Output ----------
+class A {
+  static /* c
+ */ readonly x: number;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class A {
+  static /* c
+ */ readonly x: number
+}
