@@ -1334,14 +1334,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?
                 }
-                TypeExpressionGap::Formatted(boundary) => self
-                    .format_prepared_delimited_type_after_comments(
+                TypeExpressionGap::Formatted(boundary) => {
+                    if boundary.is_empty() && head.body.starts_with_type_parameters(self.ast) {
+                        writer.space();
+                    }
+                    self.format_prepared_delimited_type_after_comments(
                         head.body,
                         &boundary,
                         TypeContext::Root,
                         TypeLayout::CallerIndented,
                         writer,
-                    )?,
+                    )?
+                }
             };
             self.format_expression_tail(tail, writer)?;
             match head.closing {
