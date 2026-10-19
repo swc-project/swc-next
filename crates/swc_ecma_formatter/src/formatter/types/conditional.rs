@@ -191,25 +191,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if layout == TypeLayout::ConditionalConsequent {
                 writer.if_flat("(");
             }
-            let tail = match check {
-                ConditionalCheck::Type(check) => {
-                    self.format_prepared_type(check, TypeContext::ConditionalCheck, writer)?
-                }
-                ConditionalCheck::Prepared(check) => {
-                    let layout = check.opening_layout();
-                    self.format_prepared_type_content(
-                        *check,
-                        TypeContext::ConditionalCheck,
-                        layout,
-                        writer,
-                    )?
-                }
+            let print_head = |writer: &mut Writer<'ast>| {
+                let tail = match check {
+                    ConditionalCheck::Type(check) => {
+                        self.format_prepared_type(check, TypeContext::ConditionalCheck, writer)?
+                    }
+                    ConditionalCheck::Prepared(check) => {
+                        let layout = check.opening_layout();
+                        self.format_prepared_type_content(
+                            *check,
+                            TypeContext::ConditionalCheck,
+                            layout,
+                            writer,
+                        )?
+                    }
+                };
+                self.format_expression_tail(tail, writer)?;
+                self.format_conditional_type_boundary(head, writer)?;
+                let tail =
+                    self.format_prepared_type(extends, TypeContext::ConditionalExtends, writer)?;
+                self.format_expression_tail(tail, writer)?;
+                Ok::<_, FormatError>(())
             };
-            self.format_expression_tail(tail, writer)?;
-            self.format_conditional_type_boundary(head, writer)?;
-            let tail =
-                self.format_prepared_type(extends, TypeContext::ConditionalExtends, writer)?;
-            self.format_expression_tail(tail, writer)?;
+            if layout == TypeLayout::ConditionalAlternate {
+                writer.align(2, print_head)?;
+            } else {
+                print_head(writer)?;
+            }
             let branches = |writer: &mut Writer<'ast>| {
                 self.format_conditional_type_branch(
                     question,
