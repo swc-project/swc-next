@@ -8504,16 +8504,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return None;
             }
         };
-        if let Some(error) = result.flag_error {
-            self.report(
-                result.flags,
-                lexical_error_message(error),
-                ReportOptions {
-                    help: Some(Cow::Borrowed(lexical_error_help(error))),
-                    ..ReportOptions::default()
-                },
-            );
-        }
         let regex_token =
             self.lexer
                 .create_token(TokenTag::RegexLiteral, result.span.start, result.span.end);
