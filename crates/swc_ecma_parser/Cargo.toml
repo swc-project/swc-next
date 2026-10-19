@@ -13,6 +13,7 @@ unstable = []
 
 [dependencies]
 bitflags           = { workspace = true }
+indexmap           = { workspace = true }
 memchr             = { workspace = true }
 rustc-hash         = { workspace = true }
 swc_next_allocator = { workspace = true }

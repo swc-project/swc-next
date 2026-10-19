@@ -2859,6 +2859,7 @@ version = "0.3.2"
 dependencies = [
  "bitflags",
  "clap",
+ "indexmap",
  "memchr",
  "rustc-hash",
  "swc_next_allocator",

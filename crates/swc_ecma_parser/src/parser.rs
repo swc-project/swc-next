@@ -8,7 +8,8 @@ use std::hint::cold_path;
 use std::{borrow::Cow, mem};
 
 use bitflags::bitflags;
-use rustc_hash::FxHashSet;
+use indexmap::IndexMap;
+use rustc_hash::{FxBuildHasher, FxHashSet};
 use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8Buf};
 use swc_next_ecma_ast::*;
 use swc_next_ecma_ast::{AstUtf8, AstWtf8};
@@ -729,8 +730,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     statement_context: StatementContext,
     ts_context: TsContext,
     state: ParserState,
-    /// Start offset of an array or object cover grammar with a trailing comma.
-    cover_has_trailing_comma: Option<u32>,
+    /// Commas which become errors only if their spread nodes become rest elements.
+    /// Insertion order allows speculation to rewind by truncating the map.
+    cover_trailing_commas: IndexMap<NodeId, Span, FxBuildHasher>,
     /// Target node whose parentheses were stripped while converting an
     /// assignment target. The same target must be rejected if cover grammar
     /// later establishes that it is a binding pattern.
@@ -770,7 +772,7 @@ struct Checkpoint {
     statement_context: StatementContext,
     ts_context: TsContext,
     state: ParserState,
-    cover_has_trailing_comma: Option<u32>,
+    cover_trailing_commas_len: usize,
     stripped_paren: Option<NodeId>,
     boundary_context: BoundaryContext,
 }
@@ -892,7 +894,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 context
             },
             state: ParserState::default(),
-            cover_has_trailing_comma: None,
+            cover_trailing_commas: IndexMap::default(),
             stripped_paren: None,
             ts_rejected_speculations: FxHashSet::default(),
         }
@@ -1464,7 +1466,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             statement_context: self.statement_context,
             ts_context: self.ts_context,
             state: self.state,
-            cover_has_trailing_comma: self.cover_has_trailing_comma,
+            cover_trailing_commas_len: self.cover_trailing_commas.len(),
             stripped_paren: self.stripped_paren,
             boundary_context: self.boundary_context,
         }
@@ -1495,7 +1497,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.statement_context = checkpoint.statement_context;
         self.ts_context = checkpoint.ts_context;
         self.state = checkpoint.state;
-        self.cover_has_trailing_comma = checkpoint.cover_has_trailing_comma;
+        self.cover_trailing_commas
+            .truncate(checkpoint.cover_trailing_commas_len);
         self.stripped_paren = checkpoint.stripped_paren;
         self.boundary_context = checkpoint.boundary_context;
     }
@@ -9584,9 +9587,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_cover.append(pattern);
                     }
                     ArgumentData::SpreadElement(spread) => {
-                        if self.cover_has_trailing_comma == Some(span.start) {
+                        if let Some(&comma) = self.cover_trailing_commas.get(&spread.node_id()) {
                             self.report(
-                                span,
+                                comma,
                                 "Rest element cannot have a trailing comma in array destructuring.",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -9595,7 +9598,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                     ..ReportOptions::default()
                                 },
                             );
-                            self.cover_has_trailing_comma = None;
                         }
                         if index + 1 != source_elements_len {
                             self.report(
@@ -9740,9 +9742,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_cover.append(property);
                     }
                     ObjectPropertyKindData::SpreadElement(spread) => {
-                        if self.cover_has_trailing_comma == Some(span.start) {
+                        if let Some(&comma) = self.cover_trailing_commas.get(&spread.node_id()) {
                             self.report(
-                                span,
+                                comma,
                                 "Rest element cannot have a trailing comma in object destructuring.",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -9751,7 +9753,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                     ..ReportOptions::default()
                                 },
                             );
-                            self.cover_has_trailing_comma = None;
                         }
                         if index + 1 != source_properties_len {
                             self.report(
@@ -10051,6 +10052,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
     }
 
+    fn record_cover_trailing_comma(&mut self, spread: SpreadElement, comma: Span) {
+        let previous = self.cover_trailing_commas.insert(spread.node_id(), comma);
+        debug_assert!(previous.is_none(), "a spread has only one trailing comma");
+    }
+
     fn parse_array_expression(&mut self, in_cover: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
         let cover = self.parse_array_cover()?;
@@ -10124,9 +10130,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 };
                 end = argument.span(&self.ast).end;
                 self.scratch_cover.append(argument);
+                let comma = self.current_token.span();
                 if self.eat(TokenTag::Comma)? {
-                    if self.current_token.tag() == TokenTag::RightBracket {
-                        self.cover_has_trailing_comma = Some(start);
+                    if self.current_token.tag() == TokenTag::RightBracket
+                        && let Some(spread) = argument.as_spread_element(&self.ast)
+                    {
+                        self.record_cover_trailing_comma(spread, comma);
                     }
                 } else if self.current_token.tag() != TokenTag::RightBracket {
                     self.report_expected(
@@ -10223,9 +10232,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 };
                 end = property.span(&self.ast).end;
                 self.scratch_cover.append(property);
+                let comma = self.current_token.span();
                 if self.eat(TokenTag::Comma)? {
-                    if self.current_token.tag() == TokenTag::RightBrace {
-                        self.cover_has_trailing_comma = Some(start);
+                    if self.current_token.tag() == TokenTag::RightBrace
+                        && let Some(spread) = property.as_spread_element(&self.ast)
+                    {
+                        self.record_cover_trailing_comma(spread, comma);
                     }
                 } else if self.current_token.tag() != TokenTag::RightBrace {
                     self.report_expected(
@@ -13436,10 +13448,71 @@ mod tests {
         check!("const [a, ...b, c, ...d] = v;",
             errors: ["...b"], elements: ["a", "...b", "c"], rest: Some("...d"));
 
-        check!("const [...a, b] = v;",
+        check!("const [...a, b,] = v;",
             errors: ["...a"], elements: ["...a", "b"], rest: None);
 
         assert!(is_discarded("const [...a, 0] = v;"));
+    }
+
+    #[test]
+    fn cover_trailing_commas() {
+        struct Rests<'ast, 'a> {
+            ast: &'ast Ast<'a>,
+            spans: Vec<Span>,
+        }
+
+        impl<'a> Visit<'a> for Rests<'_, 'a> {
+            fn ast(&self) -> &Ast<'a> {
+                self.ast
+            }
+
+            fn visit_binding_rest_element(&mut self, rest: BindingRestElement) {
+                self.spans.push(rest.span(self.ast));
+                rest.visit_children_with(self);
+            }
+        }
+
+        fn parse(source: &str) -> (Vec<std::ops::Range<u32>>, Vec<&str>, String) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let mut rests = Rests {
+                ast: &parsed.ast,
+                spans: Vec::new(),
+            };
+            parsed.ast.root_program().visit_with(&mut rests);
+            let errors = parsed
+                .diagnostics
+                .iter()
+                .map(|diagnostic| diagnostic.span.start..diagnostic.span.end)
+                .collect();
+            let rests = rests
+                .spans
+                .iter()
+                .map(|span| &source[span.start as usize..span.end as usize])
+                .collect();
+            (errors, rests, token_texts(source, &parsed.tokens).join(" "))
+        }
+
+        macro_rules! check {
+            ($source:expr, errors: [$($error:expr),*], rests: [$($rest:expr),*], tokens: $tokens:expr) => {
+                assert_eq!(parse($source), (vec![$($error),*], vec![$($rest),*], $tokens.into()))
+            };
+        }
+
+        check!("const [[...a,], [...b,],] = v;", errors: [12..13, 21..22], rests: ["...a", "...b"],
+            tokens: "const [ [ ... a , ] , [ ... b , ] , ] = v ;");
+
+        check!("const {a: [...b,], ...c,} = v;", errors: [15..16, 23..24], rests: ["...b", "...c"],
+            tokens: "const { a : [ ... b , ] , ... c , } = v ;");
+
+        check!("({a: {...b,}, ...c,} = v);", errors: [10..11, 18..19], rests: ["...b", "...c"],
+            tokens: "( { a : { ... b , } , ... c , } = v ) ;");
+
+        check!("const [{...a,}, x = async([...b,])] = v;", errors: [12..13], rests: ["...a"],
+            tokens: "const [ { ... a , } , x = async ( [ ... b , ] ) ] = v ;");
+
+        check!("const a = [[...b,], {...c,},];", errors: [], rests: [],
+            tokens: "const a = [ [ ... b , ] , { ... c , } , ] ;");
     }
 
     #[test]
