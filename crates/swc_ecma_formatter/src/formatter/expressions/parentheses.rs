@@ -238,15 +238,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         let child = parenthesized.expression(self.ast);
-        self.parentheses_are_removable(SourceParentheses {
+        let boundary = SourceParentheses {
             outer: parenthesized.span(self.ast),
             inner: child.span(self.ast),
             inner_target: ParenthesisInner::Expression(child),
-        }) && self.expression_needs_parentheses(
-            self.ast.expr_data(child),
-            position,
-            ContentMode::Verbatim,
-        ) == Some(false)
+        };
+        let tail = self.source_parentheses_comments(boundary).tail;
+        // An ignored envelope owns its closing line. Removing that line's delimiter
+        // can change the attachment of the source packet that follows the envelope.
+        if tail.iter().any(|comment| comment.kind == CommentKind::Line)
+            || tail
+                .last()
+                .is_some_and(|last| self.line_breaks(boundary.inner.end, last.span.end) != 0)
+        {
+            return false;
+        }
+        self.parentheses_are_removable(boundary)
+            && self.expression_needs_parentheses(
+                self.ast.expr_data(child),
+                position,
+                ContentMode::Verbatim,
+            ) == Some(false)
     }
 
     /// The selected Multiple-array owner drops a view once its decision is false.
