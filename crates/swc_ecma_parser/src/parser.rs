@@ -172,6 +172,9 @@ bitflags! {
         /// Whether CommonJS-wrapper syntax at the current position can classify
         /// an unambiguous Program as CommonJS.
         const CAN_BE_COMMONJS = 1 << 1;
+        /// An `await` identifier would be invalid if the current cover becomes
+        /// async arrow parameters. Functions and field initializers reset this.
+        const ASYNC_ARROW_HEAD = 1 << 2;
     }
 }
 
@@ -743,6 +746,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// speculation remains impossible after rewinding and must not be retried
     /// by an enclosing speculative parse.
     ts_rejected_speculations: FxHashSet<u32>,
+    /// Span of the first identifier whose validity depends on a pending async arrow head.
+    /// Nested covers restore this value when they become separate functions.
+    await_identifier_in_async_head: Option<Span>,
 }
 
 pub struct ParseReturn<'a> {
@@ -775,6 +781,7 @@ struct Checkpoint {
     cover_trailing_commas_len: usize,
     stripped_paren: Option<NodeId>,
     boundary_context: BoundaryContext,
+    await_identifier_in_async_head: Option<Span>,
 }
 
 struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
@@ -897,6 +904,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             cover_trailing_commas: IndexMap::default(),
             stripped_paren: None,
             ts_rejected_speculations: FxHashSet::default(),
+            await_identifier_in_async_head: None,
         }
     }
 
@@ -1469,6 +1477,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             cover_trailing_commas_len: self.cover_trailing_commas.len(),
             stripped_paren: self.stripped_paren,
             boundary_context: self.boundary_context,
+            await_identifier_in_async_head: self.await_identifier_in_async_head,
         }
     }
 
@@ -1501,6 +1510,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             .truncate(checkpoint.cover_trailing_commas_len);
         self.stripped_paren = checkpoint.stripped_paren;
         self.boundary_context = checkpoint.boundary_context;
+        self.await_identifier_in_async_head = checkpoint.await_identifier_in_async_head;
     }
 
     fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
@@ -2516,6 +2526,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let generator = self.eat(TokenTag::Star)?;
         let is_function_expression = opts.is_expression && !opts.is_default_export;
+        let boundary_context = self.boundary_context;
+        if is_function_expression {
+            self.boundary_context
+                .remove(BoundaryContext::ASYNC_ARROW_HEAD);
+        }
         let context = if is_function_expression {
             enter_function_grammar_context(&mut self.context, generator, opts.is_async)
         } else {
@@ -2539,10 +2554,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Some(None)
         };
         self.context = context;
-        let id = id?;
-        let context = enter_function_grammar_context(&mut self.context, generator, opts.is_async);
-        let boundary_context = mem::take(&mut self.boundary_context);
         let tail = (|| {
+            let id = id?;
+            enter_function_grammar_context(&mut self.context, generator, opts.is_async);
+            self.boundary_context = BoundaryContext::empty();
             let type_parameters =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::LessThan {
                     Some(self.parse_type_parameters()?)
@@ -2586,6 +2601,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // brace cannot be mistaken for the surrounding namespace/module's.
             let body = if ambient_declaration { None } else { body };
             Some((
+                id,
                 this_param,
                 params,
                 body,
@@ -2597,7 +2613,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.context = context;
         self.boundary_context = boundary_context;
-        let (this_param, params, body, type_parameters, return_type, params_end, end) = tail?;
+        let (id, this_param, params, body, type_parameters, return_type, params_end, end) = tail?;
         // Only declarations are restricted here. A function expression is a valid
         // operand in any expression position, for example:
         //   if (a) c(function* () {});
@@ -3375,8 +3391,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let value = if self.eat(TokenTag::Assign)? {
             let context = enter_grammar_context![&mut self.context, +In, ~Yield, ~Await];
             let boundary_context = self.boundary_context;
-            self.boundary_context
-                .remove(BoundaryContext::CAN_BE_MODULE | BoundaryContext::CAN_BE_COMMONJS);
+            self.boundary_context.remove(
+                BoundaryContext::CAN_BE_MODULE
+                    | BoundaryContext::CAN_BE_COMMONJS
+                    | BoundaryContext::ASYNC_ARROW_HEAD,
+            );
             let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
             self.context = context;
             self.boundary_context = boundary_context;
@@ -9006,17 +9025,39 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        let checkpoint = self.checkpoint();
-        let cover = self.parse_parenthesized_cover()?;
+        let checkpoint = self.lang.is_typescript().then(|| self.checkpoint());
+        let outer_await = self.await_identifier_in_async_head.take();
+        let boundary_context = self.boundary_context;
+        if !self.lang.is_typescript() {
+            self.boundary_context
+                .insert(BoundaryContext::ASYNC_ARROW_HEAD);
+        }
+        let cover = self.parse_parenthesized_cover();
+        let await_identifier = mem::replace(&mut self.await_identifier_in_async_head, outer_await);
+        self.boundary_context = boundary_context;
+        let cover = cover?;
 
         let is_arrow =
             self.current_token.tag() == TokenTag::Arrow && minimum <= Precedence::Assignment;
         if is_arrow {
-            self.rewind(checkpoint);
+            if let Some(checkpoint) = checkpoint {
+                self.rewind(checkpoint);
+                if escaped_async {
+                    self.report_escaped_keyword(async_span);
+                }
+                return self.parse_arrow(true, async_span.start, true);
+            }
             if escaped_async {
                 self.report_escaped_keyword(async_span);
             }
-            return self.parse_arrow(true, async_span.start, true);
+            if let Some(span) = await_identifier {
+                self.report_reserved_await(span, "an identifier");
+            }
+            // Reusing the cover parses nested defaults once per arrow level.
+            return self.cover_to_arrow_function(cover, true, async_span.start);
+        }
+        if boundary_context.contains(BoundaryContext::ASYNC_ARROW_HEAD) && outer_await.is_none() {
+            self.await_identifier_in_async_head = await_identifier;
         }
         self.cover_to_call_expression(cover, async_identifier)
     }
@@ -12629,15 +12670,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let await_is_reserved = self.context.contains(Context::AWAIT)
             || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
-        if token.tag() == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
-            self.report(
-                token.span(),
-                Cow::Owned(format!(
-                    "'await' is reserved in an async/module context and cannot be used as {as_what}"
-                )),
-                ReportOptions::default(),
-            );
+        if token.tag() == TokenTag::Await
+            && !await_is_reserved
+            && self
+                .boundary_context
+                .contains(BoundaryContext::ASYNC_ARROW_HEAD)
+        {
+            self.await_identifier_in_async_head
+                .get_or_insert(token.span());
         }
+        if token.tag() == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
+            self.report_reserved_await(token.span(), as_what);
+        }
+    }
+
+    #[cold]
+    fn report_reserved_await(&mut self, span: Span, as_what: &str) {
+        self.report(
+            span,
+            Cow::Owned(format!(
+                "'await' is reserved in an async/module context and cannot be used as {as_what}"
+            )),
+            ReportOptions::default(),
+        );
     }
 
     #[inline]
