@@ -7,6 +7,7 @@
 mod operator;
 mod printer;
 mod sourcemap;
+mod ts_disambiguation;
 mod util;
 
 pub use printer::print;

@@ -149,6 +149,11 @@ pub struct SubRangeIterator<T> {
 impl<T> Iterator for SubRangeIterator<T> {
     type Item = NodeExtraDataId<T>;
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.end.index() - self.cur.index();
+        (len, Some(len))
+    }
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.cur == self.end {
             return None;
