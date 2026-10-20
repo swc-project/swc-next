@@ -8,32 +8,26 @@ flag
 ---------- Options ----------
 {}
 ---------- Output ----------
-flag
+flag ?
 // prettier-ignore
-? (
-  <Box />
-) : (
+<Box/> : (
   fallback
 );
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-flag
+flag ?
 // prettier-ignore
-? (
-  <Box />
-) : (
+<Box/> : (
   fallback
 )
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-flag
+flag ?
 // prettier-ignore
-? (
-  <Box />
-) : (
+<Box/> : (
   fallback
 );
