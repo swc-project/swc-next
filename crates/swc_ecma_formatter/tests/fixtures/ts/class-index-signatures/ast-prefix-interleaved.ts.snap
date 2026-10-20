@@ -14,19 +14,25 @@ class Registry {
 {"printWidth":20}
 ---------- Output ----------
 class Registry {
-  static /* readonly */ /* [ */ readonly /* opening */ [key: string]: number;
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number;
 }
 
 ---------- Options ----------
 {"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
 ---------- Output ----------
 class Registry {
-  static /* readonly */ /* [ */ readonly /* opening */ [key: string]: number
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number
 }
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20}
 ---------- Output ----------
 class Registry {
-  static /* readonly */ /* [ */ readonly /* opening */ [key: string]: number;
+  static /* readonly */ /* [ */ readonly /* opening */ [
+    key: string
+  ]: number;
 }
