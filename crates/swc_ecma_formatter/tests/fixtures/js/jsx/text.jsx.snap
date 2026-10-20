@@ -71,7 +71,7 @@ const guarded_text=<Box>{/* prettier-ignore */}
 ---------- Output ----------
 const a1 = (
   <div>
-    alpha <b>beta</b> gamma <i>delta</i> &amp; &nbsp; &lt; a\b
+    alpha <b>beta</b> gamma{"  "}<i>delta</i> &amp; &nbsp; &lt; a\b
   </div>
 );
 const a2 = (
@@ -93,15 +93,15 @@ const a4 = (
 const a5 = <div> alpha beta </div>;
 const a6 = (
   <div first="one" second="two">
-    {" "}
-    <b /> tail{" "}
+    {"   "}
+    <b />{"   "}tail{"   "}
   </div>
 );
-const a7 = <Box> </Box>;
+const a7 = <Box>{"  "}</Box>;
 const a8 = <Box>foo bar</Box>;
 const a9 = (
   <Box>
-    {""} <b />{" "}
+    {""}{"   "}<b />{"   "}
   </Box>
 );
 const a10 = <Box> </Box>;
@@ -154,7 +154,10 @@ const a18 = (
   </Box>
 );
 
-const ascii_spacing = <Box> alpha beta gamma </Box>;
+const ascii_spacing = (
+  <Box>	alpha		 beta
+gamma	</Box>
+);
 const punctuation = (
   <Box>
     <i>first</i>-<i>second</i>
@@ -176,7 +179,7 @@ const a1 = (
   <div>
     alpha{" "}
     <b>beta</b>{" "}
-    gamma{" "}
+    gamma{"  "}
     <i>delta</i>{" "}
     &amp; &nbsp;
     &lt; a\b
@@ -209,19 +212,21 @@ const a6 = (
     first="one"
     second="two"
   >
-    {" "}
-    <b /> tail{" "}
+    {"   "}
+    <b />{"   "}
+    tail{"   "}
   </div>
 );
 const a7 = (
-  <Box> </Box>
+  <Box>{"  "}</Box>
 );
 const a8 = (
   <Box>foo bar</Box>
 );
 const a9 = (
   <Box>
-    {""} <b />{" "}
+    {""}{"   "}
+    <b />{"   "}
   </Box>
 );
 const a10 = (
@@ -286,11 +291,8 @@ const a18 = (
 
 const ascii_spacing =
   (
-    <Box>
-      {" "}
-      alpha beta
-      gamma{" "}
-    </Box>
+    <Box>	alpha		 beta
+gamma	</Box>
   );
 const punctuation =
   (
