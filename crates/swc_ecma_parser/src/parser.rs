@@ -5901,8 +5901,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             | TokenTag::BinaryLiteral
             | TokenTag::BigIntLiteral
             | TokenTag::NoSubstitutionTemplate
-            | TokenTag::Minus
-            | TokenTag::Plus => return self.parse_literal_type(),
+            | TokenTag::Minus => return self.parse_literal_type(),
             tag @ (TokenTag::Any
             | TokenTag::Bigint
             | TokenTag::Boolean
@@ -5917,7 +5916,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             | TokenTag::Void)
                 if !token.is_escaped() =>
             {
-                if tag == TokenTag::Void || !self.is_qualified_type_continuation()? {
+                if matches!(tag, TokenTag::NullLiteral | TokenTag::Void)
+                    || !self.is_qualified_type_continuation()?
+                {
                     return self.parse_type_keyword();
                 }
             }
@@ -6567,7 +6568,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::NoSubstitutionTemplate => {
                 TsLiteral::TemplateLiteral(self.parse_no_substitution_template(false)?)
             }
-            TokenTag::Minus | TokenTag::Plus => self.parse_signed_numeric_literal_type()?,
+            TokenTag::Minus => self.parse_signed_numeric_literal_type()?,
             _ => {
                 let expression = self.parse_numeric_literal()?;
                 match self.ast.expr_data(expression) {
@@ -6584,6 +6585,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_signed_numeric_literal_type(&mut self) -> Option<TsLiteral> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::Minus);
         let sign_token = self.current_token;
         let next = self.peek_ahead()?;
         if !next.tag().is_numeric_literal() {
@@ -6591,15 +6593,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.advance()?;
         let expression = self.parse_numeric_literal()?;
-        let operator = if sign_token.tag() == TokenTag::Minus {
-            UnaryOperator::Negate
-        } else {
-            UnaryOperator::Positive
-        };
         Some(TsLiteral::UnaryExpression(self.ast.unary_expression(
             Span::new(sign_token.start(), expression.span(&self.ast).end),
             expression,
-            operator,
+            UnaryOperator::Negate,
         )))
     }
 
@@ -12973,7 +12970,6 @@ fn is_start_of_type(tag: TokenTag) -> bool {
             | TokenTag::NoSubstitutionTemplate
             | TokenTag::TemplateHead
             | TokenTag::Minus
-            | TokenTag::Plus
             | TokenTag::LeftParen
             | TokenTag::LeftBracket
             | TokenTag::LeftBrace
@@ -13331,6 +13327,35 @@ mod tests {
                 ]
             );
         }
+    }
+
+    #[test]
+    fn primary_types() {
+        let allocator = Allocator::new();
+
+        let parsed = parse_tokens(&allocator, "type A = +1;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = +1n;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = null.B;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = -1;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = -1n;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = null;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = A.B;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = typeof a.b;");
+        assert!(parsed.diagnostics.is_empty());
     }
 
     #[test]
