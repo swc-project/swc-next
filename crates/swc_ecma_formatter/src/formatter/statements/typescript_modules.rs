@@ -117,7 +117,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         source: Expr::StringLiteral(source),
                         options: None,
                         content,
-                        opening: opening.start,
                         last_mode: ContentMode::Formatted,
                     },
                     writer,

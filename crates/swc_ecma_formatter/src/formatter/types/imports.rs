@@ -86,7 +86,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 source: Expr::StringLiteral(source),
                 options,
                 content,
-                opening,
                 last_mode,
             },
             writer,

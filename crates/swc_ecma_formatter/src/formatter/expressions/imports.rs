@@ -21,7 +21,6 @@ pub(in crate::formatter) struct ImportArguments {
     pub(in crate::formatter) source: Expr,
     pub(in crate::formatter) options: Option<Expr>,
     pub(in crate::formatter) content: Span,
-    pub(in crate::formatter) opening: u32,
     pub(in crate::formatter) last_mode: ContentMode,
 }
 
@@ -119,7 +118,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 source,
                 options,
                 content,
-                opening,
                 last_mode: ContentMode::Formatted,
             },
             writer,
@@ -136,16 +134,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source,
             options,
             content,
-            opening,
             last_mode,
         } = arguments;
         let source = self.prepare_import_slot(source);
         let options = options.map(|expression| self.prepare_import_slot(expression));
         let source_span = source.span;
-        let expand = self.next_line_is_empty(opening + 1, source_span.start)
-            || options
-                .as_ref()
-                .is_some_and(|option| self.next_line_is_empty(source_span.end, option.span.start));
+        let expand = options
+            .as_ref()
+            .is_some_and(|option| self.next_line_is_empty(source_span.end, option.span.start));
         let selected = options.as_ref().and_then(|option| {
             let ExprData::ObjectExpression(object) = option.content.data else {
                 return None;
