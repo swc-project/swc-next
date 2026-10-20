@@ -1068,3 +1068,23 @@ fn nested_namespace_exports() -> String {
     }
     source
 }
+
+#[test]
+fn default_export() {
+    let allocator = Allocator::new();
+    let js_module = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, js_module);
+
+        let has_errors = errors("let f;\nexport default\nasync function f() {}");
+        assert!(has_errors);
+
+        let has_errors = errors("export default\nasync function f() {}\nexport { f };");
+        assert!(!has_errors);
+    }
+}

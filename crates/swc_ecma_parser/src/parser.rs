@@ -13298,15 +13298,8 @@ mod tests {
 
     #[test]
     fn expression_boundaries() {
-        fn parse(source: &str, options: Options) -> (Vec<Span>, Vec<NodeKind>) {
-            let allocator = Allocator::new();
-            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let ast = &parsed.ast;
-            let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
-            let expressions = ast
-                .root_program()
-                .body(ast)
-                .iter()
+        fn expression_kinds(ast: &Ast<'_>, body: SubRange<Stmt>) -> Vec<NodeKind> {
+            body.iter()
                 .map(|id| {
                     let statement = ast.get_node_in_sub_range(id);
                     let expression = statement
@@ -13315,7 +13308,15 @@ mod tests {
                         .expression(ast);
                     ast.node_kind(expression.node_id())
                 })
-                .collect();
+                .collect()
+        }
+
+        fn parse(source: &str, options: Options) -> (Vec<Span>, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let ast = &parsed.ast;
+            let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
+            let expressions = expression_kinds(ast, ast.root_program().body(ast));
             (errors, expressions)
         }
 
@@ -13343,6 +13344,54 @@ mod tests {
                 ]
             );
         }
+
+        let (errors, expressions) = parse("x = () => {}\n/foo/.test(s);", Options::default());
+        assert!(errors.is_empty());
+        assert_eq!(
+            expressions,
+            [NodeKind::AssignmentExpression, NodeKind::CallExpression]
+        );
+
+        let (errors, expressions) = parse("a ? b : () => {}\n/foo/.test(s);", Options::default());
+        assert!(errors.is_empty());
+        assert_eq!(
+            expressions,
+            [NodeKind::ConditionalExpression, NodeKind::CallExpression]
+        );
+
+        let (errors, expressions) = parse("a, () => {}\n/foo/.test(s);", Options::default());
+        assert!(errors.is_empty());
+        assert_eq!(
+            expressions,
+            [NodeKind::SequenceExpression, NodeKind::CallExpression]
+        );
+
+        let errors = has_errors("a ? b : () => {} || 1;", Options::default());
+        assert!(errors);
+
+        let errors = has_errors("a, () => {} + 1;", Options::default());
+        assert!(errors);
+
+        let allocator = Allocator::new();
+        let source = "function* g() {\n  x = yield\n  /foo/.test(s);\n}";
+        let parsed =
+            Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty());
+        let ast = &parsed.ast;
+        let function = ast
+            .root_program()
+            .body(ast)
+            .get_node(ast, 0)
+            .unwrap()
+            .as_declaration(ast)
+            .unwrap()
+            .as_function(ast)
+            .unwrap();
+        let expressions = expression_kinds(ast, function.body(ast).body(ast));
+        assert_eq!(
+            expressions,
+            [NodeKind::AssignmentExpression, NodeKind::CallExpression]
+        );
     }
 
     #[test]
@@ -13373,7 +13422,6 @@ mod tests {
         let parsed = parse_tokens(&allocator, "type A = typeof a.b;");
         assert!(parsed.diagnostics.is_empty());
     }
-
 
     #[test]
     fn array_rest_recovery() {
@@ -14295,69 +14343,65 @@ mod tests {
         }
 
         for lang in [Lang::Js, Lang::Ts, Lang::Tsx] {
-            for preserve_parens in [false, true] {
-                let allocator = Allocator::new();
-                let options = Options {
-                    lang,
-                    source_type: SourceType::Module,
-                    preserve_parens,
-                    ..Options::default()
-                };
-                let parse = |source| {
-                    let result =
-                        Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-                    assert!(result.diagnostics.is_empty());
-                    result.ast
-                };
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                source_type: SourceType::Module,
+                ..Options::default()
+            };
+            let parse = |source| {
+                let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+                assert!(result.diagnostics.is_empty());
+                result.ast
+            };
 
-                let ast = parse("export default\nasync function f() {}");
-                let function = exported_function(&ast);
-                assert_eq!(
-                    function.function_type(&ast),
-                    FunctionType::FunctionDeclaration
-                );
-                assert!(function.r#async(&ast));
-                assert!(!function.generator(&ast));
-                assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
+            let ast = parse("export default\nasync function f() {}");
+            let function = exported_function(&ast);
+            assert_eq!(
+                function.function_type(&ast),
+                FunctionType::FunctionDeclaration
+            );
+            assert!(function.r#async(&ast));
+            assert!(!function.generator(&ast));
+            assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
 
-                let ast = parse("export default /*\n*/ async function* () {}");
-                let function = exported_function(&ast);
-                assert_eq!(
-                    function.function_type(&ast),
-                    FunctionType::FunctionDeclaration
-                );
-                assert!(function.r#async(&ast));
-                assert!(function.generator(&ast));
-                assert!(function.id(&ast).is_none());
+            let ast = parse("export default /*\n*/ async function* () {}");
+            let function = exported_function(&ast);
+            assert_eq!(
+                function.function_type(&ast),
+                FunctionType::FunctionDeclaration
+            );
+            assert!(function.r#async(&ast));
+            assert!(function.generator(&ast));
+            assert!(function.id(&ast).is_none());
 
-                let ast = parse(
-                    "export default /* marker\n continued */ async function* f() {}\nexport { f };",
-                );
-                let function = exported_function(&ast);
-                assert_eq!(
-                    function.function_type(&ast),
-                    FunctionType::FunctionDeclaration
-                );
-                assert!(function.r#async(&ast));
-                assert!(function.generator(&ast));
-                assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
-                assert_eq!(ast.root_program().body(&ast).len(), 2);
-                let export = ast.root_program().body(&ast).get_node(&ast, 1).unwrap();
-                assert!(export.as_export_named_declaration(&ast).is_some());
+            let ast = parse(
+                "export default /* marker\n continued */ async function* f() {}\nexport { f };",
+            );
+            let function = exported_function(&ast);
+            assert_eq!(
+                function.function_type(&ast),
+                FunctionType::FunctionDeclaration
+            );
+            assert!(function.r#async(&ast));
+            assert!(function.generator(&ast));
+            assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
+            assert_eq!(ast.root_program().body(&ast).len(), 2);
+            let export = ast.root_program().body(&ast).get_node(&ast, 1).unwrap();
+            assert!(export.as_export_named_declaration(&ast).is_some());
 
-                let ast = parse("export default async\nfunction f() {}");
-                let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
-                    panic!("expected a default-exported expression");
-                };
-                assert!(expression.as_identifier_reference(&ast).is_some());
-                assert_eq!(ast.root_program().body(&ast).len(), 2);
+            let ast = parse("export default async\nfunction f() {}");
+            let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
+                panic!("expected a default-exported expression");
+            };
+            assert!(expression.as_identifier_reference(&ast).is_some());
+            assert_eq!(ast.root_program().body(&ast).len(), 2);
 
-                let ast = parse("export default (async function f() {});");
-                assert!(matches!(
-                    declaration(&ast),
-                    ExportDefaultDeclarationKindData::Expr(_)
-                ));
-            }
+            let ast = parse("export default (async function f() {});");
+            assert!(matches!(
+                declaration(&ast),
+                ExportDefaultDeclarationKindData::Expr(_)
+            ));
         }
     }
 
@@ -16241,5 +16285,307 @@ mod tests {
             .as_yield_expression(&ast)
             .unwrap();
         assert_parenthesized_a(&ast, yielded.argument(&ast).unwrap());
+    }
+
+    #[track_caller]
+    fn has_errors(source: &str, options: Options) -> bool {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+        !parsed.diagnostics.is_empty()
+    }
+
+    #[test]
+    fn async_primary() {
+        let options = Options::default();
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("class C extends async x => x {}");
+        assert!(has_errors);
+
+        let has_errors = errors("class C extends async () => {} {}");
+        assert!(has_errors);
+
+        let has_errors = errors("class C extends async() {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C extends as\\u0079nc function(){} {}");
+        assert!(has_errors);
+
+        let has_errors = errors("class C extends async function(){}.constructor {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C extends async function(){} {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C extends async function*(){}.constructor {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C extends async function*(){} {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C extends async\nfunction(){} {}");
+        assert!(has_errors);
+
+        let has_errors = errors("class C extends (async function(){}) {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async x => x;");
+        assert!(has_errors);
+
+        let has_errors = errors("new async () => {};");
+        assert!(has_errors);
+
+        let has_errors = errors("new as\\u0079nc function(){};");
+        assert!(has_errors);
+
+        let has_errors = errors("new async function(){}.constructor(\"return 1\");");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async function(){};");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async function*(){}.constructor();");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async function*(){};");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async();");
+        assert!(!has_errors);
+
+        let has_errors = errors("new async\nfunction f(){}");
+        assert!(!has_errors);
+
+        let has_errors = errors("new function(){};");
+        assert!(!has_errors);
+
+        let has_errors = errors("new (async function(){})();");
+        assert!(!has_errors);
+    }
+
+    #[test]
+    fn dynamic_import() {
+        let options = Options::default();
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("import.defer('m', {with: {type: 'json'}},);");
+        assert!(!has_errors);
+
+        let has_errors = errors("import.defer('m',);");
+        assert!(!has_errors);
+
+        let has_errors = errors("import.source('m', {}, {});");
+        assert!(has_errors);
+
+        let has_errors = errors("import.source('m', {with: {type: 'json'}},);");
+        assert!(!has_errors);
+
+        let has_errors = errors("import.source('m',);");
+        assert!(!has_errors);
+    }
+
+    #[test]
+    fn html_comments() {
+        let script = Options {
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        let script_errors = has_errors("<!-- --> \"\nlet x = 1;", script);
+        assert!(!script_errors);
+
+        let module_errors = has_errors("<!-- --> \"\nlet x = 1;", Options::default());
+        assert!(module_errors);
+    }
+
+    #[test]
+    fn import_type_qualifiers() {
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("let x: import(\"x\").");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = import(\"x\").;");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = import(\"x\").#a;");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = import(\"x\").A.B;");
+        assert!(!has_errors);
+
+        let has_errors = errors("type A = import(\"x\").`a`;");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = import(\"x\").A.;");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = typeof import(\"x\").");
+        assert!(has_errors);
+
+        let has_errors = errors("type A = typeof import(\"x\").A;");
+        assert!(!has_errors);
+    }
+
+    #[test]
+    fn module_export_names() {
+        let options = Options::default();
+        let errors = |source| has_errors(source, options);
+
+        let has_errors =
+            errors("export { \"\\uD800\\\n\\u0041\" as \"\\uD800\\\n\\u0041\" } from \"mod\";");
+        assert!(has_errors);
+
+        let has_errors =
+            errors("export { \"\\uD800\\\r\\uDC00\" as \"\\uD800\\\r\\uDC00\" } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("export { \"\\uD800\\\r\n\\uDC00\" as \"\\uD800\\\r\n\\uDC00\" } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("export { \"\\uD800\\\n\\uDC00\" as \"\\uD800\\\n\\uDC00\" } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors(
+            "export { \"\\uD800\\\u{2028}\\uDC00\" as \"\\uD800\\\u{2028}\\uDC00\" } from \"mod\";",
+        );
+        assert!(!has_errors);
+
+        let has_errors = errors(
+            "export { \"\\uD800\\\u{2029}\\uDC00\" as \"\\uD800\\\u{2029}\\uDC00\" } from \"mod\";",
+        );
+        assert!(!has_errors);
+
+        let has_errors = errors("export { \"\\uD800\" as \"\\uD800\" } from \"mod\";");
+        assert!(has_errors);
+
+        let has_errors = errors("export { \"\\uDC00\" as \"\\uDC00\" } from \"mod\";");
+        assert!(has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\n\\u0041\" };");
+        assert!(has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\r\\uDC00\" };");
+        assert!(!has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\r\n\\uDC00\" };");
+        assert!(!has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\n\\uDC00\" };");
+        assert!(!has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\u{2028}\\uDC00\" };");
+        assert!(!has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\\\u{2029}\\uDC00\" };");
+        assert!(!has_errors);
+
+        let has_errors = errors("export { x as \"\\uD800\" };");
+        assert!(has_errors);
+
+        let has_errors = errors("export { x as \"\\uDC00\" };");
+        assert!(has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\n\\u0041\" as x } from \"mod\";");
+        assert!(has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\r\\uDC00\" as x } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\r\n\\uDC00\" as x } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\n\\uDC00\" as x } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\u{2028}\\uDC00\" as x } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors("import { \"\\uD800\\\u{2029}\\uDC00\" as x } from \"mod\";");
+        assert!(!has_errors);
+
+        let has_errors = errors("import { \"\\uD800\" as x } from \"mod\";");
+        assert!(has_errors);
+
+        let has_errors = errors("import { \"\\uDC00\" as x } from \"mod\";");
+        assert!(has_errors);
+    }
+
+    #[test]
+    fn parenthesized_optional_chain() {
+        for preserve_parens in [false, true] {
+            let options = Options {
+                preserve_parens,
+                ..Options::default()
+            };
+            let errors = |source| has_errors(source, options);
+
+            let has_errors = errors("(a?.b)[k] = v;");
+            assert!(!has_errors);
+
+            let has_errors = errors("[(a?.b)[k]] = values;");
+            assert!(!has_errors);
+        }
+    }
+
+    #[test]
+    fn template_types() {
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("type T = `\\unicode${string}`;");
+        assert!(has_errors);
+
+        let has_errors = errors("type T = `\\n${string}\\8`;");
+        assert!(has_errors);
+
+        let has_errors = errors("namespace N { type T = `\\n${string | number}\\u0061`; }");
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("type T = `\r\n${`\r\n${string | number}\r\n` | \"fallback\"}\r\n`;");
+        assert!(!has_errors);
+    }
+
+    #[test]
+    fn type_queries() {
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("type Query = typeof f<<T>(value: T) => T>;");
+        assert!(has_errors);
+
+        let has_errors = errors("one < two as unknown as typeof f << other;");
+        assert!(has_errors);
+
+        let has_errors = errors("one < two satisfies A | typeof f << other;");
+        assert!(has_errors);
+
+        let has_errors = errors("one < two as typeof f << other;");
+        assert!(has_errors);
+    }
+
+    #[test]
+    fn namespace_await_using() {
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        let has_errors = errors("namespace N { await using x = null; }");
+        assert!(has_errors);
     }
 }

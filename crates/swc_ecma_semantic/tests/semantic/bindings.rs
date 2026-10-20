@@ -631,3 +631,479 @@ fn default_type_parameters() {
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
     assert_distinct_type_parameters(&ast, &semantic, b"T");
 }
+
+#[test]
+fn function_declarations_annex_b() {
+    let allocator = Allocator::new();
+    let js_module = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let js_script = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    for options in [js_script, ts_script] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors = errors("let f = 1;\nif (true) function f() { \"use strict\"; }");
+        assert!(!has_errors);
+
+        let has_errors = errors("if (true) function f() { \"use strict\"; }");
+        assert!(!has_errors);
+
+        let has_errors = errors("if (true) function eval() { \"use strict\"; }");
+        assert!(has_errors);
+
+        let has_errors = errors("if (true) function f(value = 1) { \"use strict\"; }");
+        assert!(has_errors);
+
+        let has_errors = errors("label: function f() { \"use strict\"; }");
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("function outer() {\n  if (true) function f() { \"use strict\"; }\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("\"use strict\";\nif (true) function f() {}");
+        assert!(has_errors);
+
+        let has_errors = errors("\"use strict\";\nlabel: function f() {}");
+        assert!(has_errors);
+    }
+
+    for options in [js_module, ts_module] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors = errors("if (true) function f() { \"use strict\"; }");
+        assert!(has_errors);
+
+        let has_errors = errors("label: function f() { \"use strict\"; }");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_arrow_body() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("() => {\n  function f() {}\n  var f;\n};");
+        assert!(has_errors);
+
+        let has_errors = errors("() => {\n  var f;\n  function f() {}\n};");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_block() {
+    let allocator = Allocator::new();
+    let js_script = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("{\n  async function f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  class f {}\n  function f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  async function f() {}\n  async function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function* f() {}\n  function* f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function f() {}\n  async function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function f() {}\n  function* f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function f() {}\n  var f;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function* f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors =
+            errors("{\n  function f(): void;\n  function f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  function f(): void;\n  function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("{\n  var f;\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  var f;\n  function f(): void;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  var f;\n  interface f {}\n  function f() {}\n}");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors = errors("{\n  function f() {}\n  function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("\"use strict\";\n{ function f() {} function f() {} }");
+        assert!(has_errors);
+    }
+
+    for options in [js_script, ts_script] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors =
+            errors("{\n  function f() { \"use strict\"; }\n  function f() { \"use strict\"; }\n}");
+        assert!(!has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, js_script);
+
+        let has_errors = errors("function f() {}\n{\n  var f;\n  function f() {}\n}");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_catch() {
+    let allocator = Allocator::new();
+    let js_module = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("try {} catch {\n  function f() {}\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch {\n  function f() {}\n  var f;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch {\n  function f(): void;\n  function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("try {} catch (f) {\n  function f(): void;\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch ([error = 1]) {\n  function f() {}\n  var f;\n}");
+        assert!(has_errors);
+
+        let has_errors =
+            errors("try {} catch ([error = 1]) {\n  function f(): void;\n  function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("try {} catch ([f = 1]) {\n  function f(): void;\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch ([f = 1]) {\n  function f(): void;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch ([error = 1]) {\n  var f;\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("try {} catch {\n  var f;\n  function f() {}\n}");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors = errors("try {} catch {\n  function f() {}\n  function f() {}\n}");
+        assert!(!has_errors);
+    }
+
+    for options in [js_module, ts_module] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors = errors("try {} catch ([f = 1]) {\n  {\n    function f() {}\n  }\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("try {} catch ([f = 1]) {\n  function f() {}\n}");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_function_body() {
+    let allocator = Allocator::new();
+    let js_module = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("function outer() {\n  function f() {}\n  var f;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("function outer(f: unknown) {\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("function outer(f = 1) {\n  function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("function outer() {\n  var f;\n  function f() {}\n}");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, js_module);
+
+        let has_errors = errors("function outer(f) {\n  function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("function outer(f = 1) {\n  function f() {}\n}");
+        assert!(!has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_namespace() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let source = "namespace N {\n  export function f() {}\n}\nnamespace N {\n  export var f: unknown;\n}";
+        let has_errors = errors(source);
+        assert!(has_errors);
+
+        let source = "namespace N {\n  export var f: unknown;\n}\nnamespace N {\n  export function f() {}\n}";
+        let has_errors = errors(source);
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_program() {
+    let allocator = Allocator::new();
+    let dts_module = Options {
+        lang: Lang::Dts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("declare class f {}\nfunction f(): void;\nfunction f() {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("function f() {}\ndeclare class f {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("function f() {}\nvar f;");
+        assert!(has_errors);
+
+        let has_errors = errors("var f;\nfunction f() {}");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, dts_module);
+
+        let has_errors = errors("declare function f(): void;\ndeclare var f: unknown;");
+        assert!(has_errors);
+
+        let has_errors = errors("declare var f: unknown;\ndeclare function f(): void;");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_static_block() {
+    let allocator = Allocator::new();
+    let js_module = Options {
+        lang: Lang::Js,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let source =
+            "class C {\n  static {\n    async function f() {}\n    async function f() {}\n  }\n}";
+        let has_errors = errors(source);
+        assert!(!has_errors);
+
+        let has_errors =
+            errors("class C {\n  static {\n    function* f() {}\n    function* f() {}\n  }\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C {\n  static {\n    function f() {}\n    var f;\n  }\n}");
+        assert!(has_errors);
+
+        let has_errors =
+            errors("class C {\n  static {\n    function f(): void;\n    function f() {}\n  }\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C {\n  static {\n    var f;\n    function f() {}\n  }\n}");
+        assert!(has_errors);
+    }
+
+    for options in [js_module, ts_module] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors =
+            errors("class C {\n  static {\n    function f() {}\n    function f() {}\n  }\n}");
+        assert!(!has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, js_module);
+
+        let has_errors = errors("class C {\n  static {\n    function f() {}\n    var f;\n  }\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("class C {\n  static {\n    var f;\n    function f() {}\n  }\n}");
+        assert!(!has_errors);
+    }
+}
+
+#[test]
+fn function_declarations_switch() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors =
+            errors("switch (0) {\n  case 0:\n    function f() {}\n    function f() {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("switch (0) {\n  case 0:\n    function f() {}\n    var f;\n}");
+        assert!(has_errors);
+
+        let has_errors =
+            errors("switch (0) {\n  case 0:\n    function f(): void;\n    function f() {}\n}");
+        assert!(!has_errors);
+
+        let has_errors = errors("switch (0) {\n  case 0:\n    var f;\n    function f() {}\n}");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors =
+            errors("switch (0) {\n  case 0:\n    function f() {}\n    function f() {}\n}");
+        assert!(!has_errors);
+    }
+}
+
+#[test]
+fn hoisting_variables() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("{\n  const enum E {}\n  var E;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  enum E {}\n  var E;\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  var E;\n  const enum E {}\n}");
+        assert!(has_errors);
+
+        let has_errors = errors("{\n  var E;\n  enum E {}\n}");
+        assert!(has_errors);
+    }
+}

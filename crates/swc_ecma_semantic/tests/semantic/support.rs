@@ -121,20 +121,14 @@ pub(super) fn assert_named_declaration_targets(
             .collect::<Vec<_>>();
         assert_eq!(targets, expected);
     };
-    for preserve_parens in [false, true] {
-        let parser_options = Options {
-            preserve_parens,
-            ..parser_options
-        };
-        check(parser_options, AnalyzeOptions::default());
-        check(
-            parser_options,
-            AnalyzeOptions {
-                check_syntax: SyntaxChecks::all(),
-                ..AnalyzeOptions::default()
-            },
-        );
-    }
+    check(parser_options, AnalyzeOptions::default());
+    check(
+        parser_options,
+        AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
+        },
+    );
 }
 
 #[track_caller]

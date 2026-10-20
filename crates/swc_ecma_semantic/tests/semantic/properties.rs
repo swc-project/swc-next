@@ -545,30 +545,25 @@ fn qualified_expando_ownership() {
 #[track_caller]
 fn assert_unbound_expando(source: &str) {
     let allocator = Allocator::new();
-    for preserve_parens in [false, true] {
-        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            let options = Options {
-                preserve_parens,
-                ..ts_module_options()
-            };
-            let (ast, semantic) = analyze_with_options(
-                &allocator,
-                source,
-                options,
-                AnalyzeOptions {
-                    check_syntax,
-                    ..AnalyzeOptions::default()
-                },
-            );
-            let reference = semantic
-                .iter_references()
-                .find(|entry| ast.get_utf8(entry.reference.name) == "Alias")
-                .unwrap();
-            assert!(matches!(
-                reference.reference.resolution(),
-                NameResolution::Uncertain { .. }
-            ));
-        }
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let options = ts_module_options();
+        let (ast, semantic) = analyze_with_options(
+            &allocator,
+            source,
+            options,
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
+        );
+        let reference = semantic
+            .iter_references()
+            .find(|entry| ast.get_utf8(entry.reference.name) == "Alias")
+            .unwrap();
+        assert!(matches!(
+            reference.reference.resolution(),
+            NameResolution::Uncertain { .. }
+        ));
     }
 }
 

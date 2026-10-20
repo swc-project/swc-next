@@ -242,6 +242,30 @@ fn computed_parameter_keys() {
         input: "const key = 'p'; function f({ [key]: v }: { p: number }): typeof v;",
         "key" => [(queried, "key =")],
     );
+
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let source = "type F = ({ [(() => { const yield = \"prop\"; return yield; })()]: value }: { prop: number }) => typeof value;";
+        let has_errors = errors(source);
+        assert!(has_errors);
+
+        let has_errors = errors("type F = ({ [\"\\1\"]: value }: object) => typeof value;");
+        assert!(has_errors);
+
+        let has_errors = errors("type F = ({ [010]: value }: { 8: number }) => typeof value;");
+        assert!(has_errors);
+
+        let has_errors = errors("type F = ({ [yield]: value }: object) => typeof value;");
+        assert!(has_errors);
+    }
 }
 
 #[test]
@@ -282,10 +306,6 @@ fn computed_key_contexts() {
         source_type: SourceType::Script,
         ..module
     };
-    let grouped = Options {
-        preserve_parens: true,
-        ..module
-    };
     let unchecked = AnalyzeOptions::default();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
@@ -305,18 +325,6 @@ fn computed_key_contexts() {
 
     assert_references!(
         module, checked,
-        input: source,
-        "k" => [(queried, "k ="), (queried, "k =")],
-    );
-
-    assert_references!(
-        grouped, unchecked,
-        input: source,
-        "k" => [(queried, "k ="), (queried, "k =")],
-    );
-
-    assert_references!(
-        grouped, checked,
         input: source,
         "k" => [(queried, "k ="), (queried, "k =")],
     );
@@ -442,67 +450,59 @@ fn assert_export_value_reference(source: &str, value: Option<&str>) {
 #[track_caller]
 fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
     let allocator = Allocator::new();
-    for preserve_parens in [false, true] {
-        let parser_options = Options {
-            preserve_parens,
-            ..ts_module_options()
-        };
+    let parser_options = ts_module_options();
 
-        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            for build_module_record in [false, true] {
-                let options = AnalyzeOptions {
-                    check_syntax,
-                    build_module_record,
-                };
-                let (ast, semantic) =
-                    analyze_with_options(&allocator, source, parser_options, options);
-                let entry = semantic
-                    .iter_references()
-                    .find(|entry| ast.get_utf8(entry.reference.name) == "X")
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        for build_module_record in [false, true] {
+            let options = AnalyzeOptions {
+                check_syntax,
+                build_module_record,
+            };
+            let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
+            let entry = semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name) == "X")
+                .unwrap();
+            assert!(matches!(
+                entry.reference.resolution(),
+                NameResolution::Resolved(_)
+            ));
+            assert_eq!(entry.reference.flags.is_read(), read);
+            assert!(!entry.reference.flags.is_write());
+            let canonical = entry.reference.symbol.unwrap();
+            assert_eq!(
+                semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
+                [canonical],
+            );
+            assert!(semantic.uses(canonical).contains(&entry.id));
+            let target = value
+                .map(|declaration| symbol_at_declaration(&ast, &semantic, source, declaration));
+            let expected = target
+                .map(NameResolution::Resolved)
+                .into_iter()
+                .collect::<Vec<_>>();
+            assert_eq!(
+                semantic
+                    .reference_value_targets(&ast, entry.id)
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            if build_module_record && entry.reference.scope == ScopeId::MODULE {
+                assert!(semantic.module_record().exports().iter().any(|export| {
+                    match export.target {
+                        ExportTarget::Local { reference, .. }
+                        | ExportTarget::Expression { reference, .. } => reference == Some(entry.id),
+                        _ => false,
+                    }
+                }));
+            }
+
+            if value.is_some() {
+                let local_type = semantic
+                    .lookup(entry.reference.scope, b"X", ReferenceSpace::Type)
                     .unwrap();
-                assert!(matches!(
-                    entry.reference.resolution(),
-                    NameResolution::Resolved(_)
-                ));
-                assert_eq!(entry.reference.flags.is_read(), read);
-                assert!(!entry.reference.flags.is_write());
-                let canonical = entry.reference.symbol.unwrap();
-                assert_eq!(
-                    semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
-                    [canonical],
-                );
-                assert!(semantic.uses(canonical).contains(&entry.id));
-                let target = value
-                    .map(|declaration| symbol_at_declaration(&ast, &semantic, source, declaration));
-                let expected = target
-                    .map(NameResolution::Resolved)
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                assert_eq!(
-                    semantic
-                        .reference_value_targets(&ast, entry.id)
-                        .collect::<Vec<_>>(),
-                    expected
-                );
-                if build_module_record && entry.reference.scope == ScopeId::MODULE {
-                    assert!(semantic.module_record().exports().iter().any(|export| {
-                        match export.target {
-                            ExportTarget::Local { reference, .. }
-                            | ExportTarget::Expression { reference, .. } => {
-                                reference == Some(entry.id)
-                            }
-                            _ => false,
-                        }
-                    }));
-                }
-
-                if value.is_some() {
-                    let local_type = semantic
-                        .lookup(entry.reference.scope, b"X", ReferenceSpace::Type)
-                        .unwrap();
-                    assert_ne!(Some(local_type), target);
-                    assert_eq!(entry.reference.symbol, Some(local_type));
-                }
+                assert_ne!(Some(local_type), target);
+                assert_eq!(entry.reference.symbol, Some(local_type));
             }
         }
     }

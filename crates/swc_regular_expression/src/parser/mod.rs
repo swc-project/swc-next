@@ -56,6 +56,15 @@ mod test {
         let terms = &pattern.body.body[0].body;
         assert!(matches!(&terms[0], Term::Character(c) if c.value == u32::from(b'9')));
         assert_eq!(terms.len(), 20);
+
+        let pattern = parse_literal(&allocator, r"()\18446744073709551616", Some("u"));
+        assert!(pattern.is_err());
+
+        let pattern = parse_literal(&allocator, r"()\18446744073709551616", Some("v"));
+        assert!(pattern.is_err());
+
+        let pattern = parse_literal(&allocator, r"()\4294967297", Some("u"));
+        assert!(pattern.is_err());
     }
 
     #[test]

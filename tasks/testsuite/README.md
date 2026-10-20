@@ -1,7 +1,7 @@
 # Test suite
 
-Conformance and regression testing for SWC Next against Test262, TypeScript,
-Babel, and SWC fixtures, plus project-owned syntax cases.
+Conformance testing for SWC Next against Test262, TypeScript, Babel, and SWC
+fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
 - Codegen suites check AST round trips and printing stability.
@@ -31,10 +31,9 @@ The debug runner inspects a uniquely matched case without updating snapshots:
 cargo run -p testsuite --bin debug -- --runner parser --case test262 --filter '<unique substring>'
 ```
 
-Parser and codegen runners accept `test262`, `typescript`, `babel`, or `local`.
+Parser and codegen runners accept `test262`, `typescript`, or `babel`.
 Transform accepts `babel`, `typescript`, or `swc`; resolver accepts `swc_resolver`.
-See `--help` for additional options. [Local syntax cases](fixtures-manual/parser) use Test262 metadata
-and have separate totals from upstream Test262 tests.
+See `--help` for additional options.
 
 ## JavaScript conformance
 

@@ -1,4 +1,4 @@
-use crate::{expect_printed_ts, expect_printed_ts_minify};
+use crate::{expect_printed_ts, expect_printed_ts_minify, expect_printed_ts_pair};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Lang;
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
@@ -6,30 +6,27 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser}
 
 #[track_caller]
 fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &str) {
-    for preserve_parens in [false, true] {
-        let allocator = Allocator::new();
-        let parse_options = ParseOptions {
-            lang,
-            preserve_parens,
-            ..ParseOptions::default()
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        lang,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+
+    for minify in [false, true] {
+        let print_options = PrintOptions {
+            minify,
+            ..PrintOptions::default()
         };
-        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
-        assert!(original.diagnostics.is_empty());
+        let printed = print(&allocator, &original.ast, print_options.clone());
+        assert_eq!(printed.code, if minify { compact } else { pretty });
 
-        for minify in [false, true] {
-            let print_options = PrintOptions {
-                minify,
-                ..PrintOptions::default()
-            };
-            let printed = print(&allocator, &original.ast, print_options.clone());
-            assert_eq!(printed.code, if minify { compact } else { pretty });
-
-            let reparsed =
-                Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
-            assert!(reparsed.diagnostics.is_empty());
-            let repeated = print(&allocator, &reparsed.ast, print_options);
-            assert_eq!(repeated.code, printed.code);
-        }
+        let reparsed =
+            Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+        assert!(reparsed.diagnostics.is_empty());
+        let repeated = print(&allocator, &reparsed.ast, print_options);
+        assert_eq!(repeated.code, printed.code);
     }
 }
 
@@ -342,6 +339,10 @@ fn test_non_null_token_boundaries() {
 
 #[test]
 fn test_non_null_update_expressions() {
+    expect_printed_ts_pair("a!--;", "a!--;\n", "a!--;");
+
+    expect_printed_ts_pair("++a!;", "++a!;\n", "++a!;");
+
     expect_printed_ts("(a++)!;", "(a++)!;\n");
 
     expect_printed_ts_minify("(a++)!;", "(a++)!;");
@@ -778,4 +779,496 @@ fn test_instantiation_expression_boundaries() {
     expect_printed_ts_minify("((f<T>)!)<U>();", "(f<T>)!<U>();");
 
     expect_printed_ts_minify("((f<T>)!)!;", "(f<T>)!!;");
+}
+
+#[test]
+fn test_conditional_casts() {
+    expect_printed_ts_pair(
+        "x as T ? (() => /a/)() : false;",
+        "x as T ? (() => /a/)() : false;\n",
+        "x as T?(()=>/a/)():false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x as T) ? ~a : false;",
+        "(x as T) ? ~a : false;\n",
+        "(x as T)?~a:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x as T ? true : false;",
+        "x as T ? true : false;\n",
+        "x as T?true:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x as T ? -1 : false;",
+        "x as T ? -1 : false;\n",
+        "x as T?-1:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x as T) ? ++a : false;",
+        "(x as T) ? ++a : false;\n",
+        "(x as T)?++a:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x as T) ? /a/.test(s) : false;",
+        "(x as T) ? /a/.test(s) : false;\n",
+        "(x as T)?/a/.test(s):false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x as T) ? /a/ : false;",
+        "(x as T) ? /a/ : false;\n",
+        "(x as T)?/a/:false;",
+    );
+
+    expect_printed_ts_pair(
+        "class C extends B { m() { return (x as T) ? super.m() : false; } }",
+        "class C extends B {\n  m() {\n    return (x as T) ? super.m() : false;\n  }\n}\n",
+        "class C extends B{m(){return (x as T)?super.m():false}}",
+    );
+
+    expect_printed_ts_pair(
+        "(x as T) ? +a : false;",
+        "(x as T) ? +a : false;\n",
+        "(x as T)?+a:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x && y as T ? true : false;",
+        "x && y as T ? true : false;\n",
+        "x&&y as T?true:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x && (y as T) ? /a/ : false;",
+        "x && (y as T) ? /a/ : false;\n",
+        "x&&(y as T)?/a/:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x || y satisfies T ? true : false;",
+        "x || y satisfies T ? true : false;\n",
+        "x||y satisfies T?true:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x || (y satisfies T) ? /a/ : false;",
+        "x || (y satisfies T) ? /a/ : false;\n",
+        "x||(y satisfies T)?/a/:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x satisfies T ? true : false;",
+        "x satisfies T ? true : false;\n",
+        "x satisfies T?true:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? class {} : false;",
+        "(x satisfies T) ? class {\n} : false;\n",
+        "(x satisfies T)?class{}:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? delete a.b : false;",
+        "(x satisfies T) ? delete a.b : false;\n",
+        "(x satisfies T)?delete a.b:false;",
+    );
+
+    expect_printed_ts_pair(
+        "x satisfies T ? !a : false;",
+        "x satisfies T ? !a : false;\n",
+        "x satisfies T?!a:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? /a/ === r : false;",
+        "(x satisfies T) ? /a/ === r : false;\n",
+        "(x satisfies T)?/a/===r:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? (/a/ as R).test(s) : false;",
+        "(x satisfies T) ? (/a/ as R).test(s) : false;\n",
+        "(x satisfies T)?(/a/ as R).test(s):false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? /a/ : false;",
+        "(x satisfies T) ? /a/ : false;\n",
+        "(x satisfies T)?/a/:false;",
+    );
+
+    expect_printed_ts_pair(
+        "(x satisfies T) ? -a : false;",
+        "(x satisfies T) ? -a : false;\n",
+        "(x satisfies T)?-a:false;",
+    );
+
+    expect_printed_ts_pair(
+        "let a = typeof ((\"a\" as unknown) ? /a/ : false);",
+        "let a = typeof ((\"a\" as unknown) ? /a/ : false);\n",
+        "let a=typeof ((\"a\" as unknown)?/a/:false);",
+    );
+
+    expect_printed_ts_pair(
+        "let a = typeof ((\"a\" satisfies foo) ? /a/ : false);",
+        "let a = typeof ((\"a\" satisfies foo) ? /a/ : false);\n",
+        "let a=typeof ((\"a\" satisfies foo)?/a/:false);",
+    );
+}
+
+#[test]
+fn test_instantiation_binary_operators() {
+    expect_printed_ts_pair("(f<T>) + x;", "(f<T>) + x;\n", "(f<T>)+x;");
+
+    expect_printed_ts_pair("await (f<T>) + x;", "await (f<T>) + x;\n", "await(f<T>)+x;");
+
+    expect_printed_ts_pair(
+        "(await (f<T>)) ** x;",
+        "(await f<T>) ** x;\n",
+        "(await f<T>)**x;",
+    );
+
+    expect_printed_ts_pair(
+        "a * b ** (f<T>) + x;",
+        "a * b ** (f<T>) + x;\n",
+        "a*b**(f<T>)+x;",
+    );
+
+    expect_printed_ts_pair("(f<T>) >= x;", "(f<T>) >= x;\n", "(f<T>)>=x;");
+
+    expect_printed_ts_pair("(f<T>) > x;", "(f<T>) > x;\n", "(f<T>)>x;");
+
+    expect_printed_ts_pair("(f<T>) << x;", "f<T> << x;\n", "f<T><<x;");
+
+    expect_printed_ts_pair("(f<T>) <= x;", "f<T> <= x;\n", "f<T><=x;");
+
+    expect_printed_ts_pair("(f<T>) < x;", "(f<T>) < x;\n", "(f<T>)<x;");
+
+    expect_printed_ts_pair("(f<T>) && x;", "f<T> && x;\n", "f<T>&&x;");
+
+    expect_printed_ts_pair(
+        "a * await (f<T>) >= x;",
+        "a * await (f<T>) >= x;\n",
+        "a*await(f<T>)>=x;",
+    );
+
+    expect_printed_ts_pair("a * (f<T>) >= x;", "a * (f<T>) >= x;\n", "a*(f<T>)>=x;");
+
+    expect_printed_ts_pair(
+        "a * (f<T>) * b >= x;",
+        "a * f<T> * b >= x;\n",
+        "a*f<T>*b>=x;",
+    );
+
+    expect_printed_ts_pair(
+        "a * <U>(f<T>) >= x;",
+        "a * <U>(f<T>) >= x;\n",
+        "a*<U>(f<T>)>=x;",
+    );
+
+    expect_printed_ts_pair("a * +(f<T>) >= x;", "a * +(f<T>) >= x;\n", "a*+(f<T>)>=x;");
+
+    expect_printed_ts_pair("(f<T>) * x;", "f<T> * x;\n", "f<T>*x;");
+
+    expect_printed_ts_pair("(f?.x<T>) + x;", "(f?.x<T>) + x;\n", "(f?.x<T>)+x;");
+
+    expect_printed_ts_pair(
+        "a * (b + (f<T>)) >= x;",
+        "a * (b + f<T>) >= x;\n",
+        "a*(b+f<T>)>=x;",
+    );
+
+    expect_printed_ts_pair("(f<T>) >> x;", "(f<T>) >> x;\n", "(f<T>)>>x;");
+
+    expect_printed_ts_pair("(f<T>) === x;", "f<T> === x;\n", "f<T> ===x;");
+
+    expect_printed_ts_pair("(f<T>) - x;", "(f<T>) - x;\n", "(f<T>)-x;");
+
+    expect_printed_ts_pair("<U>(f<T>) + x;", "<U>(f<T>) + x;\n", "<U>(f<T>)+x;");
+
+    expect_printed_ts_pair("(<U>(f<T>)) ** x;", "(<U>f<T>) ** x;\n", "(<U>f<T>)**x;");
+
+    expect_printed_ts_pair(
+        "(typeof (f<T>)) ** x;",
+        "(typeof f<T>) ** x;\n",
+        "(typeof f<T>)**x;",
+    );
+
+    expect_printed_ts_pair(
+        "typeof (f<T>) - x;",
+        "typeof (f<T>) - x;\n",
+        "typeof (f<T>)-x;",
+    );
+
+    expect_printed_ts_pair("+(f<T>) + x;", "+(f<T>) + x;\n", "+(f<T>)+x;");
+
+    expect_printed_ts_pair("(f<T>) >>> x;", "(f<T>) >>> x;\n", "(f<T>)>>>x;");
+}
+
+#[test]
+fn test_type_assertion_targets() {
+    expect_printed_ts_pair(
+        "[(<number>a)] = values;",
+        "[(<number>a)] = values;\n",
+        "[(<number>a)]=values;",
+    );
+
+    expect_printed_ts_pair(
+        "(<number>a) = value;",
+        "(<number>a) = value;\n",
+        "(<number>a)=value;",
+    );
+
+    expect_printed_ts_pair(
+        "(<number>(<unknown>a))--;",
+        "(<number><unknown>a)--;\n",
+        "(<number><unknown>a)--;",
+    );
+
+    expect_printed_ts_pair(
+        "for ((<string>a) in obj) {}",
+        "for ((<string>a) in obj) {\n}\n",
+        "for((<string>a) in obj){}",
+    );
+
+    expect_printed_ts_pair(
+        "for ((<number>a) of values) {}",
+        "for ((<number>a) of values) {\n}\n",
+        "for((<number>a) of values){}",
+    );
+
+    expect_printed_ts_pair(
+        "(<number>obj.value)++;",
+        "(<number>obj.value)++;\n",
+        "(<number>obj.value)++;",
+    );
+
+    expect_printed_ts_pair(
+        "({ value: (<number>a) } = obj);",
+        "({ value: (<number>a) } = obj);\n",
+        "({value:(<number>a)}=obj);",
+    );
+
+    expect_printed_ts_pair("(<number>a)--;", "(<number>a)--;\n", "(<number>a)--;");
+
+    expect_printed_ts_pair("(<number>a)++;", "(<number>a)++;\n", "(<number>a)++;");
+
+    expect_printed_ts_pair("--(<number>a);", "--(<number>a);\n", "--(<number>a);");
+
+    expect_printed_ts_pair("++(<number>a);", "++(<number>a);\n", "++(<number>a);");
+
+    expect_printed_ts_pair(
+        "[(a as number)] = values;",
+        "[(a as number)] = values;\n",
+        "[(a as number)]=values;",
+    );
+
+    expect_printed_ts_pair(
+        "(a as number) = value;",
+        "(a as number) = value;\n",
+        "(a as number)=value;",
+    );
+
+    expect_printed_ts_pair(
+        "((a as unknown) as number)--;",
+        "(a as unknown as number)--;\n",
+        "(a as unknown as number)--;",
+    );
+
+    expect_printed_ts_pair(
+        "for ((a as string) in obj) {}",
+        "for ((a as string) in obj) {\n}\n",
+        "for((a as string) in obj){}",
+    );
+
+    expect_printed_ts_pair(
+        "for ((a as number) of values) {}",
+        "for ((a as number) of values) {\n}\n",
+        "for((a as number) of values){}",
+    );
+
+    expect_printed_ts_pair(
+        "(obj.value as number)++;",
+        "(obj.value as number)++;\n",
+        "(obj.value as number)++;",
+    );
+
+    expect_printed_ts_pair(
+        "({ value: (a as number) } = obj);",
+        "({ value: (a as number) } = obj);\n",
+        "({value:(a as number)}=obj);",
+    );
+
+    expect_printed_ts_pair("(a as number)--;", "(a as number)--;\n", "(a as number)--;");
+
+    expect_printed_ts_pair("(a as number)++;", "(a as number)++;\n", "(a as number)++;");
+
+    expect_printed_ts_pair("--(a as number);", "--(a as number);\n", "--(a as number);");
+
+    expect_printed_ts_pair("++(a as number);", "++(a as number);\n", "++(a as number);");
+}
+
+#[test]
+fn test_type_query_boundaries() {
+    expect_printed_ts_pair(
+        "(value as A | typeof f[]) << other;",
+        "(value as A | typeof f[]) << other;\n",
+        "(value as A | typeof f[])<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as A | typeof import(\"m\").f) << other;",
+        "(value as A | typeof import(\"m\").f) << other;\n",
+        "(value as A | typeof import(\"m\").f)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(one < two as A | typeof f) << other;",
+        "(one < two as A | typeof f) << other;\n",
+        "(one<two as A | typeof f)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as typeof f | Reference) << other;",
+        "(value as typeof f | Reference) << other;\n",
+        "(value as typeof f | Reference)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as T extends U ? A : typeof f << other;",
+        "value as T extends U ? A : typeof f << other;\n",
+        "value as T extends U ? A : typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value satisfies new () => typeof f << other;",
+        "value satisfies new () => typeof f << other;\n",
+        "value satisfies new () => typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as () => typeof f << other;",
+        "value as () => typeof f << other;\n",
+        "value as () => typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "type Query = typeof f< <T>(value: T) => T>;",
+        "type Query = typeof f< <T>(value: T) => T>;\n",
+        "type Query=typeof f< <T>(value:T) => T>;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as typeof import(\"m\").f) << other;",
+        "(value as typeof import(\"m\").f) << other;\n",
+        "(value as typeof import(\"m\").f)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as A | typeof f[\"value\"]) << other;",
+        "(value as A | typeof f[\"value\"]) << other;\n",
+        "(value as A | typeof f[\"value\"])<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as infer T extends typeof f << other;",
+        "value as infer T extends typeof f << other;\n",
+        "value as infer T extends typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value satisfies A & typeof f << other;",
+        "value satisfies A & typeof f << other;\n",
+        "value satisfies A & typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as typeof f << other > (one, two, three);",
+        "value as typeof f << other > (one, two, three);\n",
+        "value as typeof f<<other>(one,two,three);",
+    );
+
+    expect_printed_ts_pair(
+        "(one < two as typeof f) << other;",
+        "(one < two as typeof f) << other;\n",
+        "(one<two as typeof f)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as typeof f << other;",
+        "value as typeof f << other;\n",
+        "value as typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as typeof f\n<< other;",
+        "value as typeof f << other;\n",
+        "value as typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value satisfies T extends U ? A : () => B | keyof typeof f << other;",
+        "value satisfies T extends U ? A : () => B | keyof typeof f << other;\n",
+        "value satisfies T extends U ? A : () => B | keyof typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as keyof (A | typeof f)) << other;",
+        "(value as keyof (A | typeof f)) << other;\n",
+        "(value as keyof (A | typeof f))<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as A | (typeof f)) << other;",
+        "value as A | typeof f << other;\n",
+        "value as A | typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(one < two) as typeof f << other;",
+        "(one < two as typeof f) << other;\n",
+        "(one<two as typeof f)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as (x: unknown) => x is typeof f << other;",
+        "value as (x: unknown) => x is typeof f << other;\n",
+        "value as (x:unknown) => x is typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "(value as Wrapper<typeof f>) << other;",
+        "(value as Wrapper<typeof f>) << other;\n",
+        "(value as Wrapper<typeof f>)<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "type Reference = Wrapper<<T>(value: T) => T>;",
+        "type Reference = Wrapper< <T>(value: T) => T>;\n",
+        "type Reference=Wrapper< <T>(value:T) => T>;",
+    );
+
+    expect_printed_ts_pair(
+        "value satisfies typeof f << other;",
+        "value satisfies typeof f << other;\n",
+        "value satisfies typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as keyof typeof f << other;",
+        "value as keyof typeof f << other;\n",
+        "value as keyof typeof f<<other;",
+    );
+
+    expect_printed_ts_pair(
+        "value as A | typeof f << other;",
+        "value as A | typeof f << other;\n",
+        "value as A | typeof f<<other;",
+    );
 }

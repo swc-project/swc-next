@@ -60,7 +60,7 @@ impl Test262Case {
     fn read_cases() -> Vec<Self> {
         let roots = [
             fixtures().join("test262/test"),
-            crate_root().join("fixtures-manual/test262-legacy"),
+            crate_root().join("fixtures-test262-legacy"),
         ];
         roots
             .into_iter()

@@ -6,7 +6,6 @@ use testsuite::{
         Case,
         babel::BabelTransformCase,
         babel_parser::BabelParserCase,
-        local::LocalCase,
         swc_resolver::SwcResolverCase,
         swc_transform::SwcTransformCase,
         test262::Test262Case,
@@ -27,7 +26,6 @@ pub fn main() -> ExitCode {
         .unwrap();
     let panicked = [
         update_snapshots::<Test262Case>(),
-        update_snapshots::<LocalCase>(),
         update_snapshots::<TypeScriptParserCase>(),
         update_snapshots::<BabelParserCase>(),
         update_snapshot::<ResolverRunner, SwcResolverCase>(&SwcResolverCase::read()),

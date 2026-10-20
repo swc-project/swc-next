@@ -568,3 +568,120 @@ fn class_definition_super_calls() {
     let diagnostics = has_syntax_diagnostics(&allocator, source, options);
     assert!(diagnostics);
 }
+
+#[test]
+fn global_augmentation() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors = errors("declare module \"pkg\" { global {} }");
+        assert!(!has_errors);
+
+        let has_errors = errors("declare namespace N { global {} }");
+        assert!(has_errors);
+
+        let has_errors = errors("{ declare global {} }");
+        assert!(has_errors);
+
+        let has_errors = errors("function f() { declare global {} }");
+        assert!(has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("declare global {}");
+        assert!(!has_errors);
+
+        let has_errors = errors("global {}");
+        assert!(has_errors);
+
+        let has_errors = errors("declare module \"pkg\" { global {} }");
+        assert!(has_errors);
+
+        let has_errors = errors("declare global { global {} }");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn namespace_context() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors = errors("declare module \"outer\" { module \"inner\" {} }");
+        assert!(!has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+
+        let has_errors = errors("declare module \"outer\" { module \"inner\" {} }");
+        assert!(has_errors);
+    }
+}
+
+#[test]
+fn using_declarations() {
+    let allocator = Allocator::new();
+    let ts_module = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Module,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    for options in [ts_module, ts_script] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
+
+        let has_errors = errors("declare namespace N { using x: null; }");
+        assert!(has_errors);
+
+        let has_errors = errors("namespace N { using x = null; }");
+        assert!(!has_errors);
+    }
+
+    {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_script);
+
+        let has_errors = errors("namespace N.M { using x = null; }");
+        assert!(!has_errors);
+
+        let has_errors = errors("namespace N { { using x = null; } }");
+        assert!(!has_errors);
+
+        let has_errors = errors("namespace N { export namespace M { using x = null; } }");
+        assert!(!has_errors);
+
+        let has_errors = errors("using x = null;");
+        assert!(has_errors);
+    }
+}

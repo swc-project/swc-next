@@ -4,7 +4,6 @@ use testsuite::{
         Case,
         babel::BabelTransformCase,
         babel_parser::BabelParserCase,
-        local::LocalCase,
         swc_resolver::SwcResolverCase,
         swc_transform::SwcTransformCase,
         test262::Test262Case,
@@ -31,7 +30,6 @@ enum RunnerName {
 enum CaseSet {
     #[value(name = "test262")]
     Test262,
-    Local,
     #[value(name = "typescript")]
     TypeScript,
     Babel,
@@ -105,14 +103,10 @@ fn main() {
 
 fn run_conformance<R>(case_set: CaseSet, filter: &str) -> Result<(), String>
 where
-    R: Runner<Test262Case>
-        + Runner<LocalCase>
-        + Runner<TypeScriptParserCase>
-        + Runner<BabelParserCase>,
+    R: Runner<Test262Case> + Runner<TypeScriptParserCase> + Runner<BabelParserCase>,
 {
     match case_set {
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
-        CaseSet::Local => run_filtered::<R, LocalCase>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
         CaseSet::SwcResolver | CaseSet::Swc => {
