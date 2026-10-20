@@ -672,35 +672,41 @@ fn infer_declaration_merging() {
         .map(|(start, _)| start as u32 + 6)
         .collect::<Vec<_>>();
     let allocator = Allocator::new();
-    let parser_options = ts_module_options();
+    let ts_module = ts_module_options();
+    let ts_module_without_parens = Options {
+        preserve_parens: false,
+        ..ts_module
+    };
 
-    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let options = AnalyzeOptions {
-            check_syntax,
-            ..AnalyzeOptions::default()
-        };
-        let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
-        let entry = semantic
-            .iter_references()
-            .find(|entry| ast.get_utf8(entry.reference.name) == "U")
-            .unwrap();
-        let symbol = entry.reference.symbol.unwrap();
-        let declarations = semantic
-            .declarations(symbol)
-            .map(|declaration| ast.span(declaration.node).start)
-            .collect::<Vec<_>>();
-        assert_eq!(declarations, expected);
-        assert_eq!(
-            entry.reference.resolution(),
-            NameResolution::Resolved(symbol)
-        );
-        assert_eq!(
-            semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
-            [symbol]
-        );
-        assert_eq!(semantic.uses(symbol), [entry.id]);
-        assert!(!entry.reference.flags.is_read());
-        assert!(!entry.reference.flags.is_write());
+    for parser_options in [ts_module, ts_module_without_parens] {
+        for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+            let options = AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            };
+            let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
+            let entry = semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name) == "U")
+                .unwrap();
+            let symbol = entry.reference.symbol.unwrap();
+            let declarations = semantic
+                .declarations(symbol)
+                .map(|declaration| ast.span(declaration.node).start)
+                .collect::<Vec<_>>();
+            assert_eq!(declarations, expected);
+            assert_eq!(
+                entry.reference.resolution(),
+                NameResolution::Resolved(symbol)
+            );
+            assert_eq!(
+                semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
+                [symbol]
+            );
+            assert_eq!(semantic.uses(symbol), [entry.id]);
+            assert!(!entry.reference.flags.is_read());
+            assert!(!entry.reference.flags.is_write());
+        }
     }
 }
 

@@ -5,12 +5,17 @@ use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOpt
 
 #[track_caller]
 pub fn expect_printed_ts_pair(source: &str, pretty: &str, minified: &str) {
-    let allocator = Allocator::new();
     let options = ParseOptions {
         lang: Lang::Ts,
         preserve_parens: false,
         ..ParseOptions::default()
     };
+    expect_printed_pair(source, options, pretty, minified);
+}
+
+#[track_caller]
+pub fn expect_printed_pair(source: &str, options: ParseOptions, pretty: &str, minified: &str) {
+    let allocator = Allocator::new();
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
     let output = print(&allocator, &parsed.ast, PrintOptions::default());

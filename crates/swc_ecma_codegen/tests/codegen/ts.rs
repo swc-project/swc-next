@@ -1,4 +1,6 @@
-use crate::{expect_printed_ts, expect_printed_ts_minify, expect_printed_ts_pair};
+use crate::{
+    expect_printed_pair, expect_printed_ts, expect_printed_ts_minify, expect_printed_ts_pair,
+};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Lang;
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
@@ -779,6 +781,86 @@ fn test_instantiation_expression_boundaries() {
     expect_printed_ts_minify("((f<T>)!)<U>();", "(f<T>)!<U>();");
 
     expect_printed_ts_minify("((f<T>)!)!;", "(f<T>)!!;");
+}
+
+#[test]
+fn test_parenthesized_boundaries() {
+    let options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: true,
+        ..ParseOptions::default()
+    };
+    let expect = |source, pretty, compact| expect_printed_pair(source, options, pretty, compact);
+
+    expect("(f<T>) << x;", "(f<T>) << x;\n", "(f<T>)<<x;");
+
+    expect("(f<T>) <= x;", "(f<T>) <= x;\n", "(f<T>)<=x;");
+
+    expect("(f<T>) && x;", "(f<T>) && x;\n", "(f<T>)&&x;");
+
+    expect("(f<T>) * x;", "(f<T>) * x;\n", "(f<T>)*x;");
+
+    expect("(f<T>) === x;", "(f<T>) === x;\n", "(f<T>)===x;");
+
+    expect(
+        "(await (f<T>)) ** x;",
+        "(await (f<T>)) ** x;\n",
+        "(await(f<T>))**x;",
+    );
+
+    expect(
+        "a * (f<T>) * b >= x;",
+        "a * (f<T>) * b >= x;\n",
+        "a*(f<T>)*b>=x;",
+    );
+
+    expect(
+        "a * (b + (f<T>)) >= x;",
+        "a * (b + (f<T>)) >= x;\n",
+        "a*(b+(f<T>))>=x;",
+    );
+
+    expect(
+        "(<U>(f<T>)) ** x;",
+        "(<U>(f<T>)) ** x;\n",
+        "(<U>(f<T>))**x;",
+    );
+
+    expect(
+        "(typeof (f<T>)) ** x;",
+        "(typeof (f<T>)) ** x;\n",
+        "(typeof (f<T>))**x;",
+    );
+
+    expect(
+        "(<number>(<unknown>a))--;",
+        "(<number>(<unknown>a))--;\n",
+        "(<number>(<unknown>a))--;",
+    );
+
+    expect(
+        "((a as unknown) as number)--;",
+        "((a as unknown) as number)--;\n",
+        "((a as unknown) as number)--;",
+    );
+
+    expect(
+        "(value as A | (typeof f)) << other;",
+        "(value as A | (typeof f)) << other;\n",
+        "(value as A | (typeof f))<<other;",
+    );
+
+    expect(
+        "(one < two) as typeof f << other;",
+        "(one < two) as typeof f << other;\n",
+        "(one<two) as typeof f<<other;",
+    );
+
+    expect(
+        "(x as T) ? (/a/) : false;",
+        "(x as T) ? (/a/) : false;\n",
+        "(x as T)?(/a/):false;",
+    );
 }
 
 #[test]
