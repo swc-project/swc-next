@@ -41,6 +41,8 @@ import {
 } from "./state";
 import { useCompiler } from "./useCompiler";
 
+const commit = process.env.SWC_COMMIT;
+
 function stringify(value: unknown) {
   return JSON.stringify(
     value,
@@ -164,6 +166,18 @@ export default function App() {
           height={1443}
         />
         <div className="flex items-center gap-1.5 max-[720px]:gap-0">
+          {commit && (
+            <a
+              className="mr-2 rounded px-1 py-1 font-mono text-xs text-muted hover:bg-hover hover:text-heading"
+              href={`https://github.com/swc-project/swc-next/commit/${commit}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`SWC commit ${commit}`}
+              title={`SWC commit ${commit}`}
+            >
+              {commit.slice(0, 7)}
+            </a>
+          )}
           <span className="mr-2.5 flex items-center gap-1.75 text-[13px] text-muted tabular-nums max-[720px]:hidden">
             <Clock3 size={13} />
             {compiling

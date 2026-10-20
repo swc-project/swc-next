@@ -43,6 +43,9 @@ The three columns contain compiler options, editable source, and Code / AST
 results. The input/output divider supports pointer dragging and arrow keys.
 Source and options persist locally; the header resets both, while the sidebar
 reset button resets only options.
+The header also links to the Git commit used to build the playground, shown as
+a short hash with the full hash in its tooltip. Builds without Git metadata
+omit this link.
 
 - **Parser:** JavaScript, JSX, TypeScript, TSX, and declaration files; source
   type, parentheses preservation, and semantic errors.
