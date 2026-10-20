@@ -4,6 +4,7 @@ The formatter targets JavaScript, JSX, TypeScript, and TSX using the SWC Next
 AST. Compatibility is defined by printed output and deliberate formatting
 choices. Prettier 3.9.9 provides the pinned conformance corpus; later fixes are evaluated
 separately. Formatting must preserve program semantics.
+Semantic preservation takes precedence over matching reference output.
 
 ## Public contract
 
@@ -118,6 +119,10 @@ does not widen a child's source interval or change its syntax domain.
 
 Required token separation and statement guards are decided by syntax formatting
 before printing chooses line breaks or removes optional punctuation.
+
+JSX formatting preserves significant runs made solely of ASCII spaces, including
+adjacent string-expression children. It may emit explicit JSX string expressions
+where Prettier 3.9.9 collapses those spaces.
 
 ## Embedded languages
 
