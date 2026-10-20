@@ -506,8 +506,7 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
 
                 if value.is_some() {
                     let local_type = semantic
-                        .resolve_name(entry.reference.scope, b"X", ReferenceSpace::Type)
-                        .symbol()
+                        .lookup(entry.reference.scope, b"X", ReferenceSpace::Type)
                         .unwrap();
                     assert_ne!(Some(local_type), target);
                     assert_eq!(entry.reference.symbol, Some(local_type));

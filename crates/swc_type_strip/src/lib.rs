@@ -997,6 +997,3 @@ fn declaration_has_runtime_effect(declaration: Decl, ast: &Ast<'_>) -> bool {
     }
     true
 }
-
-#[cfg(test)]
-mod tests;

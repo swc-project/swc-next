@@ -1,5 +1,5 @@
-use super::prelude::{SimdPartialEq, SimdPartialOrd};
-use super::{Select, Simd, mask8x16, u8x16};
+use swc_next_simd::prelude::{SimdPartialEq, SimdPartialOrd};
+use swc_next_simd::{Select, Simd, mask8x16, u8x16};
 
 #[test]
 fn vector_conversions() {
@@ -126,7 +126,7 @@ fn unsigned_byte_operations() {
 #[cfg(feature = "memchr")]
 #[test]
 fn byte_searches() {
-    use super::memchr::memchr4;
+    use swc_next_simd::memchr::memchr4;
 
     assert_eq!(memchr4(b'w', b'x', b'y', b'z', b""), None);
     assert_eq!(memchr4(b'w', b'x', b'y', b'z', b"abzyxw"), Some(2));

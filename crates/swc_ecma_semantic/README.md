@@ -19,9 +19,9 @@ cargo run -p swc_next_ecma_semantic --example semantic -- input.ts
 
 ## Testing
 
-Unit tests in `src/lib.rs` cover public semantic-model behavior. Syntax and
+Integration tests in `tests/semantic/` cover public semantic-model behavior. Syntax and
 early-error cases belong in the conformance suites.
 
 ```sh
-cargo test -p swc_next_ecma_semantic --lib --locked
+cargo test -p swc_next_ecma_semantic --test semantic --locked
 ```

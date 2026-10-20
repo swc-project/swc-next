@@ -13,7 +13,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, SymbolId};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
-use crate::{
+use swc_next_ecma_semantic::{
     AnalyzeOptions, ExportOrigin, ExportTarget, NameResolution, ReferenceSpace, Semantic,
     SemanticReturn, SymbolFlags, SyntaxChecks, analyze, check_syntax,
 };

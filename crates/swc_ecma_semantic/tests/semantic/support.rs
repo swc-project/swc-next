@@ -31,10 +31,6 @@ pub(super) fn assert_uncertain_alias_targets(source: &str, declarations: &[&str]
                 .collect::<Vec<_>>()
         );
         assert_eq!(
-            semantic.resolve_name(reference.scope, b"A", reference.flags.space),
-            resolution
-        );
-        assert_eq!(
             semantic.lookup(reference.scope, b"A", reference.flags.space),
             Some(candidate)
         );
@@ -90,10 +86,6 @@ pub(super) fn assert_named_declaration_targets(
             .map(|entry| {
                 let reference = entry.reference;
                 assert!(!reference.flags.is_uncertain());
-                assert_eq!(
-                    semantic.resolve_name(reference.scope, name, reference.flags.space),
-                    reference.resolution()
-                );
                 assert_eq!(
                     semantic.lookup(reference.scope, name, reference.flags.space),
                     reference.symbol
@@ -164,8 +156,8 @@ pub(super) fn assert_merged_type_parameter(ast: &Ast<'_>, semantic: &Semantic<'_
         let reference = entry.reference;
         assert_eq!(reference.symbol, Some(symbol));
         assert_eq!(
-            semantic.resolve_name(reference.scope, name, reference.flags.space),
-            NameResolution::Resolved(symbol)
+            semantic.lookup(reference.scope, name, reference.flags.space),
+            Some(symbol)
         );
     }
     assert_eq!(

@@ -742,6 +742,3 @@ pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'
     ast.root_program().visit_with(&mut visitor);
     visitor.finish().0
 }
-
-#[cfg(test)]
-mod tests;

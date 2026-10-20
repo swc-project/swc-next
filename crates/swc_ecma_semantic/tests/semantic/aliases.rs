@@ -649,8 +649,8 @@ fn assert_namespace_owner_binding(source: &str, declaration: &str, import_root: 
             NameResolution::Resolved(target)
         );
         assert_eq!(
-            semantic.resolve_name(entry.reference.scope, b"A", entry.reference.flags.space),
-            NameResolution::Resolved(target)
+            semantic.lookup(entry.reference.scope, b"A", entry.reference.flags.space),
+            Some(target)
         );
         assert_eq!(
             semantic.reference_candidates(entry.id).collect::<Vec<_>>(),

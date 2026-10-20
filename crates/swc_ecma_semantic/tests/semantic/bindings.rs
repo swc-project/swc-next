@@ -34,8 +34,8 @@ fn assert_separate_lexical_binding(source: &str, options: Options) {
         assert_eq!(semantic.declarations(lexical).len(), 1);
         assert_eq!(semantic.declarations(hoisted).len(), 1);
         assert_eq!(
-            semantic.resolve_name(hoist_scope, b"f", ReferenceSpace::Type),
-            NameResolution::Unresolved
+            semantic.lookup(hoist_scope, b"f", ReferenceSpace::Type),
+            None
         );
     };
     check(AnalyzeOptions::default());
@@ -77,7 +77,7 @@ fn annex_b_if_bindings() {
     );
     assert_eq!(
         semantic.scope(scope).kind,
-        crate::scope::ScopeKind::Function
+        swc_next_ecma_semantic::scope::ScopeKind::Function
     );
     assert_eq!(semantic.scope(scope).parent, Some(ScopeId::ROOT));
     assert_eq!(semantic.iter_scopes().count(), 2);
@@ -229,7 +229,7 @@ fn annex_b_companion_bindings() {
             let variable = reference_symbol(&ast, &semantic, b"g").unwrap();
             let block = semantic
                 .iter_scopes()
-                .find(|entry| entry.scope.kind == crate::scope::ScopeKind::Block)
+                .find(|entry| entry.scope.kind == swc_next_ecma_semantic::scope::ScopeKind::Block)
                 .unwrap()
                 .id;
             assert_eq!(semantic.binding(block, b"g"), Some(variable));
@@ -409,7 +409,7 @@ fn expression_name_bindings() {
     let name = expression_name_symbol(&semantic, SymbolFlags::CLASS_EXPRESSION);
     assert_eq!(
         semantic.scope(semantic.scope_of_symbol(name)).kind,
-        crate::scope::ScopeKind::Class
+        swc_next_ecma_semantic::scope::ScopeKind::Class
     );
     assert_eq!(reference_symbol(&ast, &semantic, b"Inner"), Some(name));
     assert!(semantic.binding(ScopeId::MODULE, b"Inner").is_none());

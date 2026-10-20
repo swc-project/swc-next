@@ -4,7 +4,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::SourceType;
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Parser};
 
-use crate::strip_types;
+use swc_next_type_strip::{Lang, Options, Severity, Span, strip_types};
 
 fn options(lang: crate::Lang) -> crate::Options {
     crate::Options {
@@ -52,9 +52,9 @@ macro_rules! assert_strip_text {
         assert_strip_text!(crate::Lang::Ts; $input $expected)
     }};
     ($lang:expr; $input:literal $expected:literal $(,)?) => {{
-        let result = crate::strip_types($input, crate::tests::options($lang));
+        let result = crate::strip_types($input, crate::options($lang));
 
-        crate::tests::assert_utf16_len_preserved($input, &result.code);
+        crate::assert_utf16_len_preserved($input, &result.code);
         assert_eq!(result.code, $expected);
         assert!(
             result.diagnostics.is_empty(),
@@ -72,7 +72,7 @@ macro_rules! assert_strip {
     }};
     ($lang:expr; $input:literal $expected:literal $(,)?) => {{
         let result = assert_strip_text!($lang; $input $expected);
-        crate::tests::assert_valid_javascript(&result.code, $lang);
+        crate::assert_valid_javascript(&result.code, $lang);
     }};
 }
 
@@ -80,22 +80,22 @@ macro_rules! assert_strip_with_diagnostic {
     (@$diagnostic_text:literal $input:literal $expected:literal $(,)?) => {{
         let result = assert_strip_with_diagnostic!($input $expected);
 
-        crate::tests::assert_diagnostic_span_text(
+        crate::assert_diagnostic_span_text(
             $input,
             result.diagnostics[0].span,
             $diagnostic_text,
         );
     }};
     ($input:literal $expected:literal $(,)?) => {{
-        let result = crate::strip_types($input, crate::tests::options(crate::Lang::Ts));
+        let result = crate::strip_types($input, crate::options(crate::Lang::Ts));
 
-        crate::tests::assert_utf16_len_preserved($input, &result.code);
+        crate::assert_utf16_len_preserved($input, &result.code);
         assert_eq!(result.code, $expected);
         assert_eq!(result.diagnostics.len(), 1, "{:#?}", result.diagnostics);
         assert_eq!(result.diagnostics[0].severity, crate::Severity::Error);
         assert_eq!(
             result.diagnostics[0].message,
-            crate::ERASABLE_SYNTAX_ONLY_MESSAGE
+            "SyntaxError: This syntax is not allowed when `erasableSyntaxOnly` is enabled"
         );
 
         result
@@ -194,7 +194,7 @@ fn unsupported_lang_variants() {
     assert_eq!(result.diagnostics[0].severity, crate::Severity::Error);
     assert_eq!(
         result.diagnostics[0].message,
-        crate::UNSUPPORTED_LANG_MESSAGE
+        "TypeError: Unsupported lang variant"
     );
 
     let result = strip_types(source, options(crate::Lang::Jsx));
@@ -203,7 +203,7 @@ fn unsupported_lang_variants() {
     assert_eq!(result.diagnostics[0].severity, crate::Severity::Error);
     assert_eq!(
         result.diagnostics[0].message,
-        crate::UNSUPPORTED_LANG_MESSAGE
+        "TypeError: Unsupported lang variant"
     );
 
     let result = strip_types(source, options(crate::Lang::Dts));
@@ -212,6 +212,6 @@ fn unsupported_lang_variants() {
     assert_eq!(result.diagnostics[0].severity, crate::Severity::Error);
     assert_eq!(
         result.diagnostics[0].message,
-        crate::UNSUPPORTED_LANG_MESSAGE
+        "TypeError: Unsupported lang variant"
     );
 }
