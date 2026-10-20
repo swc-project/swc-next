@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = <Box>	
+	
+	</Box>;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = <Box></Box>;

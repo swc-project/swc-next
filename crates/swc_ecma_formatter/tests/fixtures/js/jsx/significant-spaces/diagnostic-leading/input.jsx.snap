@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+const value=<MissingPanel>{" "}
+{" "}{uncoveredAfterSpace}</MissingPanel>;
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-ignore
+const value = (<MissingPanel>{"  "}
+    {uncoveredAfterSpace}
+  </MissingPanel>
+);
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+// @ts-ignore
+const value = (<MissingPanel>{"  "}
+      {
+        uncoveredAfterSpace
+      }
+    </MissingPanel>
+  );
+
+---------- Options ----------
+{"printWidth":12,"singleQuote":true}
+---------- Output ----------
+// @ts-ignore
+const value = (<MissingPanel>{'  '}
+      {
+        uncoveredAfterSpace
+      }
+    </MissingPanel>
+  );
