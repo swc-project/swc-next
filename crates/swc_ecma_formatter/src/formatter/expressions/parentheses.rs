@@ -2234,6 +2234,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    /// An emitted enclosure can own a complete head independently of its caller's gap.
+    pub(super) fn enclosed_expression_head_binding(
+        &self,
+        content: &ExpressionContent,
+        comments: &[Comment],
+    ) -> Option<CommentBinding> {
+        if comments.is_empty()
+            || !matches!(
+                content.data,
+                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            ) && !matches!(content.data, ExprData::SequenceExpression(sequence)
+                    if self.sequence_head_has_type_cast(sequence, comments))
+        {
+            return None;
+        }
+        let binding = self.expression_head_binding(comments, content.expression);
+        Some(
+            content
+                .parentheses
+                .map_or(binding, |removed| binding.combine(removed.head.binding)),
+        )
+    }
+
     pub(super) fn emitted_head_annotation(
         &self,
         comments: &[Comment],

@@ -539,7 +539,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        let body_starts_line = body_starts_line && jsx_comments.is_none();
+        let enclosed_sequence_head = mode == ContentMode::Formatted
+            && matches!(&body, PreparedArrowBody::Expression { content, .. }
+            if matches!(content.data, ExprData::SequenceExpression(_))
+                && matches!(
+                    self.enclosed_expression_head_binding(content, head_comments),
+                    Some(CommentBinding::Unbound)
+                ));
+        let body_starts_line =
+            body_starts_line && jsx_comments.is_none() && !enclosed_sequence_head;
         let hug_body = hugs_shape && !body_starts_line;
         let flat_conditional_pair = !body_starts_line
             && mode == ContentMode::Formatted

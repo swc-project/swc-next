@@ -782,21 +782,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || self.source_line_starts_line(comment.span.start)
                     || self.line_breaks(comment.span.start, comment.span.end) != 0
             });
-        if !leading.is_empty()
-            && (jsx_head
-                || matches!(content.data, ExprData::SequenceExpression(sequence)
-                if self.sequence_head_has_type_cast(sequence, leading)
-                    && source_right_end == content.parentheses.map_or(
-                        content.expression.span(self.ast).end,
-                        |removed| removed.source.outer.end,
-                    )))
-        {
-            let binding = self.expression_head_binding(leading, content.expression);
-            boundary.enclosed_head_binding = Some(
-                content
+        if jsx_head
+            || source_right_end
+                == content
                     .parentheses
-                    .map_or(binding, |removed| binding.combine(removed.head.binding)),
-            );
+                    .map_or(content.expression.span(self.ast).end, |removed| {
+                        removed.source.outer.end
+                    })
+        {
+            boundary.enclosed_head_binding =
+                self.enclosed_expression_head_binding(content, leading);
         }
         if !leading.is_empty() && self.parenthesis_has_type_cast(right_start) {
             let breaks = leading.iter().enumerate().any(|(index, comment)| {
