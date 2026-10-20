@@ -9,7 +9,7 @@ use std::{borrow::Cow, mem};
 
 use bitflags::bitflags;
 use indexmap::IndexMap;
-use rustc_hash::{FxBuildHasher, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use swc_next_allocator::{Allocator, vec::ArenaVec, wtf8::Wtf8Buf};
 use swc_next_ecma_ast::*;
 use swc_next_ecma_ast::{AstUtf8, AstWtf8};
@@ -590,8 +590,46 @@ enum AngleListKind {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum AngleClose {
+    /// Committed types peel shifts and report missing closing angles.
     Peel,
+    /// Speculative types peel shifts without building discarded diagnostics.
+    SpeculativePeel,
+    /// Expression arguments require a standalone closing angle.
     Exact,
+}
+
+bitflags! {
+    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    struct TypeArgumentFailures: u8 {
+        const PEEL = 1 << 0;
+        /// Includes exact closing and the expression's follow-token check.
+        const EXPRESSION = 1 << 1;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct TypeArgumentKey {
+    position: u32,
+    context: u8,
+    ts_context: u8,
+    boundary_context: u8,
+    statement_context: u8,
+    state: u8,
+    lexer_mode: u8,
+    stripped_paren: Option<NodeId>,
+}
+
+struct TypeReferenceFrame {
+    start: u32,
+    name: TsTypeName,
+    argument_start: u32,
+    scratch_start: usize,
+    key: TypeArgumentKey,
+}
+
+enum PrimaryTypeHead {
+    Parsed(TsType),
+    Reference { start: u32, name: TsTypeName },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -749,6 +787,11 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Span of the first identifier whose validity depends on a pending async arrow head.
     /// Nested covers restore this value when they become separate functions.
     await_identifier_in_async_head: Option<Span>,
+    /// Rule failures survive rollback, but are only reused in speculation so
+    /// committed type parses still produce their diagnostics and recovery.
+    failed_type_arguments: FxHashMap<TypeArgumentKey, TypeArgumentFailures>,
+    type_argument_speculation_depth: u32,
+    type_argument_lookahead: TypeArgumentLookahead,
 }
 
 pub struct ParseReturn<'a> {
@@ -839,6 +882,131 @@ impl<C: ParserConfig> Drop for Peek<'_, '_, C> {
     }
 }
 
+#[derive(Default)]
+struct TypeArgumentLookahead {
+    /// Memoize lookahead whose final interpretation still belongs to grammar.
+    scanned_angles: FxHashSet<u32>,
+    /// Normal-goal delimiter proofs are independent of parser context.
+    unclosed_angles: FxHashSet<u32>,
+}
+
+impl TypeArgumentLookahead {
+    /// Classify every angle opening, including those inside balanced groups,
+    /// so later speculation reuses the same scan instead of walking its suffix.
+    fn can_close<C: ParserConfig>(
+        &mut self,
+        start: Token,
+        peek: &mut Peek<'_, '_, C>,
+        jsx: bool,
+    ) -> bool {
+        if self.cannot_close(start.start()) {
+            return false;
+        }
+        if self.scanned_angles.contains(&start.start()) {
+            return true;
+        }
+        let mut open_angles = vec![start.start()];
+        if start.tag() == TokenTag::LeftShift {
+            open_angles.push(start.start() + 1);
+        }
+        // Each group fences its inner angles off from enclosing closers.
+        let mut groups: Vec<(Token, usize)> = Vec::new();
+        for token in peek.by_ref() {
+            let tag = token.tag();
+            // These need expression grammar to select the lexical goal.
+            if matches!(
+                tag,
+                TokenTag::Slash | TokenTag::SlashAssign | TokenTag::TemplateHead
+            ) {
+                return self.inconclusive(&open_angles);
+            }
+            if is_angle_open(tag) {
+                open_angles.push(token.start());
+                if tag == TokenTag::LeftShift {
+                    open_angles.push(token.start() + 1);
+                }
+                if jsx && !groups.is_empty() {
+                    return self.inconclusive(&open_angles);
+                }
+                continue;
+            }
+            if matches!(
+                tag,
+                TokenTag::LeftParen | TokenTag::LeftBracket | TokenTag::LeftBrace
+            ) {
+                groups.push((token, open_angles.len()));
+                continue;
+            }
+            if matches!(
+                tag,
+                TokenTag::RightParen | TokenTag::RightBracket | TokenTag::RightBrace
+            ) {
+                let Some((open, angle_start)) = groups.pop() else {
+                    return self.reject_unclosed(&open_angles);
+                };
+                let matches = matches!(
+                    (open.tag(), tag),
+                    (TokenTag::LeftParen, TokenTag::RightParen)
+                        | (TokenTag::LeftBracket, TokenTag::RightBracket)
+                        | (TokenTag::LeftBrace, TokenTag::RightBrace)
+                );
+                if !matches {
+                    return self.inconclusive(&open_angles);
+                }
+                self.reject_unclosed(&open_angles[angle_start..]);
+                open_angles.truncate(angle_start);
+                continue;
+            }
+            if tag == TokenTag::Eof {
+                return self.reject_unclosed(&open_angles);
+            }
+            let angle_start = groups.last().map_or(0, |(_, start)| *start);
+            match tag {
+                TokenTag::Semicolon => {
+                    self.reject_unclosed(&open_angles[angle_start..]);
+                    open_angles.truncate(angle_start);
+                    if groups.is_empty() {
+                        return false;
+                    }
+                }
+                _ if is_angle_close(tag) => {
+                    let closed = match tag {
+                        TokenTag::RightShift | TokenTag::RightShiftAssign => 2,
+                        TokenTag::UnsignedRightShift | TokenTag::UnsignedRightShiftAssign => 3,
+                        _ => 1,
+                    };
+                    let remaining = angle_start.max(open_angles.len().saturating_sub(closed));
+                    for position in open_angles.drain(remaining..) {
+                        self.scanned_angles.insert(position);
+                    }
+                    if remaining == 0 {
+                        return true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        // Lexical errors belong to the actual parser.
+        self.inconclusive(&open_angles)
+    }
+
+    fn cannot_close(&self, position: u32) -> bool {
+        self.unclosed_angles.contains(&position)
+    }
+
+    fn reject_unclosed(&mut self, open_angles: &[u32]) -> bool {
+        self.unclosed_angles.extend(open_angles.iter().copied());
+        false
+    }
+
+    fn inconclusive(&mut self, open_angles: &[u32]) -> bool {
+        // Scanned positions avoid repeated lookahead; an unclosed proof always
+        // takes precedence if a later scan can resolve an ambiguous region.
+        self.scanned_angles.extend(open_angles.iter().copied());
+        true
+    }
+}
+
 fn estimate_ast_capacity(source_len: usize) -> (usize, usize) {
     let baseline_nodes = if source_len < 4_000 {
         256.max(source_len / 4)
@@ -905,6 +1073,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             stripped_paren: None,
             ts_rejected_speculations: FxHashSet::default(),
             await_identifier_in_async_head: None,
+            failed_type_arguments: FxHashMap::default(),
+            type_argument_speculation_depth: 0,
+            type_argument_lookahead: TypeArgumentLookahead::default(),
         }
     }
 
@@ -2249,7 +2420,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // A rejected continuation can start a new statement in a statement
             // list. Keep single-statement bodies intact, including an if's else.
             (self.statement_context.permits_declaration()
-                && self.infix_precedence(next) > max_left_precedence(expression, &self.ast)
+                && Self::infix_precedence(next, self.lang.is_typescript())
+                    > max_left_precedence(expression, &self.ast)
                 && is_start_of_expression(next.tag())
                 && !next.tag().is_unconditionally_reserved())
             .then_some(end)
@@ -2567,7 +2739,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.boundary_context = BoundaryContext::empty();
             let type_parameters =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::LessThan {
-                    Some(self.parse_type_parameters()?)
+                    Some(self.parse_type_parameters(AngleClose::Peel)?)
                 } else {
                     None
                 };
@@ -2740,7 +2912,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let type_parameters =
             if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                Some(self.parse_type_parameters()?)
+                Some(self.parse_type_parameters(AngleClose::Peel)?)
             } else {
                 None
             };
@@ -3268,7 +3440,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters()?)
+                    Some(self.parse_type_parameters(AngleClose::Peel)?)
                 } else {
                     None
                 };
@@ -5198,7 +5370,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            Some(self.parse_type_parameters(AngleClose::Peel)?)
         } else {
             None
         };
@@ -5226,7 +5398,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            Some(self.parse_type_parameters(AngleClose::Peel)?)
         } else {
             None
         };
@@ -5765,13 +5937,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_conditional_type(&mut self) -> Option<TsType> {
-        let check_type = self.parse_union_type()?;
+        self.parse_conditional_type_with(Self::parse_union_type)
+    }
+
+    fn parse_conditional_type_with(
+        &mut self,
+        parse_check: impl FnOnce(&mut Self) -> Option<TsType>,
+    ) -> Option<TsType> {
+        // Specialize the first parse and fast return; share the conditional tail.
+        let check_type = parse_check(self)?;
         if self.ts_context.disallow_conditional_types()
             || self.current_token.tag() != TokenTag::Extends
             || self.current_token.has_line_terminator_before()
         {
             return Some(check_type);
         }
+        self.parse_conditional_type_tail(check_type)
+    }
+
+    fn parse_conditional_type_tail(&mut self, check_type: TsType) -> Option<TsType> {
         self.advance()?;
         let saved = self.ts_context.disallow_conditional_types();
         self.ts_context
@@ -5837,6 +6021,26 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if leading_start.is_none() && self.current_token.tag() != separator {
             return Some(first);
         }
+        self.parse_binary_type_chain_from(
+            first,
+            leading_start.unwrap_or(first_start),
+            separator,
+            kind,
+            parse_constituent,
+        )
+    }
+
+    fn parse_binary_type_chain_from<F>(
+        &mut self,
+        first: TsType,
+        start: u32,
+        separator: TokenTag,
+        kind: BinaryTypeKind,
+        parse_constituent: F,
+    ) -> Option<TsType>
+    where
+        F: Fn(&mut Self) -> Option<TsType>,
+    {
         let checkpoint = self.scratch_a.begin();
         self.scratch_a.append(first);
         let result = (|| {
@@ -5844,10 +6048,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let next = parse_constituent(self)?;
                 self.scratch_a.append(next);
             }
-            let span = Span::new(
-                leading_start.unwrap_or(first_start),
-                self.lexer.state.prev_token_end,
-            );
+            let span = Span::new(start, self.lexer.state.prev_token_end);
             let types = self.add_extra_from_scratch_a(checkpoint);
             Some(match kind {
                 BinaryTypeKind::Union => TsType::TsUnionType(self.ast.ts_union_type(span, types)),
@@ -5869,7 +6070,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_postfix_type(&mut self) -> Option<TsType> {
-        let mut type_annotation = self.parse_primary_type()?;
+        self.parse_postfix_type_with(Self::parse_primary_type)
+    }
+
+    fn parse_postfix_type_with(
+        &mut self,
+        parse_primary: impl FnOnce(&mut Self) -> Option<TsType>,
+    ) -> Option<TsType> {
+        let mut type_annotation = parse_primary(self)?;
         loop {
             let token = self.current_token;
             match token.tag() {
@@ -5919,18 +6127,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_primary_type(&mut self) -> Option<TsType> {
+        self.parse_primary_type_with(std::convert::identity, Self::parse_type_reference)
+    }
+
+    /// Identifier-like heads can defer reference arguments to the work stack.
+    /// Other primary forms share a fixed-result parser.
+    fn parse_primary_type_with<T>(
+        &mut self,
+        from_type: impl FnOnce(TsType) -> T,
+        from_reference: impl FnOnce(&mut Self, u32, TsTypeName) -> Option<T>,
+    ) -> Option<T> {
         let token = self.current_token;
         match token.tag() {
-            TokenTag::True
-            | TokenTag::False
-            | TokenTag::StringLiteral
-            | TokenTag::NumericLiteral
-            | TokenTag::HexLiteral
-            | TokenTag::OctalLiteral
-            | TokenTag::BinaryLiteral
-            | TokenTag::BigIntLiteral
-            | TokenTag::NoSubstitutionTemplate
-            | TokenTag::Minus => return self.parse_literal_type(),
+            TokenTag::True | TokenTag::False => return self.parse_literal_type().map(from_type),
             tag @ (TokenTag::Any
             | TokenTag::Bigint
             | TokenTag::Boolean
@@ -5948,45 +6157,65 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if matches!(tag, TokenTag::NullLiteral | TokenTag::Void)
                     || !self.is_qualified_type_continuation()?
                 {
-                    return self.parse_type_keyword();
+                    return self.parse_type_keyword().map(from_type);
                 }
             }
-            TokenTag::This if !token.is_escaped() => return self.parse_this_type_or_predicate(),
+            TokenTag::This if !token.is_escaped() => {
+                return self.parse_this_type_or_predicate().map(from_type);
+            }
             TokenTag::Asserts if !token.is_escaped() => {
                 if self.is_asserts_predicate_start()? {
-                    return self.parse_asserts_type_predicate();
+                    return self.parse_asserts_type_predicate().map(from_type);
                 }
             }
-            TokenTag::LeftParen if !token.is_escaped() => {
-                return self.parse_parenthesized_type();
-            }
-            TokenTag::LeftBracket if !token.is_escaped() => return self.parse_tuple_type(),
-            TokenTag::LeftBrace if !token.is_escaped() => {
-                return if self.is_start_of_mapped_type()? {
-                    self.parse_mapped_type()
-                } else {
-                    self.parse_type_literal()
-                };
-            }
             TokenTag::Keyof | TokenTag::Unique | TokenTag::Readonly if !token.is_escaped() => {
-                return self.parse_type_operator();
+                return self.parse_type_operator().map(from_type);
             }
-            TokenTag::Infer if !token.is_escaped() => return self.parse_infer_type(),
-            TokenTag::TemplateHead => return self.parse_template_literal_type(),
-            TokenTag::Typeof if !token.is_escaped() => return self.parse_type_query(),
-            TokenTag::Import if !token.is_escaped() => return self.parse_import_type(),
-            TokenTag::Question if !token.is_escaped() => {
-                return self.parse_jsdoc_nullable_or_unknown_type();
+            TokenTag::Infer if !token.is_escaped() => {
+                return self.parse_infer_type().map(from_type);
             }
-            TokenTag::LogicalNot if !token.is_escaped() => {
-                return self.parse_jsdoc_non_nullable_type();
+            TokenTag::Typeof if !token.is_escaped() => {
+                return self.parse_type_query().map(from_type);
+            }
+            TokenTag::Import if !token.is_escaped() => {
+                return self.parse_import_type().map(from_type);
             }
             _ => {}
         }
         if token.tag().is_identifier_like() {
-            return self.parse_type_reference();
+            let name = self.parse_entity_name()?;
+            return from_reference(self, token.start(), name);
         }
-        None
+        self.parse_non_identifier_primary_type().map(from_type)
+    }
+
+    fn parse_non_identifier_primary_type(&mut self) -> Option<TsType> {
+        let token = self.current_token;
+        match token.tag() {
+            TokenTag::StringLiteral
+            | TokenTag::NumericLiteral
+            | TokenTag::HexLiteral
+            | TokenTag::OctalLiteral
+            | TokenTag::BinaryLiteral
+            | TokenTag::BigIntLiteral
+            | TokenTag::NoSubstitutionTemplate
+            | TokenTag::Minus => self.parse_literal_type(),
+            TokenTag::LeftParen if !token.is_escaped() => self.parse_parenthesized_type(),
+            TokenTag::LeftBracket if !token.is_escaped() => self.parse_tuple_type(),
+            TokenTag::LeftBrace if !token.is_escaped() => {
+                if self.is_start_of_mapped_type()? {
+                    self.parse_mapped_type()
+                } else {
+                    self.parse_type_literal()
+                }
+            }
+            TokenTag::TemplateHead => self.parse_template_literal_type(),
+            TokenTag::Question if !token.is_escaped() => {
+                self.parse_jsdoc_nullable_or_unknown_type()
+            }
+            TokenTag::LogicalNot if !token.is_escaped() => self.parse_jsdoc_non_nullable_type(),
+            _ => None,
+        }
     }
 
     fn parse_type_keyword(&mut self) -> Option<TsType> {
@@ -6316,7 +6545,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let is_abstract = self.eat(TokenTag::Abstract)?;
         let is_constructor = self.eat(TokenTag::New)?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            Some(self.parse_type_parameters(AngleClose::Peel)?)
         } else {
             None
         };
@@ -6928,7 +7157,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
         }
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            Some(self.parse_type_parameters(AngleClose::Peel)?)
         } else {
             None
         };
@@ -7145,7 +7374,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         optional: bool,
     ) -> Option<TsTypeElement> {
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            Some(self.parse_type_parameters(AngleClose::Peel)?)
         } else {
             None
         };
@@ -7178,15 +7407,162 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_type_reference(&mut self) -> Option<TsType> {
-        let start = self.current_token.start();
-        let type_name = self.parse_entity_name()?;
-        let type_arguments = self.parse_type_arguments_after_entity_name()?;
+    fn parse_type_reference(&mut self, start: u32, type_name: TsTypeName) -> Option<TsType> {
+        let type_arguments = if is_angle_open(self.current_token.tag())
+            && !self.current_token.has_line_terminator_before()
+        {
+            if self.type_argument_speculation_depth != 0 {
+                return self.parse_type_reference_chain(start, type_name);
+            }
+            Some(self.parse_type_argument_list(AngleClose::Peel)?)
+        } else {
+            None
+        };
         let end = self.lexer.state.prev_token_end;
         Some(
             self.ast
                 .ts_type_ts_type_reference(Span::new(start, end), type_name, type_arguments),
         )
+    }
+
+    /// A flat comparison list can look like an arbitrarily deep chain of type
+    /// references until the last argument fails. Keep that speculative chain
+    /// off the native stack, carrying its failure keys through the same frames.
+    /// Keep its work-stack locals out of the ordinary primary-type parser's frame.
+    #[inline(never)]
+    fn parse_type_reference_chain(&mut self, start: u32, name: TsTypeName) -> Option<TsType> {
+        let mut references = Vec::new();
+        let scratch_start = self.scratch_a.begin();
+        let disallow_conditional_types = self.ts_context.disallow_conditional_types();
+        let mut frame = self.begin_type_reference_arguments(start, name)?;
+        let result = (|| {
+            self.ts_context
+                .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
+            let mut completed = None;
+            loop {
+                let argument = if let Some(ty) = completed.take() {
+                    Some(ty)
+                } else if is_angle_close(self.current_token.tag())
+                    || self.current_token.tag() == TokenTag::Eof
+                {
+                    None
+                } else if self.current_token.tag().is_identifier_like()
+                    && !(matches!(self.current_token.tag(), TokenTag::New | TokenTag::Abstract)
+                        && self.is_start_of_function_or_constructor_type()?)
+                {
+                    let head = self
+                        .parse_primary_type_with(PrimaryTypeHead::Parsed, |_, start, name| {
+                            Some(PrimaryTypeHead::Reference { start, name })
+                        })?;
+                    let primary = match head {
+                        PrimaryTypeHead::Parsed(ty) => ty,
+                        PrimaryTypeHead::Reference { start, name } => {
+                            if is_angle_open(self.current_token.tag())
+                                && !self.current_token.has_line_terminator_before()
+                            {
+                                let nested = self.begin_type_reference_arguments(start, name)?;
+                                references.push(mem::replace(&mut frame, nested));
+                                continue;
+                            }
+                            self.ast.ts_type_ts_type_reference(
+                                Span::new(start, self.lexer.state.prev_token_end),
+                                name,
+                                None,
+                            )
+                        }
+                    };
+                    Some(self.parse_type_from_primary(primary)?)
+                } else {
+                    Some(self.parse_type()?)
+                };
+                if let Some(argument) = argument {
+                    self.scratch_a.append(argument);
+                    if self.eat(TokenTag::Comma)? {
+                        continue;
+                    }
+                }
+                if self.scratch_a.begin() == frame.scratch_start {
+                    self.report(
+                        self.current_token.span(),
+                        "A type argument list cannot be empty",
+                        ReportOptions::default(),
+                    );
+                }
+                let end = self
+                    .consume_angle_close(AngleListKind::Arguments, AngleClose::SpeculativePeel)?;
+                let parameters = self.add_extra_from_scratch_a(frame.scratch_start);
+                self.scratch_a.reset(frame.scratch_start);
+                let arguments = self.ast.ts_type_parameter_instantiation(
+                    Span::new(frame.argument_start, end),
+                    parameters,
+                );
+                let ty = self.ast.ts_type_ts_type_reference(
+                    Span::new(frame.start, end),
+                    frame.name,
+                    Some(arguments),
+                );
+                let Some(parent) = references.pop() else {
+                    return Some(ty);
+                };
+                frame = parent;
+                completed = Some(self.parse_type_from_primary(ty)?);
+            }
+        })();
+        if result.is_none() {
+            for parent in &references {
+                self.cache_type_argument_failure(parent.key, TypeArgumentFailures::PEEL);
+            }
+            self.cache_type_argument_failure(frame.key, TypeArgumentFailures::PEEL);
+        }
+        self.scratch_a.reset(scratch_start);
+        self.ts_context.set(
+            TsContext::DISALLOW_CONDITIONAL_TYPES,
+            disallow_conditional_types,
+        );
+        result
+    }
+
+    fn begin_type_reference_arguments(
+        &mut self,
+        start: u32,
+        name: TsTypeName,
+    ) -> Option<TypeReferenceFrame> {
+        let key = self.type_argument_key();
+        if self.has_failed_type_arguments(&key, TypeArgumentFailures::PEEL) {
+            return None;
+        }
+        let argument_start = self.consume_angle_open()?;
+        Some(TypeReferenceFrame {
+            start,
+            name,
+            argument_start,
+            scratch_start: self.scratch_a.begin(),
+            key,
+        })
+    }
+
+    fn parse_type_from_primary(&mut self, primary: TsType) -> Option<TsType> {
+        let start = primary.span(&self.ast).start;
+        let mut ty = self.parse_postfix_type_with(|_| Some(primary))?;
+        if self.current_token.tag() == TokenTag::BitwiseAnd {
+            ty = self.parse_binary_type_chain_from(
+                ty,
+                start,
+                TokenTag::BitwiseAnd,
+                BinaryTypeKind::Intersection,
+                Self::parse_postfix_type,
+            )?;
+        }
+        if self.current_token.tag() == TokenTag::BitwiseOr {
+            ty = self.parse_binary_type_chain_from(
+                ty,
+                start,
+                TokenTag::BitwiseOr,
+                BinaryTypeKind::Union,
+                Self::parse_intersection_type,
+            )?;
+        }
+        self.parse_conditional_type_with(|_| Some(ty))
     }
 
     fn parse_entity_name(&mut self) -> Option<TsTypeName> {
@@ -7217,36 +7593,52 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_type_arguments_after_entity_name(
-        &mut self,
-    ) -> Option<Option<TsTypeParameterInstantiation>> {
-        if !is_angle_open(self.current_token.tag())
-            || self.current_token.has_line_terminator_before()
-        {
-            return Some(None);
-        }
-        self.parse_type_arguments().map(Some)
-    }
-
-    fn parse_type_parameters(&mut self) -> Option<TsTypeParameterDeclaration> {
-        match self.parse_angle_list(AngleListKind::Parameters, AngleClose::Peel)? {
+    fn parse_type_parameters(&mut self, close: AngleClose) -> Option<TsTypeParameterDeclaration> {
+        match self.parse_angle_list(AngleListKind::Parameters, close)? {
             AngleList::Parameters(parameters) => Some(parameters),
             AngleList::Arguments(_) => unreachable!(),
         }
     }
 
     fn parse_type_arguments(&mut self) -> Option<TsTypeParameterInstantiation> {
-        match self.parse_angle_list(AngleListKind::Arguments, AngleClose::Peel)? {
+        if self.type_argument_speculation_depth == 0 {
+            self.parse_type_argument_list(AngleClose::Peel)
+        } else {
+            self.parse_speculative_type_arguments()
+        }
+    }
+
+    fn parse_type_arguments_in_expression(&mut self) -> Option<TsTypeParameterInstantiation> {
+        self.parse_type_argument_list(AngleClose::Exact)
+    }
+
+    fn parse_type_argument_list(
+        &mut self,
+        close: AngleClose,
+    ) -> Option<TsTypeParameterInstantiation> {
+        match self.parse_angle_list(AngleListKind::Arguments, close)? {
             AngleList::Arguments(arguments) => Some(arguments),
             AngleList::Parameters(_) => unreachable!(),
         }
     }
 
-    fn parse_type_arguments_in_expression(&mut self) -> Option<TsTypeParameterInstantiation> {
-        match self.parse_angle_list(AngleListKind::Arguments, AngleClose::Exact)? {
-            AngleList::Arguments(arguments) => Some(arguments),
-            AngleList::Parameters(_) => unreachable!(),
+    fn parse_speculative_type_arguments(&mut self) -> Option<TsTypeParameterInstantiation> {
+        debug_assert_ne!(self.type_argument_speculation_depth, 0);
+        let key = self.type_argument_key();
+        if self.has_failed_type_arguments(&key, TypeArgumentFailures::PEEL) {
+            return None;
         }
+        // Reference chains use an explicit stack; recursive grammar entries
+        // still need delimiter proofs before descending into another list.
+        if !self.type_arguments_can_close() {
+            self.cache_type_argument_failure(key, TypeArgumentFailures::PEEL);
+            return None;
+        }
+        let result = self.parse_type_argument_list(AngleClose::SpeculativePeel);
+        if result.is_none() {
+            self.cache_type_argument_failure(key, TypeArgumentFailures::PEEL);
+        }
+        result
     }
 
     fn parse_angle_list(&mut self, kind: AngleListKind, close: AngleClose) -> Option<AngleList> {
@@ -7382,6 +7774,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn consume_angle_close(&mut self, kind: AngleListKind, close: AngleClose) -> Option<u32> {
+        debug_assert!(close != AngleClose::Exact || kind == AngleListKind::Arguments);
         match self.current_token.tag() {
             TokenTag::GreaterThan => {
                 let end = self.current_token.end();
@@ -7402,6 +7795,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Some(end)
             }
             _ => {
+                if close != AngleClose::Peel {
+                    return None;
+                }
                 self.report_expected(
                     self.current_token.span(),
                     match kind {
@@ -8043,7 +8439,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 left = expression;
                 continue;
             }
-            let precedence = self.infix_precedence(token);
+            let precedence = Self::infix_precedence(token, is_ts);
             if precedence < minimum || precedence == Precedence::Lowest {
                 break;
             }
@@ -8078,7 +8474,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[inline]
-    fn infix_precedence(&self, token: Token) -> Precedence {
+    fn infix_precedence(token: Token, is_typescript: bool) -> Precedence {
         let precedence = token.tag().precedence();
         // Most expression terminators have no infix precedence at all.
         if precedence == Precedence::Lowest {
@@ -8090,9 +8486,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             {
                 Precedence::Lowest
             }
-            TokenTag::LogicalNot
-                if !self.lang.is_typescript() || token.has_line_terminator_before() =>
-            {
+            TokenTag::LogicalNot if !is_typescript || token.has_line_terminator_before() => {
                 Precedence::Lowest
             }
             _ => precedence,
@@ -9248,7 +9642,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         need_diagnostics: bool,
     ) -> Option<Expr> {
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters()?)
+            let close = if need_diagnostics {
+                AngleClose::Peel
+            } else {
+                AngleClose::SpeculativePeel
+            };
+            Some(self.parse_type_parameters(close)?)
         } else {
             None
         };
@@ -10610,7 +11009,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters()?)
+                    Some(self.parse_type_parameters(AngleClose::Peel)?)
                 } else {
                     None
                 };
@@ -12145,23 +12544,94 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !is_angle_open(self.current_token.tag()) {
             return Some(None);
         }
+        // Exact lists are only tried by this rule. A Peel failure also rules
+        // them out, so one lookup covers both the grammar and follow check.
+        if !self.failed_type_arguments.is_empty()
+            && self.has_failed_type_arguments(
+                &self.type_argument_key(),
+                TypeArgumentFailures::EXPRESSION | TypeArgumentFailures::PEEL,
+            )
+            || self.lexer.mode == LexerMode::Normal
+                && self
+                    .type_argument_lookahead
+                    .cannot_close(self.current_token.start())
+        {
+            return Some(None);
+        }
         let after = self.peek_ahead()?;
         if !is_start_of_type(after.tag()) && after.tag() != TokenTag::GreaterThan {
             return Some(None);
         }
 
+        if self.type_argument_speculation_depth != 0 && !self.type_arguments_can_close() {
+            self.cache_type_argument_failure(
+                self.type_argument_key(),
+                TypeArgumentFailures::EXPRESSION,
+            );
+            return Some(None);
+        }
+
         let checkpoint = self.checkpoint();
-        let type_arguments = match self.parse_type_arguments_in_expression() {
+        self.type_argument_speculation_depth += 1;
+        let parsed = self.parse_type_arguments_in_expression();
+        self.type_argument_speculation_depth -= 1;
+        let type_arguments = match parsed {
             Some(type_arguments) if can_follow_type_arguments_in_expression(self.current_token) => {
                 type_arguments
             }
             Some(_) | None => {
                 self.rewind(checkpoint);
                 self.lexer.rewrite_last_collected_token(self.current_token);
+                // Rewinding restores the opening token and its cache context.
+                self.cache_type_argument_failure(
+                    self.type_argument_key(),
+                    TypeArgumentFailures::EXPRESSION,
+                );
                 return Some(None);
             }
         };
         Some(Some(type_arguments))
+    }
+
+    fn has_failed_type_arguments(
+        &self,
+        key: &TypeArgumentKey,
+        rules: TypeArgumentFailures,
+    ) -> bool {
+        self.failed_type_arguments
+            .get(key)
+            .is_some_and(|failed| failed.intersects(rules))
+    }
+
+    fn cache_type_argument_failure(&mut self, key: TypeArgumentKey, rule: TypeArgumentFailures) {
+        *self.failed_type_arguments.entry(key).or_default() |= rule;
+    }
+
+    fn type_argument_key(&self) -> TypeArgumentKey {
+        TypeArgumentKey {
+            position: self.current_token.start(),
+            context: self.context.bits(),
+            ts_context: self.ts_context.bits(),
+            boundary_context: self.boundary_context.bits(),
+            statement_context: self.statement_context as u8,
+            state: self.state.bits(),
+            lexer_mode: self.lexer.mode as u8,
+            stripped_paren: self.stripped_paren,
+        }
+    }
+
+    fn type_arguments_can_close(&mut self) -> bool {
+        if self.lexer.mode != LexerMode::Normal {
+            return true;
+        }
+        let mut lookahead = mem::take(&mut self.type_argument_lookahead);
+        let token = self.current_token;
+        let jsx = self.lang.is_jsx();
+        let mut peek = self.begin_peek();
+        let can_close = lookahead.can_close(token, &mut peek, jsx);
+        peek.end();
+        self.type_argument_lookahead = lookahead;
+        can_close
     }
 
     fn parse_type_assertion(&mut self) -> Option<Expr> {
@@ -13533,6 +14003,95 @@ mod tests {
 
         let result = parse("let x!: number;");
         assert_eq!(result, (vec![], "x", Some(": number"), None));
+    }
+
+    #[test]
+    fn type_argument_speculation() {
+        fn parse<T>(
+            source: &str,
+            options: Options,
+            inspect: fn(&Ast<'_>) -> T,
+        ) -> (Vec<Diagnostic<'static>>, T) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let result = inspect(&parsed.ast);
+            (parsed.diagnostics, result)
+        }
+
+        fn expression(ast: &Ast<'_>) -> Expr {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+        }
+
+        fn array_length(ast: &Ast<'_>) -> usize {
+            expression(ast)
+                .as_array_expression(ast)
+                .unwrap()
+                .elements(ast)
+                .len()
+        }
+
+        fn expression_kind(ast: &Ast<'_>) -> NodeKind {
+            ast.node_kind(expression(ast).node_id())
+        }
+
+        fn arguments(ast: &Ast<'_>) -> (usize, NodeKind) {
+            let call = expression(ast).as_call_expression(ast).unwrap();
+            let arguments = call.arguments(ast);
+            let last = arguments.get_node(ast, arguments.len() - 1).unwrap();
+            (arguments.len(), ast.node_kind(last.node_id()))
+        }
+
+        fn type_argument_depth(ast: &Ast<'_>) -> usize {
+            let call = expression(ast).as_call_expression(ast).unwrap();
+            let mut arguments = call.type_arguments(ast);
+            let mut depth = 0;
+            while let Some(list) = arguments {
+                depth += 1;
+                let ty = list.params(ast).get_node(ast, 0).unwrap();
+                arguments = ty.as_ts_type_reference(ast).unwrap().type_arguments(ast);
+            }
+            depth
+        }
+
+        let typescript = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let tsx = Options {
+            lang: Lang::Tsx,
+            ..typescript
+        };
+        for options in [typescript, tsx] {
+            let (errors, length) = parse("[a < b, a < b];", options, array_length);
+            assert!(errors.is_empty());
+            assert_eq!(length, 2);
+
+            let (errors, args) = parse("f(i < n, j < m, 1);", options, arguments);
+            assert!(errors.is_empty());
+            assert_eq!(args, (3, NodeKind::NumericLiteral));
+
+            let (errors, args) = parse("f(i < n, g<A<B>>(c));", options, arguments);
+            assert!(errors.is_empty());
+            assert_eq!(args, (2, NodeKind::CallExpression));
+
+            let (errors, args) = parse("f(a < b, g<{[/>/]: T}>(c));", options, arguments);
+            assert!(errors.is_empty());
+            assert_eq!(args, (2, NodeKind::CallExpression));
+
+            let (errors, depth) = parse("f<A<B<C>>>();", options, type_argument_depth);
+            assert!(errors.is_empty());
+            assert_eq!(depth, 3);
+
+            let (errors, kind) = parse("a < {[a < {[x]: 1}]: 1};", options, expression_kind);
+            assert!(errors.is_empty());
+            assert_eq!(kind, NodeKind::BinaryExpression);
+        }
     }
 
     #[test]
