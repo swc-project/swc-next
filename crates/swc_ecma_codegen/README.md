@@ -1,27 +1,27 @@
 # swc_ecma_codegen
 
-## Testing
+JavaScript and TypeScript code generation for SWC Next's flat AST, including
+JSX and TSX.
 
-Local codegen integration tests live in `tests/codegen/js.rs` and `tests/codegen/ts.rs`.
-`tests/codegen/main.rs` registers the suites, while `tests/codegen/tester.rs` provides the shared
-assertion helpers. Files under `tests/codegen/esbuild/` mirror upstream esbuild tests and should
-normally change only when syncing with esbuild; add project-specific coverage to `js.rs` or
-`ts.rs` instead.
+The printer supports readable or compact output, ASCII-only escaping, and
+inline-script escaping. Compact output controls formatting; AST optimizations
+are provided separately by [the minifier](../swc_ecma_minifier).
 
-Choose the helper that matches the syntax and printer mode under test:
+See the [printer API and options](src/printer.rs).
 
-| Helper                                                                            | Mode                           |
-| --------------------------------------------------------------------------------- | ------------------------------ |
-| `expect_printed`                                                                  | JavaScript module              |
-| `expect_printed_script`                                                           | JavaScript script              |
-| `expect_printed_ts`                                                               | TypeScript module              |
-| `expect_printed_jsx`                                                              | JSX module                     |
-| `expect_printed_minify`, `expect_printed_ts_minify`, `expect_printed_jsx_minify`  | Minified output                |
-| `expect_printed_ascii`, `expect_printed_minify_ascii`, `expect_printed_jsx_ascii` | ASCII-only output              |
-| `expect_stable`                                                                   | Pretty output is a fixed point |
+## Usage
 
-Run the suite from the workspace root:
+Parse and print a file from the workspace root:
 
 ```sh
-cargo test -p swc_next_ecma_codegen --test codegen
+cargo run -p swc_next_ecma_codegen --example codegen -- input.ts
+```
+
+## Testing
+
+Local integration tests live in `tests/codegen/js.rs` and `tests/codegen/ts.rs`.
+Keep project-specific cases there; `tests/codegen/esbuild/` mirrors upstream tests.
+
+```sh
+cargo test -p swc_next_ecma_codegen --test codegen --locked
 ```

@@ -28,3 +28,11 @@
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
 - New JavaScript tests should only be added to `@swc-next/core`. `test:wasm` runs the same tests with `NAPI_RS_FORCE_WASI=error`. The browser package should only have a simple smoke test.
+
+## README Writing
+
+- Follow the root README: briefly describe purpose, capabilities, basic usage,
+  essential limitations, and crate testing where relevant.
+- Write necessary document API, options, and attributes in Rust doc rather than README.
+- Omit development history, step-by-step contributor workflows, implementation
+  walkthroughs, and exhaustive command lists.
