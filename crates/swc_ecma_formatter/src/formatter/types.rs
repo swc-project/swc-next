@@ -2789,6 +2789,12 @@ pub(super) fn type_requires_terminator(mut node: TsType, ast: &Ast<'_>) -> bool 
                 node.return_type(ast).type_annotation(ast),
                 TypeContext::Root,
             ),
+            TsTypeData::TsTypePredicate(node) => {
+                let Some(annotation) = node.type_annotation(ast) else {
+                    return false;
+                };
+                (annotation.type_annotation(ast), TypeContext::Root)
+            }
             TsTypeData::TsTypeOperator(node) => {
                 (node.type_annotation(ast), TypeContext::ModifierOperand)
             }

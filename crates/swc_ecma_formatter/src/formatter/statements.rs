@@ -201,36 +201,38 @@ impl StatementItem {
         !matches!(self, Self::Statement(statement) if matches!(ast.stmt_data(statement), StmtData::EmptyStatement(_)))
     }
 
-    fn is_bodyless_function(self, ast: &Ast<'_>) -> bool {
+    fn declaration(self, ast: &Ast<'_>) -> Option<Decl> {
         let Self::Statement(statement) = self else {
-            return false;
+            return None;
         };
         match ast.stmt_data(statement) {
-            StmtData::Declaration(node) => matches!(ast.decl_data(node), DeclData::TsFunction(_)),
-            StmtData::ExportNamedDeclaration(node) => node
-                .declaration(ast)
-                .is_some_and(|node| matches!(ast.decl_data(node), DeclData::TsFunction(_))),
-            StmtData::ExportDefaultDeclaration(node) => matches!(
-                ast.export_default_declaration_kind_data(node.declaration(ast)),
-                ExportDefaultDeclarationKindData::TsFunction(_)
-            ),
-            _ => false,
+            StmtData::Declaration(node) => Some(node),
+            StmtData::ExportNamedDeclaration(node) => node.declaration(ast),
+            StmtData::ExportDefaultDeclaration(node) => {
+                match ast.export_default_declaration_kind_data(node.declaration(ast)) {
+                    ExportDefaultDeclarationKindData::Function(node) => Some(Decl::Function(node)),
+                    ExportDefaultDeclarationKindData::Class(node) => Some(Decl::Class(node)),
+                    ExportDefaultDeclarationKindData::TsFunction(node) => {
+                        Some(Decl::TsFunction(node))
+                    }
+                    ExportDefaultDeclarationKindData::TsInterfaceDeclaration(node) => {
+                        Some(Decl::TsInterfaceDeclaration(node))
+                    }
+                    ExportDefaultDeclarationKindData::Expr(_) => None,
+                }
+            }
+            _ => None,
         }
     }
 
+    fn is_bodyless_function(self, ast: &Ast<'_>) -> bool {
+        self.declaration(ast)
+            .is_some_and(|node| matches!(ast.decl_data(node), DeclData::TsFunction(_)))
+    }
+
     fn has_open_type_tail(self, ast: &Ast<'_>) -> bool {
-        let Self::Statement(statement) = self else {
+        let Some(declaration) = self.declaration(ast) else {
             return false;
-        };
-        let declaration = match ast.stmt_data(statement) {
-            StmtData::Declaration(node) => node,
-            StmtData::ExportNamedDeclaration(node) => {
-                let Some(node) = node.declaration(ast) else {
-                    return false;
-                };
-                node
-            }
-            _ => return false,
         };
         let annotation = match ast.decl_data(declaration) {
             DeclData::TsTypeAliasDeclaration(node) => Some(node.type_annotation(ast)),
