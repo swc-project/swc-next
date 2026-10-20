@@ -878,6 +878,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     self.select_type_head_comments(&mut type_node, after, gap.end);
                 }
+                let type_node = self.normalize_type_head(type_node)?;
                 let relocate = key.mode == ContentMode::Formatted
                     && type_node.source_owner.is_none()
                     && after.last().is_some_and(|comment| {
