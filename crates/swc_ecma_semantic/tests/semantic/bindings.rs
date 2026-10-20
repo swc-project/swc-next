@@ -957,9 +957,13 @@ fn function_declarations_program() {
         source_type: SourceType::Module,
         ..Options::default()
     };
+    let ts_script = Options {
+        source_type: SourceType::Script,
+        ..ts_module
+    };
 
-    {
-        let errors = |source| has_syntax_diagnostics(&allocator, source, ts_module);
+    for options in [ts_module, ts_script] {
+        let errors = |source| has_syntax_diagnostics(&allocator, source, options);
 
         let has_errors = errors("declare class f {}\nfunction f(): void;\nfunction f() {}");
         assert!(!has_errors);
