@@ -15,6 +15,9 @@ Parse a JavaScript or TypeScript file from the workspace root:
 cargo run -p swc_next_ecma_parser --example parser -- input.ts
 ```
 
+Use `--preserve-parens` to retain explicit parenthesis nodes. The input file's
+extension selects JavaScript, TypeScript, or JSX/TSX.
+
 ## Testing
 
 Unit tests live beside the lexer and parser implementations.

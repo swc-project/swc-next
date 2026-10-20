@@ -34,5 +34,6 @@
 - Follow the root README: briefly describe purpose, capabilities, basic usage,
   essential limitations, and crate testing where relevant.
 - Write necessary document API, options, and attributes in Rust doc rather than README.
+- Document commands in the relevant component README
 - Omit development history, step-by-step contributor workflows, implementation
   walkthroughs, and exhaustive command lists.

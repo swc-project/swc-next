@@ -17,6 +17,9 @@ Parse and print a file from the workspace root:
 cargo run -p swc_next_ecma_codegen --example codegen -- input.ts
 ```
 
+The example accepts `--minify`, `--ascii-only`, `--inline-script`, and
+`--preserve-parens`; use `--help` for details.
+
 ## Testing
 
 Local integration tests live in `tests/codegen/js.rs` and `tests/codegen/ts.rs`.

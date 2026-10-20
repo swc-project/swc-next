@@ -10,10 +10,11 @@ Babel, and SWC fixtures, plus project-owned syntax cases.
 
 ## Usage
 
-From the workspace root, initialize the pinned fixtures with
-[the fixture setup script](../../scripts/clone_fixtures.sh), then run:
+Run from the workspace root. Initialize the pinned external fixtures before
+the first conformance run:
 
 ```sh
+./scripts/clone_fixtures.sh
 cargo run --locked -p testsuite --bin conformance --profile conformance
 ```
 
@@ -22,6 +23,28 @@ the process. External fixtures are generated inputs; update their pinned
 revisions rather than editing them. Fixture setup must run serially across
 worktrees sharing a Git common directory.
 
-The [debug runner](src/bin/debug.rs) inspects individual cases without updating
-snapshots. [Local syntax cases](fixtures-manual/parser) use Test262 metadata
+## Debug one case
+
+The debug runner inspects a uniquely matched case without updating snapshots:
+
+```sh
+cargo run -p testsuite --bin debug -- --runner parser --case test262 --filter '<unique substring>'
+```
+
+Parser and codegen runners accept `test262`, `typescript`, `babel`, or `local`.
+Transform accepts `babel`, `typescript`, or `swc`; resolver accepts `swc_resolver`.
+See `--help` for additional options. [Local syntax cases](fixtures-manual/parser) use Test262 metadata
 and have separate totals from upstream Test262 tests.
+
+## JavaScript conformance
+
+After fixture setup and [building the native bindings](../../npm/README.md#native-nodejs):
+
+```sh
+pnpm test:conformance
+pnpm test:codec
+```
+
+ESTree conformance checks the N-API AST against reference fixtures. Codec
+conformance checks that JavaScript decode/encode output agrees with native
+parse/codegen. Both are separate from the Rust conformance runner.
