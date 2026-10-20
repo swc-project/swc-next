@@ -24,17 +24,18 @@ pub(super) struct JsxChildrenLayout {
     pub(super) trailing_inline: bool,
     pub(super) source: Option<Span>,
     grouped_text: bool,
-    leading_space: Option<LineConstraint>,
+    leading_space: Option<(usize, LineConstraint)>,
     trailing_space: bool,
-    only_space: bool,
+    only_space: Option<usize>,
     single_quote: bool,
 }
 
 impl JsxChildrenLayout {
     pub(super) fn write<'ast>(&self, content: Fragment<'ast>, writer: &mut Writer<'ast>) {
-        if self.only_space {
+        if let Some(spaces) = self.only_space {
             write_jsx_space(
                 self.single_quote,
+                spaces,
                 JsxSpacePlacement::Lone,
                 LineConstraint::Unconstrained,
                 writer,
@@ -42,9 +43,10 @@ impl JsxChildrenLayout {
             return;
         }
         let write = |writer: &mut Writer<'ast>| {
-            if let Some(following) = self.leading_space {
+            if let Some((spaces, following)) = self.leading_space {
                 write_jsx_space(
                     self.single_quote,
+                    spaces,
                     JsxSpacePlacement::Leading,
                     following,
                     writer,
@@ -62,8 +64,8 @@ impl JsxChildrenLayout {
 
 #[derive(Clone, Copy)]
 enum JsxSeparator {
-    Words,
-    Space,
+    Words { spaces: usize },
+    Space { spaces: usize },
     TextLine,
     Newline { empty_line: bool },
 }
@@ -87,11 +89,17 @@ struct JsxChildrenStream {
 
 impl JsxChildrenStream {
     fn separator(&mut self, separator: JsxSeparator, source: Span) {
-        // Canonical space supersedes adjacent physical formatting newlines.
-        if !matches!(self.pending, Some((JsxSeparator::Space, _))) {
-            self.pending = Some((separator, source));
+        match (&mut self.pending, separator) {
+            (Some((JsxSeparator::Space { spaces }, _)), next) => {
+                if let JsxSeparator::Space { spaces: additional } = next {
+                    *spaces += additional;
+                }
+                // Keep the first space's boundary: following constraints must
+                // still see any intervening source lines.
+            }
+            (pending, separator) => *pending = Some((separator, source)),
         }
-        self.contains_text |= matches!(separator, JsxSeparator::Space);
+        self.contains_text |= matches!(separator, JsxSeparator::Space { .. });
     }
 
     fn before(
@@ -103,9 +111,9 @@ impl JsxChildrenStream {
     ) {
         let pending = self.pending.take();
         let Some((previous, previous_source, _)) = self.previous.as_ref() else {
-            let start = if let Some((JsxSeparator::Space, space)) = pending {
+            let start = if let Some((JsxSeparator::Space { spaces }, space)) = pending {
                 self.layout.leading_space =
-                    Some(formatter.line_constraint(space.end, source.start));
+                    Some((spaces, formatter.line_constraint(space.end, source.start)));
                 space.start
             } else {
                 source.start
@@ -118,18 +126,25 @@ impl JsxChildrenStream {
         let previous = *previous;
         let previous_end = previous_source.end;
         writer.fill_entry(|writer| match pending {
-            Some((JsxSeparator::Space, space)) => {
+            Some((JsxSeparator::Space { spaces }, space))
+            | Some((
+                JsxSeparator::Words {
+                    spaces: spaces @ 2..,
+                },
+                space,
+            )) => {
                 let before = formatter.line_constraint(previous_end, space.start);
                 let following = formatter.line_constraint(space.end, source.start);
                 before.write(writer, FlatSeparator::Empty, |_| {});
                 write_jsx_space(
                     self.layout.single_quote,
+                    spaces,
                     JsxSpacePlacement::Between,
                     following,
                     writer,
                 );
             }
-            Some((JsxSeparator::Words, _)) => {
+            Some((JsxSeparator::Words { .. }, _)) => {
                 let constraint = formatter.line_constraint(previous_end, source.start);
                 constraint.write(writer, FlatSeparator::Space, Writer::line);
             }
@@ -212,7 +227,7 @@ impl JsxChildrenStream {
         formatter: &Formatter<'_, '_>,
         writer: &mut Writer<'_>,
     ) -> JsxChildrenLayout {
-        if let Some((JsxSeparator::Space, source)) = self.pending {
+        if let Some((JsxSeparator::Space { spaces }, source)) = self.pending {
             self.layout.source.get_or_insert(source).end = source.end;
             if let Some((_, previous, entry)) = self.previous {
                 self.layout.trailing_space = true;
@@ -222,20 +237,21 @@ impl JsxChildrenStream {
                     before.write(writer, FlatSeparator::Empty, |_| {});
                     write_jsx_space(
                         self.layout.single_quote,
+                        spaces,
                         JsxSpacePlacement::Trailing,
                         LineConstraint::Unconstrained,
                         writer,
                     );
                 });
             } else {
-                self.layout.only_space = true;
+                self.layout.only_space = Some(spaces);
                 self.layout.has_content = true;
             }
         }
         self.layout.grouped_text = self.contains_text
             && self.layout.leading_space.is_none()
             && !self.layout.trailing_space
-            && !self.layout.only_space;
+            && self.layout.only_space.is_none();
         self.layout
     }
 }
@@ -250,10 +266,24 @@ enum JsxSpacePlacement {
 
 fn write_jsx_space<'ast>(
     single_quote: bool,
+    spaces: usize,
     placement: JsxSpacePlacement,
     following: LineConstraint,
     writer: &mut Writer<'ast>,
 ) {
+    if spaces > 1 {
+        // Raw trailing spaces disappear at a physical JSX line boundary.
+        writer.text(if single_quote { "{'" } else { "{\"" });
+        writer.text(" ".repeat(spaces));
+        writer.text(if single_quote { "'}" } else { "\"}" });
+        if matches!(
+            placement,
+            JsxSpacePlacement::Between | JsxSpacePlacement::Leading
+        ) {
+            following.write(writer, FlatSeparator::Empty, Writer::soft_line);
+        }
+        return;
+    }
     let space = if single_quote { "{' '}" } else { "{\" \"}" };
     if matches!(following, LineConstraint::NewLine(_)) {
         // Text space before a required line break has no JSX value.
@@ -282,7 +312,7 @@ struct JsxTextChunks<'ast> {
 
 enum JsxTextChunk<'ast> {
     Word(&'ast str),
-    Whitespace { line_breaks: u8 },
+    Whitespace { line_breaks: u8, spaces: usize },
 }
 
 impl<'ast> Iterator for JsxTextChunks<'ast> {
@@ -294,6 +324,7 @@ impl<'ast> Iterator for JsxTextChunks<'ast> {
         let mut end = 0;
         let mut line_breaks = 0_u8;
         let mut previous_cr = false;
+        let mut has_tab = false;
         for byte in self.remaining.bytes() {
             if is_jsx_whitespace(byte) != whitespace {
                 break;
@@ -304,13 +335,17 @@ impl<'ast> Iterator for JsxTextChunks<'ast> {
                 line_breaks = (line_breaks + 1).min(2);
             }
             previous_cr = byte == b'\r';
+            has_tab |= byte == b'\t';
         }
         // A boundary is an ASCII formatting character, so it cannot split UTF-8.
         let (chunk, remaining) = self.remaining.split_at(end);
         self.remaining = remaining;
         self.meaningful |= !whitespace || line_breaks == 0;
         Some(if whitespace {
-            JsxTextChunk::Whitespace { line_breaks }
+            JsxTextChunk::Whitespace {
+                line_breaks,
+                spaces: if line_breaks == 0 && !has_tab { end } else { 1 },
+            }
         } else {
             JsxTextChunk::Word(chunk)
         })
@@ -325,7 +360,7 @@ fn is_jsx_whitespace(byte: u8) -> bool {
 struct JsxChildExpression {
     original: Expr,
     content: Option<ExpressionContent>,
-    space: bool,
+    spaces: Option<usize>,
     template: bool,
 }
 
@@ -354,12 +389,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && expression
                         .as_ref()
                         .is_some_and(|expression| expression.template);
-                if expression
-                    .as_ref()
-                    .is_some_and(|expression| expression.space)
-                {
+                if let Some(spaces) = expression.as_ref().and_then(|expression| expression.spaces) {
                     previous_ignore = false;
-                    stream.separator(JsxSeparator::Space, child.span(ast));
+                    stream.separator(JsxSeparator::Space { spaces }, child.span(ast));
                     continue;
                 }
                 if let JsxChildData::JsxText(text) = data {
@@ -398,13 +430,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 stream.after(edge, source, entry);
                                 stream.contains_text = true;
                             }
-                            JsxTextChunk::Whitespace { line_breaks } => {
+                            JsxTextChunk::Whitespace {
+                                line_breaks,
+                                spaces,
+                            } => {
                                 stream.contains_text |= line_breaks == 0;
                                 let last = chunks.remaining.is_empty();
                                 let separator = if !first && !last {
-                                    JsxSeparator::Words
+                                    JsxSeparator::Words { spaces }
                                 } else if line_breaks == 0 {
-                                    JsxSeparator::Space
+                                    JsxSeparator::Space { spaces }
                                 } else if first && last {
                                     JsxSeparator::Newline {
                                         empty_line: line_breaks == 2,
@@ -520,19 +555,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = matches!(data, ExprData::ParenthesizedExpression(_))
             .then(|| self.expression_content(original));
         let printed = content.as_ref().map_or(data, |content| content.data);
-        let space = matches!(
-            printed,
-            ExprData::StringLiteral(literal)
-                if self.ast.get_wtf8(literal.value(self.ast)).as_str() == Some(" ")
-        ) && self.comments.in_range(container.span(self.ast)).is_empty()
+        let spaces = if self.comments.in_range(container.span(self.ast)).is_empty()
             && !matches!(
                 self.line_constraint(container.span(self.ast).start, container.span(self.ast).end),
                 LineConstraint::NewLine(_)
-            );
+            )
+            && let ExprData::StringLiteral(literal) = printed
+        {
+            self.ast
+                .get_wtf8(literal.value(self.ast))
+                .as_str()
+                .and_then(|text| {
+                    (!text.is_empty() && text.bytes().all(|byte| byte == b' '))
+                        .then_some(text.len())
+                })
+        } else {
+            None
+        };
         Some(JsxChildExpression {
             original,
             content,
-            space,
+            spaces,
             template: matches!(
                 printed,
                 ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
@@ -542,8 +585,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 }
 
 fn jsx_text_needs_literal(raw: &str) -> bool {
-    raw.chars().any(|character| {
+    if raw.chars().any(|character| {
         matches!(character, '\u{b}' | '\u{c}' | '\u{200b}' | '\u{feff}')
             || !character.is_ascii() && character.is_whitespace()
-    })
+    }) {
+        return true;
+    }
+
+    let mut remaining = raw;
+    let mut first = true;
+    loop {
+        let newline = memchr::memchr2(b'\r', b'\n', remaining.as_bytes());
+        let mut line = newline.map_or(remaining, |index| &remaining[..index]);
+        // JSX trims indentation and line-end spacing, but tabs within the
+        // surviving first/interior/last line slices are rendered text.
+        if !first {
+            line = line.trim_start_matches([' ', '\t']);
+        }
+        if newline.is_some() {
+            line = line.trim_end_matches([' ', '\t']);
+        }
+        if line.contains('\t') {
+            return true;
+        }
+        let Some(index) = newline else {
+            return false;
+        };
+        let crlf = remaining.as_bytes()[index] == b'\r'
+            && remaining.as_bytes().get(index + 1) == Some(&b'\n');
+        remaining = &remaining[index + 1 + usize::from(crlf)..];
+        first = false;
+    }
 }
