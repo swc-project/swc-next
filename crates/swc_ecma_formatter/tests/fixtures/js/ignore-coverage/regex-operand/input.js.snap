@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/x/g) /* prettier-ignore */ + second;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(
+  /x/g
+) /* prettier-ignore */ + second;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+(/x/g) /* prettier-ignore */ + second;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(
+  /x/g
+) /* prettier-ignore */ + second

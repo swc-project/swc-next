@@ -8,8 +8,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ({
   [key()]:
-    (/*#__PURE__*/ (f)( value ) /* prettier-ignore */
-    ),
+    (/*#__PURE__*/ (f)( value ) /* prettier-ignore */),
   next: 3,
 });
 
@@ -23,8 +22,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ;({
   [key()]:
-    (/*#__PURE__*/ (f)( value ) /* prettier-ignore */
-    ),
+    (/*#__PURE__*/ (f)( value ) /* prettier-ignore */),
   next: 3,
 })
 

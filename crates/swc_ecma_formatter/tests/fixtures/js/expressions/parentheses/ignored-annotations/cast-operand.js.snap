@@ -7,24 +7,20 @@ target = /** @type {number} */ ((value  +  other) /* prettier-ignore */);
 {"printWidth":20}
 ---------- Output ----------
 target =
-  /** @type {number} */ (
-    value  +  other /* prettier-ignore */
-  );
+  /** @type {number} */ ((value  +  other) /* prettier-ignore */);
 
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-target = /** @type {number} */ (value  +  other /* prettier-ignore */);
+target = /** @type {number} */ ((value  +  other) /* prettier-ignore */);
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 target =
-  /** @type {number} */ (
-    value  +  other /* prettier-ignore */
-  )
+  /** @type {number} */ ((value  +  other) /* prettier-ignore */)
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
-target = /** @type {number} */ (value  +  other /* prettier-ignore */)
+target = /** @type {number} */ ((value  +  other) /* prettier-ignore */)
