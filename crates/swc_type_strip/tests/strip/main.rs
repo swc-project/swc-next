@@ -157,7 +157,7 @@ fn comments_option_does_not_change_output() {
 
 #[test]
 fn unsupported_lang_variants() {
-    let source = "let value: = 1;";
+    let source = "const value = 1;";
     let result = strip_types(source, options(Lang::Js));
     assert!(matches!(result.code, Cow::Borrowed(value) if value == source));
     assert_eq!(result.diagnostics.len(), 1);
@@ -168,6 +168,7 @@ fn unsupported_lang_variants() {
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].severity, Severity::Error);
 
+    let source = "declare const value: number;";
     let result = strip_types(source, options(Lang::Dts));
     assert!(matches!(result.code, Cow::Borrowed(value) if value == source));
     assert_eq!(result.diagnostics.len(), 1);

@@ -16578,6 +16578,89 @@ mod tests {
     }
 
     #[test]
+    fn tsx_expressions() {
+        let allocator = Allocator::new();
+        let options = Options {
+            lang: Lang::Tsx,
+            preserve_parens: false,
+            ..Options::default()
+        };
+        let parse = |source| {
+            Parser::init(&allocator, source, options, NoTokenParserConfig)
+                .parse_expression_fragment(FragmentContext::TopLevel)
+                .unwrap()
+        };
+
+        let ast = parse("(f<T>) + value");
+        let expression = ast.root_expression().as_binary_expression(&ast).unwrap();
+        assert_eq!(expression.operator(&ast), BinaryOperator::Add);
+        assert!(
+            expression
+                .left(&ast)
+                .as_ts_instantiation_expression(&ast)
+                .is_some()
+        );
+
+        let ast = parse("(f<T>) < value");
+        let expression = ast.root_expression().as_binary_expression(&ast).unwrap();
+        assert_eq!(expression.operator(&ast), BinaryOperator::LessThan);
+        assert!(
+            expression
+                .left(&ast)
+                .as_ts_instantiation_expression(&ast)
+                .is_some()
+        );
+
+        let ast = parse("f<T>(<Component />)");
+        let expression = ast.root_expression().as_call_expression(&ast).unwrap();
+        assert_eq!(
+            expression.type_arguments(&ast).unwrap().params(&ast).len(),
+            1
+        );
+        assert!(
+            expression
+                .arguments(&ast)
+                .get_node(&ast, 0)
+                .unwrap()
+                .as_expr(&ast)
+                .unwrap()
+                .as_jsx_element(&ast)
+                .is_some()
+        );
+
+        let ast = parse("(value as T) ? <Yes /> : <No />");
+        let expression = ast
+            .root_expression()
+            .as_conditional_expression(&ast)
+            .unwrap();
+        assert!(expression.test(&ast).as_ts_as_expression(&ast).is_some());
+        assert!(expression.consequent(&ast).as_jsx_element(&ast).is_some());
+        assert!(expression.alternate(&ast).as_jsx_element(&ast).is_some());
+
+        let ast = parse("(value as number)++");
+        let expression = ast.root_expression().as_update_expression(&ast).unwrap();
+        assert_eq!(expression.operator(&ast), UpdateOperator::Increment);
+        assert!(!expression.prefix(&ast));
+        assert!(
+            expression
+                .argument(&ast)
+                .as_ts_as_expression(&ast)
+                .is_some()
+        );
+
+        let ast = parse("value as typeof f << other");
+        let expression = ast.root_expression().as_binary_expression(&ast).unwrap();
+        assert_eq!(expression.operator(&ast), BinaryOperator::LeftShift);
+        let assertion = expression.left(&ast).as_ts_as_expression(&ast).unwrap();
+        assert!(
+            assertion
+                .type_annotation(&ast)
+                .as_ts_type_query(&ast)
+                .is_some()
+        );
+    }
+
+    #[test]
     fn namespace_await_using() {
         let options = Options {
             lang: Lang::Ts,

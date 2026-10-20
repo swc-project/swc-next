@@ -37,13 +37,15 @@ See `--help` for additional options.
 
 ## JavaScript conformance
 
-After fixture setup and [building the native bindings](../../npm/README.md#native-nodejs):
+After fixture setup, run from the workspace root:
 
 ```sh
+pnpm install
 pnpm test:conformance
 pnpm test:codec
 ```
 
 ESTree conformance checks the N-API AST against reference fixtures. Codec
 conformance checks that JavaScript decode/encode output agrees with native
-parse/codegen. Both are separate from the Rust conformance runner.
+parse/codegen. Each command builds its required native bindings. Both are
+separate from the Rust conformance runner.

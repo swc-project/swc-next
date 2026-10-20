@@ -22,9 +22,10 @@ Parser options use strings, for example
 
 ## Building
 
-After [installing workspace dependencies](../README.md), run from the workspace root:
+Run from the workspace root:
 
 ```sh
+pnpm install
 rustup target add wasm32-unknown-unknown
 pnpm build:browser --profile wasm-release
 node scripts/wasm-package/cli.mjs prepare-browser --source-dir target/wasm-package/core

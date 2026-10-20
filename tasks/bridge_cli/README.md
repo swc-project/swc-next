@@ -1,7 +1,6 @@
 # Bridge CLI
 
-Builds Wasm components and generates their JavaScript bindings. Normal package
-builds use [the JavaScript workspace scripts](../../npm/README.md).
+Builds Wasm components and generates their JavaScript bindings.
 
 For a custom output directory, run from the workspace root:
 
