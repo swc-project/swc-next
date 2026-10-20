@@ -6,8 +6,8 @@ expect(pet).to.have.property("address").that.deep.equals({ street: "Alexanderstr
 ---------- Options ----------
 {}
 ---------- Output ----------
-expect(pet).to.have
-  .property("address")
+expect(pet)
+  .to.have.property("address")
   .that.deep.equals({
     street: "Alexanderstrasse",
     city: "Berlin",
@@ -17,8 +17,8 @@ expect(pet).to.have
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
-expect(pet).to.have
-  .property("address")
+expect(pet)
+  .to.have.property("address")
   .that.deep.equals({
     street: "Alexanderstrasse",
     city: "Berlin",

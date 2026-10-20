@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(root.method)().a.b.call().c.d.end();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+root
+  .method()
+  .a.b.call()
+  .c.d.end();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+root.method().a.b.call().c.d.end();
