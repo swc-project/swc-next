@@ -18,7 +18,7 @@ mod templates;
 mod types;
 mod variables;
 
-use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, Span, StmtData};
+use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, Program, Span, StmtData};
 
 use self::comments::CommentCursor;
 use self::statements::{StatementItem, StatementSequenceKind};
@@ -72,6 +72,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         formatter
     }
 
+    fn program_header_barrier(&self, program: Program) -> Option<Span> {
+        let ast = self.ast;
+        if !self.has_file_directives || !program.directives(ast).is_empty() {
+            return None;
+        }
+        let mut statements = program.body(ast).iter();
+        let first = ast.get_node_in_sub_range(statements.next()?);
+        let StmtData::EmptyStatement(empty) = ast.stmt_data(first) else {
+            return None;
+        };
+        let barrier = empty.span(ast);
+        let end = statements
+            .map(|id| ast.get_node_in_sub_range(id))
+            .find(|&statement| !matches!(ast.stmt_data(statement), StmtData::EmptyStatement(_)))
+            .map_or(ast.source().len() as u32, |statement| {
+                statement.span(ast).start
+            });
+        let comments = self
+            .comments
+            .in_range(Span::new(program.span(ast).start, end));
+        let before = comments.partition_point(|comment| comment.span.end <= barrier.start);
+        let original = comments[..before]
+            .iter()
+            .rev()
+            .find_map(|&comment| self.comment_checking_mode(comment))?;
+        let formatted = comments[before..]
+            .iter()
+            .rev()
+            .find_map(|&comment| self.comment_checking_mode(comment))
+            .unwrap_or(original);
+        // Newly active annotations may not override an existing header binding.
+        (formatted != original).then_some(barrier)
+    }
+
     pub(crate) fn format_program(mut self, writer: &mut Writer<'ast>) -> Result<(), FormatError> {
         let program = self.ast.root_program();
         // With no comment-owning child, an ignore directive belongs to the program.
@@ -110,6 +144,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             program.span(ast),
             hashbang.map(|node| node.span(ast).end),
             StatementSequenceKind::Program {
+                header_barrier: self.program_header_barrier(program),
                 has_source_items: !program.body(ast).is_empty()
                     || !program.directives(ast).is_empty(),
             },

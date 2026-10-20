@@ -32,6 +32,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 pub(super) enum StatementSequenceKind<'ast> {
     Program {
         has_source_items: bool,
+        header_barrier: Option<Span>,
     },
     Block {
         incoming: Option<IncomingStatement>,
@@ -429,6 +430,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end,
             has_terminator: false,
         });
+        let header_barrier = match kind {
+            StatementSequenceKind::Program { header_barrier, .. } => header_barrier,
+            _ => None,
+        };
         let mut first_statement = true;
         let mut previous_span_end = previous_end.unwrap_or(span.start);
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
@@ -447,11 +452,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 source_gap,
                 annotation_tail,
             } = prepared;
-            // Match Prettier's empty-statement removal. Comment protection covers
-            // existing effects being lost, not inert annotations becoming active.
+            // Omit empty statements unless a token protects an active header binding.
+            // Inert annotations may become active when no existing effect is lost.
             // ECMAScript directives such as "use strict" must retain their semantics
             // in both directions.
-            if statement.empty(ast).is_some() {
+            if statement.empty(ast).is_some() && header_barrier != Some(statement_span) {
                 continue;
             }
             let leading = self.comments.between(Span::new(
@@ -789,6 +794,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementSequenceKind::Case { .. }
                 | StatementSequenceKind::Program {
                     has_source_items: true,
+                    ..
                 },
             ) => CommentRunLayout::Lines,
             _ => CommentRunLayout::Source,

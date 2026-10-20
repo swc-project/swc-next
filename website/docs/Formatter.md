@@ -73,7 +73,9 @@ keeping comment text alone is insufficient. A known absent binding and an
 unknown source-bound binding are distinct facts.
 
 Previously inactive annotations may become active; existing effective bindings
-must be preserved.
+must be preserved. Activation must not replace an already active effect.
+ECMAScript directives such as `"use strict"` retain their semantics in both
+directions: active directives remain active, and inactive strings remain inactive.
 
 Diagnostic directives retain their source line relationships. Their same-line
 and newline constraints take precedence over optional width-dependent breaks.
