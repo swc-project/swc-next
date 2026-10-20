@@ -8,35 +8,23 @@ callee /* prettier-ignore */
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-callee(
-  /* prettier-ignore */
-
-  first(  ),
-);
+callee /* prettier-ignore */
+(first());
 
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-callee(
-  /* prettier-ignore */
-
-  first(  ),
-);
+callee /* prettier-ignore */
+(first());
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-callee(
-  /* prettier-ignore */
-
-  first(  ),
-)
+callee /* prettier-ignore */
+(first())
 
 ---------- Options ----------
 {"printWidth":20,"trailingComma":"es5"}
 ---------- Output ----------
-callee(
-  /* prettier-ignore */
-
-  first(  )
-);
+callee /* prettier-ignore */
+(first());
