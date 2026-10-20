@@ -930,16 +930,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let trailing = Span::new(child_span.end, span.end - 1);
-        if matches!(context.position, ExpressionPosition::NonNullOperand)
-            && self.comments.in_range(trailing).iter().any(|comment| {
-                comment.kind == CommentKind::Line
-                    || self.line_breaks(comment.span.start, comment.span.end) != 0
-            })
-        {
-            return SourceParenthesesChoice::Retained {
-                kind: RetainedParentheses::Operand,
-                mode: context.content_mode,
-            };
+        if matches!(context.position, ExpressionPosition::NonNullOperand) {
+            let comments = self.comments.in_range(trailing);
+            let breaks = comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line)
+                || comments
+                    .last()
+                    .is_some_and(|comment| self.line_breaks(trailing.start, comment.span.end) != 0);
+            if breaks {
+                return SourceParenthesesChoice::Retained {
+                    kind: RetainedParentheses::Operand,
+                    mode: context.content_mode,
+                };
+            }
         }
         let tail_end = comments
             .tail
