@@ -1,11 +1,10 @@
 Cases         : 14919
-Codec Passed  : 14910/14919
+Codec Passed  : 14911/14919
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/intrinsicStringMappingLoneSurrogate.ts (intrinsicStringMappingLoneSurrogate.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/loneSurrogateStringLiteralTypes.ts (loneSurrogateStringLiteralTypes.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/regularExpressionScanning.ts (regularExpressionScanning.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/templateLiteralInferenceLoneSurrogate.ts (templateLiteralInferenceLoneSurrogate.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/templateLiteralTypeSurrogatePairConcatenation.ts (templateLiteralTypeSurrogatePairConcatenation.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/unicodeSurrogatesInStringLiterals.ts (unicodeSurrogatesInStringLiterals.ts)
-Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/templates/templateStringMultiline3.ts (templateStringMultiline3.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings10.ts (unicodeExtendedEscapesInStrings10.ts)
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/unicodeExtendedEscapes/unicodeExtendedEscapesInStrings11.ts (unicodeExtendedEscapesInStrings11.ts)

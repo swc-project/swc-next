@@ -1,5 +1,5 @@
 Cases         : 47453
-Codec Passed  : 47375/47453
+Codec Passed  : 47378/47453
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/flags-string-invalid.js (flags-string-invalid.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/flags-undefined.js (flags-undefined.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/annexB/built-ins/RegExp/prototype/compile/pattern-regexp-props.js (pattern-regexp-props.js)
@@ -59,7 +59,6 @@ Codec output differs from native output: tasks/testsuite/fixtures/test262/test/b
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/replace/S15.5.4.11_A4_T4.js (S15.5.4.11_A4_T4.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/replaceAll/searchValue-tostring-regexp.js (searchValue-tostring-regexp.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/built-ins/String/prototype/toWellFormed/returns-well-formed-string.js (returns-well-formed-string.js)
-Codec output differs from native output: tasks/testsuite/fixtures/test262/test/built-ins/String/raw/special-characters.js (special-characters.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/built-ins/StringIteratorPrototype/next/next-iteration-surrogate-pairs.js (next-iteration-surrogate-pairs.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/intl402/NumberFormat/prototype/format/format-non-finite-numbers.js (format-non-finite-numbers.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/intl402/Segmenter/prototype/segment/containing/breakable-input.js (breakable-input.js)
@@ -69,8 +68,6 @@ Codec output differs from native output: tasks/testsuite/fixtures/test262/test/l
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/expressions/greater-than/S11.8.2_A4.12_T1.js (S11.8.2_A4.12_T1.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/expressions/less-than-or-equal/S11.8.3_A4.12_T1.js (S11.8.3_A4.12_T1.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/expressions/less-than/S11.8.1_A4.12_T1.js (S11.8.1_A4.12_T1.js)
-Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/tv-line-continuation.js (tv-line-continuation.js)
-Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/expressions/template-literal/tv-line-terminator-sequence.js (tv-line-terminator-sequence.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/literals/regexp/S7.8.5_A3.1_T5.js (S7.8.5_A3.1_T5.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/literals/regexp/S7.8.5_A3.1_T6.js (S7.8.5_A3.1_T6.js)
 Codec output differs from native output: tasks/testsuite/fixtures/test262/test/language/literals/regexp/named-groups/invalid-lone-surrogate-groupname.js (invalid-lone-surrogate-groupname.js)
