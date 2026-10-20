@@ -1077,12 +1077,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (prefix, mut callee_mode) = match operator {
             None => {
                 let span = Span::new(prefix_start, opening);
-                let prefix = self.argument_prefix(first.as_mut(), span, prefix_comments);
-                let mode = if prefix.belongs_to_arguments() {
-                    ContentMode::Formatted
-                } else {
-                    self.trailing_content_mode(span, false)
-                };
+                let (prefix, mode) = self.argument_prefix(first.as_mut(), span, prefix_comments);
                 (SourceArgumentPrefix::Direct(prefix), mode)
             }
             Some(operator) => {
@@ -1093,12 +1088,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.prepare_first_argument_suppression(first.as_mut(), before, operator.start);
                 let before_mode = self.trailing_content_mode(before_span, false);
                 let after_span = Span::new(operator.end, opening);
-                let after = self.argument_prefix(first.as_mut(), after_span, after);
-                let after_mode = if after.belongs_to_arguments() {
-                    ContentMode::Formatted
-                } else {
-                    self.trailing_content_mode(after_span, false)
-                };
+                let (after, after_mode) = self.argument_prefix(first.as_mut(), after_span, after);
                 if !after.belongs_to_arguments()
                     && self.content_mode(after.comments()) == ContentMode::Verbatim
                     && (first.is_some() || after_mode != ContentMode::Verbatim)
@@ -1255,32 +1245,81 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    #[inline]
     fn argument_prefix(
         &self,
         first: Option<&mut SourceFirstArgument>,
         span: Span,
         comments: &'ast [Comment],
-    ) -> ArgumentPrefix<'ast> {
+    ) -> (ArgumentPrefix<'ast>, ContentMode) {
         let Some(first) = first else {
-            return ArgumentPrefix::Outside(comments);
+            return (
+                ArgumentPrefix::Outside(comments),
+                self.trailing_content_mode(span, false),
+            );
         };
-        let target = self.has_suppression.then(|| first.node.span(self.ast));
-        let binding = self.comment_binding(comments, Span::new(span.start, span.end + 1), target);
+        let first_span = first.node.span(self.ast);
+        let last_line_break = if self.has_suppression && !comments.is_empty() {
+            self.source(Span::new(span.start, first_span.start))
+                .rfind(['\n', '\r', '\u{2028}', '\u{2029}'])
+                .map(|offset| span.start + offset as u32)
+        } else {
+            None
+        };
+        let mut callee_mode = ContentMode::Formatted;
+        let mut first_mode = ContentMode::Formatted;
+        for (run, position) in self.suppressed_comment_runs(comments, span.end) {
+            // The complete opening gap decides the target before relocation.
+            // A same-line marker followed by a source line break trails the callee,
+            // including when the break is inside the argument opening packet.
+            if !matches!(position, SuppressionPosition::OwnLine)
+                && last_line_break.is_some_and(|end| run[run.len() - 1].span.end <= end)
+            {
+                callee_mode = ContentMode::Verbatim;
+            } else {
+                first_mode = ContentMode::Verbatim;
+            }
+        }
+        if first_mode == ContentMode::Verbatim {
+            first.mode = first_mode;
+        }
+        let target = self.has_suppression.then_some(first_span);
+        let boundary = Span::new(span.start, span.end + 1);
+        let binding = if first_mode == ContentMode::Verbatim {
+            // An opaque argument carries the complete annotation packet with it.
+            // Line directives still retain their source boundary.
+            let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
+                let semantics = self.comment_semantics(comment);
+                if semantics.diagnostic || semantics.file_directive {
+                    CommentBinding::SourceBound
+                } else if semantics.is_ordinary() {
+                    CommentBinding::Unbound
+                } else {
+                    CommentBinding::BoundTo(first_span)
+                }
+            });
+            if self.diagnostic_range_is_sensitive(boundary) {
+                CommentBinding::SourceBound
+            } else {
+                binding
+            }
+        } else {
+            self.comment_binding(comments, boundary, target)
+        };
         let outside_line = comments.iter().any(|comment| {
             comment.kind == CommentKind::Line
                 && (!self.source_line_starts_line(comment.span.start)
                     || !matches!(binding, CommentBinding::Unbound))
         });
-        let prefix = if comments.is_empty() || outside_line || !binding.allows_relocation(target) {
+        let prefix = if comments.is_empty()
+            || callee_mode == ContentMode::Verbatim
+            || outside_line
+            || !binding.allows_relocation(target)
+        {
             ArgumentPrefix::Outside(comments)
         } else {
             ArgumentPrefix::Arguments(comments)
         };
-        if !prefix.belongs_to_arguments() {
-            self.prepare_first_argument_suppression(Some(first), comments, span.end);
-        }
-        prefix
+        (prefix, callee_mode)
     }
 
     fn prepare_first_argument_suppression(
@@ -1534,6 +1573,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             first,
             delimiters,
             callee_span,
+            callee_mode,
             type_arguments,
             source_opening,
             prefix,
@@ -1601,7 +1641,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_outside_prefix |= !outside.is_empty();
                 let boundary = self.prepare_comment_boundary(outside, source_end, opening);
                 self.format_comment_boundary(&boundary, writer)?;
-                boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                if callee_mode == ContentMode::Verbatim
+                    && self.content_mode(outside) == ContentMode::Verbatim
+                {
+                    // A same-line opening would reattach this marker to the first
+                    // argument after reparsing, even when its text stayed outside.
+                    writer.hard_line();
+                } else {
+                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                }
                 if inside.is_empty() {
                     opening + 1
                 } else if move_tail {
