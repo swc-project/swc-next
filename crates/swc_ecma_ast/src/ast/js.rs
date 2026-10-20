@@ -863,7 +863,7 @@ pub struct TemplateElement {
 #[ast]
 #[estree(ts_alias = "Identifier")]
 pub struct IdentifierReference {
-    name: AstUtf8,
+    name: AstInternedUtf8,
 }
 
 /// A `#privateName` identifier used inside a class.
@@ -880,7 +880,7 @@ pub struct IdentifierReference {
 /// ```
 #[ast]
 pub struct PrivateIdentifier {
-    name: AstUtf8,
+    name: AstInternedUtf8,
 }
 
 /// An identifier that introduces a new binding.
@@ -902,7 +902,7 @@ pub struct PrivateIdentifier {
 }"#
 )]
 pub struct BindingIdentifier {
-    name: AstUtf8,
+    name: AstInternedUtf8,
 }
 
 /// An identifier used as a property key or meta property name.
@@ -917,7 +917,7 @@ pub struct BindingIdentifier {
 #[ast]
 #[estree(ts_alias = "Identifier")]
 pub struct IdentifierName {
-    name: AstUtf8,
+    name: AstInternedUtf8,
 }
 
 /// An identifier used as a statement label or as the target of `break` or
@@ -932,7 +932,7 @@ pub struct IdentifierName {
 #[ast]
 #[estree(ts_alias = "Identifier")]
 pub struct LabelIdentifier {
-    name: AstUtf8,
+    name: AstInternedUtf8,
 }
 
 /// A binding pattern with a default value.

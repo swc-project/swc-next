@@ -28,6 +28,12 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("encoder interns equal identifier strings", () => {
+  const { program } = parseSync("let value; value;");
+
+  assert.equal(printSync(program).code, "let value;\nvalue;\n");
+});
+
 test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\u{10400}";

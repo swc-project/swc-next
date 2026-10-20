@@ -46,6 +46,28 @@ fn assert_separate_lexical_binding(source: &str, options: Options) {
 }
 
 #[test]
+fn canonical_names() {
+    let allocator = Allocator::new();
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    let (ast, semantic) = analyze_source(&allocator, "let value; v\\u0061lue;", script);
+    let symbol = semantic.symbol(symbol_named(&ast, &semantic, b"value"));
+    let reference = semantic.iter_references().next().unwrap().reference;
+    assert_eq!(symbol.name.as_utf8(), Some(reference.name));
+
+    let (ast, semantic) = analyze_source(&allocator, r#"enum E { "\ud800" }"#, ts_module_options());
+    let member = semantic
+        .iter_symbols()
+        .find(|entry| entry.symbol.flags.contains(SymbolFlags::ENUM_MEMBER))
+        .unwrap();
+    assert!(matches!(member.symbol.name, SymbolName::Wtf8(_)));
+    assert_eq!(ast.get_wtf8(member.symbol.name).as_bytes(), b"\xed\xa0\x80");
+}
+
+#[test]
 fn annex_b_if_bindings() {
     let allocator = Allocator::new();
     let script = Options {

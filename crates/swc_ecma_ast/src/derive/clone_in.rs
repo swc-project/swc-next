@@ -1,6 +1,6 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
-    FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
+    Accessibility, AssignmentOperator, Ast, AstInternedUtf8, AstUtf8, AstWtf8, BinaryOperator,
+    ClassType, FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
     MethodDefinitionKind, PropertyKind, SourceType, Span, SubRange, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
     UpdateOperator, VariableKind, node_id::ExtraDataValue,
@@ -84,6 +84,14 @@ where
 }
 
 impl<'a> CloneIn<'a> for AstUtf8 {
+    type Cloned = Self;
+
+    fn clone_in(&self, _ast: &mut Ast<'a>) -> Self::Cloned {
+        *self
+    }
+}
+
+impl<'a> CloneIn<'a> for AstInternedUtf8 {
     type Cloned = Self;
 
     fn clone_in(&self, _ast: &mut Ast<'a>) -> Self::Cloned {

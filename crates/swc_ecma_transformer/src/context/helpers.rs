@@ -145,7 +145,7 @@ impl TransformCtx<'_, '_> {
         scope: ScopeId,
     ) -> Expr {
         let object = Expr::IdentifierReference(namespace.reference_read(self, scope, DUMMY_SP));
-        let property = self.ast.add_utf8(export);
+        let property = self.ast.add_interned_utf8(export);
         let property = PropertyKey::IdentifierName(
             self.add_node(|ast| ast.identifier_name(DUMMY_SP, property)),
         );

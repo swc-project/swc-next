@@ -32,7 +32,7 @@ pub use generated::ast_node::*;
 pub use generated::ast_visitor::*;
 pub use node_id::{AstNode, ExtraDataId, ExtraDataValue, NodeId, SubRange};
 pub use semantic::{ReferenceId, ScopeId, SymbolId};
-pub use strings::{AstUtf8, AstWtf8};
+pub use strings::{AstInternedUtf8, AstUtf8, AstWtf8};
 pub use syntax::*;
 pub use visit::{TraverseAction, TraverseCtx, TraverseMutCtx};
 
@@ -295,23 +295,46 @@ impl<'a> Ast<'a> {
         self.strings.add_utf8(value)
     }
 
+    /// Adds a generated UTF-8 value and returns its canonical handle.
+    #[inline]
+    pub fn add_interned_utf8(&mut self, value: &str) -> AstInternedUtf8 {
+        self.strings.add_interned_utf8(value)
+    }
+
+    /// Canonicalizes an existing UTF-8 handle without copying its value into string storage.
+    #[inline]
+    pub fn intern_utf8(&self, value: AstUtf8) -> AstInternedUtf8 {
+        self.strings.intern_utf8(value)
+    }
+
     #[inline]
     pub fn add_wtf8(&mut self, value: &swc_next_allocator::wtf8::Wtf8) -> AstWtf8 {
         self.strings.add_wtf8(value)
     }
 
-    /// Borrows immutable string bytes for the source/allocator lifetime.
-    /// The reference remains valid when strings are added or the AST is dropped.
+    /// Canonicalizes an existing WTF-8 handle without copying its value into string storage.
     #[inline]
-    pub fn get_utf8(&self, id: AstUtf8) -> &'a str {
-        self.strings.get_utf8(id)
+    pub fn intern_wtf8(&self, value: AstWtf8) -> AstWtf8 {
+        self.strings.intern_wtf8(value)
     }
 
     /// Borrows immutable string bytes for the source/allocator lifetime.
     /// The reference remains valid when strings are added or the AST is dropped.
     #[inline]
-    pub fn get_wtf8(&self, id: AstWtf8) -> &'a swc_next_allocator::wtf8::Wtf8 {
-        self.strings.get_wtf8(id)
+    pub fn get_utf8(&self, id: impl Into<AstUtf8>) -> &'a str {
+        self.strings.get_utf8(id.into())
+    }
+
+    /// Borrows immutable string bytes for the source/allocator lifetime.
+    /// The reference remains valid when strings are added or the AST is dropped.
+    #[inline]
+    pub fn get_wtf8(&self, id: impl Into<AstWtf8>) -> &'a swc_next_allocator::wtf8::Wtf8 {
+        self.strings.get_wtf8(id.into())
+    }
+
+    #[inline]
+    pub fn as_utf8(&self, id: AstWtf8) -> Option<AstUtf8> {
+        self.strings.as_utf8(id)
     }
 
     #[inline]

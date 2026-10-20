@@ -3,10 +3,10 @@
 use std::borrow::Cow;
 
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, BindingIdentifier, BindingPattern, BindingPatternData, ClassType, Decl, DeclData,
-    Diagnostic, ExportDefaultDeclarationKind, ExportDefaultDeclarationKindData, Expr, ExprData,
-    GetSpan, Stmt, SymbolId, TsModuleDeclarationKind, TsModuleNameData, VariableDeclaration,
-    VariableDeclarator, VariableKind, Visit, VisitWith,
+    Ast, AstInternedUtf8, BindingIdentifier, BindingPattern, BindingPatternData, ClassType, Decl,
+    DeclData, Diagnostic, ExportDefaultDeclarationKind, ExportDefaultDeclarationKindData, Expr,
+    ExprData, GetSpan, Stmt, SymbolId, TsModuleDeclarationKind, TsModuleNameData,
+    VariableDeclaration, VariableDeclarator, VariableKind, Visit, VisitWith,
 };
 use swc_next_ecma_semantic::SymbolFlags;
 
@@ -21,7 +21,7 @@ use crate::surface::{ExportExpression, export_expression, namespace_binding, unp
 
 pub(super) struct ExportExpressionBinding {
     declaration: Stmt,
-    pub(super) name: AstUtf8,
+    pub(super) name: AstInternedUtf8,
     order: ExportOrder,
 }
 
@@ -378,7 +378,7 @@ impl<'ast> Transformer<'_, 'ast> {
         }
     }
 
-    fn fresh_default_name(&mut self, ast: &mut Ast<'ast>) -> AstUtf8 {
+    fn fresh_default_name(&mut self, ast: &mut Ast<'ast>) -> AstInternedUtf8 {
         let names = self.reserved_names.get_or_insert_with(|| {
             let symbols = self
                 .semantic
@@ -403,7 +403,7 @@ impl<'ast> Transformer<'_, 'ast> {
             };
             if !names.contains(candidate.as_bytes()) {
                 // The increasing suffix already keeps generated names distinct.
-                return ast.add_utf8(&candidate);
+                return ast.add_interned_utf8(&candidate);
             }
         }
     }

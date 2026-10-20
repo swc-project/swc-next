@@ -78,6 +78,18 @@ impl Compare for AstUtf8 {
     }
 }
 
+impl Compare for AstInternedUtf8 {
+    fn compare(self, other: Self, asts: &AstPair<'_, '_>) -> Result<(), String> {
+        let left = asts.left.get_utf8(self);
+        let right = asts.right.get_utf8(other);
+        if left == right {
+            Ok(())
+        } else {
+            Err(format!("value: {left:?} != {right:?}"))
+        }
+    }
+}
+
 impl Compare for AstWtf8 {
     fn compare(self, other: Self, asts: &AstPair<'_, '_>) -> Result<(), String> {
         let left = asts.left.get_wtf8(self);

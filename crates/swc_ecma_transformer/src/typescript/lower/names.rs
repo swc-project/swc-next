@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::SymbolId;
 
 impl<'ast> TypeScriptLowerer<'_, 'ast> {
-    pub(super) fn fresh_uid(&mut self, base: &'ast str) -> swc_next_ecma_ast::AstUtf8 {
+    pub(super) fn fresh_uid(&mut self, base: &'ast str) -> swc_next_ecma_ast::AstInternedUtf8 {
         let names = self.used_names.get_or_insert_with(|| {
             let mut names = UsedNameState::new(self.ast.allocator());
             for entry in self.semantic.iter_symbols() {
@@ -15,12 +15,12 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             }
             names
         });
-        self.ast.add_utf8(names.next_name(base, 2))
+        self.ast.add_interned_utf8(names.next_name(base, 2))
     }
 
     fn can_reuse_source_name(
         &mut self,
-        name: swc_next_ecma_ast::AstUtf8,
+        name: swc_next_ecma_ast::AstInternedUtf8,
         symbol: SymbolId,
     ) -> bool {
         let owners = self.source_name_owners.get_or_insert_with(|| {
@@ -41,9 +41,9 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
 
     pub(super) fn container_parameter(
         &mut self,
-        name: swc_next_ecma_ast::AstUtf8,
+        name: swc_next_ecma_ast::AstInternedUtf8,
         symbol: SymbolId,
-    ) -> swc_next_ecma_ast::AstUtf8 {
+    ) -> swc_next_ecma_ast::AstInternedUtf8 {
         if self.can_reuse_source_name(name, symbol) {
             return name;
         }

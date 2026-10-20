@@ -135,7 +135,7 @@ fn reference(id: TypeId, schema: &Schema) -> String {
         AstType::SubRange(range) => format!("Array<{}>", reference(range.inner_type_id, schema)),
         AstType::Option(option) => format!("{} | null", reference(option.inner_type_id, schema)),
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" | "AstWtf8" => "string".into(),
+            "AstInternedUtf8" | "AstUtf8" | "AstWtf8" => "string".into(),
             "bool" => "boolean".into(),
             "Span" => "{ start: number; end: number }".into(),
             name if schema

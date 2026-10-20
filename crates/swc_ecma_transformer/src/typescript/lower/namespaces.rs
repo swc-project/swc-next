@@ -2,7 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::rc::Rc;
 
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, BindingPattern,
+    AssignmentOperator, AssignmentTarget, Ast, AstInternedUtf8, BindingIdentifier, BindingPattern,
     BindingPatternData, BindingProperty, DUMMY_SP, Decl, DeclData, Expr, GetSpan,
     IdentifierReference, ImportOrExportKind, JsxElementName, JsxElementNameData, JsxIdentifier,
     JsxMemberExpression, JsxMemberExpressionObject, JsxMemberExpressionObjectData, PropertyKey,
@@ -27,7 +27,7 @@ impl NamespaceState {
 
     fn enter(
         &mut self,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         members: Rc<NamespaceMembers>,
         local_symbols: FxHashSet<SymbolId>,
     ) {
@@ -49,7 +49,7 @@ impl NamespaceState {
 }
 
 pub(super) struct NamespaceContext {
-    pub(super) parameter: AstUtf8,
+    pub(super) parameter: AstInternedUtf8,
     members: Rc<NamespaceMembers>,
     local_symbols: FxHashSet<SymbolId>,
 }
@@ -62,7 +62,7 @@ pub(super) struct NamespaceMembers {
 #[derive(Clone, Copy)]
 struct NamespacePathPart {
     symbol: SymbolId,
-    name: AstUtf8,
+    name: AstInternedUtf8,
     span: Span,
 }
 
@@ -239,7 +239,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn lower_namespace_body(
         &mut self,
         body: TsModuleBody,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         members: &NamespaceMembers,
     ) -> (SubRange<swc_next_ecma_ast::Directive>, SubRange<Stmt>) {
         match self.ast_ref().ts_module_body_data(body) {
@@ -264,7 +264,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn lower_namespace_statement_list(
         &mut self,
         statements: SubRange<Stmt>,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         members: &NamespaceMembers,
     ) -> SubRange<Stmt> {
         if self.analysis.has_merged_runtime_bindings() {
@@ -293,7 +293,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn lower_namespace_export(
         &mut self,
         export: swc_next_ecma_ast::ExportNamedDeclaration,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         members: &NamespaceMembers,
         output: &mut Vec<Stmt>,
     ) {
@@ -339,7 +339,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn lower_namespace_variable(
         &mut self,
         declaration: VariableDeclaration,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         property_symbols: &FxHashSet<SymbolId>,
         output: &mut Vec<Stmt>,
     ) {
@@ -389,7 +389,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn lower_namespace_import_equals(
         &mut self,
         declaration: TsImportEqualsDeclaration,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         output: &mut Vec<Stmt>,
     ) {
         if self.import_equals_is_erased(declaration) {
@@ -408,7 +408,7 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn namespace_export_assignment(
         &mut self,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
         binding: BindingIdentifier,
     ) -> Stmt {
         let name = binding.name(self.ast_ref());
@@ -419,8 +419,8 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn namespace_property_assignment_statement(
         &mut self,
-        parameter: AstUtf8,
-        name: AstUtf8,
+        parameter: AstInternedUtf8,
+        name: AstInternedUtf8,
         value: Expr,
         span: Span,
     ) -> Stmt {
@@ -436,8 +436,8 @@ impl TypeScriptLowerer<'_, '_> {
 
     fn namespace_member(
         &mut self,
-        object: AstUtf8,
-        property: AstUtf8,
+        object: AstInternedUtf8,
+        property: AstInternedUtf8,
         span: Span,
     ) -> swc_next_ecma_ast::MemberExpression {
         let object = self.ast().expr_identifier_reference(DUMMY_SP, object);
@@ -454,7 +454,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn namespace_parameter_for_reference(
         &self,
         node: swc_next_ecma_ast::NodeId,
-    ) -> Option<AstUtf8> {
+    ) -> Option<AstInternedUtf8> {
         if self.namespaces.contexts.is_empty() || node.index() >= self.semantic_node_count {
             return None;
         }
@@ -479,9 +479,9 @@ impl TypeScriptLowerer<'_, '_> {
     #[inline(never)]
     fn namespace_parameter_for_export_alias(
         &self,
-        name: AstUtf8,
+        name: AstInternedUtf8,
         symbol: SymbolId,
-    ) -> Option<AstUtf8> {
+    ) -> Option<AstInternedUtf8> {
         // Export specifiers can expose a declaration under a different name,
         // including when its original name has a local runtime binding.
         let name = self.ast_ref().get_utf8(name).as_bytes();
@@ -574,7 +574,7 @@ impl TypeScriptLowerer<'_, '_> {
     fn prepend_jsx_namespace(
         &mut self,
         object: JsxMemberExpressionObject,
-        parameter: AstUtf8,
+        parameter: AstInternedUtf8,
     ) -> JsxMemberExpressionObject {
         match self.ast_ref().jsx_member_expression_object_data(object) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
@@ -652,7 +652,7 @@ struct NamespaceBindingPatternRewriter<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
     semantic: &'visit swc_next_ecma_semantic::Semantic<'ast>,
     property_symbols: &'visit FxHashSet<SymbolId>,
-    parameter: AstUtf8,
+    parameter: AstInternedUtf8,
 }
 
 impl<'ast> VisitMut<'ast> for NamespaceBindingPatternRewriter<'_, 'ast> {

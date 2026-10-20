@@ -237,7 +237,7 @@ impl<'a> SymbolTracker<'a> {
                         });
                     if let Some(previous) = conflict {
                         issues.push(TsImportAliasIssue::Conflict(TsImportAliasConflictIssue {
-                            name: alias_name,
+                            name: alias_name.into(),
                             node: alias.declaration.id(tree).node_id(),
                             previous: previous.node,
                             previous_flags: previous.flags,

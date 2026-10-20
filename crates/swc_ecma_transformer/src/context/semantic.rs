@@ -1,5 +1,5 @@
 use swc_next_ecma_ast::{
-    AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
+    AssignmentOperator, AssignmentTarget, Ast, AstInternedUtf8, BindingIdentifier, DUMMY_SP, Expr,
     IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
     SymbolId, Traverse, TraverseCtx, TraverseWith,
 };
@@ -133,7 +133,7 @@ impl TransformCtx<'_, '_> {
     /// // On first use, observe symbols, binding declaration spellings and all reference names.
     /// // Reserve _temp3 immediately so another allocation cannot reuse it; no binding is registered yet.
     /// ```
-    pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstUtf8 {
+    pub fn generate_name(&mut self, base: &str, start_suffix: u64) -> AstInternedUtf8 {
         let names = self.state.used_names.get_or_insert_with(|| {
             let mut names = UsedNameState::new(self.ast.allocator());
             for entry in self.state.semantic.iter_symbols() {
@@ -153,7 +153,8 @@ impl TransformCtx<'_, '_> {
             }
             names
         });
-        self.ast.add_utf8(names.next_name(base, start_suffix))
+        self.ast
+            .add_interned_utf8(names.next_name(base, start_suffix))
     }
 }
 

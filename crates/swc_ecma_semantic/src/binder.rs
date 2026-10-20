@@ -7,8 +7,8 @@ use swc_next_allocator::{
     Allocator, boxed::Box as ArenaBox, hash_map::HashMap as ArenaHashMap, vec::Vec as ArenaVec,
 };
 use swc_next_ecma_ast::{
-    AssignmentExpression, AssignmentOperator, Ast, AstUtf8, AstWtf8, BindingIdentifier, Class,
-    ClassType, ExportNamedDeclaration, ExportSpecifier, Function, FunctionType,
+    AssignmentExpression, AssignmentOperator, Ast, AstInternedUtf8, AstWtf8, BindingIdentifier,
+    Class, ClassType, ExportNamedDeclaration, ExportSpecifier, Function, FunctionType,
     IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
     JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
     JsxOpeningElement, MemberExpression, ModuleExportName, ModuleExportNameData, NodeId, NodeKind,
@@ -20,7 +20,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic,
+    DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic, SymbolName,
     module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
@@ -63,7 +63,7 @@ use module_instance::{TsModuleInstanceMemo, TsModuleInstanceState, ts_module_ins
 pub struct Symbol {
     /// Same-named declarations that shadow an internal name reuse its name
     /// handle, so lexical lookup can compare names without reading the AST.
-    pub name: AstWtf8,
+    pub name: SymbolName,
     pub flags: SymbolFlags,
     /// The first declaration contributing to this symbol.
     pub declaration: DeclarationId,
@@ -384,7 +384,7 @@ impl Excludes {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Reference {
-    pub name: AstUtf8,
+    pub name: AstInternedUtf8,
     /// The scope the reference appears in.
     pub scope: ScopeId,
     /// The referencing node.
@@ -1422,8 +1422,8 @@ impl<'a> TsResolvedImportTarget<'a> {
 
 #[derive(Clone, Copy)]
 pub(crate) enum TsNamespaceExportAliasIssue {
-    Missing { name: AstUtf8, node: NodeId },
-    NonLocal { name: AstUtf8, node: NodeId },
+    Missing { name: AstInternedUtf8, node: NodeId },
+    NonLocal { name: AstInternedUtf8, node: NodeId },
     Duplicate { node: NodeId, previous: NodeId },
     Conflict { node: NodeId, previous: NodeId },
 }
@@ -1866,7 +1866,7 @@ pub(crate) struct PendingBinding {
 
 #[derive(Clone, Copy)]
 struct PendingDeclaration {
-    name: AstWtf8,
+    name: SymbolName,
     node: NodeId,
     binding: PendingBinding,
 }
@@ -1920,7 +1920,7 @@ enum DeclarationConflictKind {
 }
 
 impl PreparedDeclaration {
-    pub(crate) fn name(self) -> AstWtf8 {
+    pub(crate) fn name(self) -> SymbolName {
         self.declaration.name
     }
 
@@ -2039,7 +2039,7 @@ impl<'a> SymbolTracker<'a> {
         let (owner, _) = self.declare_symbol(
             tree,
             PendingDeclaration {
-                name: tree.empty_wtf8(),
+                name: AstInternedUtf8::EMPTY.into(),
                 node: program.node_id(),
                 binding: PendingBinding {
                     flags: SymbolFlags::VALUE_MODULE | SymbolFlags::NAMESPACE_MODULE,
@@ -2712,7 +2712,17 @@ impl<'a> SymbolTracker<'a> {
     pub(crate) fn prepare_declaration(
         &self,
         tree: &Ast<'a>,
-        name: AstWtf8,
+        name: AstInternedUtf8,
+        node: NodeId,
+    ) -> PreparedDeclaration {
+        self.prepare_named_declaration(tree, name.into(), node)
+    }
+
+    #[inline(always)]
+    fn prepare_named_declaration(
+        &self,
+        tree: &Ast<'a>,
+        name: SymbolName,
         node: NodeId,
     ) -> PreparedDeclaration {
         let name_text = tree.get_wtf8(name).as_bytes();
@@ -2815,7 +2825,7 @@ impl<'a> SymbolTracker<'a> {
         else {
             return false;
         };
-        let declaration_id = self.declare(tree, name.into(), node);
+        let declaration_id = self.declare(tree, name, node);
         self.finish_binding_identifier(tree, name, declaration_id, scope);
         true
     }
@@ -2854,14 +2864,17 @@ impl<'a> SymbolTracker<'a> {
         // Literal computed names denote the same member as their unwrapped
         // string or no-substitution template form.
         let member_name = member.id(tree).node_id();
-        let name = text_member_name(tree, member_name, false)?;
+        let symbol_name = match tree.kind_data(member_name) {
+            NodeKindData::IdentifierName(identifier) => identifier.name(tree).into(),
+            _ => SymbolName::intern_wtf8(tree, text_member_name(tree, member_name, false)?),
+        };
         let owner = *self
             .ts_enum_owner_stack
             .last()
             .expect("an enum member has an owner");
         let flags = SymbolFlags::ENUM_MEMBER.with(SymbolFlags::AMBIENT, self.ambient);
         let environment = self.ts_member_environments.ensure(owner, self.allocator);
-        let name_text = tree.get_wtf8(name).as_bytes();
+        let name_text = tree.get_wtf8(symbol_name).as_bytes();
         let shared = self
             .ts_member_environments
             .environment(environment)
@@ -2870,7 +2883,7 @@ impl<'a> SymbolTracker<'a> {
         let local = self.own_binding(scope.current, name_text);
         let prepared = PreparedDeclaration {
             declaration: PendingDeclaration {
-                name,
+                name: symbol_name,
                 node: member.node_id(),
                 binding: PendingBinding {
                     flags,
@@ -2906,10 +2919,15 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     // Keep map-entry temporaries out of the visitor shared with syntax checking.
     #[inline(never)]
-    pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> DeclarationId {
+    pub fn declare(
+        &mut self,
+        tree: &Ast<'a>,
+        name: AstInternedUtf8,
+        node: NodeId,
+    ) -> DeclarationId {
         debug_assert!(node.index() < tree.node_count());
 
-        let name_text = tree.get_wtf8(name).as_bytes();
+        let name_text = tree.get_utf8(name).as_bytes();
         if self.ts_container_stack.is_empty()
             && self.pending_type_parameter_owner().is_none()
             && (self.pending.scope != ScopeId::MODULE
@@ -2944,7 +2962,7 @@ impl<'a> SymbolTracker<'a> {
                         symbol_name,
                     )
                 }
-                entry => (entry, name),
+                entry => (entry, name.into()),
             };
             let id = match entry {
                 hashbrown::hash_map::RawEntryMut::Occupied(entry) => {
@@ -2982,7 +3000,7 @@ impl<'a> SymbolTracker<'a> {
             return declaration_id;
         }
 
-        self.declare_ts_context_binding(tree, name, node)
+        self.declare_ts_context_binding(tree, name.into(), node)
     }
 
     fn record_ts_scope_views(&mut self, scope: ScopeId, views: Range) {
@@ -3115,7 +3133,7 @@ impl<'a> SymbolTracker<'a> {
                     let mut flags = self.pending.flags;
                     flags.insert(SymbolFlags::EXPORTED);
                     let declaration = PendingDeclaration {
-                        name,
+                        name: name.into(),
                         node,
                         binding: PendingBinding {
                             flags,
@@ -3187,7 +3205,7 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let declaration = PendingDeclaration {
-            name: tree.empty_wtf8(),
+            name: AstInternedUtf8::EMPTY.into(),
             node,
             binding: PendingBinding {
                 flags: self.pending.flags | SymbolFlags::EXPORTED | SymbolFlags::IS_DEFAULT,
@@ -3306,7 +3324,7 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
-    ) -> Option<(NodeId, AstUtf8)> {
+    ) -> Option<(NodeId, AstInternedUtf8)> {
         self.sync_scope_maps_from(scope);
         // The declaration role comes from the enclosing syntax, independently
         // of whether references in that syntax produce runtime access.
@@ -3320,7 +3338,7 @@ impl<'a> SymbolTracker<'a> {
     fn finish_binding_identifier(
         &mut self,
         tree: &Ast<'a>,
-        name: AstUtf8,
+        name: AstInternedUtf8,
         declaration_id: DeclarationId,
         scope: &ScopeTracker<'a>,
     ) {
@@ -3348,10 +3366,10 @@ impl<'a> SymbolTracker<'a> {
     fn declare_ts_context_binding(
         &mut self,
         tree: &Ast<'a>,
-        name: AstWtf8,
+        name: SymbolName,
         node: NodeId,
     ) -> DeclarationId {
-        let plan = self.prepare_declaration(tree, name, node);
+        let plan = self.prepare_named_declaration(tree, name, node);
         self.declare_prepared(tree, plan)
     }
 
@@ -3605,7 +3623,7 @@ impl<'a> SymbolTracker<'a> {
         &mut self,
         tree: &Ast<'a>,
         scope: ScopeId,
-        name: AstWtf8,
+        name: SymbolName,
         id: SymbolId,
     ) {
         let name = tree.get_wtf8(name).as_bytes();
@@ -3850,11 +3868,11 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    /// Records an identifier reference at `node` in `scope`.
+    /// Records a reference to an already canonicalized name at `node` in `scope`.
     pub fn add_reference(
         &mut self,
         tree: &Ast<'a>,
-        name: AstUtf8,
+        name: AstInternedUtf8,
         scope: ScopeId,
         node: NodeId,
         flags: ReferenceFlags,
@@ -4653,7 +4671,7 @@ fn infer_owner(scope: &ScopeTracker<'_>) -> ScopeId {
 fn collect_ts_module_path(
     tree: &Ast<'_>,
     qualified: TsQualifiedName,
-    members: &mut Vec<(AstWtf8, NodeId)>,
+    members: &mut Vec<(AstInternedUtf8, NodeId)>,
 ) -> Option<NodeId> {
     let root = match tree.ts_qualified_name_left_data(qualified.left(tree)) {
         TsQualifiedNameLeftData::BindingIdentifier(identifier) => identifier.node_id(),
@@ -4665,7 +4683,7 @@ fn collect_ts_module_path(
         | TsQualifiedNameLeftData::ThisExpression(_) => return None,
     };
     let right = qualified.right(tree);
-    members.push((right.name(tree).into(), right.node_id()));
+    members.push((right.name(tree), right.node_id()));
     Some(root)
 }
 

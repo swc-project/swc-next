@@ -182,8 +182,12 @@ fn write_value(
         }
     };
 
-    if let Some((_, optional)) = string_type(ty, schema) {
-        let encoder = "encStr";
+    if let Some((name, optional)) = string_type(ty, schema) {
+        let encoder = if name == "AstInternedUtf8" {
+            "encInternedStr"
+        } else {
+            "encStr"
+        };
         let destination = buffer_destination(location);
         if optional {
             writeln!(output, "    if ({value} == null) {{").unwrap();
@@ -266,7 +270,9 @@ fn string_type<'a>(ty: &'a AstType, schema: &'a Schema) -> Option<(&'a str, bool
         ty => (ty, false),
     };
     match inner {
-        AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
+        AstType::Primitive(primitive)
+            if matches!(primitive.name, "AstInternedUtf8" | "AstUtf8" | "AstWtf8") =>
+        {
             Some((primitive.name, optional))
         }
         _ => None,
@@ -367,7 +373,9 @@ fn encode_expression(
             AstType::Primitive(primitive) if matches!(primitive.name, "ScopeId" | "SymbolId") => {
                 "0".into()
             }
-            AstType::Primitive(primitive) if matches!(primitive.name, "AstUtf8" | "AstWtf8") => {
+            AstType::Primitive(primitive)
+                if matches!(primitive.name, "AstInternedUtf8" | "AstUtf8" | "AstWtf8") =>
+            {
                 source.into()
             }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
@@ -376,7 +384,7 @@ fn encode_expression(
             inner => panic!("unsupported optional encoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
-            "AstUtf8" | "AstWtf8" => source.into(),
+            "AstInternedUtf8" | "AstUtf8" | "AstWtf8" => source.into(),
             "bool" => format!("{source} ? 1 : 0"),
             "Span" => format!("[asStart({source}), asEnd({source})]"),
             "ScopeId" | "SymbolId" => "0".into(),
@@ -1054,6 +1062,7 @@ function encode(program, meta = {}) {
   let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
+  const internedStrings = new Map();
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
@@ -1179,6 +1188,26 @@ function encode(program, meta = {}) {
     }
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, poolLength, true);
+  }
+
+  function encInternedStr(value, view, offset) {
+    if (value == null || value === "") {
+      view.setUint32(offset, 0, true);
+      view.setUint32(offset + 4, 0, true);
+      return;
+    }
+    if (typeof value !== "string") value = String(value);
+    const existing = internedStrings.get(value);
+    if (existing !== undefined) {
+      view.setUint32(offset, existing[0], true);
+      view.setUint32(offset + 4, existing[1], true);
+      return;
+    }
+    encStr(value, view, offset);
+    internedStrings.set(value, [
+      view.getUint32(offset, true),
+      view.getUint32(offset + 4, true),
+    ]);
   }
 
   function ensurePool(additionalBytes) {

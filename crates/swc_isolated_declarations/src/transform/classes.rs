@@ -407,7 +407,7 @@ impl<'ast> Transformer<'_, 'ast> {
 
     fn private_key_marker(&self, ast: &mut Ast<'ast>) -> ClassElement {
         let span = Span::new(0, 0);
-        let name = ast.add_utf8("private");
+        let name = ast.add_interned_utf8("private");
         let key = ast.property_key_expr_private_identifier(span, name);
         let property = ast.property_definition(
             span,
@@ -583,7 +583,7 @@ impl<'ast> Transformer<'_, 'ast> {
             if kind == MethodDefinitionKind::Set
                 && let Some(binding) = parameter.pattern(ast).as_binding_identifier(ast)
             {
-                let name = ast.add_utf8("value");
+                let name = ast.add_interned_utf8("value");
                 binding.set_name(ast, name);
             }
         }
