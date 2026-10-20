@@ -7,41 +7,35 @@ first);
 ---------- Options ----------
 {}
 ---------- Output ----------
-(// @__PURE__
-  first
-);
+// @__PURE__
+first;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;(// @__PURE__
-  first
-)
+// @__PURE__
+first
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-(// @__PURE__
-  first
-);
+// @__PURE__
+first;
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
-(// @__PURE__
-  first
-);
+// @__PURE__
+first;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-(// @__PURE__
-	first
-);
+// @__PURE__
+first;
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-(// @__PURE__
-  first
-);
+// @__PURE__
+first;

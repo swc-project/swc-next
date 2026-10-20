@@ -16,21 +16,24 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-!(/* @__PURE__ */ first +
+!(
+  /* @__PURE__ */ first +
   second
 );
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
-!(/* @__PURE__ */ first +
+!(
+  /* @__PURE__ */ first +
   second
 );
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-!(/* @__PURE__ */ first +
+!(
+	/* @__PURE__ */ first +
 	second
 );
 

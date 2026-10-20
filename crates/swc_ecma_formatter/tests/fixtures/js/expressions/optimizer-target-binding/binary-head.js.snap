@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+fourth + (/* @__NO_SIDE_EFFECTS__ */ first + second);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+fourth +
+  /* @__NO_SIDE_EFFECTS__ */ (first +
+    second);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+fourth +
+  /* @__NO_SIDE_EFFECTS__ */ (first +
+    second)

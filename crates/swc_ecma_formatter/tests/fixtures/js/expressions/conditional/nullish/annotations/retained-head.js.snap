@@ -7,4 +7,3 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 (/*#__PURE__*/ removed() ?? 0 ? yes : no);
-
