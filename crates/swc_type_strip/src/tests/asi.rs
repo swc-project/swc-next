@@ -20,6 +20,11 @@ fn type_alias_as_if_statement_body() {
         "if (ok)\n    type T = string;\nrun();"
         "if (ok)\n    ;               \nrun();"
     );
+
+    assert_strip!(
+        "if (ok) type T = string;\nelse run();"
+        "if (ok) ;               \nelse run();"
+    );
 }
 
 #[test]
@@ -59,6 +64,73 @@ fn interface_as_do_while_statement_body() {
     assert_strip!(
         "do\n    interface I {}\nwhile (ok);"
         "do\n    ;             \nwhile (ok);"
+    );
+}
+
+#[test]
+fn nested_if_statement_bodies() {
+    assert_strip!(
+        "if (outer) if (inner) type T = string;\nelse run();\nafter();"
+        "if (outer) if (inner) ;               \nelse run();\nafter();"
+    );
+
+    assert_strip!(
+        "if (outer) if (inner) run(); else type T = string;\nelse other();\nafter();"
+        "if (outer) if (inner) run(); else ;               \nelse other();\nafter();"
+    );
+}
+
+#[test]
+fn for_in_and_of_statement_bodies() {
+    assert_strip!(
+        "for (const key in object) type T = string;\nafter();"
+        "for (const key in object) ;               \nafter();"
+    );
+
+    assert_strip!(
+        "for (const value of values) type T = string;\nafter();"
+        "for (const value of values) ;               \nafter();"
+    );
+
+    assert_strip!(
+        "async function f() { for await (const value of values) type T = string;\nafter(); }"
+        "async function f() { for await (const value of values) ;               \nafter(); }"
+    );
+}
+
+#[test]
+fn type_alias_as_with_statement_body() {
+    assert_strip!(
+        "with (object) type T = string;\nafter();"
+        "with (object) ;               \nafter();"
+    );
+}
+
+#[test]
+fn switch_statement_boundaries() {
+    assert_strip!(
+        "switch (value) { case 0: foo\ntype T = string;\n(next)(); }"
+        "switch (value) { case 0: foo\n;               \n(next)(); }"
+    );
+
+    assert_strip!(
+        "switch (value) { case 0: foo\ntype T = string;\n[next](); }"
+        "switch (value) { case 0: foo\n;               \n[next](); }"
+    );
+
+    assert_strip!(
+        "switch (value) { default: foo\ntype T = string;\n`text`; }"
+        "switch (value) { default: foo\n;               \n`text`; }"
+    );
+
+    assert_strip!(
+        "switch (value) { default: foo\ntype T = string;\n`text ${next}`; }"
+        "switch (value) { default: foo\n;               \n`text ${next}`; }"
+    );
+
+    assert_strip!(
+        "switch (value) { case 0: if (ok) run()\ntype T = string;\n(next)(); }"
+        "switch (value) { case 0: if (ok) run()\n;               \n(next)(); }"
     );
 }
 
