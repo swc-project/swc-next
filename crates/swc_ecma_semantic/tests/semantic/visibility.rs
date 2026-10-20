@@ -677,6 +677,7 @@ fn infer_declaration_merging() {
             preserve_parens,
             ..ts_module_options()
         };
+
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
             let options = AnalyzeOptions {
                 check_syntax,

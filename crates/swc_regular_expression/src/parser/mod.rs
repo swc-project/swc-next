@@ -59,123 +59,10 @@ mod test {
     }
 
     #[test]
-    fn should_pass() {
+    fn patterns() {
         let allocator = Allocator::default();
 
-        for (pattern_text, flags_text) in &[
-            ("", ""),
-            ("a", ""),
-            ("a+", ""),
-            ("a*", ""),
-            ("a?", ""),
-            ("^$^$^$", ""),
-            ("(?=a){1}", ""),
-            ("(?!a){1}", ""),
-            ("a{1}", ""),
-            ("a{1", ""),
-            ("a|{", ""),
-            ("a{", ""),
-            ("a{,", ""),
-            ("a{1,", ""),
-            ("a{1,}", ""),
-            ("a{1,2}", ""),
-            ("x{9007199254740991}", ""),
-            ("x{9007199254740991,9007199254740991}", ""),
-            ("a|b", ""),
-            ("a|b|c", ""),
-            ("a|b+?|c", ""),
-            ("a+b*?c{1}d{2,}e{3,4}?", ""),
-            (r"^(?=ab)\b(?!cd)(?<=ef)\B(?<!gh)$", ""),
-            ("a.b..", ""),
-            (r"\d\D\s\S\w\W", ""),
-            (r"\x", ""),
-            (
-                r"\p{Emoji_Presentation}\P{Script_Extensions=Latin}\p{Sc}|\p{Basic_Emoji}",
-                "",
-            ),
-            (
-                r"\p{Emoji_Presentation}\P{Script_Extensions=Latin}\p{Sc}|\p{P}",
-                "u",
-            ),
-            (r"^\p{General_Category=cntrl}+$", "u"),
-            (r"\p{Basic_Emoji}", "v"),
-            (r"\n\cM\0\x41\u1f60\.\/", ""),
-            (r"\c0", ""),
-            (r"\0", ""),
-            (r"\0", "u"),
-            (r"\u", ""),
-            (r"\u{", ""),
-            (r"\u{}", ""),
-            (r"\u{0}", ""),
-            (r"\u{1f600}", ""),
-            (r"\u{1f600}", "u"),
-            ("(?:abc)", ""),
-            (r"(?<\u{1d49c}>.)\x1f", ""),
-            ("a]", ""),
-            ("a}", ""),
-            ("]", ""),
-            ("[]", ""),
-            ("[a]", ""),
-            ("[ab]", ""),
-            ("[a-b]", ""),
-            ("[-]", ""),
-            ("[a-]", ""),
-            ("[-a]", ""),
-            ("[-a-]", ""),
-            (r"[a\-b]", ""),
-            (r"[-a-b]", ""),
-            (r"[a-b-]", ""),
-            (r"[a\-b-]", ""),
-            (r"[\[\]\-]", ""),
-            ("[a-z0-9]", ""),
-            ("[a-a]", ""),
-            (r"[\d-\D]", ""),
-            (r"^([\ud801[\udc28-\udc4f])$", ""),
-            (r"[a-c]]", ""),
-            (
-                r"[ϗϙϛϝϟϡϣϥϧϩϫϭϯ-ϳϵϸϻ-ϼа-џѡѣѥѧѩѫѭѯѱѳѵѷѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӂӄӆӈӊӌӎ-ӏӑӓӕӗәӛӝӟӡӣӥӧөӫӭӯӱӳӵӷӹӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣա-ևᴀ-ᴫᵢ-ᵷᵹ-ᶚḁḃḅḇḉḋḍḏḑḓḕḗḙḛḝḟḡḣḥḧḩḫḭḯḱḳḵḷḹḻḽḿṁṃṅṇṉṋṍṏṑṓṕṗṙṛṝṟṡṣṥṧṩṫṭṯṱṳṵṷṹṻṽṿẁẃẅẇẉẋẍẏẑẓẕ-ẝẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹỻỽỿ-ἇἐ-ἕἠ-ἧἰ-ἷὀ-ὅὐ-ὗὠ-ὧὰ]",
-                "",
-            ),
-            (r"[a-z0-9[.\\]]", "v"),
-            (r"[a&&b&&c]", "v"),
-            (r"[a--b--c]", "v"),
-            (r"[[a-z]--b--c]", "v"),
-            (r"[[[[[[[[[[[[[[[[[[[[[[[[a]]]]]]]]]]]]]]]]]]]]]]]]", "v"),
-            (r"[\q{}\q{a}\q{bc}\q{d|e|f}\q{|||}]", "v"),
-            (r"(?<foo>A)\k<foo>", ""),
-            (r"(?<!a>)\k<a>", ""),
-            (r"\k", ""),
-            (r"\k<4>", ""),
-            (r"\k<a>", ""),
-            (r"(?<a>)\k<a>", ""),
-            (r"(?<a>)\k<a>", "u"),
-            (r"\1", ""),
-            (r"\1()", ""),
-            (r"\1()", "u"),
-            (r"(?<n1>..)(?<n2>..)", ""),
-            // ES2025 ---
-            // Duplicate named capturing groups
-            (r"(?<n1>..)|(?<n1>..)", ""),
-            (r"(?<year>[0-9]{4})-[0-9]{2}|[0-9]{2}-(?<year>[0-9]{4})", ""),
-            (r"(?:(?<a>x)|(?<a>y))\k<a>", ""),
-            (r"(?<x>a)|(?<x>b)", ""),
-            (r"(?:(?<x>a)|(?<y>a)(?<x>b))(?:(?<z>c)|(?<z>d))", ""),
-            (r"(?:(?<x>a)|(?<x>b))\\k<x>", ""),
-            (r"(?:(?:(?<x>a)|(?<x>b)|c)\\k<x>){2}", ""),
-            (r"(?:(?:(?<x>a)|(?<x>b))\\k<x>){2}", ""),
-            (r"(?:(?:(?<x>a)\\k<x>|(?<x>b)\\k<x>)|(?:))\\k<x>", ""),
-            (r"(?:(?:(?<x>a\\k<x>)|(?<x>b\\k<x>))|(?:))\\k<x>", ""),
-            // Modifiers
-            (r"(?:.)", ""),
-            (r"(?s:.)", ""),
-            (r"(?ism:.)", ""),
-            (r"(?-s:.)", ""),
-            (r"(?-smi:.)", ""),
-            (r"(?s-im:.)", ""),
-            (r"(?si-m:.)", ""),
-            (r"(?im-s:.)", "v"),
-            (r"(?ims-:.)", ""),
-        ] {
+        let check_case = |pattern_text: &str, flags_text: &str| {
             let res = LiteralParser::new(
                 &allocator,
                 pattern_text,
@@ -183,99 +70,227 @@ mod test {
                 Options::default(),
             )
             .parse();
-            if let Err(err) = res {
-                panic!("Failed to parse /{pattern_text}/{flags_text}\n💥 {err}");
-            }
-        }
+            assert!(res.is_ok());
+        };
+
+        check_case("", "");
+
+        check_case("a", "");
+
+        check_case("a+", "");
+
+        check_case("a*", "");
+
+        check_case("a?", "");
+
+        check_case("^$^$^$", "");
+
+        check_case("(?=a){1}", "");
+
+        check_case("(?!a){1}", "");
+
+        check_case("a{1}", "");
+
+        check_case("a{1", "");
+
+        check_case("a|{", "");
+
+        check_case("a{", "");
+
+        check_case("a{,", "");
+
+        check_case("a{1,", "");
+
+        check_case("a{1,}", "");
+
+        check_case("a{1,2}", "");
+
+        check_case("x{9007199254740991}", "");
+
+        check_case("x{9007199254740991,9007199254740991}", "");
+
+        check_case("a|b", "");
+
+        check_case("a|b|c", "");
+
+        check_case("a|b+?|c", "");
+
+        check_case("a+b*?c{1}d{2,}e{3,4}?", "");
+
+        check_case(r"^(?=ab)\b(?!cd)(?<=ef)\B(?<!gh)$", "");
+
+        check_case("a.b..", "");
+
+        check_case(r"\d\D\s\S\w\W", "");
+
+        check_case(r"\x", "");
+
+        check_case(
+            r"\p{Emoji_Presentation}\P{Script_Extensions=Latin}\p{Sc}|\p{Basic_Emoji}",
+            "",
+        );
+
+        check_case(
+            r"\p{Emoji_Presentation}\P{Script_Extensions=Latin}\p{Sc}|\p{P}",
+            "u",
+        );
+
+        check_case(r"^\p{General_Category=cntrl}+$", "u");
+
+        check_case(r"\p{Basic_Emoji}", "v");
+
+        check_case(r"\n\cM\0\x41\u1f60\.\/", "");
+
+        check_case(r"\c0", "");
+
+        check_case(r"\0", "");
+
+        check_case(r"\0", "u");
+
+        check_case(r"\u", "");
+
+        check_case(r"\u{", "");
+
+        check_case(r"\u{}", "");
+
+        check_case(r"\u{0}", "");
+
+        check_case(r"\u{1f600}", "");
+
+        check_case(r"\u{1f600}", "u");
+
+        check_case("(?:abc)", "");
+
+        check_case(r"(?<\u{1d49c}>.)\x1f", "");
+
+        check_case("a]", "");
+
+        check_case("a}", "");
+
+        check_case("]", "");
+
+        check_case("[]", "");
+
+        check_case("[a]", "");
+
+        check_case("[ab]", "");
+
+        check_case("[a-b]", "");
+
+        check_case("[-]", "");
+
+        check_case("[a-]", "");
+
+        check_case("[-a]", "");
+
+        check_case("[-a-]", "");
+
+        check_case(r"[a\-b]", "");
+
+        check_case(r"[-a-b]", "");
+
+        check_case(r"[a-b-]", "");
+
+        check_case(r"[a\-b-]", "");
+
+        check_case(r"[\[\]\-]", "");
+
+        check_case("[a-z0-9]", "");
+
+        check_case("[a-a]", "");
+
+        check_case(r"[\d-\D]", "");
+
+        check_case(r"^([\ud801[\udc28-\udc4f])$", "");
+
+        check_case(r"[a-c]]", "");
+
+        check_case(
+            r"[ϗϙϛϝϟϡϣϥϧϩϫϭϯ-ϳϵϸϻ-ϼа-џѡѣѥѧѩѫѭѯѱѳѵѷѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӂӄӆӈӊӌӎ-ӏӑӓӕӗәӛӝӟӡӣӥӧөӫӭӯӱӳӵӷӹӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣա-ևᴀ-ᴫᵢ-ᵷᵹ-ᶚḁḃḅḇḉḋḍḏḑḓḕḗḙḛḝḟḡḣḥḧḩḫḭḯḱḳḵḷḹḻḽḿṁṃṅṇṉṋṍṏṑṓṕṗṙṛṝṟṡṣṥṧṩṫṭṯṱṳṵṷṹṻṽṿẁẃẅẇẉẋẍẏẑẓẕ-ẝẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹỻỽỿ-ἇἐ-ἕἠ-ἧἰ-ἷὀ-ὅὐ-ὗὠ-ὧὰ]",
+            "",
+        );
+
+        check_case(r"[a-z0-9[.\\]]", "v");
+
+        check_case(r"[a&&b&&c]", "v");
+
+        check_case(r"[a--b--c]", "v");
+
+        check_case(r"[[a-z]--b--c]", "v");
+
+        check_case(r"[[[[[[[[[[[[[[[[[[[[[[[[a]]]]]]]]]]]]]]]]]]]]]]]]", "v");
+
+        check_case(r"[\q{}\q{a}\q{bc}\q{d|e|f}\q{|||}]", "v");
+
+        check_case(r"(?<foo>A)\k<foo>", "");
+
+        check_case(r"(?<!a>)\k<a>", "");
+
+        check_case(r"\k", "");
+
+        check_case(r"\k<4>", "");
+
+        check_case(r"\k<a>", "");
+
+        check_case(r"(?<a>)\k<a>", "");
+
+        check_case(r"(?<a>)\k<a>", "u");
+
+        check_case(r"\1", "");
+
+        check_case(r"\1()", "");
+
+        check_case(r"\1()", "u");
+
+        check_case(r"(?<n1>..)(?<n2>..)", "");
+        // ES2025 ---
+        // Duplicate named capturing groups
+
+        check_case(r"(?<n1>..)|(?<n1>..)", "");
+
+        check_case(r"(?<year>[0-9]{4})-[0-9]{2}|[0-9]{2}-(?<year>[0-9]{4})", "");
+
+        check_case(r"(?:(?<a>x)|(?<a>y))\k<a>", "");
+
+        check_case(r"(?<x>a)|(?<x>b)", "");
+
+        check_case(r"(?:(?<x>a)|(?<y>a)(?<x>b))(?:(?<z>c)|(?<z>d))", "");
+
+        check_case(r"(?:(?<x>a)|(?<x>b))\\k<x>", "");
+
+        check_case(r"(?:(?:(?<x>a)|(?<x>b)|c)\\k<x>){2}", "");
+
+        check_case(r"(?:(?:(?<x>a)|(?<x>b))\\k<x>){2}", "");
+
+        check_case(r"(?:(?:(?<x>a)\\k<x>|(?<x>b)\\k<x>)|(?:))\\k<x>", "");
+
+        check_case(r"(?:(?:(?<x>a\\k<x>)|(?<x>b\\k<x>))|(?:))\\k<x>", "");
+        // Modifiers
+
+        check_case(r"(?:.)", "");
+
+        check_case(r"(?s:.)", "");
+
+        check_case(r"(?ism:.)", "");
+
+        check_case(r"(?-s:.)", "");
+
+        check_case(r"(?-smi:.)", "");
+
+        check_case(r"(?s-im:.)", "");
+
+        check_case(r"(?si-m:.)", "");
+
+        check_case(r"(?im-s:.)", "v");
+
+        check_case(r"(?ims-:.)", "");
     }
 
     #[test]
-    fn should_fail() {
+    fn invalid_patterns() {
         let allocator = Allocator::default();
 
-        for (pattern_text, flags_text) in &[
-            ("a)", ""),
-            (r"a\", ""),
-            ("a]", "u"),
-            ("a}", "u"),
-            ("a|+", ""),
-            ("a|{", "u"),
-            ("a{", "u"),
-            ("a{1", "u"),
-            ("a{1,", "u"),
-            ("a{,", "u"),
-            ("x{9007199254740992}", ""),
-            ("x{9007199254740991,9007199254740992}", ""),
-            ("x{99999999999999999999999999999999999999999999999999}", ""),
-            (r"\99999999999999999999999999999999999999999999999999", "u"),
-            (r"\u{FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}", "u"),
-            ("(?=a", ""),
-            ("(?<!a", ""),
-            (r"\c0", "u"),
-            (r"\xa", "u"),
-            (r"a\u", "u"),
-            (r"\p{Emoji_Presentation", "u"),
-            (r"\p{Script=", "u"),
-            (r"\ka", "u"),
-            (r"\k", "u"),
-            (r"\k<", "u"),
-            (r"\k<>", "u"),
-            (r"\k<4>", "u"),
-            (r"\k<a", "u"),
-            (r"\1", "u"),
-            (r"\k<a>", "u"),
-            ("a(?:", ""),
-            ("(", ""),
-            (")", "v"),
-            ("(a", ""),
-            ("(?<a>", ""),
-            ("(?<", ""),
-            (r"(?<a\>.)", ""),
-            (r"(?<a\>.)", "u"),
-            (r"(?<\>.)", ""),
-            (r"(?<\>.)", "u"),
-            ("(?)", ""),
-            ("(?=a){1}", "u"),
-            ("(?!a){1}", "u"),
-            (r"[\d-\D]", "u"),
-            ("[", ""),
-            ("[", "v"),
-            ("[[", "v"),
-            ("[[]", "v"),
-            ("[z-a]", ""),
-            (r"[a-c]]", "u"),
-            (
-                r"^([a-zªµºß-öø-ÿāăąćĉċčďđēĕėęěĝğġģĥħĩīĭįıĳĵķ-ĸĺļľŀłńņň-ŉŋōŏőœŕŗřśŝşšţťŧũūŭůűųŵŷźżž-ƀƃƅƈƌ-ƍƒƕƙ-ƛƞơƣƥƨƪ-ƫƭưƴƶƹ-ƺƽ-ƿǆǉǌǎǐǒǔǖǘǚǜ-ǝǟǡǣǥǧǩǫǭǯ-ǰǳǵǹǻǽǿȁȃȅȇȉȋȍȏȑȓȕȗșțȝȟȡȣȥȧȩȫȭȯȱȳ-ȹȼȿ-ɀɂɇɉɋɍɏ-ʓʕ-ʯͱͳͷͻ-ͽΐά-ώϐ-ϑϕ-ϗϙϛϝϟϡϣϥϧϩϫϭϯ-ϳϵϸϻ-ϼа-џѡѣѥѧѩѫѭѯѱѳѵѷѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӂӄӆӈӊӌӎ-ӏӑӓӕӗәӛӝӟӡӣӥӧөӫӭӯӱӳӵӷӹӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣա-ևᴀ-ᴫᵢ-ᵷᵹ-ᶚḁḃḅḇḉḋḍḏḑḓḕḗḙḛḝḟḡḣḥḧḩḫḭḯḱḳḵḷḹḻḽḿṁṃṅṇṉṋṍṏṑṓṕṗṙṛṝṟṡṣṥṧṩṫṭṯṱṳṵṷṹṻṽṿẁẃẅẇẉẋẍẏẑẓẕ-ẝẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹỻỽỿ-ἇἐ-ἕἠ-ἧἰ-ἷὀ-ὅὐ-ὗὠ-ὧὰ-ώᾀ-ᾇᾐ-ᾗᾠ-ᾧᾰ-ᾴᾶ-ᾷιῂ-ῄῆ-ῇῐ-ΐῖ-ῗῠ-ῧῲ-ῴῶ-ῷⁱⁿℊℎ-ℏℓℯℴℹℼ-ℽⅆ-ⅉⅎↄⰰ-ⱞⱡⱥ-ⱦⱨⱪⱬⱱⱳ-ⱴⱶ-ⱼⲁⲃⲅⲇⲉⲋⲍⲏⲑⲓⲕⲗⲙⲛⲝⲟⲡⲣⲥⲧⲩⲫⲭⲯⲱⲳⲵⲷⲹⲻⲽⲿⳁⳃⳅⳇⳉⳋⳍⳏⳑⳓⳕⳗⳙⳛⳝⳟⳡⳣ-ⳤⴀ-ⴥꙁꙃꙅꙇꙉꙋꙍꙏꙑꙓꙕꙗꙙꙛꙝꙟꙣꙥꙧꙩꙫꙭꚁꚃꚅꚇꚉꚋꚍꚏꚑꚓꚕꚗꜣꜥꜧꜩꜫꜭꜯ-ꜱꜳꜵꜷꜹꜻꜽꜿꝁꝃꝅꝇꝉꝋꝍꝏꝑꝓꝕꝗꝙꝛꝝꝟꝡꝣꝥꝧꝩꝫꝭꝯꝱ-ꝸꝺꝼꝿꞁꞃꞅꞇꞌﬀ-ﬆﬓ-ﬗａ-ｚ]|\ud801[\udc28-\udc4f]|\ud835[\udc1a-\udc33\udc4e-\udc54\udc56-\udc67\udc82-\udc9b\udcb6-\udcb9\udcbb\udcbd-\udcc3\udcc5-\udccf\udcea-\udd03\udd1e-\udd37\udd52-\udd6b\udd86-\udd9f\uddba-\uddd3\uddee-\ude07\ude22-\ude3b\ude56-\ude6f\ude8a-\udea5\udec2-\udeda\udedc-\udee1\udefc-\udf14\udf16-\udf1b\udf36-\udf4e\udf50-\udf55\udf70-\udf88\udf8a-\udf8f\udfaa-\udfc2\udfc4-\udfc9\udfcb])$",
-                "",
-            ),
-            (r"[[\d-\D]]", "v"),
-            (r"[a&&b--c]", "v"),
-            (r"[a--b&&c]", "v"),
-            (r"[\q{]", "v"),
-            (r"[\q{\a}]", "v"),
-            // ES2025 ---
-            // Duplicate named capturing groups
-            (r"(?<n>.)(?<n>.)", ""),
-            (r"(?<n>.(?<n>..))", "u"),
-            ("(?<n>)|(?<n>)(?<n>)", ""),
-            ("(((((((?<n>.)))))))(?<n>)", ""),
-            ("(?:(?<x>a)|(?<x>b))(?<x>c)", ""),
-            ("(?<x>a)(?:(?<x>b)|(?<x>c))", ""),
-            ("(?:(?:(?<x>a)|(?<x>b)))(?<x>c)", ""),
-            ("(?:(?:(?<x>a)|(?<x>b))|(?:))(?<x>c)", ""),
-            // Modifiers
-            (r"(?a:.)", ""),
-            (r"(?-S:.)", ""),
-            (r"(?-:.)", ""),
-            (r"(?iM:.)", ""),
-            (r"(?imms:.)", ""),
-            (r"(?-sI:.)", ""),
-            (r"(?ii-s:.)", ""),
-            (r"(?i-msm:.)", ""),
-            (r"(?i", ""),
-            (r"(?i-", ""),
-            (r"(?i-s", ""),
-        ] {
+        let check_case = |pattern_text: &str, flags_text: &str| {
             assert!(
                 LiteralParser::new(
                     &allocator,
@@ -284,62 +299,172 @@ mod test {
                     Options::default()
                 )
                 .parse()
-                .is_err(),
-                "/{pattern_text}/{flags_text} should fail to parse, but passed!"
+                .is_err()
             );
-        }
+        };
+
+        check_case("a)", "");
+
+        check_case(r"a\", "");
+
+        check_case("a]", "u");
+
+        check_case("a}", "u");
+
+        check_case("a|+", "");
+
+        check_case("a|{", "u");
+
+        check_case("a{", "u");
+
+        check_case("a{1", "u");
+
+        check_case("a{1,", "u");
+
+        check_case("a{,", "u");
+
+        check_case("x{9007199254740992}", "");
+
+        check_case("x{9007199254740991,9007199254740992}", "");
+
+        check_case("x{99999999999999999999999999999999999999999999999999}", "");
+
+        check_case(r"\99999999999999999999999999999999999999999999999999", "u");
+
+        check_case(r"\u{FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}", "u");
+
+        check_case("(?=a", "");
+
+        check_case("(?<!a", "");
+
+        check_case(r"\c0", "u");
+
+        check_case(r"\xa", "u");
+
+        check_case(r"a\u", "u");
+
+        check_case(r"\p{Emoji_Presentation", "u");
+
+        check_case(r"\p{Script=", "u");
+
+        check_case(r"\ka", "u");
+
+        check_case(r"\k", "u");
+
+        check_case(r"\k<", "u");
+
+        check_case(r"\k<>", "u");
+
+        check_case(r"\k<4>", "u");
+
+        check_case(r"\k<a", "u");
+
+        check_case(r"\1", "u");
+
+        check_case(r"\k<a>", "u");
+
+        check_case("a(?:", "");
+
+        check_case("(", "");
+
+        check_case(")", "v");
+
+        check_case("(a", "");
+
+        check_case("(?<a>", "");
+
+        check_case("(?<", "");
+
+        check_case(r"(?<a\>.)", "");
+
+        check_case(r"(?<a\>.)", "u");
+
+        check_case(r"(?<\>.)", "");
+
+        check_case(r"(?<\>.)", "u");
+
+        check_case("(?)", "");
+
+        check_case("(?=a){1}", "u");
+
+        check_case("(?!a){1}", "u");
+
+        check_case(r"[\d-\D]", "u");
+
+        check_case("[", "");
+
+        check_case("[", "v");
+
+        check_case("[[", "v");
+
+        check_case("[[]", "v");
+
+        check_case("[z-a]", "");
+
+        check_case(r"[a-c]]", "u");
+
+        check_case(
+            r"^([a-zªµºß-öø-ÿāăąćĉċčďđēĕėęěĝğġģĥħĩīĭįıĳĵķ-ĸĺļľŀłńņň-ŉŋōŏőœŕŗřśŝşšţťŧũūŭůűųŵŷźżž-ƀƃƅƈƌ-ƍƒƕƙ-ƛƞơƣƥƨƪ-ƫƭưƴƶƹ-ƺƽ-ƿǆǉǌǎǐǒǔǖǘǚǜ-ǝǟǡǣǥǧǩǫǭǯ-ǰǳǵǹǻǽǿȁȃȅȇȉȋȍȏȑȓȕȗșțȝȟȡȣȥȧȩȫȭȯȱȳ-ȹȼȿ-ɀɂɇɉɋɍɏ-ʓʕ-ʯͱͳͷͻ-ͽΐά-ώϐ-ϑϕ-ϗϙϛϝϟϡϣϥϧϩϫϭϯ-ϳϵϸϻ-ϼа-џѡѣѥѧѩѫѭѯѱѳѵѷѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӂӄӆӈӊӌӎ-ӏӑӓӕӗәӛӝӟӡӣӥӧөӫӭӯӱӳӵӷӹӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣա-ևᴀ-ᴫᵢ-ᵷᵹ-ᶚḁḃḅḇḉḋḍḏḑḓḕḗḙḛḝḟḡḣḥḧḩḫḭḯḱḳḵḷḹḻḽḿṁṃṅṇṉṋṍṏṑṓṕṗṙṛṝṟṡṣṥṧṩṫṭṯṱṳṵṷṹṻṽṿẁẃẅẇẉẋẍẏẑẓẕ-ẝẟạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹỻỽỿ-ἇἐ-ἕἠ-ἧἰ-ἷὀ-ὅὐ-ὗὠ-ὧὰ-ώᾀ-ᾇᾐ-ᾗᾠ-ᾧᾰ-ᾴᾶ-ᾷιῂ-ῄῆ-ῇῐ-ΐῖ-ῗῠ-ῧῲ-ῴῶ-ῷⁱⁿℊℎ-ℏℓℯℴℹℼ-ℽⅆ-ⅉⅎↄⰰ-ⱞⱡⱥ-ⱦⱨⱪⱬⱱⱳ-ⱴⱶ-ⱼⲁⲃⲅⲇⲉⲋⲍⲏⲑⲓⲕⲗⲙⲛⲝⲟⲡⲣⲥⲧⲩⲫⲭⲯⲱⲳⲵⲷⲹⲻⲽⲿⳁⳃⳅⳇⳉⳋⳍⳏⳑⳓⳕⳗⳙⳛⳝⳟⳡⳣ-ⳤⴀ-ⴥꙁꙃꙅꙇꙉꙋꙍꙏꙑꙓꙕꙗꙙꙛꙝꙟꙣꙥꙧꙩꙫꙭꚁꚃꚅꚇꚉꚋꚍꚏꚑꚓꚕꚗꜣꜥꜧꜩꜫꜭꜯ-ꜱꜳꜵꜷꜹꜻꜽꜿꝁꝃꝅꝇꝉꝋꝍꝏꝑꝓꝕꝗꝙꝛꝝꝟꝡꝣꝥꝧꝩꝫꝭꝯꝱ-ꝸꝺꝼꝿꞁꞃꞅꞇꞌﬀ-ﬆﬓ-ﬗａ-ｚ]|\ud801[\udc28-\udc4f]|\ud835[\udc1a-\udc33\udc4e-\udc54\udc56-\udc67\udc82-\udc9b\udcb6-\udcb9\udcbb\udcbd-\udcc3\udcc5-\udccf\udcea-\udd03\udd1e-\udd37\udd52-\udd6b\udd86-\udd9f\uddba-\uddd3\uddee-\ude07\ude22-\ude3b\ude56-\ude6f\ude8a-\udea5\udec2-\udeda\udedc-\udee1\udefc-\udf14\udf16-\udf1b\udf36-\udf4e\udf50-\udf55\udf70-\udf88\udf8a-\udf8f\udfaa-\udfc2\udfc4-\udfc9\udfcb])$",
+            "",
+        );
+
+        check_case(r"[[\d-\D]]", "v");
+
+        check_case(r"[a&&b--c]", "v");
+
+        check_case(r"[a--b&&c]", "v");
+
+        check_case(r"[\q{]", "v");
+
+        check_case(r"[\q{\a}]", "v");
+        // ES2025 ---
+        // Duplicate named capturing groups
+
+        check_case(r"(?<n>.)(?<n>.)", "");
+
+        check_case(r"(?<n>.(?<n>..))", "u");
+
+        check_case("(?<n>)|(?<n>)(?<n>)", "");
+
+        check_case("(((((((?<n>.)))))))(?<n>)", "");
+
+        check_case("(?:(?<x>a)|(?<x>b))(?<x>c)", "");
+
+        check_case("(?<x>a)(?:(?<x>b)|(?<x>c))", "");
+
+        check_case("(?:(?:(?<x>a)|(?<x>b)))(?<x>c)", "");
+
+        check_case("(?:(?:(?<x>a)|(?<x>b))|(?:))(?<x>c)", "");
+        // Modifiers
+
+        check_case(r"(?a:.)", "");
+
+        check_case(r"(?-S:.)", "");
+
+        check_case(r"(?-:.)", "");
+
+        check_case(r"(?iM:.)", "");
+
+        check_case(r"(?imms:.)", "");
+
+        check_case(r"(?-sI:.)", "");
+
+        check_case(r"(?ii-s:.)", "");
+
+        check_case(r"(?i-msm:.)", "");
+
+        check_case(r"(?i", "");
+
+        check_case(r"(?i-", "");
+
+        check_case(r"(?i-s", "");
     }
 
     #[test]
-    fn should_fail_early_errors() {
+    fn early_errors() {
         let allocator = Allocator::default();
 
-        for (pattern_text, flags_text, is_err) in &[
-            // No tests for 4,294,967,295 left parens
-            (r"(?<n>..)(?<n>..)", "", true),
-            (r"a{2,1}", "", true),
-            (r"(?<a>)\k<n>", "", true),
-            (r"()\2", "u", true),
-            (r"[a-\d]", "u", true),
-            (r"[\d-z]", "u", true),
-            (r"[\d-\d]", "u", true),
-            (r"[z-a]", "", true),
-            (r"\u{110000}", "u", true),
-            (r"(?<\uD800\uDBFF>)", "", true),
-            (r"\u{0}\u{110000}", "u", true),
-            (r"(?<a\uD800\uDBFF>)", "", true),
-            (r"\p{Foo=Bar}", "u", true),
-            (r"\p{Foo}", "u", true),
-            (r"\p{Basic_Emoji}", "u", true),
-            (r"\P{Basic_Emoji}", "v", true),
-            (r"[^\p{Basic_Emoji}]", "v", true),
-            (r"[[^\p{Basic_Emoji}]]", "v", true),
-            (r"[^\q{}]", "v", true),
-            (r"[[^\q{}]]", "v", true),
-            (r"[[^\q{ng}]]", "v", true),
-            (r"[[^\q{a|}]]", "v", true),
-            (r"[[^\q{ng}\q{o|k}]]", "v", true),
-            (r"[[^\q{o|k}\q{ng}\q{o|k}]]", "v", true),
-            (r"[[^\q{o|k}\q{o|k}\q{ng}]]", "v", true),
-            (r"[[^\q{}&&\q{ng}]]", "v", true),
-            (r"[[^\q{ng}&&\q{o|k}]]", "v", false),
-            (r"[[^\q{ng}&&\q{o|k}&&\q{ng}]]", "v", false),
-            (r"[[^\q{ng}--\q{o|k}]]", "v", true),
-            (r"[[^\q{o|k}--\q{ng}]]", "v", false),
-            (r"[[z-a]]", "v", true),
-            (r"[[[[[^[[[[\q{ng}]]]]]]]]]", "v", true),
-            (r"[^[[[[[[[[[[[[[[[[\q{ng}]]]]]]]]]]]]]]]]]", "v", true),
-            // ES2025 ---
-            // Duplicated named capture groups
-            ("(?:(?<x>a)|(?<x>b))(?<x>c)", "", true),
-            ("(?:(?<x>a)|(?<x>b))(?<X>c)", "", false),
-            ("(?<x>a)(?:(?<x>b)|(?<x>c))", "", true),
-            ("(?<x>a)|(?:(?<x>b)|(?<x>c))", "", false),
-            // Modifiers
-            (r"(?ii:.)", "", true),
-            (r"(?-ss:.)", "", true),
-            (r"(?im-im:.)", "", true),
-        ] {
+        let check_case = |pattern_text: &str, flags_text: &str, is_err: bool| {
             assert_eq!(
                 LiteralParser::new(
                     &allocator,
@@ -349,14 +474,97 @@ mod test {
                 )
                 .parse()
                 .is_err(),
-                *is_err,
-                "/{pattern_text}/{flags_text} should fail with early error, but passed!"
+                is_err
             );
-        }
+        };
+        // No tests for 4,294,967,295 left parens
+
+        check_case(r"(?<n>..)(?<n>..)", "", true);
+
+        check_case(r"a{2,1}", "", true);
+
+        check_case(r"(?<a>)\k<n>", "", true);
+
+        check_case(r"()\2", "u", true);
+
+        check_case(r"[a-\d]", "u", true);
+
+        check_case(r"[\d-z]", "u", true);
+
+        check_case(r"[\d-\d]", "u", true);
+
+        check_case(r"[z-a]", "", true);
+
+        check_case(r"\u{110000}", "u", true);
+
+        check_case(r"(?<\uD800\uDBFF>)", "", true);
+
+        check_case(r"\u{0}\u{110000}", "u", true);
+
+        check_case(r"(?<a\uD800\uDBFF>)", "", true);
+
+        check_case(r"\p{Foo=Bar}", "u", true);
+
+        check_case(r"\p{Foo}", "u", true);
+
+        check_case(r"\p{Basic_Emoji}", "u", true);
+
+        check_case(r"\P{Basic_Emoji}", "v", true);
+
+        check_case(r"[^\p{Basic_Emoji}]", "v", true);
+
+        check_case(r"[[^\p{Basic_Emoji}]]", "v", true);
+
+        check_case(r"[^\q{}]", "v", true);
+
+        check_case(r"[[^\q{}]]", "v", true);
+
+        check_case(r"[[^\q{ng}]]", "v", true);
+
+        check_case(r"[[^\q{a|}]]", "v", true);
+
+        check_case(r"[[^\q{ng}\q{o|k}]]", "v", true);
+
+        check_case(r"[[^\q{o|k}\q{ng}\q{o|k}]]", "v", true);
+
+        check_case(r"[[^\q{o|k}\q{o|k}\q{ng}]]", "v", true);
+
+        check_case(r"[[^\q{}&&\q{ng}]]", "v", true);
+
+        check_case(r"[[^\q{ng}&&\q{o|k}]]", "v", false);
+
+        check_case(r"[[^\q{ng}&&\q{o|k}&&\q{ng}]]", "v", false);
+
+        check_case(r"[[^\q{ng}--\q{o|k}]]", "v", true);
+
+        check_case(r"[[^\q{o|k}--\q{ng}]]", "v", false);
+
+        check_case(r"[[z-a]]", "v", true);
+
+        check_case(r"[[[[[^[[[[\q{ng}]]]]]]]]]", "v", true);
+
+        check_case(r"[^[[[[[[[[[[[[[[[[\q{ng}]]]]]]]]]]]]]]]]]", "v", true);
+        // ES2025 ---
+        // Duplicated named capture groups
+
+        check_case("(?:(?<x>a)|(?<x>b))(?<x>c)", "", true);
+
+        check_case("(?:(?<x>a)|(?<x>b))(?<X>c)", "", false);
+
+        check_case("(?<x>a)(?:(?<x>b)|(?<x>c))", "", true);
+
+        check_case("(?<x>a)|(?:(?<x>b)|(?<x>c))", "", false);
+        // Modifiers
+
+        check_case(r"(?ii:.)", "", true);
+
+        check_case(r"(?-ss:.)", "", true);
+
+        check_case(r"(?im-im:.)", "", true);
     }
 
     #[test]
-    fn should_handle_empty() {
+    fn empty_patterns() {
         let allocator = Allocator::default();
         let pattern1 = LiteralParser::new(&allocator, "", None, Options::default())
             .parse()
@@ -370,7 +578,7 @@ mod test {
     }
 
     #[test]
-    fn should_handle_unicode() {
+    fn unicode() {
         let allocator = Allocator::default();
         let source_text = "このEmoji🥹の数が変わる";
 
@@ -431,7 +639,6 @@ mod test {
         )
         .parse();
         assert!(err.is_err());
-        // println!("{:?}", err.unwrap_err().with_source_code(source_text));
 
         let ret1 = LiteralParser::new(
             &allocator,

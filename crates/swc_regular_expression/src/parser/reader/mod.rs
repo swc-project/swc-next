@@ -14,27 +14,16 @@ mod test {
     use crate::parser::reader::Reader;
 
     #[test]
-    fn should_fail() {
-        for reader in [
-            Reader::initialize(r#""Unterminated"#, true, true),
-            Reader::initialize(r#""Unterminated"#, false, true),
-            Reader::initialize("'Unterminated!", true, true),
-            Reader::initialize("'Unterminated!", false, true),
-        ] {
-            assert!(reader.is_err());
-        }
+    fn initialization_errors() {
+        assert!(Reader::initialize(r#""Unterminated"#, true, true).is_err());
+        assert!(Reader::initialize(r#""Unterminated"#, false, true).is_err());
+        assert!(Reader::initialize("'Unterminated!", true, true).is_err());
+        assert!(Reader::initialize("'Unterminated!", false, true).is_err());
     }
 
     #[test]
-    fn should_pass_basic() {
-        for mut reader in [
-            Reader::initialize("RegExp!", true, false).unwrap(),
-            Reader::initialize("RegExp!", false, false).unwrap(),
-            Reader::initialize(r#""RegExp!""#, true, true).unwrap(),
-            Reader::initialize(r#""RegExp!""#, false, true).unwrap(),
-            Reader::initialize("'RegExp!'", true, true).unwrap(),
-            Reader::initialize("'RegExp!'", false, true).unwrap(),
-        ] {
+    fn operations() {
+        let check_reader = |mut reader: Reader<'_>| {
             assert_eq!(reader.peek(), Some('R' as u32));
             assert_eq!(reader.peek2(), Some('e' as u32));
             assert!(reader.eat('R'));
@@ -55,11 +44,23 @@ mod test {
 
             assert!(reader.eat('!'));
             assert_eq!(reader.peek(), None);
-        }
+        };
+
+        check_reader(Reader::initialize("RegExp!", true, false).unwrap());
+
+        check_reader(Reader::initialize("RegExp!", false, false).unwrap());
+
+        check_reader(Reader::initialize(r#""RegExp!""#, true, true).unwrap());
+
+        check_reader(Reader::initialize(r#""RegExp!""#, false, true).unwrap());
+
+        check_reader(Reader::initialize("'RegExp!'", true, true).unwrap());
+
+        check_reader(Reader::initialize("'RegExp!'", false, true).unwrap());
     }
 
     #[test]
-    fn should_pass_unicode() {
+    fn unicode() {
         let source_text = "𠮷野家は👈🏻あっち";
 
         let mut unicode_reader = Reader::initialize(source_text, true, false).unwrap();
@@ -103,7 +104,7 @@ mod test {
         let source_text2 = format!("\"{source_text1}\"");
         let reader2 = Reader::initialize(&source_text2, true, true).unwrap();
 
-        for mut reader in [reader1, reader2] {
+        let check_reader = |mut reader: Reader<'_>| {
             while reader.peek() != Some('^' as u32) {
                 reader.advance();
             }
@@ -129,7 +130,11 @@ mod test {
             let e3 = reader.offset();
 
             assert_eq!(reader.str(s3, e3), "$");
-        }
+        };
+
+        check_reader(reader1);
+
+        check_reader(reader2);
     }
 
     #[test]
@@ -153,7 +158,6 @@ mod test {
                 (Some(cp1), Some(cp2)) if cp1 == cp2 => {
                     reader1.advance();
                     reader2.advance();
-                    // println!("{} == {}: {:?}", cp1, cp2, char::try_from(cp1));
                 }
                 _ => {
                     panic!("Mismatched characters");

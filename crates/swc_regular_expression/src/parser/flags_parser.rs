@@ -118,48 +118,75 @@ mod test {
     use super::*;
 
     #[test]
-    fn should_pass() {
-        for (flags_text, expected) in &[
-            ("", (false, false)),
-            ("i", (false, false)),
-            ("u", (true, false)),
-            ("v", (true, true)),
-            ("vg", (true, true)),
-        ] {
+    fn flags() {
+        let check_case = |flags_text: &str, expected: (bool, bool)| {
             let reader = Reader::initialize(flags_text, true, false).unwrap();
             let result = FlagsParser::new(reader, 0).parse().unwrap();
-            assert_eq!(result, *expected);
-        }
+            assert_eq!(result, expected);
+        };
+
+        check_case("", (false, false));
+
+        check_case("i", (false, false));
+
+        check_case("u", (true, false));
+
+        check_case("v", (true, true));
+
+        check_case("vg", (true, true));
     }
 
     #[test]
-    fn should_fail() {
-        for flags_text in &["uv", "vu", "uu", "vv", "gg", "$"] {
+    fn invalid_flags() {
+        let check_case = |flags_text| {
             let reader = Reader::initialize(flags_text, true, false).unwrap();
             let err = FlagsParser::new(reader, 0).parse();
             assert!(err.is_err());
-            // println!("{:?}", err.unwrap_err().with_source_code(*flags_text));
-        }
-        for flags_text in &[r#""uv""#, "'V'", "\"-\"", r#""\162""#] {
+        };
+
+        check_case("uv");
+
+        check_case("vu");
+
+        check_case("uu");
+
+        check_case("vv");
+
+        check_case("gg");
+
+        check_case("$");
+        let check_case = |flags_text| {
             let reader = Reader::initialize(flags_text, true, true).unwrap();
             let err = FlagsParser::new(reader, 0).parse();
             assert!(err.is_err());
-            // println!("{:?}", err.unwrap_err().with_source_code(*flags_text));
-        }
+        };
+
+        check_case(r#""uv""#);
+
+        check_case("'V'");
+
+        check_case("\"-\"");
+
+        check_case(r#""\162""#);
     }
 
     #[test]
-    fn string_literal() {
-        for reader in [
-            Reader::initialize("u", true, false).unwrap(),
-            Reader::initialize("'u'", true, true).unwrap(),
-            Reader::initialize(r#""\165""#, true, true).unwrap(),
-            Reader::initialize(r#""\x75""#, true, true).unwrap(),
-            Reader::initialize(r#""\u0075""#, true, true).unwrap(),
-            Reader::initialize(r#""\u{0075}""#, true, true).unwrap(),
-        ] {
+    fn string_flags() {
+        let check_reader = |reader: Reader<'_>| {
             let result = FlagsParser::new(reader, 0).parse().unwrap();
             assert_eq!(result, (true, false));
-        }
+        };
+
+        check_reader(Reader::initialize("u", true, false).unwrap());
+
+        check_reader(Reader::initialize("'u'", true, true).unwrap());
+
+        check_reader(Reader::initialize(r#""\165""#, true, true).unwrap());
+
+        check_reader(Reader::initialize(r#""\x75""#, true, true).unwrap());
+
+        check_reader(Reader::initialize(r#""\u0075""#, true, true).unwrap());
+
+        check_reader(Reader::initialize(r#""\u{0075}""#, true, true).unwrap());
     }
 }

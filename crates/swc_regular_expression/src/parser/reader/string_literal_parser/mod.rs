@@ -11,96 +11,137 @@ mod test {
     use super::{Parser, ast, parse_regexp_literal};
 
     #[test]
-    fn should_pass() {
-        for source_text in [
-            r#""""#,
-            r"''",
-            r#""Hello, world!""#,
-            r"'Hello, world!'",
-            r#""He said, \"Hello!\"""#,
-            r#"'She said, "Hello!"'"#,
-            r"'It\'s a sunny day'",
-            "'Line1\\nLine2'",
-            "'Column1\tColumn2'",
-            r#""Path to file: C:\\Program Files\\MyApp""#,
-            r"'Backspace\bTest'",
-            r"'FormFeed\fTest'",
-            "'CarriageReturn\\rTest'",
-            r"'VerticalTab\vTest'",
-            r#""NullChar\0Test""#,
-            r#""Hex A: \x41""#,
-            r#""Unicode A: \u0041""#,
-            r#""Smiley: 😀""#,
-            r#""Smiley: \u{1F600}""#,
-            r#""Octal 7: \7""#,
-            r#""Octal 77: \77""#,
-            r#""Octal 123: \123""#,
-            r#""Non-octal digits: \8\9""#,
-            r#""This is a long string\
-    that spans\
- multiple lines""#,
-            r"'Line separator:\u2028Test'",
-            r"'Paragraph separator:\u2029Test'",
-            r#""NonEscapeCharacter: \c""#,
-            r#""Zero followed by 8 and 9: \08\09""#,
-            r#""NonZeroOctalDigit not followed by OctalDigit: \1x""#,
-            r#""ZeroToThree OctalDigit not followed by OctalDigit: \33x""#,
-            r#""FourToSeven OctalDigit: \47""#,
-            r#""Unicode brace escape: \u{0041}""#,
-            r#""Escaped backslash and quote: \\\"""#,
-            r#""Invalid escape: \@""#,
-            r#""He said, 'Hello!'""#,
-            r#"'She replied, "Hi!"'"#,
-            r#""Multiple escapes: \n\t\r""#,
-            r#""Longest octal escape: \377""#,
-            r#""Number at end: \1234""#,
-            r#""Escape followed by letter: \1a""#,
-            r#""This is a long string that spans\
- multiple lines using\
- multiple continuations""#,
-            r#""Not an escape: \\g""#,
-            r#""Surrogate pair: \uD83D\uDE00""#,
-            r#""Line continuation with terminator: \
-\r\n""#,
-            r#""Special chars: !@#$%^&*()_+-=[]{}|;':,.<>/?\"''""#,
-            r#""Combined escapes: \n\\\"\t\u0041\x42""#,
-        ] {
-            if let Err(err) = Parser::new(source_text, Options::default()).parse() {
-                panic!("Expect to parse: {source_text} but failed: {err}");
-            }
-        }
+    fn strings() {
+        let check_source = |source_text: &str| {
+            assert!(Parser::new(source_text, Options::default()).parse().is_ok());
+        };
+
+        check_source(r#""""#);
+
+        check_source(r"''");
+
+        check_source(r#""Hello, world!""#);
+
+        check_source(r"'Hello, world!'");
+
+        check_source(r#""He said, \"Hello!\"""#);
+
+        check_source(r#"'She said, "Hello!"'"#);
+
+        check_source(r"'It\'s a sunny day'");
+
+        check_source("'Line1\\nLine2'");
+
+        check_source("'Column1\tColumn2'");
+
+        check_source(r#""Path to file: C:\\Program Files\\MyApp""#);
+
+        check_source(r"'Backspace\bTest'");
+
+        check_source(r"'FormFeed\fTest'");
+
+        check_source("'CarriageReturn\\rTest'");
+
+        check_source(r"'VerticalTab\vTest'");
+
+        check_source(r#""NullChar\0Test""#);
+
+        check_source(r#""Hex A: \x41""#);
+
+        check_source(r#""Unicode A: \u0041""#);
+
+        check_source(r#""Smiley: 😀""#);
+
+        check_source(r#""Smiley: \u{1F600}""#);
+
+        check_source(r#""Octal 7: \7""#);
+
+        check_source(r#""Octal 77: \77""#);
+
+        check_source(r#""Octal 123: \123""#);
+
+        check_source(r#""Non-octal digits: \8\9""#);
+
+        check_source("\"This is a long string\\\n    that spans\\\n multiple lines\"");
+
+        check_source(r"'Line separator:\u2028Test'");
+
+        check_source(r"'Paragraph separator:\u2029Test'");
+
+        check_source(r#""NonEscapeCharacter: \c""#);
+
+        check_source(r#""Zero followed by 8 and 9: \08\09""#);
+
+        check_source(r#""NonZeroOctalDigit not followed by OctalDigit: \1x""#);
+
+        check_source(r#""ZeroToThree OctalDigit not followed by OctalDigit: \33x""#);
+
+        check_source(r#""FourToSeven OctalDigit: \47""#);
+
+        check_source(r#""Unicode brace escape: \u{0041}""#);
+
+        check_source(r#""Escaped backslash and quote: \\\"""#);
+
+        check_source(r#""Invalid escape: \@""#);
+
+        check_source(r#""He said, 'Hello!'""#);
+
+        check_source(r#"'She replied, "Hi!"'"#);
+
+        check_source(r#""Multiple escapes: \n\t\r""#);
+
+        check_source(r#""Longest octal escape: \377""#);
+
+        check_source(r#""Number at end: \1234""#);
+
+        check_source(r#""Escape followed by letter: \1a""#);
+
+        check_source(
+            "\"This is a long string that spans\\\n multiple lines using\\\n multiple continuations\"",
+        );
+
+        check_source(r#""Not an escape: \\g""#);
+
+        check_source(r#""Surrogate pair: \uD83D\uDE00""#);
+
+        check_source("\"Line continuation with terminator: \\\n\\r\\n\"");
+
+        check_source(r#""Special chars: !@#$%^&*()_+-=[]{}|;':,.<>/?\"''""#);
+
+        check_source(r#""Combined escapes: \n\\\"\t\u0041\x42""#);
     }
 
     #[test]
-    fn should_fail() {
-        for source_text in [
-            r"Not quoted",
-            r"'Unterminated",
-            r#""Line terminator
-without continuation""#,
-            r#""Invalid hex escape: \xG1""#,
-            r#""Invalid escapes: \x\y\z""#,
-            r#""Invalid unicode escape: \u00G1""#,
-            r#""Invalid unicode brace escape: \u{G1}""#,
-            r#""Too many digits: \u{1234567}""#,
-            r#""str"+'str'"#,
-            r#"'str'+"str""#,
-        ] {
+    fn invalid_strings() {
+        let check_source = |source_text: &str| {
             let result = Parser::new(source_text, Options::default()).parse();
-            assert!(
-                result.is_err(),
-                "Expect to fail: {source_text} but passed..."
-            );
-            // println!("{:?}", result.unwrap_err().with_source_code(source_text));
-        }
+            assert!(result.is_err());
+        };
+
+        check_source(r"Not quoted");
+
+        check_source(r"'Unterminated");
+
+        check_source("\"Line terminator\nwithout continuation\"");
+
+        check_source(r#""Invalid hex escape: \xG1""#);
+
+        check_source(r#""Invalid escapes: \x\y\z""#);
+
+        check_source(r#""Invalid unicode escape: \u00G1""#);
+
+        check_source(r#""Invalid unicode brace escape: \u{G1}""#);
+
+        check_source(r#""Too many digits: \u{1234567}""#);
+
+        check_source(r#""str"+'str'"#);
+
+        check_source(r#"'str'+"str""#);
     }
 
     #[test]
-    fn should_fail_early_errors() {
-        for source_text in [
-            r#""invalid octal \777""#,
-            r#""invalid non-octal decimal \9""#,
-        ] {
+    fn strict_escapes() {
+        let check_source = |source_text: &str| {
             // These are allowed in non-strict mode.
             let result = Parser::new(
                 source_text,
@@ -110,10 +151,7 @@ without continuation""#,
                 },
             )
             .parse();
-            assert!(
-                result.is_ok(),
-                "Expect to parse: {source_text} but failed..."
-            );
+            assert!(result.is_ok());
 
             // But not in strict mode.
             let result = Parser::new(
@@ -124,12 +162,12 @@ without continuation""#,
                 },
             )
             .parse();
-            assert!(
-                result.is_err(),
-                "Expect to fail w/ early error: {source_text} but passed..."
-            );
-            // println!("{:?}", result.unwrap_err().with_source_code(source_text));
-        }
+            assert!(result.is_err());
+        };
+
+        check_source(r#""invalid octal \777""#);
+
+        check_source(r#""invalid non-octal decimal \9""#);
     }
 
     #[test]
@@ -144,7 +182,7 @@ without continuation""#,
     }
 
     #[test]
-    fn should_combine_surrogate_pair() {
+    fn surrogate_pairs() {
         let source_text = "'👈🏻(=2+2)'";
 
         let ast = Parser::new(

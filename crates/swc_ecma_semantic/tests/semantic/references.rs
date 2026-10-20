@@ -45,25 +45,16 @@ fn contextual_expression_recovery() {
     let (_, semantic) = analyze_recovered_source(&allocator, source, js_script);
     assert_eq!(semantic.iter_references().count(), 1);
 
-    let valid = has_syntax_diagnostics(
-        &allocator,
-        "function read(await, yield) { await + yield; await(value); yield[value]; }",
-        js_script,
-    );
+    let source = "function read(await, yield) { await + yield; await(value); yield[value]; }";
+    let valid = has_syntax_diagnostics(&allocator, source, js_script);
     assert!(!valid);
 
-    let valid = has_syntax_diagnostics(
-        &allocator,
-        "function read(await, yield) { await\nvalue; yield\nvalue; }",
-        js_script,
-    );
+    let source = "function read(await, yield) { await\nvalue; yield\nvalue; }";
+    let valid = has_syntax_diagnostics(&allocator, source, js_script);
     assert!(!valid);
 
-    let valid = has_syntax_diagnostics(
-        &allocator,
-        "async function read() { await value; }",
-        ts_module,
-    );
+    let source = "async function read() { await value; }";
+    let valid = has_syntax_diagnostics(&allocator, source, ts_module);
     assert!(!valid);
 
     let valid = has_syntax_diagnostics(&allocator, "function* read() { yield value; }", ts_module);
@@ -456,6 +447,7 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
             preserve_parens,
             ..ts_module_options()
         };
+
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
             for build_module_record in [false, true] {
                 let options = AnalyzeOptions {

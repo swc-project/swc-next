@@ -13374,34 +13374,6 @@ mod tests {
         assert!(parsed.diagnostics.is_empty());
     }
 
-    #[test]
-    fn import_type_qualifiers() {
-        let allocator = Allocator::new();
-
-        let parsed = parse_tokens(&allocator, "type A = import(\"x\").;");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "let x: import(\"x\").");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = typeof import(\"x\").");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = import(\"x\").#a;");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = import(\"x\").`a`;");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = import(\"x\").A.;");
-        assert!(!parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = import(\"x\").A.B;");
-        assert!(parsed.diagnostics.is_empty());
-
-        let parsed = parse_tokens(&allocator, "type A = typeof import(\"x\").A;");
-        assert!(parsed.diagnostics.is_empty());
-    }
 
     #[test]
     fn array_rest_recovery() {

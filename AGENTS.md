@@ -16,7 +16,9 @@
 - Move repeated setup and parsing boilerplate into local helper functions so the test body only
   shows the input, result, and assertions.
 - Reuse named options, contexts, and language configurations across related cases.
-- Write assertions flat; do not define a cases table and iterate over it.
+- Keep independent input cases and their assertions explicit rather than in a cases
+  table. Loops are appropriate for running the same cases across configurations;
+  reuse named options to keep the matrix clear.
 - Keep each input and result acquisition on one source line, separate cases with a blank line,
   and encode input line breaks as `\n`.
 - Assert observable behavior and structure; avoid exact diagnostic messages and verbose custom
@@ -37,3 +39,13 @@
 - Document commands in the relevant component README
 - Omit development history, step-by-step contributor workflows, implementation
   walkthroughs, and exhaustive command lists.
+
+## Code Review
+
+- Before completing implementation or review, check changed tests and docs against
+  the conventions above. Report violations with the relevant rule and location.
+- For test refactors, compare inputs, expected results, configuration combinations,
+  and assertions with the original. Passing tests or unchanged test counts alone
+  do not establish equivalent coverage; preserve checks when reorganizing tests.
+- Allow configuration matrices and traversal of actual results. Do not weaken
+  assertions or expose private APIs merely to change test layout.
