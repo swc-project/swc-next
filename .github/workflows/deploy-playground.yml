@@ -42,9 +42,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website/playground
+          packageManager: pnpm
           wranglerVersion: 4.151.0
           command: >-
-            pages deploy website/playground/dist
+            pages deploy dist
             --project-name=swc-next-playground
             --branch=main
             --commit-hash=${{ github.sha }}

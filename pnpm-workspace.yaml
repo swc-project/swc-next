@@ -6,6 +6,8 @@ packages:
 
 allowBuilds:
   '@swc/core': true
+  esbuild: true
+  workerd: true
 
 catalog:
   '@babel/parser': ^8.0.4
