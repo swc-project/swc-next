@@ -6426,6 +6426,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_import_type_qualifier(&mut self) -> Option<TsImportTypeQualifier> {
+        if !self.current_token.tag().is_identifier_like() {
+            self.report_expected(
+                self.current_token.span(),
+                "Expected an identifier after '.'",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "A qualified name must end with an identifier",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+            return None;
+        }
         let identifier = self.parse_identifier_name()?;
         if self.current_token.tag() != TokenTag::Dot {
             return Some(TsImportTypeQualifier::IdentifierName(identifier));
@@ -13250,6 +13263,35 @@ mod tests {
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
             .collect()
+    }
+
+    #[test]
+    fn import_type_qualifiers() {
+        let allocator = Allocator::new();
+
+        let parsed = parse_tokens(&allocator, "type A = import(\"x\").;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "let x: import(\"x\").");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = typeof import(\"x\").");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = import(\"x\").#a;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = import(\"x\").`a`;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = import(\"x\").A.;");
+        assert!(!parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = import(\"x\").A.B;");
+        assert!(parsed.diagnostics.is_empty());
+
+        let parsed = parse_tokens(&allocator, "type A = typeof import(\"x\").A;");
+        assert!(parsed.diagnostics.is_empty());
     }
 
     #[test]
