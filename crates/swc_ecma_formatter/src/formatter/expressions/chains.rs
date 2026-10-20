@@ -75,17 +75,32 @@ impl ChainHeadPrefix {
 struct RhsChainHead {
     leading: ChainHeadPrefix,
     following: ChainHeadPrefix,
+    // Calls and numeric lookups may extend an atomic call head; static
+    // member prefixes belong to its following group.
+    call_head: ChainHeadPrefix,
+    atomic_call: bool,
     next_is_member: bool,
 }
 
 impl RhsChainHead {
-    fn call(&mut self) {
-        self.leading = self.leading.prepend(None);
+    fn call(&mut self, continues_chain: bool) {
+        self.atomic_call = !continues_chain;
+        self.leading = if continues_chain {
+            self.leading.prepend(None)
+        } else {
+            self.call_head
+        };
+        self.call_head = self.call_head.prepend(None);
         self.following = self.following.prepend(None);
         self.next_is_member = false;
     }
 
     fn member(&mut self, member: &MemberHead, numeric: bool) {
+        self.call_head = if numeric {
+            self.call_head.prepend(member.name())
+        } else {
+            ChainHeadPrefix::pending(member.is_computed())
+        };
         let following = if self.next_is_member {
             self.following.prepend(member.name())
         } else {
@@ -544,7 +559,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     comments = callee_comments;
                     grouping.call();
-                    prefix.call();
+                    prefix.call(
+                        self.call_continues_chain(callee.expression, callee.context(context)),
+                    );
                     context = callee.context(context);
                     callee.expression
                 }
@@ -619,8 +636,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let factory = head
                         .last_name
                         .is_some_and(|name| factory_name(self.ast.get_utf8(name.name(self.ast))));
-                    let merge =
-                        merge_chain_head(head.parts, factory, head.pending_computed, attach);
+                    let merge = !prefix.atomic_call
+                        && merge_chain_head(head.parts, factory, head.pending_computed, attach);
                     return Some(if short_chain(grouping.groups, merge) {
                         RhsCallChainOwnership::Compact
                     } else {
@@ -629,6 +646,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
         }
+    }
+
+    fn call_continues_chain(&self, expression: Expr, context: ExpressionContext) -> bool {
+        let data = if let ExprData::ParenthesizedExpression(parenthesized) =
+            self.ast.expr_data(expression)
+        {
+            let Some(content) = self.prepare_chain_parentheses_head(parenthesized, context) else {
+                return false;
+            };
+            if self.expression_needs_parentheses(
+                content.data,
+                context.position,
+                context.content_mode,
+            ) != Some(false)
+            {
+                return false;
+            }
+            content.data
+        } else {
+            self.ast.expr_data(expression)
+        };
+        matches!(
+            data,
+            ExprData::MemberExpression(_) | ExprData::CallExpression(_)
+        )
     }
 
     fn chain_head_attaches(&self, data: ExprData, position: ExpressionPosition) -> bool {
@@ -1390,6 +1432,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let mut leading = true;
         let mut head_parts = 0;
+        let mut call_head = false;
         let mut last_name: Option<IdentifierName> = None;
         let write_head = |writer: &mut Writer<'ast>| {
             source.tail =
@@ -1399,7 +1442,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ChainOperation::Member(member) => {
                         if !member.member.numeric || !leading {
                             leading = false;
-                            if !member.member.next_part_is_member || member.source_break() {
+                            if call_head
+                                || !member.member.next_part_is_member
+                                || member.source_break()
+                            {
                                 source.pending = Some(member);
                                 break;
                             }
@@ -1409,9 +1455,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         head_parts += 1;
                     }
                     ChainOperation::Call { call, arguments } => {
+                        if self.call_continues_chain(
+                            arguments.callee,
+                            arguments
+                                .callee_context(ExpressionContext::at(ExpressionPosition::Nested)),
+                        ) {
+                            head_parts += 1;
+                        } else {
+                            // Keep the prepared call and its argument facts, but
+                            // count the complete atomic call as the group head.
+                            call_head = true;
+                            head_parts = 0;
+                        }
                         last_name = None;
                         self.write_chain_call(call, arguments, source, &mut facts, writer)?;
-                        head_parts += 1;
                     }
                     ChainOperation::NonNull(non_null) => {
                         self.write_chain_non_null(non_null, source, &mut facts, writer)?;
@@ -1428,7 +1485,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .pending
             .as_ref()
             .is_some_and(|member| member.member.source.is_computed());
-        let merge_head = !head.has_comments
+        let merge_head = !call_head
+            && !head.has_comments
             && source.pending.is_some()
             && merge_chain_head(head_parts, factory, pending_computed, head.attach);
         Ok((ChainGroup::new(doc, None, facts), merge_head))
