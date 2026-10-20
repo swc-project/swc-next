@@ -9,16 +9,14 @@ function f() { throw (
 {"printWidth":20}
 ---------- Output ----------
 function f() {
-  throw /** @type {number} */ (/* prettier-ignore */ first(  )
-  );
+  throw /** @type {number} */ (/* prettier-ignore */ first(  ));
 }
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 function f() {
-  throw /** @type {number} */ (/* prettier-ignore */ first(  )
-  )
+  throw /** @type {number} */ (/* prettier-ignore */ first(  ))
 }
 
 ---------- Options ----------

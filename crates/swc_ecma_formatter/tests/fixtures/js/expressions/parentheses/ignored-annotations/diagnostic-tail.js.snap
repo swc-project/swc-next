@@ -11,9 +11,9 @@ f( value ) /* prettier-ignore */
 ---------- Output ----------
 [
   (
-    // @ts-expect-error
-    f( value ) /* prettier-ignore */
-  ),
+// @ts-expect-error
+f( value ) /* prettier-ignore */
+),
 ];
 
 ---------- Options ----------
@@ -21,9 +21,9 @@ f( value ) /* prettier-ignore */
 ---------- Output ----------
 [
   (
-    // @ts-expect-error
-    f( value ) /* prettier-ignore */
-  ),
+// @ts-expect-error
+f( value ) /* prettier-ignore */
+),
 ];
 
 ---------- Options ----------
@@ -31,9 +31,9 @@ f( value ) /* prettier-ignore */
 ---------- Output ----------
 ;[
   (
-    // @ts-expect-error
-    f( value ) /* prettier-ignore */
-  ),
+// @ts-expect-error
+f( value ) /* prettier-ignore */
+),
 ]
 
 ---------- Options ----------
@@ -41,7 +41,7 @@ f( value ) /* prettier-ignore */
 ---------- Output ----------
 ;[
   (
-    // @ts-expect-error
-    f( value ) /* prettier-ignore */
-  ),
+// @ts-expect-error
+f( value ) /* prettier-ignore */
+),
 ]

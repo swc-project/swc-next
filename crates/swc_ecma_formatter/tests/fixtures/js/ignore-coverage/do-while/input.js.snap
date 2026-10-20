@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+do;   while(   1)
+;[];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// prettier-ignore
+do;   while(   1);
+[];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// prettier-ignore
+do;   while(   1)
+;[]
