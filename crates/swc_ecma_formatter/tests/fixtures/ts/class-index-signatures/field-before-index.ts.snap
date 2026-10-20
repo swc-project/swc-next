@@ -16,7 +16,9 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-  [key: string]: number;
+  [
+    key: string
+  ]: number;
 }
 
 ---------- Options ----------
@@ -24,7 +26,9 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-  [key: string]: number
+  [
+    key: string
+  ]: number
 }
 
 ---------- Options ----------
@@ -32,5 +36,7 @@ class C {
 ---------- Output ----------
 class C {
   value = 1;
-  [key: string]: number;
+  [
+    key: string
+  ]: number;
 }

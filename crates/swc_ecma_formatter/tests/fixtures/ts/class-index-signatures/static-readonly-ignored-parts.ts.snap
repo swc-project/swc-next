@@ -14,8 +14,10 @@ key:   string
 {"printWidth":80}
 ---------- Output ----------
 class C {
-  static /* static gap */ readonly /* open gap */ [// prettier-ignore
-    key:   string]
+  static /* static gap */ readonly /* open gap */ [
+    // prettier-ignore
+    key:   string
+  ]
 // prettier-ignore
 :   number;
 }
@@ -24,8 +26,10 @@ class C {
 {"printWidth":20}
 ---------- Output ----------
 class C {
-  static /* static gap */ readonly /* open gap */ [// prettier-ignore
-    key:   string]
+  static /* static gap */ readonly /* open gap */ [
+    // prettier-ignore
+    key:   string
+  ]
 // prettier-ignore
 :   number;
 }
@@ -34,8 +38,10 @@ class C {
 {"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
 ---------- Output ----------
 class C {
-  static /* static gap */ readonly /* open gap */ [// prettier-ignore
-    key:   string]
+  static /* static gap */ readonly /* open gap */ [
+    // prettier-ignore
+    key:   string
+  ]
 // prettier-ignore
 :   number
 }
@@ -44,8 +50,10 @@ class C {
 {"endOfLine":"crlf","printWidth":20}
 ---------- Output ----------
 class C {
-  static /* static gap */ readonly /* open gap */ [// prettier-ignore
-    key:   string]
+  static /* static gap */ readonly /* open gap */ [
+    // prettier-ignore
+    key:   string
+  ]
 // prettier-ignore
 :   number;
 }

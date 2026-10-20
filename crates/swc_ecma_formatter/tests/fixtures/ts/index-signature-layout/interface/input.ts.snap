@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare interface Dictionary<T> { [index: string]: T }
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+declare interface Dictionary<
+  T,
+> {
+  [
+    index: string
+  ]: T;
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+declare interface Dictionary<T> {
+  [index: string]: T;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare interface Dictionary<
+  T,
+> {
+  [index: string]: T
+}

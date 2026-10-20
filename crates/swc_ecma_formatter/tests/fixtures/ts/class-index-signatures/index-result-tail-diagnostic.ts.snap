@@ -20,7 +20,9 @@ class C {
 {"printWidth":20}
 ---------- Output ----------
 class C {
-  [key: string]: number; /* result tail */
+  [
+    key: string
+  ]: number; /* result tail */
   // @ts-ignore
   value = "text";
 }
@@ -29,7 +31,9 @@ class C {
 {"arrowParens":"avoid","printWidth":20,"semi":false,"trailingComma":"none"}
 ---------- Output ----------
 class C {
-  [key: string]: number /* result tail */
+  [
+    key: string
+  ]: number /* result tail */
   // @ts-ignore
   value = "text"
 }
@@ -38,7 +42,9 @@ class C {
 {"endOfLine":"crlf","printWidth":20}
 ---------- Output ----------
 class C {
-  [key: string]: number; /* result tail */
+  [
+    key: string
+  ]: number; /* result tail */
   // @ts-ignore
   value = "text";
 }

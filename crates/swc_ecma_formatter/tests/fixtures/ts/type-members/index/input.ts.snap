@@ -12,7 +12,9 @@ type Registry = { readonly [key: string]: number };
 {"printWidth":20}
 ---------- Output ----------
 type Registry = {
-  readonly [key: string]: number;
+  readonly [
+    key: string
+  ]: number;
 };
 
 ---------- Options ----------
@@ -20,12 +22,16 @@ type Registry = {
 ---------- Output ----------
 type Registry =
   {
-    readonly [key: string]: number
+    readonly [
+      key: string
+    ]: number
   }
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
 ---------- Output ----------
 type Registry = {
-	readonly [key: string]: number;
+	readonly [
+		key: string
+	]: number;
 };
