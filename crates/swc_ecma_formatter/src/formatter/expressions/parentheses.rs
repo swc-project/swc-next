@@ -966,17 +966,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None => CommentBinding::Unbound,
             Some(_) => CommentBinding::BoundTo(child_span),
         };
-        // Inline trailing suppression can own the complete source pair.
-        let inline = matches!(trailing_suppression, Some(TrailingSuppression::Inline));
-        if inline
-            && (matches!(context.position, ExpressionPosition::Statement)
-                || context.tail_owner == TailOwner::ParentOperation
-                || self.expression_needs_parentheses(
-                    self.ast.expr_data(child),
-                    context.position,
-                    ContentMode::Verbatim,
-                ) == Some(true))
-        {
+        // The source pair keeps an inline trailing marker attached to its child.
+        // Removing or rebuilding its delimiters can select a containing node instead.
+        if matches!(trailing_suppression, Some(TrailingSuppression::Inline)) {
             return SourceParenthesesChoice::Verbatim;
         }
         if context.content_mode == ContentMode::Formatted && self.has_suppression {
@@ -987,8 +979,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         }
         if self.parenthesis_has_type_cast(span.start) {
+            // A cast pair is part of its ignored source extent, including its trivia.
+            if context.content_mode == ContentMode::Verbatim {
+                return SourceParenthesesChoice::Verbatim;
+            }
             return SourceParenthesesChoice::Retained {
                 kind: RetainedParentheses::Cast,
+                mode: context.content_mode,
+            };
+        }
+        if let ExprData::ParenthesizedExpression(inner) = self.ast.expr_data(child)
+            && self.parenthesis_has_type_cast(child_span.start)
+            && self.parentheses_content_mode(
+                SourceParentheses {
+                    outer: child_span,
+                    inner: inner.expression(self.ast).span(self.ast),
+                    inner_target: ParenthesisInner::Expression(inner.expression(self.ast)),
+                },
+                context.content_mode,
+            ) == ContentMode::Verbatim
+            && self
+                .source_type_assertion_needs_grammar_barrier(self.ast.expr_data(child), context)
+                .unwrap_or(true)
+        {
+            // Keep the actual grammar enclosure around an opaque cast child.
+            // A removed parent cannot be replaced inside the ignored source pair;
+            // an unrecognized grammar boundary also keeps its source enclosure.
+            return SourceParenthesesChoice::Retained {
+                kind: RetainedParentheses::Operand,
                 mode: context.content_mode,
             };
         }
@@ -1787,7 +1805,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             CommentRunLayout::Leading(inner_span.start)
         };
-        let mode = if ignored_child.is_some() {
+        // Removing a source wrapper cannot release its prepared ignored owner.
+        let mode = if context.content_mode == ContentMode::Verbatim || ignored_child.is_some() {
             ContentMode::Verbatim
         } else {
             self.content_mode(leading)
