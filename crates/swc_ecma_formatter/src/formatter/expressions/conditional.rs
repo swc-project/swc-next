@@ -10,7 +10,7 @@ use super::{
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
-use crate::formatter::suppression::ContentMode;
+use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
 
 /// Continuation responsibility follows only an operation's actual head edge.
@@ -424,12 +424,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let before_count = comments.partition_point(|comment| comment.span.end <= operator_start);
         let (before, after) = comments.split_at(before_count);
+        // Placement around punctuation does not determine the ignored operand:
+        // own-line packets lead the next operand, while end-of-line packets
+        // after the operator still trail the preceding operand.
+        let (trailing, leading) = self.split_separator_comments(
+            comments,
+            before_count,
+            previous.source_end,
+            Some(next.content_start),
+        );
         let previous_binding = self.comment_run_binding(before.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
-            if semantics.is_ordinary() {
+            if semantics.is_ordinary() || semantics.suppression {
                 CommentBinding::Unbound
-            } else if semantics.suppression {
-                CommentBinding::BoundTo(previous.original.span(self.ast))
             } else if semantics.type_cast
                 && !semantics.diagnostic
                 && !semantics.file_directive
@@ -442,8 +449,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::SourceBound
             }
         });
-        let next_binding = self.expression_head_binding(after, next.original);
-        let binding = previous_binding.combine(next_binding);
+        let following_binding = self.comment_run_binding(after.iter().copied(), |comment| {
+            if self.comment_semantics(comment).suppression {
+                CommentBinding::Unbound
+            } else {
+                self.expression_head_binding(std::slice::from_ref(&comment), next.original)
+            }
+        });
+        let binding = previous_binding.combine(following_binding);
+        let next_binding = self.expression_head_binding(leading, next.original);
         let binding = if sensitive {
             CommentBinding::SourceBound
         } else {
@@ -462,8 +476,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source: Some(ConditionalSourceBoundary {
                 operator_start,
                 binding,
-                previous_mode: self.content_mode(before),
-                next_mode: self.content_mode(after),
+                previous_mode: self.content_mode(trailing),
+                next_mode: self.content_mode(leading),
                 before_operator: self.line_constraint(previous_end, operator_start),
                 after_operator: self.line_constraint(operator_start + 1, next_start),
             }),
@@ -559,9 +573,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comments.claim(comments)?;
         self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
         let before_operator = if before_operator == LineConstraint::Unconstrained
-            && self.comment_run_has_own_line_tail(trailing, source_end)
+            && (trailing
+                .last()
+                .is_some_and(|comment| comment.kind == swc_next_ecma_ast::CommentKind::Line)
+                || self.comment_run_has_own_line_tail(trailing, source_end))
         {
-            // Own-line packets are printed immediately, beyond deferred suffixes.
+            // Finish the preceding operand's packet before emitting punctuation;
+            // an inline line suffix must not drift into the following enclosure.
             LineConstraint::NewLine(1)
         } else {
             before_operator
@@ -654,6 +672,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary
                 .after_operator
                 .write(writer, FlatSeparator::Empty, |_| {});
+            // The semantic head must stay on its own line even when this branch
+            // has no generated enclosure. Otherwise its marker becomes a trailing
+            // comment of the preceding operand after punctuation is emitted.
+            if boundary.after_operator == LineConstraint::Unconstrained
+                && self
+                    .suppression_positions(boundary.leading, content_start)
+                    .any(|position| matches!(position, SuppressionPosition::OwnLine))
+            {
+                writer.hard_line();
+            }
             let source_head = mode == ContentMode::Verbatim
                 || !matches!(boundary.next_binding, CommentBinding::Unbound)
                 || boundary.leading.iter().any(|comment| {
