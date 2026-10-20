@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface A { a: // c
+& B }
+---------- Options ----------
+{}
+---------- Output ----------
+interface A {
+  a: B; // c
+}
