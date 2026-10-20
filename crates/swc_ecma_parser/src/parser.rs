@@ -14397,11 +14397,33 @@ mod tests {
             assert!(expression.as_identifier_reference(&ast).is_some());
             assert_eq!(ast.root_program().body(&ast).len(), 2);
 
-            let ast = parse("export default (async function f() {});");
-            assert!(matches!(
-                declaration(&ast),
-                ExportDefaultDeclarationKindData::Expr(_)
-            ));
+            for preserve_parens in [false, true] {
+                let options = Options {
+                    preserve_parens,
+                    ..options
+                };
+                let source = "export default (async function f() {});";
+                let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+                assert!(result.diagnostics.is_empty());
+                let ast = result.ast;
+                let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
+                    panic!("expected a default-exported expression");
+                };
+                let expression = if preserve_parens {
+                    expression
+                        .as_parenthesized_expression(&ast)
+                        .unwrap()
+                        .expression(&ast)
+                } else {
+                    expression
+                };
+                let function = expression.as_function(&ast).unwrap();
+                assert_eq!(
+                    function.function_type(&ast),
+                    FunctionType::FunctionExpression
+                );
+                assert!(function.r#async(&ast));
+            }
         }
     }
 
@@ -16296,6 +16318,19 @@ mod tests {
 
     #[test]
     fn async_primary() {
+        fn constructor(ast: &Ast<'_>) -> Expr {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+                .as_new_expression(ast)
+                .unwrap()
+                .callee(ast)
+        }
+
         let options = Options::default();
         let errors = |source| has_errors(source, options);
 
@@ -16361,6 +16396,47 @@ mod tests {
 
         let has_errors = errors("new (async function(){})();");
         assert!(!has_errors);
+
+        let allocator = Allocator::new();
+        let script = Options {
+            source_type: SourceType::Script,
+            ..options
+        };
+        let parse = |source| {
+            let result = Parser::init(&allocator, source, script, NoTokenParserConfig).parse();
+            assert!(result.diagnostics.is_empty());
+            result.ast
+        };
+
+        let ast = parse("new async function(){};");
+        let function = constructor(&ast).as_function(&ast).unwrap();
+        assert_eq!(
+            function.function_type(&ast),
+            FunctionType::FunctionExpression
+        );
+        assert!(function.r#async(&ast));
+        assert!(!function.generator(&ast));
+
+        let ast = parse("new async function*(){};");
+        let function = constructor(&ast).as_function(&ast).unwrap();
+        assert_eq!(
+            function.function_type(&ast),
+            FunctionType::FunctionExpression
+        );
+        assert!(function.r#async(&ast));
+        assert!(function.generator(&ast));
+
+        let ast = parse("new async\nfunction f(){}");
+        let identifier = constructor(&ast).as_identifier_reference(&ast).unwrap();
+        assert_eq!(ast.get_utf8(identifier.name(&ast)), "async");
+        assert_eq!(ast.root_program().body(&ast).len(), 2);
+        let declaration = ast.root_program().body(&ast).get_node(&ast, 1).unwrap();
+        let function = declaration
+            .as_declaration(&ast)
+            .unwrap()
+            .as_function(&ast)
+            .unwrap();
+        assert!(!function.r#async(&ast));
     }
 
     #[test]
