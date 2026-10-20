@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+() => (
+// c
+/** @type {number} */ a, b);
+---------- Options ----------
+{}
+---------- Output ----------
+() => (
+  // c
+  /** @type {number} */ a,
+  b
+);
