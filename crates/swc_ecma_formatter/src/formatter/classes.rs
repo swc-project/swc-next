@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment, CommentKind,
     Expr, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, Span, StaticBlock,
     StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature, TsMethodDefinition,
-    TsTypeAnnotation, TsTypeParameterDeclaration,
+    TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -32,7 +32,7 @@ use super::suppression::{
 };
 use super::types::generics::{TypeListKind, TypeListPrefix};
 use super::types::members::PreparedIndexSignature;
-use super::types::{PreparedAnnotation, TypeGap};
+use super::types::{PreparedAnnotation, TypeGap, type_requires_terminator};
 use crate::{FormatError, QuoteProperties, Semicolons, document::Writer};
 use member_prefix::{ClassMemberPrefix, ClassMemberPrefixOwner};
 
@@ -149,17 +149,12 @@ enum ClassMemberContent<'ast> {
 struct SourceBodylessClassMethod<'ast> {
     prefix: SourceMethodPrefix,
     signature: PreparedBodylessSignature<'ast>,
-    terminal: TypedClassMemberTerminal,
+    terminal: ClassMemberTerminal,
 }
 
 struct SourceClassIndexSignature<'ast> {
     signature: PreparedIndexSignature<'ast>,
-    terminal: TypedClassMemberTerminal,
-}
-
-enum TypedClassMemberTerminal {
-    Canonical(Span),
-    Source(Span),
+    terminal: ClassMemberTerminal,
 }
 
 struct SourceClassField<'ast> {
@@ -173,7 +168,7 @@ struct SourceClassField<'ast> {
     quoting: PropertyKeyQuoting,
     suffix: Option<FieldSuffix<'ast>>,
     initializer: Option<FieldInitializer<'ast>>,
-    terminal: FieldTerminal,
+    terminal: ClassMemberTerminal,
 }
 
 #[derive(Clone, Copy)]
@@ -200,7 +195,7 @@ struct FieldSuffix<'ast> {
     annotation: Option<PreparedAnnotation<'ast>>,
 }
 
-enum FieldTerminal {
+enum ClassMemberTerminal {
     Canonical { span: Span, semicolon: bool },
     Source(Span),
 }
@@ -1316,7 +1311,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ClassMemberContent::Static(block) => self.format_static_block(block, writer),
             ClassMemberContent::Index(index) => {
                 let tail = self.format_index_signature(index.signature, writer)?;
-                self.format_typed_class_member_terminal(index.terminal, tail, writer)
+                self.format_class_member_terminal(index.terminal, tail, false, writer)
             }
         }
     }
@@ -1370,7 +1365,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         prefix.key_mode = self.method_key_mode(&prefix, signature.preceding_mode);
         let internal = Span::new(signature.content_end, node.span(ast).end);
-        let (terminal, _) = self.prepare_typed_class_member_terminal(internal, sibling);
+        let result = function
+            .return_type(ast)
+            .map(|annotation| annotation.type_annotation(ast));
+        let (terminal, _) = self.prepare_typed_class_member_terminal(internal, sibling, result);
         Ok(ClassMemberContent::Bodyless(SourceBodylessClassMethod {
             prefix,
             signature,
@@ -1387,7 +1385,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_method_key_prefix(method.prefix, writer)?;
             self.format_bodyless_signature_suffix(method.signature, writer)
         })?;
-        self.format_typed_class_member_terminal(method.terminal, tail, writer)
+        self.format_class_member_terminal(method.terminal, tail, false, writer)
     }
 
     fn source_class_index_signature(
@@ -1397,7 +1395,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<SourceClassIndexSignature<'ast>, FormatError> {
         let mut signature = self.prepare_index_signature(node)?;
         let internal = Span::new(signature.content_end(), node.span(self.ast).end);
-        let (terminal, mode) = self.prepare_typed_class_member_terminal(internal, sibling);
+        let result = node.type_annotation(self.ast).type_annotation(self.ast);
+        let (terminal, mode) =
+            self.prepare_typed_class_member_terminal(internal, sibling, Some(result));
         if mode == ContentMode::Verbatim {
             signature.protect_result_type();
         }
@@ -1411,7 +1411,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         internal: Span,
         sibling: Option<DelimitedSuppression>,
-    ) -> (TypedClassMemberTerminal, ContentMode) {
+        result: Option<TsType>,
+    ) -> (ClassMemberTerminal, ContentMode) {
         let comments = self.comments.in_range(internal);
         let mode = if self.has_suppression {
             self.content_mode(comments)
@@ -1421,28 +1422,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_terminal = mode == ContentMode::Verbatim
             || sibling.is_some() && self.find_token(internal, comments, ";").is_some();
         let terminal = if source_terminal {
-            TypedClassMemberTerminal::Source(internal)
+            ClassMemberTerminal::Source(internal)
         } else {
-            TypedClassMemberTerminal::Canonical(internal)
+            ClassMemberTerminal::Canonical {
+                span: internal,
+                semicolon: self.options.semicolons == Semicolons::Always
+                    || result.is_some_and(|node| type_requires_terminator(node, self.ast)),
+            }
         };
         (terminal, mode)
     }
 
-    fn format_typed_class_member_terminal(
+    fn format_class_member_terminal(
         &mut self,
-        terminal: TypedClassMemberTerminal,
+        terminal: ClassMemberTerminal,
         tail: Option<ExpressionTail<'ast>>,
+        following_requires_separator: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match terminal {
-            TypedClassMemberTerminal::Canonical(span) => {
+            ClassMemberTerminal::Canonical { span, semicolon } => {
                 let tail = self.capture_expression_tail(span, tail)?;
-                if self.options.semicolons == Semicolons::Always {
+                if semicolon || following_requires_separator {
                     writer.text(";");
                 }
                 self.format_expression_tail(tail, writer)
             }
-            TypedClassMemberTerminal::Source(span) => {
+            ClassMemberTerminal::Source(span) => {
                 self.format_source_class_member_terminal(span, tail, writer)
             }
         }
@@ -1710,18 +1716,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             key_mode = self.unquoted_key_mode(key, computed, key_context, key_mode, quoting);
         }
         let terminal = if tail_source || source_sibling.is_some() && semicolon.is_some() {
-            FieldTerminal::Source(internal)
+            ClassMemberTerminal::Source(internal)
         } else {
-            FieldTerminal::Canonical {
+            ClassMemberTerminal::Canonical {
                 span: Span::new(end, tail_end),
                 semicolon: self.options.semicolons == Semicolons::Always
                     || initializer.is_none()
-                        && !has_suffix
-                        && computed.is_none()
-                        && matches!(
-                            self.property_key_identifier(key, key_context, key_mode, quoting),
-                            Some("static" | "get" | "set")
-                        ),
+                        && (annotation.is_some_and(|annotation| {
+                            type_requires_terminator(annotation.type_annotation(ast), ast)
+                        }) || !has_suffix
+                            && computed.is_none()
+                            && matches!(
+                                self.property_key_identifier(key, key_context, key_mode, quoting),
+                                Some("static" | "get" | "set")
+                            )),
             }
         };
         Ok(Some(SourceClassField {
@@ -1876,21 +1884,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             tail
         };
-        match terminal {
-            FieldTerminal::Source(span) => {
-                self.format_source_class_member_terminal(span, tail, writer)
-            }
-            FieldTerminal::Canonical { span, semicolon } => {
-                let tail = self.capture_expression_tail(span, tail)?;
-                if semicolon
-                    || following
-                        .is_some_and(|member| self.class_member_needs_field_separator(member))
-                {
-                    writer.text(";");
-                }
-                self.format_expression_tail(tail, writer)
-            }
-        }
+        let following_requires_separator =
+            following.is_some_and(|member| self.class_member_needs_field_separator(member));
+        self.format_class_member_terminal(terminal, tail, following_requires_separator, writer)
     }
 
     fn class_member_needs_field_separator(&self, member: &PreparedClassMember<'ast>) -> bool {

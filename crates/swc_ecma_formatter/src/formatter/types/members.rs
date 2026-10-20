@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, FormalParameters, GetSpan, PropertyKey, Span, SubRange,
     TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsIndexSignature,
     TsIndexSignatureParameter, TsMethodSignature, TsMethodSignatureKind, TsPropertySignature,
-    TsThisParameter, TsTypeAnnotation, TsTypeElement, TsTypeElementData, TsTypeLiteral,
+    TsThisParameter, TsType, TsTypeAnnotation, TsTypeElement, TsTypeElementData, TsTypeLiteral,
     TsTypeParameterDeclaration,
 };
 
@@ -166,6 +166,17 @@ struct MemberHandle {
 impl MemberHandle {
     fn span(self, ast: &swc_next_ecma_ast::Ast<'_>) -> Span {
         self.node.span(ast)
+    }
+
+    fn result_type(self, ast: &swc_next_ecma_ast::Ast<'_>) -> Option<TsType> {
+        let annotation = match self.data {
+            TsTypeElementData::TsPropertySignature(node) => node.type_annotation(ast),
+            TsTypeElementData::TsMethodSignature(node) => node.return_type(ast),
+            TsTypeElementData::TsCallSignatureDeclaration(node) => node.return_type(ast),
+            TsTypeElementData::TsConstructSignatureDeclaration(node) => node.return_type(ast),
+            TsTypeElementData::TsIndexSignature(node) => Some(node.type_annotation(ast)),
+        };
+        annotation.map(|annotation| annotation.type_annotation(ast))
     }
 }
 
@@ -413,10 +424,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     // formatted. Its actual printed kind determines contextual tokens;
                     // diagnostic-covered members can also require a same-line separator.
                     let required_separator = self.options.semicolons == Semicolons::AsNeeded
-                        && (self.type_member_requires_separator(&prepared.content, next, quoting)
-                            || next.is_some()
-                                && self.line_constraint(gap_span.start, gap_span.end)
-                                    == LineConstraint::SameLine);
+                        && (self.type_member_requires_separator(
+                            node,
+                            &prepared.content,
+                            next,
+                            quoting,
+                        ) || next.is_some()
+                            && self.line_constraint(gap_span.start, gap_span.end)
+                                == LineConstraint::SameLine);
                     let after_separator = prepared.after_separator.take();
                     let tail = self.format_type_member(prepared, quoting, writer)?;
                     self.format_expression_tail(tail, writer)?;
@@ -610,10 +625,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn type_member_requires_separator(
         &self,
+        member: MemberHandle,
         content: &MemberContent<'ast>,
         next: Option<MemberHandle>,
         quoting: PropertyKeyQuoting,
     ) -> bool {
+        if next.is_some()
+            && member
+                .result_type(self.ast)
+                .is_some_and(|node| super::type_requires_terminator(node, self.ast))
+        {
+            return true;
+        }
         let MemberContent::Property(property) = content else {
             return false;
         };
