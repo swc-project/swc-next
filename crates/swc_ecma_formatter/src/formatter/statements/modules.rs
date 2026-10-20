@@ -1639,12 +1639,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ),
                 }
                 if let Some(boundary) = boundary {
-                    let rhs_layout =
-                        if boundary.rhs_requires_line(RhsLayout::NeverBreakAfterOperator) {
-                            RhsLayout::BreakAfterOperator
-                        } else {
-                            RhsLayout::NeverBreakAfterOperator
-                        };
+                    let rhs_layout = if boundary.rhs_requires_line() {
+                        RhsLayout::BreakAfterOperator
+                    } else {
+                        RhsLayout::NeverBreakAfterOperator
+                    };
                     let tail = self.format_operator_right(
                         key.span(self.ast).end,
                         Expr::StringLiteral(value),

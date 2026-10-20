@@ -665,11 +665,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_end = source_comments
                 .get(following)
                 .filter(|comment| {
-                    self.line_breaks(right_end, comment.span.start) == 0
-                        && self
-                            .source(Span::new(right_end, comment.span.start))
-                            .chars()
-                            .all(super::source::is_source_whitespace)
+                    // A list separator does not change the RHS's same-line tail owner.
+                    let gap = self
+                        .source(Span::new(right_end, comment.span.start))
+                        .trim_matches(super::source::is_source_whitespace);
+                    self.line_breaks(right_end, comment.span.start) == 0 && matches!(gap, "" | ",")
                 })
                 .map_or(right_end, |comment| comment.span.end);
             let mut boundary =
@@ -703,7 +703,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 &[]
             };
-            let rhs_layout = if boundary.rhs_requires_line(RhsLayout::NeverBreakAfterOperator) {
+            let rhs_layout = if boundary.rhs_requires_line() {
                 RhsLayout::BreakAfterOperator
             } else {
                 RhsLayout::NeverBreakAfterOperator
@@ -907,7 +907,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary
                 .after_operator
                 .write(writer, FlatSeparator::Space, |writer| {
-                    if boundary.rhs_requires_line(rhs_layout) {
+                    if boundary.rhs_requires_line() {
                         writer.hard_line();
                     } else if matches!(rhs_layout, RhsLayout::NeverBreakAfterOperator) {
                         writer.space();
