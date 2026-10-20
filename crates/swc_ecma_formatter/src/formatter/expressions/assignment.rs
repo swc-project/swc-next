@@ -111,15 +111,14 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
-    pub(in crate::formatter) fn rhs_requires_line(&self, layout: RhsLayout) -> bool {
+    pub(in crate::formatter) fn rhs_requires_line(&self) -> bool {
         self.rhs_starts_on_own_line()
             || !self.operator_line.is_empty()
-            // Fluid RHS groups must start after the pending left-side suffix.
-            || matches!(layout, RhsLayout::Fluid)
-                && self
-                    .before
-                    .last()
-                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+            // A retained left-side suffix must finish before any RHS layout starts.
+            || self
+                .before
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
     }
 
     fn rhs_starts_on_own_line(&self) -> bool {
@@ -385,11 +384,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary
                     .after_operator
                     .write(writer, FlatSeparator::Space, |writer| {
-                        let rhs_layout = match layout {
-                            AssignmentLayout::Ordinary(rhs_layout) => rhs_layout,
-                            _ => RhsLayout::BreakAfterOperator,
-                        };
-                        if boundary.rhs_requires_line(rhs_layout) {
+                        if boundary.rhs_requires_line() {
                             writer.hard_line();
                         } else if matches!(
                             layout,
