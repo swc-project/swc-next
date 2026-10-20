@@ -99,7 +99,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             return self.capture_expression_tail(Span::new(argument_span.end, span.end), tail);
         }
-        if leading.is_empty() && trailing.is_empty() {
+        let exposed_head = if leading.is_empty() && trailing.is_empty() {
+            self.exposed_expression_head(argument, ExpressionContext::at(position))?
+        } else {
+            None
+        };
+        if leading.is_empty() && trailing.is_empty() && exposed_head.is_none() {
             return self.format_expression(argument, ExpressionContext::at(position), writer);
         }
         let operand_tail = if leading.is_empty() && mode == ContentMode::Formatted {

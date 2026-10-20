@@ -65,12 +65,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .is_none_or(|comment| comment.span.start >= span.end)
     }
 
-    fn call_member_callee_is_compact(&self, mut expression: Expr) -> bool {
-        if !self.call_span_is_source_clear(expression.span(self.ast)) {
+    fn call_member_callee_is_compact(&self, expression: Expr, context: ExpressionContext) -> bool {
+        let span = expression.span(self.ast);
+        if self.diagnostic_range_is_sensitive(span) {
             return false;
         }
+        let mut current = expression;
         loop {
-            expression = match self.expression_data(expression) {
+            current = match self.expression_data(current) {
                 ExprData::MemberExpression(member) => {
                     let Ok(head) = self.prepare_member_head(member) else {
                         return false;
@@ -83,11 +85,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::TsNonNullExpression(node) => node.expression(self.ast),
                 ExprData::ChainExpression(node) => node.expression(self.ast),
                 data => {
-                    return super::chains::atomic_chain_head(data)
-                        || matches!(data, ExprData::Super(_));
+                    if !super::chains::atomic_chain_head(data)
+                        && !matches!(data, ExprData::Super(_))
+                    {
+                        return false;
+                    }
+                    break;
                 }
             };
         }
+        if self.call_span_is_source_clear(span) {
+            return true;
+        }
+        let Ok(Some(exposed)) = self.exposed_expression_head(expression, context) else {
+            return false;
+        };
+        let comments = self.ast.comments();
+        let first = comments.partition_point(|comment| comment.span.end <= span.start);
+        let comments = &comments[first..];
+        let count = comments.partition_point(|comment| comment.span.start < span.end);
+        let comments = &comments[..count];
+        // The complete unbound packet is emitted before the callee. Every
+        // other source comment still prevents compact receiver layout.
+        comments.len() == exposed.comments.len()
+            && comments.first().map(|comment| comment.span)
+                == exposed.comments.first().map(|comment| comment.span)
+            && comments.last().map(|comment| comment.span)
+                == exposed.comments.last().map(|comment| comment.span)
     }
 
     pub(super) fn source_call_callee(
@@ -160,7 +184,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 arguments.callee_mode,
             ) != Some(true)
             && !arguments.has_outside_prefix();
-        if member_callee && self.call_member_callee_is_compact(arguments.callee) {
+        if member_callee && self.call_member_callee_is_compact(arguments.callee, callee_context) {
             callee_context.member_layout = MemberLayout::Tight;
             callee_context.member_chain_layout = super::MemberChainLayout::Local;
         }
