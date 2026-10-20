@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-check
+;
+; // @ts-nocheck
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-check
+;
+// @ts-nocheck
