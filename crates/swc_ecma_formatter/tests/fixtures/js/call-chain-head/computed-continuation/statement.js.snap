@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+data("foo")[key]("bar").then(() => next).catch(() => last);
+---------- Options ----------
+{}
+---------- Output ----------
+data("foo")
+  [key]("bar")
+  .then(() => next)
+  .catch(() => last);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+data("foo")
+  [key]("bar")
+  .then(() => next)
+  .catch(
+    () => last,
+  );
