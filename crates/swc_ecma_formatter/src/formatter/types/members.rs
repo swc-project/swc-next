@@ -1498,7 +1498,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.group(false, |writer| {
             writer.text("[");
-            writer.indent(|writer| {
+            let closing = writer.indent(|writer| {
                 let mut members = index
                     .parameters
                     .iter()
@@ -1515,6 +1515,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.line_constraint(end, span.start),
                             writer,
                         );
+                    } else {
+                        let content = Span::new(index.opening + 1, index.closing);
+                        let opening = if index.source_head.is_some() {
+                            let next = self
+                                .comments
+                                .in_range(content)
+                                .first()
+                                .map_or(span.start, |comment| comment.span.start);
+                            self.source_line_constraint(content.start, next)
+                        } else {
+                            self.opening_line_constraint(content)
+                        };
+                        opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                     }
                     let following = members.peek().map_or(
                         FollowingItem::ResolvedTerminal(DelimitedSuppression {
@@ -1560,11 +1573,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         separator = boundary.separator;
                     }
                 }
-                self.format_type_gap(index.closing_gap, FlatSeparator::Empty, writer)
+                match index.closing_gap {
+                    TypeGap::Source(span) => {
+                        self.format_verbatim(span, writer)?;
+                        Ok::<_, FormatError>(None)
+                    }
+                    TypeGap::Formatted(boundary) => {
+                        self.format_comment_boundary(&boundary, writer)?;
+                        Ok(Some(boundary.gap()))
+                    }
+                }
             })?;
+            if let Some(closing) = closing {
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+            }
             writer.text("]");
-            self.format_signature_return(index.result, writer)
-        })
+            Ok(())
+        })?;
+        self.format_signature_return(index.result, writer)
     }
 
     pub(super) fn type_literal_requires_break(&self, node: TsTypeLiteral) -> bool {
