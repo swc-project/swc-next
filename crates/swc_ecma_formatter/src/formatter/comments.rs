@@ -764,6 +764,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    fn line_comment_directive_marker(&self, comment: Comment) -> Option<&'ast str> {
+        if comment.kind != CommentKind::Line {
+            return None;
+        }
+        let raw = self.source(comment.span);
+        let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
+        let marker = raw
+            .strip_prefix("///")
+            .or_else(|| raw.strip_prefix("//"))?
+            .trim_start_matches(whitespace);
+        Some(marker)
+    }
+
+    pub(super) fn comment_checking_mode(&self, comment: Comment) -> Option<bool> {
+        Self::checking_mode_tag(self.line_comment_directive_marker(comment)?)
+    }
+
+    fn checking_mode_tag(marker: &str) -> Option<bool> {
+        let tag = marker
+            .split(|character| {
+                character == ':' || is_source_whitespace(character) && character != '\u{85}'
+            })
+            .next()
+            .unwrap_or(marker);
+        if tag.eq_ignore_ascii_case("@ts-check") {
+            Some(true)
+        } else if tag.eq_ignore_ascii_case("@ts-nocheck") {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
     pub(super) fn comment_is_file_directive(&self, comment: Comment) -> bool {
         let raw = self.source(comment.span);
         if !raw.contains('@') && !raw.starts_with("///") {
@@ -771,22 +804,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match comment.kind {
             CommentKind::Line => {
-                let triple = raw.strip_prefix("///");
-                let marker = triple
-                    .or_else(|| raw.strip_prefix("//"))
-                    .unwrap_or(raw)
-                    .trim_start_matches(super::source::is_source_whitespace);
-                let tag = marker
-                    .split(|character| {
-                        character == ':' || super::source::is_source_whitespace(character)
-                    })
-                    .next()
-                    .unwrap_or(marker);
-                if tag.eq_ignore_ascii_case("@ts-check") || tag.eq_ignore_ascii_case("@ts-nocheck")
-                {
+                let marker = self.line_comment_directive_marker(comment).unwrap_or("");
+                if Self::checking_mode_tag(marker).is_some() {
                     return true;
                 }
-                triple.is_some()
+                raw.starts_with("///")
                     && ["<reference", "<amd-module", "<amd-dependency"]
                         .iter()
                         .any(|tag| {
