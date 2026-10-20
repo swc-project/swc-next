@@ -177,6 +177,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_comments: false,
         };
         let mut has_tail_comments = false;
+        let mut optimizer_binding = None;
         let data = loop {
             let data = self.ast.expr_data(inner);
             let ExprData::ParenthesizedExpression(parenthesized) = data else {
@@ -193,11 +194,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 break data;
             }
-            let Some(next) = self.removable_parentheses_head(SourceParentheses {
-                outer: parenthesized.span(self.ast),
-                inner: child.span(self.ast),
-                inner_target: ParenthesisInner::Expression(child),
-            }) else {
+            let Some(next) = self.removable_parentheses_head(
+                SourceParentheses {
+                    outer: parenthesized.span(self.ast),
+                    inner: child.span(self.ast),
+                    inner_target: ParenthesisInner::Expression(child),
+                },
+                &mut optimizer_binding,
+            ) else {
                 break data;
             };
             let binding = head.binding.combine(next.head.binding);
@@ -286,6 +290,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             NumericContentView::Reference | NumericContentView::Both
         );
         let mut pending_cast = None;
+        let mut optimizer_binding = None;
         loop {
             let data = self.ast.expr_data(inner);
             let ExprData::ParenthesizedExpression(parenthesized) = data else {
@@ -317,23 +322,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                     .is_none()
                     || self
-                        .removable_parentheses_head_with_casts(boundary, |position| {
-                            let (start, slot) = match position {
-                                ParenthesisCastPosition::Outer => {
-                                    (boundary.outer.start, &mut outer_cast)
+                        .removable_parentheses_head_with_casts(
+                            boundary,
+                            &mut optimizer_binding,
+                            |position| {
+                                let (start, slot) = match position {
+                                    ParenthesisCastPosition::Outer => {
+                                        (boundary.outer.start, &mut outer_cast)
+                                    }
+                                    ParenthesisCastPosition::Inner => {
+                                        (boundary.inner.start, &mut inner_cast)
+                                    }
+                                };
+                                // Preserve source_type_cast's guard before its prefix query.
+                                if !self.ast.source()[start as usize..].starts_with('(') {
+                                    return None;
                                 }
-                                ParenthesisCastPosition::Inner => {
-                                    (boundary.inner.start, &mut inner_cast)
-                                }
-                            };
-                            // Preserve source_type_cast's guard before its prefix query.
-                            if !self.ast.source()[start as usize..].starts_with('(') {
-                                return None;
-                            }
-                            let cast =
-                                slot.get_or_insert_with(|| self.numeric_cast_boundary(start));
-                            self.numeric_source_cast(cast)
-                        })
+                                let cast =
+                                    slot.get_or_insert_with(|| self.numeric_cast_boundary(start));
+                                self.numeric_source_cast(cast)
+                            },
+                        )
                         .is_none())
             {
                 source = Some(data);
@@ -407,14 +416,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         boundary: SourceParentheses,
     ) -> bool {
-        self.removable_parentheses_head(boundary).is_some()
+        self.removable_parentheses_head(boundary, &mut None)
+            .is_some()
     }
 
     fn removable_parentheses_head(
         &self,
         boundary: SourceParentheses,
+        optimizer_binding: &mut Option<CommentBinding>,
     ) -> Option<RemovableSourceParentheses> {
-        self.removable_parentheses_head_with_casts(boundary, |position| {
+        self.removable_parentheses_head_with_casts(boundary, optimizer_binding, |position| {
             let start = match position {
                 ParenthesisCastPosition::Outer => boundary.outer.start,
                 ParenthesisCastPosition::Inner => boundary.inner.start,
@@ -426,6 +437,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn removable_parentheses_head_with_casts(
         &self,
         boundary: SourceParentheses,
+        optimizer_binding: &mut Option<CommentBinding>,
         mut cast: impl FnMut(ParenthesisCastPosition) -> Option<Comment>,
     ) -> Option<RemovableSourceParentheses> {
         let comments = self.ast.comments();
@@ -442,9 +454,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
-        let leading_binding = self.source_parentheses_head_binding(head, boundary, || {
-            cast(ParenthesisCastPosition::Inner)
-        });
+        let leading_binding =
+            self.source_parentheses_head_binding(head, boundary, optimizer_binding, || {
+                cast(ParenthesisCastPosition::Inner)
+            });
         let inner_target = match leading_binding {
             CommentBinding::BoundTo(target) => Some(target),
             _ => None,
@@ -585,6 +598,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         comments: &[Comment],
         boundary: SourceParentheses,
+        optimizer_binding: &mut Option<CommentBinding>,
         mut cast: impl FnMut() -> Option<Comment>,
     ) -> CommentBinding {
         let function_target = match boundary.inner_target {
@@ -609,16 +623,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut cast_binding = None;
         let resolve = |comment| {
             let semantics = self.comment_semantics(comment);
-            if semantics.is_ordinary() {
-                return function_binding(comment);
-            }
-            if !semantics.type_cast
-                || semantics.suppression
-                || semantics.diagnostic
-                || semantics.file_directive
-                || semantics.optimizer
-            {
+            if semantics.suppression || semantics.diagnostic || semantics.file_directive {
                 return CommentBinding::SourceBound;
+            }
+            let optimizer = if semantics.optimizer {
+                *optimizer_binding
+                    .get_or_insert_with(|| self.source_optimizer_binding(comments, boundary))
+            } else {
+                CommentBinding::Unbound
+            };
+            if !semantics.type_cast {
+                return optimizer.combine(function_binding(comment));
             }
             let binding = *cast_binding.get_or_insert_with(|| {
                 if cast().is_none() {
@@ -670,15 +685,100 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             });
-            match binding {
+            optimizer.combine(match binding {
                 CommentBinding::Unbound => function_binding(comment),
                 _ => binding,
-            }
+            })
         };
         if function_target.is_none() {
             return self.comment_run_binding(comments.iter().copied(), resolve);
         }
         CommentBinding::combine_all(comments.iter().copied().map(resolve))
+    }
+
+    /// Resolve only the packet's lexical head, without searching other operands.
+    /// Applicable targets retain their source envelope and its continuation boundary.
+    fn source_optimizer_binding(
+        &self,
+        packet: &[Comment],
+        boundary: SourceParentheses,
+    ) -> CommentBinding {
+        let ParenthesisInner::Expression(mut expression) = boundary.inner_target else {
+            return CommentBinding::SourceBound;
+        };
+        // Owners pass a contiguous source-comment slice (or one comment), so
+        // its span identifies packet membership without another comment scan.
+        let packet_span = packet
+            .first()
+            .zip(packet.last())
+            .map(|(first, last)| Span::new(first.span.start, last.span.end));
+        let mut head_start = boundary.inner.start;
+        loop {
+            if expression.span(self.ast).start != head_start {
+                return CommentBinding::SourceBound;
+            }
+            expression = match self.ast.expr_data(expression) {
+                ExprData::ParenthesizedExpression(node) => {
+                    // A wrapper may expose a provably absent head, but never
+                    // licenses moving an active annotation onto its continuation.
+                    if self.parenthesis_has_type_cast(node.span(self.ast).start) {
+                        return CommentBinding::SourceBound;
+                    }
+                    let child = node.expression(self.ast);
+                    let comments = self.source_parentheses_comments(SourceParentheses {
+                        outer: node.span(self.ast),
+                        inner: child.span(self.ast),
+                        inner_target: ParenthesisInner::Expression(child),
+                    });
+                    // The current packet may already be exposed by a removed
+                    // envelope. Only another packet owns a new resolution frontier.
+                    if comments.head.iter().chain(comments.tail).any(|&comment| {
+                        !packet_span.is_some_and(|packet| {
+                            packet.start <= comment.span.start && comment.span.end <= packet.end
+                        }) && !self.comment_semantics(comment).is_ordinary()
+                    }) {
+                        return CommentBinding::SourceBound;
+                    }
+                    head_start = child.span(self.ast).start;
+                    child
+                }
+                ExprData::CallExpression(_)
+                | ExprData::NewExpression(_)
+                | ExprData::Function(_)
+                | ExprData::ArrowFunctionExpression(_) => {
+                    return CommentBinding::SourceBound;
+                }
+                ExprData::ChainExpression(node) => node.expression(self.ast),
+                ExprData::MemberExpression(node) => node.object(self.ast),
+                ExprData::ConditionalExpression(node) => node.test(self.ast),
+                ExprData::SequenceExpression(node) => {
+                    let Some(first) = node.expressions(self.ast).first() else {
+                        return CommentBinding::SourceBound;
+                    };
+                    self.ast.get_node_in_sub_range(first)
+                }
+                ExprData::IdentifierReference(_)
+                | ExprData::StringLiteral(_)
+                | ExprData::BooleanLiteral(_)
+                | ExprData::NullLiteral(_)
+                | ExprData::NumericLiteral(_)
+                | ExprData::BigIntLiteral(_)
+                | ExprData::RegExpLiteral(_)
+                | ExprData::ThisExpression(_)
+                | ExprData::MetaProperty(_)
+                | ExprData::ArrayExpression(_)
+                | ExprData::ObjectExpression(_)
+                | ExprData::UnaryExpression(_)
+                | ExprData::AwaitExpression(_)
+                | ExprData::YieldExpression(_) => {
+                    return CommentBinding::Unbound;
+                }
+                data => match super::binary::BinaryLike::from_data(data, self.ast) {
+                    Some(binary) => binary.left,
+                    None => return CommentBinding::SourceBound,
+                },
+            };
+        }
     }
 
     pub(super) fn property_rhs_content(
@@ -1134,6 +1234,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner: span,
                 inner_target: ParenthesisInner::Expression(expression),
             },
+            &mut None,
             || self.source_type_cast(span.start),
         );
         self.format_expression_leading_prepared(
@@ -1999,9 +2100,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let first = source_leading
             .first()
             .map_or(inner_span.start, |comment| comment.span.start);
-        let binding = self.source_parentheses_head_binding(source_leading, boundary, || {
-            self.source_type_cast(inner_span.start)
-        });
+        let binding =
+            self.source_parentheses_head_binding(source_leading, boundary, &mut None, || {
+                self.source_type_cast(inner_span.start)
+            });
         let protected_head_start = (!source_leading.is_empty()
             && !matches!(
                 self.optional_nullish_head_binding(source_leading, || boundary, binding),
@@ -2270,8 +2372,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner: span,
                 inner_target: ParenthesisInner::Expression(expression),
             },
+            &mut None,
             || self.source_type_cast(span.start),
         )
+    }
+
+    /// Discover a removed source packet that precedes the complete emitted head.
+    /// The original expression renderer retains ownership of the borrowed packet.
+    pub(super) fn exposed_expression_head(
+        &self,
+        mut expression: Expr,
+        mut context: ExpressionContext,
+    ) -> Result<Option<NodeHead<'ast>>, FormatError> {
+        if self.comments.in_range(expression.span(self.ast)).is_empty() {
+            return Ok(None);
+        }
+        loop {
+            if context.content_mode != ContentMode::Formatted {
+                return Ok(None);
+            }
+            let data = self.ast.expr_data(expression);
+            if let ExprData::ParenthesizedExpression(node) = data {
+                let Some(content) = self.prepare_chain_parentheses_head(node, context) else {
+                    return Ok(None);
+                };
+                let Some(removed) = content.parentheses else {
+                    return Ok(None);
+                };
+                if !matches!(removed.head.binding, CommentBinding::Unbound)
+                    || self.expression_needs_parentheses(
+                        content.data,
+                        context.position,
+                        context.content_mode,
+                    ) != Some(false)
+                {
+                    return Ok(None);
+                }
+                let comments = self.comments.in_range(Span::new(
+                    removed.source.outer.start,
+                    removed.source.inner.start,
+                ));
+                if !comments.is_empty() {
+                    return Ok(Some(NodeHead {
+                        comments,
+                        content_start: removed.source.inner.start,
+                        layout: CommentRunLayout::GroupedLeading(removed.source.inner.start),
+                        gap_end: None,
+                    }));
+                }
+                expression = content.expression;
+                continue;
+            }
+            if self.expression_is_parenthesized(data, context) {
+                return Ok(None);
+            }
+            let Some((child, child_context)) = self.expression_head_operand(data, context)? else {
+                return Ok(None);
+            };
+            expression = child;
+            context = child_context;
+        }
     }
 
     /// An emitted enclosure can own a complete head independently of its caller's gap.
