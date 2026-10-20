@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+a satisfies // c
+& B;
+---------- Options ----------
+{}
+---------- Output ----------
+a satisfies B; // c
