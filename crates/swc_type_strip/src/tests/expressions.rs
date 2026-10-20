@@ -180,7 +180,8 @@ fn safe_assertion_between_left_associative_operators() {
 
 #[test]
 fn unary_assertion_left_of_exponentiation() {
-    assert_strip!(
+    // [TODO]: Report Invalid syntax for unary assertion left of exponentiation
+    assert_strip_text!(
         "const value = -input as number ** 2;"
         "const value = -input           ** 2;"
     );

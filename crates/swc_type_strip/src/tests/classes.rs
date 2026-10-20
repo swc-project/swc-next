@@ -100,6 +100,16 @@ fn optional_get_named_field_keeps_field_boundary() {
         "class C { get?\nnext() {} }"
         "class C { get;\nnext() {} }"
     );
+
+    assert_strip!(
+        "class C { get?\n'foo'() {} }"
+        "class C { get;\n'foo'() {} }"
+    );
+
+    assert_strip!(
+        "class C { get?\n*foo() {} }"
+        "class C { get;\n*foo() {} }"
+    );
 }
 
 #[test]
@@ -107,6 +117,16 @@ fn optional_set_named_field_keeps_field_boundary() {
     assert_strip!(
         "class C { set?\nnext() {} }"
         "class C { set;\nnext() {} }"
+    );
+
+    assert_strip!(
+        "class C { set?\n1() {} }"
+        "class C { set;\n1() {} }"
+    );
+
+    assert_strip!(
+        "class C { set?\n*foo() {} }"
+        "class C { set;\n*foo() {} }"
     );
 }
 
@@ -116,6 +136,31 @@ fn optional_static_named_field_keeps_field_boundary() {
         "class C { static?\nnext() {} }"
         "class C { static;\nnext() {} }"
     );
+
+    assert_strip!(
+        "class C { static?\n['foo']() {} }"
+        "class C { static;\n['foo']() {} }"
+    );
+
+    assert_strip!(
+        "class C { static?\n*foo() {} }"
+        "class C { static;\n*foo() {} }"
+    );
+
+    assert_strip!(
+        "class C { static?\nconstructor() {} }"
+        "class C { static;\nconstructor() {} }"
+    );
+
+    assert_strip!(
+        "class C { static?\n#foo() {} }"
+        "class C { static;\n#foo() {} }"
+    );
+
+    assert_strip!(
+        "class C { static?\nstatic {} }"
+        "class C { static;\nstatic {} }"
+    );
 }
 
 #[test]
@@ -123,6 +168,21 @@ fn definite_field_marker() {
     assert_strip!(
         "class C { value!: number; }"
         "class C { value         ; }"
+    );
+
+    assert_strip!(
+        "class C { get!: Type\n['foo']() {} }"
+        "class C { get ;     \n['foo']() {} }"
+    );
+
+    assert_strip!(
+        "class C { set!: Type\n['foo']() {} }"
+        "class C { set ;     \n['foo']() {} }"
+    );
+
+    assert_strip!(
+        "class C { static!: Type\n['foo']() {} }"
+        "class C { static ;     \n['foo']() {} }"
     );
 }
 
@@ -184,6 +244,11 @@ fn abstract_property_declaration() {
         "class C { abstract value: number; next = 1; }"
         "class C {                         next = 1; }"
     );
+
+    assert_strip!(
+        "abstract class C { first = 1\nabstract value: number\n['next']() {} }"
+        "         class C { first = 1\n;                     \n['next']() {} }"
+    );
 }
 
 #[test]
@@ -192,6 +257,11 @@ fn declared_property_declaration() {
         "class C { declare value: Type; next = 1; }"
         "class C {                      next = 1; }"
     );
+
+    assert_strip!(
+        "class C { first = 1\ndeclare value: Type\n['next']() {} }"
+        "class C { first = 1\n;                  \n['next']() {} }"
+    );
 }
 
 #[test]
@@ -199,6 +269,11 @@ fn abstract_method_declaration() {
     assert_strip!(
         "class C { abstract method(): Type; next() {} }"
         "class C {                          next() {} }"
+    );
+
+    assert_strip!(
+        "abstract class C { first = 1/* missing ; */\nabstract method(): void\n['next']() {} }"
+        "         class C { first = 1/* missing ; */\n;                      \n['next']() {} }"
     );
 }
 

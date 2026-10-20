@@ -87,6 +87,29 @@ fn satisfies_assertion_before_computed_statement() {
 }
 
 #[test]
+fn const_assertion_statement_boundaries() {
+    assert_strip!(
+        "0 as const\n(() => {})();"
+        "0;        \n(() => {})();"
+    );
+
+    assert_strip!(
+        "0 as const\n[1];"
+        "0;        \n[1];"
+    );
+
+    assert_strip!(
+        "0 as const\n`text`;"
+        "0;        \n`text`;"
+    );
+
+    assert_strip!(
+        "0 as const\n`text ${value}`;"
+        "0;        \n`text ${value}`;"
+    );
+}
+
+#[test]
 fn consecutive_type_declarations_terminate_directive_prologue() {
     assert_strip!(
         "interface A {}\ntype B = string;\n'use strict';"
@@ -100,6 +123,16 @@ fn first_erased_script_statement_terminates_directive_prologue() {
         "type T = string;\n'use strict';"
         ";               \n'use strict';"
     );
+
+    assert_strip!(
+        "\"custom\"; type T = number; \"use strict\";"
+        "\"custom\"; ;                \"use strict\";"
+    );
+
+    assert_strip!(
+        "'custom';\n'another';\ntype T = number;\ninterface I {}\n'use strict';"
+        "'custom';\n'another';\n;               \n              \n'use strict';"
+    );
 }
 
 #[test]
@@ -108,6 +141,11 @@ fn first_erased_module_statement_terminates_directive_prologue() {
         "type T = string;\n'use strict';\nexport {};"
         ";               \n'use strict';\nexport {};"
     );
+
+    assert_strip!(
+        "'use client';\ntype T = number;\n'use server';\nexport {};"
+        "'use client';\n;               \n'use server';\nexport {};"
+    );
 }
 
 #[test]
@@ -115,6 +153,49 @@ fn first_erased_function_statement_terminates_directive_prologue() {
     assert_strip!(
         "function f() {\ntype T = string;\n'use strict';\n}"
         "function f() {\n;               \n'use strict';\n}"
+    );
+
+    assert_strip!(
+        "function f() { \"custom\"; type T = number; \"use strict\"; }"
+        "function f() { \"custom\"; ;                \"use strict\"; }"
+    );
+
+    assert_strip!(
+        "const f = function () { 'custom'; interface I {} 'use strict'; };"
+        "const f = function () { 'custom'; ;              'use strict'; };"
+    );
+
+    assert_strip!(
+        "const f = () => { 'custom'; 'another'; type T = number; 'use strict'; };"
+        "const f = () => { 'custom'; 'another'; ;                'use strict'; };"
+    );
+
+    assert_strip!(
+        "class C { method() { 'custom'; type T = number; 'use strict'; } }"
+        "class C { method() { 'custom'; ;                'use strict'; } }"
+    );
+}
+
+#[test]
+fn erasure_after_ended_directive_prologue() {
+    assert_strip!(
+        "function f() {\n'custom';\nrun();\ntype T = number;\n'use strict';\n}"
+        "function f() {\n'custom';\nrun();\n                \n'use strict';\n}"
+    );
+
+    assert_strip!(
+        "function f() {\n'custom';\n;\ntype T = number;\n'use strict';\n}"
+        "function f() {\n'custom';\n;\n                \n'use strict';\n}"
+    );
+
+    assert_strip!(
+        "function f() {\n('custom');\ntype T = number;\n'use strict';\n}"
+        "function f() {\n('custom');\n                \n'use strict';\n}"
+    );
+
+    assert_strip!(
+        "function f() {\n{\n'custom';\ntype T = number;\n'use strict';\n}\n}"
+        "function f() {\n{\n'custom';\n                \n'use strict';\n}\n}"
     );
 }
 

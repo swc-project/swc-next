@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
+use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::SourceType;
-use swc_next_ecma_parser::CommentMode;
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Parser};
 
 use crate::strip_types;
 
@@ -21,6 +22,21 @@ fn assert_utf16_len_preserved(input: &str, output: &str) {
     assert_eq!(output_len, input_len);
 }
 
+fn assert_valid_javascript(source: &str, lang: crate::Lang) {
+    let lang = match lang {
+        crate::Lang::Tsx => crate::Lang::Jsx,
+        _ => crate::Lang::Js,
+    };
+    let allocator = Allocator::default();
+    let parsed = Parser::init(&allocator, source, options(lang), NoTokenParserConfig).parse();
+
+    assert!(
+        parsed.diagnostics.is_empty(),
+        "unexpected JavaScript diagnostics: {:#?}",
+        parsed.diagnostics
+    );
+}
+
 fn assert_diagnostic_span_text(input: &str, span: crate::Span, expected: &str) {
     let start = span.start as usize;
     let end = span.end as usize;
@@ -31,9 +47,9 @@ fn assert_diagnostic_span_text(input: &str, span: crate::Span, expected: &str) {
     assert_eq!(actual, expected);
 }
 
-macro_rules! assert_strip {
+macro_rules! assert_strip_text {
     ($input:literal $expected:literal $(,)?) => {{
-        assert_strip!(crate::Lang::Ts; $input $expected)
+        assert_strip_text!(crate::Lang::Ts; $input $expected)
     }};
     ($lang:expr; $input:literal $expected:literal $(,)?) => {{
         let result = crate::strip_types($input, crate::tests::options($lang));
@@ -45,6 +61,18 @@ macro_rules! assert_strip {
             "unexpected diagnostics: {:#?}",
             result.diagnostics
         );
+
+        result
+    }};
+}
+
+macro_rules! assert_strip {
+    ($input:literal $expected:literal $(,)?) => {{
+        assert_strip!(crate::Lang::Ts; $input $expected)
+    }};
+    ($lang:expr; $input:literal $expected:literal $(,)?) => {{
+        let result = assert_strip_text!($lang; $input $expected);
+        crate::tests::assert_valid_javascript(&result.code, $lang);
     }};
 }
 
@@ -91,6 +119,7 @@ fn unchanged_source_returns_borrowed_code() {
 
     assert!(matches!(result.code, Cow::Borrowed(value) if value == source));
     assert!(result.diagnostics.is_empty());
+    assert_valid_javascript(&result.code, crate::Lang::Ts);
 }
 
 #[test]
@@ -98,6 +127,7 @@ fn stripped_source_returns_owned_code() {
     let result = strip_types("let value: number = 1;", options(crate::Lang::Ts));
 
     assert!(matches!(result.code, Cow::Owned(_)));
+    assert_valid_javascript(&result.code, crate::Lang::Ts);
 }
 
 #[test]
@@ -126,6 +156,7 @@ fn parser_options_select_language() {
 
     let result = strip_types(source, options(crate::Lang::Tsx));
     assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+    assert_valid_javascript(&result.code, crate::Lang::Tsx);
 }
 
 #[test]
@@ -138,6 +169,7 @@ fn preserve_parens_option_does_not_change_output() {
     assert_utf16_len_preserved(source, &result.code);
     assert_eq!(result.code, "(value)        ;");
     assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+    assert_valid_javascript(&result.code, crate::Lang::Ts);
 }
 
 #[test]
@@ -150,6 +182,7 @@ fn comments_option_does_not_change_output() {
     assert_utf16_len_preserved(source, &result.code);
     assert_eq!(result.code, "/* lead */ let value         = 1; // tail");
     assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
+    assert_valid_javascript(&result.code, crate::Lang::Ts);
 }
 
 #[test]
