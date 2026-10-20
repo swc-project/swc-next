@@ -983,21 +983,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.statement_annotation_tail_modes(comments, span.end)
         };
         let previous_ignore = target.is_some() || suppression.current == ContentMode::Verbatim;
-        if target.is_none() {
-            // Block annotations belong to the following head, including its ASI guard.
-            if comments
-                .iter()
-                .all(|comment| comment.kind == CommentKind::Block)
-                && !previous_ignore
-            {
-                return None;
-            }
-            let optimizer = comments
-                .iter()
-                .any(|&comment| self.comment_is_optimizer_annotation(comment));
-            if !optimizer && !previous_ignore {
-                return None;
-            }
+        // Following-owned ignore packets and block annotations stay with the
+        // next statement's head, so its ASI guard precedes the entire packet.
+        if !previous_ignore
+            && (suppression.following == ContentMode::Verbatim
+                || comments
+                    .iter()
+                    .all(|comment| comment.kind == CommentKind::Block)
+                || !comments
+                    .iter()
+                    .any(|&comment| self.comment_is_optimizer_annotation(comment)))
+        {
+            return None;
         }
 
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
