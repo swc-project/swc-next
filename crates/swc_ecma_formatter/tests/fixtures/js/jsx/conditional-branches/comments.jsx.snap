@@ -28,7 +28,8 @@ flag ? (
     <Item />
     <Item />
   </Box> // tail
-) : (
+)
+: (
   fallback
 );
 flag ? (
@@ -36,7 +37,8 @@ flag ? (
     <Item />
     <Item />
   </Box> // nil
-) : undefined;
+)
+: undefined;
 flag ? (
   /* source head */ other ? (
     value
@@ -61,8 +63,10 @@ flag ? (/*#__PURE__*/ factory()) : (
     <Item />
   </Box>
 );
-flag ? // prettier-ignore
-factory(  first,second ) : (
+flag // prettier-ignore
+? (
+  factory(first, second)
+) : (
   <Box>
     <Item />
     <Item />
@@ -85,7 +89,8 @@ flag ? (
     <Item />
     <Item />
   </Box> // tail
-) : (
+)
+: (
   fallback
 );
 flag ? (
@@ -93,7 +98,8 @@ flag ? (
     <Item />
     <Item />
   </Box> // nil
-) : undefined;
+)
+: undefined;
 flag ? (
   /* source head */ other ? (
     value
@@ -119,8 +125,10 @@ flag ? (/*#__PURE__*/ factory()
     <Item />
   </Box>
 );
-flag ? // prettier-ignore
-factory(  first,second ) : (
+flag // prettier-ignore
+? (
+  factory(first, second)
+) : (
   <Box>
     <Item />
     <Item />
@@ -143,7 +151,8 @@ flag ? (
 		<Item />
 		<Item />
 	</Box> // tail
-) : (
+)
+: (
 	fallback
 );
 flag ? (
@@ -151,7 +160,8 @@ flag ? (
 		<Item />
 		<Item />
 	</Box> // nil
-) : undefined;
+)
+: undefined;
 flag ? (
 	/* source head */ other ? (
 		value
@@ -177,8 +187,10 @@ flag ? (/*#__PURE__*/ factory()
 		<Item />
 	</Box>
 );
-flag ? // prettier-ignore
-factory(  first,second ) : (
+flag // prettier-ignore
+? (
+	factory(first, second)
+) : (
 	<Box>
 		<Item />
 		<Item />

@@ -1,0 +1,2 @@
+first ? second ? 1.0e+00 : // prettier-ignore
+third : fourth;
