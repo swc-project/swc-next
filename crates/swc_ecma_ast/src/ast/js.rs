@@ -2012,6 +2012,11 @@ pub struct CallExpression {
     arguments: SubRange<Argument>,
     /// true for `foo?.()`.
     optional: bool,
+    /// Marks a generated call as free of observable effects when its result is
+    /// unused. This transform metadata is emitted as a `@__PURE__` annotation
+    /// and is not part of ESTree.
+    #[estree(skip = "transform metadata")]
+    pure: bool,
 }
 
 /// Wraps an optional chain so that short-circuiting applies to the whole

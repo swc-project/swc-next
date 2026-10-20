@@ -12,6 +12,7 @@ use swc_next_ecma_ast::{
 };
 
 use super::{StatementExpansion, TypeScriptLowerer, runtime::RuntimeTarget};
+use swc_next_ecma_semantic::Semantic;
 
 #[derive(Default)]
 pub(super) struct NamespaceState {
@@ -23,6 +24,52 @@ pub(super) struct NamespaceState {
 impl NamespaceState {
     fn has_export_aliases(&self) -> bool {
         self.export_alias_depth != 0
+    }
+
+    pub(super) fn parameter_for_symbol(
+        &self,
+        ast: &Ast<'_>,
+        semantic: &Semantic<'_>,
+        name: &[u8],
+        symbol: SymbolId,
+    ) -> Option<AstUtf8> {
+        if self.has_export_aliases() {
+            return self.parameter_for_export_alias(ast, semantic, name, symbol);
+        }
+        for context in self.contexts.iter().rev() {
+            if context.members.declared.contains(&symbol) {
+                return (!context.local_symbols.contains(&symbol)).then_some(context.parameter);
+            }
+        }
+        None
+    }
+
+    // Inlining the export lookup increases stack/register work for every ordinary reference.
+    #[inline(never)]
+    fn parameter_for_export_alias(
+        &self,
+        ast: &Ast<'_>,
+        semantic: &Semantic<'_>,
+        name: &[u8],
+        symbol: SymbolId,
+    ) -> Option<AstUtf8> {
+        // Export specifiers can expose a declaration under a different name,
+        // including when its original name has a local runtime binding.
+        let same_name = name == ast.get_wtf8(semantic.symbol(symbol).name).as_bytes();
+        for context in self.contexts.iter().rev() {
+            let direct = same_name && context.members.declared.contains(&symbol);
+            let exported = direct
+                || context.members.export_alias_owner.is_some_and(|owner| {
+                    semantic
+                        .ts_namespace_value_targets(owner, name)
+                        .any(|target| target.candidate() == Some(symbol))
+                });
+            if exported {
+                let local = same_name && context.local_symbols.contains(&symbol);
+                return (!local).then_some(context.parameter);
+            }
+        }
+        None
     }
 
     fn enter(
@@ -464,46 +511,12 @@ impl TypeScriptLowerer<'_, '_> {
         // alias has uncertain value meaning. It does not evaluate the target or
         // decide whether its declaration emits code.
         let symbol = reference.resolution().candidate()?;
-        if self.namespaces.has_export_aliases() {
-            return self.namespace_parameter_for_export_alias(reference.name, symbol);
-        }
-        for context in self.namespaces.contexts.iter().rev() {
-            if context.members.declared.contains(&symbol) {
-                return (!context.local_symbols.contains(&symbol)).then_some(context.parameter);
-            }
-        }
-        None
-    }
-
-    // Inlining the export lookup increases stack/register work for every ordinary reference.
-    #[inline(never)]
-    fn namespace_parameter_for_export_alias(
-        &self,
-        name: AstUtf8,
-        symbol: SymbolId,
-    ) -> Option<AstUtf8> {
-        // Export specifiers can expose a declaration under a different name,
-        // including when its original name has a local runtime binding.
-        let name = self.ast_ref().get_utf8(name).as_bytes();
-        let same_name = name
-            == self
-                .ast_ref()
-                .get_wtf8(self.semantic.symbol(symbol).name)
-                .as_bytes();
-        for context in self.namespaces.contexts.iter().rev() {
-            let direct = same_name && context.members.declared.contains(&symbol);
-            let exported = direct
-                || context.members.export_alias_owner.is_some_and(|owner| {
-                    self.semantic
-                        .ts_namespace_value_targets(owner, name)
-                        .any(|target| target.candidate() == Some(symbol))
-                });
-            if exported {
-                let local = same_name && context.local_symbols.contains(&symbol);
-                return (!local).then_some(context.parameter);
-            }
-        }
-        None
+        self.namespaces.parameter_for_symbol(
+            self.ast_ref(),
+            self.semantic,
+            self.ast_ref().get_utf8(reference.name).as_bytes(),
+            symbol,
+        )
     }
 
     fn namespace_body_local_symbols(&self, body: TsModuleBody) -> FxHashSet<SymbolId> {

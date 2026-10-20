@@ -36,6 +36,16 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         options: &TypeScriptOptions,
     ) -> Self {
         let implicit_usage = jsx::dependencies(program, ast, semantic, &options.jsx);
+        Self::analyze_with_dependencies(program, ast, semantic, options, implicit_usage)
+    }
+
+    pub(super) fn analyze_with_dependencies(
+        program: Program,
+        ast: &Ast<'ast>,
+        semantic: &Semantic<'ast>,
+        options: &TypeScriptOptions,
+        implicit_usage: FxHashSet<SymbolId>,
+    ) -> Self {
         // Ordinary imports use semantic reference flags directly during lowering.
         // Only enums, namespaces and import-equals need a precomputed emission plan.
         let source_module = semantic.ts_source_module_symbol();

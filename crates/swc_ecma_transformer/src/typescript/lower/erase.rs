@@ -5,6 +5,32 @@ use swc_next_ecma_ast::{
 };
 
 impl TypeScriptLowerer<'_, '_> {
+    pub(super) fn lower_typescript_expression(&mut self, expression: Expr) -> Option<Expr> {
+        let inner = match self.ast_ref().expr_data(expression) {
+            ExprData::MemberExpression(_) => {
+                if let Some(value) = self.analysis.inline_const_enum_use(expression.node_id()) {
+                    return Some(self.inline_enum_constant(expression, value));
+                }
+                None
+            }
+            ExprData::IdentifierReference(identifier) => {
+                return self.namespace_identifier_reference(identifier);
+            }
+            ExprData::TsAsExpression(wrapper) => Some(wrapper.expression(self.ast())),
+            ExprData::TsSatisfiesExpression(wrapper) => Some(wrapper.expression(self.ast())),
+            ExprData::TsTypeAssertion(wrapper) => Some(wrapper.expression(self.ast())),
+            ExprData::TsNonNullExpression(wrapper) => Some(wrapper.expression(self.ast())),
+            ExprData::TsInstantiationExpression(wrapper) => Some(wrapper.expression(self.ast())),
+            _ => None,
+        };
+        if let Some(inner) = inner {
+            let removed_span = expression.span(self.ast_ref());
+            Some(self.unwrap_expression(inner, removed_span))
+        } else {
+            expression.visit_mut_children_with(self)
+        }
+    }
+
     pub(super) fn lower_class_elements(
         &mut self,
         elements: SubRange<ClassElement>,

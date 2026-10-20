@@ -60,7 +60,8 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         case.code(),
         case.source_type(),
         case.lang(),
-    ) else {
+    )?
+    else {
         return Ok(false);
     };
 
@@ -108,7 +109,8 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
             output,
             case.source_type(),
             output_lang,
-        ) else {
+        )?
+        else {
             return Ok(false);
         };
         let retransformed = print(&output_allocator, &output_ast, case.codegen_options()).code;
@@ -125,8 +127,10 @@ fn transform_program<'a, C: TransformCase>(
     source: &'a str,
     source_type: SourceType,
     lang: Lang,
-) -> Option<Ast<'a>> {
-    let mut ast = parse_program(allocator, source, source_type, lang, true)?;
+) -> Result<Option<Ast<'a>>, String> {
+    let Some(mut ast) = parse_program(allocator, source, source_type, lang, true) else {
+        return Ok(None);
+    };
     let options = case.transformer_options();
     if options.typescript.is_some() {
         Normalizer::normalize_runtime(ast.root_program(), &mut ast);
@@ -145,10 +149,20 @@ fn transform_program<'a, C: TransformCase>(
         .iter()
         .any(|diagnostic| diagnostic.severity == Severity::Error)
     {
-        return None;
+        return Ok(None);
     }
-    Transformer::transform(&mut ast, semantic_ret.semantic, options);
-    Some(ast)
+    let transformed = Transformer::transform(&mut ast, semantic_ret.semantic, options);
+    if let Some(diagnostic) = transformed
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return Err(format!(
+            "transform: {} at {}..{}",
+            diagnostic.message, diagnostic.span.start, diagnostic.span.end
+        ));
+    }
+    Ok(Some(ast))
 }
 
 fn parse_program<'a>(

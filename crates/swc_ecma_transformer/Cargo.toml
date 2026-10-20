@@ -11,6 +11,8 @@ repository.workspace  = true
 version               = "0.3.1"
 
 [dependencies]
+memchr     = { workspace = true }
+phf        = { workspace = true, features = ["macros"] }
 rustc-hash = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }

@@ -7,9 +7,9 @@ use gungraun::prelude::*;
 use gungraun::{Callgrind, EventKind};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, Decorator, IdentifierName, IdentifierReference, LabelIdentifier, Lang,
-    PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith, TsTypeAnnotation, Visit,
-    VisitMut, VisitMutWith, VisitWith,
+    Ast, BindingIdentifier, Decorator, Diagnostic, IdentifierName, IdentifierReference,
+    LabelIdentifier, Lang, PrivateIdentifier, SourceType, Traverse, TraverseCtx, TraverseWith,
+    TsTypeAnnotation, Visit, VisitMut, VisitMutWith, VisitWith,
 };
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
@@ -18,8 +18,12 @@ use swc_next_ecma_semantic::{
     AnalyzeOptions, Semantic, SyntaxChecks, analyze, name_resolver::resolver as resolve_names,
 };
 use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions, typescript::TypeScriptOptions,
+    Transformer, TransformerOptions,
+    es2022::ES2022Options,
+    jsx::{self, JsxOptions, JsxRuntime, ReactRefreshOptions},
+    normalize::Normalizer,
+    proposal::ProposalOptions,
+    typescript::TypeScriptOptions,
 };
 use swc_next_type_strip::strip_types;
 
@@ -220,6 +224,84 @@ fn bench_type_strip(source: &str, options: Options) {
     black_box(strip_types(black_box(source), black_box(options)));
 }
 
+// Parse and analyze outside the measured region; each case transforms a fresh AST.
+fn setup_jsx_transform(jsx: JsxOptions) -> TransformInput {
+    let mut ast = setup_program(CAL_COM_TSX, Lang::Tsx);
+    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let options = TransformerOptions {
+        source_path: Some("cal.com.tsx".to_owned()),
+        typescript: Some(TypeScriptOptions::default()),
+        jsx: Some(jsx),
+        ..TransformerOptions::default()
+    };
+    (ast, semantic, options)
+}
+
+#[library_benchmark]
+#[bench::cal_com_production(setup_jsx_transform(JsxOptions::default()))]
+#[bench::cal_com_development(setup_jsx_transform(JsxOptions {
+    development: true,
+    source_self: true,
+    ..JsxOptions::default()
+}))]
+#[bench::cal_com_refresh(setup_jsx_transform(JsxOptions {
+    development: true,
+    source_self: true,
+    refresh: Some(ReactRefreshOptions::default()),
+    ..JsxOptions::default()
+}))]
+fn bench_jsx_transform(input: TransformInput) {
+    let (mut ast, semantic, options) = black_box(input);
+    let result = Transformer::transform(&mut ast, semantic, options);
+    black_box((ast, result));
+}
+
+type JsxLoweringInput = (Ast<'static>, Semantic<'static>, JsxOptions);
+type JsxLoweringOutput = (Ast<'static>, Semantic<'static>, Vec<Diagnostic<'static>>);
+
+fn setup_jsx_lowering(jsx: JsxOptions) -> JsxLoweringInput {
+    let mut ast = setup_program(CAL_COM_TSX, Lang::Tsx);
+    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let result = Transformer::transform(
+        &mut ast,
+        semantic,
+        TransformerOptions {
+            typescript: Some(TypeScriptOptions::default()),
+            ..TransformerOptions::default()
+        },
+    );
+    assert!(result.diagnostics.is_empty());
+    Normalizer::normalize(ast.root_program(), &mut ast);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    assert!(!semantic.jsx_usages().is_empty());
+    (ast, semantic, jsx)
+}
+
+fn teardown_jsx_lowering((ast, _semantic, diagnostics): JsxLoweringOutput) {
+    assert!(diagnostics.is_empty());
+    assert_eq!(ast.lang(), Lang::Js);
+}
+
+#[library_benchmark(teardown = teardown_jsx_lowering)]
+#[bench::cal_com_classic(setup_jsx_lowering(JsxOptions {
+    runtime: JsxRuntime::Classic,
+    ..JsxOptions::default()
+}))]
+#[bench::cal_com_automatic(setup_jsx_lowering(JsxOptions::default()))]
+#[bench::cal_com_development(setup_jsx_lowering(JsxOptions {
+    development: true,
+    source_self: true,
+    ..JsxOptions::default()
+}))]
+fn bench_jsx_lowering(input: JsxLoweringInput) -> JsxLoweringOutput {
+    let (mut ast, semantic, options) = black_box(input);
+    let diagnostics = jsx::transform(ast.root_program(), &mut ast, &semantic, options);
+    // Keep validation and destruction of the AST and semantic indexes in teardown.
+    black_box((ast, semantic, diagnostics))
+}
+
 struct VisitCounter<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     count: usize,
@@ -400,6 +482,10 @@ library_benchmark_group!(name = transform, benchmarks = bench_transform);
 
 library_benchmark_group!(name = type_strip, benchmarks = bench_type_strip);
 
+library_benchmark_group!(name = jsx_transform, benchmarks = bench_jsx_transform);
+
+library_benchmark_group!(name = jsx_lowering, benchmarks = bench_jsx_lowering);
+
 library_benchmark_group!(
     name = visit,
     benchmarks = [bench_visit, bench_visit_mut, bench_traverse]
@@ -411,6 +497,15 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, resolver, codegen, minifier, transform, type_strip, visit
+        parser,
+        semantic,
+        resolver,
+        codegen,
+        minifier,
+        transform,
+        type_strip,
+        jsx_transform,
+        jsx_lowering,
+        visit
     ]
 );

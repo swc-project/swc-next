@@ -1,5 +1,5 @@
 use super::{TypeScriptOptions, analysis::TypeScriptAnalysis};
-use crate::{context::CommentState, used_names::UsedNameState};
+use crate::{context::CommentState, syntax::FollowingTransform, used_names::UsedNameState};
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{Ast, Program, SourceType, SymbolId, VisitMut};
 use swc_next_ecma_semantic::Semantic;
@@ -32,6 +32,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     // Lazy index; None as a map value means unresolved or conflicting owners.
     source_name_owners: Option<FxHashMap<&'ast [u8], Option<SymbolId>>>,
     used_names: Option<UsedNameState<'ast>>,
+    following: Option<&'visit mut dyn FollowingTransform<'ast>>,
 }
 
 impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
@@ -54,13 +55,29 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             namespaces: NamespaceState::default(),
             source_name_owners: None,
             used_names: None,
+            following: None,
         }
+    }
+
+    pub(super) fn new_with_following(
+        options: &'visit TypeScriptOptions,
+        analysis: TypeScriptAnalysis<'ast>,
+        ast: &'visit mut Ast<'ast>,
+        semantic: &'visit Semantic<'ast>,
+        following: &'visit mut dyn FollowingTransform<'ast>,
+    ) -> Self {
+        let mut lowerer = Self::new(options, analysis, ast, semantic);
+        lowerer.following = Some(following);
+        lowerer
     }
 
     pub(super) fn lower_program(mut self, program: Program) {
         let body = program.body(self.ast());
         if let Some(body) = self.lower_statement_list(body) {
             program.set_body(self.ast(), body);
+        }
+        if let Some(following) = self.following.take() {
+            following.finish_program(program, self.ast);
         }
         if self.ast_ref().source_type() == SourceType::Module
             && !self.has_module_indicator(program.body(self.ast_ref()))

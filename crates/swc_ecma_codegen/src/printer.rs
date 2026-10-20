@@ -125,6 +125,7 @@ struct Printer<'a> {
     indent: usize,
     print_next_indent_as_space: bool,
     needs_semicolon: bool,
+    suppress_next_pure_annotation: bool,
 
     // Byte offsets used to detect expression contexts where otherwise-valid
     // syntax must be parenthesized.
@@ -343,6 +344,7 @@ impl<'a> Printer<'a> {
             indent: 0,
             print_next_indent_as_space: false,
             needs_semicolon: false,
+            suppress_next_pure_annotation: false,
             stmt_start: usize::MAX,
             export_default_start: usize::MAX,
             arrow_expr_start: usize::MAX,
@@ -945,7 +947,16 @@ impl<'a> Printer<'a> {
                     let first_token = self.expr_first_token_offset(expression);
                     self.print_comments_before(first_token, true, true);
                 }
-                self.print_indent();
+                let direct_pure_call = expression
+                    .as_call_expression(self.ast)
+                    .is_some_and(|call| call.pure(self.ast));
+                if direct_pure_call && !self.options.minify {
+                    self.print("/* #__PURE__ */ ");
+                    self.print_indent();
+                    self.suppress_next_pure_annotation = true;
+                } else {
+                    self.print_indent();
+                }
                 self.stmt_start = self.js.len();
                 let wrap = prevent_directive
                     && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(_));
@@ -2633,10 +2644,17 @@ impl<'a> Printer<'a> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
-        let wrap = level > Precedence::Call || in_new_callee;
+        let print_pure = e.pure(self.ast) && !self.suppress_next_pure_annotation;
+        let wrap = level > Precedence::Call
+            || in_new_callee
+            || (print_pure && level >= Precedence::Postfix);
         if wrap {
             self.print("(");
         }
+        if print_pure {
+            self.print("/* #__PURE__ */ ");
+        }
+        self.suppress_next_pure_annotation = false;
         let callee = e.callee(self.ast);
         let optional = e.optional(self.ast);
         let callee_level = if matches!(self.ast.expr_data(callee), ExprData::NewExpression(_)) {
@@ -2702,7 +2720,16 @@ impl<'a> Printer<'a> {
         self.print("(");
         let multiline = !self.options.minify
             && !args.is_empty()
-            && self.has_direct_argument_comments(args, close_offset);
+            && (self.has_direct_argument_comments(args, close_offset)
+                || args.iter().any(|id| {
+                    let argument = self.ast.get_node_in_sub_range(id);
+                    let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+                        return false;
+                    };
+                    expression
+                        .as_call_expression(self.ast)
+                        .is_some_and(|call| call.pure(self.ast))
+                }));
         if multiline {
             self.indent += 1;
             self.print_newline();
@@ -2717,9 +2744,21 @@ impl<'a> Printer<'a> {
                 }
             }
             let argument = self.ast.get_node_in_sub_range(id);
+            let direct_pure_call = match self.ast.argument_data(argument) {
+                ArgumentData::Expr(expression) => expression
+                    .as_call_expression(self.ast)
+                    .is_some_and(|call| call.pure(self.ast)),
+                ArgumentData::SpreadElement(_) => false,
+            };
             if multiline {
                 self.print_comments_before(argument.span(self.ast).start, true, true);
-                self.print_indent();
+                if direct_pure_call {
+                    self.print("/* #__PURE__ */ ");
+                    self.print_indent();
+                    self.suppress_next_pure_annotation = true;
+                } else {
+                    self.print_indent();
+                }
             }
             match self.ast.argument_data(argument) {
                 ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
@@ -2755,6 +2794,18 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             if let Some(arg) = self.ast.get_node_in_sub_range(id) {
+                if i == 0
+                    && !self.options.minify
+                    && matches!(
+                        self.ast.argument_data(arg),
+                        ArgumentData::Expr(expression)
+                            if expression
+                                .as_call_expression(self.ast)
+                                .is_some_and(|call| call.pure(self.ast))
+                    )
+                {
+                    self.print_space();
+                }
                 match self.ast.argument_data(arg) {
                     ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
                     ArgumentData::SpreadElement(s) => {
@@ -2797,10 +2848,9 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            match self
-                .ast
-                .object_property_kind_data(self.ast.get_node_in_sub_range(id))
-            {
+            let property = self.ast.get_node_in_sub_range(id);
+            self.print_comments_before(property.span(self.ast).start, false, true);
+            match self.ast.object_property_kind_data(property) {
                 ObjectPropertyKindData::SpreadElement(s) => {
                     self.print("...");
                     self.print_expr(s.argument(self.ast), Precedence::Assignment);

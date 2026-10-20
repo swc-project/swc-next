@@ -72,6 +72,7 @@ type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>
 /// This records syntax and its lexical environment, not a particular JSX runtime.
 #[derive(Debug, Clone, Copy)]
 pub struct JsxUsage {
+    pub node: NodeId,
     pub scope: ScopeId,
     pub is_fragment: bool,
 }
@@ -147,7 +148,7 @@ impl NodeSemanticId {
 }
 
 impl<'a> Semantic<'a> {
-    /// JSX usage in traversal order, coalescing adjacent sites in one scope.
+    /// JSX usage sites and their lexical environments in traversal order.
     /// Intrinsic tags are included; a fragment also requires an element factory.
     pub fn jsx_usages(&self) -> &[JsxUsage] {
         &self.jsx_usages

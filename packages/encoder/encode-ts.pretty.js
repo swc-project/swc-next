@@ -1174,6 +1174,7 @@ function encodeTs(program, meta = {}) {
     const v_1 = n.typeArguments == null ? NULL : encTsTypeParameterInstantiation(n.typeArguments);
     const v_2 = encArray(n.arguments, encArgument, false);
     const v_3 = n.optional ? 1 : 0;
+    const v_4 = 0 ? 1 : 0;
     const extraId = allocExtra(1);
     const index = allocNode(69, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1181,6 +1182,7 @@ function encodeTs(program, meta = {}) {
     setPayloadU32(index, 4, v_1);
     writeArrayRange(v_2, n.arguments, extra, (extraId + 0) * 8);
     setPayloadU8(index, 8, v_3);
+    setPayloadU8(index, 9, v_4);
     return index;
   }
 

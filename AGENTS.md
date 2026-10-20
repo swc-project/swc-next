@@ -27,6 +27,18 @@ against the dispatch revision; omit `filter` to run all benchmarks. Results and
 resolved SHAs are available in the run summary and artifacts. PRs still run the
 base-versus-merge comparison automatically.
 
+The `jsx_lowering` Gungraun group measures classic, automatic, and development
+JSX lowering. Parsing, TypeScript erasure, normalization, and semantic analysis
+run in setup; output validation and cleanup run in teardown. The `jsx_transform`
+group measures the combined TypeScript, JSX, and optional React Refresh pipeline.
+Run the isolated pass on Linux with Valgrind, or smoke-test its cases without
+Valgrind on any supported host:
+
+```sh
+cargo bench --locked -p benchmark --bench gungraun -- --allow-aslr=yes '*::jsx_lowering::*'
+cargo test --locked -p benchmark --bench gungraun -- --test '*::jsx_lowering::*'
+```
+
 For JavaScript API instruction profiles, use the `JavaScript API Gungraun`
 workflow or, on Linux with Valgrind,
 `BASE_REF=main HEAD_REF=HEAD node .github/scripts/run-gungraun-js.mjs`.

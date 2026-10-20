@@ -1521,11 +1521,20 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_node();
     }
 
+    fn visit_jsx_element(&mut self, node: swc_next_ecma_ast::JsxElement) {
+        self.enter_node(node.node_id());
+        self.state
+            .symbols
+            .record_jsx_usage(node.node_id(), self.state.scope.current, false);
+        node.visit_children_with(self);
+        self.leave_node(NodeKindData::JsxElement(node));
+    }
+
     fn visit_jsx_fragment(&mut self, node: swc_next_ecma_ast::JsxFragment) {
         self.enter_node(node.node_id());
         self.state
             .symbols
-            .record_jsx_usage(self.state.scope.current, true);
+            .record_jsx_usage(node.node_id(), self.state.scope.current, true);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxFragment(node));
     }
@@ -1533,7 +1542,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.record_jsx_usage(state.scope.current, false);
         state
             .symbols
             .add_jsx_opening_element_reference(self.ast, node, &state.scope);

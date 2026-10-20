@@ -1,11 +1,11 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CatchClause, Class, ClassBody, ClassType, Decl,
-    ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
-    TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
-    TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
-    TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
-    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
+    ArrowFunctionExpression, Ast, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
+    ClassType, Decl, Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement,
+    ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
+    StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsEnumBody, TsFunction,
+    TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
+    TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
 
@@ -17,45 +17,87 @@ use crate::{
 mod context;
 mod helpers;
 mod jsx_pragma;
+mod syntax;
+mod uid;
 mod used_names;
 
 pub mod assumptions;
 pub mod es2022;
+pub mod jsx;
 pub mod normalize;
 pub mod proposal;
 pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    pub source_path: Option<String>,
+    pub react_display_name: bool,
     pub assumptions: Assumptions,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
+    pub jsx: Option<jsx::JsxOptions>,
     pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
+    pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
 pub struct Transformer {
     x0_es2022: es2022::ES2022,
+    display_name: Option<jsx::DisplayName>,
 }
 
 impl Transformer {
-    /// Run the Semantic-based TypeScript phase, then synchronized scope transforms.
+    /// Run TypeScript and JSX syntax lowering, then synchronized scope transforms.
     /// Normalize runtime syntax before analysis when TypeScript is enabled, otherwise normalize all syntax.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
         mut semantic: Semantic<'ast>,
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
-        if let Some(typescript) = options.typescript.take() {
-            typescript::transform(ast.root_program(), ast, &semantic, typescript);
+        let program = ast.root_program();
+        let mut runtime_import_anchor = None;
+        if let Some(refresh) = options.jsx.as_ref().and_then(|jsx| jsx.refresh.as_ref()) {
+            runtime_import_anchor = jsx::transform_refresh(program, ast, &semantic, refresh);
+            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        }
+        let jsx = options
+            .jsx
+            .take()
+            .map(|jsx| jsx::resolve_options(program, ast, jsx));
+        let syntax_transformed = options.typescript.is_some() || jsx.is_some();
+        let syntax_result = match (options.typescript.take(), jsx) {
+            (Some(typescript), Some(jsx)) => {
+                let mut jsx =
+                    jsx::JsxLowerer::new(&jsx, ast, &semantic, options.source_path.as_deref());
+                jsx.set_runtime_import_anchor(runtime_import_anchor);
+                typescript::transform_with_following(program, ast, &semantic, typescript, &mut jsx);
+                jsx.take_result()
+            }
+            (Some(typescript), None) => {
+                typescript::transform(program, ast, &semantic, typescript);
+                syntax::SyntaxResult::default()
+            }
+            (None, Some(jsx)) => jsx::transform_resolved(
+                program,
+                ast,
+                &semantic,
+                jsx,
+                options.source_path.as_deref(),
+                runtime_import_anchor,
+            ),
+            (None, None) => syntax::SyntaxResult::default(),
+        };
+        if syntax_transformed {
             semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
 
-        Self::transform_with_scopes(ast, ScopeModel::new(semantic), options)
+        let mut result = Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
+        result.diagnostics = syntax_result.diagnostics;
+        result
     }
 
     /// Run synchronized transforms on an already normalized runtime AST and its ScopeModel.
@@ -70,6 +112,9 @@ impl Transformer {
 
         let mut transformer = Self {
             x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
+            display_name: options
+                .react_display_name
+                .then(|| jsx::DisplayName::new(options.source_path)),
         };
 
         let state = TransformerState::new(semantic);
@@ -78,11 +123,23 @@ impl Transformer {
         TransformCtx::new(&mut ctx).finish();
         TransformerReturn {
             semantic: ctx.state.semantic,
+            diagnostics: Vec::new(),
         }
     }
 }
 
 impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
+    fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
+    ) -> TraverseAction<CallExpression> {
+        if let Some(display_name) = &self.display_name {
+            display_name.exit_call_expression(node, &mut TransformCtx::new(ctx));
+        }
+        TraverseAction::Continue
+    }
+
     fn enter_program(
         &mut self,
         node: Program,

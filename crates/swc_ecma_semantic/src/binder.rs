@@ -3793,16 +3793,12 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    pub fn record_jsx_usage(&mut self, scope: ScopeId, is_fragment: bool) {
-        // Adjacent JSX in one environment has the same implicit dependencies.
-        // Keep scope summaries instead of allocating an entry for every tag.
-        if let Some(usage) = self.jsx_usages.last_mut()
-            && usage.scope == scope
-        {
-            usage.is_fragment |= is_fragment;
-            return;
-        }
-        self.jsx_usages.push(crate::JsxUsage { scope, is_fragment });
+    pub fn record_jsx_usage(&mut self, node: NodeId, scope: ScopeId, is_fragment: bool) {
+        self.jsx_usages.push(crate::JsxUsage {
+            node,
+            scope,
+            is_fragment,
+        });
     }
 
     pub fn add_jsx_opening_element_reference(

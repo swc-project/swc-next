@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange, UnaryOperator,
+    Ast, BinaryOperator, CallExpression, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey,
+    PropertyKind, Stmt, StmtData, SubRange, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -10,6 +10,74 @@ use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
+
+fn pure_calls(source: &str, minify: bool) -> String {
+    struct PureCalls<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl<'ast> VisitMut<'ast> for PureCalls<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_call_expression(&mut self, call: CallExpression) -> Option<CallExpression> {
+            if let Some(callee) = call.callee(self.0).as_identifier_reference(self.0)
+                && self.0.get_utf8(callee.name(self.0)) == "pure"
+            {
+                call.set_pure(self.0, true);
+            }
+            call.visit_mut_children_with(self)
+        }
+    }
+
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        ParseOptions::default(),
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty());
+    let mut ast = parsed.ast;
+    ast.root_program().visit_mut_with(&mut PureCalls(&mut ast));
+    print(
+        &allocator,
+        &ast,
+        PrintOptions {
+            minify,
+            ..PrintOptions::default()
+        },
+    )
+    .code
+    .to_owned()
+}
+
+#[test]
+fn test_pure_calls() {
+    let output = pure_calls("pure().props.f();", false);
+    assert_eq!(output, "(/* #__PURE__ */ pure()).props.f();\n");
+
+    let output = pure_calls("pure()();", true);
+    assert_eq!(output, "(/* #__PURE__ */ pure())();");
+
+    let output = pure_calls("pure()``;", true);
+    assert_eq!(output, "(/* #__PURE__ */ pure())``;");
+
+    let output = pure_calls("pure()?.[key]();", true);
+    assert_eq!(output, "(/* #__PURE__ */ pure())?.[key]();");
+
+    let output = pure_calls("new (pure())();", true);
+    assert_eq!(output, "new(/* #__PURE__ */ pure());");
+
+    let output = pure_calls("const value = pure();", true);
+    assert_eq!(output, "const value=/* #__PURE__ */ pure();");
+
+    let output = pure_calls("pure(pure());", false);
+    assert_eq!(
+        output,
+        "/* #__PURE__ */ pure(\n/* #__PURE__ */   pure()\n);\n"
+    );
+}
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
@@ -1054,6 +1122,14 @@ fn test_statement_body_formatting() {
     expect_stable(
         "if(a) x(); else if(b) y(); else z();",
         "if (a) x();\nelse if (b) y();\nelse z();\n",
+    );
+}
+
+#[test]
+fn test_object_property_comments() {
+    expect_printed(
+        "const value = { /* before */ first: 1, // between\nsecond: 2 };",
+        "const value = { /* before */ first: 1, // between\nsecond: 2 };\n",
     );
 }
 
