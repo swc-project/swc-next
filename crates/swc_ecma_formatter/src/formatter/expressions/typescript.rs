@@ -595,6 +595,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
+        if !source {
+            *right = self.normalize_type_head(*right)?;
+        }
         let layout = if source {
             BinaryTypeLayout::Source(gap)
         } else if let Some((prefix, tail)) = self.prepare_const_marker_comments(

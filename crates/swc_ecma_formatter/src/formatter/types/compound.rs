@@ -1514,6 +1514,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok((Some(UnionMemberPrefix::Boundary(after)), None))
     }
 
+    /// Layout sees the surviving type after empty, removable compound heads disappear.
+    pub(in crate::formatter) fn normalize_type_head(
+        &self,
+        mut node: PreparedType,
+    ) -> Result<PreparedType, FormatError> {
+        while node.source_owner.is_none() {
+            let single = match node.data {
+                TsTypeData::TsUnionType(union) => union.types(self.ast).len() == 1,
+                TsTypeData::TsIntersectionType(intersection) => {
+                    intersection.types(self.ast).len() == 1
+                }
+                _ => false,
+            };
+            if !single {
+                break;
+            }
+            match self.prepare_single_compound(node)?.into_headless_type() {
+                Ok(child) => node = child,
+                Err(_) => break,
+            }
+        }
+        Ok(node)
+    }
+
     pub(super) fn prepare_single_compound(
         &self,
         node: PreparedType,

@@ -822,6 +822,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_type_boundary(boundary, writer)?;
             return self.format_prepared_type(node, TypeContext::Root, writer);
         }
+        let node = self.normalize_type_head(node)?;
         if let TsTypeData::TsParenthesizedType(parentheses) = node.data {
             let parentheses =
                 self.prepare_type_parentheses(parentheses, node.source_owner, TypeContext::Root);
@@ -873,12 +874,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if single_compound && node.source_owner.is_none() {
             let single = self.prepare_single_compound(node)?;
-            let single = match single.into_headless_type() {
-                Ok(child) => {
-                    return self.format_type_alias_rhs(boundary, child, rhs_layout, writer);
-                }
-                Err(single) => single,
-            };
             if single.movable() {
                 self.format_comment_boundary(before, writer)?;
                 before
