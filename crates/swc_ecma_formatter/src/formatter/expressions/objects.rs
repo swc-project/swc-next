@@ -7,7 +7,9 @@ use swc_next_ecma_ast::{
 };
 
 use super::assignment::RhsLayout;
-use super::parentheses::{ResolvedExpressionHead, SourceOpeningPacket};
+use super::parentheses::{
+    EmittedHeadAnnotation, PreparedGeneratedEnclosure, ResolvedExpressionHead, SourceOpeningPacket,
+};
 use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -132,6 +134,7 @@ struct ObjectPropertyBoundary<'ast> {
     suppression: PropertySuppression,
     before: &'ast [Comment],
     moved: &'ast [Comment],
+    annotation: Option<EmittedHeadAnnotation>,
     operator_line: &'ast [Comment],
     operator_line_start: u32,
     leading: &'ast [Comment],
@@ -687,18 +690,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     return self.format_source_opening_packet(opening, context, writer);
                 }
-                self.format_prepared_expression_with_leading_comments(
-                    value,
-                    content,
-                    NodeHead {
-                        comments: boundary.leading,
-                        content_start: boundary.value_start,
-                        layout: CommentRunLayout::GroupedLeading(boundary.value_start),
-                        gap_end: None,
-                    },
-                    context,
-                    writer,
-                )
+                let head = NodeHead {
+                    comments: boundary.leading,
+                    content_start: boundary.value_start,
+                    layout: CommentRunLayout::GroupedLeading(boundary.value_start),
+                    gap_end: None,
+                };
+                let binding = self.expression_head_binding(boundary.leading, value);
+                let binding = content
+                    .parentheses
+                    .map_or(binding, |removed| binding.combine(removed.head.binding));
+                let enclosure = boundary.annotation.and_then(|annotation| {
+                    self.emitted_head_enclosure_owner(value, &content, annotation, binding, context)
+                });
+                // Promotion can expose a cast before a required generated pair.
+                // Give that pair the same owner/layout it has on the next parse.
+                match enclosure {
+                    Some(owner) => self.format_prepared_generated_enclosure_with_head(
+                        PreparedGeneratedEnclosure { owner, content },
+                        head,
+                        context,
+                        writer,
+                    ),
+                    None => self.format_prepared_expression_with_resolved_head(
+                        value,
+                        content,
+                        ResolvedExpressionHead { head, binding },
+                        context,
+                        writer,
+                    ),
+                }
             };
             let separator = |writer: &mut Writer<'ast>| {
                 constraint.write(writer, FlatSeparator::Space, |writer| {
@@ -753,16 +774,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
             inspection_end,
         );
-        let ordinary_before = self
+        let relocatable_before = self
             .comment_run_binding(before.iter().copied(), |comment| {
-                if self.comment_semantics(comment).is_ordinary() {
-                    CommentBinding::Unbound
-                } else {
+                let semantics = self.comment_semantics(comment);
+                // The actual colon separates these comments from any expression
+                // target. Cast and optimizer markers here are originally inactive;
+                // source suppression and diagnostic packets retain their boundary.
+                if semantics.suppression || semantics.diagnostic || semantics.file_directive {
                     CommentBinding::SourceBound
+                } else {
+                    CommentBinding::Unbound
                 }
             })
             .allows_relocation(None);
-        let promoted = ordinary_before
+        let promoted = relocatable_before
             && before.first().is_some_and(|first| {
                 self.line_breaks(key_end, first.span.start) != 0
                     || before.last().is_some_and(|last| {
@@ -792,12 +817,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let (operator_line, leading) = after.split_at(count);
         let (before, operator_line, operator_line_start, leading) =
-            if ordinary_before && line_before_colon {
+            if relocatable_before && line_before_colon {
                 (&[][..], before, key_end, after)
             } else {
                 (before, operator_line, colon.end, leading)
             };
-        let line_before_colon = line_before_colon && !ordinary_before;
+        let line_before_colon = line_before_colon && !relocatable_before;
         let line_after_colon = promoted
             || !operator_line.is_empty()
             || leading.first().is_some_and(|comment| {
@@ -809,6 +834,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             suppression,
             before,
             moved,
+            annotation: if promoted {
+                self.emitted_head_annotation(comments)
+            } else {
+                None
+            },
             operator_line,
             operator_line_start,
             leading,
