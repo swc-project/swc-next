@@ -14,7 +14,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_await(
         &mut self,
         expression: AwaitExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let receiver = context.is_call_or_member_receiver()

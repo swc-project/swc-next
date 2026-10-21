@@ -1,7 +1,7 @@
 //! Shared parameter items retain real bindings and annotation wrappers.
 
 use swc_next_ecma_ast::{
-    Ast, BindingPattern, Comment, Expr, FormalParameter, FormalParameterItemData,
+    Ast, BindingPattern, Expr, FormalParameter, FormalParameterItemData,
     FormalParameterPatternData, FormalParameterRest, FormalParameters, GetSpan, Span,
     TsConstructorType, TsFunctionType, TsThisParameter, TsType, TsTypeAnnotation, TsTypeData,
     TsTypeParameterDeclaration, TsTypePredicate, TsTypePredicateNameData,
@@ -13,7 +13,7 @@ use super::{
     TypeContext, TypeGap, TypeLayout,
 };
 use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
+use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
@@ -227,7 +227,7 @@ struct PreparedParameterDefault<'ast> {
     right: Expr,
     left_mode: ContentMode,
     layout: InitializerLayout<'ast>,
-    head: &'ast [Comment],
+    head: Option<NodeHead<'ast>>,
 }
 
 struct ParameterLeft<'ast> {
@@ -274,7 +274,7 @@ enum ParameterItemState<'ast> {
         left: PreparedParameterLeft<'ast>,
         right: Expr,
         layout: InitializerLayout<'ast>,
-        head: &'ast [Comment],
+        head: Option<&'ast NodeHead<'ast>>,
     },
 }
 
@@ -1322,7 +1322,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } => (
                             left_mode,
                             InitializerLayout::Bound { gap, right_mode },
-                            &[][..],
+                            None,
                         ),
                         DefaultOwner::Formatted {
                             boundary,
@@ -1434,7 +1434,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 right: initializer.right,
                 layout: initializer.layout,
-                head: initializer.head,
+                head: initializer.head.map(|head| &*self.allocator.alloc(head)),
             },
             None => ParameterItemState::Formatted(left),
         };
@@ -1460,12 +1460,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout,
                 head,
             } => {
-                self.comments.claim(head)?;
-                self.format_comment_run(
-                    head,
-                    CommentRunLayout::Leading(right.span(self.ast).start),
-                    writer,
-                )?;
+                if let Some(head) = head {
+                    self.comments.claim(head.comments)?;
+                    self.format_comment_run(head.comments, head.layout, writer)?;
+                }
                 let end = left.end();
                 let tail = self.format_parameter_left(left, writer)?;
                 self.format_expression_tail(tail, writer)?;

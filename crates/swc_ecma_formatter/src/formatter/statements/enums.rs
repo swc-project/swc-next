@@ -377,6 +377,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &content,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
+            ExpressionContext::at(ExpressionPosition::EnumInitializer),
         )?;
         let mut left_mode = ContentMode::Formatted;
         if self.has_suppression {

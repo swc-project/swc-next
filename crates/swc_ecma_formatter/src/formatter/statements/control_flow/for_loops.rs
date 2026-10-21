@@ -35,12 +35,12 @@ struct HeaderNode<'ast> {
 enum HeaderData<'ast> {
     Expression {
         node: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     },
     SourceExpression {
         node: Expr,
         enclosure: Option<ParenthesizedExpression>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         leading: &'ast [Comment],
         following: LineConstraint,
     },
@@ -50,7 +50,7 @@ enum HeaderData<'ast> {
     },
     Target {
         node: SourceTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     },
     Pattern(BindingPattern),
 }
@@ -488,7 +488,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         target: &SourceTarget,
         of: bool,
         awaited: bool,
-    ) -> Result<ExpressionContext, FormatError> {
+    ) -> Result<ExpressionContext<'ast>, FormatError> {
         let mut context = ExpressionContext::at(ExpressionPosition::Nested);
         if target.has_retained_parentheses() {
             return Ok(context);

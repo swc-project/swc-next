@@ -107,7 +107,10 @@ impl MemberHead {
     }
 
     /// Used after the source-clear query has established formatted content.
-    pub(super) fn receiver_context(&self, context: ExpressionContext) -> ExpressionContext {
+    pub(super) fn receiver_context<'ast>(
+        &self,
+        context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
         member_receiver_context(
             context,
             self.access,
@@ -118,13 +121,13 @@ impl MemberHead {
     }
 }
 
-fn member_receiver_context(
-    context: ExpressionContext,
+fn member_receiver_context<'ast>(
+    context: ExpressionContext<'ast>,
     access: AccessKind,
     mode: ContentMode,
     computed: bool,
     object: Expr,
-) -> ExpressionContext {
+) -> ExpressionContext<'ast> {
     let position = if matches!(
         context.position,
         ExpressionPosition::AssignmentTarget | ExpressionPosition::MemberAssignmentObject
@@ -192,7 +195,7 @@ pub(super) enum MemberLookupOwner {
     Expression,
 }
 impl MemberLookupOwner {
-    pub(super) fn from_context(context: ExpressionContext) -> Self {
+    pub(super) fn from_context(context: ExpressionContext<'_>) -> Self {
         if matches!(context.position, ExpressionPosition::MemberAssignmentObject)
             || context.member_layout == MemberLayout::Tight
         {
@@ -315,7 +318,10 @@ impl SourceMember {
         }
     }
 
-    pub(super) fn receiver_context(&self, context: ExpressionContext) -> ExpressionContext {
+    pub(super) fn receiver_context<'ast>(
+        &self,
+        context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
         member_receiver_context(
             context,
             self.access,
@@ -330,8 +336,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_member_receiver(
         &self,
         member: MemberExpression,
-        context: ExpressionContext,
-    ) -> Result<(Expr, ExpressionContext), FormatError> {
+        context: ExpressionContext<'ast>,
+    ) -> Result<(Expr, ExpressionContext<'ast>), FormatError> {
         // Only suppression can change the receiver or preserve the whole member.
         if self.has_suppression {
             return Ok(match self.source_member(member)? {
@@ -362,7 +368,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_member(
         &mut self,
         member: MemberExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let PreparedMember::Formatted(member) = self.source_member(member)? else {
@@ -397,7 +403,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_member_callee(
         &mut self,
         member: MemberExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(Option<ExpressionTail<'ast>>, Option<GroupId>), FormatError> {
         let PreparedMember::Formatted(member) = self.source_member(member)? else {

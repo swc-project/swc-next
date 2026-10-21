@@ -676,7 +676,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_arrow(
         &mut self,
         arrow: ArrowFunctionExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let mut source = match self.source_arrow(arrow)? {
@@ -700,7 +700,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_verbatim_arrow(
         &mut self,
         source: VerbatimArrow,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         if context.expression_start.needs_asi_guard()
@@ -783,7 +783,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: SourceArrow<'ast>,
         prepared_body: Option<PreparedArrowBody>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedArrow<'ast>, FormatError> {
         let mut source = match source {
@@ -854,7 +854,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut source: FormattedSourceArrow<'ast>,
         first_child: ArrowChainChild<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedArrowChain<'ast>, FormatError> {
         let mut should_break = self.arrow_chain_breaks(&source);
@@ -1020,7 +1020,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_arrow_head(
         &mut self,
         source: FormattedSourceArrow<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<SourceArrowBody<'ast>, FormatError> {
         let body = self.format_arrow_signature(source, context, writer)?;
@@ -1031,7 +1031,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_arrow_signature(
         &mut self,
         source: FormattedSourceArrow<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<SourceArrowBody<'ast>, FormatError> {
         let FormattedSourceArrow {
@@ -1187,7 +1187,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         content: ExpressionContent,
         comments: ArrowJsxComments<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ArrowJsxComments { head, tail } = comments;

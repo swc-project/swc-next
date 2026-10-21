@@ -154,9 +154,9 @@ enum ChainPart<'ast> {
 
 pub(in crate::formatter) struct PreparedChain<'ast> {
     expression: Expr,
-    context: ExpressionContext,
+    context: ExpressionContext<'ast>,
     head: Expr,
-    head_context: ExpressionContext,
+    head_context: ExpressionContext<'ast>,
     cast_head: Option<ParenthesizedExpression>,
     prepared_head: Option<PreparedChainHead<'ast>>,
     operation_head: Option<(CallExpression, NodeHead<'ast>)>,
@@ -180,14 +180,14 @@ enum ChainLeadingOwner {
     Head,
 }
 
-impl PreparedChain<'_> {
+impl<'ast> PreparedChain<'ast> {
     pub(in crate::formatter) fn has_call_operation_head(&self) -> bool {
         self.operation_head.is_some()
     }
 
     /// Call/member descendants already own their grammar contexts. A resolved
     /// operation head changes only the complete chain's enclosing frame.
-    pub(in crate::formatter) fn set_enclosing_context(&mut self, context: ExpressionContext) {
+    pub(in crate::formatter) fn set_enclosing_context(&mut self, context: ExpressionContext<'ast>) {
         self.context = context;
     }
 
@@ -204,7 +204,7 @@ impl PreparedChain<'_> {
         self.head_context.expression_start = start;
     }
 
-    pub(super) fn emitted_head(&self) -> (Expr, ExpressionContext) {
+    pub(super) fn emitted_head(&self) -> (Expr, ExpressionContext<'ast>) {
         let expression = self
             .prepared_head
             .as_ref()
@@ -256,7 +256,7 @@ impl ChainGrouping {
 
 struct ChainHead<'ast> {
     expression: Expr,
-    context: ExpressionContext,
+    context: ExpressionContext<'ast>,
     has_comments: bool,
     attach: bool,
     prepared: Option<PreparedChainHead<'ast>>,
@@ -427,7 +427,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn fluent_chain_eligibility(
         &self,
         data: ExprData,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         layout: ExpressionLayout,
     ) -> FluentChainEligibility {
         if context.member_chain_layout == MemberChainLayout::Local
@@ -648,7 +648,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn call_continues_chain(&self, expression: Expr, context: ExpressionContext) -> bool {
+    fn call_continues_chain(&self, expression: Expr, context: ExpressionContext<'ast>) -> bool {
         let data = if let ExprData::ParenthesizedExpression(parenthesized) =
             self.ast.expr_data(expression)
         {
@@ -690,7 +690,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_fluent_chain(
         &self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Result<PreparedChain<'ast>, FormatError> {
         self.prepare_chain(expression, context, Vec::new(), None)
     }
@@ -698,7 +698,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_chain(
         &self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         mut parts: Vec<ChainPart<'ast>>,
         leading_binding: Option<CommentBinding>,
     ) -> Result<PreparedChain<'ast>, FormatError> {
@@ -937,7 +937,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn prepare_assertion_chain(
         &self,
         content: ExpressionContent,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         leading_start: u32,
         binding: CommentBinding,
     ) -> Result<(PreparedChain<'ast>, ResolvedExpressionHead<'ast>), FormatError> {
@@ -983,7 +983,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_fluent_chain(
         &mut self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let chain = self.prepare_fluent_chain(expression, context)?;
@@ -996,7 +996,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         argument: Expr,
         content: &ExpressionContent,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         head: &ResolvedExpressionHead<'ast>,
     ) -> Result<Option<PreparedChain<'ast>>, FormatError> {
         if context.content_mode != ContentMode::Formatted
@@ -1139,15 +1139,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Keep it outside the head group, as its next parsed shape does.
             let comments = std::mem::take(&mut head.resolved.head.comments);
             self.comments.claim(comments)?;
-            let start = self.format_node_head(
+            let leading = self.canonical_head_gap(
+                chain.head,
                 NodeHead {
                     comments,
                     ..head.resolved.head
                 },
-                chain.head_context.expression_start,
-                None,
-                writer,
-            )?;
+                head.resolved.binding,
+                chain.head_context,
+            );
+            let start =
+                self.format_node_head(leading, chain.head_context.expression_start, None, writer)?;
             head.has_comments = false;
             chain.set_expression_start(start);
         }
@@ -1294,7 +1296,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         prepared: Option<PreparedChainHead<'ast>>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let Some(PreparedChainHead {

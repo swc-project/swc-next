@@ -15,6 +15,7 @@ pub(super) struct DiagnosticLines {
 struct DiagnosticLine {
     span: Span,
     sensitive_start: u32,
+    directive_end: u32,
     terminal_suffix_start: u32,
 }
 
@@ -31,6 +32,19 @@ pub(super) struct TerminalCloseBoundary {
     close: u32,
     last_end: Option<u32>,
     release: bool,
+}
+
+/// One immutable physical directive and its covered source-code interval.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) struct DiagnosticCoverage {
+    directive_end: u32,
+    span: Span,
+}
+
+impl DiagnosticCoverage {
+    pub(super) fn contains(self, span: Span) -> bool {
+        self.span.start <= span.start && span.end <= self.span.end
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -98,7 +112,7 @@ impl DiagnosticLines {
             .match_indices(['\n', '\r', '\u{2028}', '\u{2029}'])
             .peekable();
         let mut start = 0;
-        let mut covered = false;
+        let mut covered = None;
         let mut comment_index = 0;
         loop {
             let (end, next_start) = match boundaries.next() {
@@ -118,23 +132,25 @@ impl DiagnosticLines {
             {
                 directive_end.get_or_insert(comment_end);
             }
-            let sensitive_start = match (covered, directive_end) {
-                (true, _) => Some(start as u32),
-                (false, end) => end,
+            let sensitive = match (covered, directive_end) {
+                (Some(owner), _) => Some((start as u32, owner)),
+                (None, Some(owner)) => Some((owner, owner)),
+                (None, None) => None,
             };
-            if let Some(sensitive_start) = sensitive_start {
+            if let Some((sensitive_start, directive_end)) = sensitive {
                 let terminal_suffix_start =
                     terminal_suffix_start(source, comments, &mut comment_index, start, end);
                 lines.push(DiagnosticLine {
                     span: Span::new(start as u32, end as u32),
                     sensitive_start,
+                    directive_end,
                     terminal_suffix_start,
                 });
             }
             let text = source[start..end].trim_matches(is_directive_whitespace);
-            covered =
-                directive_end.is_some() || covered && (text.is_empty() || text.starts_with("//"));
-            if end == source.len() || !covered && directives.peek().is_none() {
+            covered = directive_end
+                .or_else(|| covered.filter(|_| text.is_empty() || text.starts_with("//")));
+            if end == source.len() || covered.is_none() && directives.peek().is_none() {
                 break;
             }
             start = next_start;
@@ -383,6 +399,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let content = self.source(span).trim_start_matches(is_source_whitespace);
         self.line_constraint(span.start, span.end - content.len() as u32)
+    }
+
+    /// An interior packet can carry next-line coverage to the same retained head.
+    /// Inline block directives do not reset coverage until the following line.
+    pub(super) fn diagnostic_head_reset_coverage(
+        &self,
+        comments: &[Comment],
+        opening: u32,
+        head: u32,
+    ) -> Option<DiagnosticCoverage> {
+        let first = comments.first()?;
+        let last = comments.last().unwrap_or(first);
+        if first.span.start <= opening || last.span.end > head {
+            return None;
+        }
+        let ends = &self.diagnostic_lines.directive_ends;
+        let count = ends.partition_point(|&end| end <= last.span.end);
+        let &end = count.checked_sub(1).and_then(|index| ends.get(index))?;
+        if end < first.span.end || self.line_breaks(end, head) == 0 {
+            return None;
+        }
+        let lines = &self.diagnostic_lines.lines;
+        let index = lines.partition_point(|line| line.span.end < head);
+        let line = lines.get(index)?;
+        (line.directive_end == end && line.sensitive_start <= head && line.span.start <= head)
+            .then_some(DiagnosticCoverage {
+                directive_end: end,
+                span: Span::new(line.sensitive_start, line.span.end),
+            })
     }
 
     pub(super) fn comment_is_diagnostic_directive(&self, comment: Comment) -> bool {

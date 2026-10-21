@@ -40,7 +40,10 @@ pub(super) struct CallCallee {
     pub(super) curried_call: Option<CallExpression>,
 }
 impl CallCallee {
-    pub(super) fn context(&self, context: ExpressionContext) -> ExpressionContext {
+    pub(super) fn context<'ast>(
+        &self,
+        context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
         let mut callee = ExpressionContext::at(ExpressionPosition::CallCallee {
             access: self.access,
             curried_call: self.curried_call,
@@ -122,7 +125,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_call_callee(
         &self,
         call: CallExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Result<CallCallee, FormatError> {
         // Only suppression can change the callee's content mode.
         if self.has_suppression {
@@ -149,7 +152,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn rhs_call_callee(
         &self,
         call: CallExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Option<CallCallee> {
         let ast = self.ast;
         if self.has_suppression || call.type_arguments(ast).is_some() {
@@ -175,7 +178,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_call(
         &mut self,
         call: CallExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let arguments = self.source_call(call, context)?;
@@ -270,8 +273,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn direct_member_callee(
         &self,
         expression: Expr,
-        mut context: ExpressionContext,
-    ) -> Option<(swc_next_ecma_ast::MemberExpression, ExpressionContext)> {
+        mut context: ExpressionContext<'ast>,
+    ) -> Option<(swc_next_ecma_ast::MemberExpression, ExpressionContext<'ast>)> {
         // Bound heads retain their complete expression-envelope printer.
         if context.protected_head_start.is_some()
             || !self.call_span_is_source_clear(expression.span(self.ast))
@@ -306,7 +309,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_call(
         &self,
         call: CallExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Result<SourceArguments<'ast>, FormatError> {
         let ast = self.ast;
         let callee = call.callee(ast);
@@ -427,7 +430,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn module_call_frame(
         &self,
         call: CallExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         list: &SourceArguments<'ast>,
     ) -> Option<CallArgumentFrame> {
         let ast = self.ast;

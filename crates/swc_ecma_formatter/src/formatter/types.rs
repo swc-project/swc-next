@@ -2441,6 +2441,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 &content,
                 Span::new(operator, operator + 1),
                 right.span(self.ast).end,
+                context,
             )?;
             let data = if is_identifier_annotation {
                 self.source_parentheses_rhs_content(

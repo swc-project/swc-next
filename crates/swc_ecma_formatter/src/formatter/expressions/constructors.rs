@@ -13,7 +13,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_new(
         &mut self,
         constructor: NewExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let callee = constructor.callee(self.ast);

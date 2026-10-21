@@ -6,13 +6,13 @@ use super::parentheses::IgnoredSourceParentheses;
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner, TailOwner};
 use crate::FormatError;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum ForInitializerGrammar {
     Expression,
     Assignment,
 }
 
-impl ExpressionContext {
+impl<'ast> ExpressionContext<'ast> {
     pub(in crate::formatter) fn is_for_initializer(&self) -> bool {
         matches!(self.position, ExpressionPosition::ForInitializer { .. })
     }
@@ -33,7 +33,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         expression: Expr,
         grammar: ForInitializerGrammar,
-    ) -> ExpressionContext {
+    ) -> ExpressionContext<'ast> {
         self.prepare_for_initializer_context(expression, grammar, TailOwner::Expression)
             .0
     }
@@ -44,7 +44,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         grammar: ForInitializerGrammar,
         tail_owner: TailOwner,
-    ) -> (ExpressionContext, Option<IgnoredSourceParentheses>) {
+    ) -> (ExpressionContext<'ast>, Option<IgnoredSourceParentheses>) {
         let mut context = ExpressionContext::at(ExpressionPosition::ForInitializer {
             grammar,
             parentheses: false,

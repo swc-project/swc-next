@@ -132,7 +132,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_conditional_enclosed(
         &mut self,
         conditional: ConditionalExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let prepared = self.prepare_conditional(conditional)?;
@@ -173,7 +173,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_conditional(
         &mut self,
         conditional: ConditionalExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let prepared = self.prepare_conditional(conditional)?;
@@ -183,7 +183,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_prepared_conditional(
         &mut self,
         prepared: PreparedConditional<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let layout = match context.position {
@@ -202,7 +202,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn conditional_grammar_pair_has_breakable_close(context: ExpressionContext) -> bool {
+    pub(super) fn conditional_grammar_pair_has_breakable_close(
+        context: ExpressionContext<'ast>,
+    ) -> bool {
         context.conditional_envelope == ConditionalEnvelope::OperationHead
             || context.conditional_closing == ConditionalClosing::MemberLine
     }
@@ -300,7 +302,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_conditional_contents(
         &mut self,
         prepared: PreparedConditional<'ast>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         layout: ConditionalLayout,
         chain: ConditionalChain,
         writer: &mut Writer<'ast>,
@@ -457,12 +459,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         });
         let binding = previous_binding.combine(following_binding);
-        let next_binding = self.expression_head_binding(leading, next.original);
         let binding = if sensitive {
             CommentBinding::SourceBound
         } else {
             binding
         };
+        // Layout follows the packet the source owner will actually print before
+        // the operand. Suppression modes retain their separate source targets.
+        let emitted_leading = if binding.allows_relocation(None) {
+            leading
+        } else {
+            after
+        };
+        let next_binding = self.expression_head_binding(emitted_leading, next.original);
         let next_binding = next.content.parentheses.map_or(next_binding, |removed| {
             next_binding.combine(removed.head.binding)
         });

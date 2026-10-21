@@ -32,7 +32,11 @@ enum RestrictedGrammar {
 }
 
 impl RestrictedGrammar {
-    fn argument_context(self, envelope: ArgumentEnvelope, mode: ContentMode) -> ExpressionContext {
+    fn argument_context<'ast>(
+        self,
+        envelope: ArgumentEnvelope,
+        mode: ContentMode,
+    ) -> ExpressionContext<'ast> {
         let position = match self {
             Self::ReturnOrThrow => ExpressionPosition::RestrictedArgument,
             Self::Yield => ExpressionPosition::YieldArgument,

@@ -176,7 +176,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     argument.map(|argument| argument.span(self.ast).end)
                 })
                 .unwrap_or(content.start);
-            Some((last.span(self.ast), head_start))
+            let last = match self.ast.argument_data(last) {
+                ArgumentData::Expr(expression) => self.terminal_argument_content_span(expression),
+                ArgumentData::SpreadElement(_) => last.span(self.ast),
+            };
+            Some((last, head_start))
         });
         Ok(SourceArray::Formatted(PreparedArray {
             array,

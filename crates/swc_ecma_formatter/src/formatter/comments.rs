@@ -101,6 +101,10 @@ impl CommentBinding {
 pub(super) enum CommentRunLayout {
     Source,
     SourceAfter(u32),
+    SourceLeading {
+        next: u32,
+        placement: HeadGapPlacement,
+    },
     Leading(u32),
     GroupedLeading(u32),
     InlineLeading(u32),
@@ -130,6 +134,124 @@ enum SourceSeparatorGap {
 pub(super) struct SourceSeparatorPacket<'ast> {
     pub(super) comments: &'ast [Comment],
     transition: SourceSeparatorTransition,
+}
+
+/// Placement belongs to the emitted owner, independently of a removed opener.
+#[derive(Clone, Copy)]
+pub(super) enum HeadGapPlacement {
+    Inline,
+    OwnLine,
+}
+
+/// A layout fact for one complete packet; it neither claims nor rebinds comments.
+#[derive(Clone, Copy)]
+pub(super) struct PreparedHeadGap {
+    packet: Span,
+    count: usize,
+    placement: HeadGapPlacement,
+    owner: HeadGapOwner,
+}
+
+#[derive(Clone, Copy)]
+enum HeadGapOwner {
+    Relocatable,
+    SourceAdjacent(u32),
+}
+
+impl PreparedHeadGap {
+    pub(super) fn new(comments: &[Comment], placement: HeadGapPlacement) -> Option<Self> {
+        Some(Self {
+            packet: Span::new(comments.first()?.span.start, comments.last()?.span.end),
+            count: comments.len(),
+            placement,
+            owner: HeadGapOwner::Relocatable,
+        })
+    }
+
+    /// The preparer proved whitespace-only adjacency to this unchanged token.
+    pub(super) fn source_adjacent(
+        comments: &[Comment],
+        placement: HeadGapPlacement,
+        token: u32,
+    ) -> Option<Self> {
+        let mut gap = Self::new(comments, placement)?;
+        gap.owner = HeadGapOwner::SourceAdjacent(token);
+        Some(gap)
+    }
+
+    fn apply(
+        self,
+        mut head: NodeHead<'_>,
+        binding: CommentBinding,
+        source_adjacent: bool,
+    ) -> NodeHead<'_> {
+        let same_owner = matches!(binding, CommentBinding::Unbound)
+            || match self.owner {
+                HeadGapOwner::Relocatable => false,
+                HeadGapOwner::SourceAdjacent(token) => {
+                    source_adjacent && head.content_start == token && head.gap_end == Some(token)
+                }
+            };
+        if same_owner
+            && head.comments.len() == self.count
+            && head
+                .comments
+                .first()
+                .is_some_and(|first| first.span.start == self.packet.start)
+            && head
+                .comments
+                .last()
+                .is_some_and(|last| last.span.end == self.packet.end)
+        {
+            head.layout = CommentRunLayout::SourceLeading {
+                next: head.gap_end.unwrap_or(head.content_start),
+                placement: self.placement,
+            };
+            // The shared run now emits this final gap exactly once.
+            head.gap_end = None;
+        }
+        head
+    }
+}
+
+/// At most one exterior packet and one normalized released packet share a head.
+pub(super) struct PreparedHeadGaps {
+    prefix: Option<PreparedHeadGap>,
+    head: Option<PreparedHeadGap>,
+    grouped: bool,
+}
+
+impl PreparedHeadGaps {
+    pub(super) fn new(
+        prefix: Option<PreparedHeadGap>,
+        head: Option<PreparedHeadGap>,
+        grouped: bool,
+    ) -> Option<Self> {
+        (prefix.is_some() || head.is_some()).then_some(Self {
+            prefix,
+            head,
+            grouped,
+        })
+    }
+
+    pub(super) fn requires_group(&self) -> bool {
+        self.grouped
+    }
+
+    pub(super) fn apply<'ast>(
+        &self,
+        mut head: NodeHead<'ast>,
+        binding: CommentBinding,
+        source_adjacent: bool,
+    ) -> NodeHead<'ast> {
+        if let Some(prefix) = self.prefix {
+            head = prefix.apply(head, binding, source_adjacent);
+        }
+        if let Some(gap) = self.head {
+            head = gap.apply(head, binding, source_adjacent);
+        }
+        head
+    }
 }
 
 /// A claimed leading run and the source gap owned by its node.
@@ -1362,6 +1484,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.leading_comment_gap_with_packet(comment, next_start, grouped, inline, None, writer);
     }
 
+    fn leading_comment_gap_with_placement(
+        &self,
+        comment: &PreparedComment<'ast>,
+        next_start: u32,
+        grouped: bool,
+        placement: Option<HeadGapPlacement>,
+        writer: &mut Writer<'ast>,
+    ) {
+        self.leading_comment_gap_with_prepared_placement(
+            comment, next_start, grouped, placement, None, writer,
+        );
+    }
+
     fn leading_comment_gap_with_packet(
         &self,
         comment: &PreparedComment<'ast>,
@@ -1371,6 +1506,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
+        self.leading_comment_gap_with_prepared_placement(
+            comment,
+            next_start,
+            grouped,
+            inline.then_some(HeadGapPlacement::Inline),
+            packet,
+            writer,
+        );
+    }
+
+    fn leading_comment_gap_with_prepared_placement(
+        &self,
+        comment: &PreparedComment<'ast>,
+        next_start: u32,
+        grouped: bool,
+        placement: Option<HeadGapPlacement>,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) {
+        let inline = match placement {
+            Some(HeadGapPlacement::Inline) => true,
+            Some(HeadGapPlacement::OwnLine) => false,
+            None => !self.source_position_starts_line(comment.span.start),
+        };
         if packet.is_none() {
             self.prepare_leading_comment_gap(comment.span, comment.kind, next_start, inline)
                 .gap
@@ -1392,9 +1551,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
         .write(writer, FlatSeparator::Space, |writer| match breaks {
             0 if comment.kind == CommentKind::Block => writer.space(),
-            1 if comment.kind == CommentKind::Block
-                && (inline || !self.source_position_starts_line(comment.span.start)) =>
-            {
+            1 if comment.kind == CommentKind::Block && inline => {
                 if grouped {
                     writer.line();
                 } else {
@@ -1549,13 +1706,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && prepared.is_alignable();
                 if !nestled && !line_suffix {
                     match layout {
-                        CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => self
-                            .comment_gap_with_packet(
-                                previous.span.end,
-                                prepared.span.start,
-                                packet,
-                                writer,
-                            ),
+                        CommentRunLayout::Source
+                        | CommentRunLayout::SourceAfter(_)
+                        | CommentRunLayout::SourceLeading { .. } => self.comment_gap_with_packet(
+                            previous.span.end,
+                            prepared.span.start,
+                            packet,
+                            writer,
+                        ),
                         CommentRunLayout::OwnLineTrailing
                             if previous.kind == CommentKind::Block
                                 && prepared.kind == CommentKind::Block
@@ -1616,6 +1774,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous = Some(prepared);
         }
         match (layout, previous) {
+            (CommentRunLayout::SourceLeading { next, placement }, Some(previous)) => self
+                .leading_comment_gap_with_placement(&previous, next, true, Some(placement), writer),
             (CommentRunLayout::Leading(next), Some(previous)) => {
                 self.leading_comment_gap_with_packet(&previous, next, false, false, packet, writer)
             }

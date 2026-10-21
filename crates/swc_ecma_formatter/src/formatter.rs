@@ -26,6 +26,7 @@ use crate::{FormatError, FormatOptions, document::Writer};
 
 pub(crate) struct Formatter<'ast, 'source> {
     ast: &'ast Ast<'source>,
+    allocator: &'ast swc_next_allocator::Allocator,
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
@@ -40,9 +41,14 @@ pub(crate) struct Formatter<'ast, 'source> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(crate) fn new(ast: &'ast Ast<'source>, options: FormatOptions) -> Self {
+    pub(crate) fn new(
+        ast: &'ast Ast<'source>,
+        options: FormatOptions,
+        allocator: &'ast swc_next_allocator::Allocator,
+    ) -> Self {
         let mut formatter = Self {
             ast,
+            allocator,
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
