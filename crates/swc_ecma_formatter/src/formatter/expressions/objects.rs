@@ -127,6 +127,7 @@ impl<'ast> PreparedComputedKey<'ast> {
 struct ObjectPropertyBoundary<'ast> {
     opening: Option<SourceOpeningPacket<'ast>>,
     suppression: PropertySuppression,
+    header: &'ast [Comment],
     before: &'ast [Comment],
     moved: &'ast [Comment],
     annotation: Option<EmittedHeadAnnotation>,
@@ -574,6 +575,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(property.span(ast), writer)?;
             return Ok(None);
         }
+        // Record the key before claiming its later source packet. Emission order
+        // belongs to the property header, while comment leases remain in source order.
+        let key = if boundary.header.is_empty() {
+            None
+        } else {
+            let (key, ()) = writer.record_with_value(|writer| {
+                self.format_object_key(
+                    property,
+                    boundary.key_end,
+                    boundary.suppression.key,
+                    quoting,
+                    writer,
+                )
+            })?;
+            self.comments.claim(boundary.header)?;
+            self.format_comment_run(boundary.header, CommentRunLayout::Source, writer)?;
+            writer.hard_line();
+            Some(key)
+        };
         let value = property.value(ast);
         let content = self.expression_content(value);
         let before_colon = boundary
@@ -588,13 +608,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.group(false, |writer| {
             let clean_width = {
                 let mut write_left = |writer: &mut Writer<'ast>| {
-                    self.format_object_key(
-                        property,
-                        boundary.key_end,
-                        boundary.suppression.key,
-                        quoting,
-                        writer,
-                    )?;
+                    if let Some(key) = key {
+                        writer.write_fragment(key);
+                    } else {
+                        self.format_object_key(
+                            property,
+                            boundary.key_end,
+                            boundary.suppression.key,
+                            quoting,
+                            writer,
+                        )?;
+                    }
                     self.comments.claim(boundary.before)?;
                     self.format_comment_run(
                         boundary.before,
@@ -769,6 +793,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
             inspection_end,
         );
+        // An ordinary end-of-line packet leads the complete data property.
+        // Own-line packets and semantic/source-bound roles keep their existing owner.
+        let header = before
+            .last()
+            .is_some_and(|last| last.kind == CommentKind::Line)
+            && {
+                let mut previous = key_end;
+                before.iter().all(|&comment| {
+                    let inline = self.line_breaks(previous, comment.span.start) == 0
+                        && self.line_breaks(comment.span.start, comment.span.end) == 0
+                        && self.comment_semantics(comment).is_ordinary();
+                    previous = comment.span.end;
+                    inline
+                })
+            };
+        let (header, before) = if header {
+            (before, &[][..])
+        } else {
+            (&[][..], before)
+        };
         let relocatable_before = self
             .comment_run_binding(before.iter().copied(), |comment| {
                 let semantics = self.comment_semantics(comment);
@@ -827,6 +871,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(ObjectPropertyBoundary {
             opening,
             suppression,
+            header,
             before,
             moved,
             annotation: if promoted {
