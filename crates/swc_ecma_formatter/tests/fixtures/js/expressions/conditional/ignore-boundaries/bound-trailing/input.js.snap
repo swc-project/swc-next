@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? (
+\u0066irst /* boundary */
+) /* prettier-ignore */ /* @ts-ignore */ : third;---------- Options ----------
+{}
+---------- Output ----------
+test ? \u0066irst /* boundary */ /* prettier-ignore */ /* @ts-ignore */ : third;
+
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+test
+  ? \u0066irst /* boundary */ /* prettier-ignore */ /* @ts-ignore */ : third;

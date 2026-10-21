@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(condition
+/* inner */)
+/* prettier-ignore */
+? next  +value : last;
+---------- Options ----------
+{}
+---------- Output ----------
+condition
+  ?
+    /* inner */
+    /* prettier-ignore */
+    next  +value
+  : last;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition
+  ?
+    /* inner */
+    /* prettier-ignore */
+    next  +value
+  : last
