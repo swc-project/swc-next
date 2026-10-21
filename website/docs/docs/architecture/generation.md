@@ -1,11 +1,11 @@
 ---
 title: "Schema & code generation"
-description: "AST declarations are the source of generated Rust APIs and JavaScript types and codecs."
+description: "AST declarations are the source of generated storage code, JavaScript types, and codecs."
 ---
 
 # Schema & code generation
 
-AST declarations are the source of generated Rust APIs and JavaScript types and codecs.
+AST declarations are the source of generated storage code, JavaScript types, and codecs.
 
 ## Source of truth
 
@@ -13,7 +13,7 @@ AST declarations are the source of generated Rust APIs and JavaScript types and 
 
 ## Generated surfaces
 
-- Payloads, builders, accessors, visitors, TypeScript declarations, and codecs.
+- Node payloads, field layouts, TypeScript declarations, and codecs.
 
 ## Related
 

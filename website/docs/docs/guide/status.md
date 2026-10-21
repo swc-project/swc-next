@@ -1,22 +1,20 @@
 ---
 title: "Project status"
-description: "A toolchain in active development, with different capabilities available through Rust, Node.js, and the browser."
+description: "A toolchain in active development, with JavaScript packages for Node.js and the browser."
 ---
 
 # Project status
 
-A toolchain in active development, with different capabilities available through Rust, Node.js, and the browser.
+A toolchain in active development, with JavaScript packages for Node.js and the browser.
 
 ## Available today
 
 - Parse and print JavaScript, TypeScript, JSX, and TSX.
 - Traverse and edit JavaScript ASTs with synchronous hooks.
-- Use Rust components for semantic analysis, transformations, minification, type stripping, and isolated declarations.
 
 ## Current boundaries
 
-- Rust APIs are at an early stage and have known AST handle soundness issues. Use the existing SWC Rust API for production.
-- The JavaScript API does not yet expose every Rust component.
+- The JavaScript API does not yet expose every compiler component.
 - SWC configuration compatibility has not been implemented.
 
 ## Related

@@ -11,9 +11,8 @@ Print JavaScript and TypeScript ASTs back to source.
 
 - Readable or compact formatting, ASCII-only output, and inline-script escaping.
 
-## Interface differences
+## Output interface
 
-- Rust additionally exposes options for comments and source maps.
 - The current JavaScript interface returns generated code.
 
 ## Related

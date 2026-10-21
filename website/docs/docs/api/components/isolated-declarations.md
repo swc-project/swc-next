@@ -13,7 +13,7 @@ Generate TypeScript declaration surfaces using the flat AST and semantic model.
 
 ## Current boundaries
 
-- Available through Rust. This is not a complete TypeScript type checker.
+- Not currently exposed through the JavaScript API. This is not a complete TypeScript type checker.
 
 ## Related
 

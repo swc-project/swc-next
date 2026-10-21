@@ -9,7 +9,7 @@ The AST still describes a tree, but its nodes live in indexed tables instead of 
 
 ## Detailed Design
 
-There are two parts to the design: untyped storage shared by all node kinds, and typed handles that provide the public AST API.
+There are two parts to the design: untyped storage shared by all node kinds, and typed handles that identify nodes in that storage.
 
 ### Universal AST
 
@@ -63,7 +63,7 @@ pub(crate) struct ProgramPayload {
 
 ### Typed AST
 
-The typed handle API is inspired by [rowan](https://github.com/rust-analyzer/rowan). AST declarations describe the logical fields, while `#[ast]` turns each declaration into a copyable wrapper around a 4-byte `NodeId`:
+The typed handle representation is inspired by [rowan](https://github.com/rust-analyzer/rowan). AST declarations describe the logical fields, while `#[ast]` turns each declaration into a copyable wrapper around a 4-byte `NodeId`:
 
 ```rs
 #[ast]
@@ -78,88 +78,12 @@ pub struct Program {
 pub struct Program(pub(crate) NodeId);
 ```
 
-AST enum declarations such as `Expr` and `Stmt` also become `NodeId` wrappers. Their concrete kind is read from the node table, so the handle does not carry a separate enum discriminant. Generated `is_*` and `as_*` methods provide variant checks and downcasts. Types marked with `#[ast(repr)]` additionally get a matching data enum, such as `ExprData`, for pattern matching through `ast.expr_data(expr)`.
+AST enum declarations such as `Expr` and `Stmt` also become `NodeId` wrappers. Their concrete kind is read from the node table, so the handle does not carry a separate enum discriminant.
 
 Handles do not encode ownership or an AST lifetime. They must refer to a valid node of the expected kind in the same context; unchecked construction or changing a node's kind must preserve that invariant.
 
 ### Ast Tool
 
-`ast_tools` reads the typed AST declarations and builds a shared schema of node kinds, fields, and enum variants. It computes each node's inline and extra-data layout, then generates payload structs, builders, getters/setters, node conversions, cloning, and traversal APIs from that schema.
+`ast_tools` reads the typed AST declarations and builds a shared schema of node kinds, fields, and enum variants. It computes each node's inline and extra-data layout, then generates the corresponding payload and storage code.
 
-Generated builders take a span and the declared fields, write inline and extra-data fields according to the layout, append the node, and return its typed handle. For example:
-
-```rs
-impl<'a> Ast<'a> {
-    pub fn program(
-        &mut self,
-        span: Span,
-        directives: SubRange<Directive>,
-        body: SubRange<Stmt>,
-        hashbang: Option<Hashbang>,
-    ) -> Program {
-        let extra_data_start = self.add_extra(body);
-        Program(self.add_node(
-            span,
-            NodeKind::Program,
-            NodePayload {
-                program: ProgramPayload {
-                    directives,
-                    hashbang: hashbang.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    extra_data_start,
-                },
-            },
-        ))
-    }
-}
-```
-
-Getters and setters use the same layout: inline fields access the concrete payload directly; spilled fields use `extra_data_start` plus a generated slot offset. Physical field order can differ from declaration order. Callers use the same API in either case:
-
-```rs
-let directives = program.directives(&ast); // Inline field
-let body = program.body(&ast);            // Extra-data field
-program.set_body(&mut ast, new_body);
-```
-
-## API diff
-
-The parser returns an AST context with its typed root stored on it. A single `Program` type represents Script, Module, and CommonJS sources; `Ast::source_type()` distinguishes them.
-
-```rs
-let result = Parser::init(&allocator, source, options, config).parse();
-let mut ast = result.ast;
-let program = ast.root_program();
-```
-
-Unlike legacy SWC's public struct fields and ordinary enums, typed handles require getters/setters and context-based variant access:
-
-```rs
-let expression = paren_expr.expression(&ast);
-let replacement = ast.expr_null_literal(DUMMY_SP);
-paren_expr.set_expression(&mut ast, replacement);
-
-match ast.expr_data(expression) {
-    ExprData::ParenthesizedExpression(paren) => {
-        let inner = paren.expression(&ast);
-    }
-    _ => {}
-}
-```
-
-Visitors also operate on handles. `Visit` and `VisitMut` obtain the AST through an `ast()` method on the visitor, rather than an argument on every hook. Mutable hooks return `Option<T>`: `Some` replaces the visited handle, while `None` leaves it in place (including any field edits).
-
-```rs
-struct ExampleVisitor<'v, 'a> {
-    ast: &'v Ast<'a>,
-}
-
-impl<'a> Visit<'a> for ExampleVisitor<'_, 'a> {
-    fn ast(&self) -> &Ast<'a> {
-        self.ast
-    }
-
-    fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        node.visit_children_with(self);
-    }
-}
-```
+Inline fields access the concrete payload directly; spilled fields use `extra_data_start` plus a generated slot offset. Physical field order can differ from declaration order.

@@ -13,7 +13,7 @@ APIs for each stage of JavaScript and TypeScript compilation.
 
 ## Choose an interface
 
-- Parsing, printing, and structural walking have JavaScript entry points. Other compiler components are currently documented through Rust.
+- Parsing, printing, and structural walking have JavaScript entry points. Other compiler components are not yet exposed through the public JavaScript API.
 
 ## Related
 

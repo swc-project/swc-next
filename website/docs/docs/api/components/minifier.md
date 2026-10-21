@@ -13,7 +13,7 @@ Optimize a valid JavaScript program AST before printing.
 
 ## Current boundaries
 
-- Available through Rust. Name mangling is not implemented.
+- Not currently exposed through the JavaScript API. Name mangling is not implemented.
 - Compact printing is a separate code generator option.
 
 ## Related

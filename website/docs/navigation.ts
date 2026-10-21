@@ -28,10 +28,6 @@ const guide = [
         "link": "/guide/getting-started/browser"
       },
       {
-        "text": "Rust",
-        "link": "/guide/getting-started/rust"
-      },
-      {
         "text": "Choosing packages",
         "link": "/guide/packages"
       }
@@ -148,12 +144,8 @@ export const sidebar = {
       ]
     },
     {
-      "text": "Rust & interop",
+      "text": "Interop",
       "items": [
-        {
-          "text": "Rust API",
-          "link": "/api/rust"
-        },
         {
           "text": "AST interop",
           "link": "/api/interop"

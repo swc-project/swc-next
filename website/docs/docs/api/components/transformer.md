@@ -14,7 +14,7 @@ Apply supported syntax transformations to the flat AST.
 
 ## Availability
 
-- Use the Rust API or try the supported subset in the Playground.
+- Try the supported subset in the [Playground](https://play.next.swc.rs).
 
 ## Related
 

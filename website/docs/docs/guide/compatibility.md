@@ -9,7 +9,7 @@ SWC Next is a ground-up rewrite with separate packages and a new AST representat
 
 ## API and AST
 
-- Rust and JavaScript APIs differ from the existing SWC APIs.
+- The JavaScript API differs from the existing SWC API.
 - The JavaScript AST is ESTree-based; compatibility with arbitrary third-party ASTs is not guaranteed.
 
 ## Configuration

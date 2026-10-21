@@ -16,10 +16,6 @@ transformations, code generation, minification, type stripping, and isolated dec
 
 - Core, focused packages, browser initialization, traversal, and shared AST types.
 
-## Rust
-
-- Component APIs are documented in Rust doc alongside the implementation.
-
 ## Interop
 
 - Encoding, decoding, source metadata, and version matching.

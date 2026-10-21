@@ -14,7 +14,7 @@ Erase the supported TypeScript syntax while preserving source positions.
 
 ## Current boundaries
 
-- Available through Rust for the erasableSyntaxOnly subset.
+- Supports the erasableSyntaxOnly subset. Not currently exposed through the JavaScript API.
 - Type stripping is distinct from general TypeScript lowering.
 
 ## Related

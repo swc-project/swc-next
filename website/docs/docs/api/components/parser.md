@@ -14,8 +14,7 @@ Parse JavaScript, TypeScript, JSX, TSX, and declaration files into an ESTree-bas
 
 ## Interfaces
 
-- Rust, Node.js, and browser WebAssembly.
-- Optional token collection is available through Rust parser configurations.
+- Node.js and browser WebAssembly.
 
 ## Related
 

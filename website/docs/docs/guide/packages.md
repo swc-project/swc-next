@@ -14,10 +14,6 @@ Choose the smallest public interface that fits your tool.
 - @swc-next/walker and @swc-next/types provide traversal and shared declarations.
 - @swc-next/core-browser provides browser WebAssembly bindings.
 
-## Rust
-
-- Use individual swc_next_* crates for the components in your pipeline.
-
 ## Related
 
 [Component APIs](/api/components/) · [API reference](/api/)
