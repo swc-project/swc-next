@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<\u004b extends /* prettier-ignore */ | \u0041> = K;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type T<
+  \u004b extends /* prettier-ignore */ | A,
+> = K;
+
+---------- Options ----------
+{}
+---------- Output ----------
+type T<\u004b extends /* prettier-ignore */ | A> = K;
