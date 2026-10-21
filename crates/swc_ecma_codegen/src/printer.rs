@@ -2565,42 +2565,16 @@ impl<'a> Printer<'a> {
         let need_space_before_dot = self.need_space_before_dot == self.js.len();
         self.need_space_before_dot = usize::MAX;
         let property = e.property(self.ast);
-        let property_data = self.ast.property_key_data(property);
-        let (identifier_text, property_text): (Option<&str>, Option<&Wtf8>) = match property_data {
-            PropertyKeyData::IdentifierName(identifier) => {
-                let name = self.ast.get_utf8(identifier.name(self.ast));
-                (Some(name), Some(Wtf8::from_str(name)))
-            }
-            PropertyKeyData::Expr(expression) => match self.ast.expr_data(expression) {
-                ExprData::StringLiteral(string) => {
-                    (None, Some(self.ast.get_wtf8(string.value(self.ast))))
-                }
-                _ => (None, None),
-            },
-        };
-        let force_computed = !computed
-            && match identifier_text {
-                Some(name) => !self.can_print_identifier(name),
-                None => property_text.is_some_and(|name| {
-                    name.as_str()
-                        .is_none_or(|name| !self.can_print_identifier(name))
-                }),
-            };
         if optional {
             self.print("?.");
         }
-        if computed || force_computed {
+        if computed {
             self.print("[");
-            if force_computed {
-                self.add_source_mapping(property.span(self.ast).start);
-                self.print_quoted(property_text.unwrap(), true);
-            } else {
-                let old_forbid_in = self.forbid_in;
-                self.forbid_in = false;
-                self.print_property_key_expr(property, Precedence::Lowest);
-                self.forbid_in = old_forbid_in;
-                self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
-            }
+            let old_forbid_in = self.forbid_in;
+            self.forbid_in = false;
+            self.print_property_key_expr(property, Precedence::Lowest);
+            self.forbid_in = old_forbid_in;
+            self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
             self.print("]");
         } else {
             if !optional {
@@ -2612,11 +2586,7 @@ impl<'a> Printer<'a> {
                 self.print(".");
             }
             self.add_source_mapping(property.span(self.ast).start);
-            if matches!(property_data, PropertyKeyData::IdentifierName(_)) {
-                self.print_identifier(identifier_text.unwrap());
-            } else {
-                self.print_property_key_plain_data(property, property_data);
-            }
+            self.print_property_key_plain(property);
         }
     }
 
@@ -2876,12 +2846,7 @@ impl<'a> Printer<'a> {
     fn can_use_shorthand_property(&self, property: ObjectProperty) -> bool {
         property.shorthand(self.ast)
             && !property.computed(self.ast)
-            && match self.ast.property_key_data(property.key(self.ast)) {
-                PropertyKeyData::IdentifierName(identifier) => {
-                    self.can_print_identifier(self.ast.get_utf8(identifier.name(self.ast)))
-                }
-                _ => false,
-            }
+            && property.key(self.ast).is_identifier_name(self.ast)
     }
 
     fn print_property_key(&mut self, key: PropertyKey, computed: bool) {
@@ -2932,11 +2897,7 @@ impl<'a> Printer<'a> {
         match data {
             PropertyKeyData::IdentifierName(value) => {
                 let name = self.ast.get_utf8(value.name(self.ast));
-                if self.can_print_identifier(name) {
-                    self.print_identifier(name);
-                } else {
-                    self.print_quoted(Wtf8::from_str(name), false);
-                }
+                self.print_identifier(name);
             }
             PropertyKeyData::Expr(expression) => match self.ast.expr_data(expression) {
                 ExprData::StringLiteral(value) => {
@@ -5269,29 +5230,6 @@ impl Printer<'_> {
             return None;
         }
         Some(identifier)
-    }
-
-    #[inline]
-    fn can_print_identifier(&self, name: &str) -> bool {
-        let bytes = name.as_bytes();
-        let Some((&first, rest)) = bytes.split_first() else {
-            return false;
-        };
-        if is_ident_start_ascii(first) {
-            if rest.iter().all(|&byte| is_ident_continue_ascii(byte)) {
-                return true;
-            }
-            if bytes.is_ascii() {
-                return false;
-            }
-        } else if first.is_ascii() {
-            return false;
-        }
-        if self.options.ascii_only || self.options.minify {
-            is_identifier_es5_and_esnext(bytes)
-        } else {
-            is_identifier(bytes)
-        }
     }
 
     fn module_name(&self, n: ModuleExportName) -> &Wtf8 {

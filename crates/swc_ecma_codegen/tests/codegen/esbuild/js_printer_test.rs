@@ -1019,7 +1019,7 @@ fn test_ascii_only() {
     );
     expect_printed_ascii(
         "var \\u{1000a} = {\\u{1000A}: '\\u{1000A}'}",
-        "var \\u{1000A} = { \"\\u{1000A}\": \"\\u{1000A}\" };\n",
+        "var \\u{1000A} = { \\u{1000A}: \"\\u{1000A}\" };\n",
     );
     expect_printed("let x = '\u{2028}'", "let x = \"\\u2028\";\n");
     expect_printed("let x = '\u{2029}'", "let x = \"\\u2029\";\n");

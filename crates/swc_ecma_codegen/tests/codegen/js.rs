@@ -654,6 +654,30 @@ fn print_negative_number_contexts(options: PrintOptions) -> String {
 }
 
 #[test]
+fn identifier_names() {
+    let minified = PrintOptions {
+        minify: true,
+        ..PrintOptions::default()
+    };
+    let ascii = PrintOptions {
+        ascii_only: true,
+        ..minified.clone()
+    };
+
+    expect_printed_with_options("value.𐐀;", "value.𐐀;", minified.clone());
+
+    expect_printed_with_options("({ 𐐀: 0 });", "({𐐀:0});", minified.clone());
+
+    expect_printed_with_options("({ 𐐀 });", "({𐐀});", minified);
+
+    expect_printed_with_options("value.𐐀;", "value.\\u{10400};", ascii.clone());
+
+    expect_printed_with_options("({ 𐐀: 0 });", "({\\u{10400}:0});", ascii.clone());
+
+    expect_printed_with_options("({ 𐐀 });", "({\\u{10400}});", ascii);
+}
+
+#[test]
 fn test_directive_string_value() {
     expect_printed_script(r#""\u0061""#, "\"\\u0061\";\n");
     // The following statement verifies that the escaped directive stays non-strict.

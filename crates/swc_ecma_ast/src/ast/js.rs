@@ -907,6 +907,10 @@ pub struct BindingIdentifier {
 
 /// An identifier used as a property key or meta property name.
 ///
+/// `name` must be a nonempty ECMAScript `IdentifierName`: its first code point
+/// must be `$`, `_`, or Unicode `ID_Start`; subsequent code points may also be
+/// Unicode `ID_Continue`, U+200C, or U+200D. Reserved words are allowed.
+///
 /// ## Example
 /// ```js
 /// obj.foo
