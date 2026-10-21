@@ -1035,8 +1035,8 @@ mod tests {
 
     #[test]
     fn namespace_value_dependencies() {
-        let (code, diagnostics) =
-            declaration_output("namespace N { \"use strict\"; } export type T = typeof N;");
+        let source = "namespace N { \"use strict\"; } export type T = typeof N;";
+        let (code, diagnostics) = declaration_output(source);
         assert_eq!(diagnostics, 0);
         assert!(code.contains("namespace N"));
         assert!(code.contains("typeof N"));
