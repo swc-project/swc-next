@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{Doc, FormatElement, GroupRequest, Writer};
+use super::{Doc, FormatElement, Fragment, GroupRequest, Writer};
 use crate::{FormatOptions, IndentStyle, LineEnding};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -1311,6 +1311,15 @@ fn clean_parts_width(parts: &[&str]) -> Option<usize> {
         .unwrap()
 }
 
+fn clean_fragment_width<'a>(writer: &mut Writer<'a>, fragment: Fragment<'a>) -> Option<usize> {
+    writer
+        .write_with_clean_text_width(|writer| {
+            writer.write_fragment(fragment);
+            Ok::<_, ()>(())
+        })
+        .unwrap()
+}
+
 #[test]
 fn complete_text_measurement() {
     assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
@@ -1335,10 +1344,10 @@ fn complete_text_measurement() {
     assert_eq!(width, Some(2));
 
     let text = record(&mut writer, |writer| writer.text("👩\u{200d}💻"));
-    assert_eq!(text.clean_text_width(), Some(2));
+    assert_eq!(clean_fragment_width(&mut writer, text), Some(2));
 
     let expanded = writer.group_fragment(true, text);
-    assert_eq!(expanded.clean_text_width(), None);
+    assert_eq!(clean_fragment_width(&mut writer, expanded), None);
 }
 
 #[test]

@@ -427,8 +427,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             class,
             quoting,
         } = input;
-        let key_context =
-            class.map_or(PropertyKeyContext::Ordinary, |owner| owner.key_context(ast));
+        let key_context = class.map_or(PropertyKeyContext::ObjectMethod, |owner| {
+            owner.key_context(ast)
+        });
         let quoting = self.property_key_quoting_context(key, computed, key_context, quoting);
         let class = match class {
             Some(owner) => self.source_class_member_prefix_at(owner, start)?,

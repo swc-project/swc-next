@@ -2,8 +2,8 @@
 
 use swc_next_ecma_ast::{
     Argument, Comment, CommentKind, Expr, ExprData, GetSpan, ObjectExpression, ObjectProperty,
-    ObjectPropertyKind, ObjectPropertyKindData, PropertyKey, PropertyKeyData, PropertyKind,
-    SimpleAssignmentTargetData, Span, StringLiteral, SubRange,
+    ObjectPropertyKind, ObjectPropertyKindData, PropertyKey, PropertyKeyData, PropertyKind, Span,
+    StringLiteral, SubRange,
 };
 
 use super::assignment::RhsLayout;
@@ -39,6 +39,7 @@ pub(in crate::formatter) enum ConstructorKeyGrammar {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum PropertyKeyContext {
     Ordinary,
+    ObjectMethod,
     FunctionValueBinding,
     ClassField,
     ModuleAttribute,
@@ -90,30 +91,18 @@ pub(in crate::formatter) struct PropertySuppression {
     pub(in crate::formatter) enclosing: ContentMode,
 }
 
-#[derive(Clone, Copy)]
-enum ComputedKeyScope {
-    Text,
-    Expression,
-}
-
 struct PreparedComputedKey<'ast> {
+    transparent: bool,
     inner: Fragment<'ast>,
-    scope: ComputedKeyScope,
     opening: LineConstraint,
     closing: LineConstraint,
 }
 
 impl<'ast> PreparedComputedKey<'ast> {
     fn write(self, writer: &mut Writer<'ast>) {
-        let clean = matches!(self.scope, ComputedKeyScope::Text)
-            && self.opening == LineConstraint::Unconstrained
-            && self.closing == LineConstraint::Unconstrained
-            && self.inner.clean_text_width().is_some();
-        if clean {
-            writer.text("[");
-            writer.write_fragment(self.inner);
-            writer.text("]");
-        } else {
+        if !self.transparent {
+            // Keep comment packets inside their delimiter scope so their source
+            // attachment remains stable when the formatted key is parsed again.
             writer.group(false, |writer| {
                 writer.text("[");
                 writer.indent(|writer| {
@@ -125,6 +114,12 @@ impl<'ast> PreparedComputedKey<'ast> {
                     .write(writer, FlatSeparator::Empty, Writer::soft_line);
                 writer.text("]");
             });
+        } else {
+            writer.text("[");
+            self.opening.write(writer, FlatSeparator::Empty, |_| {});
+            writer.write_fragment(self.inner);
+            self.closing.write(writer, FlatSeparator::Empty, |_| {});
+            writer.text("]");
         }
     }
 }
@@ -1195,6 +1190,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let key_span = expression.span(self.ast);
         let closing = computed.end - 1;
         let content = Span::new(computed.start + 1, closing);
+        let comments = self.comments.in_range(content);
+        let has_comments = !comments.is_empty();
         let opening_constraint = self.opening_line_constraint(content);
         let closing_constraint = if self.has_suppression {
             let comments = self.comments.in_range(Span::new(key_span.end, closing));
@@ -1208,32 +1205,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        let scope = if mode != ContentMode::Formatted {
-            ComputedKeyScope::Expression
-        } else if self.has_suppression
-            || self.has_target_annotations
-            || self.has_file_directives
-            || !self.diagnostic_lines.is_empty()
-        {
-            let comments = self.ast.comments();
-            let first = comments.partition_point(|comment| comment.span.start < content.start);
-            let last = comments.partition_point(|comment| comment.span.end <= content.end);
-            if self
-                .comment_binding(&comments[first..last], content, None)
-                .allows_relocation(None)
-            {
-                self.computed_key_scope(expression)
-            } else {
-                ComputedKeyScope::Expression
-            }
-        } else {
-            self.computed_key_scope(expression)
-        };
+        // Source packets select the bracket owner before child width decisions.
+        // Inline ordinary Blocks do not acquire a frame when their expression breaks.
+        let transparent = !has_comments
+            || (mode == ContentMode::Formatted
+                && opening_constraint == LineConstraint::Unconstrained
+                && !self.diagnostic_range_is_sensitive(computed)
+                && comments.iter().all(|comment| {
+                    comment.kind == CommentKind::Block
+                        && self.line_breaks(comment.span.start, comment.span.end) == 0
+                        && !self.source_line_starts_line(comment.span.start)
+                        && self.comment_semantics(*comment).is_ordinary()
+                        && !self.comment_is_jsdoc_binding(*comment)
+                })
+                && self
+                    .comment_binding(comments, content, None)
+                    .allows_relocation(None));
+        let method = matches!(
+            context,
+            PropertyKeyContext::ObjectMethod
+                | PropertyKeyContext::TypeMethod
+                | PropertyKeyContext::ClassMethod(_)
+        );
         let position = match context {
             PropertyKeyContext::TypeProperty => ExpressionPosition::TypePropertyKey,
             _ => ExpressionPosition::Nested,
         };
-        let (inner, end) = writer.record_with_value(|writer| {
+        let (inner, tail_constraint) = writer.record_with_value(|writer| {
             let leading = self
                 .comments
                 .between(Span::new(computed.start + 1, key_span.start))?;
@@ -1248,8 +1246,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.content_mode(leading)
             };
             let operand_indent = if mode == ContentMode::Formatted
-                && matches!(content.data, ExprData::ConditionalExpression(_))
-            {
+                && (matches!(content.data, ExprData::ConditionalExpression(_))
+                    || (transparent
+                        && !method
+                        && matches!(
+                            content.data,
+                            ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+                        ))) {
                 OperandIndent::Parent
             } else {
                 OperandIndent::Expression
@@ -1273,69 +1276,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             let tail = self.capture_expression_tail(Span::new(key_span.end, closing), tail)?;
-            let end = tail
-                .as_ref()
-                .and_then(|tail| tail.comments.last())
-                .map_or(key_span.end, |comment| comment.span.end);
+            let tail_constraint = self.line_constraint_after_comments(
+                tail.as_ref().map_or(&[], |tail| tail.comments),
+                key_span.end,
+                closing,
+            );
             self.format_expression_tail(tail, writer)?;
-            Ok::<_, FormatError>(end)
+            Ok::<_, FormatError>(tail_constraint)
         })?;
-        let closing_constraint =
-            closing_constraint.unwrap_or_else(|| self.line_constraint(end, closing));
+        let closing_constraint = closing_constraint.unwrap_or(tail_constraint);
         Ok(PreparedComputedKey {
+            transparent,
             inner,
-            scope,
             opening: opening_constraint,
             closing: closing_constraint,
         })
-    }
-
-    fn computed_key_scope(&self, expression: Expr) -> ComputedKeyScope {
-        let mut data = self.expression_content(expression).data;
-        loop {
-            data = match data {
-                ExprData::UnaryExpression(unary) => {
-                    self.expression_content(unary.argument(self.ast)).data
-                }
-                ExprData::AwaitExpression(awaited) => {
-                    self.expression_content(awaited.argument(self.ast)).data
-                }
-                ExprData::YieldExpression(yielded) => {
-                    let Some(argument) = yielded.argument(self.ast) else {
-                        return ComputedKeyScope::Text;
-                    };
-                    self.expression_content(argument).data
-                }
-                ExprData::TsNonNullExpression(assertion) => {
-                    self.expression_content(assertion.expression(self.ast)).data
-                }
-                ExprData::UpdateExpression(update) => {
-                    match self
-                        .ast
-                        .simple_assignment_target_data(update.argument(self.ast))
-                    {
-                        SimpleAssignmentTargetData::IdentifierReference(identifier) => {
-                            ExprData::IdentifierReference(identifier)
-                        }
-                        SimpleAssignmentTargetData::TsNonNullExpression(assertion) => {
-                            ExprData::TsNonNullExpression(assertion)
-                        }
-                        _ => return ComputedKeyScope::Expression,
-                    }
-                }
-                ExprData::IdentifierReference(_)
-                | ExprData::ThisExpression(_)
-                | ExprData::MetaProperty(_)
-                | ExprData::StringLiteral(_)
-                | ExprData::NumericLiteral(_)
-                | ExprData::BigIntLiteral(_)
-                | ExprData::BooleanLiteral(_)
-                | ExprData::NullLiteral(_)
-                | ExprData::RegExpLiteral(_) => return ComputedKeyScope::Text,
-                // Postfix, template, and compound expressions own their layout scope.
-                _ => return ComputedKeyScope::Expression,
-            };
-        }
     }
 }
 

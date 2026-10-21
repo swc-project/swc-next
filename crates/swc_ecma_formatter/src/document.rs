@@ -366,14 +366,6 @@ impl<'a> Fragment<'a> {
         self.effect.preferred_breaks()
     }
 
-    /// Width of a document that reduces to text without observing layout scopes.
-    pub(crate) fn clean_text_width(self) -> Option<usize> {
-        if self.effect.preferred_breaks() || self.conditional_lines {
-            return None;
-        }
-        clean_text_width(self.elements)
-    }
-
     /// Measures this complete scope without changing its retained render view.
     pub(crate) fn canonical_candidate(self) -> CanonicalCandidate<'a> {
         CanonicalCandidate(self)
