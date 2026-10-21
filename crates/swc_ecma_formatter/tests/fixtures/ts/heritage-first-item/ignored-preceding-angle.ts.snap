@@ -9,9 +9,10 @@ First<  T  >, Second<  T  > { value : T; }
 {"printWidth":80}
 ---------- Output ----------
 class Subject<T>
-  extends Base<  T  > /* prettier-ignore */
-  // head
-  implements First<T>, Second<T>
+  extends Base<  T  > /* prettier-ignore */ implements
+// head
+First<T>,
+  Second<T>
 {
   value: T;
 }
@@ -20,11 +21,10 @@ class Subject<T>
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 class Subject<T>
-  extends Base<  T  > /* prettier-ignore */
-  // head
-  implements
-    First<T>,
-    Second<T>
+  extends Base<  T  > /* prettier-ignore */ implements
+// head
+First<T>,
+  Second<T>
 {
   value: T
 }
@@ -33,9 +33,10 @@ class Subject<T>
 {"endOfLine":"crlf","printWidth":100,"useTabs":true}
 ---------- Output ----------
 class Subject<T>
-	extends Base<  T  > /* prettier-ignore */
-	// head
-	implements First<T>, Second<T>
+	extends Base<  T  > /* prettier-ignore */ implements
+// head
+First<T>,
+	Second<T>
 {
 	value: T;
 }

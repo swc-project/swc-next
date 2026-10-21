@@ -14,9 +14,7 @@ class Name<T> extends Base<  T  > /* prettier-ignore */ implements Other<T> {
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 class Name<T>
-  extends Base<  T  > /* prettier-ignore */
-  implements
-    Other<T>
+  extends Base<  T  > /* prettier-ignore */ implements Other<T>
 {
   value: T
 }
@@ -25,9 +23,7 @@ class Name<T>
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
 ---------- Output ----------
 class Name<T>
-	extends Base<  T  > /* prettier-ignore */
-	implements
-		Other<T>
+	extends Base<  T  > /* prettier-ignore */ implements Other<T>
 {
 	value: T;
 }
