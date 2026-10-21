@@ -130,7 +130,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let hashbang = program.hashbang(self.ast);
         if let Some(hashbang) = hashbang {
             writer.text("#!");
-            writer.text(self.ast.get_utf8(hashbang.value(self.ast)).trim_end());
+            writer.text(self.ast.get_utf8(hashbang.value(self.ast)));
         }
         let ast = self.ast;
         let statements = program
