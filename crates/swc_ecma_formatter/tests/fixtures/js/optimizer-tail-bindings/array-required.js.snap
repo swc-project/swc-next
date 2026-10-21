@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[fourth + (first + second /* #__PURE__ */), other];
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+;[
+  fourth +
+    (first +
+      second) /* #__PURE__ */,
+  other,
+]
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+[
+  fourth +
+    (first +
+      second) /* #__PURE__ */,
+  other,
+];

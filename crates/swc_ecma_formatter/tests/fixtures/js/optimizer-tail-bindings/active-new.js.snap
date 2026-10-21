@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/* @__PURE__ */ new (Factory /* #__PURE__ */)();
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+/* @__PURE__ */ new Factory /* #__PURE__ */()
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+/* @__PURE__ */ new Factory /* #__PURE__ */();

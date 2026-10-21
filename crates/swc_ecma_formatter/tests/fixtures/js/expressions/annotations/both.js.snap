@@ -6,35 +6,29 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
-(/* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */);
+/* #__PURE__ */ first; /* #__NO_SIDE_EFFECTS__ */
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;(/* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */)
+/* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-(
-  /* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */
-);
+/* #__PURE__ */ first; /* #__NO_SIDE_EFFECTS__ */
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
-(
-  /* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */
-);
+/* #__PURE__ */ first; /* #__NO_SIDE_EFFECTS__ */
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-(
-	/* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */
-);
+/* #__PURE__ */ first; /* #__NO_SIDE_EFFECTS__ */
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-(/* #__PURE__ */ first /* #__NO_SIDE_EFFECTS__ */);
+/* #__PURE__ */ first; /* #__NO_SIDE_EFFECTS__ */

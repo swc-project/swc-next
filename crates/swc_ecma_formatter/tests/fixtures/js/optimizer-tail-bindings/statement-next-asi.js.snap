@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first /* #__PURE__ */); /* @__PURE__ */ (() => effect())();
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+first
+;
+/* #__PURE__ */ /* @__PURE__ */ (() =>
+  effect())()
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+first;
+/* #__PURE__ */ /* @__PURE__ */ (() =>
+  effect())();

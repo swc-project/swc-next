@@ -6,38 +6,32 @@ fourth - (first /* @__PURE__ */);
 ---------- Options ----------
 {}
 ---------- Output ----------
-fourth - (first /* @__PURE__ */);
+fourth - first; /* @__PURE__ */
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-fourth - (first /* @__PURE__ */)
+fourth - first /* @__PURE__ */
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 fourth -
-  (
-    first /* @__PURE__ */
-  );
+  first; /* @__PURE__ */
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 fourth -
-  (
-    first /* @__PURE__ */
-  );
+  first; /* @__PURE__ */
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 fourth -
-	(
-		first /* @__PURE__ */
-	);
+	first; /* @__PURE__ */
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-fourth - (first /* @__PURE__ */);
+fourth - first; /* @__PURE__ */
