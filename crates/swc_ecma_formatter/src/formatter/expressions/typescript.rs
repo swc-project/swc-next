@@ -591,8 +591,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     left_mode = ContentMode::Verbatim;
                 }
             }
-            for (_, position) in self.suppressed_comment_runs(after, gap.end) {
+            let attachment = self.type_attachment_head(right.node);
+            for (run, position) in self.suppressed_comment_runs(after, gap.end) {
                 source = true;
+                let selected = self
+                    .prepare_type_suppression_run(
+                        &attachment,
+                        run,
+                        position,
+                        super::super::types::TypeSuppressionContext::ExpressionBoundary,
+                    )
+                    .apply(right);
+                if selected.preceding() {
+                    left_mode = ContentMode::Verbatim;
+                }
+                if !selected.following() {
+                    continue;
+                }
                 // The const assertion marker has no attachable type node.
                 // Its comments select the expression on the left instead.
                 if const_marker || matches!(position, SuppressionPosition::EndOfLine) {
