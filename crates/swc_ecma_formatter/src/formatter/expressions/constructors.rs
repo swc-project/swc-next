@@ -1,7 +1,7 @@
 //! Constructor keyword ownership and member-expression callee grammar.
 use super::AccessKind;
 
-use swc_next_ecma_ast::{ExprData, GetSpan, NewExpression, Span};
+use swc_next_ecma_ast::{Expr, ExprData, GetSpan, NewExpression, Span};
 
 use super::{ExpressionContext, ExpressionPosition, Formatter, MemberLayout, TailOwner};
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
@@ -49,6 +49,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .ok_or_else(|| self.unsupported("constructor opening boundary", constructor))?,
             )
         };
+        if arguments
+            .as_ref()
+            .is_some_and(|arguments| arguments.call_mode == ContentMode::Verbatim)
+        {
+            self.format_verbatim_expression(Expr::NewExpression(constructor), context, writer)?;
+            return Ok(None);
+        }
         let keyword_end = span.start + 3;
         let leading = self
             .comments

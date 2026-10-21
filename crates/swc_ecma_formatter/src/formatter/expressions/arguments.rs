@@ -708,6 +708,8 @@ pub(super) struct SourceArguments<'ast> {
     source_opening: Option<SourceArgumentOpening>,
     prefix: SourceArgumentPrefix<'ast>,
     pub(super) callee_mode: ContentMode,
+    /// An ignore inside an empty list owns the complete call, not an argument.
+    pub(super) call_mode: ContentMode,
     pub(super) group: ArgumentGroup,
     pub(super) frame: CallArgumentFrame,
     pub(super) curried_callee: Option<CallExpression>,
@@ -860,6 +862,7 @@ impl<'ast> SourceArguments<'ast> {
         if !self.arguments.is_empty()
             || self.type_arguments.is_some()
             || self.callee_mode != ContentMode::Formatted
+            || self.call_mode != ContentMode::Formatted
             || self.frame.is_fixed()
         {
             return None;
@@ -904,8 +907,7 @@ impl<'ast> SourceArguments<'ast> {
     }
 
     pub(super) fn empty_argument_content(&self) -> Option<Span> {
-        self.arguments
-            .is_empty()
+        (self.arguments.is_empty() && self.call_mode == ContentMode::Formatted)
             .then(|| Span::new(self.delimiters.start + 1, self.delimiters.end - 1))
     }
 
@@ -955,7 +957,11 @@ impl<'ast> SourceArguments<'ast> {
             expression: self.callee,
             access: self.access(),
             curried_call: self.curried_callee,
-            mode: self.callee_mode,
+            mode: if self.call_mode == ContentMode::Verbatim {
+                self.call_mode
+            } else {
+                self.callee_mode
+            },
         }
     }
 
@@ -1213,6 +1219,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_opening,
             prefix,
             callee_mode,
+            call_mode: if first.is_none() {
+                self.content_mode(&boundary_comments[prefix_count..])
+            } else {
+                ContentMode::Formatted
+            },
             group: ArgumentGroup::Local,
             frame: CallArgumentFrame::Ordinary,
             allow_composition: true,
