@@ -11,9 +11,7 @@ unknown));
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  (
-    unknown
-  ),
+  unknown,
 );
 
 ---------- Options ----------
@@ -21,9 +19,7 @@ callee(
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  (
-    unknown
-  ),
+  unknown,
 );
 
 ---------- Options ----------
@@ -31,9 +27,7 @@ callee(
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  (
-    unknown
-  ),
+  unknown,
 )
 
 ---------- Options ----------
@@ -41,7 +35,5 @@ callee(
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  (
-    unknown
-  )
+  unknown
 );

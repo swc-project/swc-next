@@ -1,0 +1,4 @@
+third, // @ts-ignore
+(
+first
+);
