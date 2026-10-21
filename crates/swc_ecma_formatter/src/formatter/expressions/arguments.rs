@@ -9,7 +9,7 @@ use super::{
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
 };
-use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
@@ -702,6 +702,7 @@ pub(super) struct SourceArguments<'ast> {
     arguments: SubRange<Argument>,
     first: Option<SourceFirstArgument>,
     delimiters: Span,
+    closing: TerminalCloseBoundary,
     pub(super) callee: Expr,
     callee_span: Span,
     type_arguments: Option<ExpressionTypeArguments<'ast>>,
@@ -1209,10 +1210,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             callee_mode = types.callee_mode;
         }
+        let content = Span::new(opening + 1, end - 1);
+        let closing = self.terminal_close_boundary(content, || {
+            let mut arguments = arguments.iter().rev();
+            let last: Argument = ast.get_node_in_sub_range(arguments.next()?);
+            let head_start = arguments.next().map_or(content.start, |id| {
+                let argument: Argument = ast.get_node_in_sub_range(id);
+                argument.span(ast).end
+            });
+            Some((last.span(ast), head_start))
+        });
         let mut list = SourceArguments {
             arguments,
             first,
             delimiters: Span::new(opening, end),
+            closing,
             callee,
             callee_span,
             type_arguments,
@@ -1620,6 +1632,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             arguments,
             first,
             delimiters,
+            closing,
             callee_span,
             callee_mode,
             type_arguments,
@@ -1878,11 +1891,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(write_items)?
             };
             if !hugged && (first.is_some() || end != content.start) {
-                self.line_constraint(end, content.end).write(
-                    writer,
-                    FlatSeparator::Empty,
-                    Writer::soft_line,
-                );
+                let constraint = if fixed_frame || source_opening.is_some()
+                    || callee_mode != ContentMode::Formatted
+                {
+                    self.line_constraint(end, content.end)
+                } else {
+                    self.terminal_close_constraint(closing, end)
+                };
+                constraint.write(writer, FlatSeparator::Empty, Writer::soft_line);
             }
             if let CallArgumentFrame::Fixed { closing, .. } = frame {
                 closing.write(writer, FlatSeparator::Empty, |_| {});
