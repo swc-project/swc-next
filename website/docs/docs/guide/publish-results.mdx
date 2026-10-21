@@ -1,0 +1,30 @@
+---
+pageType: doc-wide
+outline: false
+title: Publish Results
+description: Wall time and peak memory comparisons with SWC.
+---
+
+import { BenchmarkGroup, BenchmarkNotes } from "../../theme/Benchmarks";
+
+# Publish Results
+
+Benchmarks compare SWC Next with SWC on the same inputs and iteration counts. Wall time and peak resident memory are shown side by side, relative to SWC.
+
+<BenchmarkNotes />
+
+## Rust parse
+
+<BenchmarkGroup title="Rust parse" />
+
+## Isolated declaration
+
+<BenchmarkGroup title="Isolated declaration" />
+
+## Type strip
+
+<BenchmarkGroup title="Type strip" />
+
+## JS parser
+
+<BenchmarkGroup title="JS parser" />

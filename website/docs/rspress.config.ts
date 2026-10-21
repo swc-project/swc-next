@@ -1,8 +1,12 @@
 import { defineConfig } from "@rspress/core";
+import { loadBenchmarkReport } from "./benchmark-report";
 import { sidebar } from "./navigation";
 
 export default defineConfig({
   root: "docs",
+  builderConfig: {
+    source: { define: { BENCHMARK_REPORT: JSON.stringify(loadBenchmarkReport()) } },
+  },
   title: "SWC Next",
   description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",
   icon: "/favicon.svg",
