@@ -11,61 +11,47 @@ missing;
 {}
 ---------- Output ----------
 // @ts-ignore
-(
-  first
-);
+first;
 missing;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // @ts-ignore
-;(
-  first
-)
+first
 missing
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 // @ts-ignore
-(
-  first
-);
+first;
 missing;
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // @ts-ignore
-(
-  first
-);
+first;
 missing;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-ignore
-(
-	first
-);
+first;
 missing;
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
 // @ts-ignore
-(
-  first
-);
+first;
 missing;
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
 // @ts-ignore
-(
-  first
-);
+first;
 missing;

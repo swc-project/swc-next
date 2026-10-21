@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+(
+/** @type {number} */ (value)
+);---------- Options ----------
+{"printWidth":10,"semi":false}
+---------- Output ----------
+;
+// @ts-ignore
+/** @type {number} */ (
+  value
+)
+
+---------- Options ----------
+{"printWidth":10,"semi":true}
+---------- Output ----------
+// @ts-ignore
+/** @type {number} */ (
+  value
+);
