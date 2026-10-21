@@ -439,8 +439,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         for (_, position) in self.suppressed_comment_runs(after, gap.end) {
-            // After the member separator, the following type owns the directive.
-            self.select_type_head(right, position);
+            // A line-ending packet still trails the preceding key or type,
+            // even when the grammar separator appears before the comment.
+            if matches!(position, SuppressionPosition::EndOfLine) {
+                left_mode = ContentMode::Verbatim;
+            } else {
+                self.select_type_head(right, position);
+            }
         }
         left_mode
     }

@@ -581,6 +581,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut left_mode = ContentMode::Formatted;
         let mut source = false;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
+            let const_marker =
+                matches!(operator, TypeBinaryOperator::As) && self.is_const_marker_type(*right);
             for (_, position) in self.suppressed_comment_runs(before, start) {
                 source = true;
                 if matches!(position, SuppressionPosition::OwnLine) {
@@ -591,7 +593,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             for (_, position) in self.suppressed_comment_runs(after, gap.end) {
                 source = true;
-                if matches!(position, SuppressionPosition::EndOfLine) {
+                // The const assertion marker has no attachable type node.
+                // Its comments select the expression on the left instead.
+                if const_marker || matches!(position, SuppressionPosition::EndOfLine) {
                     left_mode = ContentMode::Verbatim;
                 } else {
                     self.select_expression_type_head(right, position);
