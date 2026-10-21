@@ -133,11 +133,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // Keep this old fallible query even if qualification demotes later.
                 let comments = self.comments.between(content)?;
                 let first_end = first.span(self.ast).end;
-                let fill_line = comments.iter().any(|comment| {
-                    comment.span.start >= first_end
-                        && comment.kind == CommentKind::Line
-                        && !self.source_position_starts_line(comment.span.start)
-                });
+                let fill_line = self.array_has_inline_line_comments(comments, first_end);
                 let layout = if fill_line {
                     ArgumentLayout::Lines
                 } else {

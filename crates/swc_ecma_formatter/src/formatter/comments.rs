@@ -100,6 +100,8 @@ impl CommentBinding {
 #[derive(Clone, Copy)]
 pub(super) enum CommentRunLayout {
     Source,
+    /// Keep a terminal packet's Blocks in place and its ordinary Line suffix inline.
+    SourceDangling,
     SourceAfter(u32),
     SourceLeading {
         next: u32,
@@ -379,6 +381,12 @@ struct SourceCommentRun {
     ordinary: bool,
 }
 
+/// A real array item resets source protection; commas and whitespace do not.
+struct SourceCommentPrefix {
+    previous: Comment,
+    ordinary: bool,
+}
+
 /// One selected array owns this borrowed source stream through its real children.
 /// A boundary can prepare a Line before the following leading owner emits it.
 pub(super) struct ArrayCommentOwner<'ast> {
@@ -386,6 +394,7 @@ pub(super) struct ArrayCommentOwner<'ast> {
     first_end: u32,
     last_start: u32,
     run: Option<SourceCommentRun>,
+    prefix: Option<SourceCommentPrefix>,
     pending: Option<PreparedLineFact>,
     reference_inline_trailing: bool,
 }
@@ -397,6 +406,7 @@ impl<'ast> ArrayCommentOwner<'ast> {
             first_end,
             last_start,
             run: None,
+            prefix: None,
             pending: None,
             reference_inline_trailing: false,
         }
@@ -407,7 +417,7 @@ impl<'ast> ArrayCommentOwner<'ast> {
         formatter: &Formatter<'ast, '_>,
         comment: Comment,
     ) -> Option<PreparedLineFact> {
-        let fact = formatter.prepare_source_comment(comment, &mut self.run);
+        let fact = formatter.prepare_array_comment(comment, &mut self.run, &mut self.prefix);
         if let Some(fact) = fact {
             let has_preceding = comment.span.start >= self.first_end;
             let has_following = comment.span.end <= self.last_start;
@@ -753,9 +763,51 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn prepare_array_comment(
+        &self,
+        comment: Comment,
+        run: &mut Option<SourceCommentRun>,
+        prefix: &mut Option<SourceCommentPrefix>,
+    ) -> Option<PreparedLineFact> {
+        let mut ordinary = self.comment_semantics(comment).is_ordinary();
+        if let Some(previous) = prefix
+            && self
+                .source(Span::new(previous.previous.span.end, comment.span.start))
+                .chars()
+                .all(|character| is_source_whitespace(character) || character == ',')
+        {
+            ordinary &= previous.ordinary;
+        }
+        *prefix = Some(SourceCommentPrefix {
+            previous: comment,
+            ordinary,
+        });
+        let mut fact = self.prepare_source_comment(comment, run)?;
+        if !ordinary {
+            // Source-owned packets retain physical gaps instead of releasing
+            // a Line across indentation that the renderer will normalize.
+            fact.current_starts_line = self.source_position_starts_line(comment.span.start);
+            fact.run_starts_line = self.source_position_starts_line(fact.run_start);
+        }
+        Some(fact)
+    }
+
+    pub(super) fn array_has_inline_line_comments(
+        &self,
+        comments: &[Comment],
+        first_end: u32,
+    ) -> bool {
+        let mut run = None;
+        let mut prefix = None;
+        comments.iter().any(|&comment| {
+            self.prepare_array_comment(comment, &mut run, &mut prefix)
+                .is_some_and(|fact| comment.span.start >= first_end && !fact.current_starts_line)
+        })
+    }
+
     /// Prepare the complete prefix after the old physical boundary decision.
     /// Canonicalizing only its Line would discard the preceding run's owner.
-    /// A negative fact remains with the array's next leading owner.
+    /// A rejected prefix keeps its leading or dangling owner.
     pub(super) fn prepare_delimited_trailing_run(
         &self,
         comments: &'ast [Comment],
@@ -766,10 +818,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<PreparedTrailingRun<'ast>> {
         let mut run = None;
         let mut ordinary_prefix = true;
+        let mut inline_prefix = true;
         for (index, &comment) in comments.iter().enumerate() {
             if comment.span.start >= trailing_limit {
                 break;
             }
+            inline_prefix &= !self.source_line_starts_line(comment.span.start);
             let fact = match array_comments.as_deref_mut() {
                 Some(owner) => {
                     let fact = owner.prepare(self, comment);
@@ -783,7 +837,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
             if let Some(fact) = fact {
+                // End boundaries keep own-line Blocks dangling. The final
+                // source run cannot lift that complete prefix onto the item.
                 return (ordinary_prefix
+                    && (has_following || inline_prefix)
                     && fact.movable()
                     && fact.attachment(true, has_following) == LineAttachment::Trailing)
                     .then_some(PreparedTrailingRun {
@@ -1685,6 +1742,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = packet.map_or(comments, |packet| packet.comments);
         let mut previous: Option<PreparedComment<'ast>> = None;
         let mut block_packet: Option<BlockCommentPacket> = None;
+        let mut source_run = None;
+        let mut ordinary_prefix = true;
         for (index, &comment) in comments.iter().enumerate() {
             if matches!(layout, CommentRunLayout::OwnLineTrailing)
                 && block_packet
@@ -1693,19 +1752,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 block_packet = self.block_comment_packet(&comments[index..]);
             }
-            if let Some(owner) = array_comments.as_deref_mut() {
-                owner.consume(self, comment);
+            if matches!(layout, CommentRunLayout::SourceDangling) {
+                ordinary_prefix &= self.comment_semantics(comment).is_ordinary();
             }
+            let fact = match array_comments.as_deref_mut() {
+                Some(owner) => owner.consume(self, comment),
+                None if matches!(layout, CommentRunLayout::SourceDangling) => {
+                    self.prepare_source_comment(comment, &mut source_run)
+                }
+                None => None,
+            };
             let prepared = self.prepare_comment(comment)?;
-            let line_suffix = if let (CommentRunLayout::SourceAfter(start), CommentKind::Line) =
-                (layout, comment.kind)
-            {
-                let end = previous
-                    .as_ref()
-                    .map_or(start, |previous| previous.span.end);
-                self.line_breaks(end, comment.span.start) == 0
-            } else {
-                false
+            let line_suffix = match (layout, comment.kind) {
+                (CommentRunLayout::SourceAfter(start), CommentKind::Line) => {
+                    let end = previous
+                        .as_ref()
+                        .map_or(start, |previous| previous.span.end);
+                    self.line_breaks(end, comment.span.start) == 0
+                }
+                (CommentRunLayout::SourceDangling, CommentKind::Line) => {
+                    previous.is_some()
+                        && ordinary_prefix
+                        && fact.is_some_and(PreparedLineFact::movable)
+                }
+                _ => false,
             };
             if let Some(previous) = previous.as_ref() {
                 let nestled = previous.span.end == prepared.span.start
@@ -1714,6 +1784,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if !nestled && !line_suffix {
                     match layout {
                         CommentRunLayout::Source
+                        | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
                         | CommentRunLayout::SourceLeading { .. } => self.comment_gap_with_packet(
                             previous.span.end,

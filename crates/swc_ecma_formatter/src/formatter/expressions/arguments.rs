@@ -717,7 +717,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 self.format_comment_run_with_array_comments(
                     own_line,
-                    CommentRunLayout::Lines,
+                    if own_line
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                    {
+                        CommentRunLayout::SourceDangling
+                    } else {
+                        CommentRunLayout::Lines
+                    },
                     array_comments,
                     writer,
                 )?;
