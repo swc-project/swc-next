@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* head */ function (value) { return value; }).name;
+---------- Options ----------
+{}
+---------- Output ----------
+/* head */ (function (value) {
+  return value;
+}).name;
