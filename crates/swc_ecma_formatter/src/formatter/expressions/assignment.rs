@@ -2,7 +2,7 @@
 
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
-use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
+use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket};
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
@@ -80,8 +80,9 @@ struct RhsContent {
     unary_operand: Option<Expr>,
 }
 
-struct AssignmentSuppression {
+struct AssignmentSuppression<'ast> {
     gap: Span,
+    opening: Option<SourceOpeningPacket<'ast>>,
     left: ContentMode,
     right: ContentMode,
 }
@@ -212,16 +213,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionPosition::Statement => AssignmentParent::Statement,
                     _ => AssignmentParent::Nested,
                 };
-                self.format_expression(
-                    right,
+                let right_context =
                     ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
                         .with_source_tail_owner(SourceTailOwner::Enclosure)
                         .with_content_mode(source.right)
                         .with_tail_owner(context.tail_owner)
                         .with_tail_boundary(context.tail_boundary)
-                        .with_decorated_function_call(decorated_function),
-                    writer,
-                )
+                        .with_decorated_function_call(decorated_function);
+                match source.opening {
+                    Some(opening) => {
+                        self.format_source_opening_packet(opening, right_context, writer)
+                    }
+                    None => self.format_expression(right, right_context, writer),
+                }
             });
         }
         let content = self.expression_content(right);
@@ -527,12 +531,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         operator: Span,
         right: Expr,
-    ) -> Option<AssignmentSuppression> {
+    ) -> Option<AssignmentSuppression<'ast>> {
+        let opening = self.source_opening_packet(right);
+        let inspection_end = opening.map_or(gap.end, |packet| packet.content_start);
         let comments = self.comments.in_range(gap);
-        if self.content_mode(comments) != ContentMode::Verbatim {
+        let enclosed = opening.map_or(&[][..], |packet| packet.comments);
+        if self.content_mode(comments) != ContentMode::Verbatim && enclosed.is_empty() {
             return None;
         }
-        let mut inner = right;
+        let mut inner = opening.map_or(right, |packet| packet.content);
         while let ExprData::ParenthesizedExpression(node) = self.ast.expr_data(inner) {
             inner = node.expression(self.ast);
         }
@@ -542,12 +549,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         let mut source = AssignmentSuppression {
             gap,
+            opening,
             left: ContentMode::Formatted,
             right: ContentMode::Formatted,
         };
-        for (run, position) in self.suppressed_comment_runs(comments, gap.end) {
-            // An own-line RHS marker belongs to the operand's prepared node head.
-            if matches!(position, SuppressionPosition::OwnLine) {
+        let runs = self
+            .suppressed_comment_runs(comments, gap.end)
+            .chain(self.suppressed_comment_runs(enclosed, inspection_end));
+        for (run, position) in runs {
+            // The ordinary gap leaves own-line packets to the existing RHS head.
+            // An enclosed packet is instead emitted by its prepared source owner.
+            if matches!(position, SuppressionPosition::OwnLine) && run[0].span.start < gap.end {
                 continue;
             }
             for &comment in run {

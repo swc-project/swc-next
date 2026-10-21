@@ -13,7 +13,7 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
-use crate::formatter::suppression::{ContentMode, TrailingSuppression};
+use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
 use crate::{FormatError, Semicolons, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -120,6 +120,15 @@ struct NumericCastBoundary<'ast> {
     source: SourceCastState,
 }
 
+/// A source operand's opening packet is inspected without extending its operator gap.
+#[derive(Clone, Copy)]
+pub(super) struct SourceOpeningPacket<'ast> {
+    outer: Span,
+    pub(super) content: Expr,
+    pub(super) content_start: u32,
+    pub(super) comments: &'ast [Comment],
+}
+
 struct SourceParenthesesComments<'ast> {
     head: &'ast [Comment],
     tail: &'ast [Comment],
@@ -170,6 +179,99 @@ enum SourceParenthesesChoice {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn source_opening_packet(
+        &self,
+        expression: Expr,
+    ) -> Option<SourceOpeningPacket<'ast>> {
+        if !self.has_suppression {
+            return None;
+        }
+        let outer = expression.span(self.ast);
+        let mut content = expression;
+        while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(content) {
+            content = pair.expression(self.ast);
+        }
+        if content == expression {
+            return None;
+        }
+        let content_start = content.span(self.ast).start;
+        let comments = self
+            .comments
+            .in_range(Span::new(outer.start, content_start));
+        // Inline packets move with the child's existing prepared head. Only a
+        // line-owning packet needs this source envelope to retain its binding.
+        self.suppression_positions(comments, content_start)
+            .any(|position| !matches!(position, SuppressionPosition::Inline))
+            .then_some(SourceOpeningPacket {
+                outer,
+                content,
+                content_start,
+                comments,
+            })
+    }
+
+    /// The parent has resolved this packet's owner; its original pairs retain the binding.
+    pub(super) fn format_source_opening_packet(
+        &mut self,
+        source: SourceOpeningPacket<'ast>,
+        context: ExpressionContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let content_span = source.content.span(self.ast);
+        let closing = Span::new(content_span.end, source.outer.end);
+        let mode = if context.content_mode == ContentMode::Verbatim
+            || self.content_mode(self.comments.in_range(closing)) == ContentMode::Verbatim
+        {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        };
+        self.format_verbatim(Span::new(source.outer.start, content_span.start), writer)?;
+        let mut pending = None;
+        if mode == ContentMode::Verbatim {
+            self.format_verbatim(content_span, writer)?;
+        } else {
+            let position =
+                self.type_assertion_parentheses_position(source.content, None, context.position);
+            let mut inner_context = context.inside_parentheses();
+            inner_context.position = position;
+            if let Some(tail) = self.format_expression(source.content, inner_context, writer)? {
+                // Removed inner pairs can release comments before the child's source end.
+                // Emit that leased prefix; the original closing slice owns only its suffix.
+                let count = tail
+                    .comments
+                    .partition_point(|comment| comment.span.end <= content_span.end);
+                let (released, remaining) = tail.comments.split_at(count);
+                if !released.is_empty() {
+                    self.format_expression_tail(
+                        Some(ExpressionTail {
+                            source_end: tail.source_end,
+                            comments: released,
+                        }),
+                        writer,
+                    )?;
+                    if released
+                        .last()
+                        .is_some_and(|comment| comment.kind == CommentKind::Line)
+                    {
+                        writer.hard_line();
+                    }
+                }
+                let count =
+                    remaining.partition_point(|comment| comment.span.end <= source.outer.end);
+                let after = &remaining[count..];
+                if !after.is_empty() {
+                    pending = Some(ExpressionTail {
+                        source_end: source.outer.end,
+                        comments: after,
+                    });
+                }
+            }
+        }
+        self.format_verbatim(closing, writer)?;
+        Ok(pending)
+    }
+
     pub(in crate::formatter) fn expression_content(&self, expression: Expr) -> ExpressionContent {
         let mut inner = expression;
         let mut head = SourceParenthesesHead {
