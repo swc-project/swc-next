@@ -42,4 +42,4 @@ These are type aliases, not runtime enums. Use string values with the [Parser AP
 
 The JavaScript API produces ASTs compatible with the [ESTree specification](https://github.com/estree/estree), using [typescript-eslint's AST format](https://typescript-eslint.io/packages/typescript-estree/ast-spec/) for TypeScript and JSX nodes. The exported declarations describe these node shapes, including error recovery nodes.
 
-Set the parser's [`preserveParens`](/api/javascript/parser#parseroptions) option to `false` to match typescript-eslint's representation of parentheses. The default preserves explicit parenthesized expression and type nodes.
+Set the parser's [`preserveParens`](/api/javascript/parser#preserveparens) option to `false` to match typescript-eslint's representation of parentheses. The default preserves explicit parenthesized expression and type nodes.
