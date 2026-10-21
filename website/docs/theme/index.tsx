@@ -1,5 +1,5 @@
 import { usePage } from "@rspress/core/runtime";
-import { Layout as OriginalLayout, Link } from "@rspress/core/theme-original";
+import { Layout as OriginalLayout, Link, Sidebar as OriginalSidebar } from "@rspress/core/theme-original";
 import { ArrowUpRight, BookOpen, Code2 } from "lucide-react";
 import "./index.css";
 
@@ -10,6 +10,10 @@ const sectionNames: Record<string, string> = {
   benchmarks: "Benchmarks",
   resources: "Resources",
 };
+
+export function Sidebar() {
+  return <div className="sidebar-navigation"><OriginalSidebar /></div>;
+}
 
 export function Layout() {
   const { page } = usePage();

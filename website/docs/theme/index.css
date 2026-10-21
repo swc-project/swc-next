@@ -105,12 +105,20 @@ body { letter-spacing: normal; line-height: 1.5; }
 .rp-search-button__word, .rp-search-button__content { font-size: 13px; }
 .rp-search-button__hotkey { font-size: 12px; background: transparent; border: 1px solid var(--rp-c-divider-light); padding: 0 4px; border-radius: 3px; }
 
-.rp-doc-layout__sidebar { display: flex; flex-direction: column; }
+.rp-doc-layout__sidebar {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--rp-nav-height) - var(--rp-banner-height, 0px));
+  max-height: calc(100dvh - var(--rp-nav-height) - var(--rp-banner-height, 0px));
+  padding: 0;
+  overflow: hidden;
+}
+.sidebar-navigation { flex: 1; min-height: 0; overflow: hidden auto; padding: var(--rp-sidebar-padding); }
 .rp-sidebar-item { padding: 7px 10px; font-size: 14px; line-height: 21px; border-radius: 5px; font-weight: 510; letter-spacing: -0.013em; }
 .rp-sidebar-item--active { color: var(--site-accent); background: var(--rp-c-brand-tint); font-weight: 510; }
 .rp-sidebar-section-header { margin-top: 25px; margin-bottom: 7px; padding-inline: 10px; }
 .rp-sidebar-section-header__left { font-size: 14px; font-weight: 510; color: var(--rp-c-text-0); }
-.sidebar-footer { border-top: 1px solid var(--rp-c-divider-light); margin: 32px 10px 0; padding-top: 17px; display: flex; flex-direction: column; gap: 13px; }
+.sidebar-footer { flex-shrink: 0; border-top: 1px solid var(--rp-c-divider-light); padding: 20px 28px; display: flex; flex-direction: column; gap: 13px; background: var(--rp-c-bg); }
 .sidebar-footer a { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--rp-c-text-2); }
 .sidebar-footer a:hover { color: var(--rp-c-text-0); }
 .status-dot { width: 6px; height: 6px; display: inline-block; flex-shrink: 0; border-radius: 50%; background: var(--site-green); }
@@ -190,7 +198,7 @@ body { letter-spacing: normal; line-height: 1.5; }
 @media (width <= 768px) {
   :root { --rp-content-padding-x: 24px; --rp-content-padding-y: 28px; }
   .rp-nav { padding-inline: 16px; }
-  .rp-doc-layout__sidebar { display: flex; }
+  .rp-doc-layout__sidebar { display: flex; padding: 0; }
   .doc-eyebrow { margin-bottom: 26px; }
   .rp-doc:has(.intro-label) h1 { font-size: 36px; }
   .rp-doc .intro-lead { font-size: 15px; }
