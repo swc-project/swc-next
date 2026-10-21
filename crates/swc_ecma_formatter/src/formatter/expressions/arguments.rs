@@ -359,9 +359,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(end) = head.gap_end
             && let Some(last) = head.comments.last()
         {
-            self.comment_gap(last.span.end, end, writer);
+            let gap_start = if mode == ContentMode::Formatted {
+                // A comma left in the unconsumed head belongs to ordinary
+                // attachment: protected, elision and suppression boundaries
+                // already consumed it. Measure the final gap after that comma,
+                // preserving real blank lines rather than the punctuation line.
+                self.find_comma(Span::new(last.span.end, end), &[])
+                    .filter(|&comma| self.diagnostic_separator_precedes_uncovered_item(comma, end))
+                    .map_or(last.span.end, |comma| comma + 1)
+            } else {
+                last.span.end
+            };
+            self.comment_gap(gap_start, end, writer);
         }
         Ok(item)
+    }
+
+    fn diagnostic_separator_precedes_uncovered_item(
+        &self,
+        comma: u32,
+        following_start: u32,
+    ) -> bool {
+        self.diagnostic_line_is_sensitive(comma)
+            && !self.diagnostic_line_is_sensitive(following_start)
     }
 
     pub(in crate::formatter) fn finish_delimited_item(
@@ -434,7 +454,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let comments = self.comments.between(gap)?;
         let comma = self.find_comma(gap, comments);
-        let constrained = self.diagnostic_range_is_sensitive(span);
+        // Preserve existing operand coverage. A directive covering only this
+        // separator does not constrain ordinary comment attachment, even when
+        // moving the comma makes the directive cover the following operand.
+        // Elisions and terminal boundaries retain their source ownership.
+        let separator_only_coverage = mode == ContentMode::Formatted
+            && suppression.is_none()
+            && comma.is_some_and(|position| {
+                matches!(following, FollowingItem::Node(next)
+                    if self.diagnostic_separator_precedes_uncovered_item(position, next.start))
+                    && !self.diagnostic_line_is_sensitive(item_span.end)
+                    && !self.diagnostic_line_is_sensitive(content_end)
+            });
+        let constrained = !separator_only_coverage && self.diagnostic_range_is_sensitive(span);
         let preserve_comma = constrained || matches!(following, FollowingItem::Elision { .. });
         // A directive-covered separator owns the comments on its source side.
         let protected_comma =
@@ -629,7 +661,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut end = boundary_end;
         if required_comma
             && let Some(comma) = comma
-            && preserve_comma
+            && (preserve_comma || separator_only_coverage)
             && self
                 .comments
                 .first()
