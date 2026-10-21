@@ -17,11 +17,10 @@ use swc_next_ecma_ast::{
     TaggedTemplateExpression, TsAsExpression, TsClassImplements, TsEnumDeclaration,
     TsExportAssignment, TsFunction, TsGlobalDeclaration, TsImportEqualsDeclaration,
     TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration, TsMethodDefinition,
-    TsModuleDeclaration, TsModuleDeclarationKind, TsNamespaceExportDeclaration,
-    TsNonNullExpression, TsParameterProperty, TsSatisfiesExpression, TsThisParameter,
-    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeParameterDeclaration,
-    TsTypeParameterInstantiation, VariableDeclaration, VariableDeclarator, Visit, VisitWith,
-    WhileStatement, WithStatement,
+    TsModuleDeclaration, TsNamespaceExportDeclaration, TsNonNullExpression, TsParameterProperty,
+    TsSatisfiesExpression, TsThisParameter, TsTypeAliasDeclaration, TsTypeAnnotation,
+    TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation, VariableDeclaration,
+    VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, Span};
 pub use swc_next_ecma_parser::Options;
@@ -30,6 +29,7 @@ use swc_next_ecma_parser::{CommentMode, ParseReturn, Parser, Token, TokenParserC
 use crate::token_cursor::TokenCursor;
 
 mod edit;
+mod module;
 mod token_cursor;
 
 const UNSUPPORTED_LANG_MESSAGE: &str = "TypeError: Unsupported lang variant";
@@ -591,16 +591,25 @@ impl TypeEraser<'_, '_, '_> {
 
     fn erase_module(&mut self, node: TsModuleDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
-        if !is_type_only_module(node, self.ast) {
-            self.report_erasable_syntax_only(node.span(self.ast));
+        if self.diagnostic.is_none()
+            && let Some(span) = module::check(node, self.ast)
+        {
+            self.report_erasable_syntax_only(span);
+        }
+    }
+
+    fn erase_global(&mut self, node: TsGlobalDeclaration, statement_span: Span) {
+        self.erase_statement(statement_span);
+        if self.diagnostic.is_none()
+            && let Some(span) = module::check_global(node, self.ast)
+        {
+            self.report_erasable_syntax_only(span);
         }
     }
 
     fn erase_import_equals(&mut self, node: TsImportEqualsDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
-        if node.import_kind(self.ast) != ImportOrExportKind::Type {
-            self.report_erasable_syntax_only(node.span(self.ast));
-        }
+        self.report_erasable_syntax_only(node.span(self.ast));
     }
 }
 
@@ -887,7 +896,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     }
 
     fn visit_ts_global_declaration(&mut self, node: TsGlobalDeclaration) {
-        self.erase_statement(node.span(self.ast));
+        self.erase_global(node, node.span(self.ast));
     }
 
     fn visit_ts_parameter_property(&mut self, node: TsParameterProperty) {
@@ -895,12 +904,13 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         let decorators = node.decorators(self.ast);
         let modifiers_start = modifiers_start(span.start, decorators, self.ast);
         let parameter_start = node.parameter(self.ast).span(self.ast).start;
-        let diagnostic_span = self
-            .tokens
-            .first_in_range(modifiers_start, parameter_start)
-            .map_or(span, |modifier| modifier.span());
-
-        self.report_erasable_syntax_only(diagnostic_span);
+        if self.diagnostic.is_none() {
+            let diagnostic_span = self
+                .tokens
+                .first_in_range(modifiers_start, parameter_start)
+                .map_or(span, |modifier| modifier.span());
+            self.report_erasable_syntax_only(diagnostic_span);
+        }
         self.edits
             .blank(Span::new(modifiers_start, parameter_start));
         node.visit_children_with(self);
@@ -955,8 +965,8 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
                     self.erase_module(module, container);
                     return;
                 }
-                DeclData::TsGlobalDeclaration(_) => {
-                    self.erase_statement(container);
+                DeclData::TsGlobalDeclaration(global) => {
+                    self.erase_global(global, container);
                     return;
                 }
                 DeclData::TsImportEqualsDeclaration(import) => {
@@ -1131,63 +1141,4 @@ fn is_whole_type_declaration(declaration: Decl, ast: &Ast<'_>) -> bool {
         return variable.declare(ast);
     }
     false
-}
-
-fn is_type_only_module(module: TsModuleDeclaration, ast: &Ast<'_>) -> bool {
-    if module.kind(ast) == TsModuleDeclarationKind::Module {
-        return module.id(ast).is_string_literal(ast);
-    }
-    if module.declare(ast) {
-        return true;
-    }
-
-    let Some(body) = module.body(ast) else {
-        return false;
-    };
-    if let Some(nested) = body.as_ts_module_declaration(ast) {
-        return is_type_only_module(nested, ast);
-    }
-    let Some(block) = body.as_ts_module_block(ast) else {
-        return false;
-    };
-    let statements = block.body(ast);
-    for statement in statements.iter() {
-        let statement = ast.get_node_in_sub_range(statement);
-        if statement_has_runtime_effect(statement, ast) {
-            return false;
-        }
-    }
-    true
-}
-
-fn statement_has_runtime_effect(statement: Stmt, ast: &Ast<'_>) -> bool {
-    if let Some(declaration) = statement.as_declaration(ast) {
-        return declaration_has_runtime_effect(declaration, ast);
-    }
-    if statement.is_import_declaration(ast) {
-        return false;
-    }
-    if let Some(export) = statement.as_export_named_declaration(ast) {
-        if let Some(declaration) = export.declaration(ast) {
-            return declaration_has_runtime_effect(declaration, ast);
-        }
-        return export.export_kind(ast) != ImportOrExportKind::Type;
-    }
-    !statement.is_ts_namespace_export_declaration(ast)
-}
-
-fn declaration_has_runtime_effect(declaration: Decl, ast: &Ast<'_>) -> bool {
-    if declaration.is_ts_type_alias_declaration(ast) {
-        return false;
-    }
-    if declaration.is_ts_interface_declaration(ast) {
-        return false;
-    }
-    if let Some(import_equals) = declaration.as_ts_import_equals_declaration(ast) {
-        return import_equals.import_kind(ast) != ImportOrExportKind::Type;
-    }
-    if let Some(module) = declaration.as_ts_module_declaration(ast) {
-        return !is_type_only_module(module, ast);
-    }
-    true
 }

@@ -145,6 +145,13 @@ fn literals() {
 
 #[test]
 fn expression_chains() {
+    let initializer = vec!["a"; CHAIN_LENGTH].join("+");
+    let source = format!("declare namespace N {{ const value = {initializer} + <number>1; }}");
+    let expected = format!(";{}", " ".repeat(source.len() - 1));
+    let (code, diagnostics) = strip_with_small_stack(source);
+    assert_eq!(code, expected);
+    assert_eq!(diagnostics, 1);
+
     let source = format!("x = {};", vec!["a"; CHAIN_LENGTH].join("+"));
     let (code, diagnostics) = strip_with_small_stack(source.clone());
     assert_eq!(code, source);

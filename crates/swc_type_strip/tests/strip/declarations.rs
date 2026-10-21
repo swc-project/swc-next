@@ -36,14 +36,109 @@ fn namespaces() {
 
     assert_strip("namespace N {}\nrun();", ";             \nrun();");
 
-    assert_strip_error(
-        "namespace N { import x = A.x; }\nrun();",
-        ";                              \nrun();",
+    assert_strip("export namespace N {}", ";                    ");
+
+    assert_strip(
+        "namespace N { interface T {} export type { T }; }",
+        ";                                                ",
+    );
+
+    assert_strip(
+        "namespace N { interface T {} export { type T }; }",
+        ";                                                ",
+    );
+
+    assert_strip(
+        "namespace N { interface T {} export { type T, type T as U }; }",
+        ";                                                             ",
+    );
+
+    assert_strip(
+        "export namespace N { interface T {} export type { T }; }",
+        ";                                                       ",
+    );
+
+    assert_strip(
+        "namespace N { declare namespace M { interface T {} export type { T }; } }",
+        ";                                                                        ",
+    );
+
+    assert_strip("namespace N { export {}; }", ";                         ");
+
+    assert_strip(
+        "namespace N { interface I { [(() => { return 1; })()]: string; } }",
+        ";                                                                 ",
+    );
+
+    assert_strip(
+        "export namespace N { export type T = string; }",
+        ";                                             ",
+    );
+
+    assert_strip(
+        "export namespace N.M { interface I {} }",
+        ";                                      ",
+    );
+
+    assert_strip(
+        "module M { type T = string; }",
+        ";                            ",
+    );
+
+    assert_strip("export module M {}", ";                 ");
+
+    assert_strip(
+        "export module M { type T = string; }",
+        ";                                   ",
+    );
+
+    assert_strip("declare module M {}", ";                  ");
+
+    assert_strip(
+        "export declare module M { const x: number; }",
+        ";                                           ",
+    );
+
+    assert_strip(
+        "export declare module A.B {}",
+        ";                           ",
+    );
+
+    assert_strip(
+        "export namespace N { declare const enum E { A } }",
+        ";                                                ",
+    );
+
+    assert_strip("namespace N { module M {} }", ";                          ");
+
+    assert_strip(
+        "declare namespace N { namespace M { const x: number; } }",
+        ";                                                       ",
     );
 }
 
 #[test]
 fn ambient_declarations() {
+    assert_strip(
+        "declare namespace N { const enum E { A } }",
+        ";                                         ",
+    );
+
+    assert_strip(
+        "declare namespace N { namespace M { import X = N.X; } }",
+        ";                                                      ",
+    );
+
+    assert_strip(
+        "declare module 'pkg' { enum E { A } }",
+        ";                                    ",
+    );
+
+    assert_strip(
+        "namespace N { declare namespace M { const enum E { A } } }",
+        ";                                                         ",
+    );
+
     assert_strip(
         "declare const value: number;\nrun();",
         ";                           \nrun();",
@@ -84,6 +179,11 @@ fn ambient_declarations() {
     );
 
     assert_strip(
+        "export declare namespace N { const x: number; }",
+        ";                                              ",
+    );
+
+    assert_strip(
         "export declare const value: number;\nrun();",
         ";                                  \nrun();",
     );
@@ -91,6 +191,11 @@ fn ambient_declarations() {
     assert_strip(
         "declare module 'pkg' { const value: number; }\nrun();",
         ";                                            \nrun();",
+    );
+
+    assert_strip(
+        "export declare module 'pkg' { const x: number; }",
+        ";                                               ",
     );
 
     assert_strip(
