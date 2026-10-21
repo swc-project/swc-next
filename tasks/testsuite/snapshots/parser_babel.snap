@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2275/2278 (99.87%)
-Negative Passed: 1703/1802 (94.51%)
+Negative Passed: 1709/1802 (94.84%)
 Panicked: 0/4080 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
@@ -41,9 +41,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/class/priv
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-ambiguity/input.ts - typescript/conditional/arrow-ambiguity: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-like/input.ts - typescript/conditional/arrow-like: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/conditional/arrow-param/input.ts - typescript/conditional/arrow-param: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-const/input.ts - typescript/declare/invalid-definite-pattern-assignment-const: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-let/input.ts - typescript/declare/invalid-definite-pattern-assignment-let: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-definite-pattern-assignment-var/input.ts - typescript/declare/invalid-definite-pattern-assignment-var: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-class-method-implementation/input.ts - typescript/declare/invalid-namespace-class-method-implementation: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/invalid-namespace-var/input.ts - typescript/declare/invalid-namespace-var: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/declare/module-class/input.ts - typescript/declare/module-class: expected a parse or early error, but pipeline succeeded
@@ -102,6 +99,3 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/read
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-optional-invalid/input.ts - typescript/types/tuple-optional-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/tuple-required-after-labeled-optional/input.ts - typescript/types/tuple-required-after-labeled-optional: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-assignment/input.ts - typescript/variable-declarator/invalid-definite-assignment: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-pattern-assignment-const/input.ts - typescript/variable-declarator/invalid-definite-pattern-assignment-const: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-pattern-assignment-let/input.ts - typescript/variable-declarator/invalid-definite-pattern-assignment-let: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/variable-declarator/invalid-definite-pattern-assignment-var/input.ts - typescript/variable-declarator/invalid-definite-pattern-assignment-var: expected a parse or early error, but pipeline succeeded

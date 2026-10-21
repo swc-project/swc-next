@@ -2406,6 +2406,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             id_span.end
         };
+        if definite && (destructuring || context == DeclaratorCtx::ForLoop) {
+            self.report(
+                Span::new(end - 1, end),
+                "A definite assignment assertion is not permitted in this context",
+                ReportOptions::default(),
+            );
+        }
         let type_annotation =
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                 let annotation = self.parse_type_annotation()?;
@@ -13459,6 +13466,73 @@ mod tests {
             expressions,
             [NodeKind::AssignmentExpression, NodeKind::CallExpression]
         );
+    }
+
+    #[test]
+    fn definite_assignment_recovery() {
+        fn parse(source: &str) -> (Vec<&str>, &str, Option<&str>, Option<&str>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let body = ast.root_program().body(ast);
+            assert_eq!(body.len(), 1);
+            let statement = body.get_node(ast, 0).unwrap();
+            let declaration = if let Some(declaration) = statement.as_declaration(ast) {
+                declaration.as_variable_declaration(ast).unwrap()
+            } else if let Some(statement) = statement.as_for_statement(ast) {
+                statement
+                    .init(ast)
+                    .unwrap()
+                    .as_variable_declaration(ast)
+                    .unwrap()
+            } else if let Some(statement) = statement.as_for_in_statement(ast) {
+                statement.left(ast).as_variable_declaration(ast).unwrap()
+            } else {
+                statement
+                    .as_for_of_statement(ast)
+                    .unwrap()
+                    .left(ast)
+                    .as_variable_declaration(ast)
+                    .unwrap()
+            };
+            let declarator = declaration.declarators(ast).get_node(ast, 0).unwrap();
+            assert!(declarator.definite(ast));
+            let text = |span: Span| &source[span.start as usize..span.end as usize];
+            let errors = parsed
+                .diagnostics
+                .iter()
+                .map(|error| text(error.span))
+                .collect();
+            (
+                errors,
+                text(declarator.id(ast).span(ast)),
+                declarator
+                    .type_annotation(ast)
+                    .map(|annotation| text(annotation.span(ast))),
+                declarator.init(ast).map(|init| text(init.span(ast))),
+            )
+        }
+
+        let result = parse("var {}! = {};");
+        assert_eq!(result, (vec!["!"], "{}", None, Some("{}")));
+
+        let result = parse("declare var {}! = {};");
+        assert_eq!(result, (vec!["!"], "{}", None, Some("{}")));
+
+        let result = parse("let [a]!: T = [1];");
+        assert_eq!(result, (vec!["!"], "[a]", Some(": T"), Some("[1]")));
+
+        let result = parse("for (let x!: number;;);");
+        assert_eq!(result, (vec!["!"], "x", Some(": number"), None));
+
+        let result = parse("for (var x! in y);");
+        assert_eq!(result, (vec!["!"], "x", None, None));
+
+        let result = parse("for (let x! of y);");
+        assert_eq!(result, (vec!["!"], "x", None, None));
+
+        let result = parse("let x!: number;");
+        assert_eq!(result, (vec![], "x", Some(": number"), None));
     }
 
     #[test]
