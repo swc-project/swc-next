@@ -721,7 +721,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                     || !update && source.starts_with(['(', '[', '/', '+', '-', '`']));
             }
-            let data = self.expression_data(expression);
+            let data = self.expression_data_for_position(expression, context.position);
             if self.expression_is_parenthesized(data, context)
                 || matches!(
                     data,
