@@ -10,9 +10,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -20,9 +19,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":14}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -30,9 +28,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":13}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -40,9 +37,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -50,9 +46,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":0}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -60,9 +55,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"semi":false}
 ---------- Output ----------
 ;[
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ]
 
@@ -70,9 +64,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2
 ];
 
@@ -80,9 +73,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];
 
@@ -90,9 +82,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 [
-	1
+	1,
 	// @ts-expect-error
-	,
 	2,
 ];
 
@@ -100,8 +91,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 [
-  1
+  1,
   // @ts-expect-error
-  ,
   2,
 ];

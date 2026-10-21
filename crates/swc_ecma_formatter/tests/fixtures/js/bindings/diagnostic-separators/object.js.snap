@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const {first
+// @ts-ignore
+,
+second} = source;
+---------- Options ----------
+{"printWidth":10,"semi":false}
+---------- Output ----------
+const {
+  first,
+  // @ts-ignore
+  second,
+} = source
+
+---------- Options ----------
+{"printWidth":10,"semi":true}
+---------- Output ----------
+const {
+  first,
+  // @ts-ignore
+  second,
+} =
+  source;
