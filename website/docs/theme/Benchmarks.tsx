@@ -87,20 +87,6 @@ function Statistics({ results }: { results: Result[] }) {
   </div>;
 }
 
-export function BenchmarkNotes() {
-  const { metadata } = report;
-  return <>
-    <p>Revision: <a href={`https://github.com/swc-project/swc-next/commit/${report.metadata.commit.replace(/-dirty$/, "")}`}><code>{report.metadata.commit.slice(0, 8)}</code></a>. Wall time and peak resident memory measure the whole benchmark process, including startup and its iteration batch; they are not per-operation timings.</p>
-    {report.source === "legacy-summary" && <p>These results were preserved from the previous report's rounded summaries. Individual samples, reverse-order results, and machine details were not recorded in that report.</p>}
-    {report.source === "hyperfine" && <details><summary>Benchmark environment</summary><ul>
-      <li>Recorded: {metadata.generatedAt}</li>
-      <li>System: {metadata.platform} · {metadata.architecture} · {metadata.cpuModel}</li>
-      {metadata.cpuAffinity && <li>CPU affinity: {metadata.cpuAffinity}</li>}
-      <li>Tools: {metadata.hyperfineVersion} · Node.js {metadata.nodeVersion}</li>
-    </ul></details>}
-  </>;
-}
-
 export function BenchmarkGroup({ title }: { title: string }) {
   const cases = benchmarks.filter((benchmark) => benchmark.title === title);
   const results = cases.map((benchmark) => resultsFor(benchmark));

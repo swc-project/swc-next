@@ -38,8 +38,8 @@ const guide = [
     ]
   },
   {
-    "text": "Performance",
-    "link": "/guide/publish-results"
+    "text": "Benchmark",
+    "link": "/guide/benchmark"
   },
   {
     "text": "Testing",
