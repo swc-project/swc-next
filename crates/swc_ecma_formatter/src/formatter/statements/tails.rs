@@ -28,6 +28,7 @@ pub(super) struct StatementTailModes {
     pub(super) enclosing: ContentMode,
 }
 
+/// Retains an empty statement after the preceding statement's source span.
 #[derive(Clone, Copy)]
 pub(super) struct StatementSourcePacket {
     pub(super) span: Span,

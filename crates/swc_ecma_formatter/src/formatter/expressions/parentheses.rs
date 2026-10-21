@@ -1696,6 +1696,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         let parenthesize_head = !head.comments.is_empty()
+            && !context.is_verbatim_statement_string(self.ast.expr_data(expression))
             && (matches!(enclosure_binding, CommentBinding::BoundTo(_))
                 || inner_cast.is_some()
                 || generated.is_some())
@@ -1955,28 +1956,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionStart, FormatError> {
         let binding = context.resolve_emitted_head_binding(&head, binding);
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
+        if context
+            .expression_start
+            .needs_statement_guard(self.options.semicolons)
             && context.content_mode == ContentMode::Verbatim
             && matches!(head.layout, CommentRunLayout::Source)
             && head.comments.last().is_some_and(|comment| {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(comment.span.end, head.content_start) == 0
             })
-            && (context.expression_start == ExpressionStart::StatementGuard
-                || self.expression_needs_asi_guard(expression, context)?)
+            && (matches!(
+                context.expression_start,
+                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
+            ) || self.expression_needs_asi_guard(expression, context)?)
         {
             head.gap_end = None;
         }
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
+        if context
+            .expression_start
+            .needs_statement_guard(self.options.semicolons)
             && self.has_target_annotations
             && let Some(index) = head
                 .comments
                 .iter()
                 .position(|&comment| self.comment_has_target_annotation(comment))
-            && (context.expression_start == ExpressionStart::StatementGuard
-                || self.expression_needs_asi_guard(expression, context)?)
+            && (matches!(
+                context.expression_start,
+                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
+            ) || self.expression_needs_asi_guard(expression, context)?)
         {
             let ignored_head =
                 self.has_suppression && context.content_mode == ContentMode::Verbatim;
@@ -1994,7 +2001,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 array_comments.as_deref_mut(),
                 writer,
             )?;
-            writer.text(";");
+            context.expression_start.write_statement_guard(writer);
             if source_bound {
                 writer.hard_line();
             } else if ignored_head {
@@ -2027,12 +2034,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if head.comments.is_empty() {
             return Ok(start);
         }
-        if start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
+        if start.needs_statement_guard(self.options.semicolons)
             && (self.parenthesis_has_type_cast(head.content_start)
                 || self.parenthesis_has_jsdoc_enclosure(head.content_start))
         {
-            writer.text(";");
+            start.write_statement_guard(writer);
             start = ExpressionStart::None;
         }
         self.format_comment_run_with_array_comments(

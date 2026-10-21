@@ -114,6 +114,10 @@ pub(super) enum ExpressionStart {
     None,
     StatementPending,
     StatementGuard,
+    /// A non-directive string must remain outside the printed directive prologue.
+    StatementBarrier {
+        terminate_previous: bool,
+    },
     StatementGuarded,
     /// A controlled body cannot insert a leading empty statement.
     StatementBody,
@@ -127,13 +131,37 @@ impl ExpressionStart {
             self,
             Self::StatementPending
                 | Self::StatementGuard
+                | Self::StatementBarrier { .. }
                 | Self::StatementGuarded
                 | Self::StatementBody
         )
     }
 
+    fn needs_statement_guard(self, semicolons: Semicolons) -> bool {
+        matches!(self, Self::StatementBarrier { .. })
+            || semicolons == Semicolons::AsNeeded && self.needs_asi_guard()
+    }
+
+    /// Terminating a prior directive does not itself create an empty statement.
+    fn write_statement_guard(self, writer: &mut Writer<'_>) {
+        let guard = if matches!(
+            self,
+            Self::StatementBarrier {
+                terminate_previous: true
+            }
+        ) {
+            ";;"
+        } else {
+            ";"
+        };
+        writer.text(guard);
+    }
+
     fn needs_asi_guard(self) -> bool {
-        matches!(self, Self::StatementPending | Self::StatementGuard)
+        matches!(
+            self,
+            Self::StatementPending | Self::StatementGuard | Self::StatementBarrier { .. }
+        )
     }
 }
 
@@ -296,6 +324,14 @@ impl ExpressionContext {
 
     pub(super) fn is_verbatim(self) -> bool {
         self.content_mode == ContentMode::Verbatim
+    }
+
+    fn is_verbatim_statement_string(self, data: ExprData) -> bool {
+        self.content_mode == ContentMode::Verbatim
+            && matches!(
+                (self.position, data),
+                (ExpressionPosition::Statement, ExprData::StringLiteral(_))
+            )
     }
 
     pub(super) fn variable_initializer() -> Self {
@@ -675,7 +711,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let source = self.source(expression.span(self.ast));
                 let update = matches!(data, ExprData::UpdateExpression(node) if node.prefix(self.ast))
                     && (source.starts_with("++") || source.starts_with("--"));
-                return Ok(self.expression_is_parenthesized(data, context)
+                return Ok(context.is_verbatim_statement_string(data)
+                    || self.expression_is_parenthesized(data, context)
                     || matches!(
                         data,
                         ExprData::TsTypeAssertion(_)
@@ -807,6 +844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext,
     ) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
+            && !context.is_verbatim_statement_string(data)
             && (self.expression_needs_parentheses(data, context.position, context.content_mode)
                 == Some(true)
                 || matches!(context.position, ExpressionPosition::TypeBinaryOperand)
@@ -1386,9 +1424,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let starts_update = matches!(data, ExprData::UpdateExpression(update) if update.prefix(self.ast))
             && (source.starts_with("++") || source.starts_with("--"));
-        if self.options.semicolons == Semicolons::AsNeeded
+        if matches!(
+            context.expression_start,
+            ExpressionStart::StatementBarrier { .. }
+        ) || self.options.semicolons == Semicolons::AsNeeded
             && context.expression_start.needs_asi_guard()
             && (parenthesize
+                || context.is_verbatim_statement_string(data)
                 || matches!(
                     data,
                     ExprData::TsTypeAssertion(_)
@@ -1397,7 +1439,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
                 || !starts_update && source.starts_with(['(', '[', '/', '+', '-', '`']))
         {
-            writer.text(";");
+            context.expression_start.write_statement_guard(writer);
         }
         if parenthesize {
             writer.text("(");

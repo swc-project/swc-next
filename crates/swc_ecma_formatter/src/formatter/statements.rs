@@ -42,6 +42,7 @@ pub(super) enum StatementSequenceKind<'ast> {
         incoming: Option<IncomingStatement>,
         leading: StatementBodyLeading<'ast>,
     },
+    Module,
     Static(Option<IncomingStatement>),
     Case {
         leading: StatementBodyLeading<'ast>,
@@ -109,6 +110,12 @@ pub(super) enum CaseIncoming {
 pub(super) enum EmptyBlock {
     Compact,
     Expanded,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DirectivePrologue {
+    Open,
+    Closed,
 }
 
 /// Layout supplied by the real parent without bypassing statement ownership.
@@ -443,6 +450,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             StatementSequenceKind::Program { header_barrier, .. } => header_barrier,
             _ => None,
         };
+        let mut directive_prologue = match kind {
+            StatementSequenceKind::Program { .. }
+            | StatementSequenceKind::Function { .. }
+            | StatementSequenceKind::Module => DirectivePrologue::Open,
+            _ => DirectivePrologue::Closed,
+        };
         let mut first_statement = true;
         let mut previous_span_end = previous_end.unwrap_or(span.start);
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
@@ -618,6 +631,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // Program start already separates the first statement. Keep its header intact.
                 expression_start = ExpressionStart::StatementGuarded;
             }
+            let mut prior_statement_terminated =
+                first_statement || previous.is_none_or(StatementBoundary::has_terminator);
             if let Some(boundary) = previous {
                 if boundary.guards_expression() {
                     expression_start = ExpressionStart::StatementGuarded;
@@ -633,6 +648,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && statement.is_nonempty(ast)
                 {
                     writer.text(";");
+                    prior_statement_terminated = true;
                     expression_start = ExpressionStart::StatementGuarded;
                 }
                 let separator = if matches!(boundary, StatementBoundary::Semicolon { end, terminator } | StatementBoundary::SourceTerminator { end, terminator } if end == terminator + 1)
@@ -679,6 +695,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout: CommentRunLayout::Source,
                 gap_end: leading.last().map(|_| statement_span.start),
             };
+            if directive_prologue == DirectivePrologue::Open
+                && mode == ContentMode::Verbatim
+                && matches!(statement, StatementItem::Statement(node)
+                    if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
+                        if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))))
+            {
+                // Omitted empty statements no longer protect this verbatim string.
+                expression_start = ExpressionStart::StatementBarrier {
+                    terminate_previous: !prior_statement_terminated,
+                };
+            }
             let printed = match statement {
                 StatementItem::Directive(directive) => {
                     self.format_node_head(head, expression_start, None, writer)?;
@@ -766,9 +793,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     (printed.boundary, printed.pending)
                 };
             first_statement = false;
+            if !matches!(statement, StatementItem::Directive(_)) {
+                directive_prologue = DirectivePrologue::Closed;
+            }
             let trailing_start = if let Some(packet) = source_packet {
                 let start = packet.span.start.max(boundary.end());
                 self.format_verbatim(Span::new(start, packet.span.end), writer)?;
+                directive_prologue = DirectivePrologue::Closed;
                 if let Some(next) = pending.as_mut() {
                     next.source_gap = Some(packet.following);
                 }
@@ -833,6 +864,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
                 StatementSequenceKind::Block { .. }
                 | StatementSequenceKind::Function { .. }
+                | StatementSequenceKind::Module
                 | StatementSequenceKind::Static(_),
             ) => CommentRunLayout::CanonicalDangling,
             (
@@ -1653,10 +1685,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 module.span(ast),
                 Some(module.directives(ast)),
                 module.body(ast),
-                StatementSequenceKind::Block {
-                    incoming: None,
-                    leading: StatementBodyLeading::empty(),
-                },
+                StatementSequenceKind::Module,
                 EmptyBlock::Compact,
                 StatementBodyLeading::empty(),
             ),
