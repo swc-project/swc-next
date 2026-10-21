@@ -90,7 +90,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
     }
 
-    pub(super) fn jsx_expression_has_optional_frame(context: ExpressionContext) -> bool {
+    pub(super) fn jsx_expression_has_optional_frame(context: ExpressionContext<'ast>) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
             && matches!(
                 context.position,
@@ -107,7 +107,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_jsx_expression<T>(
         &mut self,
         span: Span,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
         content: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<T, FormatError>,
     ) -> Result<T, FormatError> {

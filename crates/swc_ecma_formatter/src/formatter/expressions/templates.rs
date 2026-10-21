@@ -34,8 +34,8 @@ enum TemplateTagGap<'ast> {
     Formatted(CommentBoundary<'ast>),
 }
 
-impl TemplateTagHead<'_> {
-    fn context(&self, outer: ExpressionContext) -> ExpressionContext {
+impl<'ast> TemplateTagHead<'ast> {
+    fn context(&self, outer: ExpressionContext<'ast>) -> ExpressionContext<'ast> {
         outer.type_operand(
             ExpressionPosition::TemplateTag,
             self.tag_mode,
@@ -253,8 +253,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn template_tag_head_operand(
         &self,
         node: TaggedTemplateExpression,
-        context: ExpressionContext,
-    ) -> Result<(Expr, ExpressionContext), FormatError> {
+        context: ExpressionContext<'ast>,
+    ) -> Result<(Expr, ExpressionContext<'ast>), FormatError> {
         // Only suppression can change the real tag edge's content mode.
         if !self.has_suppression || context.content_mode == ContentMode::Verbatim {
             return Ok((
@@ -273,7 +273,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_tagged_template(
         &mut self,
         node: TaggedTemplateExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let head = self.prepare_template_tag(node)?;

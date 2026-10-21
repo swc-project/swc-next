@@ -1690,6 +1690,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     &content,
                     Span::new(operator, operator + 1),
                     right.span(ast).end,
+                    ExpressionContext::variable_initializer()
+                        .with_tail_owner(TailOwner::ParentOperation)
+                        .with_content_mode(right_mode),
                 )?;
                 if right_mode == ContentMode::Verbatim {
                     boundary.mode = right_mode;

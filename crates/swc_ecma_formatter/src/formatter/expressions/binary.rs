@@ -23,7 +23,7 @@ pub(in crate::formatter) enum BinaryOperatorKind {
     Logical(LogicalOperator),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum OperandSide {
     Left,
     Right,
@@ -162,14 +162,16 @@ struct BinaryHead {
     expression_start: ExpressionStart,
     expression_head: ExpressionHead,
     protected_head_start: Option<u32>,
+    head_scope: Option<super::parentheses::HeadScopeOwner>,
 }
 
 impl BinaryHead {
-    fn from_context(context: &ExpressionContext) -> Self {
+    fn from_context(context: &ExpressionContext<'_>) -> Self {
         Self {
             expression_start: context.expression_start,
             expression_head: context.expression_head,
             protected_head_start: context.protected_head_start,
+            head_scope: context.head_scope,
         }
     }
 }
@@ -518,7 +520,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         entry: ChainParent,
         owner: &mut OperandOwner,
-        mut context: ExpressionContext,
+        mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<BinaryHead, FormatError> {
         let start = expression.span(self.ast).start;
@@ -605,7 +607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_binary(
         &mut self,
         binary: BinaryLike,
-        mut context: ExpressionContext,
+        mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if matches!(context.position, ExpressionPosition::ControlCondition) {
@@ -701,7 +703,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_binary_jsx_chain(
         &mut self,
         chain: BinaryChain,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         owner: &mut OperandOwner,
         jsx_tail: PreparedLogicalTail,
         writer: &mut Writer<'ast>,
@@ -811,7 +813,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_binary_enclosed_with_context(
         &mut self,
         binary: BinaryLike,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let chain = self.binary_chain(binary)?;
@@ -821,7 +823,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_prepared_binary_enclosed(
         &mut self,
         mut chain: BinaryChain,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -867,6 +869,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.expression_head = head.expression_head;
             context.head_comments = HeadComments::Claimed;
             context.protected_head_start = head.protected_head_start;
+            context.head_scope = head.head_scope;
             self.format_binary_owned_operand(owner, context, writer)
         })
     }
@@ -874,7 +877,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_binary_owned_operand(
         &mut self,
         owner: &mut OperandOwner,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if context.content_mode == ContentMode::Verbatim {
@@ -904,7 +907,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_binary_continuation(
         &mut self,
         chain: BinaryChain,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         mut tail: Option<ExpressionTail<'ast>>,
         mut logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
@@ -1060,14 +1063,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 let mut chain = self.binary_chain(left)?;
                 let mut head_owner = OperandOwner::new(chain.first.binary.left);
-                let head_context = self.format_binary_head_comments(
-                    left.left,
-                    chain.first,
-                    &mut head_owner,
+                let operand_context = self.with_head_scope(
                     ExpressionContext::at(ExpressionPosition::BinaryOperand {
                         operator: left.operator,
                         side: OperandSide::Left,
                     }),
+                    &owner.prepare(self).content,
+                );
+                let head_context = self.format_binary_head_comments(
+                    left.left,
+                    chain.first,
+                    &mut head_owner,
+                    operand_context,
                     writer,
                 )?;
                 chain.first.left_scope = head_owner.scope;

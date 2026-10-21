@@ -127,7 +127,7 @@ impl TargetUse {
         )
     }
 
-    fn context(self, mut context: ExpressionContext) -> ExpressionContext {
+    fn context<'ast>(self, mut context: ExpressionContext<'ast>) -> ExpressionContext<'ast> {
         context.position = match self {
             Self::AssignmentLeft | Self::DefaultLeft => {
                 context.member_layout = MemberLayout::Tight;
@@ -286,6 +286,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Span::new(assignment.span(self.ast).start, span.start),
             Span::new(span.end, assignment.right(self.ast).span(self.ast).start),
             None,
+            Some(assignment.span(self.ast)),
         )?;
         if let Some(outer) = source.envelope.layers.first_mut()
             && outer.mode == TargetLayerMode::Remove
@@ -379,6 +380,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prefix,
             suffix,
             Some(operator_span),
+            Some(span),
         )
     }
 
@@ -395,6 +397,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prefix,
             Span::new(target.span(self.ast).end, operator.start),
             Some(operator),
+            None,
         )
     }
 
@@ -405,6 +408,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prefix: Span,
         suffix: Span,
         known_operator: Option<Span>,
+        owner: Option<Span>,
     ) -> Result<SourceTarget, FormatError> {
         let mut trailing = self.target_gap(suffix);
         let use_context = match operator {
@@ -413,7 +417,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TargetOperator::Iteration { .. } => TargetUse::IterationLeft,
         };
         let envelope =
-            self.prepare_target_envelope(target, use_context, prefix, &mut trailing, None)?;
+            self.prepare_target_envelope(target, use_context, prefix, &mut trailing, None, owner)?;
         let invalid = || self.unsupported_target_boundary(Span::new(prefix.start, suffix.end));
         let operator_span = match known_operator {
             Some(span) if self.source(span) == operator.as_str() => span,
@@ -435,6 +439,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         target: SimpleTarget,
         prefix: Span,
         suffix: Span,
+        owner: Span,
     ) -> Result<(PreparedTarget, bool), FormatError> {
         let mut trailing = self.target_gap(suffix);
         let mut whole = false;
@@ -444,6 +449,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prefix,
             &mut trailing,
             Some(&mut whole),
+            Some(owner),
         )?;
         if !trailing.finished() {
             return Err(self.unsupported_target_boundary(Span::new(prefix.start, suffix.end)));
@@ -471,9 +477,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prefix: Span,
         trailing: &mut TargetGap<'_>,
         mut whole_default: Option<&mut bool>,
+        owner: Option<Span>,
     ) -> Result<PreparedTarget, FormatError> {
-        let owner = Span::new(prefix.start, trailing.end);
-        let invalid = || self.unsupported_target_boundary(owner);
+        let source_range = Span::new(prefix.start, trailing.end);
+        let invalid = || self.unsupported_target_boundary(source_range);
         let mut leading = self.target_gap(prefix);
         let mut layers = Vec::new();
         while let Some(opening) = leading.consume("(") {
@@ -494,12 +501,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TargetNode::Pattern { .. } => ParenthesisInner::Unresolved,
             TargetNode::Simple(target) => ParenthesisInner::Expression(target.expression),
         };
+        let mut emitted_inner = match target {
+            TargetNode::Simple(target) => Some(target.expression),
+            TargetNode::Pattern { .. } => None,
+        };
         for layer in layers.iter_mut().rev() {
             let closing = trailing.consume(")").ok_or_else(invalid)?;
             layer.parentheses.outer.end = closing.end;
             layer.parentheses.inner = inner;
             layer.parentheses.inner_target = inner_target;
-            layer.mode = self.target_layer_mode(layer.parentheses, whole_default.as_deref_mut());
+            layer.mode = self.target_layer_mode(
+                layer.parentheses,
+                emitted_inner,
+                whole_default.as_deref_mut(),
+                owner,
+            );
+            if layer.mode != TargetLayerMode::Remove {
+                emitted_inner = None;
+            }
             inner = layer.parentheses.outer;
             inner_target = ParenthesisInner::SourcePair;
         }
@@ -524,7 +543,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn target_layer_mode(
         &self,
         boundary: SourceParentheses,
+        emitted_inner: Option<Expr>,
         whole_default: Option<&mut bool>,
+        owner: Option<Span>,
     ) -> TargetLayerMode {
         if self.has_suppression {
             let leading = self
@@ -555,7 +576,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TargetLayerMode::Verbatim;
             }
         }
-        if self.parentheses_are_removable(boundary) {
+        if self.target_parentheses_are_removable(boundary, emitted_inner, owner) {
             TargetLayerMode::Remove
         } else {
             TargetLayerMode::Retain
@@ -565,7 +586,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_source_target(
         &mut self,
         target: &SourceTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_prepared_target(&target.envelope, context, writer)
@@ -574,7 +595,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_prepared_target(
         &mut self,
         target: &PreparedTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let use_context = target.use_context;
@@ -636,7 +657,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         target: TargetNode,
         mut layers: &[TargetLayer],
         tail_end: u32,
-        mut context: ExpressionContext,
+        mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let target_end = target.span(self.ast).end;
@@ -744,7 +765,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_simple_assignment_target(
         &mut self,
         target: SimpleAssignmentTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_pattern_target(SimpleTarget::new(self.ast, target), context, writer)
@@ -753,7 +774,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_pattern_target(
         &mut self,
         target: SimpleTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_simple_target(target, TargetUse::PatternElement.context(context), writer)
@@ -762,7 +783,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_simple_target(
         &mut self,
         target: SimpleTarget,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_expression(target.expression, context, writer)

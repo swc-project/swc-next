@@ -34,7 +34,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_argument = unary.argument(self.ast);
         let content = self.expression_content(source_argument);
         let span = unary.span(self.ast);
-        let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
         let argument = content.expression;
         let mut argument_span = argument.span(self.ast);
         let mut leading = self.comments.between(Span::new(
@@ -42,11 +41,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             argument_span.start,
         ))?;
         let mode = self.content_mode(leading);
+        let argument_context = self.with_head_scope(
+            ExpressionContext::at(position).with_content_mode(mode),
+            &content,
+        );
+        let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
         let source_pair = if diagnostic_sensitive {
-            self.protected_grammar_parentheses(
-                &content,
-                ExpressionContext::at(position).with_content_mode(mode),
-            )
+            self.protected_grammar_parentheses(&content, argument_context)
         } else {
             None
         };
@@ -69,6 +70,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => argument_span.start,
         };
+        // Required frames keep their prepared packet. Otherwise an interior
+        // reset belongs to the operator's ordinary optional comment frame.
+        let diagnostic_sensitive = diagnostic_sensitive
+            && (source_pair.is_some()
+                || !self.expression_head_resets_diagnostic_boundary(&content, leading, span.start));
         if diagnostic_sensitive {
             let operator_end = span.start + operator.as_str().len() as u32;
             self.comments.claim(leading)?;
@@ -86,9 +92,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::ParenthesizedExpression(_) => OperandIndent::Parent,
                 _ => OperandIndent::Expression,
             };
-            let context = ExpressionContext::at(position)
-                .with_content_mode(mode)
-                .with_operand_indent(operand_indent);
+            let context = argument_context.with_operand_indent(operand_indent);
             let tail = match source_pair {
                 Some(boundary) => self.format_protected_grammar_parentheses(
                     boundary, content, context, None, writer,
@@ -100,12 +104,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.capture_expression_tail(Span::new(argument_span.end, span.end), tail);
         }
         let exposed_head = if leading.is_empty() && trailing.is_empty() {
-            self.exposed_expression_head(argument, ExpressionContext::at(position))?
+            self.exposed_expression_head(argument, argument_context)?
         } else {
             None
         };
         if leading.is_empty() && trailing.is_empty() && exposed_head.is_none() {
-            return self.format_expression(argument, ExpressionContext::at(position), writer);
+            return self.format_expression_prepared(
+                argument,
+                Some(content),
+                argument_context,
+                writer,
+            );
         }
         let operand_tail = if leading.is_empty() && mode == ContentMode::Formatted {
             self.prepare_unary_operand_tail(content.data, argument_span, span.end, trailing)
@@ -204,7 +213,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn format_update(
         &mut self,
         update: UpdateExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let target = self.update_source_target(update)?;

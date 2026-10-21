@@ -1005,7 +1005,10 @@ impl<'ast> SourceArguments<'ast> {
         }
     }
 
-    pub(super) fn callee_context(&self, context: ExpressionContext) -> ExpressionContext {
+    pub(super) fn callee_context(
+        &self,
+        context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
         self.callee_head().context(context)
     }
 }
@@ -1257,7 +1260,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let argument: Argument = ast.get_node_in_sub_range(id);
                 argument.span(ast).end
             });
-            Some((last.span(ast), head_start))
+            let last = match ast.argument_data(last) {
+                ArgumentData::Expr(expression) => self.terminal_argument_content_span(expression),
+                ArgumentData::SpreadElement(_) => last.span(ast),
+            };
+            Some((last, head_start))
         });
         let mut list = SourceArguments {
             arguments,

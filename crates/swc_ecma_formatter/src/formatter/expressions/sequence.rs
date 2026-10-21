@@ -43,6 +43,7 @@ enum SequenceComments {
 
 struct SequenceItem<'ast> {
     expression: Expr,
+    prepared: Option<ExpressionContent>,
     head: NodeHead<'ast>,
     mode: ContentMode,
 }
@@ -74,7 +75,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn sequence_member_parentheses(
         &self,
         content: &ExpressionContent,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Option<SourceParentheses> {
         if context.content_mode != ContentMode::Formatted
             || !matches!(
@@ -120,25 +121,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         .then_some(start)
     }
 
-    pub(super) fn sequence_head_has_type_cast(
-        &self,
-        sequence: SequenceExpression,
-        leading: &[Comment],
-    ) -> bool {
-        self.has_type_casts
-            && (leading
-                .iter()
-                .any(|&comment| self.comment_is_type_cast(comment))
-                || self
-                    .enclosed_sequence_head_start(sequence)
-                    .and_then(|start| self.source_cast_before(start))
-                    .is_some())
+    pub(super) fn sequence_head_has_source_cast(&self, sequence: SequenceExpression) -> bool {
+        sequence.expressions(self.ast).first().is_some_and(|id| {
+            self.source_cast_head(self.ast.get_node_in_sub_range(id))
+                .is_some()
+        })
     }
 
     pub(super) fn format_sequence(
         &mut self,
         sequence: SequenceExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_sequence_with_leading_comments(sequence, &[], context, writer)
@@ -150,7 +143,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         sequence: SequenceExpression,
         inherited: &'ast [Comment],
-        mut context: ExpressionContext,
+        mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -174,7 +167,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let first_content = self.expression_content(first);
         let first_start =
-            if self.sequence_member_pair_is_enclosed(first, &first_content, item_position) {
+            if self.sequence_member_pair_is_enclosed(first, &first_content, item_position)
+                || self.diagnostic_head_has_frame(
+                    &first_content,
+                    ExpressionContext::at(item_position).with_parent_head(context),
+                )
+            {
                 first.span(ast).start
             } else {
                 first_content.expression.span(ast).start
@@ -236,14 +234,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         if let Some(enclosure) = generated {
-            return self.format_parenthesized_expression(
-                Expr::SequenceExpression(sequence),
-                Some(enclosure.content),
-                head,
-                context,
-                None,
-                writer,
-            );
+            context.expression_start =
+                self.format_node_head(head, context.expression_start, None, writer)?;
+            return self.format_prepared_generated_enclosure(enclosure, context, writer);
         }
         let start = if enclosed_head {
             context.expression_start
@@ -255,10 +248,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if parenthesize {
             writer.text("(");
+            context.head_scope = None;
+            context = self.with_head_scope(
+                context,
+                &ExpressionContent {
+                    expression: Expr::SequenceExpression(sequence),
+                    data: ExprData::SequenceExpression(sequence),
+                    parentheses: None,
+                },
+            );
         }
         let arrow_body = parenthesize && Self::sequence_grammar_pair_is_enclosed(context.position);
         let tail = writer.group(false, |writer| {
-            let mut write_items = |writer: &mut Writer<'ast>| {
+            let write_items = |writer: &mut Writer<'ast>| {
                 if arrow_body {
                     writer.soft_line();
                 }
@@ -269,6 +271,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let tail = self.format_sequence_item(
                     SequenceItem {
                         expression: first,
+                        prepared: Some(first_content),
                         head: NodeHead {
                             comments: inherited,
                             content_start: first_start,
@@ -304,6 +307,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let tail = self.format_sequence_item(
                         SequenceItem {
                             expression: boundary.next,
+                            prepared: None,
                             head: NodeHead {
                                 comments: boundary.leading,
                                 content_start: boundary.next_start,
@@ -364,11 +368,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         item: SequenceItem<'ast>,
         following: Option<&SequenceBoundary<'ast>>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let SequenceItem {
             expression,
+            prepared,
             head,
             mode,
         } = item;
@@ -393,9 +398,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             context.tail_owner
         };
-        self.format_expression_with_leading_comments(
+        let binding = self.expression_head_binding(head.comments, expression);
+        let binding = prepared
+            .as_ref()
+            .and_then(|content| content.parentheses)
+            .map_or(binding, |removed| binding.combine(removed.head.binding));
+        self.format_expression_leading_prepared(
             expression,
-            head,
+            prepared,
+            ResolvedExpressionHead { head, binding },
             context.with_content_mode(mode).with_tail_owner(tail_owner),
             None,
             writer,

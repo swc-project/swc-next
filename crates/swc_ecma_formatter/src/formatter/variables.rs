@@ -35,7 +35,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         expression: Expr,
         context: VariableContext,
-    ) -> ExpressionContext {
+    ) -> ExpressionContext<'ast> {
         let context = match context {
             VariableContext::ForInitializer => {
                 self.for_initializer_context(expression, ForInitializerGrammar::Assignment)
@@ -292,11 +292,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        let initializer_context = self
+            .variable_initializer_context(right, context)
+            .with_decorated_function_call(decorated_function);
         let mut boundary = self.assignment_boundary(
             left_end,
             &content,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
+            initializer_context,
         )?;
         let mut left_mode = ContentMode::Formatted;
         if self.has_suppression {
@@ -315,9 +319,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let initializer_context = self
-            .variable_initializer_context(right, context)
-            .with_decorated_function_call(decorated_function);
         let mut rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
         let fixed_left_policy = matches!(rhs_layout, RhsLayout::Fluid)
             && boundary.mode == ContentMode::Formatted

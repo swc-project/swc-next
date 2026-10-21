@@ -124,7 +124,7 @@ impl TypeAssertionContent<'_> {
 
 struct TypeAssertionOperand<'ast> {
     expression: Expr,
-    context: ExpressionContext,
+    context: ExpressionContext<'ast>,
     head: TypeAssertionOperandHead<'ast>,
     layout: AssertionOperandLayout,
 }
@@ -149,8 +149,11 @@ pub(super) struct SourceNonNull<'ast> {
     has_comments: bool,
 }
 
-impl SourceNonNull<'_> {
-    pub(super) fn operand_context(&self, context: ExpressionContext) -> ExpressionContext {
+impl<'ast> SourceNonNull<'ast> {
+    pub(super) fn operand_context(
+        &self,
+        context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
         context
             .type_operand(
                 ExpressionPosition::NonNullOperand,
@@ -406,7 +409,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_instantiation(
         &mut self,
         node: TsInstantiationExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let expression = node.expression(self.ast);
@@ -512,7 +515,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         annotation: TsType,
         operator: TypeBinaryOperator,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
@@ -879,7 +882,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_non_null(
         &mut self,
         node: TsNonNullExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let source = self.source_non_null(node)?;
@@ -892,7 +895,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_type_assertion(
         &mut self,
         node: TsTypeAssertion,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let PreparedTypeAssertion {
@@ -949,7 +952,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_type_assertion(
         &self,
         node: TsTypeAssertion,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Result<PreparedTypeAssertion<'ast>, FormatError> {
         let span = node.span(self.ast);
         let expression = node.expression(self.ast);
@@ -1243,7 +1246,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_type_assertion_needs_grammar_barrier(
         &self,
         data: ExprData,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> Result<bool, FormatError> {
         if !is_left_shift_right_operand(context.position) {
             return Ok(false);

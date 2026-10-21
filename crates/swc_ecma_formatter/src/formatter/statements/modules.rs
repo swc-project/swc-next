@@ -1340,6 +1340,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         &self.expression_content(Expr::StringLiteral(value)),
                         colon,
                         value.span(ast).end,
+                        ExpressionContext::at(ExpressionPosition::Nested),
                     )?)
                 } else {
                     None

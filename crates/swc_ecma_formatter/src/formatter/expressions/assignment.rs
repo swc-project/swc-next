@@ -2,10 +2,15 @@
 
 use super::binary::BinaryLike;
 use super::chains::RhsCallChainOwnership;
-use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket};
+use super::parentheses::{
+    EmittedHeadAnnotation, ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket,
+};
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{
+    CommentBinding, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead, PreparedHeadGap,
+    PreparedHeadGaps,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{
@@ -21,7 +26,14 @@ use swc_next_ecma_ast::{
     Span, TemplateElement,
 };
 
-#[derive(Clone, Copy)]
+/// Layout sees the prepared packet even when its source owner stops projection.
+struct AssignmentExpressionHead<'ast> {
+    content: ExpressionContent,
+    source_owner: Option<Expr>,
+    context: ExpressionContext<'ast>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum AssignmentParent {
     Statement,
     Nested,
@@ -88,6 +100,40 @@ struct AssignmentSuppression<'ast> {
 }
 
 #[derive(Clone, Copy)]
+enum AssignmentHeadOrigin {
+    Source,
+    Released,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AssignmentPacketAttachment {
+    Inline,
+    Detached,
+    Protected,
+}
+
+#[derive(Clone, Copy)]
+struct AssignmentHeadPacket<'ast> {
+    comments: &'ast [Comment],
+    own_line: bool,
+    attachment: AssignmentPacketAttachment,
+    last_successor: Option<HeadGapPlacement>,
+    annotation: Option<EmittedHeadAnnotation>,
+}
+
+#[derive(Clone, Copy)]
+enum AssignmentJoiningGap {
+    Source(Span),
+    Grouped(Span),
+}
+
+struct AssignmentPreparedHeads<'ast> {
+    leading: AssignmentHeadPacket<'ast>,
+    released: Option<AssignmentHeadPacket<'ast>>,
+    joining: Option<AssignmentJoiningGap>,
+}
+
+#[derive(Clone, Copy)]
 enum CastLeadingLayout {
     Flat,
     Break,
@@ -109,6 +155,11 @@ pub(in crate::formatter) struct AssignmentBoundary<'ast> {
     pub(in crate::formatter) mode: ContentMode,
     cast_leading: Option<CastLeadingLayout>,
     enclosed_head_binding: Option<CommentBinding>,
+    released_head: &'ast [Comment],
+    normalized_head_start: u32,
+    head_gap: Option<&'ast PreparedHeadGaps>,
+    head_destination: Option<&'ast super::parentheses::PreparedHeadDestination>,
+    head_scope: Option<super::parentheses::HeadScopeOwner>,
 }
 
 impl<'ast> AssignmentBoundary<'ast> {
@@ -137,8 +188,59 @@ impl<'ast> AssignmentBoundary<'ast> {
             })
     }
 
+    /// Transfer a complete unbound packet to the default binding. Its prepared
+    /// RHS placement must not survive after the comments acquire their new owner.
+    pub(in crate::formatter) fn take_binding_head(
+        &mut self,
+        comments: &[Comment],
+        source_own_line: bool,
+    ) -> bool {
+        if comments.is_empty()
+            || self.enclosed_head_binding.is_some()
+            || !(self.own_line || source_own_line)
+            || !self
+                .moved
+                .iter()
+                .chain(self.leading)
+                .chain(self.released_head)
+                .eq(comments)
+        {
+            return false;
+        }
+        self.moved = &[];
+        self.leading = &[];
+        self.released_head = &[];
+        self.own_line = false;
+        self.head_gap = None;
+        self.head_destination = None;
+        self.head_scope = None;
+        true
+    }
+
+    pub(in crate::formatter) fn binding_head_end(&self) -> u32 {
+        self.normalized_head_start
+    }
+
+    pub(in crate::formatter) fn head_gap_requires_group(&self) -> bool {
+        self.head_gap.is_some_and(|gap| gap.requires_group())
+    }
+
+    pub(in crate::formatter) fn with_head_gap(
+        &self,
+        mut context: ExpressionContext<'ast>,
+    ) -> ExpressionContext<'ast> {
+        context.head_gap = self.head_gap;
+        context.head_destination = self.head_destination;
+        context.head_scope = self.head_scope;
+        context
+    }
+
     pub(in crate::formatter) fn right_head(&self) -> NodeHead<'ast> {
-        let source_gap = self.own_line
+        // This complete borrowed source packet keeps its internal gaps and the
+        // final gap to its actual head, including a generated grammar opener.
+        // RHS grouping and semantic enclosure ownership are independent facts.
+        let source_gap = self.mode == ContentMode::Formatted
+            || self.own_line
             || self
                 .leading
                 .iter()
@@ -148,8 +250,6 @@ impl<'ast> AssignmentBoundary<'ast> {
             content_start: self.right_start,
             layout: if source_gap {
                 CommentRunLayout::Source
-            } else if self.cast_leading.is_some() {
-                CommentRunLayout::GroupedLeading(self.layout_start)
             } else {
                 CommentRunLayout::FlatLeading(self.layout_start)
             },
@@ -162,7 +262,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_assignment(
         &mut self,
         assignment: AssignmentExpression,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let mut target = self.assignment_source_target(assignment)?;
@@ -230,24 +330,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let content = self.expression_content(right);
         let data = content.data;
-        let head = self.assignment_expression_head(&content);
         let operator = target.operator();
-        let boundary = self.assignment_boundary(
-            target.left_end(),
-            head.as_ref().unwrap_or(&content),
-            target.operator_span,
-            right.span(self.ast).end,
-        )?;
         let parent = match context.position {
             ExpressionPosition::Statement => AssignmentParent::Statement,
             _ => AssignmentParent::Nested,
         };
         let right_context = ExpressionContext::at(ExpressionPosition::AssignmentRight(parent))
             .with_source_tail_owner(SourceTailOwner::Enclosure)
-            .with_content_mode(boundary.mode)
             .with_tail_owner(context.tail_owner)
             .with_tail_boundary(context.tail_boundary)
             .with_decorated_function_call(decorated_function);
+        let boundary = self.assignment_boundary(
+            target.left_end(),
+            &content,
+            target.operator_span,
+            right.span(self.ast).end,
+            right_context,
+        )?;
+        let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
         let mut layout = self.assignment_layout(data, context.position, right_context, &boundary);
         let binding = target.binding();
         if let Some(pattern) = binding {
@@ -585,35 +685,245 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .then_some(source)
     }
 
-    fn assignment_expression_head(&self, content: &ExpressionContent) -> Option<ExpressionContent> {
-        let mut expression = match content.data {
-            ExprData::ChainExpression(chain) => chain.expression(self.ast),
-            ExprData::MemberExpression(member) => member.object(self.ast),
-            ExprData::CallExpression(call) => call.callee(self.ast),
-            ExprData::TsInstantiationExpression(node) => node.expression(self.ast),
-            _ => return None,
-        };
+    fn assignment_expression_head(
+        &self,
+        content: &ExpressionContent,
+        mut context: ExpressionContext<'ast>,
+    ) -> Result<Option<AssignmentExpressionHead<'ast>>, FormatError> {
+        let mut data = content.data;
         loop {
-            let mut head = self.expression_content(expression);
-            if head
-                .parentheses
-                .is_some_and(|removed| matches!(removed.head.binding, CommentBinding::BoundTo(_)))
-            {
-                // This run belongs to the enclosed head, not the complete RHS.
-                // Its source owner prints any required pair with that target.
-                head.expression = expression;
-                head.data = self.ast.expr_data(expression);
-                head.parentheses = None;
-                return Some(head);
+            if !matches!(
+                data,
+                ExprData::ChainExpression(_)
+                    | ExprData::MemberExpression(_)
+                    | ExprData::CallExpression(_)
+                    | ExprData::TsInstantiationExpression(_)
+            ) {
+                return Ok(None);
             }
-            expression = match head.data {
-                ExprData::ChainExpression(chain) => chain.expression(self.ast),
-                ExprData::MemberExpression(member) => member.object(self.ast),
-                ExprData::CallExpression(call) => call.callee(self.ast),
-                ExprData::TsInstantiationExpression(node) => node.expression(self.ast),
-                _ => return Some(head),
+            let Some((expression, operand_context)) =
+                self.expression_head_operand(data, context)?
+            else {
+                return Ok(None);
+            };
+            context = operand_context;
+            let head = self.expression_content(expression);
+            if context.content_mode == ContentMode::Verbatim
+                || head.parentheses.is_some_and(|removed| {
+                    !removed.head.binding.allows_relocation(None)
+                        || self.expression_has_generated_head_frame(&head, context)
+                })
+            {
+                // A packet or physical frame belongs to this operand, not the
+                // complete RHS. Keep its normalized packet for layout inspection.
+                return Ok(Some(AssignmentExpressionHead {
+                    content: head,
+                    source_owner: Some(expression),
+                    context,
+                }));
+            }
+            data = match head.data {
+                data @ (ExprData::ChainExpression(_)
+                | ExprData::MemberExpression(_)
+                | ExprData::CallExpression(_)
+                | ExprData::TsInstantiationExpression(_)) => data,
+                _ => {
+                    return Ok(Some(AssignmentExpressionHead {
+                        content: head,
+                        source_owner: None,
+                        context,
+                    }));
+                }
             };
         }
+    }
+
+    /// Source packet internals and source-owner attachment are summarized once.
+    fn assignment_head_packet(
+        &self,
+        comments: &'ast [Comment],
+        origin: AssignmentHeadOrigin,
+        cast_leading: Option<CastLeadingLayout>,
+    ) -> Result<AssignmentHeadPacket<'ast>, FormatError> {
+        let mut packet = AssignmentHeadPacket {
+            comments,
+            own_line: false,
+            attachment: comments
+                .first()
+                .map_or(AssignmentPacketAttachment::Detached, |first| {
+                    if self.source_position_starts_line(first.span.start) {
+                        AssignmentPacketAttachment::Detached
+                    } else {
+                        AssignmentPacketAttachment::Inline
+                    }
+                }),
+            last_successor: None,
+            annotation: None,
+        };
+        let mut previous: Option<Comment> = None;
+        for (index, &comment) in comments.iter().enumerate() {
+            // The newest JSDoc owns emitted adjacency; ordinary trivia is transparent.
+            if self.source(comment.span).starts_with("/**") {
+                packet.annotation = self.emitted_head_annotation(std::slice::from_ref(&comment));
+            }
+            let alignable = self.comment_is_alignable(comment)?;
+            let starts_line = (index != 0 || matches!(origin, AssignmentHeadOrigin::Source))
+                && self.source_line_starts_line(comment.span.start);
+            packet.own_line |= comment.kind == CommentKind::Line
+                || starts_line && !matches!(cast_leading, Some(CastLeadingLayout::Flat))
+                || alignable;
+            if let Some(previous) = previous {
+                let separated = self.line_breaks(previous.span.end, comment.span.start) != 0;
+                packet.last_successor = Some(if separated {
+                    HeadGapPlacement::OwnLine
+                } else {
+                    HeadGapPlacement::Inline
+                });
+                if separated && packet.attachment == AssignmentPacketAttachment::Inline {
+                    packet.attachment = AssignmentPacketAttachment::Detached;
+                }
+            }
+            if !self.comment_semantics(comment).is_ordinary() {
+                packet.attachment = AssignmentPacketAttachment::Protected;
+            } else if (comment.kind == CommentKind::Line || alignable)
+                && packet.attachment == AssignmentPacketAttachment::Inline
+            {
+                packet.attachment = AssignmentPacketAttachment::Detached;
+            }
+            previous = Some(comment);
+        }
+        Ok(packet)
+    }
+
+    fn assignment_joining_gap(
+        &self,
+        boundary: &AssignmentBoundary<'ast>,
+        leading: AssignmentHeadPacket<'ast>,
+        released: Option<AssignmentHeadPacket<'ast>>,
+    ) -> Option<AssignmentJoiningGap> {
+        let released = released?;
+        let last = leading.comments.last()?;
+        if released.comments.is_empty() {
+            return None;
+        }
+        let gap = Span::new(last.span.end, boundary.layout_start);
+        Some(
+            if boundary.mode == ContentMode::Formatted
+                && boundary.enclosed_head_binding.is_none()
+                && leading.attachment == AssignmentPacketAttachment::Inline
+                && released.attachment == AssignmentPacketAttachment::Inline
+                && self.line_breaks(gap.start, gap.end) <= 1
+                && self.line_constraint(gap.start, gap.end) == LineConstraint::Unconstrained
+            {
+                AssignmentJoiningGap::Grouped(gap)
+            } else {
+                AssignmentJoiningGap::Source(gap)
+            },
+        )
+    }
+
+    fn assignment_gap_needs_group(
+        &self,
+        comments: &[Comment],
+        next: u32,
+        placement: HeadGapPlacement,
+    ) -> bool {
+        comments.last().is_some_and(|last| {
+            last.kind == CommentKind::Block
+                && matches!(placement, HeadGapPlacement::Inline)
+                && last.span.end <= next
+                && self.line_breaks(last.span.end, next) == 1
+                && self.line_constraint(last.span.end, next) == LineConstraint::Unconstrained
+        })
+    }
+
+    fn assignment_head_gaps(
+        &self,
+        boundary: &AssignmentBoundary<'ast>,
+        heads: &AssignmentPreparedHeads<'ast>,
+        content: &ExpressionContent,
+        mode: ContentMode,
+        context: ExpressionContext<'ast>,
+    ) -> Option<&'ast PreparedHeadGaps> {
+        if mode != ContentMode::Formatted
+            || boundary.mode != ContentMode::Formatted
+            || boundary.enclosed_head_binding.is_some()
+            || self.diagnostic_head_has_frame(content, context)
+        {
+            return None;
+        }
+        let packet = heads.released.unwrap_or(heads.leading);
+        if let Some(removed) = content.parentheses
+            && let Some(annotation) = packet.annotation
+            && !matches!(content.data, ExprData::SequenceExpression(sequence) if !self.sequence_head_has_source_cast(sequence))
+            && self
+                .emitted_head_enclosure_owner(
+                    content.expression,
+                    content,
+                    annotation,
+                    removed.head.binding,
+                    context,
+                )
+                .is_some()
+        {
+            // This packet prints inside the selected operand enclosure. Its
+            // final gap cannot request a group from the exterior operator.
+            // Refuse both exports together before the operator layout is chosen.
+            return None;
+        }
+        let placement = packet
+            .last_successor
+            .unwrap_or(if boundary.rhs_requires_line() {
+                HeadGapPlacement::OwnLine
+            } else {
+                HeadGapPlacement::Inline
+            });
+        let (head, next) = if heads.released.is_some() {
+            (
+                PreparedHeadGap::new(packet.comments, placement),
+                content.expression.span(self.ast).start,
+            )
+        } else {
+            let last = packet.comments.last()?;
+            let adjacent = boundary
+                .head_destination
+                .is_some_and(|owner| owner.keeps_source_token())
+                && boundary.layout_start == boundary.right_start
+                && last.span.end <= boundary.right_start
+                && self
+                    .source(Span::new(last.span.end, boundary.right_start))
+                    .chars()
+                    .all(super::super::source::is_source_whitespace);
+            if adjacent {
+                (
+                    PreparedHeadGap::source_adjacent(
+                        packet.comments,
+                        placement,
+                        boundary.right_start,
+                    ),
+                    boundary.right_start,
+                )
+            } else if content
+                .parentheses
+                .is_none_or(|removed| removed.head.binding.allows_relocation(None))
+                && !matches!(content.data, ExprData::ParenthesizedExpression(_))
+            {
+                (
+                    PreparedHeadGap::new(packet.comments, placement),
+                    boundary.layout_start,
+                )
+            } else {
+                return None;
+            }
+        };
+        let mut grouped = self.assignment_gap_needs_group(packet.comments, next, placement);
+        let prefix = if let Some(AssignmentJoiningGap::Grouped(gap)) = heads.joining {
+            grouped |= self.line_breaks(gap.start, gap.end) != 0;
+            PreparedHeadGap::new(heads.leading.comments, HeadGapPlacement::Inline)
+        } else {
+            None
+        };
+        PreparedHeadGaps::new(prefix, head, grouped).map(|gaps| &*self.allocator.alloc(gaps))
     }
 
     pub(in crate::formatter) fn assignment_boundary(
@@ -622,8 +932,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: &ExpressionContent,
         operator_span: Span,
         source_right_end: u32,
+        context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let right_start = content.expression.span(self.ast).start;
+        let context = self.with_head_scope(context, content);
+        let enclosing = content.expression;
+        let source_opening = content
+            .parentheses
+            .map(|removed| removed.source.outer.start);
+        let projected = self.assignment_expression_head(content, context)?;
+        let content = projected.as_ref().map_or(content, |head| &head.content);
+        let right_start = projected
+            .as_ref()
+            .and_then(|head| head.source_owner)
+            .unwrap_or(content.expression)
+            .span(self.ast)
+            .start;
         let span = Span::new(left_end, right_start);
         let source_comments = self.ast.comments();
         let first = source_comments.partition_point(|comment| comment.span.start < span.start);
@@ -646,19 +969,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode: ContentMode::Formatted,
             cast_leading: None,
             enclosed_head_binding: None,
+            released_head: &[],
+            normalized_head_start: content.expression.span(self.ast).start,
+            head_gap: None,
+            head_destination: None,
+            head_scope: context.head_scope,
         };
-        if let Some(head) = self.assignment_expression_head(content)
-            && let Some(removed) = head.parentheses
+        let head_context = projected.as_ref().map_or(context, |head| head.context);
+        let head_mode = head_context.content_mode;
+        let mut released_head = None;
+        if let Some(removed) = content.parentheses
             && removed.head.has_comments
         {
-            boundary.own_line = self
-                .comments
-                .in_range(Span::new(
-                    removed.source.outer.start,
-                    head.expression.span(self.ast).start,
-                ))
-                .iter()
-                .any(|comment| comment.kind == CommentKind::Line);
+            let head = self.comments.in_range(Span::new(
+                removed.source.outer.start,
+                content.expression.span(self.ast).start,
+            ));
+            if head_mode == ContentMode::Formatted && removed.head.binding.allows_relocation(None) {
+                released_head = Some(head);
+            } else {
+                // A retained semantic or verbatim owner keeps its packet inside.
+                boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
+            }
         }
         if let ExprData::ParenthesizedExpression(parenthesized) = content.data
             && let Some(child) =
@@ -681,6 +1013,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let sensitive = self.diagnostic_range_is_sensitive(span);
         if comments.is_empty() && !sensitive {
+            // Only an actual released packet needs an emitted owner or gap.
+            // Retained heads have already contributed their own-line constraint.
+            let Some(head) = released_head.filter(|head| !head.is_empty()) else {
+                return Ok(boundary);
+            };
+            let released =
+                self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None)?;
+            boundary.own_line |= released.own_line;
+            boundary.released_head = released.comments;
+            let heads = AssignmentPreparedHeads {
+                leading: self.assignment_head_packet(&[], AssignmentHeadOrigin::Source, None)?,
+                released: Some(released),
+                joining: None,
+            };
+            boundary.cast_leading = boundary
+                .cast_leading
+                .or_else(|| self.assignment_generated_cast_layout(content, &heads, head_context));
+            boundary.head_gap =
+                self.assignment_head_gaps(&boundary, &heads, content, head_mode, head_context);
             return Ok(boundary);
         }
         let operator_start = operator_span.start;
@@ -778,13 +1129,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             leading
         };
         boundary.leading = leading;
-        if let Some(parentheses) = content.parentheses.map(|removed| removed.source)
-            && leading
-                .last()
-                .is_none_or(|comment| comment.span.end <= parentheses.outer.start)
+        if let Some(opening) = source_opening.or_else(|| {
+            content
+                .parentheses
+                .map(|removed| removed.source.outer.start)
+        }) && leading
+            .last()
+            .is_none_or(|comment| comment.span.end <= opening)
         {
             // A delimiter before the head owns its inner source line breaks.
-            boundary.layout_start = parentheses.outer.start;
+            boundary.layout_start = opening;
         }
         boundary.mode = if promoted && self.content_mode(before) == ContentMode::Verbatim {
             ContentMode::Verbatim
@@ -821,12 +1175,59 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CastLeadingLayout::Flat
             });
         }
-        for &comment in leading {
-            boundary.own_line |= before_line
-                || comment.kind == CommentKind::Line
-                || self.source_line_starts_line(comment.span.start)
-                    && !matches!(boundary.cast_leading, Some(CastLeadingLayout::Flat))
-                || self.comment_is_alignable(comment)?;
+        if !leading.is_empty()
+            && boundary.mode == ContentMode::Formatted
+            && boundary.enclosed_head_binding.is_none()
+            && boundary.layout_start == boundary.right_start
+            && leading.last().is_some_and(|last| {
+                last.span.end <= right_start
+                    && self
+                        .source(Span::new(last.span.end, right_start))
+                        .chars()
+                        .all(super::super::source::is_source_whitespace)
+            })
+        {
+            boundary.head_destination = self.prepare_head_destination(
+                content,
+                head_context,
+                projected
+                    .as_ref()
+                    .is_some_and(|head| head.source_owner.is_none()),
+                enclosing,
+                context,
+            )?;
+        }
+        // A normalized root head may already be part of the actual leading run.
+        // Only disjoint exterior/released packets have a separate joining gap.
+        let released_head = released_head.filter(|head| {
+            head.first().is_some_and(|first| {
+                leading
+                    .last()
+                    .is_none_or(|last| last.span.end <= first.span.start)
+            })
+        });
+        let leading_packet = self.assignment_head_packet(
+            leading,
+            AssignmentHeadOrigin::Source,
+            boundary.cast_leading,
+        )?;
+        let released = released_head
+            .map(|head| self.assignment_head_packet(head, AssignmentHeadOrigin::Released, None))
+            .transpose()?;
+        boundary.released_head = released.map_or(&[], |head| head.comments);
+        let joining = self.assignment_joining_gap(&boundary, leading_packet, released);
+        boundary.own_line |= !leading.is_empty() && before_line || leading_packet.own_line;
+        if let Some(head) = released {
+            boundary.own_line |= if boundary.mode == ContentMode::Formatted {
+                head.own_line
+            } else {
+                head.comments
+                    .iter()
+                    .any(|comment| comment.kind == CommentKind::Line)
+            };
+        }
+        if let Some(AssignmentJoiningGap::Source(gap)) = joining {
+            boundary.own_line |= self.line_breaks(gap.start, gap.end) != 0;
         }
         if sensitive {
             let previous = before.last().map_or(left_end, |last| last.span.end);
@@ -845,16 +1246,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // Own-line comments are emitted directly, unlike deferred line suffixes.
             boundary.before_operator = LineConstraint::NewLine(1);
         }
+        let heads = AssignmentPreparedHeads {
+            leading: leading_packet,
+            released,
+            joining,
+        };
+        boundary.cast_leading = boundary
+            .cast_leading
+            .or_else(|| self.assignment_generated_cast_layout(content, &heads, head_context));
+        boundary.head_gap =
+            self.assignment_head_gaps(&boundary, &heads, content, head_mode, head_context);
         Ok(boundary)
+    }
+
+    fn assignment_generated_cast_layout(
+        &self,
+        content: &ExpressionContent,
+        heads: &AssignmentPreparedHeads<'ast>,
+        context: ExpressionContext<'ast>,
+    ) -> Option<CastLeadingLayout> {
+        let packet = heads.released.unwrap_or(heads.leading);
+        let annotation = packet.annotation?;
+        let ExprData::SequenceExpression(sequence) = content.data else {
+            return None;
+        };
+        if self.sequence_head_has_source_cast(sequence) {
+            return None;
+        }
+        let binding = self.expression_head_binding(packet.comments, content.expression);
+        self.emitted_head_enclosure_owner(
+            content.expression,
+            content,
+            annotation,
+            content
+                .parentheses
+                .map_or(binding, |removed| binding.combine(removed.head.binding)),
+            context,
+        )?;
+        let last = packet.comments.last()?;
+        Some(
+            if self.line_breaks(last.span.end, content.expression.span(self.ast).start) != 0 {
+                CastLeadingLayout::Break
+            } else {
+                CastLeadingLayout::Flat
+            },
+        )
     }
 
     fn assignment_layout(
         &self,
         data: ExprData,
         position: ExpressionPosition,
-        right_context: ExpressionContext,
+        right_context: ExpressionContext<'ast>,
         boundary: &AssignmentBoundary<'ast>,
     ) -> AssignmentLayout {
+        if boundary.head_gap_requires_group() {
+            return AssignmentLayout::Ordinary(RhsLayout::BreakAfterOperator);
+        }
         let tail = !matches!(data, ExprData::AssignmentExpression(_));
         if let ExpressionPosition::AssignmentRight(parent) | ExpressionPosition::Initializer(parent) =
             position
@@ -880,14 +1328,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn ordinary_rhs_layout(
         &self,
         data: ExprData,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         boundary: &AssignmentBoundary<'ast>,
     ) -> RhsLayout {
-        if boundary.rhs_starts_on_own_line()
+        if boundary.head_gap_requires_group()
+            || boundary.rhs_starts_on_own_line()
             || !boundary.operator_line.is_empty()
             || matches!(boundary.cast_leading, Some(CastLeadingLayout::Break))
         {
             return RhsLayout::BreakAfterOperator;
+        }
+        if boundary.cast_leading.is_some()
+            && boundary.enclosed_head_binding.is_none()
+            && matches!(data, ExprData::SequenceExpression(_))
+        {
+            return RhsLayout::Fluid;
         }
         // A removable ignored source pair prints its child in this RHS scope.
         let data = self

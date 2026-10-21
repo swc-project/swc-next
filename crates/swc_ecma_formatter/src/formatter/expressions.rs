@@ -41,7 +41,7 @@ use self::objects::RecordedObject;
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
 use super::comments::{
-    ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
+    ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, PreparedHeadGaps,
 };
 use super::literals::StringContext;
 use super::suppression::ContentMode;
@@ -53,7 +53,7 @@ pub(super) enum AccessKind {
     Optional,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ExpressionPosition {
     Statement,
     ExportDefault,
@@ -287,12 +287,15 @@ pub(super) enum CallArgumentOwner {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct ExpressionContext {
+pub(super) struct ExpressionContext<'ast> {
     position: ExpressionPosition,
     expression_start: ExpressionStart,
     content_mode: ContentMode,
     parentheses_owner: ParenthesesOwner,
     head_comments: HeadComments,
+    head_gap: Option<&'ast PreparedHeadGaps>,
+    head_destination: Option<&'ast parentheses::PreparedHeadDestination>,
+    head_scope: Option<parentheses::HeadScopeOwner>,
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
@@ -312,7 +315,7 @@ pub(super) struct ExpressionContext {
     tail_boundary: TailBoundary,
 }
 
-impl ExpressionContext {
+impl<'ast> ExpressionContext<'ast> {
     fn is_call_or_member_receiver(self) -> bool {
         matches!(
             self.position,
@@ -421,6 +424,9 @@ impl ExpressionContext {
             content_mode: ContentMode::Formatted,
             parentheses_owner: ParenthesesOwner::Expression,
             head_comments: HeadComments::Pending,
+            head_gap: None,
+            head_destination: None,
+            head_scope: None,
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
@@ -477,6 +483,9 @@ impl ExpressionContext {
         self.expression_head = parent.expression_head;
         self.protected_head_start = parent.protected_head_start;
         self.emitted_head_binding = parent.emitted_head_binding;
+        self.head_gap = parent.head_gap;
+        self.head_destination = parent.head_destination;
+        self.head_scope = parent.head_scope;
         self
     }
 
@@ -506,6 +515,9 @@ impl ExpressionContext {
 
     pub(super) fn inside_parentheses(mut self) -> Self {
         self.parentheses_owner = ParenthesesOwner::Parent;
+        self.head_gap = None;
+        self.head_destination = None;
+        self.head_scope = None;
         self.source_parentheses_tail = None;
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
@@ -563,6 +575,11 @@ impl ExpressionContext {
 
     pub(super) fn with_content_mode(mut self, mode: ContentMode) -> Self {
         self.content_mode = mode;
+        if mode == ContentMode::Verbatim {
+            self.head_gap = None;
+            self.head_destination = None;
+            self.head_scope = None;
+        }
         self
     }
 }
@@ -571,7 +588,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression(
         &mut self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_expression_with_array_comments(expression, context, None, writer)
@@ -580,7 +597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression_with_array_comments(
         &mut self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -609,7 +626,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         prepared: Option<ExpressionContent>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_expression_prepared_with_array_comments(
@@ -621,7 +638,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         prepared: Option<ExpressionContent>,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -683,7 +700,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn conditional_grammar_pair_is_enclosed(context: ExpressionContext) -> bool {
+    pub(super) fn conditional_grammar_pair_is_enclosed(context: ExpressionContext<'ast>) -> bool {
         context.conditional_envelope == ConditionalEnvelope::OperationHead
             || matches!(
                 context.position,
@@ -703,7 +720,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn expression_needs_asi_guard(
         &self,
         mut expression: Expr,
-        mut context: ExpressionContext,
+        mut context: ExpressionContext<'ast>,
     ) -> Result<bool, FormatError> {
         loop {
             if context.content_mode == ContentMode::Verbatim {
@@ -764,8 +781,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn expression_head_operand(
         &self,
         data: ExprData,
-        context: ExpressionContext,
-    ) -> Result<Option<(Expr, ExpressionContext)>, FormatError> {
+        context: ExpressionContext<'ast>,
+    ) -> Result<Option<(Expr, ExpressionContext<'ast>)>, FormatError> {
         let operand = if let Some(binary) = BinaryLike::from_data(data, self.ast) {
             let mut child_context = context;
             child_context.position = ExpressionPosition::BinaryOperand {
@@ -841,7 +858,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn expression_is_parenthesized(
         &self,
         data: ExprData,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> bool {
         context.parentheses_owner == ParenthesesOwner::Expression
             && !context.is_verbatim_statement_string(data)
@@ -864,7 +881,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn lexical_identifier_head_needs_parentheses(
         &self,
         data: ExprData,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
     ) -> bool {
         let Some(receiver) = context.computed_receiver else {
             return false;
@@ -1406,7 +1423,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_verbatim_expression(
         &mut self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let data = self.ast.expr_data(expression);
@@ -1460,7 +1477,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_expression_data(
         &mut self,
         expression: Expr,
-        context: ExpressionContext,
+        context: ExpressionContext<'ast>,
         has_expression_parentheses: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
