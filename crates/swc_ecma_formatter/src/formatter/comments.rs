@@ -900,6 +900,102 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentBinding::combine_all(comments.map(resolve))
     }
 
+    /// Compiler-recognized JSDoc roles retain their original syntax owner.
+    /// Optimizer markers and unknown documentation tags have separate policies.
+    pub(super) fn comment_is_jsdoc_binding(&self, comment: Comment) -> bool {
+        let raw = self.source(comment.span);
+        raw.starts_with("/**")
+            && raw
+                .match_indices('@')
+                .any(|(offset, _)| Self::jsdoc_binding_tag(&raw[offset + 1..]))
+    }
+
+    fn jsdoc_binding_tag(mut tag: &str) -> bool {
+        // Every supported role is ASCII; constructor is the longest name.
+        let mut name = [0; 11];
+        let mut length = 0;
+        while let Some(mut character) = tag.chars().next() {
+            tag = &tag[character.len_utf8()..];
+            let escaped = character == '\\';
+            if escaped {
+                let Some(rest) = tag.strip_prefix('u') else {
+                    return false;
+                };
+                let (digits, rest) = if let Some(braced) = rest.strip_prefix('{') {
+                    let end = braced.bytes().take_while(u8::is_ascii_hexdigit).count();
+                    let (digits, rest) = braced.split_at(end);
+                    let Some(rest) = rest.strip_prefix('}') else {
+                        return false;
+                    };
+                    (digits, rest)
+                } else {
+                    let (Some(digits), Some(rest)) = (rest.get(..4), rest.get(4..)) else {
+                        return false;
+                    };
+                    (digits, rest)
+                };
+                if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                    return false;
+                }
+                let Some(decoded) = u32::from_str_radix(digits, 16)
+                    .ok()
+                    .and_then(char::from_u32)
+                else {
+                    return false;
+                };
+                character = decoded;
+                tag = rest;
+            }
+            let identifier_part = if character.is_ascii() {
+                swc_next_ecma_ast::is_ident_continue_ascii(character as u8)
+            } else {
+                let mut identifier = [0; 5];
+                identifier[0] = b'x';
+                let end = 1 + character.encode_utf8(&mut identifier[1..]).len();
+                swc_next_ecma_ast::is_identifier(&identifier[..end])
+            };
+            if !identifier_part {
+                if escaped {
+                    return false;
+                }
+                break;
+            }
+            if !character.is_ascii() || length == name.len() {
+                return false;
+            }
+            name[length] = character as u8;
+            length += 1;
+        }
+        matches!(
+            &name[..length],
+            b"type"
+                | b"satisfies"
+                | b"typedef"
+                | b"callback"
+                | b"overload"
+                | b"template"
+                | b"param"
+                | b"arg"
+                | b"argument"
+                | b"return"
+                | b"returns"
+                | b"extends"
+                | b"augments"
+                | b"implements"
+                | b"class"
+                | b"constructor"
+                | b"enum"
+                | b"this"
+                | b"import"
+                | b"deprecated"
+                | b"public"
+                | b"private"
+                | b"protected"
+                | b"readonly"
+                | b"override"
+        )
+    }
+
     pub(super) fn comment_is_type_cast(&self, comment: Comment) -> bool {
         let raw = self.source(comment.span);
         if !raw.starts_with("/**") {

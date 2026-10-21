@@ -169,6 +169,15 @@ struct PreparedStatement<'ast> {
     mode: ContentMode,
     source_gap: Option<LineConstraint>,
     annotation_tail: Option<StatementAnnotationTail<'ast>>,
+    empty_binding: CommentBinding,
+}
+
+impl PreparedStatement<'_> {
+    fn can_omit(&self, ast: &Ast<'_>, header_barrier: Option<Span>) -> bool {
+        self.item.empty(ast).is_some()
+            && header_barrier != Some(self.span)
+            && self.empty_binding.allows_relocation(None)
+    }
 }
 
 enum StatementMode {
@@ -437,13 +446,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut first_statement = true;
         let mut previous_span_end = previous_end.unwrap_or(span.start);
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
+        let mut prepared_end = previous_end.unwrap_or(span.start);
         let mut pending = statements.next().map(|item| {
-            self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+            self.prepare_sequence_statement(
+                item,
+                statements.peek().copied(),
+                incoming,
+                &mut prepared_end,
+            )
         });
         while let Some(prepared) = pending {
             pending = statements.next().map(|item| {
-                self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+                self.prepare_sequence_statement(
+                    item,
+                    statements.peek().copied(),
+                    incoming,
+                    &mut prepared_end,
+                )
             });
+            if prepared.can_omit(ast, header_barrier) {
+                continue;
+            }
             let PreparedStatement {
                 item: statement,
                 span: statement_span,
@@ -451,14 +474,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode: source_mode,
                 source_gap,
                 annotation_tail,
+                empty_binding: _,
             } = prepared;
-            // Omit empty statements unless a token protects an active header binding.
-            // Inert annotations may become active when no existing effect is lost.
-            // ECMAScript directives such as "use strict" must retain their semantics
-            // in both directions.
-            if statement.empty(ast).is_some() && header_barrier != Some(statement_span) {
-                continue;
-            }
             let leading = self.comments.between(Span::new(
                 previous.map_or(span.start, StatementBoundary::end),
                 statement_span.start,
@@ -466,16 +483,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let leading_mode = self.content_mode(leading);
             let mut omitted: Option<Span> = None;
             while let Some(next) = pending.as_ref() {
-                let Some(empty) = next.item.empty(ast) else {
+                if !next.can_omit(ast, header_barrier) {
                     break;
-                };
-                let empty = empty.span(ast);
+                }
+                let empty = next.span;
                 omitted = Some(Span::new(
                     omitted.map_or(empty.start, |span| span.start),
                     empty.end,
                 ));
                 pending = statements.next().map(|item| {
-                    self.prepare_sequence_statement(item, statements.peek().copied(), incoming)
+                    self.prepare_sequence_statement(
+                        item,
+                        statements.peek().copied(),
+                        incoming,
+                        &mut prepared_end,
+                    )
                 });
             }
             let following = pending.as_ref().map(|next| next.span.start);
@@ -527,6 +549,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementPunctuation::Source(terminator)
             } else if source_packet.is_some() {
                 StatementPunctuation::SourcePacket
+            } else if pending
+                .as_ref()
+                .is_some_and(|next| !next.empty_binding.allows_relocation(None))
+            {
+                // A retained empty owner needs its own semicolon. Otherwise an
+                // unterminated preceding statement consumes it on the next parse.
+                source_terminator.map_or(
+                    StatementPunctuation::Canonical(Semicolons::Always),
+                    StatementPunctuation::Source,
+                )
             } else if self.options.semicolons == Semicolons::AsNeeded
                 && (pending.is_some()
                     && source_terminator.is_none()
@@ -897,6 +929,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         item: StatementItem,
         following: Option<StatementItem>,
         incoming: Option<IncomingStatement>,
+        prepared_end: &mut u32,
     ) -> PreparedStatement<'ast> {
         let decorators = match item {
             StatementItem::Statement(node) => self.statement_decorators(node),
@@ -905,6 +938,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (span, decorators) = match decorators {
             Some((span, decorators)) => (span, Some(decorators)),
             None => (item.span(self.ast), None),
+        };
+        let gap_start = *prepared_end;
+        *prepared_end = span.end;
+        let empty_binding = if item.empty(self.ast).is_some() {
+            // Only direct statement gaps can contain this owner's leading packet.
+            // Descendant comments belong to the preceding child's own sequence.
+            let leading = self.comments.in_range(Span::new(gap_start, span.start));
+            self.empty_statement_binding(leading, span)
+        } else {
+            CommentBinding::Unbound
         };
         let annotation_tail = if (self.has_target_annotations || self.has_suppression)
             && item.is_nonempty(self.ast)
@@ -922,7 +965,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(ContentMode::Formatted, |target| target.mode),
             source_gap: None,
             annotation_tail,
+            empty_binding,
         }
+    }
+
+    fn empty_statement_binding(&self, comments: &[Comment], span: Span) -> CommentBinding {
+        let mut next_start = span.start;
+        CommentBinding::combine_all(comments.iter().rev().map_while(|&comment| {
+            if !self
+                .source(Span::new(comment.span.end, next_start))
+                .chars()
+                .all(is_source_whitespace)
+            {
+                return None;
+            }
+            next_start = comment.span.start;
+            Some(if self.comment_is_jsdoc_binding(comment) {
+                CommentBinding::BoundTo(span)
+            } else {
+                CommentBinding::Unbound
+            })
+        }))
     }
 
     fn prepare_statement_annotation_tail(
