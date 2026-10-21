@@ -23,6 +23,19 @@ pub(in crate::formatter) struct SourceParentheses {
     pub(in crate::formatter) inner_target: ParenthesisInner,
 }
 
+/// Source extents stay authoritative when the statement drops a transparent pair.
+#[derive(Clone, Copy)]
+struct StatementSourceOwner {
+    source: Span,
+    destination: Span,
+}
+
+#[derive(Clone, Copy)]
+enum DiagnosticParenthesesOwner {
+    Source,
+    Statement(StatementSourceOwner),
+}
+
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum ParenthesisInner {
     Expression(Expr),
@@ -273,6 +286,66 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(in crate::formatter) fn expression_content(&self, expression: Expr) -> ExpressionContent {
+        self.expression_content_for_position(expression, ExpressionPosition::Nested)
+    }
+
+    /// Inspect data after removing source parentheses transparent in the current
+    /// comment scope, without preparing a source envelope for an ordinary node.
+    pub(in crate::formatter) fn expression_data(&self, expression: Expr) -> ExprData {
+        self.expression_data_for_position(expression, ExpressionPosition::Nested)
+    }
+
+    pub(super) fn expression_data_for_position(
+        &self,
+        expression: Expr,
+        position: ExpressionPosition,
+    ) -> ExprData {
+        match self.ast.expr_data(expression) {
+            ExprData::ParenthesizedExpression(_) => {
+                self.expression_content_for_position(expression, position)
+                    .data
+            }
+            data => data,
+        }
+    }
+
+    pub(super) fn expression_content_for_position(
+        &self,
+        expression: Expr,
+        position: ExpressionPosition,
+    ) -> ExpressionContent {
+        let data = self.ast.expr_data(expression);
+        if !matches!(data, ExprData::ParenthesizedExpression(_)) {
+            return ExpressionContent {
+                expression,
+                data,
+                parentheses: None,
+            };
+        }
+        let diagnostic_owner = if matches!(position, ExpressionPosition::Statement)
+            && !self.diagnostic_lines.is_empty()
+        {
+            // Inspect the transparent source chain once. Every wrapper below still
+            // resolves its own cast, comment, grammar and suppression boundaries.
+            let mut destination = expression;
+            while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(destination) {
+                destination = pair.expression(self.ast);
+            }
+            DiagnosticParenthesesOwner::Statement(StatementSourceOwner {
+                source: expression.span(self.ast),
+                destination: destination.span(self.ast),
+            })
+        } else {
+            DiagnosticParenthesesOwner::Source
+        };
+        self.expression_content_with_diagnostic_owner(expression, diagnostic_owner)
+    }
+
+    fn expression_content_with_diagnostic_owner(
+        &self,
+        expression: Expr,
+        diagnostic_owner: DiagnosticParenthesesOwner,
+    ) -> ExpressionContent {
         let mut inner = expression;
         let mut head = SourceParenthesesHead {
             binding: CommentBinding::Unbound,
@@ -296,13 +369,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 break data;
             }
-            let Some(next) = self.removable_parentheses_head(
+            let Some(next) = self.removable_parentheses_head_with_owner(
                 SourceParentheses {
                     outer: parenthesized.span(self.ast),
                     inner: child.span(self.ast),
                     inner_target: ParenthesisInner::Expression(child),
                 },
                 &mut optimizer_binding,
+                diagnostic_owner,
             ) else {
                 break data;
             };
@@ -332,15 +406,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression: inner,
             data,
             parentheses,
-        }
-    }
-
-    /// Inspect data after removing source parentheses transparent in the current
-    /// comment scope, without preparing a source envelope for an ordinary node.
-    pub(in crate::formatter) fn expression_data(&self, expression: Expr) -> ExprData {
-        match self.ast.expr_data(expression) {
-            ExprData::ParenthesizedExpression(_) => self.expression_content(expression).data,
-            data => data,
         }
     }
 
@@ -427,6 +492,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .removable_parentheses_head_with_casts(
                             boundary,
                             &mut optimizer_binding,
+                            DiagnosticParenthesesOwner::Source,
                             |position| {
                                 let (start, slot) = match position {
                                     ParenthesisCastPosition::Outer => {
@@ -527,19 +593,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: SourceParentheses,
         optimizer_binding: &mut Option<CommentBinding>,
     ) -> Option<RemovableSourceParentheses> {
-        self.removable_parentheses_head_with_casts(boundary, optimizer_binding, |position| {
-            let start = match position {
-                ParenthesisCastPosition::Outer => boundary.outer.start,
-                ParenthesisCastPosition::Inner => boundary.inner.start,
-            };
-            self.source_type_cast(start)
-        })
+        self.removable_parentheses_head_with_owner(
+            boundary,
+            optimizer_binding,
+            DiagnosticParenthesesOwner::Source,
+        )
+    }
+
+    fn removable_parentheses_head_with_owner(
+        &self,
+        boundary: SourceParentheses,
+        optimizer_binding: &mut Option<CommentBinding>,
+        diagnostic_owner: DiagnosticParenthesesOwner,
+    ) -> Option<RemovableSourceParentheses> {
+        self.removable_parentheses_head_with_casts(
+            boundary,
+            optimizer_binding,
+            diagnostic_owner,
+            |position| {
+                let start = match position {
+                    ParenthesisCastPosition::Outer => boundary.outer.start,
+                    ParenthesisCastPosition::Inner => boundary.inner.start,
+                };
+                self.source_type_cast(start)
+            },
+        )
     }
 
     fn removable_parentheses_head_with_casts(
         &self,
         boundary: SourceParentheses,
         optimizer_binding: &mut Option<CommentBinding>,
+        diagnostic_owner: DiagnosticParenthesesOwner,
         mut cast: impl FnMut(ParenthesisCastPosition) -> Option<Comment>,
     ) -> Option<RemovableSourceParentheses> {
         let comments = self.ast.comments();
@@ -552,12 +637,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_tail_comments: false,
             });
         }
-        if self.parentheses_separate_diagnostic_lines(boundary)
+        let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
+        if self.parentheses_separate_diagnostic_lines_with_owner(boundary, diagnostic_owner, tail)
             || self.parenthesis_has_jsdoc_enclosure(boundary.outer.start)
         {
             return None;
         }
-        let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
         let leading_binding =
             self.source_parentheses_head_binding(head, boundary, optimizer_binding, || {
                 cast(ParenthesisCastPosition::Inner)
@@ -658,18 +743,59 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn parentheses_separate_diagnostic_lines(&self, boundary: SourceParentheses) -> bool {
+        self.parentheses_separate_diagnostic_lines_with_owner(
+            boundary,
+            DiagnosticParenthesesOwner::Source,
+            &[],
+        )
+    }
+
+    fn parentheses_separate_diagnostic_lines_with_owner(
+        &self,
+        boundary: SourceParentheses,
+        diagnostic_owner: DiagnosticParenthesesOwner,
+        tail: &[Comment],
+    ) -> bool {
         if !self.diagnostic_range_is_sensitive(boundary.outer) {
             return false;
         }
         // Delimiters can separate covered tokens from the next source line.
-        let opening = (self.diagnostic_line_is_sensitive(boundary.outer.start)
-            || self.diagnostic_line_is_sensitive(boundary.inner.start))
+        let statement = match diagnostic_owner {
+            DiagnosticParenthesesOwner::Statement(owner)
+                if owner.source.start <= boundary.outer.start
+                    && boundary.outer.end <= owner.source.end =>
+            {
+                Some(owner)
+            }
+            _ => None,
+        };
+        // An uncovered complete statement may replace its covered opener.
+        // Only existing coverage needs protection; activating the directive
+        // on the resulting statement does not require preserving parentheses.
+        let statement_opening = statement.is_some_and(|owner| {
+            !self.diagnostic_line_is_sensitive(owner.destination.start)
+                && !self.diagnostic_line_is_sensitive(owner.destination.end)
+        });
+        let opening = !statement_opening
+            && (self.diagnostic_line_is_sensitive(boundary.outer.start)
+                || self.diagnostic_line_is_sensitive(boundary.inner.start))
             && self.line_breaks(boundary.outer.start, boundary.inner.start) != 0;
         if opening {
             return true;
         }
-        self.diagnostic_line_is_sensitive(boundary.inner.end)
-            && self.line_breaks(boundary.inner.end, boundary.outer.end) != 0
+        let closing = self.diagnostic_line_is_sensitive(boundary.inner.end)
+            && self.line_breaks(boundary.inner.end, boundary.outer.end) != 0;
+        if !closing {
+            return false;
+        }
+        // Only the complete statement owns this vacated closing line. An
+        // operand's closer can still keep an outside diagnostic target covered.
+        !(statement.is_some()
+            && tail.is_empty()
+            && self
+                .source(Span::new(boundary.inner.end, boundary.outer.end - 1))
+                .chars()
+                .all(is_source_whitespace))
     }
 
     pub(in crate::formatter) fn capture_expression_tail(
@@ -1495,6 +1621,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let prepared = prepared.or_else(|| {
+            (matches!(context.position, ExpressionPosition::Statement)
+                && context.content_mode == ContentMode::Formatted
+                && expression.is_parenthesized_expression(self.ast))
+            .then(|| self.expression_content_for_position(expression, context.position))
+        });
         // An empty head has no packet to place. Source-bound and inherited
         // protected heads still need the enclosing owner's placement proof.
         if !resolved.head.comments.is_empty()
@@ -1753,10 +1885,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.protected_head_start = Some(expression.span(self.ast).start);
         }
         if !head.comments.is_empty() {
-            context.expression_start = self.format_expression_head(
+            // Only an exterior packet can join a released head. Inspect a
+            // replacement frame only after finding a removed, commented pair.
+            let released_head = prepared
+                .as_ref()
+                .and_then(|content| {
+                    let removed = content.parentheses?;
+                    (removed.head.has_comments
+                        && context.content_mode == ContentMode::Formatted
+                        && context.parentheses_owner == ParenthesesOwner::Expression
+                        && !self.expression_has_generated_head_frame(content, context))
+                    .then(|| self.source_parentheses_comments(removed.source).head)
+                })
+                .unwrap_or(&[]);
+            context.expression_start = self.format_expression_head_with_released_comments(
                 expression,
                 head,
                 binding,
+                released_head,
                 context,
                 array_comments.as_deref_mut(),
                 writer,
@@ -1771,6 +1917,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         })
+    }
+
+    /// Required grammar and optional operand frames both enclose their heads.
+    pub(in crate::formatter) fn expression_has_generated_head_frame(
+        &self,
+        content: &ExpressionContent,
+        context: ExpressionContext,
+    ) -> bool {
+        self.expression_is_parenthesized(content.data, context)
+            || self.is_nullish_conditional_operand(content.data, context.position)
     }
 
     fn format_expression_content_prepared(
@@ -1949,8 +2105,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression_head(
         &self,
         expression: Expr,
+        head: NodeHead<'ast>,
+        binding: CommentBinding,
+        context: ExpressionContext,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionStart, FormatError> {
+        self.format_expression_head_with_released_comments(
+            expression,
+            head,
+            binding,
+            &[],
+            context,
+            array_comments,
+            writer,
+        )
+    }
+
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "Keep the released source head borrowed from the prepared expression owner."
+    )]
+    fn format_expression_head_with_released_comments(
+        &self,
+        expression: Expr,
         mut head: NodeHead<'ast>,
         binding: CommentBinding,
+        released: &[Comment],
         mut context: ExpressionContext,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
@@ -1980,6 +2161,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comments
                 .iter()
                 .position(|&comment| self.comment_has_target_annotation(comment))
+                .or_else(|| {
+                    // Removing a wrapper joins this source-bound exterior run
+                    // with its released annotation head. Choose the guard owner
+                    // before either renderer claims or prints its own comments.
+                    (!head.comments.is_empty()
+                        && matches!(binding, CommentBinding::SourceBound)
+                        && released
+                            .iter()
+                            .any(|&comment| self.comment_has_target_annotation(comment)))
+                    .then_some(0)
+                })
             && (matches!(
                 context.expression_start,
                 ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
