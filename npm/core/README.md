@@ -9,7 +9,7 @@ import { transformSync } from "@swc-next/core";
 
 const { code, diagnostics } = transformSync("debugger; run();", {
   filename: "input.js",
-  plugin: [{
+  plugins: [{
     name: "remove-debugger",
     visitors: {
       DebuggerStatement(node, ctx) {
@@ -27,9 +27,9 @@ phase is `"before"`; use `phase: "after"` to edit the transformed AST. Hooks use
 the [walker API](../../packages/walker/README.md), must be synchronous, and must
 return `undefined`. A `Program` hook receives the entire file's AST.
 The Rust boundary reconstructs the AST; custom node properties do not cross it.
-Stages without plugins stay in Rust: a before-only or after-only `plugin`
+Stages without plugins stay in Rust: a before-only or after-only `plugins`
 array needs one AST round trip, while using both phases needs two. When
-`plugin` is omitted or empty, the entire pipeline stays in Rust.
+`plugins` is omitted or empty, the entire pipeline stays in Rust.
 
 `filename` determines the language and source type unless overridden by
 `parser`; without a filename, input is parsed as a JavaScript module.

@@ -12,7 +12,7 @@ const pluginConfigurations = [[], [beforePlugin], [afterPlugin], [beforePlugin, 
 function assertSameTransform(source, options) {
   const expected = transformSync(source, options);
   for (const plugin of pluginConfigurations) {
-    assert.deepEqual(transformSync(source, { ...options, plugin }), expected);
+    assert.deepEqual(transformSync(source, { ...options, plugins: plugin }), expected);
   }
   return expected;
 }
@@ -29,7 +29,7 @@ function assertSameTransformError(source, options) {
 
   const expected = capture(options);
   for (const plugin of pluginConfigurations) {
-    const actual = capture({ ...options, plugin });
+    const actual = capture({ ...options, plugins: plugin });
     assert.equal(actual.constructor, expected.constructor);
     assert.equal(actual.message, expected.message);
     assert.deepEqual(actual.diagnostics, expected.diagnostics);
@@ -80,7 +80,7 @@ test("transformSync transfers the AST only for configured plugin phases", async 
 
   function check(plugin, expectedTransfers) {
     counts.encode = counts.decode = 0;
-    const result = instrumented("const value: number = 1;", { filename: "input.ts", plugin });
+    const result = instrumented("const value: number = 1;", { filename: "input.ts", plugins: plugin });
     assert.deepEqual(result, { code: "const value = 1;\n", diagnostics: [] });
     assert.deepEqual(counts, { encode: expectedTransfers, decode: expectedTransfers });
   }
@@ -190,7 +190,7 @@ test("transformSync exposes the complete program and supports statement edits", 
   const source = 'import value from "dependency"; debugger; if (value) debugger;';
   const result = transformSync(source, {
     filename: "input.js",
-    plugin: [{
+    plugins: [{
       name: "remove-debugger",
       visitors: {
         Program(program) {
@@ -222,7 +222,7 @@ test("transformSync runs plugins on either side of the Rust transform", () => {
   const seen = [];
   const result = transformSync("const value: number = 1;", {
     filename: "input.ts",
-    plugin: [{
+    plugins: [{
       name: "before",
       visitors: {
         Program(program) { beforeProgram = program; },
@@ -258,7 +258,7 @@ test("transformSync gives single-phase plugins the correct AST and prints their 
     let visited = false;
     const result = transformSync(source, {
       filename: "input.ts",
-      plugin: [{
+      plugins: [{
         name: "rename",
         phase,
         visitors: {
@@ -295,7 +295,7 @@ test("transformSync runs a complete walk per plugin in phase order", () => {
   }
 
   const result = transformSync("const original = 1;", {
-    plugin: [
+    plugins: [
       rename("after-first", "after", "second", "third"),
       rename("before-first", "before", "original", "first"),
       rename("after-second", "after", "third", "finalValue"),
@@ -317,7 +317,7 @@ test("transformSync respects statement order changed by a before plugin", () => 
   const expected = transformSync("enum E { Member = value } const value = 1;", options);
   const result = transformSync("const value = 1; enum E { Member = value }", {
     ...options,
-    plugin: [{
+    plugins: [{
       name: "reorder-statements",
       visitors: { Program(program) { program.body.reverse(); } },
     }],
@@ -344,7 +344,7 @@ test("transformSync infers parser options from filename and honors overrides", (
     let actual;
     transformSync("const value = 1;", {
       ...options,
-      plugin: [{
+      plugins: [{
         name: "source-type",
         visitors: { Program(program) { actual = program.sourceType; } },
       }],
@@ -366,7 +366,7 @@ test("transformSync forwards parser and transform options", () => {
     filename: "input.ts",
     parser: { preserveParens: false },
     transform: { typescript: false },
-    plugin: [{
+    plugins: [{
       name: "inspect",
       phase: "after",
       visitors: {
@@ -383,7 +383,7 @@ test("transformSync forwards parser and transform options", () => {
     let remainingBlocks = 0;
     transformSync("class C { static { run(); } }", {
       transform: options,
-      plugin: [{
+      plugins: [{
         name: "inspect-static-blocks",
         phase: "after",
         visitors: { StaticBlock() { remainingBlocks++; } },
@@ -404,7 +404,7 @@ test("transformSync forwards codegen options with and without plugins", () => {
   assert.equal(transformSync(source, { codegen }).code, expected);
   assert.equal(transformSync(source, {
     codegen,
-    plugin: [{ name: "empty", phase: "after", visitors: {} }],
+    plugins: [{ name: "empty", phase: "after", visitors: {} }],
   }).code, expected);
 });
 
@@ -413,7 +413,7 @@ test("transformSync preserves string values through both plugin boundaries", () 
   const before = `${original}前`;
   const after = `${before}後\uDC00`;
   const result = transformSync('const value = "é😀\\0\\uD800";', {
-    plugin: [{
+    plugins: [{
       name: "before-strings",
       visitors: {
         Literal(node) {
@@ -443,7 +443,7 @@ test("transformSync reports UTF-16 diagnostic positions before invoking plugins"
 
     assert.throws(() => transformSync(source, {
       filename: "broken.js",
-      plugin: [{
+      plugins: [{
         name: "must-not-run",
         phase,
         visitors: { Program() { visited = true; } },
@@ -465,7 +465,7 @@ test("transformSync preserves original UTF-16 spans in after plugins", () => {
   const start = source.indexOf("𐐀");
   let visited = false;
   const result = transformSync(source, {
-    plugin: [{
+    plugins: [{
       name: "inspect-spans",
       phase: "after",
       visitors: {
@@ -501,7 +501,7 @@ test("transformSync reports semantic errors introduced by before plugins", () =>
       visitors: { Program() { visitedAfter = true; } },
     });
 
-    assert.throws(() => transformSync(source, { filename: "duplicate.js", plugin }), (error) => {
+    assert.throws(() => transformSync(source, { filename: "duplicate.js", plugins: plugin }), (error) => {
       assert.ok(error instanceof SyntaxError);
       assert.match(error.message, /duplicate\.js/);
       const diagnostic = error.diagnostics.find((diagnostic) => diagnostic.severity === "error");
@@ -517,22 +517,22 @@ test("transformSync reports semantic errors introduced by before plugins", () =>
 test("transformSync validates plugin configuration", () => {
   const source = "const value = 1;";
 
-  assert.throws(() => transformSync(source, { plugin: {} }), TypeError);
-  assert.throws(() => transformSync(source, { plugin: [null] }), TypeError);
+  assert.throws(() => transformSync(source, { plugins: {} }), TypeError);
+  assert.throws(() => transformSync(source, { plugins: [null] }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ visitors: {} }],
+    plugins: [{ visitors: {} }],
   }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "", visitors: {} }],
+    plugins: [{ name: "", visitors: {} }],
   }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "invalid-phase", phase: "pre", visitors: {} }],
+    plugins: [{ name: "invalid-phase", phase: "pre", visitors: {} }],
   }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "invalid-visitors", visitors: null }],
+    plugins: [{ name: "invalid-visitors", visitors: null }],
   }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "invalid-hook", visitors: { UnknownNode() {} } }],
+    plugins: [{ name: "invalid-hook", visitors: { UnknownNode() {} } }],
   }), TypeError);
 });
 
@@ -540,10 +540,10 @@ test("transformSync rejects asynchronous and non-undefined hook results", () => 
   const source = "const value = 1;";
 
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "async", visitors: { async Program() {} } }],
+    plugins: [{ name: "async", visitors: { async Program() {} } }],
   }), TypeError);
   assert.throws(() => transformSync(source, {
-    plugin: [{ name: "return-value", visitors: { Program() { return null; } } }],
+    plugins: [{ name: "return-value", visitors: { Program() { return null; } } }],
   }), TypeError);
 });
 
@@ -551,7 +551,7 @@ test("transformSync propagates plugin errors and keeps calls independent", () =>
   const failure = new Error("plugin failed");
   for (const phase of ["before", "after"]) {
     assert.throws(() => transformSync("const value = 1;", {
-      plugin: [{
+      plugins: [{
         name: "throwing",
         phase,
         visitors: { Identifier() { throw failure; } },
@@ -563,7 +563,7 @@ test("transformSync propagates plugin errors and keeps calls independent", () =>
     name: "rename",
     visitors: { Identifier(node) { node.name = "changed"; } },
   };
-  const options = { plugin: [plugin] };
+  const options = { plugins: [plugin] };
   assert.equal(transformSync("const first = 1;", options).code, "const changed = 1;\n");
   assert.equal(transformSync("const second = 2;", options).code, "const changed = 2;\n");
   assert.equal(transformSync("const original = 3;").code, "const original = 3;\n");

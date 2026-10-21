@@ -84,7 +84,7 @@ export interface TransformOptions {
   /** Before plugins run first, then Rust transforms, then after plugins.
    * Stages without plugins stay in Rust without transferring their AST.
    */
-  plugin?: readonly JsPlugin[];
+  plugins?: readonly JsPlugin[];
 }
 
 export interface TransformOutput extends CodegenOutput {

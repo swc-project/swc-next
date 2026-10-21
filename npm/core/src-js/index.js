@@ -72,7 +72,7 @@ export function transformSync(source, options) {
   };
   const transformOptions = encodeTransformOptions(options?.transform);
   const codegenOptions = encodeCodegenOptions(options?.codegen);
-  const plugins = compilePlugins(options?.plugin);
+  const plugins = compilePlugins(options?.plugins);
 
   if (plugins.before.length === 0 && plugins.after.length === 0) {
     const result = decodeTransformOutput(__transformSync(
@@ -179,7 +179,7 @@ function decodeTransformOutput(buffer) {
 function compilePlugins(plugins) {
   const phases = { before: [], after: [] };
   if (plugins === undefined) return phases;
-  if (!Array.isArray(plugins)) throw new TypeError("plugin must be an array");
+  if (!Array.isArray(plugins)) throw new TypeError("plugins must be an array");
   for (const plugin of plugins) {
     if (plugin === null || typeof plugin !== "object" || Array.isArray(plugin)) {
       throw new TypeError("Each JS plugin must be an object");

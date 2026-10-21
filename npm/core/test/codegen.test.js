@@ -92,7 +92,7 @@ test("decoder preserves literal spelling from the transformed string pool", () =
     transformSync(source, {
       parser: { lang },
       transform: { typescript: false },
-      plugin: [{
+      plugins: [{
         name: "inspect-literal",
         phase: "after",
         visitors: { Literal(node) { literal = node; } },

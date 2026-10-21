@@ -20,6 +20,6 @@ function removeDebugger(): JsPlugin {
 
 const { code } = transformSync('import value from "dependency"; debugger;', {
   filename: "input.js",
-  plugin: [removeDebugger()],
+  plugins: [removeDebugger()],
 });
 console.log(code);
