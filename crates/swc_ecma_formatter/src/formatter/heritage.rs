@@ -120,6 +120,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut first_mode = ContentMode::Formatted;
         let mut before_suppression = CommentBinding::Unbound;
         let mut after_suppression = CommentBinding::Unbound;
+        let mut preceding_bridge = false;
         if self.has_suppression && !comments.is_empty() {
             let owners = owners();
             let line_owner = owners.line_decorator.map(|node| node.span(self.ast));
@@ -134,6 +135,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     first_mode = ContentMode::Verbatim;
                 } else {
                     preceding = preceding.combine(CommentBinding::BoundTo(target));
+                    // This physical run selects the preceding owner through the
+                    // keyword on the same line. Its complete prefix owns that
+                    // bridge, including any comments after the keyword.
+                    preceding_bridge |= matches!(position, SuppressionPosition::Inline);
                 }
             }
             for (_, position) in self.suppressed_comment_runs(after, gap.end) {
@@ -162,7 +167,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Span::new(keyword.end, gap.end),
             after_suppression,
         );
-        let source = matches!(before_binding, CommentBinding::SourceBound)
+        let source = preceding_bridge
+            || matches!(before_binding, CommentBinding::SourceBound)
             || matches!(after_binding, CommentBinding::SourceBound);
         let leading = !source
             && first_mode == ContentMode::Formatted
