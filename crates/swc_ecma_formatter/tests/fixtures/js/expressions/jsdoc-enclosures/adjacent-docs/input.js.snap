@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @typedef {number} N */ /** ordinary */ (first);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @typedef {number} N */ /** ordinary */ (first);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @typedef {number} N */ /** ordinary */ (first)
