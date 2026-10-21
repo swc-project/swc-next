@@ -1,11 +1,11 @@
 ---
-title: "Tool overview"
-description: "Composable components for each stage of JavaScript and TypeScript tooling."
+title: "Component APIs"
+description: "APIs for each stage of JavaScript and TypeScript compilation."
 ---
 
-# Tool overview
+# Component APIs
 
-Composable components for each stage of JavaScript and TypeScript tooling.
+APIs for each stage of JavaScript and TypeScript compilation.
 
 ## The pipeline
 

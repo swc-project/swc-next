@@ -17,4 +17,4 @@ Focused packages for applications that need only one side of the pipeline.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

@@ -19,4 +19,4 @@ Advanced interfaces for moving AST data across the Rust and JavaScript boundary.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

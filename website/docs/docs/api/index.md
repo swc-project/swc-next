@@ -7,6 +7,11 @@ description: "Find the public functions, options, and types for your integration
 
 Find the public functions, options, and types for your integration.
 
+## Compiler components
+
+[Component APIs](/api/components/) cover parsing, AST traversal, semantic analysis,
+transformations, code generation, minification, type stripping, and isolated declarations.
+
 ## JavaScript
 
 - Core, focused packages, browser initialization, traversal, and shared AST types.
@@ -21,4 +26,4 @@ Find the public functions, options, and types for your integration.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

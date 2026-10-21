@@ -17,4 +17,4 @@ Shared ESTree-based declarations from @swc-next/types.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

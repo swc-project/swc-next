@@ -17,4 +17,4 @@ Small starting points for tools built around the AST.
 
 ## Related
 
-[Tool overview](/tools/) · [API reference](/api/)
+[Component APIs](/api/components/) · [API reference](/api/)

@@ -18,4 +18,4 @@ SWC Next is a ground-up rewrite with separate packages and a new AST representat
 
 ## Related
 
-[Tool overview](/tools/) · [API reference](/api/)
+[Component APIs](/api/components/) · [API reference](/api/)

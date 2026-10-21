@@ -63,54 +63,6 @@ const guide = [
 export const sidebar = {
   "/": guide,
   "/guide/": guide,
-  "/tools/": [
-    {
-      "text": "Components",
-      "items": [
-        {
-          "text": "Overview",
-          "link": "/tools/"
-        },
-        {
-          "text": "Parser",
-          "link": "/tools/parser"
-        },
-        {
-          "text": "AST & traversal",
-          "link": "/tools/ast"
-        },
-        {
-          "text": "Semantic analysis",
-          "link": "/tools/semantic"
-        },
-        {
-          "text": "Transformer",
-          "link": "/tools/transformer"
-        },
-        {
-          "text": "Code generation",
-          "link": "/tools/codegen"
-        }
-      ]
-    },
-    {
-      "text": "Specialized tools \u00b7 Rust",
-      "items": [
-        {
-          "text": "Minifier",
-          "link": "/tools/minifier"
-        },
-        {
-          "text": "Type strip",
-          "link": "/tools/type-strip"
-        },
-        {
-          "text": "Isolated declarations",
-          "link": "/tools/isolated-declarations"
-        }
-      ]
-    }
-  ],
   "/api/": [
     {
       "text": "API reference",
@@ -118,6 +70,47 @@ export const sidebar = {
         {
           "text": "Overview",
           "link": "/api/"
+        },
+        {
+          "text": "Component APIs",
+          "link": "/api/components/"
+        }
+      ]
+    },
+    {
+      "text": "Compiler components",
+      "items": [
+        {
+          "text": "Parser",
+          "link": "/api/components/parser"
+        },
+        {
+          "text": "AST & traversal",
+          "link": "/api/components/ast"
+        },
+        {
+          "text": "Semantic analysis",
+          "link": "/api/components/semantic"
+        },
+        {
+          "text": "Transformer",
+          "link": "/api/components/transformer"
+        },
+        {
+          "text": "Code generation",
+          "link": "/api/components/codegen"
+        },
+        {
+          "text": "Minifier",
+          "link": "/api/components/minifier"
+        },
+        {
+          "text": "Type strip",
+          "link": "/api/components/type-strip"
+        },
+        {
+          "text": "Isolated declarations",
+          "link": "/api/components/isolated-declarations"
         }
       ]
     },

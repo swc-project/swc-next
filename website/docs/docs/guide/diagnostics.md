@@ -18,4 +18,4 @@ Understand parser recovery, semantic early errors, and source offsets.
 
 ## Related
 
-[Tool overview](/tools/) · [API reference](/api/)
+[Component APIs](/api/components/) · [API reference](/api/)

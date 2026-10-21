@@ -5,7 +5,6 @@ import "./index.css";
 
 const sectionNames: Record<string, string> = {
   guide: "Guide",
-  tools: "Tools",
   api: "API reference",
   benchmarks: "Benchmarks",
   resources: "Resources",

@@ -18,4 +18,4 @@ Use component rustdoc for function signatures, options, and AST contracts.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

@@ -14,23 +14,10 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/", activeMatch: "^/$|^/guide/" },
       {
-        text: "Tools",
-        items: [
-          { text: "All components", link: "/tools/" },
-          { text: "Parser", link: "/tools/parser" },
-          { text: "AST & traversal", link: "/tools/ast" },
-          { text: "Semantic analysis", link: "/tools/semantic" },
-          { text: "Transformer", link: "/tools/transformer" },
-          { text: "Code generation", link: "/tools/codegen" },
-          { text: "Minifier", link: "/tools/minifier" },
-          { text: "Type strip", link: "/tools/type-strip" },
-          { text: "Isolated declarations", link: "/tools/isolated-declarations" },
-        ],
-      },
-      {
         text: "API",
         items: [
           { text: "Overview", link: "/api/" },
+          { text: "Component APIs", link: "/api/components/" },
           { text: "JavaScript", link: "/api/javascript/core" },
           { text: "Rust", link: "/api/rust" },
           { text: "AST interop", link: "/api/interop" },

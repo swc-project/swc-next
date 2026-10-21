@@ -17,4 +17,4 @@ The browser WebAssembly interface: @swc-next/core-browser.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)

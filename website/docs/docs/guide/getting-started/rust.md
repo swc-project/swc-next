@@ -17,4 +17,4 @@ Compose SWC Next crates directly to build compiler tooling.
 
 ## Related
 
-[Tool overview](/tools/) · [API reference](/api/)
+[Component APIs](/api/components/) · [API reference](/api/)

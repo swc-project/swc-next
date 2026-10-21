@@ -21,4 +21,4 @@ Turn source text into a tool you can inspect and change.
 
 ## Related
 
-[Tool overview](/tools/) · [API reference](/api/)
+[Component APIs](/api/components/) · [API reference](/api/)

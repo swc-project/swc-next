@@ -18,4 +18,4 @@ The combined JavaScript interface: @swc-next/core.
 
 ## Related
 
-[Quick start](/guide/getting-started/node) · [Tool overview](/tools/)
+[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)
