@@ -1823,8 +1823,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map(|id| ast.get_node_in_sub_range(id))
                 .scan(None, |previous, argument| {
                     let span = argument.span(ast);
-                    let empty = previous
-                        .is_some_and(|previous| self.next_line_is_empty(previous, span.start));
+                    let empty = previous.is_some_and(|previous| {
+                        let gap = Span::new(previous, span.start);
+                        self.find_token(gap, self.comments.in_range(gap), ",")
+                            .is_some_and(|comma| self.next_line_is_empty(comma + 1, span.start))
+                    });
                     *previous = Some(span.end);
                     Some(empty)
                 })
