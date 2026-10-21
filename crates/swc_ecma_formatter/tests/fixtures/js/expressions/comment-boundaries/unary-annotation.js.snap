@@ -6,4 +6,4 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
--(/*#__PURE__*/ -a);
+-(/*#__PURE__*/ (-a));

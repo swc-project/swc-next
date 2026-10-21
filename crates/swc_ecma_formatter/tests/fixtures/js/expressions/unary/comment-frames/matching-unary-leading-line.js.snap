@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+- // head
+(-item);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+-(
+  // head
+  (-item)
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;-(
+  // head
+  (-item)
+)
