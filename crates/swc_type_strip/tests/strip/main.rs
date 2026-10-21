@@ -59,17 +59,23 @@ fn assert_strip_error<'a>(input: &'a str, expected: &str) -> StripResult<'a> {
     assert_eq!(result.code, expected);
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].severity, Severity::Error);
+    assert_valid_javascript(&result.code, Lang::Ts);
     result
 }
 
 #[track_caller]
-fn assert_strip_error_at(input: &str, expected: &str, diagnostic_text: &str) {
+fn assert_strip_error_at<'a>(
+    input: &'a str,
+    expected: &str,
+    diagnostic_text: &str,
+) -> StripResult<'a> {
     let result = assert_strip_error(input, expected);
     let Span { start, end } = result.diagnostics[0].span;
     assert_eq!(
         input.get(start as usize..end as usize),
         Some(diagnostic_text)
     );
+    result
 }
 
 mod annotations;

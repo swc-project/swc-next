@@ -2,6 +2,11 @@ use super::*;
 
 #[test]
 fn statement_boundaries() {
+    assert_strip_error(
+        "run()\nexport enum E { A }\n(next)();",
+        "run()\n;                  \n(next)();",
+    );
+
     assert_strip("foo\ntype T = string;\n(1);", "foo\n;               \n(1);");
 
     assert_strip(

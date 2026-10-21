@@ -92,6 +92,16 @@ fn exports() {
         ";                      \nrun();",
     );
 
+    assert_strip_error(
+        "export import Alias = Namespace.Member;",
+        ";                                      ",
+    );
+
+    assert_strip_error(
+        "export import Alias = require('pkg');",
+        ";                                    ",
+    );
+
     assert_strip(
         "export import type Alias = Namespace.Member;",
         ";                                           ",
