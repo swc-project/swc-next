@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+([  test  ]) ? /* @ts-ignore */ // prettier-ignore
+[  missing  ] : other;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+([  test  ]) ? /* @ts-ignore */ // prettier-ignore
+    [missing] : other;
