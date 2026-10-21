@@ -1,0 +1,4 @@
+(
+\u0066irst
+) /* prettier-ignore */
+? second : third;
