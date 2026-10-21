@@ -1,18 +1,18 @@
 ---
-title: "Type strip"
-description: "Erase the supported TypeScript syntax while preserving source positions."
+title: Type strip
+description: Remove erasable TypeScript syntax while preserving source positions.
 ---
 
 # Type strip
 
-Erase the supported TypeScript syntax while preserving source positions.
+Type stripping replaces erasable TypeScript syntax with spaces, preserving UTF-16 offsets and line breaks. Syntax that needs runtime code, such as enums, requires the [transformer](/api/components/transformer).
 
-## Behavior
+## Example
 
-- Output preserves UTF-16 length and line layout.
-- Inspect diagnostics before using recovery output.
+```ts title="Input"
+let value: number = 1;
+```
 
-## Current boundaries
-
-- Supports the erasableSyntaxOnly subset. Not currently exposed through the JavaScript API.
-- Type stripping is distinct from general TypeScript lowering.
+```js title="Output"
+let value         = 1;
+```

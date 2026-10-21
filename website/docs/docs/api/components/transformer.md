@@ -1,17 +1,25 @@
 ---
-title: "Transformer"
-description: "Apply supported syntax transformations to the flat AST."
+title: Transformer
+description: Lower supported TypeScript and JavaScript syntax.
 ---
 
 # Transformer
 
-Apply supported syntax transformations to the flat AST.
+The transformer rewrites supported syntax into JavaScript, including TypeScript constructs and class static blocks. Unlike type stripping, it can generate runtime code for TypeScript features such as parameter properties.
 
-## Transformations
+## Example
 
-- TypeScript lowering and class static blocks.
-- Transformation options, assumptions, and semantic model updates.
+```ts title="Input"
+class Point {
+  constructor(public x: number) {}
+}
+```
 
-## Availability
-
-- No published JavaScript package API yet. Try the supported subset in the [Playground](https://play.next.swc.rs).
+```js title="Output"
+class Point {
+  x;
+  constructor(x) {
+    this.x = x;
+  }
+}
+```

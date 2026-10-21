@@ -1,17 +1,20 @@
 ---
-title: "Minifier"
-description: "Optimize a valid JavaScript program AST before printing."
+title: Minifier
+description: Compress JavaScript expressions and remove unused local variables.
 ---
 
 # Minifier
 
-Optimize a valid JavaScript program AST before printing.
+The minifier shortens expressions and removes unused local variables. Compression can be combined with compact printing; variable name mangling is not yet implemented.
 
-## Compression
+## Example
 
-- Boolean and global constant shortening, safe typeof simplification, and unused local removal.
+```js title="Input"
+function choose(value) {
+  return value ? [true] : { flag: false };
+}
+```
 
-## Current boundaries
-
-- Not currently exposed through the JavaScript API. Name mangling is not implemented.
-- Compact printing is a separate code generator option.
+```js title="Output"
+function choose(value){return value?[!0]:{flag:!1}}
+```

@@ -1,16 +1,20 @@
 ---
-title: "Isolated declarations"
-description: "Generate TypeScript declaration surfaces using the flat AST and semantic model."
+title: Isolated declarations
+description: Generate TypeScript declaration files.
 ---
 
 # Isolated declarations
 
-Generate TypeScript declaration surfaces using the flat AST and semantic model.
+Isolated declaration generation produces `.d.ts` output describing a module's public types. It retains declaration signatures and removes implementations, without full TypeScript type checking.
 
-## Pipeline
+## Example
 
-- Analyze declaration dependencies, transform the retained surface, then print declarations.
+```ts title="Input"
+export function greet(name: string): string {
+  return "Hello, " + name;
+}
+```
 
-## Current boundaries
-
-- Not currently exposed through the JavaScript API. This is not a complete TypeScript type checker.
+```ts title="Output (.d.ts)"
+export declare function greet(name: string): string;
+```

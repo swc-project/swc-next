@@ -1,18 +1,25 @@
 ---
-title: "Semantic analysis"
-description: "Build a model of scopes, symbols, references, and module records."
+title: Semantic analysis
+description: Resolve declarations and references across scopes.
 ---
 
 # Semantic analysis
 
-Build a model of scopes, symbols, references, and module records.
+Semantic analysis tracks scopes, declarations, and references, so tools can determine which binding a name refers to. It also reports early errors, but does not perform TypeScript type checking.
 
-## Analysis
+## Example
 
-- Name resolution, declaration spaces, and early errors.
-- Recompute analysis after changes that invalidate bindings.
+```js title="Input"
+const value = 1;
+function read(value) {
+  return value;
+}
+console.log(value);
+```
 
-## Availability
+The two uses of `value` resolve to different declarations:
 
-- The full semantic model is not currently exposed through the JavaScript API.
-- This component does not perform full TypeScript type checking.
+| Reference | Declaration |
+| --- | --- |
+| `value` in `return value` | The parameter of `read`. |
+| `value` in `console.log(value)` | The outer `const value = 1`. |
