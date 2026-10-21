@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!(/* ordinary */ // @__PURE__
+/** @type {number} */ (first));
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+!(
+  /* ordinary */ // @__PURE__
+  /** @type {number} */ (
+    first
+  )
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+!(
+  /* ordinary */ // @__PURE__
+  /** @type {number} */ (first)
+);

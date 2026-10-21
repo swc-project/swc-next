@@ -6,15 +6,17 @@ void (/** @type {number} #__PURE__ */ ("value")).toFixed();
 ---------- Options ----------
 {"printWidth":24}
 ---------- Output ----------
-void (/** @type {number} #__PURE__ */ (
+void (
+  /** @type {number} #__PURE__ */ (
     "value"
-  )
-).toFixed();
+  ).toFixed()
+);
 
 ---------- Options ----------
 {"printWidth":24,"semi":false}
 ---------- Output ----------
-void (/** @type {number} #__PURE__ */ (
+void (
+  /** @type {number} #__PURE__ */ (
     "value"
-  )
-).toFixed()
+  ).toFixed()
+)

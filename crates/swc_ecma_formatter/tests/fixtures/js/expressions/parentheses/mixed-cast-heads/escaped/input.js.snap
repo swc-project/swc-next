@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ /** @ty\u0070e {number} */ (first));
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/*#__PURE__*/ /** @ty\u0070e {number} */ (
+  first
+);
