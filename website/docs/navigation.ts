@@ -20,37 +20,20 @@ const guide = [
     "text": "Getting started",
     "items": [
       {
-        "text": "Node.js",
-        "link": "/guide/getting-started/node"
+        "text": "Install",
+        "link": "/guide/install"
       },
       {
-        "text": "Browser & WebAssembly",
-        "link": "/guide/getting-started/browser"
+        "text": "Parser",
+        "link": "/guide/parser"
       },
       {
-        "text": "Choosing packages",
-        "link": "/guide/packages"
-      }
-    ]
-  },
-  {
-    "text": "Working with ASTs",
-    "items": [
-      {
-        "text": "Parse, walk, and print",
-        "link": "/guide/working-with-asts"
+        "text": "Walk",
+        "link": "/guide/walk"
       },
       {
-        "text": "Diagnostics & positions",
-        "link": "/guide/diagnostics"
-      },
-      {
-        "text": "TypeScript & JSX",
-        "link": "/guide/typescript-jsx"
-      },
-      {
-        "text": "Common recipes",
-        "link": "/guide/recipes"
+        "text": "Codegen",
+        "link": "/guide/codegen"
       }
     ]
   },
@@ -74,10 +57,31 @@ export const sidebar = {
         {
           "text": "Overview",
           "link": "/api/"
+        }
+      ]
+    },
+    {
+      "text": "JavaScript",
+      "items": [
+        {
+          "text": "Core",
+          "link": "/api/javascript/core"
         },
         {
-          "text": "Component APIs",
-          "link": "/api/components/"
+          "text": "Parser",
+          "link": "/api/javascript/parser"
+        },
+        {
+          "text": "Walk",
+          "link": "/api/javascript/walk"
+        },
+        {
+          "text": "Codegen",
+          "link": "/api/javascript/codegen"
+        },
+        {
+          "text": "AST types",
+          "link": "/api/javascript/types"
         }
       ]
     },
@@ -85,12 +89,8 @@ export const sidebar = {
       "text": "Compiler components",
       "items": [
         {
-          "text": "Parser",
-          "link": "/api/components/parser"
-        },
-        {
-          "text": "AST & traversal",
-          "link": "/api/components/ast"
+          "text": "Overview",
+          "link": "/api/components/"
         },
         {
           "text": "Semantic analysis",
@@ -99,10 +99,6 @@ export const sidebar = {
         {
           "text": "Transformer",
           "link": "/api/components/transformer"
-        },
-        {
-          "text": "Code generation",
-          "link": "/api/components/codegen"
         },
         {
           "text": "Minifier",
@@ -115,40 +111,6 @@ export const sidebar = {
         {
           "text": "Isolated declarations",
           "link": "/api/components/isolated-declarations"
-        }
-      ]
-    },
-    {
-      "text": "JavaScript",
-      "items": [
-        {
-          "text": "Core",
-          "link": "/api/javascript/core"
-        },
-        {
-          "text": "Parser & codegen",
-          "link": "/api/javascript/parser-codegen"
-        },
-        {
-          "text": "Browser API",
-          "link": "/api/javascript/browser"
-        },
-        {
-          "text": "Walker",
-          "link": "/api/javascript/walker"
-        },
-        {
-          "text": "AST types",
-          "link": "/api/javascript/types"
-        }
-      ]
-    },
-    {
-      "text": "Interop",
-      "items": [
-        {
-          "text": "AST interop",
-          "link": "/api/interop"
         }
       ]
     }

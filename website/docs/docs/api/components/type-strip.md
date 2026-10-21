@@ -16,7 +16,3 @@ Erase the supported TypeScript syntax while preserving source positions.
 
 - Supports the erasableSyntaxOnly subset. Not currently exposed through the JavaScript API.
 - Type stripping is distinct from general TypeScript lowering.
-
-## Related
-
-[Choosing packages](/guide/packages) · [API reference](/api/)

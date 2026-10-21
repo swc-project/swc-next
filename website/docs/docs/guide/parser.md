@@ -1,0 +1,39 @@
+---
+title: Parser
+description: Parse JavaScript and TypeScript into an AST.
+---
+
+# Parser
+
+Use `parseSync` to turn source text into an ESTree-based AST. [Install](/guide/install) the package for your runtime first.
+
+## Parse a program
+
+```js
+import { parseSync } from "@swc-next/core";
+
+const { program, diagnostics, meta } = parseSync("const answer = 42;");
+console.log(program.type); // Program
+console.log(diagnostics); // []
+```
+
+Inspect diagnostics before transforming or printing recovered syntax. Keep `meta` alongside the AST for [Codegen](/guide/codegen).
+
+## Parse TypeScript or JSX
+
+Choose the language explicitly:
+
+```js
+import { parseSync } from "@swc-next/core";
+
+const result = parseSync("const answer: number = 42;", { lang: "ts" });
+console.log(result.program.body[0].type); // VariableDeclaration
+```
+
+Use `jsx` or `tsx` for JSX input, and `dts` for declaration files. Parsing TypeScript preserves its types; it does not compile them away.
+
+## Next steps
+
+[Walk the AST](/guide/walk) or [generate code](/guide/codegen).
+
+See the [Parser API](/api/javascript/parser) for input and output types, language and source type options, comments, diagnostics, and source positions.

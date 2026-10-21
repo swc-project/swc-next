@@ -1,20 +1,18 @@
 ---
-title: "Component APIs"
-description: "APIs for each stage of JavaScript and TypeScript compilation."
+title: Compiler components
+description: Analysis, transformations, and optimization in the compiler pipeline.
 ---
 
-# Component APIs
+# Compiler components
 
-APIs for each stage of JavaScript and TypeScript compilation.
+Name resolution, syntax lowering, optimization, and declaration generation share the same flat AST. These stages prepare a program for further transformation or output.
 
-## The pipeline
+| Component | Capability |
+| --- | --- |
+| [Semantic analysis](/api/components/semantic) | Scopes, symbols, references, and module records. |
+| [Transformer](/api/components/transformer) | Supported syntax lowering and AST transformations. |
+| [Minifier](/api/components/minifier) | Program compression and optimization. |
+| [Type strip](/api/components/type-strip) | Erase supported TypeScript syntax while preserving source positions. |
+| [Isolated declarations](/api/components/isolated-declarations) | Generate TypeScript declaration surfaces. |
 
-- Parse source, analyze names, transform the tree, and generate code.
-
-## Choose an interface
-
-- Parsing, printing, and structural walking have JavaScript entry points. Other compiler components are not yet exposed through the public JavaScript API.
-
-## Related
-
-[Choosing packages](/guide/packages) · [API reference](/api/)
+JavaScript APIs for these components are not yet available.

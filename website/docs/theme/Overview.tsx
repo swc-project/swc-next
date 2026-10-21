@@ -2,16 +2,16 @@ import { Link } from "@rspress/core/theme-original";
 import { ArrowRight, ArrowUpRight, Braces, Code2, GitBranch, Layers, Terminal } from "lucide-react";
 
 const paths = [
-  { icon: Terminal, title: "Get started", description: "Your first parse, edit, and print.", href: "/guide/getting-started/node", label: "01" },
+  { icon: Terminal, title: "Get started", description: "Your first parse, edit, and print.", href: "/guide/install", label: "01" },
   { icon: Braces, title: "JavaScript API", description: "Parse, traverse, and print from JavaScript.", href: "/api/javascript/core", label: "02" },
-  { icon: Code2, title: "Browser API", description: "Parse and print with WebAssembly in the browser.", href: "/api/javascript/browser", label: "03" },
+  { icon: Code2, title: "Browser API", description: "Parse and print with WebAssembly in the browser.", href: "/api/javascript/core#browser-webassembly", label: "03" },
   { icon: Layers, title: "Under the hood", description: "Discover the flat AST architecture.", href: "/architecture/flat-ast", label: "04" },
 ];
 
 export function IntroActions() {
   return (
     <div className="intro-actions rp-not-doc">
-      <Link className="action-primary" href="/guide/getting-started/node">Get started <ArrowRight size={14} /></Link>
+      <Link className="action-primary" href="/guide/install">Get started <ArrowRight size={14} /></Link>
       <a className="action-secondary" href="https://play.next.swc.rs" target="_blank" rel="noreferrer">Try the Playground <ArrowUpRight size={14} /></a>
     </div>
   );

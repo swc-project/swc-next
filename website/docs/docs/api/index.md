@@ -1,25 +1,22 @@
 ---
-title: "API reference"
-description: "Find the public functions, options, and types for your integration."
+title: API reference
+description: JavaScript interfaces for parsing, AST traversal, and code generation.
 ---
 
 # API reference
 
-Find the public functions, options, and types for your integration.
-
-## Compiler components
-
-[Component APIs](/api/components/) cover parsing, AST traversal, semantic analysis,
-transformations, code generation, minification, type stripping, and isolated declarations.
+Parse source text, inspect or edit its AST, and generate code with SWC Next's JavaScript packages.
 
 ## JavaScript
 
-- Core, focused packages, browser initialization, traversal, and shared AST types.
+| API | Functions and types |
+| --- | --- |
+| [Core](/api/javascript/core) | Node.js and browser packages, exports, and WebAssembly initialization |
+| [Parser](/api/javascript/parser) | `parseSync`, parser options, results, and diagnostics |
+| [Walk](/api/javascript/walk) | `walk`, visitor hooks, traversal context, and `createWalker` |
+| [Codegen](/api/javascript/codegen) | `printSync`, formatting options, and generated output |
+| [AST types](/api/javascript/types) | Node declarations and source positions |
 
-## Interop
+## Compiler components
 
-- Encoding, decoding, source metadata, and version matching.
-
-## Related
-
-[Quick start](/guide/getting-started/node) · [Component APIs](/api/components/)
+[Compiler components](/api/components/) operate on the flat AST to resolve names, lower syntax, optimize programs, and generate declarations.

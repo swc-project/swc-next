@@ -14,7 +14,3 @@ Generate TypeScript declaration surfaces using the flat AST and semantic model.
 ## Current boundaries
 
 - Not currently exposed through the JavaScript API. This is not a complete TypeScript type checker.
-
-## Related
-
-[Choosing packages](/guide/packages) · [API reference](/api/)

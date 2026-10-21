@@ -19,4 +19,4 @@ A toolchain in active development, with JavaScript packages for Node.js and the 
 
 ## Related
 
-[Component APIs](/api/components/) · [API reference](/api/)
+[Compiler components](/api/components/) · [API reference](/api/)

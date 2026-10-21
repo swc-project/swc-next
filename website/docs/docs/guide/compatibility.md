@@ -18,4 +18,4 @@ SWC Next is a ground-up rewrite with separate packages and a new AST representat
 
 ## Related
 
-[Component APIs](/api/components/) · [API reference](/api/)
+[Compiler components](/api/components/) · [API reference](/api/)

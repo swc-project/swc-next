@@ -16,7 +16,3 @@ Build a model of scopes, symbols, references, and module records.
 
 - The full semantic model is not currently exposed through the JavaScript API.
 - This component does not perform full TypeScript type checking.
-
-## Related
-
-[Choosing packages](/guide/packages) · [API reference](/api/)

@@ -14,8 +14,4 @@ Apply supported syntax transformations to the flat AST.
 
 ## Availability
 
-- Try the supported subset in the [Playground](https://play.next.swc.rs).
-
-## Related
-
-[Choosing packages](/guide/packages) · [API reference](/api/)
+- No published JavaScript package API yet. Try the supported subset in the [Playground](https://play.next.swc.rs).
