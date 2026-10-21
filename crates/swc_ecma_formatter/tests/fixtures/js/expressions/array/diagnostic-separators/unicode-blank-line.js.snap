@@ -10,7 +10,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
   first,
 
   // @ts-ignore
-
   second,
 ]
 
@@ -21,6 +20,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
   first,
 
   // @ts-ignore
-
   second,
 ];
