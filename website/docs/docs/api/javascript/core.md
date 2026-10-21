@@ -38,12 +38,19 @@ Await `init()` before calling `parseSync` or `printSync`. It loads the bundled `
 
 Parsing and printing are synchronous after initialization. Run substantial workloads in a worker to keep the interface responsive.
 
-## TypeScript exports
+## Type imports
 
-Both packages export AST declarations from `@swc-next/types`, plus `ParserOptions`, `ParseResult`, `Comment`, `CommentMode`, `Diagnostic`, `DiagnosticLabel`, `CodegenOptions`, `CodegenOutput`, and `AstMeta`.
+Import types alongside the functions they configure:
 
-`Lang`, `SourceType`, and `CommentMode` are types, not runtime enum objects. Use string values such as `{ lang: "ts", sourceType: "module", comments: "flat" }`.
+```ts
+import { parseSync, type ParserOptions } from "@swc-next/core";
 
-## Focused packages
+const options = {
+  lang: "ts",
+  comments: "flat",
+} satisfies ParserOptions;
 
-Use `@swc-next/parser` for parsing only, `@swc-next/codegen` for printing only, and `@swc-next/walker` for traversal. The parser and printer use the same function signatures as the core packages.
+const result = parseSync("const answer: number = 42;", options);
+```
+
+`satisfies` checks option names and values while preserving their inferred types. The browser package exports the same types from `@swc-next/core-browser`. Both packages also re-export [AST node types](/api/javascript/types), such as `Program` and `Node`.
