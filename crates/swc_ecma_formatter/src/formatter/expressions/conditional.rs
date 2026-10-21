@@ -468,6 +468,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         let previous_end = before.last().map_or(span.start, |comment| comment.span.end);
         let next_start = after.first().map_or(span.end, |comment| comment.span.start);
+        let previous_mode = self.content_mode(trailing);
+        let mut before_operator = self.line_constraint(previous_end, operator_start);
+        if previous_mode == ContentMode::Verbatim
+            && !binding.allows_relocation(None)
+            && self.line_breaks(previous.source_end, operator_start) == 0
+            && trailing.iter().any(|&comment| {
+                comment.span.start > operator_start && self.comment_semantics(comment).suppression
+            })
+        {
+            // A source-bound packet stays after the operator. Keep its trailing
+            // ignore attached to the preceding operand on the same physical line.
+            before_operator = LineConstraint::SameLine;
+        }
         Ok(ConditionalBoundary {
             operator,
             source_range: span,
@@ -476,9 +489,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source: Some(ConditionalSourceBoundary {
                 operator_start,
                 binding,
-                previous_mode: self.content_mode(trailing),
+                previous_mode,
                 next_mode: self.content_mode(leading),
-                before_operator: self.line_constraint(previous_end, operator_start),
+                before_operator,
                 after_operator: self.line_constraint(operator_start + 1, next_start),
             }),
         })
