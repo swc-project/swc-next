@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type\u0064 {Missing} */; Math.random();
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type\u0064 {Missing} */ Math.random();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @type\u0064 {Missing} */ Math.random()

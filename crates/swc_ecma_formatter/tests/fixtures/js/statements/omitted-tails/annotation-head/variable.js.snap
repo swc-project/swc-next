@@ -8,26 +8,26 @@ const value = 1; /** @type {Function} */;
 {}
 ---------- Output ----------
 const value = 1;
-/** @type {Function} */
+/** @type {Function} */ ;
 consume(1);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-const value = 1
-/** @type {Function} */
+const value = 1;
+/** @type {Function} */ ;
 consume(1)
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
 const value = 1;
-/** @type {Function} */
+/** @type {Function} */ ;
 consume(1);
 
 ---------- Options ----------
 {"printWidth":40,"semi":false}
 ---------- Output ----------
-const value = 1
-/** @type {Function} */
+const value = 1;
+/** @type {Function} */ ;
 consume(1)
