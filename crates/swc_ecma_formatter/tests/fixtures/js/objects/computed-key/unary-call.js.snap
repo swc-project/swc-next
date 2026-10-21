@@ -28,9 +28,8 @@ const o = {
 {"printWidth":35,"tabWidth":8,"useTabs":true}
 ---------- Output ----------
 const o = {
-	[!!f()]:
-		veryVeryVeryVeryLongReceiver
-			.longProperty
-			.longProperty
-			.longProperty,
+	[!!f()]: veryVeryVeryVeryLongReceiver
+		.longProperty
+		.longProperty
+		.longProperty,
 };

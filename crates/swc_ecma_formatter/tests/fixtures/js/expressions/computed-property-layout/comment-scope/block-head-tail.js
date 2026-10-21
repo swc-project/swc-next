@@ -1,0 +1,3 @@
+({ [
+/* head */
+key /* tail */]: value });

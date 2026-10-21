@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({[
+/* prettier-ignore */
+/* ordinary */
+key(  )]:[ 1,2 ]})
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  [
+    /* prettier-ignore */
+    /* ordinary */
+    key(  )
+  ]: [1, 2],
+});
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;({
+  [
+    /* prettier-ignore */
+    /* ordinary */
+    key(  )
+  ]: [1, 2],
+})

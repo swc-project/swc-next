@@ -17,20 +17,17 @@ const o = {
 {"printWidth":35,"tabWidth":4}
 ---------- Output ----------
 const o = {
-    [`a`]:
-        veryVeryVeryVeryLongReceiver
-            .longProperty
-            .longProperty
-            .longProperty,
+    [`a`]: veryVeryVeryVeryLongReceiver
+        .longProperty.longProperty
+        .longProperty,
 };
 
 ---------- Options ----------
 {"printWidth":35,"tabWidth":8,"useTabs":true}
 ---------- Output ----------
 const o = {
-	[`a`]:
-		veryVeryVeryVeryLongReceiver
-			.longProperty
-			.longProperty
-			.longProperty,
+	[`a`]: veryVeryVeryVeryLongReceiver
+		.longProperty
+		.longProperty
+		.longProperty,
 };

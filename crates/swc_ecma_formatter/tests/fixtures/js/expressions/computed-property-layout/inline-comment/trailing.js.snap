@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = ({ [name /* key end */]
+/* before */
+: /* multiline
+value */ value, next: other });
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+result = {
+  [name /* key end */]:
+    /* before */
+    /* multiline
+value */ value,
+  next: other,
+};

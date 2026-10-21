@@ -14,25 +14,22 @@ interface Shape {
 {"printWidth":20}
 ---------- Output ----------
 interface Shape {
-  [
-    (key = "name")
-  ](): string;
+  [(key =
+    "name")](): string;
 }
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 interface Shape {
-  [
-    (key = "name")
-  ](): string
+  [(key =
+    "name")](): string
 }
 
 ---------- Options ----------
 {"printWidth":20,"useTabs":true}
 ---------- Output ----------
 interface Shape {
-	[
-		(key = "name")
-	](): string;
+	[(key =
+		"name")](): string;
 }

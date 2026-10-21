@@ -1,0 +1,2 @@
+({ [first + name // tail
+]: value });
