@@ -2,19 +2,8 @@ import type { Node } from "@swc-next/types";
 import type { WalkHooks } from "@swc-next/walker";
 export type * from "@swc-next/types";
 
-import type {
-  CodegenOptions,
-  CodegenOutput,
-  ParserOptions,
-  TransformPassOptions,
-} from "./binding.js";
-export type {
-  CommentMode,
-  CodegenOptions,
-  CodegenOutput,
-  ParserOptions,
-  TransformPassOptions,
-} from "./binding.js";
+import type { CodegenOutput } from "./binding.js";
+export type { CodegenOutput } from "./binding.js";
 
 export interface DiagnosticLabel {
   message: string;
@@ -39,13 +28,60 @@ export interface JsPlugin {
   visitors: WalkHooks<unknown, Node>;
 }
 
+/** Supported parser configuration. Explicit settings override filename inference. */
+export type TransformParserOptions =
+  | { syntax: "ecmascript"; jsx?: boolean }
+  | { syntax: "typescript"; tsx?: boolean };
+
+export interface TransformJscOptions {
+  parser?: TransformParserOptions;
+  /** Defaults to "esnext". Other targets are not implemented. */
+  target?: "esnext";
+  transform?: {
+    /**
+     * Preserve value imports/exports. Defaults to false.
+     * SWC Next also disables const-enum inlining/removal; SWC 1.16.18 still
+     * inlines const-enum uses with this enabled.
+     */
+    verbatimModuleSyntax?: boolean;
+  };
+  output?: {
+    /** Defaults to "utf8". */
+    charset?: "ascii" | "utf8";
+  };
+}
+
+/** SWC Next extensions, separate from the supported SWC configuration subset. */
+export interface SwcNextTransformOptions {
+  /** Lower TypeScript. Defaults to true for TS input; false retains TS syntax. */
+  typescript?: boolean;
+  /** Lower class static blocks. Defaults to false. */
+  staticBlocks?: boolean;
+  /** Preserve explicit parentheses in plugin ASTs. Defaults to true. */
+  preserveParens?: boolean;
+  /** Escape closing script tags; tagged template raw text is preserved. Defaults to false. */
+  inlineScript?: boolean;
+  /** Retain const-enum declarations while allowing inlining. Defaults to false. */
+  preserveConstEnums?: boolean;
+}
+
+/**
+ * Strict SWC configuration subset. Unknown fields and unsupported values throw
+ * TypeError with the option path. No config files are discovered or loaded.
+ */
 export interface TransformOptions {
-  /** Infer language/source type from this path. Without a filename, parse as a JS module. */
+  /**
+   * Used for diagnostics and language inference when jsc.parser is omitted.
+   * Explicit parser settings win. TS declaration filenames select ambient
+   * parsing with TypeScript syntax. Does not select the input module mode.
+   */
   filename?: string;
-  /** Override filename inference. Transform always checks semantic early errors. */
-  parser?: Omit<ParserOptions, "semanticErrors"> | null;
-  transform?: TransformPassOptions | null;
-  codegen?: CodegenOptions | null;
+  /** Defaults to true (module). false selects script; "commonjs" allows top-level return. */
+  isModule?: boolean | "commonjs";
+  jsc?: TransformJscOptions;
+  /** Compact printing only; does not compress code or mangle names. Defaults to false. */
+  minify?: boolean;
+  swcNext?: SwcNextTransformOptions;
   /** Before plugins run first, then Rust transforms, then after plugins.
    * Stages without plugins stay in Rust without transferring their AST.
    */
@@ -62,7 +98,9 @@ export interface TransformOutput extends CodegenOutput {
  * printing are not yet supported. Plugin errors propagate unchanged.
  * With no JS plugins, the entire pipeline runs in Rust without AST transfers.
  * @throws {SyntaxError} On parser or semantic errors, with a diagnostics array
- * containing UTF-16 source offsets. No later phase runs after an error.
+ * containing UTF-16 source offsets. Source and before-plugin ASTs are checked;
+ * after-plugin edits are printed without another semantic check.
+ * No later phase runs after an error. Invalid options throw TypeError.
  */
 export declare function transformSync(
   source: string,

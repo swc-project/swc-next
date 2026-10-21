@@ -68,11 +68,21 @@ export type SourceType =  'module'|
 export interface TransformPassOptions {
   /**
    * Lower TypeScript syntax. Defaults to true for TypeScript input.
-   * Uses the transformer's default TypeScript options; JSX is preserved.
+   * JSX is preserved.
    */
   typescript?: boolean
   /** Lower class static blocks. Defaults to false. */
   staticBlocks?: boolean
+  /**
+   * Preserve value imports/exports and disable const-enum inlining and removal.
+   * Only applies when lowering TypeScript. Defaults to false.
+   */
+  verbatimModuleSyntax?: boolean
+  /**
+   * Preserve const-enum declarations while still allowing inlining.
+   * Only applies when lowering TypeScript. Defaults to false.
+   */
+  preserveConstEnums?: boolean
 }
 export declare function langFromPath(path: string): Lang
 

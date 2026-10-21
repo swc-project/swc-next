@@ -6,7 +6,15 @@ const TYPESCRIPT_SHIFT: u32 = 1;
 const TYPESCRIPT_MASK: u32 = 0b11 << TYPESCRIPT_SHIFT;
 const STATIC_BLOCKS_SHIFT: u32 = 3;
 const STATIC_BLOCKS_MASK: u32 = 0b11 << STATIC_BLOCKS_SHIFT;
-const KNOWN_MASK: u32 = OPTIONS_PRESENT | TYPESCRIPT_MASK | STATIC_BLOCKS_MASK;
+const VERBATIM_MODULE_SYNTAX_SHIFT: u32 = 5;
+const VERBATIM_MODULE_SYNTAX_MASK: u32 = 0b11 << VERBATIM_MODULE_SYNTAX_SHIFT;
+const PRESERVE_CONST_ENUMS_SHIFT: u32 = 7;
+const PRESERVE_CONST_ENUMS_MASK: u32 = 0b11 << PRESERVE_CONST_ENUMS_SHIFT;
+const KNOWN_MASK: u32 = OPTIONS_PRESENT
+    | TYPESCRIPT_MASK
+    | STATIC_BLOCKS_MASK
+    | VERBATIM_MODULE_SYNTAX_MASK
+    | PRESERVE_CONST_ENUMS_MASK;
 
 #[bridge]
 impl BridgeDecode for Option<TransformPassOptions> {
@@ -22,6 +30,16 @@ impl BridgeDecode for Option<TransformPassOptions> {
         Some(Some(TransformPassOptions {
             typescript: boolean_field(value, TYPESCRIPT_MASK, TYPESCRIPT_SHIFT)?,
             static_blocks: boolean_field(value, STATIC_BLOCKS_MASK, STATIC_BLOCKS_SHIFT)?,
+            verbatim_module_syntax: boolean_field(
+                value,
+                VERBATIM_MODULE_SYNTAX_MASK,
+                VERBATIM_MODULE_SYNTAX_SHIFT,
+            )?,
+            preserve_const_enums: boolean_field(
+                value,
+                PRESERVE_CONST_ENUMS_MASK,
+                PRESERVE_CONST_ENUMS_SHIFT,
+            )?,
         }))
     }
 }

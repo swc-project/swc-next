@@ -3,7 +3,6 @@ import {
   parseTransformSync as __parseTransformSync,
   parseSync as __parseSync,
   printSync as __printSync,
-  sourceTypeFromPath,
   transformAstSync as __transformAstSync,
   transformPrintSync as __transformPrintSync,
   transformSync as __transformSync,
@@ -46,19 +45,7 @@ function encodeSource(source) {
 
 export function transformSync(source, options) {
   if (typeof source !== "string") throw new TypeError("source must be a string");
-  checkOptions(options, "options");
-  const filename = options?.filename ?? "input.js";
-  if (typeof filename !== "string") throw new TypeError("filename must be a string");
-  checkOptions(options?.parser, "parser");
-  const parserOptions = {
-    ...options?.parser,
-    lang: options?.parser?.lang ?? langFromPath(filename),
-    sourceType: options?.parser?.sourceType
-      ?? (options?.filename == null ? "module" : sourceTypeFromPath(filename)),
-    semanticErrors: true,
-  };
-  const transformOptions = encodeTransformOptions(options?.transform);
-  const codegenOptions = encodeCodegenOptions(options?.codegen);
+  const { filename, parserOptions, transformOptions, codegenOptions } = normalizeTransformOptions(options);
   const plugins = compilePlugins(options?.plugins);
 
   if (plugins.before.length === 0 && plugins.after.length === 0) {
@@ -167,47 +154,116 @@ function compilePlugins(plugins) {
   const phases = { before: [], after: [] };
   if (plugins === undefined) return phases;
   if (!Array.isArray(plugins)) throw new TypeError("plugins must be an array");
-  for (const plugin of plugins) {
-    if (plugin === null || typeof plugin !== "object" || Array.isArray(plugin)) {
-      throw new TypeError("Each JS plugin must be an object");
-    }
+  for (const [index, plugin] of plugins.entries()) {
+    const path = `plugins[${index}]`;
+    optionObject(plugin, path, ["name", "phase", "visitors"]);
+    if (plugin === undefined) throw new TypeError(`${path} must be an object`);
     if (typeof plugin.name !== "string" || plugin.name.length === 0) {
-      throw new TypeError("Each JS plugin must have a non-empty name");
+      throw new TypeError(`${path}.name must be a non-empty string`);
     }
-    const phase = plugin.phase ?? "before";
+    const phase = plugin.phase === undefined ? "before" : plugin.phase;
     if (phase !== "before" && phase !== "after") {
-      throw new TypeError(`Invalid phase for JS plugin ${plugin.name}`);
+      throw new TypeError(`${path}.phase must be "before" or "after"`);
     }
     if (
       plugin.visitors === null
       || typeof plugin.visitors !== "object"
       || Array.isArray(plugin.visitors)
     ) {
-      throw new TypeError(`JS plugin ${plugin.name} must provide visitors`);
+      throw new TypeError(`${path}.visitors must be an object`);
     }
     phases[phase].push(createWalker(plugin.visitors));
   }
   return phases;
 }
 
-function encodeTransformOptions(options) {
-  checkOptions(options, "transform");
-  if (options == null) return 0;
-  return 1
-    | (encodeBoolean(options.typescript, "typescript") << 1)
-    | (encodeBoolean(options.staticBlocks, "staticBlocks") << 3);
-}
+function normalizeTransformOptions(options) {
+  const config = optionObject(options ?? {}, "", ["filename", "isModule", "jsc", "minify", "plugins", "swcNext"]);
+  const filename = config.filename === undefined ? "input.js" : config.filename;
+  if (typeof filename !== "string") throw new TypeError("filename must be a string");
+  const jsc = optionObject(config.jsc, "jsc", ["parser", "target", "transform", "output"]);
+  const transform = optionObject(jsc.transform, "jsc.transform", ["verbatimModuleSyntax"]);
+  const output = optionObject(jsc.output, "jsc.output", ["charset"]);
+  const extensions = optionObject(config.swcNext, "swcNext", [
+    "typescript", "staticBlocks", "preserveParens", "inlineScript", "preserveConstEnums",
+  ]);
 
-function encodeBoolean(value, name) {
-  if (value == null) return 0;
-  if (typeof value !== "boolean") throw new TypeError(`${name} must be a boolean`);
-  return value ? 2 : 1;
-}
-
-function checkOptions(options, name) {
-  if (options != null && (typeof options !== "object" || Array.isArray(options))) {
-    throw new TypeError(`${name} must be an object`);
+  if (jsc.target !== undefined && jsc.target !== "esnext") {
+    throw new TypeError('Unsupported option jsc.target: only "esnext" is supported');
   }
+  if (output.charset !== undefined && output.charset !== "ascii" && output.charset !== "utf8") {
+    throw new TypeError('jsc.output.charset must be "ascii" or "utf8"');
+  }
+  let sourceType;
+  switch (config.isModule) {
+    case undefined:
+    case true: sourceType = "module"; break;
+    case false: sourceType = "script"; break;
+    case "commonjs": sourceType = "commonjs"; break;
+    default: throw new TypeError('Unsupported option isModule: expected true, false, or "commonjs"');
+  }
+
+  let lang = langFromPath(filename);
+  if (jsc.parser !== undefined) {
+    const parser = optionObject(jsc.parser, "jsc.parser", ["syntax", "jsx", "tsx"]);
+    if (parser.syntax === "ecmascript") {
+      optionObject(parser, "jsc.parser", ["syntax", "jsx"]);
+      lang = booleanOption(parser.jsx, "jsc.parser.jsx") ? "jsx" : "js";
+    } else if (parser.syntax === "typescript") {
+      optionObject(parser, "jsc.parser", ["syntax", "tsx"]);
+      const tsx = booleanOption(parser.tsx, "jsc.parser.tsx");
+      lang = lang === "dts" ? "dts" : tsx ? "tsx" : "ts";
+    } else {
+      throw new TypeError('jsc.parser.syntax must be "ecmascript" or "typescript"');
+    }
+  }
+
+  const parserOptions = {
+    lang,
+    sourceType,
+    preserveParens: booleanOption(extensions.preserveParens, "swcNext.preserveParens"),
+    comments: "none",
+    semanticErrors: true,
+  };
+  const transformOptions = 1
+    | (encodeBoolean(extensions.typescript, "swcNext.typescript") << 1)
+    | (encodeBoolean(extensions.staticBlocks, "swcNext.staticBlocks") << 3)
+    | (encodeBoolean(transform.verbatimModuleSyntax, "jsc.transform.verbatimModuleSyntax") << 5)
+    | (encodeBoolean(extensions.preserveConstEnums, "swcNext.preserveConstEnums") << 7);
+  const codegenOptions = encodeCodegenOptions({
+    asciiOnly: output.charset === "ascii",
+    minify: booleanOption(config.minify, "minify"),
+    inlineScript: booleanOption(extensions.inlineScript, "swcNext.inlineScript"),
+  });
+  return { filename, parserOptions, transformOptions, codegenOptions };
+}
+
+function encodeBoolean(value, path) {
+  const boolean = booleanOption(value, path);
+  return boolean === undefined ? 0 : boolean ? 2 : 1;
+}
+
+function booleanOption(value, path) {
+  if (value !== undefined && typeof value !== "boolean") {
+    throw new TypeError(`${path} must be a boolean`);
+  }
+  return value;
+}
+
+function optionObject(value, path, keys) {
+  if (value === undefined) return {};
+  if (
+    value === null || typeof value !== "object" || Array.isArray(value)
+    || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)
+  ) {
+    throw new TypeError(`${path || "options"} must be a plain object`);
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    if (!keys.includes(key)) {
+      throw new TypeError(`Unsupported option ${path ? path + "." : ""}${String(key)}`);
+    }
+  }
+  return value;
 }
 
 function throwOnDiagnostics(diagnostics, filename) {

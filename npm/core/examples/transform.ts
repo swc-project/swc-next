@@ -18,8 +18,17 @@ function removeDebugger(): JsPlugin {
   };
 }
 
-const { code } = transformSync('import value from "dependency"; debugger;', {
-  filename: "input.js",
-  plugins: [removeDebugger()],
-});
+const { code } = transformSync(
+  'import value from "dependency"; const answer: number = value; debugger;',
+  {
+    filename: "input.ts",
+    isModule: true,
+    jsc: {
+      parser: { syntax: "typescript" },
+      target: "esnext",
+      transform: { verbatimModuleSyntax: true },
+    },
+    plugins: [removeDebugger()],
+  },
+);
 console.log(code);

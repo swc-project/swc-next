@@ -90,8 +90,8 @@ test("decoder preserves literal spelling from the transformed string pool", () =
   function transformedLiteral(source, lang) {
     let literal;
     transformSync(source, {
-      parser: { lang },
-      transform: { typescript: false },
+      jsc: { parser: { syntax: lang === "ts" ? "typescript" : "ecmascript" } },
+      swcNext: { typescript: false },
       plugins: [{
         name: "inspect-literal",
         phase: "after",

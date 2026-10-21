@@ -213,7 +213,11 @@ fn run_passes(ast: &mut Ast<'_>, options: TransformPassOptions) {
         ast,
         analyzed.semantic,
         TransformerOptions {
-            typescript: typescript.then(TypeScriptOptions::default),
+            typescript: typescript.then(|| TypeScriptOptions {
+                verbatim_module_syntax: options.verbatim_module_syntax.unwrap_or_default(),
+                preserve_const_enums: options.preserve_const_enums.unwrap_or_default(),
+                ..TypeScriptOptions::default()
+            }),
             es2022: ES2022Options {
                 static_blocks: options.static_blocks.unwrap_or_default(),
             },
