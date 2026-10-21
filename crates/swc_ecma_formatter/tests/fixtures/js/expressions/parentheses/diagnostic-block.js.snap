@@ -8,48 +8,48 @@ first + second);
 ---------- Options ----------
 {}
 ---------- Output ----------
-(/* header
-   * @ts-ignore */
-  first + second);
+/* header
+ * @ts-ignore */
+first + second;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;(/* header
-   * @ts-ignore */
-  first + second)
+/* header
+ * @ts-ignore */
+first + second
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-(/* header
-   * @ts-ignore */
-  first + second);
+/* header
+ * @ts-ignore */
+first + second;
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
-(/* header
-   * @ts-ignore */
-  first + second);
+/* header
+ * @ts-ignore */
+first + second;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-(/* header
-	 * @ts-ignore */
-	first + second);
+/* header
+ * @ts-ignore */
+first + second;
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
-(/* header
-   * @ts-ignore */
-  first + second);
+/* header
+ * @ts-ignore */
+first + second;
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
-(/* header
-   * @ts-ignore */
-  first + second);
+/* header
+ * @ts-ignore */
+first + second;

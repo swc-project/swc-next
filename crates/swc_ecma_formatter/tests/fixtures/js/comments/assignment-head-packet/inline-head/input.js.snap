@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = /* own */ (!left)(arg);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result =
+  /* own */ (!left)(
+    arg,
+  );
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+result =
+  /* own */ (!left)(
+    arg,
+  )

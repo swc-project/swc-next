@@ -7,6 +7,4 @@ f)<number>;
 ---------- Options ----------
 {}
 ---------- Output ----------
-let o =
-  //c
-  f<number>;
+let o = f<number>; //c
