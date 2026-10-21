@@ -23,10 +23,7 @@ export function Layout() {
     <OriginalLayout
       navTitle={
         <Link className="site-brand" href="/" aria-label="SWC Next documentation home">
-          <img src="/images/swc.png" alt="" width="42" height="24" />
-          <span>SWC <span className="site-brand__next">Next</span></span>
-          <span className="site-brand__divider" />
-          <span className="site-brand__docs">Docs</span>
+          <img src="/images/swc.png" alt="" width="72" height="26" />
         </Link>
       }
       beforeDocContent={
