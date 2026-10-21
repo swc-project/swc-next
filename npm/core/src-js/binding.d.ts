@@ -63,6 +63,17 @@ export type SourceType =  'module'|
 'script'|
 'commonjs'|
 'unambiguous';
+
+/** Rust transforms applied between JavaScript plugin stages. */
+export interface TransformPassOptions {
+  /**
+   * Lower TypeScript syntax. Defaults to true for TypeScript input.
+   * Uses the transformer's default TypeScript options; JSX is preserved.
+   */
+  typescript?: boolean
+  /** Lower class static blocks. Defaults to false. */
+  staticBlocks?: boolean
+}
 export declare function langFromPath(path: string): Lang
 
 /**
@@ -83,3 +94,12 @@ export declare function parseSync(source: Buffer, sourceUtf16Len: number, option
 export declare function printSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: CodegenOptions | undefined | null): CodegenOutput
 
 export declare function sourceTypeFromPath(path: string): SourceType
+
+/**
+ * # Safety
+ *
+ * `buffer` must be produced by `@swc-next/encoder` matching the version of this
+ * binding and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
+ * It must be aligned to eight bytes and remain immutable throughout the call.
+ */
+export declare function transformAstSync(buffer: Buffer, options?: TransformPassOptions | undefined | null): Buffer

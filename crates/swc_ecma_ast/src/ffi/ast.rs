@@ -307,6 +307,48 @@ impl<'a> Deref for BorrowedAst<'a> {
     }
 }
 
+impl<'a> BorrowedAst<'a> {
+    /// Copy this transfer view into mutable, arena-owned storage.
+    ///
+    /// The transfer's string source and extra pool are concatenated into the
+    /// owned AST's extra pool, preserving every string offset. The resulting
+    /// [`Ast::source`] is empty: it never contained the original source text.
+    /// Node spans remain UTF-16 offsets and can be serialized with a source
+    /// length of zero. Mutation cannot alter the original transfer buffer.
+    pub fn into_owned(self) -> Ast<'a> {
+        let mut ast = Ast::new("", self.allocator());
+        let node_count = self.node_count();
+        ast.reserve(node_count, self.extra_data_count());
+        // SAFETY: Both node tables have capacity for node_count entries, and
+        // the source contains that many initialized entries in native order.
+        // Their allocations are disjoint; every copied field is Copy.
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                self.nodes.span.as_ptr(),
+                ast.nodes.span.as_ptr(),
+                node_count,
+            );
+            std::ptr::copy_nonoverlapping(
+                self.nodes.kind.as_ptr(),
+                ast.nodes.kind.as_ptr(),
+                node_count,
+            );
+            std::ptr::copy_nonoverlapping(
+                self.nodes.data.as_ptr(),
+                ast.nodes.data.as_ptr(),
+                node_count,
+            );
+            ast.nodes.len = node_count as u32;
+        }
+        ast.extra_data.extend_from_slice_copy(&self.extra_data);
+        ast.strings
+            .initialize_extra(self.source().as_bytes(), self.strings.extra_bytes());
+        ast.root = self.root;
+        ast.set_source_metadata(self.source_type(), self.lang());
+        ast
+    }
+}
+
 /// Decode an AST produced by the generated JavaScript encoder.
 ///
 /// The source section holds concatenated UTF-8 field values, not original source
@@ -439,7 +481,8 @@ pub unsafe fn deserialize_from<'a>(
         deserialize_extra_data(&mut tree, &buf[extra..strings]);
 
         // =================== String Pool ====================
-        tree.strings.initialize_extra(&buf[source_end..pool_end]);
+        tree.strings
+            .initialize_extra(&[], &buf[source_end..pool_end]);
 
         // ================= Source Metadata =================
         let source_type = match flags & 3 {
@@ -771,12 +814,14 @@ fn deserialize_extra_data(tree: &mut Ast<'_>, bytes: &[u8]) {
 mod tests {
     use std::borrow::Cow;
 
-    use swc_next_allocator::Allocator;
+    use swc_next_allocator::{Allocator, wtf8::Wtf8};
 
     use super::{
         PositionMap, buffer_size, build_pos_map, deserialize_from, serialize_into, utf16_pos,
     };
-    use crate::{Ast, Diagnostic, GetSpan, Label, Severity, Span, SubRange};
+    use crate::{
+        Ast, Diagnostic, Expr, GetSpan, Label, Lang, Severity, SourceType, Span, SubRange,
+    };
 
     #[test]
     fn canonical_little_endian_format() {
@@ -841,6 +886,60 @@ mod tests {
             super::deserialize_extra_data(&mut empty, &[]);
             assert_eq!(empty.extra_data_count(), 0);
         }
+    }
+
+    #[test]
+    fn owned_transfer() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+        let source = ast.add_utf8("é😀");
+        // SAFETY: ED A0 80 encodes a lone high surrogate, valid in WTF-8.
+        let surrogate = unsafe { Wtf8::from_bytes_unchecked(b"\xed\xa0\x80") };
+        let value = ast.add_wtf8(surrogate);
+        let literal = ast.string_literal(Span::new(3, 6), value, source);
+        let statement =
+            ast.stmt_expression_statement(Span::new(3, 7), Expr::StringLiteral(literal));
+        let body = ast.add_sub_range([statement]);
+        let program = ast.program(Span::new(0, 7), SubRange::empty(), body, None);
+        ast.set_root_program(program);
+        ast.set_source_metadata(SourceType::Script, Lang::Tsx);
+
+        let mut bytes = vec![0; buffer_size(&ast, &[])];
+        serialize_into(&ast, &[], &mut bytes, 0);
+        // JavaScript may place the UTF-8 prefix in its source section, followed
+        // by the WTF-8 extra pool; string offsets use their concatenation.
+        bytes[8..12].copy_from_slice(&(surrogate.len() as u32).to_le_bytes());
+        bytes[12..16].copy_from_slice(&source.len().to_le_bytes());
+        let buffer = AlignedBuffer::new(&bytes);
+        let decoded_allocator = Allocator::new();
+        // SAFETY: The serializer and adjusted section sizes form an aligned
+        // transfer with valid UTF-8 source and WTF-8 pool strings.
+        let decoded = unsafe { deserialize_from(&buffer, &decoded_allocator) }.unwrap();
+        let mut owned = decoded.into_owned();
+
+        assert_eq!(owned.source(), "");
+        assert_eq!(owned.get_utf8(source), "é😀");
+        assert_eq!(owned.get_wtf8(value).as_bytes(), surrogate.as_bytes());
+        assert_eq!(literal.span(&owned), Span::new(3, 6));
+        assert_eq!(owned.lang(), Lang::Tsx);
+        assert_eq!(owned.source_type(), SourceType::Script);
+
+        let replacement = owned.add_utf8("replacement");
+        literal.set_value(&mut owned, replacement.into());
+        program.set_body(&mut owned, SubRange::empty());
+        *owned.nodes.span_mut(literal.node_id()) = Span::new(8, 9);
+        assert_eq!(&*buffer, bytes);
+        assert_eq!(
+            owned.get_wtf8(literal.value(&owned)).as_bytes(),
+            b"replacement"
+        );
+        assert!(program.body(&owned).is_empty());
+
+        let mut output = vec![0; buffer_size(&owned, &[])];
+        serialize_into(&owned, &[], &mut output, 0);
+        assert_eq!(u32_at(&output, 12), 0);
+        assert_eq!(u32_at(&output, 40), 8);
+        assert_eq!(u32_at(&output, 44), 9);
     }
 
     #[test]

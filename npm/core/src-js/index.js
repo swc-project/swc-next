@@ -1,7 +1,11 @@
 import {
+  langFromPath,
   parseSync as __parseSync,
   printSync as __printSync,
+  sourceTypeFromPath,
+  transformAstSync as __transformAstSync,
 } from "./binding.js";
+import { createWalker } from "@swc-next/walker";
 import {
   decode,
   encodeOptions as encodeParserOptions,
@@ -12,6 +16,7 @@ import {
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
+const emptySourceBytes = new Uint8Array();
 const canTransferToFixedLength =
   typeof ArrayBuffer.prototype.transferToFixedLength === "function";
 
@@ -42,4 +47,100 @@ export function parseSync(source, options) {
 export function printSync(program, options, meta) {
   const code = __printSync(...encode(program, meta), encodeCodegenOptions(options));
   return { code };
+}
+
+export function transformSync(source, options) {
+  if (typeof source !== "string") throw new TypeError("source must be a string");
+  checkOptions(options, "options");
+  const filename = options?.filename ?? "input.js";
+  if (typeof filename !== "string") throw new TypeError("filename must be a string");
+  checkOptions(options?.parser, "parser");
+  const parserOptions = {
+    ...options?.parser,
+    lang: options?.parser?.lang ?? langFromPath(filename),
+    sourceType: options?.parser?.sourceType
+      ?? (options?.filename == null ? "module" : sourceTypeFromPath(filename)),
+    semanticErrors: true,
+  };
+  const transformOptions = encodeTransformOptions(options?.transform);
+  const codegenOptions = encodeCodegenOptions(options?.codegen);
+  const plugins = compilePlugins(options?.jsPlugins);
+
+  const parsed = parseSync(source, parserOptions);
+  throwOnDiagnostics(parsed.diagnostics, filename);
+  const program = parsed.program;
+  for (const plugin of plugins.before) plugin.walk(program);
+
+  // The Rust transform owns its AST and returns all strings in the extra pool.
+  // Spans remain UTF-16 offsets in the input, independent of the string pool.
+  const transformed = decode(
+    __transformAstSync(encode(program, parsed.meta), transformOptions),
+    "",
+    emptySourceBytes,
+  );
+  const diagnostics = [...parsed.diagnostics, ...transformed.diagnostics];
+  throwOnDiagnostics(diagnostics, filename);
+  const transformedProgram = transformed.program;
+  for (const plugin of plugins.after) plugin.walk(transformedProgram);
+
+  const code = __printSync(
+    encode(transformedProgram, transformed.meta),
+    codegenOptions,
+  );
+  return { code, diagnostics };
+}
+
+function compilePlugins(plugins) {
+  const phases = { before: [], after: [] };
+  if (plugins === undefined) return phases;
+  if (!Array.isArray(plugins)) throw new TypeError("jsPlugins must be an array");
+  for (const plugin of plugins) {
+    if (plugin === null || typeof plugin !== "object" || Array.isArray(plugin)) {
+      throw new TypeError("Each JS plugin must be an object");
+    }
+    if (typeof plugin.name !== "string" || plugin.name.length === 0) {
+      throw new TypeError("Each JS plugin must have a non-empty name");
+    }
+    const phase = plugin.phase ?? "before";
+    if (phase !== "before" && phase !== "after") {
+      throw new TypeError(`Invalid phase for JS plugin ${plugin.name}`);
+    }
+    if (
+      plugin.visitors === null
+      || typeof plugin.visitors !== "object"
+      || Array.isArray(plugin.visitors)
+    ) {
+      throw new TypeError(`JS plugin ${plugin.name} must provide visitors`);
+    }
+    phases[phase].push(createWalker(plugin.visitors));
+  }
+  return phases;
+}
+
+function encodeTransformOptions(options) {
+  checkOptions(options, "transform");
+  if (options == null) return 0;
+  return 1
+    | (encodeBoolean(options.typescript, "typescript") << 1)
+    | (encodeBoolean(options.staticBlocks, "staticBlocks") << 3);
+}
+
+function encodeBoolean(value, name) {
+  if (value == null) return 0;
+  if (typeof value !== "boolean") throw new TypeError(`${name} must be a boolean`);
+  return value ? 2 : 1;
+}
+
+function checkOptions(options, name) {
+  if (options != null && (typeof options !== "object" || Array.isArray(options))) {
+    throw new TypeError(`${name} must be an object`);
+  }
+}
+
+function throwOnDiagnostics(diagnostics, filename) {
+  const diagnostic = diagnostics.find(diagnostic => diagnostic.severity === "error");
+  if (diagnostic === undefined) return;
+  const error = new SyntaxError(`${filename}:${diagnostic.start}: ${diagnostic.message}`);
+  error.diagnostics = diagnostics;
+  throw error;
 }
