@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @ty\u0070\u{65}def {number} N */ (first);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @ty\u0070\u{65}def {number} N */ (first);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @ty\u0070\u{65}def {number} N */ (first)
