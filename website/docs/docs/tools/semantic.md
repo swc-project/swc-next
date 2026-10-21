@@ -1,0 +1,22 @@
+---
+title: "Semantic analysis"
+description: "Build a model of scopes, symbols, references, and module records."
+---
+
+# Semantic analysis
+
+Build a model of scopes, symbols, references, and module records.
+
+## Analysis
+
+- Name resolution, declaration spaces, and early errors.
+- Recompute analysis after changes that invalidate bindings.
+
+## Availability
+
+- The full semantic model is exposed through Rust.
+- This component does not perform full TypeScript type checking.
+
+## Related
+
+[Choosing packages](/guide/packages) · [API reference](/api/)

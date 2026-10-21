@@ -1,0 +1,20 @@
+{
+  "name": "@swc-next/website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rspress dev",
+    "build": "rspress build",
+    "preview": "rspress preview",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@rspress/core": "2.0.23",
+    "@types/node": "catalog:",
+    "@types/react": "^19.3.0",
+    "lucide-react": "^1.46.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "catalog:"
+  }
+}

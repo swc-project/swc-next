@@ -17,7 +17,7 @@ import {
 import { useEffect, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import type { CSSProperties, KeyboardEvent } from "react";
-import swcLogo from "../../docs/images/swc.png";
+import swcLogo from "../../docs/docs/public/images/swc.png";
 import AstTree from "./components/AstTree";
 import CodeEditor from "./components/CodeEditor";
 import OptionsPanel from "./components/OptionsPanel";

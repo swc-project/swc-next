@@ -1,4 +1,4 @@
-## Flattening AST
+# Flat AST
 
 The core idea of flattening AST can be found in [Flattening ASTs](https://www.cs.cornell.edu/~asampson/blog/flattening.html).
 
@@ -7,11 +7,11 @@ The AST still describes a tree, but its nodes live in indexed tables instead of 
 - **Pros:** Fewer per-node allocations and better memory locality, with compact handles that remain stable as storage grows.
 - **Cons:** Field access requires the AST context, and handles must be used with the context that created them.
 
-### Detailed Design
+## Detailed Design
 
 There are two parts to the design: untyped storage shared by all node kinds, and typed handles that provide the public AST API.
 
-#### Universal AST
+### Universal AST
 
 This part of the design is inspired by the [Zig compiler](https://codeberg.org/ziglang/zig) and [its parser design](https://mitchellh.com/zig/parser).
 
@@ -59,9 +59,9 @@ pub(crate) struct ProgramPayload {
 - `AstUtf8`, `AstWtf8`, and `SubRange<T>` store two `u32` offsets in one slot.
 - Optional handles and strings use reserved representations for `None`, such as `u32::MAX` for an optional node ID.
 
-![Flattening AST](./images/flattening-ast.excalidraw.png)
+![Flattening AST](/images/flattening-ast.excalidraw.png)
 
-#### Typed AST
+### Typed AST
 
 The typed handle API is inspired by [rowan](https://github.com/rust-analyzer/rowan). AST declarations describe the logical fields, while `#[ast]` turns each declaration into a copyable wrapper around a 4-byte `NodeId`:
 
@@ -82,7 +82,7 @@ AST enum declarations such as `Expr` and `Stmt` also become `NodeId` wrappers. T
 
 Handles do not encode ownership or an AST lifetime. They must refer to a valid node of the expected kind in the same context; unchecked construction or changing a node's kind must preserve that invariant.
 
-#### Ast Tool
+### Ast Tool
 
 `ast_tools` reads the typed AST declarations and builds a shared schema of node kinds, fields, and enum variants. It computes each node's inline and extra-data layout, then generates payload structs, builders, getters/setters, node conversions, cloning, and traversal APIs from that schema.
 
@@ -121,7 +121,7 @@ let body = program.body(&ast);            // Extra-data field
 program.set_body(&mut ast, new_body);
 ```
 
-### API diff
+## API diff
 
 The parser returns an AST context with its typed root stored on it. A single `Program` type represents Script, Module, and CommonJS sources; `Ast::source_type()` distinguishes them.
 

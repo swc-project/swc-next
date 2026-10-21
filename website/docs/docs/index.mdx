@@ -1,0 +1,46 @@
+---
+title: Overview
+description: Build JavaScript and TypeScript tools on a fast, extensible Rust foundation.
+---
+
+import { IntroActions, Pipeline, StartCards, ProjectNote } from '../theme/Overview';
+
+<div className="intro-label">THE NEXT CHAPTER OF SWC</div>
+
+# Build with SWC Next.
+
+<p className="intro-lead">A fast, extensible JavaScript and TypeScript toolchain, written in Rust. The building blocks for your next developer tool.</p>
+
+<IntroActions />
+
+<Pipeline />
+
+## Find your starting point
+
+Use JavaScript to work with ASTs, or compose the compiler components directly in Rust.
+
+<StartCards />
+
+## One small program. A place to start.
+
+Install the core package to parse and print your first program.
+
+```sh
+npm install @swc-next/core
+```
+
+```js title="index.mjs"
+import { parseSync, printSync } from "@swc-next/core";
+
+const { program, diagnostics, meta } = parseSync("const answer = 42;");
+console.log(diagnostics);
+console.log(printSync(program, {}, meta).code);
+```
+
+## A different foundation
+
+A compact, flat AST sits at the center of SWC Next. Rust components share that representation, while JavaScript receives an ESTree-based tree you can inspect and edit.
+
+[Explore the architecture](/resources/architecture/flat-ast) or [see the benchmarks](/benchmarks/).
+
+<ProjectNote />

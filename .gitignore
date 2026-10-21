@@ -19,6 +19,8 @@ node_modules
 /npm/*/src-js/*.module.mjs
 /npm/*/src-js/*.runtime.mjs
 dist
+/website/docs/doc_build
+/website/docs/.rspress
 
 .idea/
 .codex/
