@@ -16,7 +16,7 @@ const canTransferToFixedLength =
   typeof ArrayBuffer.prototype.transferToFixedLength === "function";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
-export { walk } from "@swc-next/walker";
+export * from "@swc-next/walker";
 
 export function parseSync(source, options) {
   // Every byte read below is initialized by encodeInto; avoid zeroing the

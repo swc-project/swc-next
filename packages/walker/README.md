@@ -14,7 +14,8 @@ walk(program, {
 });
 ```
 
-`program` is an existing AST. `@swc-next/core` also exports `walk`:
+`program` is an existing AST. `@swc-next/core` also exports `walk`, `createWalker`,
+`visitorKeys`, and all walker types:
 
 ```js
 import { parseSync, printSync, walk } from "@swc-next/core";

@@ -1,7 +1,15 @@
 import { expect, test } from "@rstest/core";
+import * as core from "@swc-next/core";
 import { parseSync, printSync, walk } from "@swc-next/core";
+import * as walker from "@swc-next/walker";
 
 const ast = (source) => parseSync(source).program;
+
+test("re-exports every walker API with the same identity", () => {
+  for (const [name, value] of Object.entries(walker)) {
+    expect(core[name]).toBe(value);
+  }
+});
 
 test("edits round-trip through the core encoder and parser", () => {
   const replacement = ast("replacement(nested());").body[0].expression;

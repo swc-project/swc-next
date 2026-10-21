@@ -420,13 +420,71 @@ function runWalk(root, compiled, state) {
   return root;
 }
 
-/** Walk a supported ESTree/TS-ESTree subtree in place and return its root. */
+/**
+ * Traverse and edit an existing ESTree / TS-ESTree tree synchronously in place.
+ *
+ * A function-valued hook runs on enter; `{ enter, leave }` registers both phases.
+ * The order is global enter, alias enters, concrete enter, children, concrete
+ * leave, alias leaves in reverse order, global leave. Callbacks must return
+ * `undefined`. Use `ctx` methods for structural edits and traversal control;
+ * assign scalar properties such as `node.name` directly.
+ *
+ * Only supported child fields in `visitorKeys` are traversed. The tree must be
+ * acyclic, and the root cannot be replaced or removed. Contexts are reused
+ * within each walk: do not retain `ctx` after its hook. Exceptions propagate
+ * without rolling back edits. Use `createWalker` to compile hooks once for
+ * multiple trees instead of compiling on every call.
+ *
+ * @template {import("./index.js").AstNode} Root
+ * @template State
+ * @template {import("./index.js").AstNode} Node
+ * @param {Root} root - The supported node or subtree to visit, including its root.
+ * @param {import("./index.js").WalkHooks<State, Node>} hooks - Synchronous callbacks.
+ * @param {State} [state] - Optional value exposed unchanged as `ctx.state`.
+ * @returns {Root} The original root, including when stopped with `ctx.stop()`.
+ * @throws {TypeError} For invalid hooks, unsupported nodes, or non-undefined returns.
+ * @throws {Error} For invalid context use or structural edits.
+ * @example
+ * import { walk } from "@swc-next/walker";
+ *
+ * const names = [];
+ * walk(program, {
+ *   Identifier(node, ctx) { ctx.state.push(node.name); },
+ *   DebuggerStatement(node, ctx) { ctx.remove(); },
+ * }, names);
+ */
 export function walk(root, hooks, state) {
   assertNode(root);
   return runWalk(root, compile(hooks), state);
 }
 
-/** Snapshot hooks once; each walk has an independent editing context. */
+/**
+ * Validate and snapshot hooks once for repeated synchronous tree traversal.
+ *
+ * `walker.walk(root, state)` follows the same traversal and editing rules as
+ * `walk` and returns the original root. Every invocation, including a nested
+ * call, has an independent context that is cleared on completion or failure.
+ * Later changes to the hooks object or its enter/leave properties do not affect
+ * the snapshot. Captured callback closures remain shared, so pass per-tree
+ * state to the returned walk method when invocations need independent data.
+ *
+ * @template State
+ * @template {import("./index.js").AstNode} Node
+ * @param {import("./index.js").WalkHooks<State, Node>} hooks - Hooks to capture.
+ * @returns {import("./index.js").CompiledWalker<State>} A frozen reusable walker.
+ * @throws {TypeError} For invalid hook names or callback definitions. Nodes and
+ * callback return values are checked when the returned walker runs.
+ * @example
+ * import { createWalker } from "@swc-next/walker";
+ *
+ * const collectNames = createWalker({
+ *   Identifier(node, ctx) { ctx.state.push(node.name); },
+ * });
+ * for (const program of programs) {
+ *   const names = [];
+ *   collectNames.walk(program, names);
+ * }
+ */
 export function createWalker(hooks) {
   const compiled = compile(hooks);
   return Object.freeze({

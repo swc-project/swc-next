@@ -1,6 +1,6 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
-export { walk } from "@swc-next/walker";
+export * from "@swc-next/walker";
 
 import type {
   CodegenOptions,
