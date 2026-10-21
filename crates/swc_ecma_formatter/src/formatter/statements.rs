@@ -602,6 +602,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .as_ref()
                     .map_or(ContentMode::Formatted, |tail| tail.modes.current)
             };
+            if statement.empty(ast).is_some()
+                && mode == ContentMode::Verbatim
+                && let Some(next) = pending.as_mut()
+            {
+                // Ignore targets skip empty owners even when an annotation retains one.
+                next.mode = ContentMode::Verbatim;
+            }
             let leading = self.comments.take(leading.len());
             let mut expression_start = ExpressionStart::StatementPending;
             if first_statement
@@ -1026,11 +1033,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return None;
             }
             next_start = comment.span.start;
-            Some(if self.comment_is_jsdoc_binding(comment) {
-                CommentBinding::BoundTo(span)
-            } else {
-                CommentBinding::Unbound
-            })
+            Some(
+                if self.comment_is_jsdoc_binding(comment)
+                    || self.comment_is_optimizer_annotation(comment)
+                {
+                    CommentBinding::BoundTo(span)
+                } else {
+                    CommentBinding::Unbound
+                },
+            )
         }))
     }
 
