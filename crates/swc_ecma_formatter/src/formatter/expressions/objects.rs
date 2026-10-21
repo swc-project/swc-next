@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
 };
 
 use super::assignment::RhsLayout;
-use super::parentheses::ResolvedExpressionHead;
+use super::parentheses::{ResolvedExpressionHead, SourceOpeningPacket};
 use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -128,6 +128,7 @@ impl<'ast> PreparedComputedKey<'ast> {
 }
 
 struct ObjectPropertyBoundary<'ast> {
+    opening: Option<SourceOpeningPacket<'ast>>,
     suppression: PropertySuppression,
     before: &'ast [Comment],
     moved: &'ast [Comment],
@@ -678,6 +679,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if context.is_formatted_conditional_rhs(content.data) {
                     context = context.with_operand_indent(layout.operand_indent());
                 }
+                if let Some(opening) = boundary.opening {
+                    self.format_comment_run(
+                        boundary.leading,
+                        CommentRunLayout::GroupedLeading(boundary.value_start),
+                        writer,
+                    )?;
+                    return self.format_source_opening_packet(opening, context, writer);
+                }
                 self.format_prepared_expression_with_leading_comments(
                     value,
                     content,
@@ -734,8 +743,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 property.key(self.ast).span(self.ast).start,
             )
         });
-        let suppression =
-            self.property_suppression(key_leading, key_trailing, after, colon, value_start);
+        let opening = self.source_opening_packet(property.value(self.ast));
+        let inspection_end = opening.map_or(value_start, |packet| packet.content_start);
+        let inspection_after = self.comments.in_range(Span::new(colon.end, inspection_end));
+        let suppression = self.property_suppression(
+            key_leading,
+            key_trailing,
+            inspection_after,
+            colon,
+            inspection_end,
+        );
         let ordinary_before = self
             .comment_run_binding(before.iter().copied(), |comment| {
                 if self.comment_semantics(comment).is_ordinary() {
@@ -788,6 +805,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || self.line_breaks(colon.end, comment.span.start) != 0
             });
         Ok(ObjectPropertyBoundary {
+            opening,
             suppression,
             before,
             moved,
