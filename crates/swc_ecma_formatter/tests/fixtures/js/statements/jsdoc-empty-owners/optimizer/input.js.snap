@@ -6,9 +6,11 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
-/** @__PURE__ */ Math.random();
+/** @__PURE__ */ ;
+Math.random();
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-/** @__PURE__ */ Math.random()
+/** @__PURE__ */ ;
+Math.random()
