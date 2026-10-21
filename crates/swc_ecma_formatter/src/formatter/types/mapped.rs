@@ -48,6 +48,15 @@ struct MappedBoundary<'ast> {
     layout: TypeBoundaryLayout<'ast>,
 }
 
+impl MappedBoundary<'_> {
+    fn following_layout(&self) -> TypeLayout {
+        match self.layout {
+            TypeBoundaryLayout::Source(_) => TypeLayout::OpeningProvided,
+            TypeBoundaryLayout::Formatted { .. } => TypeLayout::Root,
+        }
+    }
+}
+
 struct MappedBound<'ast> {
     node: PreparedType,
     boundary: MappedBoundary<'ast>,
@@ -198,8 +207,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer.text(ast.get_utf8(key.name(ast)));
                         }
                         self.format_mapped_boundary(&in_boundary, MappedSeparator::In, writer)?;
-                        let tail =
-                            self.format_prepared_type(constraint, TypeContext::Root, writer)?;
+                        let tail = self.format_prepared_type_with_layout(
+                            constraint,
+                            TypeContext::Root,
+                            in_boundary.following_layout(),
+                            writer,
+                        )?;
                         self.format_expression_tail(tail, writer)?;
                         if let Some(remap) = remap {
                             self.format_mapped_boundary(
@@ -207,8 +220,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 MappedSeparator::As,
                                 writer,
                             )?;
-                            let tail =
-                                self.format_prepared_type(remap.node, TypeContext::Root, writer)?;
+                            let tail = self.format_prepared_type_with_layout(
+                                remap.node,
+                                TypeContext::Root,
+                                remap.boundary.following_layout(),
+                                writer,
+                            )?;
                             self.format_expression_tail(tail, writer)?;
                         }
                         if let MappedSuffix::Formatted { closing, .. } = &suffix {
@@ -438,7 +455,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 left_mode = ContentMode::Verbatim;
             }
         }
-        for (_, position) in self.suppressed_comment_runs(after, gap.end) {
+        let attachment = self.type_attachment_head(right.node);
+        for (run, position) in self.suppressed_comment_runs(after, gap.end) {
+            let selected = self
+                .prepare_type_suppression_run(
+                    &attachment,
+                    run,
+                    position,
+                    super::TypeSuppressionContext::TypeBoundary,
+                )
+                .apply(right);
+            if selected.preceding() {
+                left_mode = ContentMode::Verbatim;
+            }
+            if !selected.following() {
+                continue;
+            }
             // A line-ending packet still trails the preceding key or type,
             // even when the grammar separator appears before the comment.
             if matches!(position, SuppressionPosition::EndOfLine) {

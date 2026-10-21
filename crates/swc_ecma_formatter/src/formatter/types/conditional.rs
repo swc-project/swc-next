@@ -294,8 +294,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     left.source_owner = Some(left.node);
                 }
             }
-            for (_, position) in self.suppressed_comment_runs(after, gap.end) {
+            let attachment = self.type_attachment_head(right.node);
+            for (run, position) in self.suppressed_comment_runs(after, gap.end) {
                 source = true;
+                let selected = self
+                    .prepare_type_suppression_run(
+                        &attachment,
+                        run,
+                        position,
+                        super::TypeSuppressionContext::TypeBoundary,
+                    )
+                    .apply(right);
+                if selected.preceding() {
+                    left.source_owner = Some(left.node);
+                }
+                if !selected.following() {
+                    continue;
+                }
                 if matches!(position, SuppressionPosition::EndOfLine) {
                     left.source_owner = Some(left.node);
                 } else {

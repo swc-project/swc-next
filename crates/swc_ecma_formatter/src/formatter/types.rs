@@ -28,6 +28,7 @@ use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::TailOwner;
 use super::expressions::assignment::RhsLayout;
 use super::literals::StringContext;
+use super::source::is_source_whitespace;
 use super::statements::DeclarationKeyword;
 use super::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use super::variables::VariableContext;
@@ -66,6 +67,59 @@ pub(super) struct PreparedType {
     pub(super) node: TsType,
     pub(super) data: TsTypeData,
     pub(super) source_owner: Option<TsType>,
+    /// The attachment frame retained independently of an ignored content owner.
+    pub(super) source_head: Option<TsType>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum TypeSuppressionContext {
+    TypeBoundary,
+    ExpressionBoundary,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum TypeSuppressionTarget {
+    Neither,
+    Preceding,
+    Following,
+    Both,
+}
+
+impl TypeSuppressionTarget {
+    pub(super) fn preceding(self) -> bool {
+        matches!(self, Self::Preceding | Self::Both)
+    }
+
+    pub(super) fn following(self) -> bool {
+        matches!(self, Self::Following | Self::Both)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum TypeHeadRetention {
+    Unchanged,
+    Source(TsType),
+}
+
+pub(super) struct TypeAttachmentHead {
+    node: TsType,
+    union: bool,
+    source_barrier: Option<TsType>,
+    exterior_union_frame: Option<TsType>,
+}
+
+pub(super) struct TypeSuppressionRun {
+    target: TypeSuppressionTarget,
+    head: TypeHeadRetention,
+}
+
+impl TypeSuppressionRun {
+    pub(super) fn apply(self, node: &mut PreparedType) -> TypeSuppressionTarget {
+        if let TypeHeadRetention::Source(owner) = self.head {
+            node.source_head = Some(owner);
+        }
+        self.target
+    }
 }
 
 struct PreparedTypeParentheses<'ast> {
@@ -612,13 +666,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PreparedDelimitedType<'ast>, FormatError> {
         let span = node.node.span(self.ast);
         let content = loop {
-            if node.source_owner.is_some() {
+            if node.source_owner.is_some() || node.source_head.is_some() {
                 break compound::PreparedTypeContent::Type(node);
             }
             match node.data {
                 TsTypeData::TsParenthesizedType(parentheses) => {
                     let parentheses =
-                        self.prepare_type_parentheses(parentheses, None, TypeContext::Root);
+                        self.prepare_type_parentheses(parentheses, None, None, TypeContext::Root);
                     if parentheses.retained {
                         break compound::PreparedTypeContent::Parentheses(parentheses);
                     }
@@ -824,8 +878,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let node = self.normalize_type_head(node)?;
         if let TsTypeData::TsParenthesizedType(parentheses) = node.data {
-            let parentheses =
-                self.prepare_type_parentheses(parentheses, node.source_owner, TypeContext::Root);
+            let parentheses = self.prepare_type_parentheses(
+                parentheses,
+                node.source_owner,
+                node.source_head,
+                TypeContext::Root,
+            );
             if !parentheses.retained {
                 return self.format_type_alias_rhs(boundary, parentheses.child, rhs_layout, writer);
             }
@@ -1275,7 +1333,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            for (_, position) in self.suppressed_comment_runs(after, gap.end) {
+            let attachment = match &target {
+                TypeBoundaryTarget::Constraint { node, .. }
+                | TypeBoundaryTarget::InferConstraint(node)
+                | TypeBoundaryTarget::Default(node) => Some(self.type_attachment_head(node.node)),
+                _ => None,
+            };
+            for (run, position) in self.suppressed_comment_runs(after, gap.end) {
+                let selected = match (&attachment, &mut target) {
+                    (
+                        Some(attachment),
+                        TypeBoundaryTarget::Constraint { node, .. }
+                        | TypeBoundaryTarget::InferConstraint(node)
+                        | TypeBoundaryTarget::Default(node),
+                    ) => self
+                        .prepare_type_suppression_run(
+                            attachment,
+                            run,
+                            position,
+                            TypeSuppressionContext::TypeBoundary,
+                        )
+                        .apply(node),
+                    _ => TypeSuppressionTarget::Following,
+                };
+                if selected.preceding() {
+                    left_mode = ContentMode::Verbatim;
+                }
+                if !selected.following() {
+                    continue;
+                }
                 if !matches!(role, TypeBoundaryRole::Alias)
                     && matches!(position, SuppressionPosition::EndOfLine)
                 {
@@ -1374,6 +1460,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             node,
             data: self.ast.ts_type_data(node),
             source_owner: (mode == ContentMode::Verbatim).then_some(node),
+            source_head: None,
         }
     }
 
@@ -1407,6 +1494,110 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let node = self.prepare_type(annotation, mode);
         self.format_prepared_type(node, context, writer)
+    }
+
+    /// Follow the same removable frames used by the type's comment attachment view.
+    pub(super) fn type_attachment_head(&self, mut node: TsType) -> TypeAttachmentHead {
+        let source = node;
+        let mut source_barrier = None;
+        let data = loop {
+            let data = self.ast.ts_type_data(node);
+            let (types, token) = match data {
+                TsTypeData::TsParenthesizedType(parentheses) => {
+                    node = parentheses.type_annotation(self.ast);
+                    continue;
+                }
+                TsTypeData::TsUnionType(union) => (union.types(self.ast), "|"),
+                TsTypeData::TsIntersectionType(intersection) => (intersection.types(self.ast), "&"),
+                _ => break data,
+            };
+            let Some(first) = types.first() else {
+                break data;
+            };
+            let first: TsType = self.ast.get_node_in_sub_range(first);
+            let prefix = Span::new(node.span(self.ast).start, first.span(self.ast).start);
+            if self
+                .find_token(prefix, self.comments.in_range(prefix), token)
+                .is_some()
+            {
+                source_barrier = Some(node);
+            }
+            if types.len() != 1 {
+                break data;
+            }
+            node = first;
+        };
+        let union = matches!(data, TsTypeData::TsUnionType(_));
+        TypeAttachmentHead {
+            node,
+            union,
+            source_barrier,
+            exterior_union_frame: (source != node && union).then_some(source),
+        }
+    }
+
+    /// Resolve the protected operands separately from their source attachment frame.
+    pub(super) fn prepare_type_suppression_run(
+        &self,
+        attachment: &TypeAttachmentHead,
+        comments: &[Comment],
+        position: SuppressionPosition,
+        context: TypeSuppressionContext,
+    ) -> TypeSuppressionRun {
+        let exterior_union_comments = attachment.exterior_union_frame.is_some()
+            && comments.iter().any(|&comment| {
+                comment.kind == CommentKind::Block
+                    && !is_suppression_comment(self.ast, comment)
+                    && self.line_breaks(comment.span.start, comment.span.end) == 0
+            });
+        let head = match attachment.source_barrier {
+            Some(owner) => TypeHeadRetention::Source(owner),
+            None if exterior_union_comments => attachment
+                .exterior_union_frame
+                .map_or(TypeHeadRetention::Unchanged, TypeHeadRetention::Source),
+            None => TypeHeadRetention::Unchanged,
+        };
+        if !matches!(position, SuppressionPosition::Inline) {
+            return TypeSuppressionRun {
+                target: TypeSuppressionTarget::Following,
+                head,
+            };
+        }
+        let mut next = attachment.node.span(self.ast).start;
+        let mut leading_chain = true;
+        let mut union_adjacency = attachment.union;
+        let mut preceding = false;
+        let mut following = false;
+        for &comment in comments.iter().rev() {
+            let gap = self.source(Span::new(comment.span.end, next));
+            leading_chain &= gap
+                .chars()
+                .all(|character| is_source_whitespace(character) || character == '(');
+            union_adjacency &= gap.chars().all(|character| matches!(character, ' ' | '\t'));
+            let suppression = is_suppression_comment(self.ast, comment);
+            let single_line = self.line_breaks(comment.span.start, comment.span.end) == 0;
+            let attached = comment.kind == CommentKind::Block
+                && (matches!(context, TypeSuppressionContext::ExpressionBoundary) && !single_line
+                    || union_adjacency && single_line && !suppression);
+            if suppression {
+                if attached || leading_chain {
+                    following = true;
+                } else {
+                    preceding = true;
+                }
+            }
+            // Independently attached comments cannot form another comment's tie chain.
+            leading_chain &= !attached;
+            union_adjacency &= single_line;
+            next = comment.span.start;
+        }
+        let target = match (preceding, following) {
+            (true, true) => TypeSuppressionTarget::Both,
+            (true, false) => TypeSuppressionTarget::Preceding,
+            (false, true) => TypeSuppressionTarget::Following,
+            (false, false) => TypeSuppressionTarget::Neither,
+        };
+        TypeSuppressionRun { target, head }
     }
 
     fn select_type_head(&self, node: &mut PreparedType, position: SuppressionPosition) {
@@ -1468,8 +1659,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if node.source_owner != Some(node.node)
             && let TsTypeData::TsParenthesizedType(parentheses) = node.data
         {
-            let parentheses =
-                self.prepare_type_parentheses(parentheses, node.source_owner, context);
+            let parentheses = self.prepare_type_parentheses(
+                parentheses,
+                node.source_owner,
+                node.source_head,
+                context,
+            );
             return self.format_prepared_type_parentheses(parentheses, context, layout, writer);
         }
         if node.source_owner != Some(node.node)
@@ -1794,6 +1989,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         node: TsParenthesizedType,
         source_owner: Option<TsType>,
+        source_head: Option<TsType>,
         context: TypeContext,
     ) -> PreparedTypeParentheses<'ast> {
         let ast = self.ast;
@@ -1802,6 +1998,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let child_span = child.span(ast);
         let mut child_type = self.prepare_type(child, ContentMode::Formatted);
         child_type.source_owner = source_owner;
+        child_type.source_head =
+            source_head.filter(|&owner| owner != TsType::TsParenthesizedType(node));
         let before = self
             .comments
             .in_range(Span::new(span.start + 1, child_span.start));
@@ -1809,7 +2007,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .in_range(Span::new(child_span.end, span.end - 1));
         let sensitive = self.diagnostic_range_is_sensitive(span);
-        let retained = !before.is_empty() || !after.is_empty() || sensitive;
+        let retained =
+            source_head.is_some() || !before.is_empty() || !after.is_empty() || sensitive;
         let (source, movable) = if retained {
             if self.has_suppression && self.content_mode(before) == ContentMode::Verbatim {
                 if matches!(context, TypeContext::UnionMember) {
@@ -1857,7 +2056,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })
             });
             let leading_binding = self.comment_binding(before, span, leading_target);
-            let source = source_owner == Some(TsType::TsParenthesizedType(node))
+            let source = source_head.is_some()
+                || source_owner == Some(TsType::TsParenthesizedType(node))
                 || sensitive
                 || !leading_binding.allows_relocation(leading_target)
                 || !self

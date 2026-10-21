@@ -526,6 +526,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let leading = Span::new(node.node.span(ast).start, first_span.start);
         let mut current = self.prepare_type(first, ContentMode::Formatted);
         current.source_owner = node.source_owner;
+        current.source_head = node.source_head.filter(|&owner| owner != node.node);
         if types.len() == 1 {
             let single =
                 self.prepare_single_compound_head(node, current, leading, first_span, kind)?;
@@ -690,7 +691,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             IntersectionPrefix::Empty
         } else {
             let comments = self.comments.in_range(leading);
-            if matches!(
+            if node.source_head == Some(node.node) {
+                IntersectionPrefix::Source(leading)
+            } else if matches!(
                 self.comment_binding(comments, leading, Some(current.node.span(self.ast))),
                 CommentBinding::Unbound
             ) {
@@ -1128,7 +1131,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 UnionLeading::Formatted {
                     before: self.prepare_comment_boundary(before, leading.start, operator),
                     after,
-                    retain_operator: preserve_lines || !matches!(binding, CommentBinding::Unbound),
+                    retain_operator: node.source_head.is_some()
+                        || preserve_lines
+                        || !matches!(binding, CommentBinding::Unbound),
                 }
             }
         };
@@ -1519,7 +1524,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         mut node: PreparedType,
     ) -> Result<PreparedType, FormatError> {
-        while node.source_owner.is_none() {
+        while node.source_owner.is_none() && node.source_head.is_none() {
             let single = match node.data {
                 TsTypeData::TsUnionType(union) => union.types(self.ast).len() == 1,
                 TsTypeData::TsIntersectionType(intersection) => {
@@ -1556,6 +1561,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = first.span(self.ast);
         let mut current = self.prepare_type(first, ContentMode::Formatted);
         current.source_owner = node.source_owner;
+        current.source_head = node.source_head.filter(|&owner| owner != node.node);
         self.prepare_single_compound_head(
             node,
             current,
@@ -1575,6 +1581,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<SingleCompoundHead<'ast>, FormatError> {
         let comments = self.comments.in_range(leading);
         let movable = node.source_owner.is_none()
+            && node.source_head.is_none()
             && matches!(
                 self.comment_binding(comments, leading, Some(first_span)),
                 CommentBinding::Unbound
@@ -1750,13 +1757,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedTypeContent<'ast>, FormatError> {
         let content = loop {
-            if current.source_owner == Some(current.node) {
+            if current.source_owner == Some(current.node) || current.source_head.is_some() {
                 break PreparedTypeContent::Type(current);
             }
             let (next, comments, next_start) = match current.data {
                 TsTypeData::TsParenthesizedType(parentheses) => {
-                    let parentheses =
-                        self.prepare_type_parentheses(parentheses, current.source_owner, context);
+                    let parentheses = self.prepare_type_parentheses(
+                        parentheses,
+                        current.source_owner,
+                        current.source_head,
+                        context,
+                    );
                     if parentheses.retained
                         && (!parentheses.movable
                             || (pending

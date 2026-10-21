@@ -837,8 +837,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let swc_next_ecma_ast::TsTypeData::TsParenthesizedType(parentheses) = node.data else {
                 break;
             };
-            let parentheses =
-                self.prepare_type_parentheses(parentheses, node.source_owner, TypeContext::Root);
+            let parentheses = self.prepare_type_parentheses(
+                parentheses,
+                node.source_owner,
+                node.source_head,
+                TypeContext::Root,
+            );
             if parentheses.retained {
                 return FunctionReturnContent::Parenthesized(parentheses);
             }
