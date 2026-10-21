@@ -1841,13 +1841,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || inner_cast.is_some()
                 || generated.is_some())
             && context.parentheses_owner == ParenthesesOwner::Expression
-            && self.expression_needs_parentheses(
+            && self.expression_is_parenthesized(
                 prepared
                     .get_or_insert_with(|| self.expression_content(expression))
                     .data,
-                context.position,
-                ContentMode::Formatted,
-            ) == Some(true);
+                context,
+            );
         if parenthesize_head {
             let head = if let Some(index) = inner_cast {
                 // Source constraints and a cast's inner target are independent:
