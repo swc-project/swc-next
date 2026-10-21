@@ -593,6 +593,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                         FollowingItem::End,
                                         content,
                                         false,
+                                        None,
                                         writer,
                                     )?;
                                     let normalized = match body.content {
@@ -700,6 +701,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let mut end = content.start;
                 let mut source_end = content.start;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut following_mode = None;
                 while let Some(member) = members.next() {
@@ -737,7 +739,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map_or(member_span.start, |comment| comment.span.start);
                         ArgumentLayout::Lines.separator(
                             separator,
-                            self.line_constraint(end, next_start),
+                            self.source_separator_constraint(end, next_start, transition.as_ref()),
                             writer,
                         );
                     }
@@ -765,6 +767,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             following,
                             Span::new(item_start, content.end),
                             false,
+                            transition,
                             writer,
                         )?,
                     };
@@ -804,6 +807,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     end = boundary.end;
                     source_end = member_span.end;
                     separator = boundary.separator;
+                    transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
                 }
                 let dangling = self.comments.between(Span::new(end, content.end))?;

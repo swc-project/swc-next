@@ -598,6 +598,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let mut next = parameters.next().transpose()?;
                 let mut end = content.start;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut has_previous = false;
                 let mut following_mode =
@@ -619,7 +620,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .between(Span::new(end, span.start))?
                             .first()
                             .map_or(span.start, |comment| comment.span.start);
-                        let constraint = self.line_constraint(end, next);
+                        let constraint =
+                            self.source_separator_constraint(end, next, transition.as_ref());
                         match (frame, separator) {
                             (ParameterFrame::Fixed, Separator::Line | Separator::EmptyLine) => {
                                 constraint.write(writer, FlatSeparator::Space, Writer::space);
@@ -648,6 +650,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ) && !hug
                             && frame == ParameterFrame::Ordinary
                             && self.options.trailing_commas == TrailingCommas::All,
+                        transition,
                         writer,
                     )?;
                     if let Some(mode) = following_mode {
@@ -661,6 +664,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let boundary = self.finish_delimited_item(item, tail, writer)?;
                     end = boundary.end;
                     separator = boundary.separator;
+                    transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
                     has_previous = true;
                 }

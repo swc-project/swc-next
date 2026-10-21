@@ -484,6 +484,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut items = std::iter::from_fn(|| next_item(&mut elements)).peekable();
         let mut previous_end = span.start;
         let mut has_slot = false;
+        let mut transition = None;
         let mut separator = Separator::Line;
         let mut following_mode = None;
         let mut elisions = ElisionLayout::Formatted;
@@ -573,7 +574,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map_or(argument_span.start, |comment| comment.span.start);
                 layout.separator(
                     separator,
-                    self.line_constraint(previous_end, next_start),
+                    self.source_separator_constraint(previous_end, next_start, transition.as_ref()),
                     writer,
                 );
             }
@@ -583,6 +584,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         argument,
                         mode,
                         layout,
+                        transition,
                         following: match items.peek() {
                             Some(item) if item.holes != 0 => FollowingArgument::Elision {
                                 argument: item.argument,
@@ -602,6 +604,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })?;
             previous_end = boundary.end;
             separator = boundary.separator;
+            transition = boundary.transition;
             following_mode = Some(boundary.following_mode);
             elisions = boundary.elisions;
             has_slot = true;

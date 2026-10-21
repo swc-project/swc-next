@@ -71,6 +71,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .peekable();
                 let mut end = content.start;
                 let mut source_end = content.start;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut following_mode = None;
                 while let Some(element) = elements.next() {
@@ -97,7 +98,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         let constraint = if leading_mode == ContentMode::Verbatim {
                             self.source_line_constraint(end, next_start)
                         } else {
-                            self.line_constraint(end, next_start)
+                            self.source_separator_constraint(end, next_start, transition.as_ref())
                         };
                         ArgumentLayout::Lines.separator(separator, constraint, writer);
                     } else {
@@ -119,6 +120,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(end, content.end),
                         self.options.trailing_commas != TrailingCommas::None,
+                        transition,
                         writer,
                     )?;
                     item.set_leading_mode(leading_mode);
@@ -127,6 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     end = boundary.end;
                     source_end = element_span.end;
                     separator = boundary.separator;
+                    transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
                 }
                 let (dangling, layout) = if let Some((comments, layout)) = empty_dangling {

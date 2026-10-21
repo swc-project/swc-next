@@ -199,7 +199,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map_or(item_span.start, |comment| comment.span.start);
                         ArgumentLayout::Lines.separator(
                             boundary.separator,
-                            self.line_constraint(end, next),
+                            self.source_separator_constraint(
+                                end,
+                                next,
+                                boundary.transition.as_ref(),
+                            ),
                             writer,
                         );
                     }
@@ -211,6 +215,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(end, content.end),
                         false,
+                        previous.and_then(|boundary| boundary.transition),
                         writer,
                     )?;
                     if let Some(boundary) = previous {
@@ -294,6 +299,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 FollowingItem::Node(options.span),
                 content,
                 false,
+                None,
                 writer,
             )?;
             let tail = self.format_import_slot(source, item.mode, writer)?;
@@ -305,7 +311,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(options.span.start, |comment| comment.span.start);
             ArgumentLayout::Lines.separator(
                 boundary.separator,
-                self.line_constraint(boundary.end, next),
+                self.source_separator_constraint(boundary.end, next, boundary.transition.as_ref()),
                 writer,
             );
             let mut item = self.prepare_call_argument_item(
@@ -313,6 +319,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 FollowingItem::End,
                 Span::new(boundary.end, content.end),
                 false,
+                boundary.transition,
                 writer,
             )?;
             item.set_leading_mode(boundary.following_mode);

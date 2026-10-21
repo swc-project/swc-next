@@ -1160,6 +1160,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut members = members.peekable();
             let mut end = content.start;
             let mut following_mode = None;
+            let mut transition = None;
             let mut separator = Separator::Line;
             let mut has_previous = false;
             while let Some(member) = members.next() {
@@ -1173,7 +1174,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .map_or(member_span.start, |comment| comment.span.start);
                     ArgumentLayout::Lines.separator(
                         separator,
-                        self.line_constraint(end, next),
+                        self.source_separator_constraint(end, next, transition.as_ref()),
                         writer,
                     );
                 }
@@ -1198,6 +1199,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     hug.is_none()
                         && !matches!(member, CallableParameter::Rest(_))
                         && self.options.trailing_commas == TrailingCommas::All,
+                    transition,
                     writer,
                 )?;
                 if let Some(mode) = following_mode {
@@ -1219,6 +1221,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 end = boundary.end;
                 following_mode = Some(boundary.following_mode);
                 separator = boundary.separator;
+                transition = boundary.transition;
                 has_previous = true;
             }
             let dangling = self.comments.between(Span::new(end, content.end))?;

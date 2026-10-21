@@ -1168,6 +1168,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.comment_gap(last.span.end, first.span(self).start, writer);
                     }
                 }
+                let mut transition = None;
                 let mut current = Some((first, self.prepare_module_item(first, list.key_quoting)?));
                 let mut end = content.start;
                 while let Some((item, prepared_content)) = current {
@@ -1183,6 +1184,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         content,
                         list.breakable && self.options.trailing_commas != TrailingCommas::None,
+                        transition,
                         writer,
                     )?;
                     if next.is_none() && last_mode == ContentMode::Verbatim {
@@ -1194,6 +1196,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_module_item(span, prepared_content, prepared.mode, writer)?;
                     let boundary = self.finish_delimited_item(prepared, None, writer)?;
                     end = boundary.end;
+                    transition = boundary.transition;
                     let next = next
                         .map(|item| {
                             self.prepare_module_item(item, list.key_quoting)
@@ -1201,7 +1204,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         })
                         .transpose()?;
                     if let Some((next, next_content)) = next.as_ref() {
-                        let constraint = self.line_constraint(end, next.span(self).start);
+                        let constraint = self.source_separator_constraint(
+                            end,
+                            next.span(self).start,
+                            boundary.transition.as_ref(),
+                        );
                         let promoted = matches!(
                             &next_content.content,
                             ModuleItemContent::Alias {

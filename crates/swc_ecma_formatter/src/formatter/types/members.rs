@@ -1506,13 +1506,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .peekable();
                 let mut end = index.opening + 1;
                 let mut following_mode = None;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 while let Some(node) = members.next() {
                     let span = node.span(ast);
                     if following_mode.is_some() {
                         ArgumentLayout::Lines.separator(
                             separator,
-                            self.line_constraint(end, span.start),
+                            self.source_separator_constraint(end, span.start, transition.as_ref()),
                             writer,
                         );
                     } else {
@@ -1541,6 +1542,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(end, index.closing),
                         false,
+                        transition,
                         writer,
                     )?;
                     if let Some(mode) = following_mode {
@@ -1571,6 +1573,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         end = boundary.end;
                         following_mode = Some(boundary.following_mode);
                         separator = boundary.separator;
+                        transition = boundary.transition;
                     }
                 }
                 match index.closing_gap {
