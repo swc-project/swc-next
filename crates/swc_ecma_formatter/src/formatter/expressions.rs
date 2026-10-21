@@ -299,6 +299,7 @@ pub(super) struct ExpressionContext<'ast> {
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
+    ignored_parentheses_closing: Option<Span>,
     emitted_head_binding: EmittedHeadBinding,
     expression_head: ExpressionHead,
     computed_receiver: Option<Expr>,
@@ -430,6 +431,7 @@ impl<'ast> ExpressionContext<'ast> {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
+            ignored_parentheses_closing: None,
             emitted_head_binding: EmittedHeadBinding::Pending,
             expression_head: match position {
                 ExpressionPosition::Statement => ExpressionHead::Statement,
