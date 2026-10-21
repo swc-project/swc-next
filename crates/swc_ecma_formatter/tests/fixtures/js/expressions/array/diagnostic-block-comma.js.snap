@@ -10,9 +10,8 @@ second];
 {}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -20,9 +19,8 @@ second];
 {"printWidth":14}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -30,9 +28,8 @@ second];
 {"printWidth":13}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -40,9 +37,8 @@ second];
 {"printWidth":10}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -50,9 +46,8 @@ second];
 {"printWidth":0}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -60,9 +55,8 @@ second];
 {"semi":false}
 ---------- Output ----------
 ;[
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ]
 
@@ -70,9 +64,8 @@ second];
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second
 ];
 
@@ -80,9 +73,8 @@ second];
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
 
@@ -90,9 +82,8 @@ second];
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 [
-	first
+	first,
 	/* @ts-ignore */
-	,
 	second,
 ];
 
@@ -100,8 +91,7 @@ second];
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 [
-  first
+  first,
   /* @ts-ignore */
-  ,
   second,
 ];
