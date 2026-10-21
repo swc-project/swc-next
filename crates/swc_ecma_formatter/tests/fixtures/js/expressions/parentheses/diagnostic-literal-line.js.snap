@@ -10,54 +10,40 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 // @ts-ignore
-(
-  "use strict"
-);
+("use strict");
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // @ts-ignore
-;(
-  "use strict"
-)
+;("use strict")
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 // @ts-ignore
-(
-  "use strict"
-);
+("use strict");
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // @ts-ignore
-(
-  "use strict"
-);
+("use strict");
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-ignore
-(
-	"use strict"
-);
+("use strict");
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
 // @ts-ignore
-(
-  "use strict"
-);
+("use strict");
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
 // @ts-ignore
-(
-  'use strict'
-);
+('use strict');

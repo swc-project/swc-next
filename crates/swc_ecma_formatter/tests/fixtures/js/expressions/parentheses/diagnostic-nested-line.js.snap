@@ -10,54 +10,40 @@ missing
 {}
 ---------- Output ----------
 // @ts-expect-error
-(
-  missing
-);
+missing;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // @ts-expect-error
-;(
-  missing
-)
+missing
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 // @ts-expect-error
-(
-  missing
-);
+missing;
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // @ts-expect-error
-(
-  missing
-);
+missing;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-expect-error
-(
-	missing
-);
+missing;
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
 // @ts-expect-error
-(
-  missing
-);
+missing;
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
 // @ts-expect-error
-(
-  missing
-);
+missing;

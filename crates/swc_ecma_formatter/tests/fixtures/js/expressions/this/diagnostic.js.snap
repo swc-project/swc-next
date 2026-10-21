@@ -10,38 +10,28 @@ this
 {}
 ---------- Output ----------
 // @ts-expect-error
-(
-  this
-);
+this;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // @ts-expect-error
-;(
-  this
-)
+this
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // @ts-expect-error
-(
-  this
-);
+this;
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 // @ts-expect-error
-;(
-  this
-)
+this
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-expect-error
-(
-	this
-);
+this;

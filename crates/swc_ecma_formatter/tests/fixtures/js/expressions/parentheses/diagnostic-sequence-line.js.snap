@@ -10,63 +10,49 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 // @ts-ignore
-(
-  /** @type {number} */ (first), missing
-);
+(/** @type {number} */ (first), missing);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // @ts-ignore
-;(
-  /** @type {number} */ (first), missing
-)
+;(/** @type {number} */ (first), missing)
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 // @ts-ignore
-(
-  /** @type {number} */ (
-    first
-  ),
-  missing
-);
+(/** @type {number} */ (
+  first
+),
+  missing);
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // @ts-ignore
-(
-  /** @type {number} */ (
-    first
-  ),
-  missing
-);
+(/** @type {number} */ (
+  first
+),
+  missing);
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-ignore
-(
-	/** @type {number} */ (
-		first
-	),
-	missing
-);
+(/** @type {number} */ (
+	first
+),
+	missing);
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
 // @ts-ignore
-(
-  /** @type {number} */ (first), missing
-);
+(/** @type {number} */ (first), missing);
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
 // @ts-ignore
-(
-  /** @type {number} */ (first), missing
-);
+(/** @type {number} */ (first), missing);
