@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+start();
+// prettier-ignore
+"custom hint";
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+start()
+// prettier-ignore
+;"custom hint"
+
+---------- Options ----------
+{}
+---------- Output ----------
+start();
+// prettier-ignore
+"custom hint";

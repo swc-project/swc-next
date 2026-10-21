@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare module "pkg" { ;
+// prettier-ignore
+"use strict"; }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+declare module "pkg" {
+  // prettier-ignore
+  ;"use strict"
+}
+
+---------- Options ----------
+{}
+---------- Output ----------
+declare module "pkg" {
+  // prettier-ignore
+  ;"use strict";
+}

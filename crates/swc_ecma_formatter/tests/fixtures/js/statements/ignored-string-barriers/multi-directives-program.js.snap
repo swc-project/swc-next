@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"custom"; "use strict"; // prior
+;
+// prettier-ignore
+"use asm";
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+"custom"
+"use strict" // prior
+// prettier-ignore
+;;"use asm"
+
+---------- Options ----------
+{}
+---------- Output ----------
+"custom";
+"use strict"; // prior
+// prettier-ignore
+;"use asm";

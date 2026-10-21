@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+module N { ;
+// prettier-ignore
+"use strict"; }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+module N {
+  // prettier-ignore
+  ;"use strict"
+}
+
+---------- Options ----------
+{}
+---------- Output ----------
+module N {
+  // prettier-ignore
+  ;"use strict";
+}
