@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [first + name /* tail */](): void };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = {
+  [first +
+    name /* tail */](): void;
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = { [first + name /* tail */](): void };

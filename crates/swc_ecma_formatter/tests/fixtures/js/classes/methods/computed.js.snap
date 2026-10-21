@@ -16,9 +16,8 @@ class C {
 {"printWidth":20}
 ---------- Output ----------
 class C {
-  static [
-    key + suffix
-  ](a) {
+  static [key +
+    suffix](a) {
     return a;
   }
 }
@@ -36,9 +35,8 @@ class C {
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 class C {
-  static [
-    key + suffix
-  ](a) {
+  static [key +
+    suffix](a) {
     return a
   }
 }
@@ -47,9 +45,8 @@ class C {
 {"printWidth":20,"tabWidth":2,"useTabs":true}
 ---------- Output ----------
 class C {
-	static [
-		key + suffix
-	](a) {
+	static [key +
+		suffix](a) {
 		return a;
 	}
 }

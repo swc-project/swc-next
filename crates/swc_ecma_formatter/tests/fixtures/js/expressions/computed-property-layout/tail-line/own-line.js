@@ -1,0 +1,3 @@
+({ [key
+// tail
+]: value });

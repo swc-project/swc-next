@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [firstLongName + secondLongName]: value });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [firstLongName +
+  secondLongName]:
+    value,
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ [firstLongName + secondLongName]: value });

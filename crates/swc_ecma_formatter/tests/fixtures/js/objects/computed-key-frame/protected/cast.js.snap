@@ -1,0 +1,9 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [/** @type {string} */ (key)]: value });
+---------- Options ----------
+{}
+---------- Output ----------
+({ [/** @type {string} */ (key)]: value });

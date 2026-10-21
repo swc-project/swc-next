@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { [
+/* head */
+first + name]() {} }
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  [
+    /* head */
+    first + name
+  ]() {}
+}

@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [condition ? consequent : alternate]: value });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [condition
+    ? consequent
+    : alternate]:
+    value,
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ [condition ? consequent : alternate]: value });

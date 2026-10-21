@@ -20,9 +20,9 @@ comment */ /* ordinary */ object.method(second()),
 {"printWidth":40}
 ---------- Output ----------
 target = {
-  [
-    object.method(first()) /* key end */
-  ]:
+  [object.method(
+    first(),
+  ) /* key end */]:
     /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(
@@ -34,11 +34,9 @@ comment */ /* ordinary */ object.method(
 {"printWidth":20}
 ---------- Output ----------
 target = {
-  [
-    object.method(
-      first(),
-    ) /* key end */
-  ]:
+  [object.method(
+    first(),
+  ) /* key end */]:
     /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(
@@ -60,11 +58,9 @@ comment */ /* ordinary */ object.method(second()),
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 target = {
-	[
-		object.method(
-			first(),
-		) /* key end */
-	]:
+	[object.method(
+		first(),
+	) /* key end */]:
 		/** @type {number} */
 		/* multiline
 comment */ /* ordinary */ object.method(
