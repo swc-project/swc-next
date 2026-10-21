@@ -9,7 +9,7 @@ second */ // third
 {}
 ---------- Output ----------
 result = {
-  key: /* first
+  /* first
 second */ // third
-    value,
+  key: value,
 };

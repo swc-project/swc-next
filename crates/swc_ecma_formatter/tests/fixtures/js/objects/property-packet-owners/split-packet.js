@@ -1,0 +1,3 @@
+({ key: /* first */
+// second
+value });

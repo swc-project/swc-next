@@ -8,30 +8,30 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 ({
-  key: /* inline */ // line
-    /* leading */ value,
+  /* inline */ // line
+  key: /* leading */ value,
 });
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ({
-  key: /* inline */ // line
-    /* leading */ value,
+  /* inline */ // line
+  key: /* leading */ value,
 });
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
 ({
-  key: /* inline */ // line
-    /* leading */ value,
+  /* inline */ // line
+  key: /* leading */ value,
 });
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 ;({
-  key: /* inline */ // line
-    /* leading */ value,
+  /* inline */ // line
+  key: /* leading */ value,
 })
