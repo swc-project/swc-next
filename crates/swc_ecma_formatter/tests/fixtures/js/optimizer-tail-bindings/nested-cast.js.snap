@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(/** @type {number} */ (item) /* #__PURE__ */), other];
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+;[
+  /** @type {number} */ (
+    item
+  ) /* #__PURE__ */,
+  other,
+]
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+[
+  /** @type {number} */ (
+    item
+  ) /* #__PURE__ */,
+  other,
+];

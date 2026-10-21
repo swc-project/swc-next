@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(first /* #__PURE__ */); const keep = /* @__PURE__ */ active(); consume(keep);
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+first
+/* #__PURE__ */ const keep =
+  /* @__PURE__ */ active()
+consume(keep)
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+first;
+/* #__PURE__ */ const keep =
+  /* @__PURE__ */ active();
+consume(keep);
