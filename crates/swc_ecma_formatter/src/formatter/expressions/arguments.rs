@@ -515,17 +515,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (trailing_count, physical_break, inline_line)
         };
         let prepare_run = (physical_break || inline_line) && ordinary_attachment;
-        let prepared_run = if prepare_run {
-            self.prepare_delimited_trailing_run(
-                comments,
-                content_end,
-                trailing_limit,
-                following_span.is_some(),
-                array_comments.as_deref_mut(),
-            )
-        } else {
-            None
-        };
+        let optimizer_run = ordinary_attachment
+            .then(|| self.prepare_delimited_optimizer_run(comments, tail.as_ref(), comma))
+            .flatten();
+        let prepared_run = optimizer_run.or_else(|| {
+            if prepare_run {
+                self.prepare_delimited_trailing_run(
+                    comments,
+                    content_end,
+                    trailing_limit,
+                    following_span.is_some(),
+                    array_comments.as_deref_mut(),
+                )
+            } else {
+                None
+            }
+        });
         let canonical_run = prepared_run.is_some();
         let boundary_count = match prepared_run.as_ref() {
             Some(run) => {

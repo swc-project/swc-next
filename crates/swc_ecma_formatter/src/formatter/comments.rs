@@ -336,7 +336,7 @@ impl<'ast> ArrayCommentOwner<'ast> {
     }
 }
 
-/// One complete ordinary prefix owned by a real delimiter boundary.
+/// One complete prefix owned by a real delimiter boundary.
 /// Its final Line and preceding Blocks are emitted together, in source order.
 pub(super) struct PreparedTrailingRun<'ast> {
     comments: &'ast [Comment],
@@ -638,6 +638,80 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         None
+    }
+
+    /// Keep a complete source-inline optimizer suffix on its emitted comma.
+    /// The same owner is recovered after a released source pair disappears.
+    pub(super) fn prepare_delimited_optimizer_run(
+        &self,
+        comments: &'ast [Comment],
+        tail: Option<&ExpressionTail<'ast>>,
+        comma: Option<u32>,
+    ) -> Option<PreparedTrailingRun<'ast>> {
+        let first = comments.first()?;
+        let (source_end, limit) = if let Some(comma) = comma
+            && comma < first.span.start
+        {
+            (comma + 1, None)
+        } else {
+            let tail = tail?;
+            if tail.comments.first()?.span != first.span {
+                return None;
+            }
+            (tail.source_end, Some(tail.comments.last()?.span.end))
+        };
+        let mut previous_end = source_end;
+        let mut optimizer = false;
+        let mut run = None;
+        for (index, &comment) in comments.iter().enumerate() {
+            if limit.is_some_and(|limit| comment.span.end > limit)
+                || comment.span.start < previous_end
+                || !self
+                    .source(Span::new(previous_end, comment.span.start))
+                    .chars()
+                    .all(|character| {
+                        is_source_whitespace(character)
+                            && !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+                    })
+            {
+                return None;
+            }
+            let semantics = self.comment_semantics(comment);
+            if semantics.suppression
+                || semantics.diagnostic
+                || semantics.file_directive
+                || semantics.type_cast
+            {
+                return None;
+            }
+            optimizer |= semantics.optimizer;
+            let fact = self.prepare_source_comment(comment, &mut run);
+            if let Some(fact) = fact {
+                return optimizer.then_some(PreparedTrailingRun {
+                    comments: &comments[..index + 1],
+                    source_end,
+                    fact,
+                });
+            }
+            previous_end = comment.span.end;
+        }
+        None
+    }
+
+    fn optimizer_only_packet(&self, comments: &[Comment]) -> bool {
+        let mut optimizer = false;
+        for &comment in comments {
+            let semantics = self.comment_semantics(comment);
+            if semantics.suppression
+                || semantics.diagnostic
+                || semantics.file_directive
+                || semantics.type_cast
+            {
+                return false;
+            }
+            optimizer |= semantics.optimizer;
+        }
+        optimizer
     }
 
     pub(super) fn prepare_bound_comments(
@@ -1362,6 +1436,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
+        if has_following
+            && let Some(tail) = pending.as_ref()
+            && self.optimizer_only_packet(tail.comments)
+        {
+            // A released marker follows the same next-head owner as a source
+            // post-semicolon packet. That owner also places any required ASI guard.
+            return Ok(tail.source_end);
+        }
         let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
         let comments = self.comments.between(Span::new(source_end, span.end))?;
         let (comments, source_end) = if let Some(tail) = pending {
