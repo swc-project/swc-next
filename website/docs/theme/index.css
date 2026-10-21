@@ -87,6 +87,8 @@ html.dark {
 }
 
 * { scrollbar-width: thin; scrollbar-color: var(--rp-c-divider) transparent; }
+/* Keep long and short pages on the same horizontal grid. */
+html { scrollbar-gutter: stable; }
 body { letter-spacing: normal; line-height: 1.5; }
 ::selection { background: #6e79d640; }
 :focus-visible { outline: 2px solid #6e79d6; outline-offset: 4px; }
@@ -111,7 +113,7 @@ body { letter-spacing: normal; line-height: 1.5; }
   padding: 0;
   overflow: hidden;
 }
-.sidebar-navigation { flex: 1; min-height: 0; overflow: hidden auto; padding: var(--rp-sidebar-padding); }
+.sidebar-navigation { flex: 1; min-height: 0; overflow: hidden auto; scrollbar-gutter: stable; padding: var(--rp-sidebar-padding); }
 .rp-sidebar-item { padding: 7px 10px; font-size: 14px; line-height: 21px; border-radius: 5px; font-weight: 510; letter-spacing: -0.013em; }
 .rp-sidebar-item--active { color: var(--site-accent); background: var(--rp-c-brand-tint); font-weight: 510; }
 .rp-sidebar-section-header { margin-top: 25px; margin-bottom: 7px; padding-inline: 10px; }
