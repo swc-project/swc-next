@@ -482,8 +482,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             let comma_before_tail = tail.as_ref().is_some_and(|tail| {
                                 tail.comments
-                                    .last()
-                                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+                                    .iter()
+                                    .scan(tail.source_end, |previous, comment| {
+                                        let own_line =
+                                            self.line_breaks(*previous, comment.span.start) != 0;
+                                        *previous = comment.span.end;
+                                        Some(own_line || comment.kind == CommentKind::Line)
+                                    })
+                                    .any(|own_line| own_line)
                             });
                             let trailing_comma =
                                 self.options.trailing_commas != TrailingCommas::None;
