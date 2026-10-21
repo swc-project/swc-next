@@ -1,7 +1,8 @@
 //! Source delimiter ownership and semantic boundaries.
 
 use swc_next_ecma_ast::{
-    Comment, CommentKind, Expr, ExprData, GetSpan, ParenthesizedExpression, Span,
+    Comment, CommentKind, Expr, ExprData, GetSpan, NodeId, NodeKindData, ParenthesizedExpression,
+    Span,
 };
 
 use super::{
@@ -30,10 +31,31 @@ struct StatementSourceOwner {
     destination: Span,
 }
 
+#[derive(Clone, Copy, Default)]
+struct DiagnosticParenthesesOwner {
+    statement: Option<StatementSourceOwner>,
+    external_opening: Option<ExternalOpeningOwner>,
+}
+
+/// The exterior packet covers only this source chain's opening tokens.
+/// Its operand identity survives a required grammar frame around that operand.
 #[derive(Clone, Copy)]
-enum DiagnosticParenthesesOwner {
-    Source,
-    Statement(StatementSourceOwner),
+pub(in crate::formatter) struct ExternalOpeningOwner {
+    source: SourceParentheses,
+    packet: Comment,
+    covered_tokens: Span,
+}
+
+impl ExternalOpeningOwner {
+    fn owns_opening(self, boundary: SourceParentheses) -> bool {
+        self.packet.span.end <= self.source.outer.start
+            && self.covered_tokens.start == self.source.outer.start
+            && self.covered_tokens.end <= self.source.inner.start
+            && self.source.outer.start <= boundary.outer.start
+            && boundary.outer.end <= self.source.outer.end
+            && boundary.inner.start <= self.source.inner.start
+            && self.source.inner.end <= boundary.inner.end
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -477,7 +499,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 parentheses: None,
             };
         }
-        let diagnostic_owner = if matches!(position, ExpressionPosition::Statement)
+        let statement = if matches!(position, ExpressionPosition::Statement)
             && !self.diagnostic_lines.is_empty()
         {
             // Inspect the transparent source chain once. Every wrapper below still
@@ -486,14 +508,141 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(destination) {
                 destination = pair.expression(self.ast);
             }
-            DiagnosticParenthesesOwner::Statement(StatementSourceOwner {
+            Some(StatementSourceOwner {
                 source: expression.span(self.ast),
                 destination: destination.span(self.ast),
             })
         } else {
-            DiagnosticParenthesesOwner::Source
+            None
+        };
+        let diagnostic_owner = DiagnosticParenthesesOwner {
+            statement,
+            external_opening: self.external_expression_opening_owner(expression),
         };
         self.expression_content_with_diagnostic_owner(expression, diagnostic_owner)
+    }
+
+    pub(in crate::formatter) fn prepare_external_opening_owners(
+        &self,
+    ) -> Vec<Option<ExternalOpeningOwner>> {
+        if self.diagnostic_lines.is_empty() {
+            return Vec::new();
+        }
+        // Mark direct wrapper children in the flat AST. A retained chain cannot
+        // later reclassify one of its interior packets as an exterior owner.
+        // This preparation does not recurse through unrelated expression trees.
+        let mut nested = vec![false; self.ast.node_count()];
+        for index in 0..self.ast.node_count() {
+            if let NodeKindData::ParenthesizedExpression(pair) =
+                self.ast.kind_data(NodeId::from_usize(index))
+                && let ExprData::ParenthesizedExpression(child) =
+                    self.ast.expr_data(pair.expression(self.ast))
+            {
+                nested[child.node_id().index()] = true;
+            }
+        }
+        let mut owners = vec![None; self.diagnostic_lines.len()];
+        for (index, is_nested) in nested.into_iter().enumerate() {
+            if is_nested {
+                continue;
+            }
+            let NodeKindData::ParenthesizedExpression(pair) =
+                self.ast.kind_data(NodeId::from_usize(index))
+            else {
+                continue;
+            };
+            let outer = pair.span(self.ast);
+            let Some((line, _)) = self.diagnostic_lines.external_opening_tokens(outer.start) else {
+                continue;
+            };
+            let mut inner = Expr::ParenthesizedExpression(pair);
+            let mut supported = true;
+            while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(inner) {
+                let child = pair.expression(self.ast);
+                supported &= self
+                    .expression_needs_parentheses(
+                        self.ast.expr_data(child),
+                        ExpressionPosition::Nested,
+                        ContentMode::Formatted,
+                    )
+                    .is_some();
+                inner = child;
+            }
+            if supported {
+                owners[line] = self.external_opening_owner(SourceParentheses {
+                    outer,
+                    inner: inner.span(self.ast),
+                    inner_target: ParenthesisInner::Expression(inner),
+                });
+            }
+        }
+        owners
+    }
+
+    fn external_expression_opening_owner(&self, expression: Expr) -> Option<ExternalOpeningOwner> {
+        let outer = expression.span(self.ast);
+        let (index, _) = self.diagnostic_lines.external_opening_tokens(outer.start)?;
+        let owner = self.external_opening_owners.get(index).copied().flatten()?;
+        (owner.source.outer == outer
+            && matches!(
+                self.ast.expr_data(expression),
+                ExprData::ParenthesizedExpression(_)
+            ))
+        .then_some(owner)
+    }
+
+    /// Both expression and recovered target chains provide their actual owner.
+    pub(super) fn external_opening_owner(
+        &self,
+        boundary: SourceParentheses,
+    ) -> Option<ExternalOpeningOwner> {
+        let ParenthesisInner::Expression(expression) = boundary.inner_target else {
+            return None;
+        };
+        let tokens = self.diagnostic_external_opening_tokens(boundary.outer.start)?;
+        if expression.span(self.ast) != boundary.inner
+            || tokens.end > boundary.inner.start
+            || self.diagnostic_line_is_sensitive(boundary.inner.start)
+            || !self
+                .source(Span::new(boundary.outer.start, boundary.inner.start))
+                .chars()
+                .all(|character| character == '(' || is_source_whitespace(character))
+            || !self
+                .source(Span::new(boundary.inner.end, boundary.outer.end))
+                .chars()
+                .all(|character| character == ')' || is_source_whitespace(character))
+        {
+            return None;
+        }
+        // Read the immutable source packet before a parent can claim its cursor.
+        // A foreign adjacent comment keeps the complete mixed packet protected.
+        let comments = self.ast.comments();
+        let end = comments.partition_point(|comment| comment.span.end <= boundary.outer.start);
+        let index = end.checked_sub(1)?;
+        let packet = comments[index];
+        let semantics = self.comment_semantics(packet);
+        if !semantics.diagnostic
+            || semantics.suppression
+            || semantics.type_cast
+            || semantics.optimizer
+            || semantics.file_directive
+            || !self
+                .source(Span::new(packet.span.end, boundary.outer.start))
+                .chars()
+                .all(is_source_whitespace)
+            || index.checked_sub(1).is_some_and(|previous| {
+                self.source(Span::new(comments[previous].span.end, packet.span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+            })
+        {
+            return None;
+        }
+        Some(ExternalOpeningOwner {
+            source: boundary,
+            packet,
+            covered_tokens: tokens,
+        })
     }
 
     fn expression_content_with_diagnostic_owner(
@@ -661,7 +810,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             &mut optimizer_binding,
                             &mut diagnostic_frontier,
                             None,
-                            DiagnosticParenthesesOwner::Source,
+                            DiagnosticParenthesesOwner::default(),
                             |position| {
                                 let (start, slot) = match position {
                                     ParenthesisCastPosition::Outer => {
@@ -764,13 +913,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: SourceParentheses,
         emitted_inner: Option<Expr>,
         owner: Option<Span>,
+        external: Option<ExternalOpeningOwner>,
     ) -> bool {
         self.removable_parentheses_head_with_emitted_inner(
             boundary,
             &mut None,
             &mut DiagnosticHeadState::Absent,
             emitted_inner,
-            DiagnosticParenthesesOwner::Source,
+            DiagnosticParenthesesOwner {
+                external_opening: external,
+                ..DiagnosticParenthesesOwner::default()
+            },
         )
         .is_some_and(|prepared| {
             prepared
@@ -791,7 +944,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             optimizer_binding,
             diagnostic_frontier,
             None,
-            DiagnosticParenthesesOwner::Source,
+            DiagnosticParenthesesOwner::default(),
         )
     }
 
@@ -1014,7 +1167,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn parentheses_separate_diagnostic_lines(&self, boundary: SourceParentheses) -> bool {
         self.parentheses_separate_diagnostic_lines_with_owner(
             boundary,
-            DiagnosticParenthesesOwner::Source,
+            DiagnosticParenthesesOwner::default(),
             &[],
         )
     }
@@ -1029,23 +1182,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         // Delimiters can separate covered tokens from the next source line.
-        let statement = match diagnostic_owner {
-            DiagnosticParenthesesOwner::Statement(owner)
-                if owner.source.start <= boundary.outer.start
-                    && boundary.outer.end <= owner.source.end =>
-            {
-                Some(owner)
-            }
-            _ => None,
-        };
-        // An uncovered complete statement may replace its covered opener.
-        // Only existing coverage needs protection; activating the directive
-        // on the resulting statement does not require preserving parentheses.
+        let statement = diagnostic_owner.statement.filter(|owner| {
+            owner.source.start <= boundary.outer.start && boundary.outer.end <= owner.source.end
+        });
         let statement_opening = statement.is_some_and(|owner| {
             !self.diagnostic_line_is_sensitive(owner.destination.start)
                 && !self.diagnostic_line_is_sensitive(owner.destination.end)
         });
+        let external_opening = diagnostic_owner
+            .external_opening
+            .is_some_and(|owner| owner.owns_opening(boundary));
         let opening = !statement_opening
+            && !external_opening
             && (self.diagnostic_line_is_sensitive(boundary.outer.start)
                 || self.diagnostic_line_is_sensitive(boundary.inner.start))
             && self.line_breaks(boundary.outer.start, boundary.inner.start) != 0;

@@ -6,7 +6,7 @@ use swc_next_ecma_ast::{
     UpdateExpression, UpdateOperator,
 };
 
-use super::parentheses::{ParenthesisInner, SourceParentheses};
+use super::parentheses::{ExternalOpeningOwner, ParenthesisInner, SourceParentheses};
 use super::{
     ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, MemberChainLayout,
     MemberLayout, TailOwner,
@@ -501,26 +501,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TargetNode::Pattern { .. } => ParenthesisInner::Unresolved,
             TargetNode::Simple(target) => ParenthesisInner::Expression(target.expression),
         };
-        let mut emitted_inner = match target {
-            TargetNode::Simple(target) => Some(target.expression),
-            TargetNode::Pattern { .. } => None,
-        };
         for layer in layers.iter_mut().rev() {
             let closing = trailing.consume(")").ok_or_else(invalid)?;
             layer.parentheses.outer.end = closing.end;
             layer.parentheses.inner = inner;
             layer.parentheses.inner_target = inner_target;
+            inner = layer.parentheses.outer;
+            inner_target = ParenthesisInner::SourcePair;
+        }
+        let external = match target {
+            TargetNode::Simple(simple) if simple.kind == SimpleTargetKind::Value => {
+                layers.first().and_then(|outer| {
+                    self.external_opening_owner(SourceParentheses {
+                        outer: outer.parentheses.outer,
+                        inner: target.span(self.ast),
+                        inner_target: ParenthesisInner::Expression(simple.expression),
+                    })
+                })
+            }
+            _ => None,
+        };
+        let mut emitted_inner = match target {
+            TargetNode::Simple(target) => Some(target.expression),
+            TargetNode::Pattern { .. } => None,
+        };
+        for layer in layers.iter_mut().rev() {
             layer.mode = self.target_layer_mode(
                 layer.parentheses,
                 emitted_inner,
                 whole_default.as_deref_mut(),
                 owner,
+                external,
             );
             if layer.mode != TargetLayerMode::Remove {
                 emitted_inner = None;
             }
-            inner = layer.parentheses.outer;
-            inner_target = ParenthesisInner::SourcePair;
         }
         if let Some(outer) = layers.first_mut()
             && outer.mode == TargetLayerMode::Remove
@@ -546,6 +561,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         emitted_inner: Option<Expr>,
         whole_default: Option<&mut bool>,
         owner: Option<Span>,
+        external: Option<ExternalOpeningOwner>,
     ) -> TargetLayerMode {
         if self.has_suppression {
             let leading = self
@@ -576,7 +592,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TargetLayerMode::Verbatim;
             }
         }
-        if self.target_parentheses_are_removable(boundary, emitted_inner, owner) {
+        if self.target_parentheses_are_removable(boundary, emitted_inner, owner, external) {
             TargetLayerMode::Remove
         } else {
             TargetLayerMode::Retain

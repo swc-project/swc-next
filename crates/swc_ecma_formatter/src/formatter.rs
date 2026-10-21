@@ -30,6 +30,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
+    external_opening_owners: Vec<Option<expressions::parentheses::ExternalOpeningOwner>>,
     has_suppression: bool,
     has_target_annotations: bool,
     has_type_casts: bool,
@@ -52,6 +53,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             options,
             comments: CommentCursor::new(ast.comments()),
             diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            external_opening_owners: Vec::new(),
             has_suppression: ast
                 .comments()
                 .iter()
@@ -79,6 +81,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 break;
             }
         }
+        formatter.external_opening_owners = formatter.prepare_external_opening_owners();
         formatter
     }
 
