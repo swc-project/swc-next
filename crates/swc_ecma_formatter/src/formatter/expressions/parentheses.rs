@@ -2822,7 +2822,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.expression_start.write_statement_guard(writer);
             if source_bound {
                 writer.hard_line();
-            } else if ignored_head {
+            } else if ignored_head && !self.comment_is_type_cast(protected[0]) {
+                // A cast's guard belongs directly before its annotation, as in
+                // format_node_head. Only other ignored heads retain their
+                // original line relationship to the surrounding source.
                 let prefix = if self.source_position_starts_line(protected[0].span.start) {
                     LineConstraint::NewLine(1)
                 } else {
