@@ -769,6 +769,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 ExprData::CallExpression(call) => {
                     let arguments = self.source_call(call, current_context)?;
+                    if arguments.call_mode == ContentMode::Verbatim {
+                        current_context = current_context.with_content_mode(ContentMode::Verbatim);
+                        break;
+                    }
                     current = arguments.callee;
                     head_content = None;
                     current_context = arguments.callee_context(current_context);

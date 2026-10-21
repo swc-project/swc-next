@@ -154,7 +154,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         if self.has_suppression || call.type_arguments(ast).is_some() {
             let source = self.source_call(call, context).ok()?;
-            if source.callee_mode != ContentMode::Formatted || source.has_outside_prefix() {
+            if source.call_mode != ContentMode::Formatted
+                || source.callee_mode != ContentMode::Formatted
+                || source.has_outside_prefix()
+            {
                 return None;
             }
             return Some(source.callee_head());
@@ -176,6 +179,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let arguments = self.source_call(call, context)?;
+        if arguments.call_mode == ContentMode::Verbatim {
+            self.format_verbatim_expression(Expr::CallExpression(call), context, writer)?;
+            return Ok(None);
+        }
         let mut callee_context = arguments.callee_context(context);
         let member_callee = arguments.callee_mode == ContentMode::Formatted
             && !arguments.has_fixed_argument_frame()
