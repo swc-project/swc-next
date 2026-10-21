@@ -1,0 +1,206 @@
+[
+  {
+    "caption": "Vercel",
+    "image": "/img/customers/vercel.svg",
+    "infoLink": "https://vercel.com",
+    "width": 160
+  },
+  {
+    "caption": "ByteDance",
+    "image": "/img/customers/bytedance.png",
+    "infoLink": "https://bytedance.com",
+    "width": 180
+  },
+  {
+    "caption": "Tencent",
+    "image": "/img/customers/tencent.svg",
+    "infoLink": "https://tencent.com",
+    "width": 200
+  },
+  {
+    "caption": "Shopify",
+    "image": "/img/customers/shopify.svg",
+    "infoLink": "https://shopify.com",
+    "width": 160
+  },
+  {
+    "caption": "Supabase",
+    "image": "/img/customers/supabase.png",
+    "infoLink": "https://supabase.com/",
+    "width": 128
+  },
+  {
+    "caption": "Miro",
+    "image": "/img/customers/miro.svg",
+    "infoLink": "https://miro.com",
+    "width": 128
+  },
+  {
+    "caption": "X.com",
+    "image": "/img/customers/x.svg",
+    "infoLink": "https://x.com",
+    "width": 128
+  },
+  {
+    "caption": "Microsoft",
+    "image": "/img/customers/microsoft.png",
+    "infoLink": "https://www.microsoft.com",
+    "width": 160
+  },
+  {
+    "caption": "Ant Group",
+    "image": "/img/customers/antgroup.png",
+    "infoLink": "https://www.antgroup.com/",
+    "width": 160
+  },
+  {
+    "caption": "Parcel",
+    "image": "/img/customers/parceljs.png",
+    "infoLink": "https://parceljs.org/"
+  },
+  {
+    "caption": "Deno",
+    "image": "/img/customers/deno.svg",
+    "infoLink": "https://deno.land"
+  },
+  {
+    "caption": "Framer",
+    "image": "/img/customers/framer.svg",
+    "infoLink": "https://framer.com/",
+    "width": 202
+  },
+  {
+    "caption": "Fundamentei",
+    "image": "/img/customers/fundamentei.png",
+    "infoLink": "https://fundamentei.com/"
+  },
+  {
+    "caption": "strapi",
+    "image": "/img/customers/strapi.svg",
+    "infoLink": "https://strapi.io/"
+  },
+  {
+    "caption": "octopol",
+    "image": "/img/customers/octopol.jpeg",
+    "infoLink": "https://octopol.io/"
+  },
+  {
+    "caption": "Pollen",
+    "image": "/img/customers/pollen.png",
+    "infoLink": "https://team.pollen.co/"
+  },
+  {
+    "caption": "Trip.com",
+    "image": "/img/customers/trip.png",
+    "infoLink": "https://trip.com",
+    "width": 240
+  },
+  {
+    "caption": "Trip.biz",
+    "image": "/img/customers/tripbiz.svg",
+    "infoLink": "https://trip.biz",
+    "width": 140
+  },
+  {
+    "caption": "Transloadit",
+    "image": "/img/customers/transloadit.svg",
+    "infoLink": "https://transloadit.com",
+    "width": 200
+  },
+  {
+    "caption": "Affine",
+    "image": "/img/customers/affine.svg",
+    "infoLink": "https://affine.pro",
+    "width": 100
+  },
+  {
+    "caption": "APIMaker",
+    "image": "/img/customers/apimaker.svg",
+    "infoLink": "https://apimaker.dev",
+    "width": 140
+  },
+  {
+    "caption": "MediaBoard",
+    "image": "/img/customers/mediaboard.svg",
+    "infoLink": "https://mediaboard.com/",
+    "width": 180
+  },
+  {
+    "caption": "Galaxus",
+    "image": "/img/customers/galaxus.jpg",
+    "infoLink": "https://www.galaxus.ch/en",
+    "width": 100
+  },
+  {
+    "caption": "Digitec",
+    "image": "/img/customers/digitec.jpg",
+    "infoLink": "https://www.digitec.ch/en",
+    "width": 100
+  },
+  {
+    "caption": "Wayfair",
+    "image": "/img/customers/wayfair.svg",
+    "infoLink": "https://www.wayfair.com/",
+    "width": 180
+  },
+  {
+    "caption": "Fireworks",
+    "image": "/img/customers/fireworks.svg",
+    "infoLink": "https://fireworks.ai/",
+    "width": 180
+  },
+  {
+    "caption": "Landfolk",
+    "image": "/img/customers/landfolk.svg",
+    "infoLink": "https://landfolk.com",
+    "width": 180
+  },
+  {
+    "caption": "Hennge",
+    "image": "/img/customers/hennge.svg",
+    "infoLink": "https://hennge.com",
+    "width": 180
+  },
+  {
+    "caption": "Verkada",
+    "image": "/img/customers/verkada.png",
+    "infoLink": "https://www.verkada.com",
+    "width": 200
+  },
+  {
+    "caption": "The MEDIA ANT",
+    "image": "/img/customers/the-media-ant.webp",
+    "infoLink": "https://www.themediaant.com",
+    "width": 200
+  },
+  {
+    "caption": "EverShop",
+    "image": "/img/customers/evershop.png",
+    "infoLink": "https://evershop.io/",
+    "width": 110
+  },
+  {
+    "caption": "Nodecraft",
+    "image": "/img/customers/nodecraft.svg",
+    "infoLink": "https://nodecraft.com/",
+    "width": 128
+  },
+  {
+    "caption": "Trellis",
+    "image": "/img/customers/trellis.png",
+    "infoLink": "https://trellis.org/",
+    "width": 180
+  },
+  {
+    "caption": "Faire",
+    "image": "/img/customers/faire.svg",
+    "infoLink": "https://www.faire.com/",
+    "width": 180
+  },
+  {
+    "caption": "Extension.js",
+    "image": "/img/customers/extensionjs.svg",
+    "infoLink": "https://extension.js.org",
+    "width": 150
+  }
+]

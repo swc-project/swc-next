@@ -19,6 +19,8 @@ export default defineConfig({
         text: "Resources",
         items: [
           { text: "Team", link: "/resources/team" },
+          { text: "Sponsors", link: "/resources/sponsors" },
+          { text: "Customers", link: "/resources/customers" },
           { text: "Roadmap", link: "https://github.com/swc-project/swc-next/issues/181" },
           { text: "Releases", link: "https://github.com/swc-project/swc-next/releases" },
         ],

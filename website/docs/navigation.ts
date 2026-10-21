@@ -136,6 +136,14 @@ export const sidebar = {
       "link": "/resources/team"
     },
     {
+      "text": "Sponsors",
+      "link": "/resources/sponsors"
+    },
+    {
+      "text": "Customers",
+      "link": "/resources/customers"
+    },
+    {
       "text": "Roadmap",
       "link": "https://github.com/swc-project/swc-next/issues/181"
     },
