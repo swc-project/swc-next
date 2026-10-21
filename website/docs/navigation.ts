@@ -162,16 +162,8 @@ export const sidebar = {
           "link": "/architecture/flat-ast"
         },
         {
-          "text": "AST representations",
-          "link": "/architecture/representations"
-        },
-        {
-          "text": "Schema & generation",
-          "link": "/architecture/generation"
-        },
-        {
-          "text": "Native & Wasm bridge",
-          "link": "/architecture/bridge"
+          "text": "FFI",
+          "link": "/architecture/ffi"
         }
       ]
     }
