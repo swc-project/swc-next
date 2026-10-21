@@ -1,0 +1,2 @@
+f(first, /* block */ // line
+);

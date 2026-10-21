@@ -8,7 +8,7 @@ last];
 {}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -16,7 +16,7 @@ last];
 {"printWidth":14}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -24,7 +24,7 @@ last];
 {"printWidth":13}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -32,7 +32,7 @@ last];
 {"printWidth":10}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -40,7 +40,7 @@ last];
 {"printWidth":0}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -48,7 +48,7 @@ last];
 {"semi":false}
 ---------- Output ----------
 ;[
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ]
 
@@ -56,7 +56,7 @@ last];
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last
 ];
 
@@ -64,7 +64,7 @@ last];
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
 
@@ -72,7 +72,7 @@ last];
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 [
-	first, /* block */ // line
+	first /* block */, // line
 	last,
 ];
 
@@ -80,6 +80,6 @@ last];
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 [
-  first, /* block */ // line
+  first /* block */, // line
   last,
 ];
