@@ -9,16 +9,17 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 ({
-  key
-  /** @type {number} */: (0, value),
+  key:
+    /** @type {number} */
+    (0, value),
 });
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ({
-  key
-  /** @type {number} */:
+  key:
+    /** @type {number} */
     (0, value),
 });
 
@@ -26,15 +27,16 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":40}
 ---------- Output ----------
 ({
-  key
-  /** @type {number} */: (0, value),
+  key:
+    /** @type {number} */
+    (0, value),
 });
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 ;({
-  key
-  /** @type {number} */:
+  key:
+    /** @type {number} */
     (0, value),
 })
