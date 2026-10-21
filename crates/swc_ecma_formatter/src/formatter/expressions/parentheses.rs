@@ -1443,6 +1443,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode: context.content_mode,
             };
         }
+        if matches!(trailing_suppression, Some(TrailingSuppression::Terminal)) {
+            // The terminal marker selects the child through this actual closer.
+            // Raw child content alone cannot preserve that target after removal.
+            return SourceParenthesesChoice::Retained {
+                kind: RetainedParentheses::Operand,
+                mode: context.content_mode,
+            };
+        }
         if let ExprData::ParenthesizedExpression(inner) = self.ast.expr_data(child)
             && self.parenthesis_has_type_cast(child_span.start)
             && self.parentheses_content_mode(
