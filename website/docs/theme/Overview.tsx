@@ -5,7 +5,7 @@ const paths = [
   { icon: Terminal, title: "Get started", description: "Your first parse, edit, and print.", href: "/guide/getting-started/node", label: "01" },
   { icon: Braces, title: "JavaScript API", description: "Parse, traverse, and print from JavaScript.", href: "/api/javascript/core", label: "02" },
   { icon: Code2, title: "Rust API", description: "Compose the compiler components directly.", href: "/api/rust", label: "03" },
-  { icon: Layers, title: "Under the hood", description: "Discover the flat AST architecture.", href: "/resources/architecture/flat-ast", label: "04" },
+  { icon: Layers, title: "Under the hood", description: "Discover the flat AST architecture.", href: "/architecture/flat-ast", label: "04" },
 ];
 
 export function IntroActions() {

@@ -12,7 +12,7 @@ cargo run -p ast_tools
 ```
 
 Change the AST declarations or [generators](src/generator) rather than editing
-generated files. See the [AST design](../../website/docs/docs/resources/architecture/flat-ast.md) for
+generated files. See the [AST design](../../website/docs/docs/architecture/flat-ast.md) for
 the storage model.
 
 Attribute syntax and semantics are documented on the

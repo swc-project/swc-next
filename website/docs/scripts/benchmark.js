@@ -19,7 +19,7 @@ const jsRuns = 2;
 const jsTimeMs = 1000;
 // Linux only: set BENCH_CPU to an available CPU, preferably a performance core.
 const cpu = process.env.BENCH_CPU ?? "0";
-const output = path.join(root, "website/docs/docs/benchmarks/results.md");
+const output = path.join(root, "website/docs/docs/guide/publish-results.md");
 const parseFiles = ["typescript.js", "effect-schema-ast.ts"];
 const benchmarks = [
   {
@@ -97,7 +97,7 @@ function main() {
 
   // Hyperfine executes these arguments directly, without a shell.
   const quote = (value) => `'${String(value).replaceAll("'", "'\\''")}'`;
-  const lines = ["# Benchmark", ""];
+  const lines = ["# Publish Results", ""];
   for (const { title, type, operation, files } of benchmarks) {
     lines.push(`## ${title}`, "");
     const isJs = type === "js";

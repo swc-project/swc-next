@@ -25,9 +25,9 @@ Static output is written to `website/docs/doc_build`.
 
 ## Existing documents
 
-The original benchmark report is in `docs/benchmarks/results.md`; its script
+The original benchmark report is in `docs/guide/publish-results.md`; its script
 remains in `scripts/benchmark.js`. The flat AST design document is in
-`docs/resources/architecture/flat-ast.md`. Shared images are in `docs/public/images/`.
+`docs/architecture/flat-ast.md`. Shared images are in `docs/public/images/`.
 
 The remaining pages provide the initial documentation structure and concise
 summaries. They do not yet provide a complete API reference.

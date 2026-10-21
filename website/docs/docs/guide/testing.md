@@ -1,9 +1,9 @@
 ---
-title: "Testing & conformance"
+title: "Testing"
 description: "Validate behavior against upstream fixtures and project-owned tests."
 ---
 
-# Testing & conformance
+# Testing
 
 Validate behavior against upstream fixtures and project-owned tests.
 
@@ -18,4 +18,4 @@ Validate behavior against upstream fixtures and project-owned tests.
 
 ## Related
 
-[Project status](/guide/status) · [Flat AST](/resources/architecture/flat-ast)
+[Project status](/guide/status) · [Flat AST](/architecture/flat-ast)

@@ -17,4 +17,4 @@ Connect the compiler components to JavaScript runtimes.
 
 ## Related
 
-[Project status](/guide/status) · [Flat AST](/resources/architecture/flat-ast)
+[Project status](/guide/status) · [Flat AST](/architecture/flat-ast)

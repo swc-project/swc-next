@@ -17,4 +17,4 @@ One schema connects Rust flat storage and JavaScript ESTree objects.
 
 ## Related
 
-[Project status](/guide/status) · [Flat AST](/resources/architecture/flat-ast)
+[Project status](/guide/status) · [Flat AST](/architecture/flat-ast)

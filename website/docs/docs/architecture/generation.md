@@ -17,4 +17,4 @@ AST declarations are the source of generated Rust APIs and JavaScript types and 
 
 ## Related
 
-[Project status](/guide/status) · [Flat AST](/resources/architecture/flat-ast)
+[Project status](/guide/status) · [Flat AST](/architecture/flat-ast)

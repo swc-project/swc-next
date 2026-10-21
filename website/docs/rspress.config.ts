@@ -13,26 +13,14 @@ export default defineConfig({
     darkMode: "dark",
     nav: [
       { text: "Guide", link: "/", activeMatch: "^/$|^/guide/" },
-      {
-        text: "API",
-        items: [
-          { text: "Overview", link: "/api/" },
-          { text: "Component APIs", link: "/api/components/" },
-          { text: "JavaScript", link: "/api/javascript/core" },
-          { text: "Rust", link: "/api/rust" },
-          { text: "AST interop", link: "/api/interop" },
-        ],
-      },
-      { text: "Benchmarks", link: "/benchmarks/" },
+      { text: "API", link: "/api/" },
+      { text: "Architecture", link: "/architecture/flat-ast", activeMatch: "^/architecture/" },
       {
         text: "Resources",
         items: [
-          { text: "Architecture", link: "/resources/architecture/flat-ast" },
-          { text: "Testing & conformance", link: "/resources/testing" },
-          { text: "Roadmap", link: "/resources/roadmap" },
-          { text: "Releases", link: "/resources/releases" },
-          { text: "Contributing", link: "/resources/contributing" },
-          { text: "FAQ", link: "/resources/faq" },
+          { text: "Team", link: "/resources/team" },
+          { text: "Roadmap", link: "https://github.com/swc-project/swc-next/issues/181" },
+          { text: "Releases", link: "https://github.com/swc-project/swc-next/releases" },
         ],
       },
     ],

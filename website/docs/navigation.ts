@@ -57,6 +57,14 @@ const guide = [
         "link": "/guide/recipes"
       }
     ]
+  },
+  {
+    "text": "Performance",
+    "link": "/guide/publish-results"
+  },
+  {
+    "text": "Testing",
+    "link": "/guide/testing"
   }
 ];
 
@@ -153,105 +161,41 @@ export const sidebar = {
       ]
     }
   ],
-  "/benchmarks/": [
+  "/architecture/": [
     {
-      "text": "Performance",
+      "text": "Architecture",
       "items": [
         {
-          "text": "Overview",
-          "link": "/benchmarks/"
+          "text": "Flat AST",
+          "link": "/architecture/flat-ast"
         },
         {
-          "text": "Published results",
-          "link": "/benchmarks/results"
+          "text": "AST representations",
+          "link": "/architecture/representations"
         },
         {
-          "text": "Rust benchmarks",
-          "link": "/benchmarks/rust"
+          "text": "Schema & generation",
+          "link": "/architecture/generation"
         },
         {
-          "text": "JavaScript API",
-          "link": "/benchmarks/javascript"
-        },
-        {
-          "text": "Memory",
-          "link": "/benchmarks/memory"
-        },
-        {
-          "text": "Methodology",
-          "link": "/benchmarks/methodology"
+          "text": "Native & Wasm bridge",
+          "link": "/architecture/bridge"
         }
       ]
     }
   ],
   "/resources/": [
     {
-      "text": "Resources",
-      "items": [
-        {
-          "text": "Overview",
-          "link": "/resources/"
-        }
-      ]
+      "text": "Team",
+      "link": "/resources/team"
     },
     {
-      "text": "Architecture",
-      "items": [
-        {
-          "text": "Flat AST",
-          "link": "/resources/architecture/flat-ast"
-        },
-        {
-          "text": "AST representations",
-          "link": "/resources/architecture/representations"
-        },
-        {
-          "text": "Schema & generation",
-          "link": "/resources/architecture/generation"
-        },
-        {
-          "text": "Native & Wasm bridge",
-          "link": "/resources/architecture/bridge"
-        }
-      ]
+      "text": "Roadmap",
+      "link": "https://github.com/swc-project/swc-next/issues/181"
     },
     {
-      "text": "Quality",
-      "items": [
-        {
-          "text": "Testing & conformance",
-          "link": "/resources/testing"
-        },
-        {
-          "text": "Known limitations",
-          "link": "/resources/limitations"
-        }
-      ]
-    },
-    {
-      "text": "Project",
-      "items": [
-        {
-          "text": "Roadmap",
-          "link": "/resources/roadmap"
-        },
-        {
-          "text": "Releases",
-          "link": "/resources/releases"
-        },
-        {
-          "text": "Contributing",
-          "link": "/resources/contributing"
-        },
-        {
-          "text": "FAQ",
-          "link": "/resources/faq"
-        },
-        {
-          "text": "Credits & license",
-          "link": "/resources/credits"
-        }
-      ]
+      "text": "Releases",
+      "link": "https://github.com/swc-project/swc-next/releases"
     }
   ]
 };
