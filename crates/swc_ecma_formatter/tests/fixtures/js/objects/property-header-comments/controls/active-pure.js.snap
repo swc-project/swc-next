@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const unused = { key /* first */ // second
+: /*#__PURE__*/ factory() };
+---------- Options ----------
+{}
+---------- Output ----------
+const unused = {
+  /* first */ // second
+  key: /*#__PURE__*/ factory(),
+};

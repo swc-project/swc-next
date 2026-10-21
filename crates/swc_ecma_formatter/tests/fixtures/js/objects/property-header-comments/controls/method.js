@@ -1,0 +1,2 @@
+result = { method /* first */ // second
+() {} };
