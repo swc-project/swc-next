@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(first /* before */ , /* after */ // line
+last) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(
+  first /* before */ /* after */, // line
+  last,
+) {}
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+function f(
+  first /* before */ /* after */, // line
+  last
+) {}

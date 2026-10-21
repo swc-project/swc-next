@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[1, /* a */ /* b */ // line
+2];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  1 /* a */ /* b */, // line
+  2,
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+[
+  1 /* a */ /* b */, // line
+  2
+];

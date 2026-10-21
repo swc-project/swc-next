@@ -10,6 +10,6 @@ f(first,[1,
 {"printWidth":20}
 ---------- Output ----------
 f(first, [
-  1, /* block */ // line
+  1 /* block */, // line
   2,
 ]);
