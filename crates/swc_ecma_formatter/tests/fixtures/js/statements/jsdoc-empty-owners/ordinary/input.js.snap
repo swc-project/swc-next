@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** Ordinary comment. */; Math.random();
+---------- Options ----------
+{}
+---------- Output ----------
+/** Ordinary comment. */ Math.random();
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** Ordinary comment. */ Math.random()
