@@ -25,12 +25,12 @@ test("parser options use strings without enum value exports", () => {
 });
 
 test("decoder reads little-endian words from unaligned buffers", () => {
-  const backing = new ArrayBuffer(77);
-  const buffer = new Uint8Array(backing, 1, 76);
-  const view = new DataView(backing, 1, 76);
+  const backing = new ArrayBuffer(81);
+  const buffer = new Uint8Array(backing, 1, 80);
+  const view = new DataView(backing, 1, 80);
   view.setUint32(0, 1, true); // node count
   view.setUint32(4, 1, true); // extra-data count
-  view.setUint32(60, 0xffffffff, true); // no hashbang
+  view.setUint32(64, 0xffffffff, true); // no hashbang
 
   const result = decode(buffer, "", new Uint8Array());
   assert.deepEqual(result.program, {
@@ -45,11 +45,11 @@ test("decoder reads little-endian words from unaligned buffers", () => {
 });
 
 test("decoder rejects unknown diagnostic severities", () => {
-  const buffer = new Uint8Array(69);
+  const buffer = new Uint8Array(73);
   const view = new DataView(buffer.buffer);
   view.setUint32(0, 1, true); // node count
   view.setUint32(24, 1, true); // diagnostic count
-  buffer[68] = 0xff; // diagnostic severity
+  buffer[72] = 0xff; // diagnostic severity
 
   const result = decode(buffer, "", new Uint8Array());
   assert.throws(

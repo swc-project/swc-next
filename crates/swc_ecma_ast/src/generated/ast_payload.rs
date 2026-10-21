@@ -3,7 +3,7 @@ use crate::*;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) union NodePayload {
-    pub(crate) raw: u128,
+    pub(crate) raw: [u8; 16],
     pub(crate) program: ProgramPayload,
     pub(crate) string_literal: StringLiteralPayload,
     pub(crate) numeric_literal: NumericLiteralPayload,

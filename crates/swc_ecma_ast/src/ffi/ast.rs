@@ -9,7 +9,7 @@
 //! - 40-byte header, including language, source type, and the first non-ASCII
 //!   source byte position;
 //! - `node_count` UTF-16 spans (`start: u32`, `end: u32`);
-//! - `node_count` one-byte node kinds, padded to four bytes;
+//! - `node_count` one-byte node kinds, padded to eight bytes;
 //! - `node_count` 16-byte `NodePayload` values;
 //! - `extra_count` 8-byte `ExtraData` values;
 //! - the raw extra string pool, padded to four bytes;
@@ -25,16 +25,21 @@
 //! Attached comments are intentionally omitted for now. Their count in the
 //! header is always zero.
 //!
+//! JavaScript encoders and native consumers must use the same SWC Next version.
+//!
 //! All multi-byte values use little-endian byte order, including on big-endian
 //! Rust and JavaScript targets.
 
 use std::{
     fmt,
-    mem::{offset_of, size_of},
-    ptr, slice,
+    mem::{align_of, offset_of, size_of},
+    ops::Deref,
+    slice,
 };
 
 use swc_next_allocator::Allocator;
+#[cfg(target_endian = "little")]
+use {std::ptr::NonNull, swc_next_allocator::vec::Vec as ArenaVec};
 
 use crate::{
     Ast, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId, NodeKind,
@@ -64,6 +69,8 @@ const _: () = {
     assert!(size_of::<NodeKind>() == NODE_KIND_SIZE);
     assert!(size_of::<NodePayload>() == NODE_PAYLOAD_SIZE);
     assert!(size_of::<ExtraData>() == EXTRA_DATA_SIZE);
+    assert!(align_of::<NodePayload>() <= 8);
+    assert!(align_of::<ExtraData>() <= 8);
     assert!(size_of::<CommentKind>() == 2);
     assert!(size_of::<CommentPosition>() == 2);
     assert!(size_of::<Comment>() == COMMENT_SIZE);
@@ -77,7 +84,7 @@ const _: () = {
 pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
     HEADER_SIZE
         + tree.node_count() * SPAN_SIZE
-        + align_to_four(tree.node_count() * NODE_KIND_SIZE)
+        + align_to_eight(tree.node_count() * NODE_KIND_SIZE)
         + tree.node_count() * NODE_PAYLOAD_SIZE
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra_bytes().len())
@@ -177,7 +184,9 @@ pub fn serialize_into(
         )
     };
     write(buf, &mut pos, kinds);
-    pad_to_four(buf, &mut pos);
+    let payloads_start = align_to_eight(pos);
+    buf[pos..payloads_start].fill(0);
+    pos = payloads_start;
 
     // =================== Payloads ====================
     let payloads = unsafe {
@@ -272,80 +281,130 @@ impl fmt::Display for DeserializeError {
 
 impl std::error::Error for DeserializeError {}
 
+/// A read-only AST view backed by a transfer buffer.
+///
+/// Mutation is unavailable because its tables may alias immutable buffer bytes.
+///
+/// ```compile_fail
+/// use swc_next_ecma_ast::ffi::ast::BorrowedAst;
+///
+/// fn reserve(view: &mut BorrowedAst<'_>) {
+///     view.reserve(1, 1);
+/// }
+/// ```
+pub struct BorrowedAst<'a> {
+    ast: Ast<'a>,
+}
+
+impl<'a> Deref for BorrowedAst<'a> {
+    type Target = Ast<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.ast
+    }
+}
+
 /// Decode an AST produced by the generated JavaScript encoder.
 ///
 /// The source section holds concatenated UTF-8 field values, not original source
 /// text. Transfers containing lone surrogates use the extra WTF-8 pool instead.
 /// Node spans remain independent UTF-16 positions in the original source.
-pub fn deserialize_from<'a>(
-    buf: &[u8],
+///
+/// Little-endian targets borrow every table and string section. Other targets
+/// copy tables into `allocator` to convert their byte order.
+///
+/// # Safety
+///
+/// `buf` must be produced by `@swc-next/encoder` matching the version of this
+/// crate and follow the [AST transfer protocol](crate::ffi::ast). It must contain
+/// valid node kinds, typed payloads, indices, ranges, string encodings, and source
+/// metadata. Comment and diagnostic sections must be empty. On little-endian
+/// targets, its starting address must be aligned to eight bytes. The buffer must
+/// remain immutable for the returned view's lifetime.
+pub unsafe fn deserialize_from<'a>(
+    buf: &'a [u8],
     allocator: &'a Allocator,
-) -> Result<Ast<'a>, DeserializeError> {
-    // ====================== Header ======================
-    if buf.len() < HEADER_SIZE {
-        return Err(DeserializeError("AST buffer is shorter than its header"));
-    }
+) -> Result<BorrowedAst<'a>, DeserializeError> {
+    #[cfg(target_endian = "big")]
+    {
+        use std::ptr;
 
-    let node_count = read_u32(buf, 0) as usize;
-    let extra_count = read_u32(buf, 4) as usize;
-    let string_pool_len = read_u32(buf, 8) as usize;
-    let source_len = read_u32(buf, 12) as usize;
-    let comment_count = read_u32(buf, 16) as usize;
-    let attached_comment_count = read_u32(buf, 20);
-    let diagnostic_count = read_u32(buf, 24);
-    let program_index = read_u32(buf, 28) as usize;
-    let flags = read_u32(buf, 32);
+        #[inline]
+        fn checked_section_end(
+            start: usize,
+            count: usize,
+            size: usize,
+        ) -> Result<usize, DeserializeError> {
+            checked_add(
+                start,
+                count
+                    .checked_mul(size)
+                    .ok_or(DeserializeError("AST buffer section length overflow"))?,
+            )
+        }
 
-    if comment_count != 0 || attached_comment_count != 0 || diagnostic_count != 0 {
-        return Err(DeserializeError("unsupported AST buffer sections"));
-    }
+        #[inline]
+        fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
+            left.checked_add(right)
+                .ok_or(DeserializeError("AST buffer section offset overflow"))
+        }
 
-    // ================== Section Offsets ==================
-    let spans = HEADER_SIZE;
-    let kinds = checked_section_end(spans, node_count, SPAN_SIZE)?;
-    let payloads = align_to_four(checked_section_end(kinds, node_count, NODE_KIND_SIZE)?);
-    let extra = checked_section_end(payloads, node_count, NODE_PAYLOAD_SIZE)?;
-    let strings = checked_section_end(extra, extra_count, EXTRA_DATA_SIZE)?;
-    let source_end = checked_add(strings, source_len)?;
-    let pool_end = checked_add(source_end, string_pool_len)?;
-    let comments = align_to_four(pool_end);
-    let end = checked_section_end(comments, comment_count, COMMENT_SIZE)?;
-    if end != buf.len() {
-        return Err(DeserializeError(
-            "AST buffer length does not match its header",
-        ));
-    }
-    if node_count == 0 || program_index >= node_count {
-        return Err(DeserializeError("AST buffer has an invalid program index"));
-    }
+        // ====================== Header ======================
+        if buf.len() < HEADER_SIZE {
+            return Err(DeserializeError("AST buffer is shorter than its header"));
+        }
 
-    // ============== Spans / Kinds / Payloads ==============
-    let kind_bytes = &buf[kinds..kinds + node_count];
-    if kind_bytes.iter().any(|&kind| kind >= NodeKind::COUNT) {
-        return Err(DeserializeError("AST buffer contains an unknown node kind"));
-    }
-    if kind_bytes[program_index] != NodeKind::Program as u8 {
-        return Err(DeserializeError("AST root is not a Program"));
-    }
-    // Own the field bytes in the arena: the caller's transfer buffer may be
-    // released immediately after deserialization.
-    let source = std::str::from_utf8(&buf[strings..source_end])
-        .map_err(|_| DeserializeError("AST string source contains invalid UTF-8"))?;
-    let mut tree = Ast::new(allocator.alloc_str(source), allocator);
-    tree.reserve(node_count, extra_count);
+        let node_count = read_u32(buf, 0) as usize;
+        let extra_count = read_u32(buf, 4) as usize;
+        let string_pool_len = read_u32(buf, 8) as usize;
+        let source_len = read_u32(buf, 12) as usize;
+        let comment_count = read_u32(buf, 16) as usize;
+        let attached_comment_count = read_u32(buf, 20);
+        let diagnostic_count = read_u32(buf, 24);
+        let program_index = read_u32(buf, 28) as usize;
+        let flags = read_u32(buf, 32);
 
-    // SAFETY: `reserve` allocated each destination for `node_count` elements.
-    // The section bounds were checked above and all node-kind bytes are valid
-    // discriminants. On big-endian targets, numeric fields are converted after
-    // copying the canonical little-endian wire bytes.
-    unsafe {
-        if cfg!(target_endian = "little") {
-            ptr::copy_nonoverlapping(
-                buf.as_ptr().add(spans),
-                tree.nodes.span.as_ptr().cast::<u8>(),
-                node_count * SPAN_SIZE,
-            );
-        } else {
+        if comment_count != 0 || attached_comment_count != 0 || diagnostic_count != 0 {
+            return Err(DeserializeError("unsupported AST buffer sections"));
+        }
+
+        // ================== Section Offsets ==================
+        let spans = HEADER_SIZE;
+        let kinds = checked_section_end(spans, node_count, SPAN_SIZE)?;
+        let payloads = align_to_eight(checked_section_end(kinds, node_count, NODE_KIND_SIZE)?);
+        let extra = checked_section_end(payloads, node_count, NODE_PAYLOAD_SIZE)?;
+        let strings = checked_section_end(extra, extra_count, EXTRA_DATA_SIZE)?;
+        let source_end = checked_add(strings, source_len)?;
+        let pool_end = checked_add(source_end, string_pool_len)?;
+        let comments = align_to_four(pool_end);
+        let end = checked_section_end(comments, comment_count, COMMENT_SIZE)?;
+        if end != buf.len() {
+            return Err(DeserializeError(
+                "AST buffer length does not match its header",
+            ));
+        }
+        if node_count == 0 || program_index >= node_count {
+            return Err(DeserializeError("AST buffer has an invalid program index"));
+        }
+
+        // ============== Spans / Kinds / Payloads ==============
+        let kind_bytes = &buf[kinds..kinds + node_count];
+        if kind_bytes.iter().any(|&kind| kind >= NodeKind::COUNT) {
+            return Err(DeserializeError("AST buffer contains an unknown node kind"));
+        }
+        if kind_bytes[program_index] != NodeKind::Program as u8 {
+            return Err(DeserializeError("AST root is not a Program"));
+        }
+        let source = std::str::from_utf8(&buf[strings..source_end])
+            .map_err(|_| DeserializeError("AST string source contains invalid UTF-8"))?;
+        let mut tree = Ast::new(source, allocator);
+        tree.reserve(node_count, extra_count);
+
+        // SAFETY: `reserve` allocated each destination for `node_count` elements.
+        // The section bounds were checked above and all node-kind bytes are valid
+        // discriminants. Numeric fields are converted from the canonical
+        // little-endian wire bytes to native byte order.
+        unsafe {
             for index in 0..node_count {
                 let span = spans + index * SPAN_SIZE;
                 tree.nodes.span.as_ptr().add(index).write(Span::new(
@@ -353,40 +412,36 @@ pub fn deserialize_from<'a>(
                     read_u32(buf, span + size_of::<u32>()),
                 ));
             }
-        }
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(payloads),
-            tree.nodes.data.as_ptr().cast::<u8>(),
-            node_count * NODE_PAYLOAD_SIZE,
-        );
-        if cfg!(target_endian = "big") {
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(payloads),
+                tree.nodes.data.as_ptr().cast::<u8>(),
+                node_count * NODE_PAYLOAD_SIZE,
+            );
             for (index, &kind_byte) in kind_bytes.iter().enumerate() {
                 let payload = &mut *tree.nodes.data.as_ptr().add(index);
                 let bytes = &mut *ptr::from_mut(payload).cast::<[u8; NODE_PAYLOAD_SIZE]>();
                 let kind = std::mem::transmute::<u8, NodeKind>(kind_byte);
                 crate::generated::ast_payload::swap_payload_endian(bytes, kind);
             }
+            ptr::copy_nonoverlapping(
+                kind_bytes.as_ptr(),
+                tree.nodes.kind.as_ptr().cast::<u8>(),
+                node_count * NODE_KIND_SIZE,
+            );
+            tree.nodes.len = node_count as u32;
         }
-        ptr::copy_nonoverlapping(
-            kind_bytes.as_ptr(),
-            tree.nodes.kind.as_ptr().cast::<u8>(),
-            node_count * NODE_KIND_SIZE,
-        );
-        tree.nodes.len = node_count as u32;
-    }
-    tree.root = Some(NodeId::from_usize(program_index));
+        tree.root = Some(NodeId::from_usize(program_index));
 
-    // =================== Extra Data ====================
-    // SAFETY: `reserve` allocated space for `extra_count` entries, the source
-    // section has the checked byte length, and all bit patterns are valid for
-    // `ExtraData`.
-    unsafe {
-        ptr::copy_nonoverlapping(
-            buf.as_ptr().add(extra),
-            tree.extra_data.as_mut_ptr().cast::<u8>(),
-            extra_count * EXTRA_DATA_SIZE,
-        );
-        if cfg!(target_endian = "big") {
+        // =================== Extra Data ====================
+        // SAFETY: `reserve` allocated space for `extra_count` entries, the source
+        // section has the checked byte length, and all bit patterns are valid for
+        // `ExtraData`.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                buf.as_ptr().add(extra),
+                tree.extra_data.as_mut_ptr().cast::<u8>(),
+                extra_count * EXTRA_DATA_SIZE,
+            );
             let bytes = slice::from_raw_parts_mut(
                 tree.extra_data.as_mut_ptr().cast::<u8>(),
                 extra_count * EXTRA_DATA_SIZE,
@@ -394,47 +449,71 @@ pub fn deserialize_from<'a>(
             for word in bytes.as_chunks_mut::<4>().0 {
                 word.reverse();
             }
+            tree.extra_data.set_len(extra_count);
         }
-        tree.extra_data.set_len(extra_count);
+
+        // =================== String Pool ====================
+        tree.strings.initialize_extra(&buf[source_end..pool_end]);
+
+        // ================= Source Metadata =================
+        let source_type = match flags & 3 {
+            0 => SourceType::Module,
+            1 => SourceType::Script,
+            2 => SourceType::CommonJs,
+            _ => SourceType::Unambiguous,
+        };
+        let lang = match (flags >> FLAG_LANG_SHIFT) & 7 {
+            0 => Lang::Js,
+            1 => Lang::Ts,
+            2 => Lang::Jsx,
+            3 => Lang::Tsx,
+            4 => Lang::Dts,
+            _ => return Err(DeserializeError("AST buffer contains an unknown language")),
+        };
+        tree.set_source_metadata(source_type, lang);
+
+        Ok(BorrowedAst { ast: tree })
     }
 
-    // =================== String Pool ====================
-    tree.strings.initialize_extra(&buf[source_end..pool_end]);
+    #[cfg(target_endian = "little")]
+    {
+        debug_assert!(buf.as_ptr().addr().is_multiple_of(8));
+        let node_count = read_u32(buf, 0) as usize;
+        let extra_count = read_u32(buf, 4) as usize;
+        let pool_len = read_u32(buf, 8) as usize;
+        let source_len = read_u32(buf, 12) as usize;
+        let root = read_u32(buf, 28) as usize;
+        let flags = read_u32(buf, 32);
 
-    // ================= Source Metadata =================
-    let source_type = match flags & 3 {
-        0 => SourceType::Module,
-        1 => SourceType::Script,
-        2 => SourceType::CommonJs,
-        _ => SourceType::Unambiguous,
-    };
-    let lang = match (flags >> FLAG_LANG_SHIFT) & 7 {
-        0 => Lang::Js,
-        1 => Lang::Ts,
-        2 => Lang::Jsx,
-        3 => Lang::Tsx,
-        4 => Lang::Dts,
-        _ => return Err(DeserializeError("AST buffer contains an unknown language")),
-    };
-    tree.set_source_metadata(source_type, lang);
+        let spans = HEADER_SIZE;
+        let kinds = spans + node_count * SPAN_SIZE;
+        let payloads = align_to_eight(kinds + node_count);
+        let extra = payloads + node_count * NODE_PAYLOAD_SIZE;
+        let strings = extra + extra_count * EXTRA_DATA_SIZE;
+        let source_end = strings + source_len;
 
-    Ok(tree)
-}
-
-#[inline]
-fn checked_section_end(start: usize, count: usize, size: usize) -> Result<usize, DeserializeError> {
-    checked_add(
-        start,
-        count
-            .checked_mul(size)
-            .ok_or(DeserializeError("AST buffer section length overflow"))?,
-    )
-}
-
-#[inline]
-fn checked_add(left: usize, right: usize) -> Result<usize, DeserializeError> {
-    left.checked_add(right)
-        .ok_or(DeserializeError("AST buffer section offset overflow"))
+        // SAFETY: The caller guarantees valid encodings, table layouts, and
+        // alignment. BorrowedAst exposes no mutable access to these pointers.
+        unsafe {
+            let source = std::str::from_utf8_unchecked(&buf[strings..source_end]);
+            let mut ast = Ast::new(source, allocator);
+            ast.nodes.span = NonNull::new_unchecked(buf.as_ptr().add(spans).cast_mut().cast());
+            ast.nodes.kind = NonNull::new_unchecked(buf.as_ptr().add(kinds).cast_mut().cast());
+            ast.nodes.data = NonNull::new_unchecked(buf.as_ptr().add(payloads).cast_mut().cast());
+            ast.nodes.len = node_count as u32;
+            ast.nodes.cap = node_count as u32;
+            ast.extra_data = ArenaVec::from_borrowed_slice_in(
+                slice::from_raw_parts(buf.as_ptr().add(extra).cast(), extra_count),
+                allocator,
+            );
+            ast.strings
+                .borrow_extra(&buf[source_end..source_end + pool_len]);
+            ast.root = Some(NodeId::from_usize(root));
+            ast.source_type = std::mem::transmute::<u8, SourceType>((flags & 3) as u8);
+            ast.lang = std::mem::transmute::<u8, Lang>(((flags >> FLAG_LANG_SHIFT) & 7) as u8);
+            Ok(BorrowedAst { ast })
+        }
+    }
 }
 
 struct NonAsciiChar {
@@ -606,6 +685,11 @@ fn utf16_pos(byte: u32, map: Option<&PositionMap>) -> u32 {
 }
 
 #[inline]
+const fn align_to_eight(len: usize) -> usize {
+    (len + 7) & !7
+}
+
+#[inline]
 const fn align_to_four(len: usize) -> usize {
     (len + 3) & !3
 }
@@ -657,22 +741,22 @@ mod tests {
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         assert_eq!(serialize_into(&ast, &[], &mut buffer, 0), buffer.len());
-        assert_eq!(buffer.len(), 108);
+        assert_eq!(buffer.len(), 112);
 
         assert_eq!(u32_at(&buffer, 0), 2); // node count
         assert_eq!(u32_at(&buffer, 4), 2); // extra-data count
         assert_eq!(u32_at(&buffer, 28), 1); // root node ID
         assert_eq!(u32_at(&buffer, 36), 0); // no non-ASCII source bytes
 
-        assert_eq!(u32_at(&buffer, 76), 0); // inline directives start
-        assert_eq!(u32_at(&buffer, 80), 0); // inline directives end
-        assert_eq!(u32_at(&buffer, 84), u32::MAX); // no hashbang
-        assert_eq!(u32_at(&buffer, 88), 1); // out-of-line body field
+        assert_eq!(u32_at(&buffer, 80), 0); // inline directives start
+        assert_eq!(u32_at(&buffer, 84), 0); // inline directives end
+        assert_eq!(u32_at(&buffer, 88), u32::MAX); // no hashbang
+        assert_eq!(u32_at(&buffer, 92), 1); // out-of-line body field
 
-        assert_eq!(u32_at(&buffer, 92), 0); // body element node ID
-        assert_eq!(u32_at(&buffer, 96), 0); // node ID padding
-        assert_eq!(u32_at(&buffer, 100), 0); // body range start
-        assert_eq!(u32_at(&buffer, 104), 1); // body range end
+        assert_eq!(u32_at(&buffer, 96), 0); // body element node ID
+        assert_eq!(u32_at(&buffer, 100), 0); // node ID padding
+        assert_eq!(u32_at(&buffer, 104), 0); // body range start
+        assert_eq!(u32_at(&buffer, 108), 1); // body range end
     }
 
     #[test]
@@ -686,9 +770,11 @@ mod tests {
 
         let mut buffer = vec![0; buffer_size(&ast, &[])];
         serialize_into(&ast, &[], &mut buffer, 0);
+        let buffer = AlignedBuffer::new(&buffer);
 
         let decoded_allocator = Allocator::new();
-        let decoded = deserialize_from(&buffer, &decoded_allocator).unwrap();
+        // SAFETY: The serializer produced a valid, aligned transfer.
+        let decoded = unsafe { deserialize_from(&buffer, &decoded_allocator) }.unwrap();
         let decoded_program = decoded.root_program();
         let decoded_body = decoded_program.body(&decoded);
         let decoded_statement = decoded_body.get_node(&decoded, 0).unwrap();
@@ -801,6 +887,35 @@ mod tests {
         assert_eq!(u32_at(&buffer, diagnostic + 29), 2); // label end
         assert_eq!(u32_at(&buffer, diagnostic + 33), 3); // label message length
         assert_eq!(&buffer[diagnostic + 37..diagnostic + 40], b"abc");
+    }
+
+    struct AlignedBuffer {
+        words: Vec<u64>,
+        len: usize,
+    }
+
+    impl AlignedBuffer {
+        fn new(bytes: &[u8]) -> Self {
+            let mut buffer = Self {
+                words: vec![0; bytes.len().div_ceil(8)],
+                len: bytes.len(),
+            };
+            // SAFETY: Every bit pattern is valid for u64; the slice stays in words.
+            unsafe {
+                std::slice::from_raw_parts_mut(buffer.words.as_mut_ptr().cast::<u8>(), buffer.len)
+                    .copy_from_slice(bytes);
+            }
+            buffer
+        }
+    }
+
+    impl std::ops::Deref for AlignedBuffer {
+        type Target = [u8];
+
+        fn deref(&self) -> &Self::Target {
+            // SAFETY: The first len bytes were initialized by new.
+            unsafe { std::slice::from_raw_parts(self.words.as_ptr().cast::<u8>(), self.len) }
+        }
     }
 
     fn u32_at(buffer: &[u8], offset: usize) -> u32 {

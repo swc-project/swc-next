@@ -697,6 +697,22 @@ impl<'bump, T: 'bump> Vec<'bump, T> {
         }
     }
 
+    /// Creates read-only vector storage borrowing an existing slice.
+    ///
+    /// # Safety
+    ///
+    /// The returned vector must only be accessed immutably. It must not be
+    /// mutated, reallocated, or converted into owned storage.
+    pub unsafe fn from_borrowed_slice_in(slice: &'bump [T], bump: &'bump Allocator) -> Self
+    where
+        T: Copy,
+    {
+        Self {
+            // SAFETY: The caller restricts this vector to immutable access.
+            buf: unsafe { RawVec::from_borrowed_slice(slice, bump) },
+        }
+    }
+
     /// Returns a shared reference to the allocator backing this `Vec`.
     ///
     /// # Examples

@@ -134,6 +134,20 @@ impl<'a, T> RawVec<'a, T> {
 }
 
 impl<'a, T> RawVec<'a, T> {
+    /// # Safety
+    ///
+    /// The returned storage must only be read and must not be reallocated or
+    /// converted into owned storage.
+    pub(crate) unsafe fn from_borrowed_slice(slice: &'a [T], a: &'a Allocator) -> Self {
+        let len = u32::try_from(slice.len()).expect("length exceeds u32");
+        Self {
+            ptr: unsafe { NonNull::new_unchecked(slice.as_ptr().cast_mut()) },
+            len,
+            cap: len,
+            a,
+        }
+    }
+
     /// Reconstitutes a RawVec from a pointer, length, capacity, and allocator.
     ///
     /// # Undefined Behavior

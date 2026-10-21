@@ -23,12 +23,21 @@ impl BridgeEncode for CodegenOutput {
     }
 }
 
-pub fn print_from_buffer(
+/// Print a trusted AST transfer buffer.
+///
+/// # Safety
+///
+/// `buffer` must be produced by `@swc-next/encoder` matching the version of this
+/// crate and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
+/// It must satisfy the alignment requirements of [`deserialize_from`] and remain
+/// immutable throughout this call.
+pub unsafe fn print_from_buffer(
     buffer: &[u8],
     options: Option<CodegenOptions>,
 ) -> Result<CodegenOutput, DeserializeError> {
     let allocator = Allocator::default();
-    let tree = deserialize_from(buffer, &allocator)?;
+    // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
+    let tree = unsafe { deserialize_from(buffer, &allocator) }?;
     let result = print(&allocator, &tree, options.unwrap_or_default().into());
     Ok(CodegenOutput {
         code: result.code.into(),

@@ -79,7 +79,7 @@ fn generate_build_function_inline(
                 #ret_ty(self.add_node(
                     span,
                     NodeKind::#ret_ty,
-                    NodePayload { raw: 0 },
+                    NodePayload { raw: [0; 16] },
                 ))
             }
         };

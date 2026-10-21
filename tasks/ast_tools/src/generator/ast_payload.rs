@@ -154,12 +154,10 @@ pub fn ast_payload(schema: &Schema) -> RawOutput {
             #![allow(unused)]
             use crate::*;
 
-            // Every variant occupies the same 16 wire bytes. The raw member also
-            // gives the union the alignment required by the node table.
             #[repr(C)]
             #[derive(Clone, Copy)]
             pub(crate) union NodePayload {
-                pub(crate) raw: u128,
+                pub(crate) raw: [u8; 16],
                 #members
             }
 

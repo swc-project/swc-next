@@ -110,9 +110,20 @@ impl<'a> StringPool<'a> {
         }
     }
 
+    #[cfg(target_endian = "big")]
     pub(crate) fn initialize_extra(&mut self, bytes: &[u8]) {
         assert!(self.extra.is_empty());
         self.extra.extend_from_slice_copy(bytes);
+    }
+
+    /// # Safety
+    ///
+    /// This pool must only be accessed immutably after initialization.
+    #[cfg(target_endian = "little")]
+    pub(crate) unsafe fn borrow_extra(&mut self, bytes: &'a [u8]) {
+        assert!(self.extra.is_empty());
+        // SAFETY: The caller prevents mutation of the borrowed storage.
+        self.extra = unsafe { ArenaVec::from_borrowed_slice_in(bytes, self.allocator) };
     }
 
     pub(crate) fn extra_bytes(&self) -> &[u8] {

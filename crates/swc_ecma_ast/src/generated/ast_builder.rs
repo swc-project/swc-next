@@ -4188,11 +4188,11 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn super_(&mut self, span: Span) -> Super {
-        Super(self.add_node(span, NodeKind::Super, NodePayload { raw: 0 }))
+        Super(self.add_node(span, NodeKind::Super, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn this_expression(&mut self, span: Span) -> ThisExpression {
-        ThisExpression(self.add_node(span, NodeKind::ThisExpression, NodePayload { raw: 0 }))
+        ThisExpression(self.add_node(span, NodeKind::ThisExpression, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn string_literal(&mut self, span: Span, value: AstWtf8, raw: AstUtf8) -> StringLiteral {
@@ -4250,7 +4250,7 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn null_literal(&mut self, span: Span) -> NullLiteral {
-        NullLiteral(self.add_node(span, NodeKind::NullLiteral, NodePayload { raw: 0 }))
+        NullLiteral(self.add_node(span, NodeKind::NullLiteral, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn reg_exp_literal(
@@ -4902,11 +4902,15 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn debugger_statement(&mut self, span: Span) -> DebuggerStatement {
-        DebuggerStatement(self.add_node(span, NodeKind::DebuggerStatement, NodePayload { raw: 0 }))
+        DebuggerStatement(self.add_node(
+            span,
+            NodeKind::DebuggerStatement,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn empty_statement(&mut self, span: Span) -> EmptyStatement {
-        EmptyStatement(self.add_node(span, NodeKind::EmptyStatement, NodePayload { raw: 0 }))
+        EmptyStatement(self.add_node(span, NodeKind::EmptyStatement, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn directive(
@@ -6873,67 +6877,95 @@ impl<'a> Ast<'a> {
     }
     #[inline]
     pub fn ts_any_keyword(&mut self, span: Span) -> TsAnyKeyword {
-        TsAnyKeyword(self.add_node(span, NodeKind::TsAnyKeyword, NodePayload { raw: 0 }))
+        TsAnyKeyword(self.add_node(span, NodeKind::TsAnyKeyword, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn ts_unknown_keyword(&mut self, span: Span) -> TsUnknownKeyword {
-        TsUnknownKeyword(self.add_node(span, NodeKind::TsUnknownKeyword, NodePayload { raw: 0 }))
+        TsUnknownKeyword(self.add_node(
+            span,
+            NodeKind::TsUnknownKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_never_keyword(&mut self, span: Span) -> TsNeverKeyword {
-        TsNeverKeyword(self.add_node(span, NodeKind::TsNeverKeyword, NodePayload { raw: 0 }))
+        TsNeverKeyword(self.add_node(span, NodeKind::TsNeverKeyword, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn ts_void_keyword(&mut self, span: Span) -> TsVoidKeyword {
-        TsVoidKeyword(self.add_node(span, NodeKind::TsVoidKeyword, NodePayload { raw: 0 }))
+        TsVoidKeyword(self.add_node(span, NodeKind::TsVoidKeyword, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn ts_null_keyword(&mut self, span: Span) -> TsNullKeyword {
-        TsNullKeyword(self.add_node(span, NodeKind::TsNullKeyword, NodePayload { raw: 0 }))
+        TsNullKeyword(self.add_node(span, NodeKind::TsNullKeyword, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn ts_undefined_keyword(&mut self, span: Span) -> TsUndefinedKeyword {
         TsUndefinedKeyword(self.add_node(
             span,
             NodeKind::TsUndefinedKeyword,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]
     pub fn ts_string_keyword(&mut self, span: Span) -> TsStringKeyword {
-        TsStringKeyword(self.add_node(span, NodeKind::TsStringKeyword, NodePayload { raw: 0 }))
+        TsStringKeyword(self.add_node(
+            span,
+            NodeKind::TsStringKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_number_keyword(&mut self, span: Span) -> TsNumberKeyword {
-        TsNumberKeyword(self.add_node(span, NodeKind::TsNumberKeyword, NodePayload { raw: 0 }))
+        TsNumberKeyword(self.add_node(
+            span,
+            NodeKind::TsNumberKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_big_int_keyword(&mut self, span: Span) -> TsBigIntKeyword {
-        TsBigIntKeyword(self.add_node(span, NodeKind::TsBigIntKeyword, NodePayload { raw: 0 }))
+        TsBigIntKeyword(self.add_node(
+            span,
+            NodeKind::TsBigIntKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_boolean_keyword(&mut self, span: Span) -> TsBooleanKeyword {
-        TsBooleanKeyword(self.add_node(span, NodeKind::TsBooleanKeyword, NodePayload { raw: 0 }))
+        TsBooleanKeyword(self.add_node(
+            span,
+            NodeKind::TsBooleanKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_symbol_keyword(&mut self, span: Span) -> TsSymbolKeyword {
-        TsSymbolKeyword(self.add_node(span, NodeKind::TsSymbolKeyword, NodePayload { raw: 0 }))
+        TsSymbolKeyword(self.add_node(
+            span,
+            NodeKind::TsSymbolKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_object_keyword(&mut self, span: Span) -> TsObjectKeyword {
-        TsObjectKeyword(self.add_node(span, NodeKind::TsObjectKeyword, NodePayload { raw: 0 }))
+        TsObjectKeyword(self.add_node(
+            span,
+            NodeKind::TsObjectKeyword,
+            NodePayload { raw: [0; 16] },
+        ))
     }
     #[inline]
     pub fn ts_intrinsic_keyword(&mut self, span: Span) -> TsIntrinsicKeyword {
         TsIntrinsicKeyword(self.add_node(
             span,
             NodeKind::TsIntrinsicKeyword,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]
     pub fn ts_this_type(&mut self, span: Span) -> TsThisType {
-        TsThisType(self.add_node(span, NodeKind::TsThisType, NodePayload { raw: 0 }))
+        TsThisType(self.add_node(span, NodeKind::TsThisType, NodePayload { raw: [0; 16] }))
     }
     #[inline]
     pub fn ts_type_reference(
@@ -7245,7 +7277,7 @@ impl<'a> Ast<'a> {
         TsJsDocUnknownType(self.add_node(
             span,
             NodeKind::TsJsDocUnknownType,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]
@@ -8779,7 +8811,7 @@ impl<'a> Ast<'a> {
         JsxOpeningFragment(self.add_node(
             span,
             NodeKind::JsxOpeningFragment,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]
@@ -8787,7 +8819,7 @@ impl<'a> Ast<'a> {
         JsxClosingFragment(self.add_node(
             span,
             NodeKind::JsxClosingFragment,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]
@@ -8895,7 +8927,7 @@ impl<'a> Ast<'a> {
         JsxEmptyExpression(self.add_node(
             span,
             NodeKind::JsxEmptyExpression,
-            NodePayload { raw: 0 },
+            NodePayload { raw: [0; 16] },
         ))
     }
     #[inline]

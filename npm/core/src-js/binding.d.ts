@@ -73,6 +73,13 @@ export declare function langFromPath(path: string): Lang
  */
 export declare function parseSync(source: Buffer, sourceUtf16Len: number, options?: ParserOptions | undefined | null): Buffer
 
+/**
+ * # Safety
+ *
+ * `buffer` must be produced by `@swc-next/encoder` matching the version of this
+ * binding and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
+ * It must be aligned to eight bytes and remain immutable throughout the call.
+ */
 export declare function printSync(buffer: Buffer, options?: CodegenOptions | undefined | null): CodegenOutput
 
 export declare function sourceTypeFromPath(path: string): SourceType

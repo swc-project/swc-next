@@ -126,7 +126,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
-  const payloads = (kinds + nodeCount + 3) & ~3;
+  const payloads = (kinds + nodeCount + 7) & ~7;
   const extra = payloads + nodeCount * 16;
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
