@@ -569,13 +569,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !leading_binding.allows_relocation(inner_target) {
             return None;
         }
-        let trailing_binding = self.comment_run_binding(tail.iter().copied(), |comment| {
-            if self.comment_semantics(comment).is_ordinary() {
-                CommentBinding::Unbound
-            } else {
-                CommentBinding::SourceBound
-            }
-        });
+        let trailing_binding = self.source_parentheses_tail_binding(tail, boundary);
         if !trailing_binding.allows_relocation(None)
             || cast(ParenthesisCastPosition::Outer).is_some()
         {
@@ -588,6 +582,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             has_tail_comments: !tail.is_empty(),
         })
+    }
+
+    fn source_parentheses_tail_binding(
+        &self,
+        comments: &[Comment],
+        boundary: SourceParentheses,
+    ) -> CommentBinding {
+        let mut optimizer = false;
+        let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
+            let semantics = self.comment_semantics(comment);
+            if semantics.suppression
+                || semantics.diagnostic
+                || semantics.file_directive
+                || semantics.type_cast
+            {
+                return CommentBinding::SourceBound;
+            }
+            optimizer |= semantics.optimizer;
+            CommentBinding::Unbound
+        });
+        if !optimizer || matches!(binding, CommentBinding::SourceBound) {
+            return binding;
+        }
+        let ParenthesisInner::Expression(_) = boundary.inner_target else {
+            return CommentBinding::SourceBound;
+        };
+        let Some(closing) = boundary.outer.end.checked_sub(1) else {
+            return CommentBinding::SourceBound;
+        };
+        if self.ast.source().as_bytes().get(closing as usize) != Some(&b')') {
+            return CommentBinding::SourceBound;
+        }
+        // A trailing marker cannot target the preceding expression. Its source
+        // frontier ends at the real closer, before any enclosing continuation.
+        let mut start = boundary.inner.end;
+        for comment in comments {
+            if comment.span.start < start
+                || comment.span.end > closing
+                || !self
+                    .source(Span::new(start, comment.span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+            {
+                return CommentBinding::SourceBound;
+            }
+            start = comment.span.end;
+        }
+        if start > closing
+            || !self
+                .source(Span::new(start, closing))
+                .chars()
+                .all(is_source_whitespace)
+        {
+            return CommentBinding::SourceBound;
+        }
+        CommentBinding::Unbound
     }
 
     fn source_parentheses_comments(
@@ -880,18 +930,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return CommentBinding::SourceBound;
                     }
                     let child = node.expression(self.ast);
-                    let comments = self.source_parentheses_comments(SourceParentheses {
+                    let nested = SourceParentheses {
                         outer: node.span(self.ast),
                         inner: child.span(self.ast),
                         inner_target: ParenthesisInner::Expression(child),
-                    });
-                    // The current packet may already be exposed by a removed
-                    // envelope. Only another packet owns a new resolution frontier.
-                    if comments.head.iter().chain(comments.tail).any(|&comment| {
+                    };
+                    let comments = self.source_parentheses_comments(nested);
+                    // Another head packet owns a new resolution frontier. A
+                    // trailing packet can instead prove its frontier is closed.
+                    let outside_packet = |comment: &Comment| {
                         !packet_span.is_some_and(|packet| {
                             packet.start <= comment.span.start && comment.span.end <= packet.end
-                        }) && !self.comment_semantics(comment).is_ordinary()
-                    }) {
+                        })
+                    };
+                    if comments.head.iter().any(|comment| {
+                        outside_packet(comment) && !self.comment_semantics(*comment).is_ordinary()
+                    }) || comments.tail.iter().any(outside_packet)
+                        && !self
+                            .source_parentheses_tail_binding(comments.tail, nested)
+                            .allows_relocation(None)
+                    {
                         return CommentBinding::SourceBound;
                     }
                     head_start = child.span(self.ast).start;
