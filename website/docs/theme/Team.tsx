@@ -8,6 +8,7 @@ const members = [
   { name: "Austaras", username: "Austaras", role: "Core Team" },
   { name: "CPunisher", username: "CPunisher", role: "Core Team" },
   { name: "bohan", username: "bvanjoi", role: "Core Team" },
+  { name: "LongYinan", username: "Brooooooklyn", role: "Maintainer of @swc-node/*" },
 ];
 
 export function TeamMembers() {

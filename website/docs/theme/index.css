@@ -105,6 +105,10 @@ body { letter-spacing: normal; line-height: 1.5; }
 .rp-search-button__word, .rp-search-button__content { font-size: 13px; }
 .rp-search-button__hotkey { font-size: 12px; background: transparent; border: 1px solid var(--rp-c-divider-light); padding: 0 4px; border-radius: 3px; }
 
+.rp-doc-layout__container { min-height: calc(100dvh - var(--rp-nav-height) - var(--rp-banner-height, 0px) - var(--rp-sidebar-menu-height, 0px)); }
+.rp-doc-layout__doc-container { display: flex; flex: 1; flex-direction: column; }
+.rp-doc-layout__doc-container > .rp-doc { flex: 1; }
+
 .rp-doc-layout__sidebar {
   display: flex;
   flex-direction: column;
