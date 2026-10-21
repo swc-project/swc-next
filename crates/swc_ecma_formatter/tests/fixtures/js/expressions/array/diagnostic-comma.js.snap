@@ -9,7 +9,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   [first, second] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"printWidth":14}
@@ -19,7 +20,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"printWidth":13}
@@ -29,7 +31,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"printWidth":10}
@@ -39,7 +42,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"printWidth":0}
@@ -49,14 +53,16 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 ;[
   [first, second] // @ts-expect-error
-  , [third, fourth],]
+  , [third, fourth],
+]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
@@ -66,7 +72,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second
   ] // @ts-expect-error
-  , [third, fourth]];
+  , [third, fourth]
+];
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"es5"}
@@ -76,7 +83,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
 
 ---------- Options ----------
 {"printWidth":10,"tabWidth":4,"useTabs":true}
@@ -86,7 +94,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 		first,
 		second,
 	] // @ts-expect-error
-	, [third, fourth],];
+	, [third, fourth],
+];
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":10}
@@ -96,4 +105,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];

@@ -11,7 +11,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"printWidth":14}
@@ -20,7 +21,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"printWidth":13}
@@ -29,7 +31,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"printWidth":10}
@@ -38,7 +41,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"printWidth":0}
@@ -47,7 +51,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"semi":false}
@@ -56,7 +61,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,]
+  second, , , third,
+]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
@@ -65,7 +71,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third];
+  second, , , third
+];
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"es5"}
@@ -74,7 +81,8 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];
 
 ---------- Options ----------
 {"printWidth":10,"tabWidth":4,"useTabs":true}
@@ -83,7 +91,8 @@ second,,,third];
 	first,
 	,
 	// @ts-ignore
-	second, , , third,];
+	second, , , third,
+];
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":10}
@@ -92,4 +101,5 @@ second,,,third];
   first,
   ,
   // @ts-ignore
-  second, , , third,];
+  second, , , third,
+];

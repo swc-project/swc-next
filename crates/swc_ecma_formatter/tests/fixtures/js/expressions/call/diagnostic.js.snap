@@ -10,25 +10,29 @@ unknown);
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  unknown,);
+  unknown,
+);
 
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  unknown,);
+  unknown,
+);
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  unknown,)
+  unknown,
+)
 
 ---------- Options ----------
 {"printWidth":20,"trailingComma":"es5"}
 ---------- Output ----------
 callee(
   // @ts-expect-error
-  unknown);
+  unknown
+);

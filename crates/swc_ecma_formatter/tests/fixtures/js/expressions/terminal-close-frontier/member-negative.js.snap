@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(a,b) { return 0; } f(1,
+// @ts-ignore
+missing).property;
+---------- Options ----------
+{}
+---------- Output ----------
+function f(a, b) {
+  return 0;
+}
+f(
+  1,
+  // @ts-ignore
+  missing,).property;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f(a, b) {
+  return 0
+}
+f(
+  1,
+  // @ts-ignore
+  missing,).property
