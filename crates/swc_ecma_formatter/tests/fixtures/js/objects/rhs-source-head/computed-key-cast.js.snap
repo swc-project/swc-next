@@ -10,8 +10,8 @@ comment */ (/* ordinary */ object).method(second()) });
 {}
 ---------- Output ----------
 target = {
-  [object.method(first()) /* key end */]
-  /** @type {number} */:
+  [object.method(first()) /* key end */]:
+    /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(second()),
 };
@@ -20,8 +20,10 @@ comment */ /* ordinary */ object.method(second()),
 {"printWidth":40}
 ---------- Output ----------
 target = {
-  [object.method(first()) /* key end */]
-  /** @type {number} */:
+  [
+    object.method(first()) /* key end */
+  ]:
+    /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(
       second(),
@@ -36,8 +38,8 @@ target = {
     object.method(
       first(),
     ) /* key end */
-  ]
-  /** @type {number} */:
+  ]:
+    /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(
       second(),
@@ -48,8 +50,8 @@ comment */ /* ordinary */ object.method(
 {"semi":false}
 ---------- Output ----------
 target = {
-  [object.method(first()) /* key end */]
-  /** @type {number} */:
+  [object.method(first()) /* key end */]:
+    /** @type {number} */
     /* multiline
 comment */ /* ordinary */ object.method(second()),
 }
@@ -62,8 +64,8 @@ target = {
 		object.method(
 			first(),
 		) /* key end */
-	]
-	/** @type {number} */:
+	]:
+		/** @type {number} */
 		/* multiline
 comment */ /* ordinary */ object.method(
 			second(),

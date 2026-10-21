@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/** @type {number} */
+// @ts-expect-error
+: missing });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key
+  /** @type {number} */
+  // @ts-expect-error
+  : missing, });
