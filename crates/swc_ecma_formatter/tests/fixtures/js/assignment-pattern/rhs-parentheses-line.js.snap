@@ -7,27 +7,23 @@ right());
 ---------- Options ----------
 {"printWidth":20,"semi":true}
 ---------- Output ----------
-[target.value] =
-  // prettier-ignore
-  right();
+[target.value] = (// prettier-ignore
+right());
 
 ---------- Options ----------
 {"printWidth":80,"semi":true}
 ---------- Output ----------
-[target.value] =
-  // prettier-ignore
-  right();
+[target.value] = (// prettier-ignore
+right());
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-;[target.value] =
-  // prettier-ignore
-  right()
+;[target.value] = (// prettier-ignore
+right())
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
-;[target.value] =
-  // prettier-ignore
-  right()
+;[target.value] = (// prettier-ignore
+right())
