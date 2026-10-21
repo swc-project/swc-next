@@ -23,7 +23,7 @@ declare function printSync(
 | `options` | Formatting options. Omit or pass `null` for defaults. |
 | `meta` | Optional language and source type metadata from the parser. |
 
-The AST must follow SWC Next's [node declarations](/api/javascript/types). Arbitrary third-party ASTs are not guaranteed to be compatible.
+Input nodes follow the [AST declarations](/api/javascript/types) shared with the parser.
 
 ## CodegenOptions
 

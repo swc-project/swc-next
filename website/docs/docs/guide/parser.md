@@ -5,7 +5,7 @@ description: Parse JavaScript and TypeScript into an AST.
 
 # Parser
 
-Use `parseSync` to turn source text into an ESTree-based AST. [Install](/guide/install) the package for your runtime first.
+Use `parseSync` to turn source text into an AST compatible with [ESTree](https://github.com/estree/estree). TypeScript and JSX nodes follow typescript-eslint's AST format. [Install](/guide/install) the package for your runtime first.
 
 ## Parse a program
 

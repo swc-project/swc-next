@@ -5,7 +5,7 @@ description: JavaScript interfaces for parsing, AST traversal, and code generati
 
 # API reference
 
-Parse source text, inspect or edit its AST, and generate code with SWC Next's JavaScript packages.
+Parse source text into an AST compatible with [ESTree](https://github.com/estree/estree), inspect or edit its nodes, and generate code with SWC Next's JavaScript packages.
 
 ## JavaScript
 

@@ -10,7 +10,7 @@ SWC Next is a ground-up rewrite with separate packages and a new AST representat
 ## API and AST
 
 - The JavaScript API differs from the existing SWC API.
-- The JavaScript AST is ESTree-based; compatibility with arbitrary third-party ASTs is not guaranteed.
+- The JavaScript API produces an AST compatible with [ESTree](https://github.com/estree/estree) and typescript-eslint's TypeScript and JSX node format, rather than the legacy SWC AST.
 
 ## Configuration
 
