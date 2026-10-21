@@ -213,6 +213,11 @@ impl CommentGap {
     }
 }
 
+pub(super) struct PreparedLeadingCommentGap {
+    pub(super) source_breaks: u8,
+    pub(super) gap: CommentGap,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum LineAttachment {
     Leading,
@@ -1309,6 +1314,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
     }
 
+    /// The source gap and its effective leading-comment layout share one lookup.
+    pub(super) fn prepare_leading_comment_gap(
+        &self,
+        span: Span,
+        kind: CommentKind,
+        next_start: u32,
+        inline: bool,
+    ) -> PreparedLeadingCommentGap {
+        let constraint = self.line_constraint(span.end, next_start);
+        let breaks = match constraint {
+            LineConstraint::SameLine => 0,
+            LineConstraint::NewLine(count) => count,
+            LineConstraint::Unconstrained => self.line_breaks(span.end, next_start),
+        };
+        let constraint = match constraint {
+            LineConstraint::Unconstrained => match breaks {
+                0 if kind == CommentKind::Block => LineConstraint::SameLine,
+                1 if kind == CommentKind::Block
+                    && (inline || !self.source_position_starts_line(span.start)) =>
+                {
+                    LineConstraint::Unconstrained
+                }
+                0 | 1 => LineConstraint::NewLine(1),
+                _ => LineConstraint::NewLine(if self.next_line_is_empty(span.end, next_start) {
+                    2
+                } else {
+                    1
+                }),
+            },
+            constraint => constraint,
+        };
+        PreparedLeadingCommentGap {
+            source_breaks: breaks,
+            gap: CommentGap::Source(constraint),
+        }
+    }
+
     fn leading_comment_gap(
         &self,
         comment: &PreparedComment<'ast>,
@@ -1329,6 +1371,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
+        if packet.is_none() {
+            self.prepare_leading_comment_gap(comment.span, comment.kind, next_start, inline)
+                .gap
+                .write(writer, FlatSeparator::Space, |writer| {
+                    if grouped {
+                        writer.line();
+                    } else {
+                        writer.space();
+                    }
+                });
+            return;
+        }
         let (breaks, empty) = self.packet_gap_lines(comment.span.end, next_start, packet);
         self.source_transition_constraint(
             comment.span.end,
