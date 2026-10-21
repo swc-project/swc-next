@@ -1,5 +1,5 @@
 {
-  "name": "@swc-next/website",
+  "name": "docs",
   "private": true,
   "type": "module",
   "scripts": {

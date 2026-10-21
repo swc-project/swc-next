@@ -20,7 +20,7 @@ pnpm check:docs
 pnpm build:docs
 ```
 
-Preview the production build with `pnpm --filter @swc-next/website preview`.
+Preview the production build with `pnpm --filter docs preview`.
 Static output is written to `website/docs/doc_build`.
 
 ## Performance results

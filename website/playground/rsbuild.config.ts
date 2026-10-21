@@ -23,6 +23,7 @@ export default defineConfig({
     },
   },
   html: {
+    favicon: "./favicon.ico",
     template: "./index.html",
     title: "SWC Next · Playground",
     meta: {

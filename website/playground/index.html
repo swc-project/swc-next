@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
+      let theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       try {
-        document.documentElement.dataset.theme =
-          localStorage.getItem("swc-next-theme") === "light" ? "light" : "dark";
+        const savedTheme = localStorage.getItem("swc-next-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          theme = savedTheme;
+        }
       } catch {
-        // Keep the default theme when storage is unavailable.
+        // Use the system theme when storage is unavailable.
       }
+      document.documentElement.dataset.theme = theme;
     </script>
     <style>
       html {

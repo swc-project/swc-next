@@ -16,9 +16,9 @@
     "test:codec": "pnpm --filter @swc-next/core test:codec",
     "dev:playground": "pnpm --filter playground dev",
     "build:playground": "pnpm --filter playground build",
-    "dev:docs": "pnpm --filter @swc-next/website dev",
-    "build:docs": "pnpm --filter @swc-next/website build",
-    "check:docs": "pnpm --filter @swc-next/website check"
+    "dev:docs": "pnpm --filter docs dev",
+    "build:docs": "pnpm --filter docs build",
+    "check:docs": "pnpm --filter docs check"
   },
   "keywords": [],
   "author": "",

@@ -15,12 +15,12 @@ export default defineConfig({
   },
   title: "SWC Next",
   description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",
-  icon: "/favicon.svg",
+  icon: "/favicon.ico",
   lang: "en",
   route: { cleanUrls: true },
   llms: true,
   themeConfig: {
-    darkMode: "dark",
+    darkMode: "auto",
     nav: [
       { text: "Guide", link: "/", activeMatch: "^/$|^/guide/" },
       { text: "API", link: "/api/" },
