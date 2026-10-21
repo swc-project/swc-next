@@ -552,7 +552,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_tail_comments: false,
             });
         }
-        if self.parentheses_separate_diagnostic_lines(boundary) {
+        if self.parentheses_separate_diagnostic_lines(boundary)
+            || self.parenthesis_has_jsdoc_enclosure(boundary.outer.start)
+        {
             return None;
         }
         let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
@@ -635,6 +637,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(in crate::formatter) fn parenthesis_has_type_cast(&self, start: u32) -> bool {
         self.source_type_cast(start).is_some()
+    }
+
+    /// Compiler documentation keeps every contiguous source owner, unlike a cast's
+    /// immediately preceding JSDoc selection.
+    fn parenthesis_has_jsdoc_enclosure(&self, start: u32) -> bool {
+        if !self.ast.source()[start as usize..].starts_with('(') || !self.has_jsdoc_enclosures() {
+            return false;
+        }
+        let comments = self.ast.comments();
+        let count = comments.partition_point(|comment| comment.span.end <= start);
+        let mut next_start = start;
+        for &comment in comments[..count].iter().rev() {
+            if !self
+                .source(Span::new(comment.span.end, next_start))
+                .chars()
+                .rev()
+                .all(is_source_whitespace)
+            {
+                break;
+            }
+            if self.comment_needs_jsdoc_enclosure(comment) {
+                return true;
+            }
+            next_start = comment.span.start;
+        }
+        false
+    }
+
+    pub(in crate::formatter) fn expression_has_jsdoc_enclosure_head(
+        &self,
+        mut expression: Expr,
+        mut context: ExpressionContext,
+    ) -> Result<bool, FormatError> {
+        if !self.has_jsdoc_enclosures() {
+            return Ok(false);
+        }
+        loop {
+            let data = self.ast.expr_data(expression);
+            if let ExprData::ParenthesizedExpression(node) = data {
+                if self.parenthesis_has_jsdoc_enclosure(node.span(self.ast).start) {
+                    return Ok(true);
+                }
+                expression = node.expression(self.ast);
+                continue;
+            }
+            let Some((child, child_context)) = self.expression_head_operand(data, context)? else {
+                return Ok(false);
+            };
+            expression = child;
+            context = child_context;
+        }
     }
 
     pub(super) fn source_cast_head(&self, mut expression: Expr) -> Option<ParenthesizedExpression> {
@@ -1196,6 +1249,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             return SourceParenthesesChoice::Retained {
                 kind: RetainedParentheses::Cast,
+                mode: context.content_mode,
+            };
+        }
+        if self.parenthesis_has_jsdoc_enclosure(span.start) {
+            if context.content_mode == ContentMode::Verbatim {
+                return SourceParenthesesChoice::Verbatim;
+            }
+            return SourceParenthesesChoice::Retained {
+                kind: RetainedParentheses::Annotation,
                 mode: context.content_mode,
             };
         }
@@ -1909,7 +1971,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
-            && self.parenthesis_has_type_cast(head.content_start)
+            && (self.parenthesis_has_type_cast(head.content_start)
+                || self.parenthesis_has_jsdoc_enclosure(head.content_start))
         {
             writer.text(";");
             start = ExpressionStart::None;

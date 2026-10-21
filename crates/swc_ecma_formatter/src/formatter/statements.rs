@@ -593,13 +593,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut expression_start = ExpressionStart::StatementPending;
             if first_statement
                 && matches!(kind, StatementSequenceKind::Program { .. })
-                && self.has_file_directives
-                && leading
+                && (leading
                     .iter()
-                    .any(|&comment| self.comment_is_file_directive(comment))
-                && leading
-                    .iter()
-                    .any(|&comment| self.comment_has_target_annotation(comment))
+                    .any(|&comment| self.comment_needs_jsdoc_enclosure(comment))
+                    || match statement {
+                        StatementItem::Statement(node) => match ast.stmt_data(node) {
+                            StmtData::ExpressionStatement(node) => self
+                                .expression_has_jsdoc_enclosure_head(
+                                    node.expression(ast),
+                                    ExpressionContext::at(ExpressionPosition::Statement),
+                                )?,
+                            _ => false,
+                        },
+                        StatementItem::Directive(_) => false,
+                    }
+                    || self.has_file_directives
+                        && leading
+                            .iter()
+                            .any(|&comment| self.comment_is_file_directive(comment))
+                        && leading
+                            .iter()
+                            .any(|&comment| self.comment_has_target_annotation(comment)))
             {
                 // Program start already separates the first statement. Keep its header intact.
                 expression_start = ExpressionStart::StatementGuarded;

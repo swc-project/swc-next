@@ -20,6 +20,23 @@ pub(super) enum PreparedBoundaryComments<'ast> {
     },
 }
 
+#[derive(Default)]
+struct JsDocBindingRoles {
+    cast: bool,
+    non_cast: bool,
+}
+
+impl JsDocBindingRoles {
+    fn is_empty(&self) -> bool {
+        !self.cast && !self.non_cast
+    }
+}
+
+enum JsDocBindingRole {
+    Cast,
+    NonCast,
+}
+
 /// A comment can carry more than one tool's annotation.
 pub(super) struct CommentSemantics {
     pub(super) suppression: bool,
@@ -900,17 +917,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentBinding::combine_all(comments.map(resolve))
     }
 
+    pub(super) fn has_jsdoc_enclosures(&self) -> bool {
+        *self.has_jsdoc_enclosures.get_or_init(|| {
+            self.ast
+                .comments()
+                .iter()
+                .any(|&comment| self.comment_needs_jsdoc_enclosure(comment))
+        })
+    }
+
     /// Compiler-recognized JSDoc roles retain their original syntax owner.
     /// Optimizer markers and unknown documentation tags have separate policies.
     pub(super) fn comment_is_jsdoc_binding(&self, comment: Comment) -> bool {
-        let raw = self.source(comment.span);
-        raw.starts_with("/**")
-            && raw
-                .match_indices('@')
-                .any(|(offset, _)| Self::jsdoc_binding_tag(&raw[offset + 1..]))
+        !self.comment_jsdoc_binding_roles(comment).is_empty()
     }
 
-    fn jsdoc_binding_tag(mut tag: &str) -> bool {
+    /// Preserve roles that have no existing Closure-cast enclosure policy.
+    pub(super) fn comment_needs_jsdoc_enclosure(&self, comment: Comment) -> bool {
+        let roles = self.comment_jsdoc_binding_roles(comment);
+        roles.non_cast || roles.cast && !self.comment_is_type_cast(comment)
+    }
+
+    fn comment_jsdoc_binding_roles(&self, comment: Comment) -> JsDocBindingRoles {
+        let raw = self.source(comment.span);
+        let mut roles = JsDocBindingRoles::default();
+        if raw.starts_with("/**") {
+            for (offset, _) in raw.match_indices('@') {
+                match Self::jsdoc_binding_tag(&raw[offset + 1..]) {
+                    Some(JsDocBindingRole::Cast) => roles.cast = true,
+                    Some(JsDocBindingRole::NonCast) => roles.non_cast = true,
+                    None => {}
+                }
+            }
+        }
+        roles
+    }
+
+    fn jsdoc_binding_tag(mut tag: &str) -> Option<JsDocBindingRole> {
         // Every supported role is ASCII; constructor is the longest name.
         let mut name = [0; 11];
         let mut length = 0;
@@ -918,31 +961,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             tag = &tag[character.len_utf8()..];
             let escaped = character == '\\';
             if escaped {
-                let Some(rest) = tag.strip_prefix('u') else {
-                    return false;
-                };
+                let rest = tag.strip_prefix('u')?;
                 let (digits, rest) = if let Some(braced) = rest.strip_prefix('{') {
                     let end = braced.bytes().take_while(u8::is_ascii_hexdigit).count();
                     let (digits, rest) = braced.split_at(end);
-                    let Some(rest) = rest.strip_prefix('}') else {
-                        return false;
-                    };
+                    let rest = rest.strip_prefix('}')?;
                     (digits, rest)
                 } else {
                     let (Some(digits), Some(rest)) = (rest.get(..4), rest.get(4..)) else {
-                        return false;
+                        return None;
                     };
                     (digits, rest)
                 };
                 if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-                    return false;
+                    return None;
                 }
-                let Some(decoded) = u32::from_str_radix(digits, 16)
+                let decoded = u32::from_str_radix(digits, 16)
                     .ok()
-                    .and_then(char::from_u32)
-                else {
-                    return false;
-                };
+                    .and_then(char::from_u32)?;
                 character = decoded;
                 tag = rest;
             }
@@ -956,44 +992,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             if !identifier_part {
                 if escaped {
-                    return false;
+                    return None;
                 }
                 break;
             }
             if !character.is_ascii() || length == name.len() {
-                return false;
+                return None;
             }
             name[length] = character as u8;
             length += 1;
         }
-        matches!(
-            &name[..length],
-            b"type"
-                | b"satisfies"
-                | b"typedef"
-                | b"callback"
-                | b"overload"
-                | b"template"
-                | b"param"
-                | b"arg"
-                | b"argument"
-                | b"return"
-                | b"returns"
-                | b"extends"
-                | b"augments"
-                | b"implements"
-                | b"class"
-                | b"constructor"
-                | b"enum"
-                | b"this"
-                | b"import"
-                | b"deprecated"
-                | b"public"
-                | b"private"
-                | b"protected"
-                | b"readonly"
-                | b"override"
-        )
+        match &name[..length] {
+            b"type" | b"satisfies" => Some(JsDocBindingRole::Cast),
+            b"typedef" | b"callback" | b"overload" | b"template" | b"param" | b"arg"
+            | b"argument" | b"return" | b"returns" | b"extends" | b"augments" | b"implements"
+            | b"class" | b"constructor" | b"enum" | b"this" | b"import" | b"deprecated"
+            | b"public" | b"private" | b"protected" | b"readonly" | b"override" => {
+                Some(JsDocBindingRole::NonCast)
+            }
+            _ => None,
+        }
     }
 
     pub(super) fn comment_is_type_cast(&self, comment: Comment) -> bool {
