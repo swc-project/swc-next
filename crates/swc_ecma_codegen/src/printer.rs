@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use arrayvec::ArrayVec;
 use memchr::memchr3;
-use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
+use swc_next_allocator::wtf8::Wtf8;
 use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, ExprContext, OperatorCode};
@@ -53,7 +53,7 @@ impl Default for Options {
 }
 
 pub struct PrintResult<'a> {
-    pub code: &'a str,
+    pub code: String,
     pub legal_comments: Vec<Comment>,
     pub map: Option<SourceMap<'a>>,
 }
@@ -114,12 +114,11 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
 }
 
 struct Printer<'a> {
-    allocator: &'a Allocator,
     ast: &'a Ast<'a>,
     options: Options,
-    js: ArenaVec<'a, u8>,
+    js: Vec<u8>,
     comments: &'a [Comment],
-    expr_visitor_stack: ArenaVec<'a, BinaryExprVisitor>,
+    expr_visitor_stack: Vec<BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
     next_comment: usize,
     indent: usize,
@@ -184,8 +183,8 @@ impl TsTypeContext {
     }
 }
 
-pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) -> PrintResult<'a> {
-    Printer::init(allocator, tree, options).generate()
+pub fn print<'a>(tree: &'a Ast<'a>, options: Options) -> PrintResult<'a> {
+    Printer::init(tree, options).generate()
 }
 
 impl BinaryExprVisitor {
@@ -325,20 +324,19 @@ impl BinaryExprVisitor {
 }
 
 impl<'a> Printer<'a> {
-    fn init(allocator: &'a Allocator, ast: &'a Ast<'a>, options: Options) -> Self {
+    fn init(ast: &'a Ast<'a>, options: Options) -> Self {
         let line_offset_tables = if options.source_map_path.is_some() {
-            generate_line_offset_tables(allocator, ast.source().as_bytes())
+            generate_line_offset_tables(ast.source().as_bytes())
         } else {
-            ArenaVec::new_in(allocator)
+            Vec::new()
         };
         Self {
-            allocator,
             ast,
             options,
-            js: ArenaVec::with_capacity_in(ast.source().len(), allocator),
+            js: Vec::with_capacity(ast.source().len()),
             comments: ast.comments(),
-            expr_visitor_stack: ArenaVec::new_in(allocator),
-            builder: make_chunk_builder(allocator, line_offset_tables),
+            expr_visitor_stack: Vec::new(),
+            builder: make_chunk_builder(line_offset_tables),
             next_comment: 0,
             indent: 0,
             print_next_indent_as_space: false,
@@ -359,7 +357,6 @@ impl<'a> Printer<'a> {
     fn generate(mut self) -> PrintResult<'a> {
         self.print_program(self.ast.root_program());
         let Self {
-            allocator,
             ast,
             options,
             js,
@@ -367,16 +364,15 @@ impl<'a> Printer<'a> {
             builder,
             ..
         } = self;
-        let map = if let Some(path) = options.source_map_path.as_deref() {
-            let path = path.as_os_str().as_encoded_bytes();
+        let map = if let Some(path) = options.source_map_path {
+            let path = path.into_os_string().into_encoded_bytes();
             let chunk = builder.generate_chunk(js.as_slice());
-            Some(chunk.finalize(allocator, ast.source().as_bytes(), path))
+            Some(chunk.finalize(ast.source().as_bytes(), path))
         } else {
             None
         };
 
-        let code =
-            str::from_utf8(js.into_bump_slice()).expect("generated code must be valid UTF-8");
+        let code = String::from_utf8(js).expect("generated code must be valid UTF-8");
         let legal_comments = comments
             .iter()
             .filter(|comment| is_legal_comment(ast, **comment))
@@ -411,12 +407,12 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print(&mut self, text: &str) {
-        self.js.extend_from_slice_copy(text.as_bytes());
+        self.js.extend_from_slice(text.as_bytes());
     }
 
     #[inline]
     fn print_bytes(&mut self, text: impl AsRef<[u8]>) {
-        self.js.extend_from_slice_copy(text.as_ref());
+        self.js.extend_from_slice(text.as_ref());
     }
 
     fn print_program(&mut self, program: Program) {
@@ -3771,7 +3767,7 @@ impl<'a> Printer<'a> {
         } else {
             self.print_space();
             let mut first = true;
-            let mut named = ArenaVec::new_in(self.allocator);
+            let mut named = Vec::new();
             for id in specs.iter() {
                 match self
                     .ast

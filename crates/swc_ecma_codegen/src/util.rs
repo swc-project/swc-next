@@ -1,9 +1,9 @@
-use swc_next_allocator::{vec::Vec as ArenaVec, wtf8::Wtf8};
+use swc_next_allocator::wtf8::Wtf8;
 use swc_next_simd::prelude::*;
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
 
-pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32) {
+pub(crate) fn push_code_point_escape(out: &mut Vec<u8>, code_point: u32) {
     out.extend_from_slice(b"\\u{");
     let mut shift = 28;
     while shift > 0 && code_point >> shift == 0 {
@@ -20,7 +20,7 @@ pub(crate) fn push_code_point_escape(out: &mut ArenaVec<'_, u8>, code_point: u32
 }
 
 pub(crate) fn quote_into(
-    out: &mut ArenaVec<'_, u8>,
+    out: &mut Vec<u8>,
     value: &Wtf8,
     quote: u8,
     ascii_only: bool,
@@ -90,9 +90,9 @@ pub(crate) fn quote_into(
             continue;
         }
 
-        out.extend_from_slice_copy(&value[start..position]);
+        out.extend_from_slice(&value[start..position]);
         if let Some(escape) = escape {
-            out.extend_from_slice_copy(escape);
+            out.extend_from_slice(escape);
         } else if surrogate {
             push_u16_escape(out, cp as u16);
         } else if cp <= 0xff {
@@ -106,7 +106,7 @@ pub(crate) fn quote_into(
         }
         start = i;
     }
-    out.extend_from_slice_copy(&value[start..]);
+    out.extend_from_slice(&value[start..]);
     out.push(quote);
 }
 
@@ -128,7 +128,7 @@ fn next_wtf8_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
     }
     next_code_point(bytes, i)
 }
-pub(crate) fn push_u16_escape(out: &mut ArenaVec<'_, u8>, c: u16) {
+pub(crate) fn push_u16_escape(out: &mut Vec<u8>, c: u16) {
     out.extend_from_slice(&[
         b'\\',
         b'u',

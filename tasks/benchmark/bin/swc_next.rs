@@ -32,11 +32,7 @@ fn main() {
             let semantic = swc_next_ecma_semantic::analyze(&ast, Default::default()).semantic;
             let diagnostics = swc_next_isolated_declarations::transform(&mut ast, &semantic);
             assert!(diagnostics.is_empty(), "isolated declaration diagnostics");
-            black_box(swc_next_ecma_codegen::print(
-                &allocator,
-                &ast,
-                Default::default(),
-            ));
+            black_box(swc_next_ecma_codegen::print(&ast, Default::default()));
         }
         black_box(ast);
     }

@@ -38,8 +38,6 @@ pub unsafe fn print_from_buffer(
     let allocator = Allocator::default();
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
     let tree = unsafe { deserialize_from(buffer, &allocator) }?;
-    let result = print(&allocator, &tree, options.unwrap_or_default().into());
-    Ok(CodegenOutput {
-        code: result.code.into(),
-    })
+    let result = print(&tree, options.unwrap_or_default().into());
+    Ok(CodegenOutput { code: result.code })
 }

@@ -21,13 +21,18 @@ fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &s
             minify,
             ..PrintOptions::default()
         };
-        let printed = print(&allocator, &original.ast, print_options.clone());
+        let printed = print(&original.ast, print_options.clone());
         assert_eq!(printed.code, if minify { compact } else { pretty });
 
-        let reparsed =
-            Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+        let reparsed = Parser::init(
+            &allocator,
+            &printed.code,
+            parse_options,
+            NoTokenParserConfig,
+        )
+        .parse();
         assert!(reparsed.diagnostics.is_empty());
-        let repeated = print(&allocator, &reparsed.ast, print_options);
+        let repeated = print(&reparsed.ast, print_options);
         assert_eq!(repeated.code, printed.code);
     }
 }
@@ -215,16 +220,21 @@ fn expect_token_boundary(source: &str, expected: &str) {
         minify: true,
         ..PrintOptions::default()
     };
-    let compact = print(&allocator, &original.ast, print_options.clone());
+    let compact = print(&original.ast, print_options.clone());
     assert_eq!(compact.code, expected);
 
-    let reparsed =
-        Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+    let reparsed = Parser::init(
+        &allocator,
+        &compact.code,
+        parse_options,
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
-    let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+    let original_pretty = print(&original.ast, PrintOptions::default());
+    let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
     assert_eq!(reparsed_pretty.code, original_pretty.code);
-    let repeated = print(&allocator, &reparsed.ast, print_options);
+    let repeated = print(&reparsed.ast, print_options);
     assert_eq!(repeated.code, compact.code);
 }
 

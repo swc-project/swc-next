@@ -144,7 +144,6 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
         );
     }
     let output = print(
-        &allocator,
         &ast,
         CodegenOptions {
             minify: options.codegen.minify,

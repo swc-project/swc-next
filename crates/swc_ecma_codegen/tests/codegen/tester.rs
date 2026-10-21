@@ -18,11 +18,10 @@ pub fn expect_printed_pair(source: &str, options: ParseOptions, pretty: &str, mi
     let allocator = Allocator::new();
     let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
     assert!(parsed.diagnostics.is_empty());
-    let output = print(&allocator, &parsed.ast, PrintOptions::default());
+    let output = print(&parsed.ast, PrintOptions::default());
     assert_eq!(output.code, pretty);
 
     let output = print(
-        &allocator,
         &parsed.ast,
         PrintOptions {
             minify: true,
@@ -146,7 +145,7 @@ fn expect_printed_common_with_options(
     if has_errors {
         return;
     }
-    let result = print(&allocator, &result.ast, print_options);
+    let result = print(&result.ast, print_options);
 
     assert_eq!(
         result.code, expected,

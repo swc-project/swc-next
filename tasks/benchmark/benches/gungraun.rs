@@ -157,7 +157,7 @@ fn bench_resolver(ast: Ast<'static>) {
 #[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
 #[bench::cal_com_tsx(setup_program(CAL_COM_TSX, Lang::Tsx))]
 fn bench_codegen(ast: Ast<'static>) {
-    black_box(print(ast.allocator(), &ast, CodegenOptions::default()));
+    black_box(print(&ast, CodegenOptions::default()));
 }
 
 type TransformInput = (Ast<'static>, Semantic<'static>, TransformerOptions);

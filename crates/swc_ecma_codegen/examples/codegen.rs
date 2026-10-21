@@ -63,7 +63,7 @@ fn main() -> Result<(), String> {
         inline_script: args.inline_script,
         ..CodegenOptions::default()
     };
-    let result = print(&allocator, &ret.ast, options);
+    let result = print(&ret.ast, options);
     print!("{}", result.code);
 
     Ok(())

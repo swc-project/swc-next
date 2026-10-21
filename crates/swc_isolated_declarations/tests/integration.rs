@@ -66,7 +66,7 @@ fn run_fixture(input: &Path, lang: Lang) {
     let diagnostics = transform(&mut ast, &semantic)
         .into_iter()
         .map(|diagnostic| diagnostic.message);
-    let actual = print(&allocator, &ast, PrintOptions::default()).code;
+    let actual = print(&ast, PrintOptions::default()).code;
     assert!(
         actual == expected,
         "{}: declaration mismatch",

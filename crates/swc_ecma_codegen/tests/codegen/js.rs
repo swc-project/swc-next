@@ -23,16 +23,21 @@ fn expect_token_boundary(source: &str, expected: &str) {
     let parse_options = ParseOptions::default();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let compact = print(&allocator, &original.ast, print_options.clone());
+    let compact = print(&original.ast, print_options.clone());
     assert_eq!(compact.code, expected);
 
-    let reparsed =
-        Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+    let reparsed = Parser::init(
+        &allocator,
+        &compact.code,
+        parse_options,
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
-    let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+    let original_pretty = print(&original.ast, PrintOptions::default());
+    let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
     assert_eq!(reparsed_pretty.code, original_pretty.code);
-    let repeated = print(&allocator, &reparsed.ast, print_options.clone());
+    let repeated = print(&reparsed.ast, print_options.clone());
     assert_eq!(repeated.code, compact.code);
 }
 
@@ -54,8 +59,32 @@ fn expect_token_boundary_mapping(source: &str, expected: &[u8]) {
         source_map_path: Some("input.js".into()),
         ..PrintOptions::default()
     };
-    let printed = print(&allocator, &parsed.ast, print_options);
+    let printed = print(&parsed.ast, print_options);
     assert_eq!(printed.map.unwrap().mappings(), expected);
+}
+
+#[test]
+fn test_print_result_ownership() {
+    let code = {
+        let allocator = Allocator::new();
+        let source = "const value = 1;";
+        let parse_options = ParseOptions::default();
+        let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty());
+        let print_options = PrintOptions {
+            source_map_path: Some("路径.js".into()),
+            ..PrintOptions::default()
+        };
+        let printed = print(&parsed.ast, print_options);
+        let map = printed.map.unwrap();
+        assert_eq!(map.sources().len(), 1);
+        assert_eq!(map.sources()[0], "路径.js".as_bytes());
+        assert_eq!(map.sources_content().unwrap(), &[Some(source.as_bytes())]);
+        assert_eq!(map.names(), &[b"value".as_slice()]);
+        assert!(!map.mappings().is_empty());
+        printed.code
+    };
+    assert_eq!(code, "const value = 1;\n");
 }
 
 #[test]
@@ -152,27 +181,32 @@ fn expect_empty_statement(source: &str, expected_minified: &str) {
     let parse_options = ParseOptions::default();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
+    let original_pretty = print(&original.ast, PrintOptions::default());
 
     for minify in [false, true] {
         let print_options = PrintOptions {
             minify,
             ..PrintOptions::default()
         };
-        let printed = print(&allocator, &original.ast, print_options.clone());
+        let printed = print(&original.ast, print_options.clone());
         if minify {
             assert_eq!(printed.code, expected_minified);
         }
 
-        let reparsed =
-            Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+        let reparsed = Parser::init(
+            &allocator,
+            &printed.code,
+            parse_options,
+            NoTokenParserConfig,
+        )
+        .parse();
         assert!(reparsed.diagnostics.is_empty());
         let ast = &reparsed.ast;
         let statement = ast.get_node_in_sub_range(ast.root_program().body(ast).first().unwrap());
         assert_empty_statement_body(ast, statement);
-        let reparsed_pretty = print(&allocator, ast, PrintOptions::default());
+        let reparsed_pretty = print(ast, PrintOptions::default());
         assert_eq!(reparsed_pretty.code, original_pretty.code);
-        let repeated = print(&allocator, ast, print_options);
+        let repeated = print(ast, print_options);
         assert_eq!(repeated.code, printed.code);
     }
 }
@@ -344,10 +378,7 @@ fn numeric_literal_value_invalidates_raw() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(
-        print(&allocator, &ast, PrintOptions::default()).code,
-        "2;\n"
-    );
+    assert_eq!(print(&ast, PrintOptions::default()).code, "2;\n");
 }
 
 #[test]
@@ -368,10 +399,7 @@ fn numeric_literal_value_compares_float_bits() {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    assert_eq!(
-        print(&allocator, &ast, PrintOptions::default()).code,
-        "-0;\n"
-    );
+    assert_eq!(print(&ast, PrintOptions::default()).code, "-0;\n");
 }
 
 #[test]
@@ -461,7 +489,7 @@ fn print_synthesized_number_subtraction(value: f64, options: PrintOptions) -> St
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&allocator, &ast, options).code.to_owned()
+    print(&ast, options).code
 }
 
 #[test]
@@ -550,7 +578,6 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
     ast.set_root_program(program);
 
     print(
-        &allocator,
         &ast,
         PrintOptions {
             minify,
@@ -558,7 +585,6 @@ fn print_synthesized_number_property_key(key_value: f64, computed: bool, minify:
         },
     )
     .code
-    .to_owned()
 }
 
 #[test]
@@ -572,7 +598,7 @@ fn synthesized_number_contexts() {
         let body = ast.add_sub_range([statement]);
         let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
         ast.set_root_program(program);
-        print(&allocator, &ast, options).code.to_owned()
+        print(&ast, options).code
     }
 
     let pretty = PrintOptions::default();
@@ -624,7 +650,7 @@ fn print_negative_number_contexts(options: PrintOptions) -> String {
     let program = ast.program(DUMMY_SP, SubRange::empty(), body, None);
     ast.set_root_program(program);
 
-    print(&allocator, &ast, options).code.to_owned()
+    print(&ast, options).code
 }
 
 #[test]
@@ -777,13 +803,18 @@ fn expect_stable_with_parens(source: &str, expected: &str, print_options: &Print
     };
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let printed = print(&allocator, &original.ast, print_options.clone());
+    let printed = print(&original.ast, print_options.clone());
     assert_eq!(printed.code, expected);
 
-    let reparsed =
-        Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+    let reparsed = Parser::init(
+        &allocator,
+        &printed.code,
+        parse_options,
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let repeated = print(&allocator, &reparsed.ast, print_options.clone());
+    let repeated = print(&reparsed.ast, print_options.clone());
     assert_eq!(repeated.code, expected);
 }
 
@@ -836,11 +867,16 @@ fn expect_export_default_expression(
     };
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
-    let printed = print(&allocator, &original.ast, print_options.clone());
+    let printed = print(&original.ast, print_options.clone());
     assert_eq!(printed.code, expected);
 
-    let reparsed =
-        Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+    let reparsed = Parser::init(
+        &allocator,
+        &printed.code,
+        parse_options,
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(reparsed.diagnostics.is_empty());
     let body = reparsed.ast.root_program().body(&reparsed.ast);
     assert_eq!(body.len(), 1);
@@ -855,7 +891,7 @@ fn expect_export_default_expression(
             .as_expr(&reparsed.ast)
             .is_some()
     );
-    let repeated = print(&allocator, &reparsed.ast, print_options);
+    let repeated = print(&reparsed.ast, print_options);
     assert_eq!(repeated.code, printed.code);
 }
 
@@ -983,16 +1019,21 @@ fn expect_statement_body(source: &str, expected: &str) {
         minify: true,
         ..PrintOptions::default()
     };
-    let compact = print(&allocator, &original.ast, print_options.clone());
+    let compact = print(&original.ast, print_options.clone());
     assert_eq!(compact.code, expected);
 
-    let reparsed =
-        Parser::init(&allocator, compact.code, parse_options, NoTokenParserConfig).parse();
+    let reparsed = Parser::init(
+        &allocator,
+        &compact.code,
+        parse_options,
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(reparsed.diagnostics.is_empty());
-    let original_pretty = print(&allocator, &original.ast, PrintOptions::default());
-    let reparsed_pretty = print(&allocator, &reparsed.ast, PrintOptions::default());
+    let original_pretty = print(&original.ast, PrintOptions::default());
+    let reparsed_pretty = print(&reparsed.ast, PrintOptions::default());
     assert_eq!(reparsed_pretty.code, original_pretty.code);
-    let repeated = print(&allocator, &reparsed.ast, print_options);
+    let repeated = print(&reparsed.ast, print_options);
     assert_eq!(repeated.code, compact.code);
 }
 

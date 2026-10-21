@@ -869,7 +869,6 @@ mod tests {
         assert!(result.diagnostics.is_empty());
         let diagnostics = transform(&mut ast, &result.semantic);
         let code = print(
-            &allocator,
             &ast,
             PrintOptions {
                 comments: false,
@@ -877,7 +876,7 @@ mod tests {
             },
         )
         .code;
-        (code.to_owned(), diagnostics.len())
+        (code, diagnostics.len())
     }
 
     fn assert_export_dependencies(source: &str) {

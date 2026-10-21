@@ -65,7 +65,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
     };
 
     let expected = case.expected_output();
-    let output = print(&allocator, &ast, case.codegen_options()).code;
+    let output = print(&ast, case.codegen_options()).code;
     if let Some(expected) = expected {
         let expected_allocator = Allocator::new();
         let Some(expected_ast) = parse_program(
@@ -77,11 +77,11 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         ) else {
             return Ok(false);
         };
-        let expected = print(&expected_allocator, &expected_ast, case.codegen_options()).code;
-        let Some(actual) = normalize_output(case, output) else {
+        let expected = print(&expected_ast, case.codegen_options()).code;
+        let Some(actual) = normalize_output(case, &output) else {
             return Ok(false);
         };
-        let Some(expected) = normalize_output(case, expected) else {
+        let Some(expected) = normalize_output(case, &expected) else {
             return Ok(false);
         };
         if actual != expected {
@@ -105,13 +105,13 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
         let Some(output_ast) = transform_program(
             case,
             &output_allocator,
-            output,
+            &output,
             case.source_type(),
             output_lang,
         ) else {
             return Ok(false);
         };
-        let retransformed = print(&output_allocator, &output_ast, case.codegen_options()).code;
+        let retransformed = print(&output_ast, case.codegen_options()).code;
         if output != retransformed {
             return Err("transformed output is not idempotent".into());
         }
@@ -187,5 +187,5 @@ fn normalize_output<C: TransformCase>(case: &C, source: &str) -> Option<String> 
     let mut options = case.codegen_options();
     options.minify = true;
     options.comments = true;
-    Some(print(&allocator, &ast, options).code.to_owned())
+    Some(print(&ast, options).code)
 }

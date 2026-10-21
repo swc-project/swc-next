@@ -18,10 +18,6 @@ pub fn native_parse_print_sync(
         NoTokenParserConfig,
     )
     .parse();
-    let output = print(
-        &allocator,
-        &result.ast,
-        codegen_options.unwrap_or_default().into(),
-    );
-    Ok(output.code.into())
+    let output = print(&result.ast, codegen_options.unwrap_or_default().into());
+    Ok(output.code)
 }

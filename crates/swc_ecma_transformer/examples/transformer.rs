@@ -75,7 +75,7 @@ fn main() -> Result<(), String> {
     report_diagnostics(path, &analyzed.diagnostics)?;
     Transformer::transform(&mut ast, analyzed.semantic, options);
 
-    let result = print(&allocator, &ast, Default::default());
+    let result = print(&ast, Default::default());
     print!("{}", result.code);
     Ok(())
 }

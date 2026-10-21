@@ -54,13 +54,13 @@ fn run_case<C: Case>(case: &C) -> Result<(), String> {
         };
         let ast = parse_with_options(&allocator, case.code(), options)
             .map_err(|error| format!("preserve_parens={preserve_parens}: input {error}"))?;
-        let output = print(&allocator, &ast, CodegenOptions::default()).code;
-        let reparsed = parse_with_options(&allocator, output, options)
+        let output = print(&ast, CodegenOptions::default()).code;
+        let reparsed = parse_with_options(&allocator, &output, options)
             .map_err(|error| format!("preserve_parens={preserve_parens}: output {error}"))?;
         if let Err(error) = ast_compare::compare(&ast, &reparsed) {
             errors.push(format!("preserve_parens={preserve_parens}: {error}"));
         }
-        let output2 = print(&allocator, &reparsed, CodegenOptions::default()).code;
+        let output2 = print(&reparsed, CodegenOptions::default()).code;
         if output != output2 {
             errors.push(format!(
                 "preserve_parens={preserve_parens}: codegen output changed after reparse"

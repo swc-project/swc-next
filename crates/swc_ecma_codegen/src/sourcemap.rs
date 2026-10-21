@@ -1,4 +1,4 @@
-use swc_next_allocator::{Allocator, hash_map::HashMap, vec::Vec as ArenaVec};
+use rustc_hash::FxHashMap;
 use swc_next_simd::prelude::*;
 
 use crate::util::next_code_point;
@@ -9,10 +9,10 @@ pub struct SourceMap<'a> {
     pub(crate) version: u8,
     pub(crate) file: Option<&'a [u8]>,
     pub(crate) source_root: Option<&'a [u8]>,
-    pub(crate) sources: &'a [&'a [u8]],
-    pub(crate) sources_content: Option<&'a [Option<&'a [u8]>]>,
-    pub(crate) names: &'a [&'a [u8]],
-    pub(crate) mappings: &'a [u8],
+    pub(crate) sources: Vec<Vec<u8>>,
+    pub(crate) sources_content: Option<Vec<Option<&'a [u8]>>>,
+    pub(crate) names: Vec<&'a [u8]>,
+    pub(crate) mappings: Vec<u8>,
 }
 
 impl<'a> SourceMap<'a> {
@@ -28,20 +28,20 @@ impl<'a> SourceMap<'a> {
         self.source_root
     }
 
-    pub fn sources(&self) -> &'a [&'a [u8]] {
-        self.sources
+    pub fn sources(&self) -> &[Vec<u8>] {
+        &self.sources
     }
 
-    pub fn sources_content(&self) -> Option<&'a [Option<&'a [u8]>]> {
-        self.sources_content
+    pub fn sources_content(&self) -> Option<&[Option<&'a [u8]>]> {
+        self.sources_content.as_deref()
     }
 
-    pub fn names(&self) -> &'a [&'a [u8]] {
-        self.names
+    pub fn names(&self) -> &[&'a [u8]] {
+        &self.names
     }
 
-    pub fn mappings(&self) -> &'a [u8] {
-        self.mappings
+    pub fn mappings(&self) -> &[u8] {
+        &self.mappings
     }
 }
 
@@ -61,15 +61,15 @@ pub(crate) struct SourceMapState {
 }
 
 #[allow(dead_code)] // Used when independently-generated chunks are joined.
-pub(crate) struct MappingsBuffer<'a> {
-    pub(crate) data: &'a [u8],
+pub(crate) struct MappingsBuffer {
+    pub(crate) data: Vec<u8>,
     pub(crate) first_name_offset: Option<u32>,
 }
 
 #[allow(dead_code)] // The single-source adapter only consumes part of a chunk.
 pub(crate) struct Chunk<'a> {
-    pub(crate) buffer: MappingsBuffer<'a>,
-    pub(crate) quoted_names: &'a [&'a [u8]],
+    pub(crate) buffer: MappingsBuffer,
+    pub(crate) quoted_names: Vec<&'a [u8]>,
 
     // This end state is used to rewrite the start of a following source map
     // chunk so the delta-encoded VLQ numbers are preserved.
@@ -82,27 +82,10 @@ pub(crate) struct Chunk<'a> {
 }
 
 impl<'a> Chunk<'a> {
-    pub(crate) fn finalize(
-        self,
-        allocator: &'a Allocator,
-        source: &'a [u8],
-        source_path: &[u8],
-    ) -> SourceMap<'a> {
-        let mut path = ArenaVec::with_capacity_in(source_path.len(), allocator);
-        path.extend_from_slice_copy(source_path);
-        let path = path.into_bump_slice() as &'a [u8];
-
-        let mut sources = ArenaVec::with_capacity_in(1, allocator);
-        sources.push(path);
-        let sources = sources.into_bump_slice() as &'a [&'a [u8]];
-
-        let mut sources_content = ArenaVec::with_capacity_in(1, allocator);
-        sources_content.push(Some(source));
-        let sources_content = sources_content.into_bump_slice() as &'a [Option<&'a [u8]>];
-
+    pub(crate) fn finalize(self, source: &'a [u8], source_path: Vec<u8>) -> SourceMap<'a> {
         // Chunk joining and JSON assembly are intentionally outside sourcemap.rs:
-        // they adapt esbuild's chunk-oriented API to this crate's arena-backed,
-        // single-source public result type.
+        // they adapt esbuild's chunk-oriented API to this crate's single-source
+        // public result type.
         let Chunk {
             buffer: MappingsBuffer { data: mappings, .. },
             quoted_names: names,
@@ -112,30 +95,27 @@ impl<'a> Chunk<'a> {
             version: 3,
             file: None,
             source_root: None,
-            sources,
-            sources_content: Some(sources_content),
+            sources: vec![source_path],
+            sources_content: Some(vec![Some(source)]),
             names,
             mappings,
         }
     }
 }
 
-pub(crate) struct LineOffsetTable<'a> {
-    columns_for_non_ascii: Option<&'a [i32]>,
+pub(crate) struct LineOffsetTable {
+    columns_for_non_ascii: Option<Vec<i32>>,
     byte_offset_to_first_non_ascii: i32,
     byte_offset_to_start_of_line: i32,
 }
 
-pub(crate) fn generate_line_offset_tables<'a>(
-    allocator: &'a Allocator,
-    contents: &[u8],
-) -> ArenaVec<'a, LineOffsetTable<'a>> {
-    let mut columns_for_non_ascii = None::<ArenaVec<'a, i32>>;
+pub(crate) fn generate_line_offset_tables(contents: &[u8]) -> Vec<LineOffsetTable> {
+    let mut columns_for_non_ascii = None::<Vec<i32>>;
     let mut byte_offset_to_first_non_ascii = 0i32;
     let mut line_byte_offset = 0usize;
     let mut column_byte_offset = 0usize;
     let mut column = 0i32;
-    let mut line_offset_tables = ArenaVec::new_in(allocator);
+    let mut line_offset_tables = Vec::new();
 
     let mut index = 0;
     while index < contents.len() {
@@ -165,7 +145,7 @@ pub(crate) fn generate_line_offset_tables<'a>(
         if code_point > 0x7f && columns_for_non_ascii.is_none() {
             column_byte_offset = index - line_byte_offset;
             byte_offset_to_first_non_ascii = column_byte_offset as i32;
-            columns_for_non_ascii = Some(ArenaVec::new_in(allocator));
+            columns_for_non_ascii = Some(Vec::new());
         }
 
         if let Some(columns) = &mut columns_for_non_ascii {
@@ -187,9 +167,7 @@ pub(crate) fn generate_line_offset_tables<'a>(
                 line_offset_tables.push(LineOffsetTable {
                     byte_offset_to_start_of_line: line_byte_offset as i32,
                     byte_offset_to_first_non_ascii,
-                    columns_for_non_ascii: columns_for_non_ascii
-                        .take()
-                        .map(ArenaVec::into_bump_slice),
+                    columns_for_non_ascii: columns_for_non_ascii.take(),
                 });
                 column_byte_offset = 0;
                 byte_offset_to_first_non_ascii = 0;
@@ -216,16 +194,16 @@ pub(crate) fn generate_line_offset_tables<'a>(
     line_offset_tables.push(LineOffsetTable {
         byte_offset_to_start_of_line: line_byte_offset as i32,
         byte_offset_to_first_non_ascii,
-        columns_for_non_ascii: columns_for_non_ascii.map(ArenaVec::into_bump_slice),
+        columns_for_non_ascii,
     });
     line_offset_tables
 }
 
 pub(crate) struct ChunkBuilder<'a> {
-    source_map: ArenaVec<'a, u8>,
-    quoted_names: ArenaVec<'a, &'a [u8]>,
-    names_map: HashMap<'a, &'a [u8], u32>,
-    line_offset_tables: ArenaVec<'a, LineOffsetTable<'a>>,
+    source_map: Vec<u8>,
+    quoted_names: Vec<&'a [u8]>,
+    names_map: FxHashMap<&'a [u8], u32>,
+    line_offset_tables: Vec<LineOffsetTable>,
     prev_original_name: &'a [u8],
     prev_state: SourceMapState,
     last_generated_update: usize,
@@ -238,14 +216,11 @@ pub(crate) struct ChunkBuilder<'a> {
     cover_lines_without_mappings: bool,
 }
 
-pub(crate) fn make_chunk_builder<'a>(
-    allocator: &'a Allocator,
-    line_offset_tables: ArenaVec<'a, LineOffsetTable<'a>>,
-) -> ChunkBuilder<'a> {
+pub(crate) fn make_chunk_builder<'a>(line_offset_tables: Vec<LineOffsetTable>) -> ChunkBuilder<'a> {
     ChunkBuilder {
-        source_map: ArenaVec::new_in(allocator),
-        quoted_names: ArenaVec::new_in(allocator),
-        names_map: HashMap::new_in(allocator),
+        source_map: Vec::new(),
+        quoted_names: Vec::new(),
+        names_map: FxHashMap::default(),
         line_offset_tables,
         prev_original_name: &[],
         prev_state: SourceMapState::default(),
@@ -286,7 +261,7 @@ impl<'a> ChunkBuilder<'a> {
             .saturating_sub(1);
         let line = &self.line_offset_tables[original_line];
         let mut original_column = original_loc as i32 - line.byte_offset_to_start_of_line;
-        if let Some(columns) = line.columns_for_non_ascii
+        if let Some(columns) = &line.columns_for_non_ascii
             && original_column >= line.byte_offset_to_first_non_ascii
         {
             original_column =
@@ -328,10 +303,10 @@ impl<'a> ChunkBuilder<'a> {
         let should_ignore = self.source_map.iter().all(|&byte| byte == b';');
         Chunk {
             buffer: MappingsBuffer {
-                data: self.source_map.into_bump_slice(),
+                data: self.source_map,
                 first_name_offset: self.first_name_offset,
             },
-            quoted_names: self.quoted_names.into_bump_slice(),
+            quoted_names: self.quoted_names,
             end_state: self.prev_state,
             final_generated_column: self.generated_column,
             should_ignore,
@@ -429,7 +404,7 @@ impl<'a> ChunkBuilder<'a> {
 }
 
 fn append_mapping_to_buffer(
-    buffer: &mut ArenaVec<'_, u8>,
+    buffer: &mut Vec<u8>,
     last_byte: u8,
     previous_state: SourceMapState,
     current_state: SourceMapState,
@@ -470,7 +445,7 @@ fn append_mapping_to_buffer(
     }
 }
 
-fn encode_vlq(encoded: &mut ArenaVec<'_, u8>, value: i32) {
+fn encode_vlq(encoded: &mut Vec<u8>, value: i32) {
     let mut vlq = if value < 0 {
         ((-(value as i64)) << 1 | 1) as u64
     } else {

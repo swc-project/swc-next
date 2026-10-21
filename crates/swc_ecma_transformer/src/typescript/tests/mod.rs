@@ -50,9 +50,7 @@ fn transformed_code_with_source_type(
     Normalizer::normalize_runtime(ast.root_program(), &mut ast);
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     transform(ast.root_program(), &mut ast, &semantic, transform_options);
-    swc_next_ecma_codegen::print(&allocator, &ast, Default::default())
-        .code
-        .to_owned()
+    swc_next_ecma_codegen::print(&ast, Default::default()).code
 }
 
 /// Analyze printed JavaScript, so assertions cover the bindings consumers see.

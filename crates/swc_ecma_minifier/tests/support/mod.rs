@@ -134,7 +134,6 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
 
     Minifier::minify(&mut ast, options.minify.clone());
     Ok(print(
-        &allocator,
         &ast,
         PrintOptions {
             minify: true,
@@ -142,8 +141,7 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
             ..PrintOptions::default()
         },
     )
-    .code
-    .to_owned())
+    .code)
 }
 
 fn check_diagnostics(stage: &str, diagnostics: &[Diagnostic<'_>]) -> Result<(), String> {

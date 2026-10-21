@@ -106,7 +106,7 @@ pub(crate) enum OperatorCode {
 
 // Binary and logical expressions share this visitor because either kind can
 // appear on the left spine of the other. Keeping the state on one reusable
-// arena-backed stack avoids overflowing the native stack for deeply nested ASTs.
+// heap-backed stack avoids overflowing the native stack for deeply nested ASTs.
 #[derive(Clone, Copy)]
 pub(crate) struct BinaryExprVisitor {
     // Inputs
