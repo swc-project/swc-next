@@ -12,7 +12,8 @@ pub(in crate::formatter) mod member_prefix;
 use super::Formatter;
 use super::bindings::InitializerLayout;
 use super::comments::{
-    CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+    CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
+    HeadGapPlacement, NodeHead, PreparedHeadGap, PreparedHeadGaps,
 };
 use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
@@ -1009,6 +1010,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.comments
                 .in_range(Span::new(content.start, first.span(ast).start))
         });
+        let first_span = first.span(ast);
+        let leading_start = leading
+            .first()
+            .map_or(content.start, |comment| comment.span.start);
+        let binding = self.comment_binding(
+            leading,
+            Span::new(leading_start, first_span.start),
+            Some(first_span),
+        );
+        let source_adjacent = leading.last().is_some_and(|comment| {
+            comment.span.end <= first_span.start
+                && self
+                    .source(Span::new(comment.span.end, first_span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+        });
+        let gap = if source_adjacent {
+            PreparedHeadGap::source_adjacent(leading, HeadGapPlacement::OwnLine, first_span.start)
+        } else {
+            PreparedHeadGap::new(leading, HeadGapPlacement::OwnLine)
+        };
+        let head = NodeHead {
+            comments: leading,
+            content_start: first_span.start,
+            layout: CommentRunLayout::Leading(first_span.start),
+            gap_end: source_adjacent.then_some(first_span.start),
+        };
+        let head = if let Some(gaps) = PreparedHeadGaps::new(None, gap, false) {
+            gaps.apply(head, binding, source_adjacent)
+        } else {
+            head
+        };
         let first_mode = if incoming
             .is_some_and(|target| target.node == first && target.mode == ContentMode::Verbatim)
             || self.content_mode(leading) == ContentMode::Verbatim
@@ -1032,11 +1065,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Writer::hard_line,
             );
             self.comments.claim(leading)?;
-            self.format_comment_run(
-                leading,
-                CommentRunLayout::Leading(first.span(ast).start),
-                writer,
-            )?;
+            self.format_node_head(head, ExpressionStart::None, None, writer)?;
             loop {
                 let next = members
                     .next()
