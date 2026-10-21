@@ -8,13 +8,13 @@ first + second); third;
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-target = (
+target =
   // @ts-expect-error
-  first + second); third
+  first + second; third
 
 ---------- Options ----------
 {"printWidth":20,"semi":true}
 ---------- Output ----------
-target = (
+target =
   // @ts-expect-error
-  first + second); third;
+  first + second; third;

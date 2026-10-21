@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = (
+/** @type {number} */
+!left)(arg);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = (
+  /** @type {number} */ !left
+)(arg);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+result = (
+  /** @type {number} */ !left
+)(arg)

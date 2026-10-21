@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const {value = /* @__PURE__ */
+invoke()} = source;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const {
+  value = /* @__PURE__ */
+  invoke(),
+} = source;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const {
+  value = /* @__PURE__ */
+  invoke(),
+} = source

@@ -9,5 +9,5 @@ a, b);
 {}
 ---------- Output ----------
 ! // prettier-ignore
-( // @ts-expect-error
-a, b);
+// @ts-expect-error
+(a, b);

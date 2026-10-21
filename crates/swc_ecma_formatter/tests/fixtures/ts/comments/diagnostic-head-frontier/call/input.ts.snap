@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const use: (x: any)=>void; declare const fn: number;
+// @ts-expect-error
+use((
+fn
+)());
+---------- Options ----------
+{}
+---------- Output ----------
+declare const use: (x: any) => void;
+declare const fn: number;
+// @ts-expect-error
+use((
+    fn
+  )(),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+declare const use: (x: any) => void
+declare const fn: number
+// @ts-expect-error
+use((
+    fn
+  )(),
+)

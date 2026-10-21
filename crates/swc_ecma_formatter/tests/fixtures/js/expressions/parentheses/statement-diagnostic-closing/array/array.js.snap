@@ -8,7 +8,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 );---------- Options ----------
 {}
 ---------- Output ----------
-(
-  // @ts-expect-error
-  [missing]
-);
+// @ts-expect-error
+[missing];

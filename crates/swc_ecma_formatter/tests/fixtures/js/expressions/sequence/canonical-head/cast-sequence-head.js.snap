@@ -1,5 +1,6 @@
 ---
 source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
 ---
 ---------- Input ----------
 x = (
@@ -8,16 +9,20 @@ a, y);
 ---------- Options ----------
 {}
 ---------- Output ----------
-x = (/** @type {number} */ a, y);
+x =
+  /** @type {number} */
+  (a, y);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-x = (/** @type {number} */ a, y)
+x =
+  /** @type {number} */
+  (a, y)
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 x =
-  (/** @type {number} */ a,
-  y);
+  /** @type {number} */
+  (a, y);

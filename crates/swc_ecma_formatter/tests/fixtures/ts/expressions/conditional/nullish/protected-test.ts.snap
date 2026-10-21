@@ -11,8 +11,6 @@ const result = (
 {}
 ---------- Output ----------
 declare const invalid: string;
-const result = (
+const result =
   // @ts-expect-error
-  invalid() ?? 0 ? 0 : 0
-);
-
+  invalid() ?? 0 ? 0 : 0;
