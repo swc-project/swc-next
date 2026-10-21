@@ -1,0 +1,11 @@
+[
+  {
+    "endOfLine": "crlf",
+    "printWidth": 10
+  },
+  {
+    "printWidth": 10,
+    "tabWidth": 4,
+    "useTabs": true
+  }
+]
