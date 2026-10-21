@@ -8,7 +8,7 @@ use super::{
 };
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
-    SourceSeparatorTransition,
+    PreparedTrailingRun, SourceSeparatorTransition,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
@@ -577,7 +577,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let optimizer_run = ordinary_attachment
             .then(|| self.prepare_delimited_optimizer_run(comments, tail.as_ref(), comma))
             .flatten();
-        let prepared_run = optimizer_run.or_else(|| {
+        let prepared_run = optimizer_run.map(|run| (&comments[..0], run)).or_else(|| {
             if prepare_run {
                 self.prepare_delimited_trailing_run(
                     comments,
@@ -586,18 +586,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     following_span.is_some(),
                     array_comments.as_deref_mut(),
                 )
+                .map(PreparedTrailingRun::split_at_line)
             } else {
                 None
             }
         });
         let canonical_run = prepared_run.is_some();
         let boundary_count = match prepared_run.as_ref() {
-            Some(run) => {
+            Some((blocks, run)) => {
                 debug_assert!(
-                    run.len() >= trailing_count,
+                    blocks.len() + run.len() >= trailing_count,
                     "a canonical trailing run must include the complete legacy inline prefix",
                 );
-                run.len()
+                blocks.len() + run.len()
             }
             None => comma
                 .filter(|_| preserve_comma)
@@ -631,8 +632,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             transition.pre_packet_empty = pre_packet_empty;
         }
         let boundary = self.comments.take(boundary_count);
-        let (trailing, before_comma) = if canonical_run {
-            (&boundary[..0], &boundary[..0])
+        let (trailing, before_comma) = if let Some((blocks, _)) = &prepared_run {
+            (*blocks, &boundary[..0])
         } else {
             boundary.split_at(trailing_count)
         };
@@ -688,8 +689,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else if matches!(trailing_comma, TrailingCommaPolicy::IfBreak) {
             writer.if_break(",");
         }
-        if let Some(run) = prepared_run {
-            // Keep comma and the entire ordinary Block/Line packet together.
+        if let Some((_, run)) = prepared_run {
             // The next real separator owns its mandatory suffix termination.
             self.format_prepared_trailing_run(run, array_comments.as_deref_mut(), writer)?;
             if !matches!(separator, Separator::EmptyLine) {
