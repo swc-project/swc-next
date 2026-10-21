@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = ({ key: // after
+[first, second, third], other: value });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = {
+  // after
+  key: [
+    first,
+    second,
+    third,
+  ],
+  other: value,
+};
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+result = {
+  // after
+  key: [first, second, third],
+  other: value,
+};

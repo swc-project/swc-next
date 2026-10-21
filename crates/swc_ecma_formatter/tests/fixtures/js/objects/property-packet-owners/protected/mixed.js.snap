@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = { key: /* ordinary */ // @ts-ignore
+/** @type {number} */ ("wrong") };
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const result = {
+  key: /* ordinary */ // @ts-ignore
+    /** @type {number} */ ("wrong"), };
