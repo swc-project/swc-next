@@ -1,11 +1,12 @@
 //! Typed comma-expression traversal and borrowed separator boundaries.
 
-use swc_next_ecma_ast::{Comment, Expr, ExprData, GetSpan, SequenceExpression, Span};
+use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, GetSpan, SequenceExpression, Span};
 
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParentheses};
 use super::{ExpressionContext, ExpressionPosition, Formatter, HeadComments, TailOwner};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, DelimitedSuppression};
 use crate::{FormatError, Semicolons, document::Writer};
 
@@ -18,8 +19,26 @@ struct SequenceBoundary<'ast> {
     trailing: &'ast [Comment],
     leading: &'ast [Comment],
     suppression: Option<DelimitedSuppression>,
+    packet: Option<SequenceTrailingPacket<'ast>>,
     before_comma: LineConstraint,
     separator: LineConstraint,
+}
+
+/// A complete source-inline EOL Block run and its resolved original target.
+struct SequenceTrailingPacket<'ast> {
+    comments: &'ast [Comment],
+    binding: SequencePacketBinding,
+}
+
+#[derive(Clone, Copy)]
+enum SequencePacketBinding {
+    InactiveOptimizer,
+    IgnoredPrevious(Span),
+}
+
+enum SequenceComments {
+    Formatted,
+    SourceGap,
 }
 
 struct SequenceItem<'ast> {
@@ -410,11 +429,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self
             .comments
             .in_range(Span::new(previous.span(self.ast).start, end));
+        let outside = comments.partition_point(|comment| comment.span.end <= start);
+        let outside_comments = &comments[outside..];
         let comma = if comments.is_empty() && !self.diagnostic_range_is_sensitive(span) {
             None
         } else {
-            let outside = comments.partition_point(|comment| comment.span.end <= start);
-            let Some(comma) = self.find_token(span, &comments[outside..], ",") else {
+            let Some(comma) = self.find_token(span, outside_comments, ",") else {
                 return Err(FormatError::unsupported(
                     "sequence separator boundary",
                     None,
@@ -423,6 +443,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             Some(comma)
         };
+        let packet = comma.and_then(|comma| {
+            self.sequence_trailing_packet(previous, next, comma, outside_comments, suppression)
+        });
         Ok(SequenceBoundary {
             next,
             next_start: end,
@@ -432,8 +455,78 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing: &[],
             leading: &[],
             suppression,
+            packet,
             before_comma: LineConstraint::Unconstrained,
             separator: LineConstraint::Unconstrained,
+        })
+    }
+
+    fn sequence_trailing_packet(
+        &self,
+        previous: Expr,
+        next: Expr,
+        comma: u32,
+        comments: &'ast [Comment],
+        suppression: Option<DelimitedSuppression>,
+    ) -> Option<SequenceTrailingPacket<'ast>> {
+        let source = Span::new(previous.span(self.ast).end, next.span(self.ast).start);
+        if self.diagnostic_range_is_sensitive(source) || self.line_breaks(source.start, comma) != 0
+        {
+            return None;
+        }
+        // Only this separator's complete outside packet is considered. Source
+        // comments inside a removable next-operand pair keep their own owner.
+        let first = comments.partition_point(|comment| comment.span.end <= comma);
+        let end = comments.partition_point(|comment| comment.span.end <= source.end);
+        let packet = &comments[first..end];
+        let first = packet.first()?;
+        let last = packet.last()?;
+        let opening = Span::new(comma + 1, first.span.start);
+        if self.line_breaks(opening.start, opening.end) != 0
+            || !self.source(opening).chars().all(is_source_whitespace)
+            || !self.comment_run_ends_line(*last, source.end)
+            || packet
+                .windows(2)
+                .any(|pair| !self.source_comment_gap_is_run(pair[0], pair[1]))
+        {
+            return None;
+        }
+        let mut optimizer = false;
+        let mut ignored = false;
+        for &comment in packet {
+            let semantics = self.comment_semantics(comment);
+            if comment.kind != CommentKind::Block
+                || semantics.diagnostic
+                || semantics.file_directive
+                || semantics.type_cast
+            {
+                return None;
+            }
+            optimizer |= semantics.optimizer;
+            ignored |= semantics.suppression;
+        }
+        let binding = match (optimizer, ignored) {
+            (true, false)
+                if matches!(
+                    self.expression_head_binding(packet, next),
+                    CommentBinding::Unbound
+                ) =>
+            {
+                SequencePacketBinding::InactiveOptimizer
+            }
+            (false, true) => {
+                let source = suppression?;
+                let target = source.preceding?;
+                if target != previous.span(self.ast) || source.following != ContentMode::Formatted {
+                    return None;
+                }
+                SequencePacketBinding::IgnoredPrevious(target)
+            }
+            _ => return None,
+        };
+        Some(SequenceTrailingPacket {
+            comments: packet,
+            binding,
         })
     }
 
@@ -441,7 +534,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         boundary: &mut SequenceBoundary<'ast>,
         span: Span,
-    ) -> Result<(), FormatError> {
+    ) -> Result<SequenceComments, FormatError> {
         let count = boundary
             .comments
             .partition_point(|comment| comment.span.end <= span.start);
@@ -450,7 +543,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let end = span.end;
         let sensitive = self.diagnostic_range_is_sensitive(span);
         if comments.is_empty() && !sensitive {
-            return Ok(());
+            return Ok(SequenceComments::Formatted);
         }
         let Some(comma) = boundary.comma else {
             return Err(FormatError::unsupported(
@@ -460,11 +553,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let before_count = comments.partition_point(|comment| comment.span.end <= comma);
-        (boundary.trailing, boundary.leading) = if sensitive {
+        let (trailing, leading) = if sensitive {
             comments.split_at(before_count)
         } else {
             self.split_separator_comments(comments, before_count, start, Some(end))
         };
+        let packet_end = boundary.packet.as_ref().and_then(|packet| {
+            let first = packet.comments[0];
+            let last = packet.comments[packet.comments.len() - 1];
+            let first_index = before_count;
+            let end_index = first_index + packet.comments.len();
+            // A pending operand tail cannot be moved merely to reach
+            // this later packet. Its existing source partition stays intact.
+            (!sensitive
+                && trailing.len() >= first_index
+                && comments
+                    .get(first_index)
+                    .is_some_and(|comment| comment.span == first.span)
+                && comments
+                    .get(end_index - 1)
+                    .is_some_and(|comment| comment.span == last.span))
+            .then_some(end_index)
+        });
+        let preserves_ignored_target = packet_end.is_some()
+            && boundary.packet.as_ref().is_some_and(|packet| {
+                matches!(packet.binding, SequencePacketBinding::IgnoredPrevious(target)
+                    if boundary.suppression.is_some_and(|source| source.preceding == Some(target)))
+            });
+        if boundary
+            .suppression
+            .is_some_and(|source| source.preceding.is_some())
+            && !preserves_ignored_target
+        {
+            return Ok(SequenceComments::SourceGap);
+        }
+        (boundary.trailing, boundary.leading) =
+            packet_end.map_or((trailing, leading), |end| comments.split_at(end));
         if sensitive {
             let next = boundary
                 .leading
@@ -474,7 +598,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.line_constraint_after_comments(boundary.trailing, start, comma);
             boundary.separator = self.line_constraint(comma + 1, next);
         }
-        Ok(())
+        Ok(SequenceComments::Formatted)
     }
 
     fn format_sequence_trailing(
@@ -487,17 +611,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary.source_end = tail.source_end;
         }
         let gap = Span::new(boundary.source_end, boundary.next_start);
-        if boundary
-            .suppression
-            .as_ref()
-            .is_some_and(|source| source.preceding.is_some())
-        {
+        if matches!(
+            self.prepare_sequence_comments(boundary, gap)?,
+            SequenceComments::SourceGap
+        ) {
             boundary.separator = self
                 .format_delimited_source_gap(gap, DelimitedFollowing::Node, writer)?
                 .following;
             return Ok(());
         }
-        self.prepare_sequence_comments(boundary, gap)?;
         self.comments.claim(boundary.trailing)?;
         self.format_comment_run(
             boundary.trailing,
