@@ -17,6 +17,7 @@ struct DiagnosticLine {
     sensitive_start: u32,
     directive_end: u32,
     terminal_suffix_start: u32,
+    opening_tokens: Option<Span>,
 }
 
 /// Final source punctuation either stays put or moves with its prepared statement envelope.
@@ -138,13 +139,20 @@ impl DiagnosticLines {
                 (None, None) => None,
             };
             if let Some((sensitive_start, directive_end)) = sensitive {
-                let terminal_suffix_start =
-                    terminal_suffix_start(source, comments, &mut comment_index, start, end);
+                let (terminal_suffix_start, opening_tokens) = covered_line_tokens(
+                    source,
+                    comments,
+                    &mut comment_index,
+                    start,
+                    end,
+                    sensitive_start,
+                );
                 lines.push(DiagnosticLine {
                     span: Span::new(start as u32, end as u32),
                     sensitive_start,
                     directive_end,
                     terminal_suffix_start,
+                    opening_tokens,
                 });
             }
             let text = source[start..end].trim_matches(is_directive_whitespace);
@@ -160,6 +168,17 @@ impl DiagnosticLines {
             directive_ends,
             document_closing,
         }
+    }
+
+    pub(super) fn external_opening_tokens(&self, opening: u32) -> Option<(usize, Span)> {
+        let index = self.lines.partition_point(|line| line.span.end < opening);
+        let line = self.lines.get(index)?;
+        let tokens = line.opening_tokens?;
+        (line.span.start <= opening && tokens.start == opening).then_some((index, tokens))
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.lines.len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
@@ -185,14 +204,16 @@ impl DiagnosticLines {
 
 // Each covered line and parser comment is visited monotonically. Unknown
 // source characters (including quotes, regex slashes and template backticks)
-// end the terminal suffix; only actual trivia and closing punctuation pass.
-fn terminal_suffix_start(
+// end the terminal suffix. The same scan records whether covered tokens
+// consist entirely of opening parentheses, excluding actual comment trivia.
+fn covered_line_tokens(
     source: &str,
     comments: &[Comment],
     comment_index: &mut usize,
     start: usize,
     end: usize,
-) -> u32 {
+    sensitive_start: u32,
+) -> (u32, Option<Span>) {
     while comments
         .get(*comment_index)
         .is_some_and(|comment| comment.span.end as usize <= start)
@@ -201,6 +222,8 @@ fn terminal_suffix_start(
     }
     let mut position = start;
     let mut suffix = start;
+    let mut opening_tokens: Option<Span> = None;
+    let mut only_opening = true;
     while position < end {
         let comment = comments.get(*comment_index);
         if let Some(comment) = comment
@@ -214,6 +237,15 @@ fn terminal_suffix_start(
         }
         let gap_end = comment.map_or(end, |comment| (comment.span.start as usize).min(end));
         for (offset, character) in source[position..gap_end].char_indices() {
+            let token_start = (position + offset) as u32;
+            if token_start >= sensitive_start && !is_source_whitespace(character) {
+                let token_end = token_start + character.len_utf8() as u32;
+                only_opening &= character == '(';
+                match &mut opening_tokens {
+                    Some(tokens) => tokens.end = token_end,
+                    None => opening_tokens = Some(Span::new(token_start, token_end)),
+                }
+            }
             if !is_source_whitespace(character) && !matches!(character, ')' | ']' | '}' | ',' | ';')
             {
                 suffix = position + offset + character.len_utf8();
@@ -221,7 +253,7 @@ fn terminal_suffix_start(
         }
         position = gap_end;
     }
-    suffix as u32
+    (suffix as u32, opening_tokens.filter(|_| only_opening))
 }
 
 fn is_diagnostic_directive(source: &str, comment: Comment) -> bool {
@@ -251,6 +283,12 @@ fn is_directive_whitespace(character: char) -> bool {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn diagnostic_external_opening_tokens(&self, opening: u32) -> Option<Span> {
+        self.diagnostic_lines
+            .external_opening_tokens(opening)
+            .map(|(_, tokens)| tokens)
+    }
+
     pub(super) fn statement_terminal_close_owner(
         &self,
         original: Span,
