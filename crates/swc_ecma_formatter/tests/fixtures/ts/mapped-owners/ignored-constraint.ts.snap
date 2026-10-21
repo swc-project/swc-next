@@ -10,7 +10,7 @@ type M = { [K in /* prettier-ignore */
 type M = {
   [
     K in /* prettier-ignore */
- "a"|"b"
+ "a" | "b"
   ]: number;
 };
 
@@ -20,7 +20,7 @@ type M = {
 type M = {
   [
     K in /* prettier-ignore */
- "a"|"b"
+ "a" | "b"
   ]: number;
 };
 
@@ -30,6 +30,6 @@ type M = {
 type M = {
   [
     K in /* prettier-ignore */
- "a"|"b"
+ "a" | "b"
   ]: number
 }

@@ -9,7 +9,7 @@ type M = { [K in "a"]: /* prettier-ignore */
 ---------- Output ----------
 type M = {
   [K in "a"]: /* prettier-ignore */
- {x:   1};
+ { x: 1 };
 };
 
 ---------- Options ----------
@@ -17,7 +17,7 @@ type M = {
 ---------- Output ----------
 type M = {
   [K in "a"]: /* prettier-ignore */
- {x:   1};
+ { x: 1 };
 };
 
 ---------- Options ----------
@@ -26,5 +26,5 @@ type M = {
 type M = {
   [
     K in "a"]: /* prettier-ignore */
- {x:   1}
+ {x: 1}
 }

@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = [ 1, 2 ] as
+/* prettier-ignore */
+const;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+const x =
+  [ 1, 2 ] as
+/* prettier-ignore */
+const;
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+const x =
+  [ 1, 2 ] as
+/* prettier-ignore */
+const
