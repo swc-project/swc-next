@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
-import { parseSync, printSync } from "../src-js/index.js";
+import { parseSync, printSync, transformSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
   const [, spans] = encode({
@@ -72,6 +72,48 @@ test("printSync preserves special numeric values across FFI", () => {
 
   program.body[0].declarations[0].init.value = -Infinity;
   assert.equal(printSync(program).code, "const value = -1 / 0;\n");
+});
+
+test("encoder ignores empty numeric and BigInt raw spellings", () => {
+  for (const lang of ["js", "ts"]) {
+    const number = parseSync("0;", { lang }).program;
+    number.body[0].expression.raw = "";
+    assert.equal(printSync(number, {}, { lang }).code, "0;\n");
+
+    const bigint = parseSync("0n;", { lang }).program;
+    bigint.body[0].expression.raw = "n";
+    assert.equal(printSync(bigint, {}, { lang }).code, "0n;\n");
+  }
+});
+
+test("decoder preserves literal spelling from the transformed string pool", () => {
+  function transformedLiteral(source, lang) {
+    let literal;
+    transformSync(source, {
+      parser: { lang },
+      transform: { typescript: false },
+      jsPlugins: [{
+        name: "inspect-literal",
+        phase: "after",
+        visitors: { Literal(node) { literal = node; } },
+      }],
+    });
+    return literal;
+  }
+
+  for (const lang of ["js", "ts"]) {
+    const number = transformedLiteral("0x0;", lang);
+    assert.equal(number.value, 0);
+    assert.equal(number.raw, "0x0");
+
+    const bigint = transformedLiteral("0x1_2n;", lang);
+    assert.equal(bigint.value, 18n);
+    assert.equal(bigint.raw, "0x1_2n");
+
+    const string = transformedLiteral('"é\\u0061";', lang);
+    assert.equal(string.value, "éa");
+    assert.equal(string.raw, '"é\\u0061"');
+  }
 });
 
 test("encoder rebuilds the directive prologue after reordering", () => {
