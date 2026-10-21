@@ -10,54 +10,47 @@ missing
 {}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-);
+
+missing;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-)
+
+missing
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-);
+
+missing;
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-);
+
+missing;
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 ! // @ts-ignore
-(
-	missing
-);
+
+missing;
 
 ---------- Options ----------
 {"endOfLine":"crlf"}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-);
+
+missing;
 
 ---------- Options ----------
 {"singleQuote":true}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  missing
-);
+
+missing;

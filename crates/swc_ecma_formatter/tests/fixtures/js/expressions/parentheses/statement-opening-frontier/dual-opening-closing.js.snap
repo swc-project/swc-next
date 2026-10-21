@@ -11,16 +11,12 @@ second
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 // @ts-ignore
-;(
-  first + // @ts-expect-error
+first + // @ts-expect-error
   second
-)
 
 ---------- Options ----------
 {"printWidth":20,"semi":true}
 ---------- Output ----------
 // @ts-ignore
-(
-  first + // @ts-expect-error
-  second
-);
+first + // @ts-expect-error
+  second;
