@@ -9,22 +9,22 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 // prettier-ignore
-("use strict");
+;"use strict";
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 // prettier-ignore
-;("use strict")
+;"use strict"
 
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
 // prettier-ignore
-("use strict");
+;"use strict";
 
 ---------- Options ----------
 {"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // prettier-ignore
-("use strict");
+;"use strict";
