@@ -892,6 +892,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     binding =
                         binding.combine(self.expression_head_binding(comments, content.expression));
                 }
+                binding = self.prospective_expression_head_binding(comments, expression, binding);
                 let leading_owner = if leading_binding.is_none()
                     && matches!(binding, CommentBinding::Unbound)
                     && !comments.is_empty()

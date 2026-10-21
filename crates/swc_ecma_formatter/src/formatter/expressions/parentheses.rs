@@ -924,11 +924,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             expression = match self.ast.expr_data(expression) {
                 ExprData::ParenthesizedExpression(node) => {
-                    // A wrapper may expose a provably absent head, but never
-                    // licenses moving an active annotation onto its continuation.
-                    if self.parenthesis_has_type_cast(node.span(self.ast).start) {
-                        return CommentBinding::SourceBound;
-                    }
+                    // The cast binding independently retains this source pair.
+                    // Inspect its head only to prove an optimizer target absent;
+                    // callable and foreign semantic frontiers stay source-bound.
                     let child = node.expression(self.ast);
                     let nested = SourceParentheses {
                         outer: node.span(self.ast),
@@ -1535,6 +1533,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ResolvedExpressionHead { head, binding } = resolved;
+        let binding = context.resolve_emitted_head_binding(&head, binding);
         if !head.comments.is_empty() {
             context.arrow_layout = context.arrow_layout.with_leading_comments();
         }
@@ -1955,6 +1954,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionStart, FormatError> {
+        let binding = context.resolve_emitted_head_binding(&head, binding);
         if context.expression_start.needs_asi_guard()
             && self.options.semicolons == Semicolons::AsNeeded
             && context.content_mode == ContentMode::Verbatim
@@ -2600,13 +2600,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    /// A released packet can expose an optimizer to an enclosing continuation.
+    /// Keep its active inner owner while preparing the complete emitted binding.
+    pub(super) fn prospective_expression_head_binding(
+        &self,
+        comments: &[Comment],
+        expression: Expr,
+        binding: CommentBinding,
+    ) -> CommentBinding {
+        if !comments.is_empty() && matches!(binding, CommentBinding::BoundTo(_)) {
+            binding.combine(self.expression_head_binding(comments, expression))
+        } else {
+            binding
+        }
+    }
+
     /// Discover a removed source packet that precedes the complete emitted head.
     /// The original expression renderer retains ownership of the borrowed packet.
     pub(super) fn exposed_expression_head(
         &self,
         mut expression: Expr,
         mut context: ExpressionContext,
-    ) -> Result<Option<NodeHead<'ast>>, FormatError> {
+    ) -> Result<Option<ResolvedExpressionHead<'ast>>, FormatError> {
+        let owner = expression;
         if self.comments.in_range(expression.span(self.ast)).is_empty() {
             return Ok(None);
         }
@@ -2622,7 +2638,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let Some(removed) = content.parentheses else {
                     return Ok(None);
                 };
-                if !matches!(removed.head.binding, CommentBinding::Unbound)
+                if matches!(removed.head.binding, CommentBinding::SourceBound)
                     || self.expression_needs_parentheses(
                         content.data,
                         context.position,
@@ -2636,11 +2652,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     removed.source.inner.start,
                 ));
                 if !comments.is_empty() {
-                    return Ok(Some(NodeHead {
-                        comments,
-                        content_start: removed.source.inner.start,
-                        layout: CommentRunLayout::GroupedLeading(removed.source.inner.start),
-                        gap_end: None,
+                    return Ok(Some(ResolvedExpressionHead {
+                        head: NodeHead {
+                            comments,
+                            content_start: removed.source.inner.start,
+                            layout: CommentRunLayout::GroupedLeading(removed.source.inner.start),
+                            gap_end: None,
+                        },
+                        binding: self.prospective_expression_head_binding(
+                            comments,
+                            owner,
+                            removed.head.binding,
+                        ),
                     }));
                 }
                 expression = content.expression;

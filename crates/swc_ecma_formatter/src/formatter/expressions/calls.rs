@@ -2,12 +2,12 @@
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
 use super::chains::FluentChainEligibility;
 use super::parentheses::ExpressionContent;
-use super::{AccessKind, OperandIndent};
+use super::{AccessKind, EmittedHeadBinding, OperandIndent};
 use super::{
     CallArgumentOwner, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext,
     MemberLayout, TailOwner,
 };
-use crate::formatter::comments::ExpressionTail;
+use crate::formatter::comments::{CommentBinding, ExpressionTail};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -65,7 +65,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .is_none_or(|comment| comment.span.start >= span.end)
     }
 
-    fn call_member_callee_is_compact(&self, expression: Expr, context: ExpressionContext) -> bool {
+    fn call_member_callee_is_compact(&self, expression: Expr, emitted: EmittedHeadBinding) -> bool {
         let span = expression.span(self.ast);
         if self.diagnostic_range_is_sensitive(span) {
             return false;
@@ -97,7 +97,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.call_span_is_source_clear(span) {
             return true;
         }
-        let Ok(Some(exposed)) = self.exposed_expression_head(expression, context) else {
+        let EmittedHeadBinding::Resolved {
+            packet,
+            binding: CommentBinding::Unbound,
+        } = emitted
+        else {
             return false;
         };
         let comments = self.ast.comments();
@@ -107,11 +111,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = &comments[..count];
         // The complete unbound packet is emitted before the callee. Every
         // other source comment still prevents compact receiver layout.
-        comments.len() == exposed.comments.len()
-            && comments.first().map(|comment| comment.span)
-                == exposed.comments.first().map(|comment| comment.span)
-            && comments.last().map(|comment| comment.span)
-                == exposed.comments.last().map(|comment| comment.span)
+        comments
+            .first()
+            .is_some_and(|first| first.span.start == packet.start)
+            && comments
+                .last()
+                .is_some_and(|last| last.span.end == packet.end)
     }
 
     pub(super) fn source_call_callee(
@@ -184,7 +189,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 arguments.callee_mode,
             ) != Some(true)
             && !arguments.has_outside_prefix();
-        if member_callee && self.call_member_callee_is_compact(arguments.callee, callee_context) {
+        if matches!(
+            callee_context.emitted_head_binding,
+            EmittedHeadBinding::Pending
+        ) {
+            // Resolve the complete emitted call once, then carry its packet fact
+            // through the lexical callee/receiver path to the original printer.
+            let exposed = if arguments.callee_mode == ContentMode::Formatted {
+                self.exposed_expression_head(arguments.callee, callee_context)?
+            } else {
+                None
+            };
+            callee_context.emitted_head_binding = match exposed {
+                Some(exposed) => {
+                    let comments = exposed.head.comments;
+                    match comments.first().zip(comments.last()) {
+                        Some((first, last)) => EmittedHeadBinding::Resolved {
+                            packet: Span::new(first.span.start, last.span.end),
+                            binding: self.prospective_expression_head_binding(
+                                comments,
+                                Expr::CallExpression(call),
+                                exposed.binding,
+                            ),
+                        },
+                        None => EmittedHeadBinding::Absent,
+                    }
+                }
+                None => EmittedHeadBinding::Absent,
+            };
+        }
+        if member_callee
+            && self.call_member_callee_is_compact(
+                arguments.callee,
+                callee_context.emitted_head_binding,
+            )
+        {
             callee_context.member_layout = MemberLayout::Tight;
             callee_context.member_chain_layout = super::MemberChainLayout::Local;
         }
