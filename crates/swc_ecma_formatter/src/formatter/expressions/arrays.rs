@@ -11,7 +11,7 @@ use super::arguments::{
 };
 use super::parentheses::NumericContentView;
 use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
-use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, TrailingCommas,
@@ -35,6 +35,7 @@ struct PreparedArray<'ast> {
     content: Span,
     expand: bool,
     opening: LineConstraint,
+    closing: TerminalCloseBoundary,
     layout: ArgumentLayout,
     numeric_comments: Option<ArrayCommentOwner<'ast>>,
 }
@@ -165,11 +166,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 (ArgumentLayout::Lines, comments)
             }
         };
+        let closing = self.terminal_close_boundary(content, || {
+            let mut elements = elements.iter().rev();
+            let last: Option<Argument> = self.ast.get_node_in_sub_range(elements.next()?);
+            let last = last?;
+            let head_start = elements
+                .find_map(|id| {
+                    let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
+                    argument.map(|argument| argument.span(self.ast).end)
+                })
+                .unwrap_or(content.start);
+            Some((last.span(self.ast), head_start))
+        });
         Ok(SourceArray::Formatted(PreparedArray {
             array,
             content,
             expand,
             opening,
+            closing,
             layout,
             numeric_comments,
         }))
@@ -242,6 +256,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             array,
             content,
             opening,
+            closing,
             layout,
             mut numeric_comments,
             ..
@@ -268,7 +283,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }),
             }
         })?;
-        self.line_constraint(end, content.end).write(
+        self.terminal_close_constraint(closing, end).write(
             writer,
             FlatSeparator::Empty,
             Writer::soft_line,

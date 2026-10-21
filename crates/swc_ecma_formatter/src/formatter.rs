@@ -36,6 +36,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     has_file_directives: bool,
     enclosing_await: Option<AwaitExpression>,
     for_initializer_span: Option<Span>,
+    terminal_close_owner: diagnostics::TerminalCloseOwner,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -55,6 +56,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             has_file_directives: false,
             enclosing_await: None,
             for_initializer_span: None,
+            terminal_close_owner: diagnostics::TerminalCloseOwner::Source,
         };
         for &comment in ast.comments() {
             if !formatter.has_type_casts {

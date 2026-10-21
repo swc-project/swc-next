@@ -2350,6 +2350,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.content_mode(leading)
         };
+        let terminal_owner = if mode == ContentMode::Formatted
+            && ignored_child.is_none()
+            && matches!(context.position, ExpressionPosition::Statement)
+            && context.parentheses_owner == ParenthesesOwner::Expression
+            && !self.expression_has_generated_head_frame(&content, context)
+        {
+            content.parentheses.and_then(|removed| {
+                self.statement_terminal_close_owner(removed.source.outer, removed.source.inner)
+            })
+        } else {
+            None
+        };
         let binding = content
             .parentheses
             .map_or(CommentBinding::SourceBound, |removed| removed.head.binding);
@@ -2364,23 +2376,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             context.source_parentheses_tail = content.parentheses.and_then(|removed| removed.tail);
         }
-        let tail = self.format_expression_leading_prepared(
-            inner,
-            None,
-            ResolvedExpressionHead {
-                head: NodeHead {
-                    comments: leading,
-                    content_start: inner_span.start,
-                    layout,
-                    gap_end: matches!(context.position, ExpressionPosition::Statement)
-                        .then_some(inner_span.start),
+        let tail = self.with_terminal_close_owner(terminal_owner, |formatter| {
+            formatter.format_expression_leading_prepared(
+                inner,
+                None,
+                ResolvedExpressionHead {
+                    head: NodeHead {
+                        comments: leading,
+                        content_start: inner_span.start,
+                        layout,
+                        gap_end: matches!(context.position, ExpressionPosition::Statement)
+                            .then_some(inner_span.start),
+                    },
+                    binding,
                 },
-                binding,
-            },
-            context.with_content_mode(mode),
-            array_comments,
-            writer,
-        )?;
+                context.with_content_mode(mode),
+                array_comments,
+                writer,
+            )
+        })?;
         let source_tail = content.parentheses.and_then(|removed| removed.tail);
         if ignored_child.is_some() {
             self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)
