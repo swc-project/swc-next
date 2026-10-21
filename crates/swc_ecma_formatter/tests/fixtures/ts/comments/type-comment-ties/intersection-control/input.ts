@@ -1,0 +1,1 @@
+type M = { [\u004b in /* prettier-ignore */ /* ordinary */ \u0041 & \u0042]: number };

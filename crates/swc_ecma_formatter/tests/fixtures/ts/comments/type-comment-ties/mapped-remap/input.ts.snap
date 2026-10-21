@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [K in \u0043 as /* prettier-ignore */ /* ordinary */ \u0041 | \u0042]: number };---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type M = {
+  [
+    K in \u0043 as /* prettier-ignore */ /* ordinary */ | A
+      | B
+  ]: number;
+};
+
+---------- Options ----------
+{}
+---------- Output ----------
+type M = {
+  [K in \u0043 as /* prettier-ignore */ /* ordinary */ A | B]: number;
+};
