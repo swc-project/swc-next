@@ -486,16 +486,23 @@ impl<'ast> ArrayCommentOwner<'ast> {
 }
 
 /// One complete prefix owned by a real delimiter boundary.
-/// Its final Line and preceding Blocks are emitted together, in source order.
+/// Its source facts survive a split between Blocks and the final Line suffix.
 pub(super) struct PreparedTrailingRun<'ast> {
     comments: &'ast [Comment],
     source_end: u32,
     fact: PreparedLineFact,
 }
 
-impl PreparedTrailingRun<'_> {
+impl<'ast> PreparedTrailingRun<'ast> {
     pub(super) fn len(&self) -> usize {
         self.comments.len()
+    }
+
+    /// Blocks trail the operand; only the final Line follows its separator.
+    pub(super) fn split_at_line(mut self) -> (&'ast [Comment], Self) {
+        let (blocks, line) = self.comments.split_at(self.comments.len() - 1);
+        self.comments = line;
+        (blocks, self)
     }
 }
 
