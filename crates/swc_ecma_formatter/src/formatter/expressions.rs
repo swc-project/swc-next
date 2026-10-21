@@ -40,7 +40,9 @@ use self::conditional::{ConditionalChain, ConditionalClosing, ConditionalEnvelop
 use self::objects::RecordedObject;
 use self::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::Formatter;
-use super::comments::{ArrayCommentOwner, CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{
+    ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
+};
 use super::literals::StringContext;
 use super::suppression::ContentMode;
 use crate::{FormatError, Semicolons, document::Writer};
@@ -146,6 +148,17 @@ enum MemberLayout {
     Normal,
     Tight,
     Rhs,
+}
+
+/// One lexical head discovery is shared by a call's callee and receiver path.
+#[derive(Clone, Copy)]
+enum EmittedHeadBinding {
+    Pending,
+    Absent,
+    Resolved {
+        packet: Span,
+        binding: CommentBinding,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -255,6 +268,7 @@ pub(super) struct ExpressionContext {
     tail_owner: TailOwner,
     operand_indent: OperandIndent,
     protected_head_start: Option<u32>,
+    emitted_head_binding: EmittedHeadBinding,
     expression_head: ExpressionHead,
     computed_receiver: Option<Expr>,
     conditional_closing: ConditionalClosing,
@@ -374,6 +388,7 @@ impl ExpressionContext {
             tail_owner: TailOwner::Expression,
             operand_indent: OperandIndent::Expression,
             protected_head_start: None,
+            emitted_head_binding: EmittedHeadBinding::Pending,
             expression_head: match position {
                 ExpressionPosition::Statement => ExpressionHead::Statement,
                 ExpressionPosition::ForInitializer {
@@ -425,7 +440,32 @@ impl ExpressionContext {
         self.expression_start = parent.expression_start;
         self.expression_head = parent.expression_head;
         self.protected_head_start = parent.protected_head_start;
+        self.emitted_head_binding = parent.emitted_head_binding;
         self
+    }
+
+    fn resolve_emitted_head_binding(
+        self,
+        head: &NodeHead<'_>,
+        binding: CommentBinding,
+    ) -> CommentBinding {
+        match self.emitted_head_binding {
+            EmittedHeadBinding::Resolved {
+                packet,
+                binding: emitted,
+            } if head
+                .comments
+                .first()
+                .is_some_and(|first| first.span.start == packet.start)
+                && head
+                    .comments
+                    .last()
+                    .is_some_and(|last| last.span.end == packet.end) =>
+            {
+                binding.combine(emitted)
+            }
+            _ => binding,
+        }
     }
 
     pub(super) fn inside_parentheses(mut self) -> Self {
@@ -433,6 +473,7 @@ impl ExpressionContext {
         self.source_parentheses_tail = None;
         self.expression_start = ExpressionStart::None;
         self.protected_head_start = None;
+        self.emitted_head_binding = EmittedHeadBinding::Pending;
         self
     }
 
