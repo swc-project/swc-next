@@ -92,27 +92,53 @@ pub fn buffer_size(tree: &Ast<'_>, diagnostics: &[Diagnostic<'_>]) -> usize {
         + tree.extra_data_count() * EXTRA_DATA_SIZE
         + align_to_four(tree.strings.extra_bytes().len())
         + tree.comments().len() * COMMENT_SIZE
-        + diagnostics
-            .iter()
-            .map(|diagnostic| {
-                let mut size = 0;
+        + diagnostics_buffer_size(diagnostics)
+}
 
-                size += size_of::<u8>(); // severity
+/// Return the exact byte length of the packed diagnostic records, without a header.
+pub fn diagnostics_buffer_size(diagnostics: &[Diagnostic<'_>]) -> usize {
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let mut size = 0;
+
+            size += size_of::<u8>(); // severity
+            size += SPAN_SIZE; // start, end
+            size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
+            size += size_of::<u8>(); // has_help
+            if let Some(help) = &diagnostic.help {
+                size += size_of::<u32>() + help.len(); // help_len, help
+            }
+            size += size_of::<u32>(); // label_count
+            for label in &diagnostic.labels {
                 size += SPAN_SIZE; // start, end
-                size += size_of::<u32>() + diagnostic.message.len(); // message_len, message
-                size += size_of::<u8>(); // has_help
-                if let Some(help) = &diagnostic.help {
-                    size += size_of::<u32>() + help.len(); // help_len, help
-                }
-                size += size_of::<u32>(); // label_count
-                for label in &diagnostic.labels {
-                    size += SPAN_SIZE; // start, end
-                    size += size_of::<u32>() + label.message.len(); // message_len, message
-                }
+                size += size_of::<u32>() + label.message.len(); // message_len, message
+            }
 
-                size
-            })
-            .sum::<usize>()
+            size
+        })
+        .sum()
+}
+
+/// Serialize packed diagnostics with UTF-16 spans, without serializing an AST.
+///
+/// Returns the required byte length without writing when `buf` is too small.
+/// `source_utf16_len` must be the UTF-16 code unit length of `source`.
+pub fn serialize_diagnostics_into(
+    diagnostics: &[Diagnostic<'_>],
+    source: &str,
+    buf: &mut [u8],
+    source_utf16_len: usize,
+) -> usize {
+    let required = diagnostics_buffer_size(diagnostics);
+    if buf.len() < required || diagnostics.is_empty() {
+        return required;
+    }
+    let (positions, _) = build_pos_map(source, source_utf16_len);
+    let mut pos = 0;
+    write_diagnostics(diagnostics, positions.as_ref(), buf, &mut pos);
+    debug_assert_eq!(pos, required);
+    required
 }
 
 /// Serialize an AST and its diagnostics into `buf` and return the required number of bytes.
@@ -245,31 +271,40 @@ pub fn serialize_into(
     }
 
     // =================== Diagnostics ====================
-    for diagnostic in diagnostics {
-        write(buf, &mut pos, &[diagnostic.severity as u8]);
-        let start = utf16_pos(diagnostic.span.start, positions.as_ref());
-        let end = utf16_pos(diagnostic.span.end, positions.as_ref());
-        write(buf, &mut pos, &start.to_le_bytes());
-        write(buf, &mut pos, &end.to_le_bytes());
-        write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
-        write(buf, &mut pos, &[u8::from(diagnostic.help.is_some())]);
-        if let Some(help) = &diagnostic.help {
-            write_bytes_with_length(buf, &mut pos, help.as_bytes());
-        }
-        let label_count =
-            u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
-        write(buf, &mut pos, &label_count.to_le_bytes());
-        for label in &diagnostic.labels {
-            let start = utf16_pos(label.span.start, positions.as_ref());
-            let end = utf16_pos(label.span.end, positions.as_ref());
-            write(buf, &mut pos, &start.to_le_bytes());
-            write(buf, &mut pos, &end.to_le_bytes());
-            write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
-        }
-    }
+    write_diagnostics(diagnostics, positions.as_ref(), buf, &mut pos);
 
     debug_assert_eq!(pos, required);
     required
+}
+
+fn write_diagnostics(
+    diagnostics: &[Diagnostic<'_>],
+    positions: Option<&PositionMap>,
+    buf: &mut [u8],
+    pos: &mut usize,
+) {
+    for diagnostic in diagnostics {
+        write(buf, pos, &[diagnostic.severity as u8]);
+        let start = utf16_pos(diagnostic.span.start, positions);
+        let end = utf16_pos(diagnostic.span.end, positions);
+        write(buf, pos, &start.to_le_bytes());
+        write(buf, pos, &end.to_le_bytes());
+        write_bytes_with_length(buf, pos, diagnostic.message.as_bytes());
+        write(buf, pos, &[u8::from(diagnostic.help.is_some())]);
+        if let Some(help) = &diagnostic.help {
+            write_bytes_with_length(buf, pos, help.as_bytes());
+        }
+        let label_count =
+            u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
+        write(buf, pos, &label_count.to_le_bytes());
+        for label in &diagnostic.labels {
+            let start = utf16_pos(label.span.start, positions);
+            let end = utf16_pos(label.span.end, positions);
+            write(buf, pos, &start.to_le_bytes());
+            write(buf, pos, &end.to_le_bytes());
+            write_bytes_with_length(buf, pos, label.message.as_bytes());
+        }
+    }
 }
 
 /// Error returned when a JavaScript-encoded AST buffer is malformed.
@@ -817,7 +852,8 @@ mod tests {
     use swc_next_allocator::{Allocator, wtf8::Wtf8};
 
     use super::{
-        PositionMap, buffer_size, build_pos_map, deserialize_from, serialize_into, utf16_pos,
+        PositionMap, buffer_size, build_pos_map, deserialize_from, diagnostics_buffer_size,
+        serialize_diagnostics_into, serialize_into, utf16_pos,
     };
     use crate::{
         Ast, Diagnostic, Expr, GetSpan, Label, Lang, Severity, SourceType, Span, SubRange,
@@ -1043,6 +1079,21 @@ mod tests {
         assert_eq!(u32_at(&buffer, diagnostic + 29), 2); // label end
         assert_eq!(u32_at(&buffer, diagnostic + 33), 3); // label message length
         assert_eq!(&buffer[diagnostic + 37..diagnostic + 40], b"abc");
+
+        let diagnostic_size = diagnostics_buffer_size(&diagnostics);
+        let mut records = vec![0; diagnostic_size];
+        assert_eq!(
+            serialize_diagnostics_into(&diagnostics, ast.source(), &mut records, 2),
+            diagnostic_size
+        );
+        assert_eq!(records, buffer[diagnostics_offset..]);
+
+        let mut too_small = vec![0xaa; diagnostic_size - 1];
+        assert_eq!(
+            serialize_diagnostics_into(&diagnostics, ast.source(), &mut too_small, 2),
+            diagnostic_size
+        );
+        assert!(too_small.iter().all(|&byte| byte == 0xaa));
     }
 
     struct AlignedBuffer {

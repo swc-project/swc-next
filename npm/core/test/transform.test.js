@@ -3,6 +3,127 @@ import test from "node:test";
 
 import { parseSync, transformSync } from "../src-js/index.js";
 
+const noopPlugins = [{ name: "noop", visitors: {} }];
+
+function assertSameTransform(source, options) {
+  const expected = transformSync(source, { ...options, jsPlugins: noopPlugins });
+  assert.deepEqual(transformSync(source, options), expected);
+  assert.deepEqual(transformSync(source, { ...options, jsPlugins: [] }), expected);
+  return expected;
+}
+
+function assertSameTransformError(source, options) {
+  function capture(options) {
+    let captured;
+    assert.throws(() => transformSync(source, options), (error) => {
+      captured = error;
+      return true;
+    });
+    return captured;
+  }
+
+  const expected = capture({ ...options, jsPlugins: noopPlugins });
+  for (const actual of [capture(options), capture({ ...options, jsPlugins: [] })]) {
+    assert.equal(actual.constructor, expected.constructor);
+    assert.equal(actual.message, expected.message);
+    assert.deepEqual(actual.diagnostics, expected.diagnostics);
+  }
+  return expected;
+}
+
+test("transformSync keeps no-plugin output consistent across source encodings", () => {
+  assertSameTransform("");
+
+  const result = assertSameTransform('const 文 = "é😀\\0\\uD800";');
+  assert.equal(parseSync(result.code).program.body[0].declarations[0].init.value, "é😀\0\uD800");
+
+  const directives = assertSameTransform('#!/usr/bin/env node\n"use strict"; /* comment */ run();');
+  assert.ok(directives.code.startsWith('#!/usr/bin/env node\n"use strict";'));
+  assert.ok(!directives.code.includes("comment"));
+});
+
+test("transformSync preserves numeric literal spellings across plugin boundaries", () => {
+  assert.equal(assertSameTransform("const value = 0;").code, "const value = 0;\n");
+
+  assert.equal(assertSameTransform("const value = -0;").code, "const value = -0;\n");
+
+  assert.equal(assertSameTransform("const value = 0x0;").code, "const value = 0x0;\n");
+
+  assert.equal(assertSameTransform("const value = 0n;").code, "const value = 0n;\n");
+
+  assert.equal(assertSameTransform("const value = 9007199254740993n;").code, "const value = 9007199254740993n;\n");
+
+  assert.equal(assertSameTransform("const value = 0x20000000000001n;").code, "const value = 0x20000000000001n;\n");
+});
+
+test("transformSync forwards options consistently without plugins", () => {
+  const typescript = { filename: "input.ts" };
+  const retainedTypes = {
+    filename: "input.js",
+    parser: { lang: "ts", preserveParens: false },
+    transform: { typescript: false },
+  };
+  const commonjs = { filename: "input.cjs" };
+  const moduleOverride = { filename: "input.cjs", parser: { sourceType: "module" } };
+  const staticBlocks = { transform: { staticBlocks: true } };
+  const escapedCode = { codegen: { asciiOnly: true, inlineScript: true, minify: true } };
+
+  assert.equal(assertSameTransform("const value: number = 1;", typescript).code, "const value = 1;\n");
+
+  assert.equal(assertSameTransform("const value: number = (1);", retainedTypes).code, "const value: number = 1;\n");
+
+  assertSameTransform("return 1;", commonjs);
+
+  assertSameTransform("export const value = 1;", moduleOverride);
+
+  assertSameTransform("class C { static { run(); } }", staticBlocks);
+
+  assertSameTransform('const value = "😀</script>";', escapedCode);
+});
+
+test("transformSync keeps JSX and comment limitations consistent without plugins", () => {
+  const source = '/** @jsx h */ import { h } from "preact"; const view: unknown = <section>文😀 &amp; text</section>;';
+  const result = assertSameTransform(source, { filename: "input.tsx" });
+
+  assert.ok(result.code.includes("<section>文😀 &amp; text</section>"));
+  assert.ok(!result.code.includes("@jsx"));
+  assert.ok(!result.code.includes("preact"));
+});
+
+test("transformSync preserves diagnostic metadata without plugins", () => {
+  const syntaxSource = "/* 😀 */ const = 1;";
+  const syntax = assertSameTransformError(syntaxSource, { filename: "broken.js" });
+  assert.ok(syntax instanceof SyntaxError);
+  assert.equal(syntax.diagnostics[0].start, syntaxSource.indexOf("="));
+  assert.equal(syntax.diagnostics[0].end, syntaxSource.indexOf("=") + 1);
+
+  const semanticSource = "/* 😀 */ let 文; let 文;";
+  const semantic = assertSameTransformError(semanticSource);
+  assert.equal(semantic.diagnostics[0].start, semanticSource.lastIndexOf("文"));
+  assert.ok(semantic.diagnostics[0].labels.some((label) => label.start === semanticSource.indexOf("文")));
+
+  const jsxSource = "/* 😀 */ <开始></结束>";
+  const jsx = assertSameTransformError(jsxSource, { filename: "input.jsx" });
+  assert.ok(jsx.diagnostics[0].help.length > 0);
+  assert.equal(jsx.diagnostics[0].start, jsxSource.indexOf("结束"));
+  assert.equal(jsx.diagnostics[0].end, jsxSource.indexOf("结束") + 2);
+  assert.equal(jsx.diagnostics[0].labels[0].start, jsxSource.indexOf("开始"));
+  assert.equal(jsx.diagnostics[0].labels[0].end, jsxSource.indexOf("开始") + 2);
+});
+
+test("transformSync validates options consistently without plugins", () => {
+  const source = "const value = 1;";
+  assertSameTransformError(null);
+
+  assertSameTransformError(source, { filename: 1 });
+
+  assertSameTransformError(source, { parser: [] });
+
+  assertSameTransformError(source, { transform: { typescript: "false" } });
+
+  assertSameTransformError(source, { codegen: { minify: "true" } });
+});
+
 test("transformSync exposes the complete program and supports statement edits", () => {
   const imports = [];
   const source = 'import value from "dependency"; debugger; if (value) debugger;';

@@ -93,6 +93,7 @@ export interface TransformOutput extends CodegenOutput {
  * Parse, run JS plugins around Rust transforms, and print synchronously.
  * TypeScript is lowered by default; JSX is preserved. Source maps and comment
  * printing are not yet supported. Plugin errors propagate unchanged.
+ * With no JS plugins, the entire pipeline runs in Rust without AST transfers.
  * @throws {SyntaxError} On parser or semantic errors, with a diagnostics array
  * containing UTF-16 source offsets. No later phase runs after an error.
  */

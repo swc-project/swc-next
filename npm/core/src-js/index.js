@@ -4,6 +4,7 @@ import {
   printSync as __printSync,
   sourceTypeFromPath,
   transformAstSync as __transformAstSync,
+  transformSync as __transformSync,
 } from "./binding.js";
 import { createWalker } from "@swc-next/walker";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@swc-next/encoder";
 
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
 const emptySourceBytes = new Uint8Array();
 const canTransferToFixedLength =
   typeof ArrayBuffer.prototype.transferToFixedLength === "function";
@@ -24,6 +26,17 @@ export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export * from "@swc-next/walker";
 
 export function parseSync(source, options) {
+  const sourceBytes = encodeSource(source);
+  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
+  const result = decode(buffer, source, sourceBytes);
+  if (!options?.errorRecovery) {
+    const diagnostics = result.diagnostics;
+    if (diagnostics.length) throw diagnostics[0];
+  }
+  return result;
+}
+
+function encodeSource(source) {
   // Every byte read below is initialized by encodeInto; avoid zeroing the
   // oversized scratch buffer on Node. Keep the portable allocation for browsers.
   const sourceBuffer = typeof source === "string" && typeof Buffer === "function"
@@ -32,16 +45,9 @@ export function parseSync(source, options) {
   const { written } = textEncoder.encodeInto(source, sourceBuffer);
   // Lazy decoder getters retain sourceBytes, so drop the unused capacity of
   // the encodeInto buffer instead of keeping it alive through a subarray.
-  const sourceBytes = canTransferToFixedLength
+  return canTransferToFixedLength
     ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
     : sourceBuffer.slice(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
-  const result = decode(buffer, source, sourceBytes);
-  if (!options?.errorRecovery) {
-    const diagnostics = result.diagnostics;
-    if (diagnostics.length) throw diagnostics[0];
-  }
-  return result;
 }
 
 export function printSync(program, options, meta) {
@@ -66,6 +72,18 @@ export function transformSync(source, options) {
   const codegenOptions = encodeCodegenOptions(options?.codegen);
   const plugins = compilePlugins(options?.jsPlugins);
 
+  if (plugins.before.length === 0 && plugins.after.length === 0) {
+    const result = decodeTransformOutput(__transformSync(
+      encodeSource(source),
+      source.length,
+      encodeParserOptions(parserOptions),
+      transformOptions,
+      codegenOptions,
+    ));
+    throwOnDiagnostics(result.diagnostics, filename);
+    return result;
+  }
+
   const parsed = parseSync(source, parserOptions);
   throwOnDiagnostics(parsed.diagnostics, filename);
   const program = parsed.program;
@@ -87,6 +105,45 @@ export function transformSync(source, options) {
     encode(transformedProgram, transformed.meta),
     codegenOptions,
   );
+  return { code, diagnostics };
+}
+
+function decodeTransformOutput(buffer) {
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  let offset = 0;
+  const readU32 = () => {
+    const value = view.getUint32(offset, true);
+    offset += 4;
+    return value;
+  };
+  const readText = (length) => {
+    const value = textDecoder.decode(buffer.subarray(offset, offset + length));
+    offset += length;
+    return value;
+  };
+  const readString = () => readText(readU32());
+  const codeLength = readU32();
+  const diagnosticCount = readU32();
+  const code = readText(codeLength);
+  const severities = ["error", "warning", "hint", "info"];
+  const diagnostics = [];
+  for (let index = 0; index < diagnosticCount; index++) {
+    const severity = severities[view.getUint8(offset++)];
+    if (severity === undefined) throw new RangeError("Unknown diagnostic severity");
+    const start = readU32();
+    const end = readU32();
+    const message = readString();
+    const help = view.getUint8(offset++) ? readString() : undefined;
+    const labels = [];
+    const labelCount = readU32();
+    for (let labelIndex = 0; labelIndex < labelCount; labelIndex++) {
+      const start = readU32();
+      const end = readU32();
+      const message = readString();
+      labels.push({ message, start, end });
+    }
+    diagnostics.push({ severity, message, start, end, help, labels });
+  }
   return { code, diagnostics };
 }
 

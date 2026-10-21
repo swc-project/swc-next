@@ -103,3 +103,11 @@ export declare function sourceTypeFromPath(path: string): SourceType
  * It must be aligned to eight bytes and remain immutable throughout the call.
  */
 export declare function transformAstSync(buffer: Uint8Array, options?: TransformPassOptions | undefined | null): Uint8Array
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, parserOptions?: ParserOptions | undefined | null, transformOptions?: TransformPassOptions | undefined | null, codegenOptions?: CodegenOptions | undefined | null): Uint8Array

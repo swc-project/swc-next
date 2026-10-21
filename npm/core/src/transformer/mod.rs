@@ -1,4 +1,30 @@
-use swc_next_bridge::{DeserializeError, TransformPassOptions, bridge};
+use swc_next_bridge::{
+    CodegenOptions, DeserializeError, ParserOptions, TransformPassOptions, bridge,
+};
+
+#[bridge]
+/// # Safety
+///
+/// The caller must ensure that `source` contains valid UTF-8.
+/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
+pub unsafe fn transform_sync(
+    source: &[u8],
+    source_utf16_len: u32,
+    parser_options: Option<ParserOptions>,
+    transform_options: Option<TransformPassOptions>,
+    codegen_options: Option<CodegenOptions>,
+) -> Vec<u8> {
+    // SAFETY: The caller guarantees the source encoding and UTF-16 length.
+    unsafe {
+        swc_next_bridge::transform_source_to_buffer(
+            source,
+            source_utf16_len,
+            parser_options,
+            transform_options,
+            codegen_options,
+        )
+    }
+}
 
 #[bridge]
 /// # Safety

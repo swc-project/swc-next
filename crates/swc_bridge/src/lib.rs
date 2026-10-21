@@ -23,6 +23,8 @@ pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer, print_from_p
 
 #[cfg(feature = "transformer")]
 mod transformer;
+#[cfg(all(feature = "transformer", feature = "parser", feature = "codegen"))]
+pub use transformer::transform_source_to_buffer;
 #[cfg(feature = "transformer")]
 pub use transformer::{TransformPassOptions, transform_from_buffer};
 
