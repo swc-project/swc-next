@@ -11,6 +11,17 @@ use crate::{
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
 
+#[test]
+fn test_comparison_expression_boundaries() {
+    expect_printed("(a < b) > (c == d);", "a < b > (c == d);\n");
+
+    expect_printed_minify("(a < b) > (c == d);", "a<b>(c==d);");
+
+    expect_printed("f((a < b), c > (d, e));", "f(a < b, c > (d, e));\n");
+
+    expect_printed_minify("f((a < b), c > (d, e));", "f(a<b,c>(d,e));");
+}
+
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
     use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};

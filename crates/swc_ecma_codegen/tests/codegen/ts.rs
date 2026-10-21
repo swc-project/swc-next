@@ -2,9 +2,829 @@ use crate::{
     expect_printed_pair, expect_printed_ts, expect_printed_ts_minify, expect_printed_ts_pair,
 };
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::Lang;
+use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+
+#[track_caller]
+fn expect_comparison_round_trip(source: &str, pretty: &str, compact: &str) {
+    expect_comparison_round_trip_with_source_type(source, pretty, compact, SourceType::Module);
+}
+
+#[track_caller]
+fn expect_comparison_round_trip_with_source_type(
+    source: &str,
+    pretty: &str,
+    compact: &str,
+    source_type: SourceType,
+) {
+    for (lang, preserve_parens) in [
+        (Lang::Ts, false),
+        (Lang::Ts, true),
+        (Lang::Tsx, false),
+        (Lang::Tsx, true),
+    ] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            source_type,
+            lang,
+            preserve_parens,
+            ..ParseOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+
+        for minify in [false, true] {
+            let options = PrintOptions {
+                minify,
+                ..PrintOptions::default()
+            };
+            let printed = print(&allocator, &original.ast, options.clone());
+            if !preserve_parens {
+                assert_eq!(printed.code, if minify { compact } else { pretty });
+            }
+
+            let reparsed =
+                Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig).parse();
+            assert!(reparsed.diagnostics.is_empty());
+            assert_eq!(ast_compare::compare(&original.ast, &reparsed.ast), Ok(()));
+            assert_eq!(print(&allocator, &reparsed.ast, options).code, printed.code);
+        }
+    }
+}
+
+// Use the same complete structural comparator as conformance: decoded values,
+// operators, flags and child lists are compared; arena IDs and spans are not.
+#[path = "../../../../tasks/testsuite/src/ast_compare/mod.rs"]
+mod ast_compare;
+
+#[track_caller]
+fn expect_ast_round_trip(source: &str) {
+    expect_ast_round_trip_languages(source, &[Lang::Ts, Lang::Tsx]);
+}
+
+#[track_caller]
+fn expect_ast_round_trip_languages(source: &str, languages: &[Lang]) {
+    for &lang in languages {
+        for preserve_parens in [false, true] {
+            let allocator = Allocator::new();
+            let parse_options = ParseOptions {
+                lang,
+                preserve_parens,
+                ..ParseOptions::default()
+            };
+            let original =
+                Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+            assert!(original.diagnostics.is_empty(), "input: {source}");
+            for minify in [false, true] {
+                let options = PrintOptions {
+                    minify,
+                    ..PrintOptions::default()
+                };
+                let printed = print(&allocator, &original.ast, options.clone());
+                let reparsed =
+                    Parser::init(&allocator, printed.code, parse_options, NoTokenParserConfig)
+                        .parse();
+                assert!(reparsed.diagnostics.is_empty(), "output: {}", printed.code);
+                assert_eq!(
+                    ast_compare::compare(&original.ast, &reparsed.ast),
+                    Ok(()),
+                    "{source} -> {}",
+                    printed.code
+                );
+                assert_eq!(print(&allocator, &reparsed.ast, options).code, printed.code);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_comparison_await_types() {
+    expect_comparison_round_trip(
+        "async function g() { f((a << b), await 0, c > (d, e)); }",
+        "async function g() {\n  f((a << b), await 0, c > (d, e));\n}\n",
+        "async function g(){f((a<<b),await 0,c>(d,e))}",
+    );
+
+    expect_comparison_round_trip(
+        "async function g() { f((a << b), await (x + 1), c > (d, e)); }",
+        "async function g() {\n  f(a << b, await (x + 1), c > (d, e));\n}\n",
+        "async function g(){f(a<<b,await(x+1),c>(d,e))}",
+    );
+
+    expect_ast_round_trip("async function g() { [(a << b), await [x], c > (d, e)]; }");
+
+    expect_ast_round_trip("async function g() { f((a << b), await x, c >> (d, e)); }");
+
+    expect_ast_round_trip("async function g() { f((a << b), await { x: 0 }, c > (d, e)); }");
+
+    expect_ast_round_trip("async function g() { f((a << b), await (x = 0), c > (d, e)); }");
+}
+
+#[test]
+fn test_comparison_constructor_types() {
+    expect_comparison_round_trip(
+        "f((a < b), new F(), c > (d, e));",
+        "f(a < b, new F(), c > (d, e));\n",
+        "f((a<b),new F,c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), new F(), c >> (d, e));",
+        "f(a < b, new F(), c >> (d, e));\n",
+        "f(a<b,new F,c>>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), new (x => x), c > (d, e));",
+        "f(a < b, new ((x) => x)(), c > (d, e));\n",
+        "f(a<b,new(x=>x),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), new (F, G), c > (d, e));",
+        "f((a < b), new (F, G)(), c > (d, e));\n",
+        "f((a<b),new(F,G),c>(d,e));",
+    );
+
+    expect_ast_round_trip("f((a < b), new (F<T>), c > (d, e));");
+
+    expect_ast_round_trip("f((a << b), new (x => c > (d, e)), c > (d, e));");
+
+    expect_ast_round_trip("[(a < b), new F(), c > (d, e)];");
+
+    expect_ast_round_trip("f((a << b), new F(x), c >> (d, e));");
+}
+
+#[test]
+fn test_comparison_yield_types() {
+    expect_comparison_round_trip(
+        "function* g() { f((a < b), yield, c > (d, e)); }",
+        "function* g() {\n  f((a < b), yield, c > (d, e));\n}\n",
+        "function*g(){f((a<b),yield,c>(d,e))}",
+    );
+
+    expect_ast_round_trip("function* g() { f((a << b), yield, c > (d, e)); }");
+
+    expect_ast_round_trip("function* g() { [(a < b), yield, c > (d, e)]; }");
+
+    expect_comparison_round_trip(
+        "function* g() { f((a << b), yield 0, c > (d, e)); }",
+        "function* g() {\n  f((a << b), yield 0, c > (d, e));\n}\n",
+        "function*g(){f((a<<b),yield 0,c>(d,e))}",
+    );
+
+    expect_ast_round_trip("function* g() { [(a << b), yield 0, c > (d, e)]; }");
+
+    expect_ast_round_trip("function* g() { f((a << b), yield (x => x), c > (d, e)); }");
+
+    expect_ast_round_trip("function* g() { f((a << b), yield { x: 0 }, c > (d, e)); }");
+
+    expect_ast_round_trip("function* g() { f((a < b), yield (c > (d, e))); }");
+
+    expect_ast_round_trip("function* g() { f((a << b), yield (c >> (d, e))); }");
+
+    expect_ast_round_trip("function* g() { f((a < b), yield x, c > (d, e)); }");
+
+    expect_comparison_round_trip(
+        "function* g() { f((a << b), yield x, c > (d, e)); }",
+        "function* g() {\n  f(a << b, yield x, c > (d, e));\n}\n",
+        "function*g(){f(a<<b,yield x,c>(d,e))}",
+    );
+
+    expect_ast_round_trip("function* g() { f((a << b), yield* xs, c > (d, e)); }");
+
+    expect_comparison_round_trip(
+        "function* g() { f((a << b), yield* [x], c > (d, e)); }",
+        "function* g() {\n  f((a << b), yield* [x], c > (d, e));\n}\n",
+        "function*g(){f((a<<b),yield* [x],c>(d,e))}",
+    );
+
+    expect_comparison_round_trip(
+        "function* g() { f((a << b), yield* 0, c > (d, e)); }",
+        "function* g() {\n  f(a << b, yield* 0, c > (d, e));\n}\n",
+        "function*g(){f(a<<b,yield* 0,c>(d,e))}",
+    );
+
+    expect_comparison_round_trip(
+        "function* g() { f((a << b), yield* xs, c >> (d, e)); }",
+        "function* g() {\n  f(a << b, yield* xs, c >> (d, e));\n}\n",
+        "function*g(){f(a<<b,yield* xs,c>>(d,e))}",
+    );
+}
+
+#[test]
+fn test_comparison_contextual_operator_heads() {
+    expect_ast_round_trip("(a < b) > (as + 1);");
+
+    expect_ast_round_trip("(a < b) > (satisfies + 1);");
+
+    expect_ast_round_trip("(a < b) > as;");
+
+    expect_ast_round_trip("(a < b) > satisfies;");
+
+    expect_ast_round_trip("(a < b) > as.value;");
+
+    expect_ast_round_trip("(a < b) > satisfies.value;");
+
+    expect_ast_round_trip("(a < b) > as[0];");
+
+    expect_ast_round_trip("(a < b) > satisfies[0];");
+
+    expect_ast_round_trip("(a < b) > as();");
+
+    expect_ast_round_trip("(a < b) > satisfies();");
+
+    expect_ast_round_trip("f((a < b), c > (as + 1));");
+
+    expect_ast_round_trip("f((a < b), c > (satisfies + 1));");
+
+    expect_ast_round_trip("(a < b) > (\\u0061s + 1);");
+
+    expect_ast_round_trip("(a < b) > (\\u0073atisfies + 1);");
+}
+
+#[test]
+fn test_comparison_planned_fragments() {
+    expect_ast_round_trip("((a < b) > ((c << d) >> (e | f)));");
+
+    expect_ast_round_trip("f((a < b), x = 0, c > (d, e));");
+
+    expect_ast_round_trip("f((a << b), x = 0, c >> (d, e));");
+
+    expect_ast_round_trip("f((a < b), (x = 0), c > (d, e));");
+
+    expect_ast_round_trip("(a < b) /* before\n */ > c;");
+
+    expect_ast_round_trip("(a < b) > /* after\n */ c;");
+
+    expect_ast_round_trip("f((a < b), ((c << d) >> (e | f)));");
+
+    expect_ast_round_trip("(a < b) > (((c << d) >> (e | f)) | g);");
+
+    expect_ast_round_trip("((a < b) > ((c << d) >> (e | f))) > (g == h);");
+
+    expect_ast_round_trip("[(a < b), x = 0, c > (d, e)];");
+
+    expect_ast_round_trip("(a < b), x = 0, c > (d, e);");
+
+    expect_ast_round_trip("new F((a < b), x = 0, c > (d, e));");
+}
+
+#[test]
+fn test_comparison_type_continuations() {
+    expect_ast_round_trip("f((a << b) | x, c > (d,e));");
+
+    expect_ast_round_trip("f((a << b) & x, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), x, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), x + 0, c > (d,e));");
+
+    expect_ast_round_trip("f((a << b), x + 0, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), g(x), c > (d,e));");
+
+    expect_ast_round_trip("f((a << b), g(x), c > (d,e));");
+
+    expect_ast_round_trip("[(a << b), g(x), c > (d,e)];");
+
+    expect_ast_round_trip("f((a < b), x = y, c >> (d,e));");
+
+    expect_ast_round_trip("f((a << b), x = y, c >> (d,e));");
+
+    expect_ast_round_trip("f((a << b), x += y, c >> (d,e));");
+
+    expect_ast_round_trip("f((a < b), [x], c > (d,e));");
+
+    expect_ast_round_trip("f((a << b), {x}, c >> (d,e));");
+
+    expect_ast_round_trip("f((a < b), x | y, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), x & y, c > (d,e));");
+
+    expect_ast_round_trip("f((a << b), x ? y : z, c >> (d,e));");
+
+    expect_ast_round_trip("f((a < b), x => y, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), x.y, c > (d,e));");
+
+    expect_ast_round_trip("f((a << b), x[y], c >> (d,e));");
+
+    expect_ast_round_trip("f((a < b), x as T, c > (d,e));");
+
+    expect_ast_round_trip("f((a < b), x satisfies T, c > (d,e));");
+}
+
+#[test]
+fn test_comparison_fragment_composition() {
+    expect_ast_round_trip("f((a << b), g((c < d), e > (f,g)));");
+
+    expect_ast_round_trip("f((a << b), [(c < d), e > (f,g)]);");
+
+    expect_ast_round_trip("(a < b) > (x + ((c << d) >> (e | f)));");
+
+    expect_ast_round_trip("f((a < b), x => ((c < d) > (e == f)), g > (h,i));");
+
+    expect_ast_round_trip("f((a < b), ((c < d), e > (f,g)), h > (i,j));");
+
+    expect_ast_round_trip("f((a << b), g((c << d), x = y, e >> (f,g)));");
+
+    expect_ast_round_trip("f((a < b), x + ((c < d) > (e == f)));");
+
+    expect_ast_round_trip("f((a < b), x && ((c < d) > (e == f)));");
+
+    expect_ast_round_trip("f((a < b), x += ((c < d) > (e == f)));");
+
+    expect_ast_round_trip("f(x + (a < b), c > (d,e));");
+
+    expect_ast_round_trip("f(x && (a < b), c > (d,e));");
+
+    expect_ast_round_trip("f(x += (a < b), c > (d,e));");
+
+    expect_ast_round_trip("function* g() { f(yield (a < b), c > (d,e)); }");
+
+    expect_ast_round_trip("(a < b) | (((c < d) > (e == f)) | h);");
+
+    expect_ast_round_trip("(a < b) & (((c < d) > (e == f)) & h);");
+
+    expect_ast_round_trip("(a < b) > ((c << d) >>> (e == f));");
+
+    expect_ast_round_trip("(a < b) > ((c < d) < (e >> (f == g)));");
+
+    expect_ast_round_trip("f((a < b) > ((c << d) >> (e | f)), i > (j,k));");
+
+    expect_ast_round_trip("f(x = ((a < b) > ((c << d) >> (e | f))), g > (h,i));");
+
+    expect_ast_round_trip("f(x ? y : ((a < b) > ((c << d) >> (e | f))), g > (h,i));");
+
+    expect_ast_round_trip("f(x => ((a < b) > ((c << d) >> (e | f))), g > (h,i));");
+
+    expect_ast_round_trip("f((a < b), (c => d > (e,f)));");
+
+    expect_ast_round_trip("import((a < b), c > (d,e));");
+
+    expect_ast_round_trip("f(...(a < b), c > (d,e));");
+
+    expect_ast_round_trip("[(a < b), ...(x = 0), c > (d,e)];");
+
+    expect_ast_round_trip("(a < b) > f<T>;");
+
+    expect_ast_round_trip("(a < b) > x?.y;");
+
+    expect_ast_round_trip("(a < b) > /x/;");
+
+    expect_ast_round_trip("(a < b) > `x`;");
+
+    expect_ast_round_trip("(a < b) > (x => y);");
+}
+
+#[test]
+fn test_comparison_type_recovery() {
+    expect_ast_round_trip("f((a < b), (c > (d,e)).y);");
+
+    expect_ast_round_trip("f((a < b), (c > (d,e))!);");
+
+    expect_ast_round_trip("(a << b) > (x ? (c > (d,e)) : y);");
+
+    expect_ast_round_trip("(a << b) > (x => (c > (d,e)));");
+
+    expect_ast_round_trip("f((a << b), g(c > (d,e)));");
+
+    expect_ast_round_trip("(a << b) > ((c > (d,e)).y);");
+
+    expect_ast_round_trip("(a << b) > ((c > (d,e)) as T);");
+
+    expect_ast_round_trip("(a << b) > ((c > (d,e))!);");
+
+    expect_ast_round_trip("(a << b) > ((c > (d,e)) + y);");
+
+    expect_ast_round_trip("f((a << b), x = (c >> (d,e)));");
+
+    expect_ast_round_trip("f((a < b), [c > (d,e)]);");
+
+    expect_ast_round_trip("f((a << b), [c > (d,e)]);");
+
+    expect_ast_round_trip("(a << b) > ([c > (d,e)]);");
+
+    expect_ast_round_trip("f((a < b), {x: c > (d,e)});");
+
+    expect_ast_round_trip("f((a << b), {x: c > (d,e)});");
+
+    expect_ast_round_trip("(a << b) > ({x: c > (d,e)});");
+
+    expect_ast_round_trip("f((a < b), obj[c > (d,e)]);");
+
+    expect_ast_round_trip("f((a << b), obj[c > (d,e)]);");
+
+    expect_ast_round_trip("(a << b) > (obj[c > (d,e)]);");
+
+    expect_ast_round_trip("a < (x => (c > (d,e)));");
+}
+
+#[test]
+fn test_comparison_comment_boundaries() {
+    // The printer moves this comment after `>`, where its line break requires grouping.
+    expect_comparison_round_trip(
+        "(a < b) /* before\n */ > c;",
+        "(a < b) > /* before\n */\nc;\n",
+        "(a<b)>/* before\n */c;",
+    );
+
+    expect_ast_round_trip("(a < b) /* one line */ > c;");
+
+    expect_ast_round_trip("(a < b) > /* one line */ c;");
+
+    expect_ast_round_trip("(a < b) // before\n > c;");
+
+    expect_ast_round_trip("(a < b) > // after\n c;");
+
+    expect_ast_round_trip("(a < b) /* before\n */ > -c;");
+
+    expect_ast_round_trip("(a < b) > /* after\n */ +c;");
+
+    expect_ast_round_trip("(a < b) /* before\n */ > ((c << d) >> (e | f));");
+
+    expect_ast_round_trip("(a < b) > /* after\n */ ((c << d) >> (e | f));");
+}
+
+#[test]
+fn test_comparison_arrow_tokens() {
+    expect_comparison_round_trip(
+        "a < (x => (c > (d,e)));",
+        "a < (x => c > (d, e));\n",
+        "a<(x=>c>(d,e));",
+    );
+
+    expect_comparison_round_trip("a < (x => x);", "a < ((x) => x);\n", "a<(x=>x);");
+
+    expect_ast_round_trip("a < (x => x);");
+}
+
+#[test]
+fn test_comparison_template_and_jsx_types() {
+    expect_ast_round_trip("f((a < b), `x${c > (d,e)}`);");
+
+    expect_ast_round_trip("f((a << b), `x${c > (d,e)}`);");
+
+    expect_ast_round_trip("(a << b) > (`x${c > (d,e)}`);");
+
+    expect_ast_round_trip("f((a << b), tag`x${c > (d,e)}`);");
+
+    expect_ast_round_trip_languages("f((a < b), <X v={c >> (d,e)} />);", &[Lang::Tsx]);
+
+    expect_ast_round_trip_languages("f((a << b), <X v={c >> (d,e)} />);", &[Lang::Tsx]);
+
+    expect_ast_round_trip_languages("(a << b) > (<X v={c >> (d,e)} />);", &[Lang::Tsx]);
+}
+
+#[test]
+fn test_comparison_assignment_barriers() {
+    expect_comparison_round_trip(
+        "f((a < b), x = 0, c > (d,e));",
+        "f(a < b, x = 0, c > (d, e));\n",
+        "f(a<b,x=0,c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a << b), x = 0, c >> (d,e));",
+        "f((a << b), x = 0, c >> (d, e));\n",
+        "f((a<<b),x=0,c>>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "((a < b) > ((c << d) >> (e | f)));",
+        "(a < b) > (c << d) >> (e | f);\n",
+        "(a<b)>(c<<d)>>(e|f);",
+    );
+}
+
+#[test]
+fn test_comparison_binary_boundaries() {
+    expect_comparison_round_trip(
+        "(a < b) > (c == d);",
+        "(a < b) > (c == d);\n",
+        "(a<b)>(c==d);",
+    );
+
+    expect_comparison_round_trip("(a < b) > /x/;", "(a < b) > /x/;\n", "(a<b)>/x/;");
+
+    expect_comparison_round_trip("(a < b) > `x`;", "(a < b) > `x`;\n", "(a<b)>`x`;");
+
+    expect_comparison_round_trip(
+        "(a < b) < (c >> (d == e));",
+        "(a < b) < (c >> (d == e));\n",
+        "(a<b)<(c>>(d==e));",
+    );
+
+    expect_comparison_round_trip(
+        "((a < b) < c) < (d >>> (e == f));",
+        "(a < b < c) < (d >>> (e == f));\n",
+        "(a<b<c)<(d>>>(e==f));",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) | c & d > (e == f);",
+        "(a < b) | c & d > (e == f);\n",
+        "(a<b)|c&d>(e==f);",
+    );
+
+    expect_comparison_round_trip(
+        "(a << b) | c > (d == e);",
+        "(a << b) | c > (d == e);\n",
+        "(a<<b)|c>(d==e);",
+    );
+}
+
+#[test]
+fn test_comparison_list_boundaries() {
+    expect_comparison_round_trip(
+        "f((a < b), c > (d, e));",
+        "f((a < b), c > (d, e));\n",
+        "f((a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f(g((a < b) > (c == d)), (e < f), g > (h, i));",
+        "f(g((a < b) > (c == d)), (e < f), g > (h, i));\n",
+        "f(g((a<b)>(c==d)),(e<f),g>(h,i));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), x, c > (d, e));",
+        "f((a < b), x, c > (d, e));\n",
+        "f((a<b),x,c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f(((a < b) < c), d >> (e, f));",
+        "f((a < b) < c, d >> (e, f));\n",
+        "f((a<b)<c,d>>(e,f));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a << b), c >> (d, e));",
+        "f((a << b), c >> (d, e));\n",
+        "f((a<<b),c>>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a << b) | x, c >> (d, e));",
+        "f((a << b) | x, c >> (d, e));\n",
+        "f((a<<b)|x,c>>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a << b), x ? c > (d, e) : y);",
+        "f((a << b), x ? c > (d, e) : y);\n",
+        "f((a<<b),x?c>(d,e):y);",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), c | d > (e, f));",
+        "f((a < b), c | d > (e, f));\n",
+        "f((a<b),c|d>(e,f));",
+    );
+
+    expect_comparison_round_trip(
+        "f((a < b), c => d > (e, f));",
+        "f((a < b), (c) => d > (e, f));\n",
+        "f((a<b),c=>d>(e,f));",
+    );
+
+    expect_comparison_round_trip(
+        "f(...(a < b), c > (d, e));",
+        "f(...(a < b), c > (d, e));\n",
+        "f(...(a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "new F((a < b), c > (d, e));",
+        "new F((a < b), c > (d, e));\n",
+        "new F((a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "[(a < b), c > (d, e)];",
+        "[(a < b), c > (d, e)];\n",
+        "[(a<b),c>(d,e)];",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b), c > (d, e);",
+        "(a < b), c > (d, e);\n",
+        "(a<b),c>(d,e);",
+    );
+
+    // Minification intentionally flattens this sequence expression.
+    expect_printed_ts("(a < b), (x, c > (d, e));", "(a < b), (x, c > (d, e));\n");
+
+    expect_printed_ts_minify("(a < b), (x, c > (d, e));", "(a<b),x,c>(d,e);");
+
+    expect_ast_round_trip("(a < b), x, c > (d, e);");
+
+    expect_comparison_round_trip(
+        "f((a < b), c > (d, e) /* trailing */);",
+        "f(\n  (a < b),\n  c > (d, e)\n  /* trailing */\n);\n",
+        "f((a<b),c>(d,e)/* trailing */);",
+    );
+
+    expect_comparison_round_trip(
+        "import((a < b), c > (d, e));",
+        "import((a < b), c > (d, e));\n",
+        "import((a<b),c>(d,e));",
+    );
+}
+
+#[test]
+fn test_comparison_expression_tails() {
+    expect_comparison_round_trip(
+        "f(x = (a < b), c > (d, e));",
+        "f(x = (a < b), c > (d, e));\n",
+        "f(x=(a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f(x && (a < b), c > (d, e));",
+        "f(x && (a < b), c > (d, e));\n",
+        "f(x&&(a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f(x ? y : (a < b), c > (d, e));",
+        "f(x ? y : (a < b), c > (d, e));\n",
+        "f(x?y:(a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "f((x => a < b), c > (d, e));",
+        "f((x) => (a < b), c > (d, e));\n",
+        "f(x=>(a<b),c>(d,e));",
+    );
+
+    expect_comparison_round_trip(
+        "function* g() { f(yield (a < b), c > (d, e)); }",
+        "function* g() {\n  f(yield (a < b), c > (d, e));\n}\n",
+        "function*g(){f(yield (a<b),c>(d,e))}",
+    );
+}
+
+#[test]
+fn test_comparison_printed_tokens() {
+    expect_comparison_round_trip_with_source_type(
+        "(a < b) > <!-- note\nc;",
+        "(a < b) > // note\nc;\n",
+        "(a<b)>// note\nc;",
+        SourceType::Script,
+    );
+
+    expect_comparison_round_trip_with_source_type(
+        "(a < b) >\n--> note\nc;",
+        "(a < b) > // note\nc;\n",
+        "(a<b)>// note\nc;",
+        SourceType::Script,
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > ((f<T>) + c);",
+        "(a < b) > (f<T>) + c;\n",
+        "(a<b)>(f<T>)+c;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (c++).value;",
+        "(a < b) > (c++).value;\n",
+        "(a<b)>(c++).value;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (c?.d).value;",
+        "(a < b) > (c?.d).value;\n",
+        "(a<b)>(c?.d).value;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (f<T>)();",
+        "(a < b) > (f<T>)();\n",
+        "(a<b)>(f<T>)();",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (f<T>)!;",
+        "(a < b) > (f<T>)!;\n",
+        "(a<b)>(f<T>)!;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (new F).value;",
+        "a < b > new F().value;\n",
+        "a<b>new F().value;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (c + d).value++;",
+        "(a < b) > (c + d).value++;\n",
+        "(a<b)>(c+d).value++;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > (c + d)<T>;",
+        "(a < b) > (c + d)<T>;\n",
+        "(a<b)>(c+d)<T>;",
+    );
+
+    // Choosing a backtick changes StringLiteral to TemplateLiteral in minify mode.
+    expect_printed_ts("(a < b) > \"a'\\\"\";", "a < b > \"a'\\\"\";\n");
+
+    expect_printed_ts_minify("(a < b) > \"a'\\\"\";", "(a<b)>`a'\"`;");
+
+    expect_ast_round_trip("(a < b) > `a'\"`;");
+
+    expect_comparison_round_trip(
+        "(a < b) > /* line\nbreak */ c;",
+        "(a < b) > /* line\n break */\nc;\n",
+        "(a<b)>/* line\nbreak */c;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > // note\nc;",
+        "(a < b) > // note\nc;\n",
+        "(a<b)>// note\nc;",
+    );
+
+    expect_comparison_round_trip(
+        "(a < b) > /* line\nbreak */ +c;",
+        "a < b > /* line\n break */\n+c;\n",
+        "a<b>/* line\nbreak */+c;",
+    );
+
+    expect_comparison_round_trip(
+        "f(a < b, /* line\nbreak */ c > 0);",
+        "f(\n  a < b,\n  /* line\n   break */\n  c > 0\n);\n",
+        "f(a<b,/* line\nbreak */c>0);",
+    );
+}
+
+#[test]
+fn test_comparison_unambiguous_boundaries() {
+    expect_comparison_round_trip("a < b;", "a < b;\n", "a<b;");
+
+    expect_comparison_round_trip("a < b < c;", "a < b < c;\n", "a<b<c;");
+
+    expect_comparison_round_trip("a < b > c;", "a < b > c;\n", "a<b>c;");
+
+    expect_comparison_round_trip("a < b > f();", "a < b > f();\n", "a<b>f();");
+
+    expect_comparison_round_trip(
+        "a < b > obj.value;",
+        "a < b > obj.value;\n",
+        "a<b>obj.value;",
+    );
+
+    expect_comparison_round_trip("a < b > \"x\";", "a < b > \"x\";\n", "a<b>\"x\";");
+
+    expect_comparison_round_trip("a < b < (c, d);", "a < b < (c, d);\n", "a<b<(c,d);");
+
+    expect_comparison_round_trip("a < b > +c;", "a < b > +c;\n", "a<b>+c;");
+
+    expect_comparison_round_trip("a < b > [c];", "a < b > [c];\n", "a<b>[c];");
+
+    expect_comparison_round_trip("a < b >> c;", "a < b >> c;\n", "a<b>>c;");
+
+    expect_comparison_round_trip("a << b | c;", "a << b | c;\n", "a<<b|c;");
+
+    expect_comparison_round_trip("a << b | c & d;", "a << b | c & d;\n", "a<<b|c&d;");
+
+    expect_comparison_round_trip("a < b | c;", "a < b | c;\n", "a<b|c;");
+
+    expect_comparison_round_trip("a | b < c;", "a | b < c;\n", "a|b<c;");
+
+    expect_comparison_round_trip("f(a < b, c);", "f(a < b, c);\n", "f(a<b,c);");
+
+    expect_comparison_round_trip("f(a < b, c > 0);", "f(a < b, c > 0);\n", "f(a<b,c>0);");
+
+    expect_comparison_round_trip(
+        "f(a < b, /* note */ c > 0);",
+        "f(\n  a < b,\n  /* note */\n  c > 0\n);\n",
+        "f(a<b,/* note */c>0);",
+    );
+
+    expect_comparison_round_trip("f(a, b < c);", "f(a, b < c);\n", "f(a,b<c);");
+
+    expect_comparison_round_trip("f(a < b, c >= d);", "f(a < b, c >= d);\n", "f(a<b,c>=d);");
+
+    expect_comparison_round_trip(
+        "f(a < b, g(c > (d, e)));",
+        "f(a < b, g(c > (d, e)));\n",
+        "f(a<b,g(c>(d,e)));",
+    );
+
+    expect_comparison_round_trip(
+        "(a <= b) > (c == d);",
+        "a <= b > (c == d);\n",
+        "a<=b>(c==d);",
+    );
+}
 
 #[track_caller]
 fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &str) {

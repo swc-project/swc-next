@@ -6,7 +6,12 @@ use swc_next_allocator::{Allocator, vec::Vec as ArenaVec, wtf8::Wtf8};
 use swc_next_ecma_ast::*;
 
 use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, ExprContext, OperatorCode};
-use crate::util::{next_code_point, push_code_point_escape, push_u16_escape, quote_into};
+use crate::ts_disambiguation::GroupingPlan;
+use crate::util::{
+    bare_arrow_parameter, choose_quote, new_expression_has_argument_list, next_code_point,
+    pure_comment_annotation, push_code_point_escape, push_u16_escape, quote_into,
+    simple_assignment_target_expression,
+};
 
 use crate::{
     SourceMap,
@@ -140,6 +145,7 @@ struct Printer<'a> {
     prev_reg_exp_end: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
+    grouping: GroupingPlan<'a>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -191,13 +197,14 @@ pub fn print<'a>(allocator: &'a Allocator, tree: &'a Ast<'a>, options: Options) 
 impl BinaryExprVisitor {
     fn prepare(&mut self, p: &mut Printer<'_>) {
         let e = self.e;
+        let operator = self.operator;
+        let ts_group = p.ast.is_ts() && p.grouping.plan_binary(e, operator);
 
-        let operator = e.operator(p.ast);
         let precedence = operator.precedence();
 
-        self.operator = operator;
         self.wrap = self.level > precedence
-            || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In));
+            || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In))
+            || ts_group;
 
         if self.wrap {
             p.print("(");
@@ -334,6 +341,7 @@ impl<'a> Printer<'a> {
         Self {
             allocator,
             ast,
+            grouping: GroupingPlan::new(allocator, ast, options.minify, options.comments),
             options,
             js: ArenaVec::with_capacity_in(ast.source().len(), allocator),
             comments: ast.comments(),
@@ -503,24 +511,7 @@ impl<'a> Printer<'a> {
                 .ast
                 .get_utf8(comment.value(self.ast.source().as_bytes()))
                 .as_bytes();
-            let mut trim_start = 0;
-            while value[trim_start..]
-                .first()
-                .is_some_and(|c| c.is_ascii_whitespace())
-            {
-                trim_start += 1;
-            }
-            let mut trim_end = value.len();
-            while trim_end > trim_start && value[trim_end - 1].is_ascii_whitespace() {
-                trim_end -= 1;
-            }
-            let trimmed = &value[trim_start..trim_end];
-            if comment.kind == CommentKind::Block
-                && matches!(
-                    trimmed,
-                    b"@__PURE__" | b"#__PURE__" | b"@__NO_SIDE_EFFECTS__" | b"#__NO_SIDE_EFFECTS__"
-                )
-            {
+            if let Some(trimmed) = pure_comment_annotation(comment.kind, value) {
                 if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
                     self.print(" ");
                 }
@@ -833,22 +824,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_quoted(&mut self, value: &Wtf8, allow_backtick: bool) {
-        let allow_backtick = allow_backtick && self.options.minify;
-        let bytes = value.as_bytes();
-        let single_cost = bytes.iter().filter(|&&byte| byte == b'\'').count();
-        let double_cost = bytes.iter().filter(|&&byte| byte == b'"').count();
-        let (mut quote, quote_cost) = if double_cost > single_cost {
-            (b'\'', single_cost)
-        } else {
-            (b'"', double_cost)
-        };
-        if allow_backtick {
-            let backtick_cost = bytes.iter().filter(|&&byte| byte == b'`').count()
-                + bytes.windows(2).filter(|pair| *pair == b"${").count();
-            if backtick_cost < quote_cost {
-                quote = b'`';
-            }
-        }
+        let quote = choose_quote(value, allow_backtick && self.options.minify);
         quote_into(
             &mut self.js,
             value,
@@ -1810,29 +1786,6 @@ impl<'a> Printer<'a> {
                 .any(|comment| self.comment_has_line_terminator(*comment))
     }
 
-    fn simple_assignment_target_expression(&self, target: SimpleAssignmentTarget) -> Expr {
-        match self.ast.simple_assignment_target_data(target) {
-            SimpleAssignmentTargetData::IdentifierReference(expression) => {
-                Expr::IdentifierReference(expression)
-            }
-            SimpleAssignmentTargetData::MemberExpression(expression) => {
-                Expr::MemberExpression(expression)
-            }
-            SimpleAssignmentTargetData::TsAsExpression(expression) => {
-                Expr::TsAsExpression(expression)
-            }
-            SimpleAssignmentTargetData::TsSatisfiesExpression(expression) => {
-                Expr::TsSatisfiesExpression(expression)
-            }
-            SimpleAssignmentTargetData::TsTypeAssertion(expression) => {
-                Expr::TsTypeAssertion(expression)
-            }
-            SimpleAssignmentTargetData::TsNonNullExpression(expression) => {
-                Expr::TsNonNullExpression(expression)
-            }
-        }
-    }
-
     fn expr_first_token_offset(&self, mut expr: Expr) -> u32 {
         loop {
             expr = match self.ast.expr_data(expr) {
@@ -1852,7 +1805,7 @@ impl<'a> Printer<'a> {
                 ExprData::AssignmentExpression(expression) => {
                     match self.ast.assignment_target_data(expression.left(self.ast)) {
                         AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                            self.simple_assignment_target_expression(target)
+                            simple_assignment_target_expression(self.ast, target)
                         }
                         AssignmentTargetData::ArrayAssignmentTarget(pattern) => {
                             break pattern.span(self.ast).start;
@@ -1863,7 +1816,7 @@ impl<'a> Printer<'a> {
                     }
                 }
                 ExprData::UpdateExpression(expression) if !expression.prefix(self.ast) => {
-                    self.simple_assignment_target_expression(expression.argument(self.ast))
+                    simple_assignment_target_expression(self.ast, expression.argument(self.ast))
                 }
                 ExprData::TsAsExpression(expression) => expression.expression(self.ast),
                 ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
@@ -1925,14 +1878,14 @@ impl<'a> Printer<'a> {
                 ExprData::AssignmentExpression(expression) => {
                     match self.ast.assignment_target_data(expression.left(self.ast)) {
                         AssignmentTargetData::SimpleAssignmentTarget(target) => {
-                            self.simple_assignment_target_expression(target)
+                            simple_assignment_target_expression(self.ast, target)
                         }
                         AssignmentTargetData::ArrayAssignmentTarget(_)
                         | AssignmentTargetData::ObjectAssignmentTarget(_) => break true,
                     }
                 }
                 ExprData::UpdateExpression(expression) if !expression.prefix(self.ast) => {
-                    self.simple_assignment_target_expression(expression.argument(self.ast))
+                    simple_assignment_target_expression(self.ast, expression.argument(self.ast))
                 }
                 ExprData::TsAsExpression(expression) => expression.expression(self.ast),
                 ExprData::TsSatisfiesExpression(expression) => expression.expression(self.ast),
@@ -2149,6 +2102,20 @@ impl<'a> Printer<'a> {
                 self.forbid_in = old_forbid_in;
             }
             ExprData::SequenceExpression(e) => {
+                let ast = self.ast;
+                let member_level = if self.options.minify {
+                    Precedence::Lowest
+                } else {
+                    Precedence::Assignment
+                };
+                if self.ast.is_ts() {
+                    self.grouping.list(
+                        e.expressions(ast)
+                            .iter()
+                            .map(|id| ast.get_node_in_sub_range(id)),
+                        member_level,
+                    );
+                }
                 let wrap = level >= Precedence::Comma;
                 if wrap {
                     self.print("(");
@@ -2158,11 +2125,6 @@ impl<'a> Printer<'a> {
                         self.print(",");
                         self.print_space();
                     }
-                    let member_level = if self.options.minify {
-                        Precedence::Lowest
-                    } else {
-                        Precedence::Assignment
-                    };
                     self.print_expr(self.ast.get_node_in_sub_range(id), member_level);
                 }
                 if wrap {
@@ -2226,6 +2188,12 @@ impl<'a> Printer<'a> {
             ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
             ExprData::ImportExpression(e) => {
+                if self.ast.is_ts() {
+                    self.grouping.list(
+                        std::iter::once(e.source(self.ast)).chain(e.options(self.ast)),
+                        Precedence::Assignment,
+                    );
+                }
                 if context.contains(ExprContext::IN_NEW_CALLEE) {
                     self.print("(");
                 }
@@ -2432,7 +2400,7 @@ impl<'a> Printer<'a> {
                 left_level: Precedence::Lowest,
                 left_flags: false,
                 left_context: ExprContext::empty(),
-                operator: visitor.operator,
+                operator: left_binaryish.operator(self.ast),
                 wrap: false,
                 right_level: Precedence::Lowest,
                 right_context: ExprContext::empty(),
@@ -2676,11 +2644,7 @@ impl<'a> Printer<'a> {
         }
         let arguments = e.arguments(self.ast);
         // Generic constructors need `()` to disambiguate following operators.
-        if !self.options.minify
-            || !arguments.is_empty()
-            || type_arguments.is_some()
-            || level >= Precedence::Postfix
-        {
+        if new_expression_has_argument_list(self.ast, e, self.options.minify, level) {
             self.print_arguments(arguments, e.span(self.ast).end.saturating_sub(1));
         }
         if wrap {
@@ -2689,6 +2653,8 @@ impl<'a> Printer<'a> {
     }
 
     fn print_arguments(&mut self, args: SubRange<Argument>, close_offset: u32) {
+        // Earlier arguments are barriers until a root can expose an opener.
+        let mut planned = !self.ast.is_ts() || args.len() < 2;
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.print("(");
@@ -2699,8 +2665,11 @@ impl<'a> Printer<'a> {
             self.indent += 1;
             self.print_newline();
         }
-        for (i, id) in args.iter().enumerate() {
-            if i != 0 {
+        let mut remaining = args;
+        let mut first = true;
+        while !remaining.is_empty() {
+            let id = remaining.remove_first();
+            if !first {
                 self.print(",");
                 if multiline {
                     self.print_newline();
@@ -2714,12 +2683,22 @@ impl<'a> Printer<'a> {
                 self.print_indent();
             }
             match self.ast.argument_data(argument) {
-                ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
+                ArgumentData::Expr(e) => {
+                    if !planned {
+                        planned = self.grouping.try_arguments(e, remaining);
+                    }
+                    self.print_expr(e, Precedence::Assignment);
+                }
                 ArgumentData::SpreadElement(s) => {
+                    let expression = s.argument(self.ast);
+                    if !planned {
+                        planned = self.grouping.try_arguments(expression, remaining);
+                    }
                     self.print("...");
-                    self.print_expr(s.argument(self.ast), Precedence::Assignment);
+                    self.print_expr(expression, Precedence::Assignment);
                 }
             }
+            first = false;
         }
         if multiline {
             self.print_newline();
@@ -2741,6 +2720,19 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(e.span(self.ast).start);
         self.print("[");
         let elements = e.elements(self.ast);
+        let ast = self.ast;
+        if self.ast.is_ts() {
+            self.grouping.list(
+                elements
+                    .iter()
+                    .filter_map(|id| ast.get_node_in_sub_range(id))
+                    .map(|argument| match ast.argument_data(argument) {
+                        ArgumentData::Expr(e) => e,
+                        ArgumentData::SpreadElement(s) => s.argument(ast),
+                    }),
+                Precedence::Assignment,
+            );
+        }
         for (i, id) in elements.iter().enumerate() {
             if i != 0 {
                 self.print(",");
@@ -3030,12 +3022,11 @@ impl<'a> Printer<'a> {
         }
         let params = e.params(self.ast);
         let return_type = e.return_type(self.ast);
-        let bare_parameter =
-            if self.options.minify && type_parameters.is_none() && return_type.is_none() {
-                self.bare_arrow_parameter(params)
-            } else {
-                None
-            };
+        let bare_parameter = bare_arrow_parameter(
+            self.ast,
+            e,
+            self.options.minify || (self.ast.is_ts() && self.grouping.bare_arrow_parameters(e)),
+        );
         if let Some(identifier) = bare_parameter {
             self.print_binding_identifier(identifier);
         } else {
@@ -5254,25 +5245,6 @@ impl Printer<'_> {
             }
             _ => None,
         }
-    }
-
-    fn bare_arrow_parameter(&self, params: FormalParameters) -> Option<BindingIdentifier> {
-        let ast = self.ast;
-        let items = params.items(ast);
-        if items.len() != 1 || params.rest(ast).is_some() {
-            return None;
-        }
-        let item = items.get_node(ast, 0)?;
-        let param = item.as_formal_parameter(ast)?;
-        let identifier = param.pattern(ast).as_binding_identifier(ast)?;
-        if !param.decorators(ast).is_empty()
-            || param.type_annotation(ast).is_some()
-            || param.initializer(ast).is_some()
-            || param.optional(ast)
-        {
-            return None;
-        }
-        Some(identifier)
     }
 
     #[inline]
