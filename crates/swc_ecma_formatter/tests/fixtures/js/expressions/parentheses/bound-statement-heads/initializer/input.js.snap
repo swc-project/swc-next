@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = (/** @param {number} value */ function (value) { return value; }).name;
+---------- Options ----------
+{}
+---------- Output ----------
+const result = /** @param {number} value */ function (value) {
+  return value;
+}.name;
