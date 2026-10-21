@@ -9,8 +9,8 @@ continued */ value });
 {}
 ---------- Output ----------
 ({
-  key: // key comment
-    /* value comment
+  // key comment
+  key: /* value comment
 continued */ value,
 });
 
@@ -18,8 +18,8 @@ continued */ value,
 {"printWidth":20}
 ---------- Output ----------
 ({
-  key: // key comment
-    /* value comment
+  // key comment
+  key: /* value comment
 continued */ value,
 });
 
@@ -27,8 +27,8 @@ continued */ value,
 {"printWidth":40}
 ---------- Output ----------
 ({
-  key: // key comment
-    /* value comment
+  // key comment
+  key: /* value comment
 continued */ value,
 });
 
@@ -36,7 +36,7 @@ continued */ value,
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 ;({
-  key: // key comment
-    /* value comment
+  // key comment
+  key: /* value comment
 continued */ value,
 })

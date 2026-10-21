@@ -8,15 +8,16 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 ({
-  [/* key */ name /* tail */]: // boundary
-    /* value */ [first, second],
+  // boundary
+  [/* key */ name /* tail */]: /* value */ [first, second],
 });
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ({
-  [/* key */ name /* tail */]: // boundary
+  // boundary
+  [/* key */ name /* tail */]:
     /* value */ [
       first,
       second,
@@ -27,7 +28,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":40}
 ---------- Output ----------
 ({
-  [/* key */ name /* tail */]: // boundary
+  // boundary
+  [/* key */ name /* tail */]:
     /* value */ [first, second],
 });
 
@@ -35,7 +37,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 ;({
-  [/* key */ name /* tail */]: // boundary
+  // boundary
+  [/* key */ name /* tail */]:
     /* value */ [
       first,
       second,

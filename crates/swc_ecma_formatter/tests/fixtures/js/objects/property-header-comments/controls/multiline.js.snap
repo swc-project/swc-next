@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = { key /* first
+second */ // third
+: value };
+---------- Options ----------
+{}
+---------- Output ----------
+result = {
+  key: /* first
+second */ // third
+    value,
+};

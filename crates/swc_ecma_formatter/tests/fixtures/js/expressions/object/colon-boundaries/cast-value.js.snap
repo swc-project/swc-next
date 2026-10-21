@@ -8,34 +8,34 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 ({
-  key: // boundary
-    /** @type {number} */ (unknown),
+  // boundary
+  key: /** @type {number} */ (unknown),
 });
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 ({
-  key: // boundary
-    /** @type {number} */ (
-      unknown
-    ),
+  // boundary
+  key: /** @type {number} */ (
+    unknown
+  ),
 });
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
 ({
-  key: // boundary
-    /** @type {number} */ (unknown),
+  // boundary
+  key: /** @type {number} */ (unknown),
 });
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 ;({
-  key: // boundary
-    /** @type {number} */ (
-      unknown
-    ),
+  // boundary
+  key: /** @type {number} */ (
+    unknown
+  ),
 })
