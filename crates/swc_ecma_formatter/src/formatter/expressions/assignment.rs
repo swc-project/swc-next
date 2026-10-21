@@ -557,9 +557,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .suppressed_comment_runs(comments, gap.end)
             .chain(self.suppressed_comment_runs(enclosed, inspection_end));
         for (run, position) in runs {
-            // The ordinary gap leaves own-line packets to the existing RHS head.
-            // An enclosed packet is instead emitted by its prepared source owner.
-            if matches!(position, SuppressionPosition::OwnLine) && run[0].span.start < gap.end {
+            // Only a post-operator packet can reach the existing RHS head.
+            // Pre-operator and enclosed packets resolve their own raw RHS owner.
+            if matches!(position, SuppressionPosition::OwnLine)
+                && operator.end <= run[0].span.start
+                && run[0].span.start < gap.end
+            {
                 continue;
             }
             for &comment in run {
