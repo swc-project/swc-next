@@ -58,6 +58,16 @@ fn namespace_instantiation() {
     let allocator = Allocator::new();
     let ts_module = ts_module_options();
 
+    let source = "namespace N { \"use strict\"; }";
+    let (ast, semantic) = analyze_source(&allocator, source, ts_module);
+    let namespace = symbol_named(&ast, &semantic, b"N");
+    assert_ts_module_state(&semantic, namespace, TsModuleState::Instantiated);
+
+    let source = "namespace N { namespace M { \"use strict\"; } }";
+    let (ast, semantic) = analyze_source(&allocator, source, ts_module);
+    let namespace = symbol_named(&ast, &semantic, b"N");
+    assert_ts_module_state(&semantic, namespace, TsModuleState::Instantiated);
+
     let source = "namespace N { export const enum E { A } } const value = N.E.A";
     let (ast, semantic) = analyze_source(&allocator, source, ts_module);
     let namespace = symbol_named(&ast, &semantic, b"N");

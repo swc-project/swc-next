@@ -113,6 +113,9 @@ impl TsModuleInstanceAnalyzer<'_, '_, '_> {
     ) -> TsModuleInstanceState {
         match self.tree.kind_data(body) {
             NodeKindData::TsModuleBlock(block) => {
+                if !block.directives(self.tree).is_empty() {
+                    return TsModuleInstanceState::Instantiated;
+                }
                 let blocks = TsModuleBlockPath {
                     node: body,
                     parent: blocks,

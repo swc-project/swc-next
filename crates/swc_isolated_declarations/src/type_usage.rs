@@ -1035,6 +1035,12 @@ mod tests {
 
     #[test]
     fn namespace_value_dependencies() {
+        let (code, diagnostics) =
+            declaration_output("namespace N { \"use strict\"; } export type T = typeof N;");
+        assert_eq!(diagnostics, 0);
+        assert!(code.contains("namespace N"));
+        assert!(code.contains("typeof N"));
+
         let (code, diagnostics) = declaration_output(
             "type Hidden = { x: number }; namespace N { export const x: Hidden = { x: 1 }; } export type T = typeof N;",
         );
