@@ -8,10 +8,13 @@ use swc_next_ecma_ast::{
 
 use super::assignment::RhsLayout;
 use super::parentheses::{
-    EmittedHeadAnnotation, PreparedGeneratedEnclosure, ResolvedExpressionHead, SourceOpeningPacket,
+    EmittedHeadAnnotation, OptionalJsxHeadFrame, PreparedGeneratedEnclosure,
+    ResolvedExpressionHead, SourceOpeningPacket,
 };
 use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent};
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{
+    CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 
 use crate::formatter::literals::StringContext;
@@ -124,21 +127,104 @@ impl<'ast> PreparedComputedKey<'ast> {
     }
 }
 
-struct ObjectPropertyBoundary<'ast> {
-    opening: Option<SourceOpeningPacket<'ast>>,
-    suppression: PropertySuppression,
-    header: &'ast [Comment],
+enum PropertyBeforeColon<'ast> {
+    Key(&'ast [Comment]),
+    Value(&'ast [Comment]),
+}
+
+impl<'ast> PropertyBeforeColon<'ast> {
+    fn key(&self) -> &'ast [Comment] {
+        match self {
+            Self::Key(comments) => comments,
+            Self::Value(_) => &[],
+        }
+    }
+
+    fn value(&self) -> &'ast [Comment] {
+        match self {
+            Self::Key(_) => &[],
+            Self::Value(comments) => comments,
+        }
+    }
+}
+
+enum PropertyHeaderGap {
+    Breakable,
+    Line,
+    EmptyLine,
+}
+
+struct PropertyHeader<'ast> {
     before: &'ast [Comment],
-    moved: &'ast [Comment],
-    annotation: Option<EmittedHeadAnnotation>,
+    after: &'ast [Comment],
+    gap: PropertyHeaderGap,
+}
+
+impl PropertyHeader<'_> {
+    fn is_empty(&self) -> bool {
+        self.before.is_empty() && self.after.is_empty()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum PropertyHeadLayout {
+    Inline,
+    WithPacket,
+    OwnLine,
+}
+
+impl PropertyHeadLayout {
+    fn from_gap(gap: CommentGap) -> Self {
+        match gap {
+            CommentGap::Source(LineConstraint::SameLine) => Self::Inline,
+            CommentGap::Source(LineConstraint::Unconstrained) => Self::WithPacket,
+            CommentGap::LineComment | CommentGap::Source(LineConstraint::NewLine(_)) => {
+                Self::OwnLine
+            }
+        }
+    }
+
+    fn required(required: bool) -> Self {
+        if required {
+            Self::OwnLine
+        } else {
+            Self::Inline
+        }
+    }
+}
+
+struct PropertyValueHead<'ast> {
     operator_line: &'ast [Comment],
     operator_line_start: u32,
     leading: &'ast [Comment],
+    moved_join: CommentGap,
+    separator: LineConstraint,
+    layout: PropertyHeadLayout,
+}
+
+/// The header split and the remaining packet's source edges, prepared in one pass.
+struct PropertyPacket<'ast> {
+    header: &'ast [Comment],
+    retained: &'ast [Comment],
+    header_breaks: u8,
+    leading_breaks: u8,
+    trailing_breaks: u8,
+    internal_line: bool,
+    grouped_layout: PropertyHeadLayout,
+}
+
+struct ObjectPropertyBoundary<'ast> {
+    comments: &'ast [Comment],
+    opening: Option<SourceOpeningPacket<'ast>>,
+    suppression: PropertySuppression,
+    header: PropertyHeader<'ast>,
+    before: PropertyBeforeColon<'ast>,
+    annotation: Option<EmittedHeadAnnotation>,
+    value: PropertyValueHead<'ast>,
     key_end: u32,
     colon: Span,
     value_start: u32,
     line_before_colon: bool,
-    line_after_colon: bool,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -559,8 +645,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_method_header(header, writer)?;
             return Ok(None);
         }
-        let key_end = self.object_key_end(property)?;
         if property.shorthand(ast) {
+            let key_end = property.key(ast).span(ast).end;
             self.format_object_key(
                 property,
                 key_end,
@@ -570,7 +656,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             return Ok(None);
         }
-        let boundary = self.object_property_boundary(property, key_end)?;
+        let boundary = self.object_property_boundary(property)?;
         if boundary.suppression.enclosing == ContentMode::Verbatim {
             self.format_verbatim(property.span(ast), writer)?;
             return Ok(None);
@@ -589,19 +675,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )
             })?;
-            self.comments.claim(boundary.header)?;
-            self.format_comment_run(boundary.header, CommentRunLayout::Source, writer)?;
-            writer.hard_line();
+            self.comments.claim(boundary.comments)?;
+            self.format_property_header(&boundary.header, writer)?;
             Some(key)
         };
         let value = property.value(ast);
         let content = self.expression_content(value);
+        let context = ExpressionContext::at(ExpressionPosition::PropertyValue)
+            .with_content_mode(boundary.suppression.value);
+        let binding = self.expression_head_binding(boundary.value.leading, value);
+        let binding = content
+            .parentheses
+            .map_or(binding, |removed| binding.combine(removed.head.binding));
+        let head_frame = boundary.opening.is_none()
+            && boundary.annotation.is_none()
+            && self.expression_head_has_optional_jsx_frame(
+                !boundary.value.leading.is_empty() || !boundary.before.value().is_empty(),
+                || content.data,
+                binding,
+                context,
+            );
+        let head_layout = if head_frame && boundary.value.layout == PropertyHeadLayout::WithPacket {
+            PropertyHeadLayout::Inline
+        } else {
+            boundary.value.layout
+        };
         let before_colon = boundary
             .before
+            .key()
             .last()
             .map_or(boundary.key_end, |comment| comment.span.end);
         let before_colon_constraint = self.line_constraint(before_colon, boundary.colon.start);
         let prefix_start = boundary
+            .value
             .leading
             .first()
             .map_or(boundary.value_start, |comment| comment.span.start);
@@ -618,10 +724,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             quoting,
                             writer,
                         )?;
+                        self.comments.claim(boundary.comments)?;
                     }
-                    self.comments.claim(boundary.before)?;
                     self.format_comment_run(
-                        boundary.before,
+                        boundary.before.key(),
                         CommentRunLayout::SourceAfter(boundary.key_end),
                         writer,
                     )?;
@@ -632,7 +738,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     });
                     Ok::<_, FormatError>(())
                 };
-                if boundary.line_after_colon {
+                if head_layout == PropertyHeadLayout::OwnLine {
                     write_left(writer)?;
                     None
                 } else {
@@ -642,7 +748,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // A break is useful only when the key overlaps its indented value by three columns.
             let overlap = usize::from(self.options.indent_width.value()) + 3;
             let has_short_key = clean_width.is_some_and(|width| width < overlap);
-            let layout = if boundary.line_after_colon {
+            let layout = if head_layout != PropertyHeadLayout::Inline {
                 RhsLayout::BreakAfterOperator
             } else {
                 let data = self.property_rhs_content(&content, boundary.suppression.value);
@@ -664,61 +770,68 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
             writer.text(":");
-            self.comments.claim(boundary.operator_line)?;
             self.format_comment_run(
-                boundary.operator_line,
-                CommentRunLayout::SourceAfter(boundary.operator_line_start),
+                boundary.value.operator_line,
+                CommentRunLayout::SourceAfter(boundary.value.operator_line_start),
                 writer,
             )?;
-            let after_colon = boundary
-                .operator_line
-                .last()
-                .map_or(boundary.colon.end, |comment| comment.span.end);
-            let constraint = self.line_constraint(after_colon, prefix_start);
             let write_value = |writer: &mut Writer<'ast>| {
-                self.comments.claim(boundary.moved)?;
-                self.format_comment_run(boundary.moved, CommentRunLayout::Source, writer)?;
-                if let Some(last) = boundary.moved.last() {
-                    let next = boundary
-                        .leading
-                        .first()
-                        .map_or(boundary.value_start, |comment| comment.span.start);
-                    let before = self.line_breaks(last.span.end, boundary.colon.start);
-                    let after = self.line_breaks(boundary.colon.end, next);
-                    // Moving the colon does not introduce an empty source line.
-                    match before.max(after) {
-                        0 => writer.space(),
-                        1 => writer.hard_line(),
-                        _ => {
-                            writer.hard_line();
-                            writer.hard_line();
-                        }
+                let prefix = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+                    formatter.format_comment_run(
+                        boundary.before.value(),
+                        CommentRunLayout::Source,
+                        writer,
+                    )?;
+                    if !boundary.before.value().is_empty() {
+                        boundary.value.moved_join.write(
+                            writer,
+                            FlatSeparator::Space,
+                            Writer::space,
+                        );
                     }
+                    Ok(())
+                };
+                if !head_frame {
+                    prefix(self, writer)?;
                 }
-                self.comments.claim(boundary.leading)?;
-                let mut context = ExpressionContext::at(ExpressionPosition::PropertyValue)
-                    .with_content_mode(boundary.suppression.value);
+                let mut context = context;
                 if context.is_formatted_conditional_rhs(content.data) {
                     context = context.with_operand_indent(layout.operand_indent());
                 }
                 if let Some(opening) = boundary.opening {
                     self.format_comment_run(
-                        boundary.leading,
+                        boundary.value.leading,
                         CommentRunLayout::GroupedLeading(boundary.value_start),
                         writer,
                     )?;
                     return self.format_source_opening_packet(opening, context, writer);
                 }
                 let head = NodeHead {
-                    comments: boundary.leading,
+                    comments: boundary.value.leading,
                     content_start: boundary.value_start,
                     layout: CommentRunLayout::GroupedLeading(boundary.value_start),
                     gap_end: None,
                 };
-                let binding = self.expression_head_binding(boundary.leading, value);
-                let binding = content
-                    .parentheses
-                    .map_or(binding, |removed| binding.combine(removed.head.binding));
+                if head_frame {
+                    let start = boundary
+                        .before
+                        .value()
+                        .first()
+                        .or_else(|| boundary.value.leading.first())
+                        .map_or(boundary.value_start, |comment| comment.span.start);
+                    return self.format_optional_jsx_head_frame(
+                        OptionalJsxHeadFrame {
+                            span: Span::new(start, value.span(ast).end),
+                            expression: value,
+                            content: Some(content),
+                            head: ResolvedExpressionHead { head, binding },
+                        },
+                        context,
+                        None,
+                        writer,
+                        prefix,
+                    );
+                }
                 let enclosure = boundary.annotation.and_then(|annotation| {
                     self.emitted_head_enclosure_owner(value, &content, annotation, binding, context)
                 });
@@ -741,15 +854,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
             let separator = |writer: &mut Writer<'ast>| {
-                constraint.write(writer, FlatSeparator::Space, |writer| {
-                    if boundary.line_after_colon {
-                        writer.hard_line();
-                    } else if matches!(layout, RhsLayout::NeverBreakAfterOperator) {
-                        writer.space();
-                    } else {
-                        writer.line();
-                    }
-                });
+                boundary
+                    .value
+                    .separator
+                    .write(writer, FlatSeparator::Space, |writer| {
+                        if head_layout == PropertyHeadLayout::OwnLine {
+                            writer.hard_line();
+                        } else if matches!(layout, RhsLayout::NeverBreakAfterOperator) {
+                            writer.space();
+                        } else {
+                            writer.line();
+                        }
+                    });
             };
             layout.write(writer, separator, write_value)
         })
@@ -758,34 +874,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn object_property_boundary(
         &self,
         property: ObjectProperty,
-        key_end: u32,
     ) -> Result<ObjectPropertyBoundary<'ast>, FormatError> {
         let value_start = property.value(self.ast).span(self.ast).start;
+        let key_span = property.key(self.ast).span(self.ast);
+        let opening = self.source_opening_packet(property.value(self.ast));
+        let inspection_end = opening.map_or(value_start, |packet| packet.content_start);
+        let inspected = self
+            .comments
+            .in_range(Span::new(key_span.end, inspection_end));
+        let key_end = if property.computed(self.ast) {
+            self.find_token(Span::new(key_span.end, value_start), inspected, "]")
+                .map(|closing| closing + 1)
+                .ok_or_else(|| self.unsupported("computed object key boundary", property))?
+        } else {
+            key_span.end
+        };
+        let inside_count = inspected.partition_point(|comment| comment.span.end <= key_end);
+        let external_end = inspected.partition_point(|comment| comment.span.end <= value_start);
+        let comments = &inspected[inside_count..external_end];
         let gap = Span::new(key_end, value_start);
-        let comments = self.comments.in_range(gap);
         let Some(colon_start) = self.find_token(gap, comments, ":") else {
             return Err(self.unsupported("object property colon", property));
         };
         let colon = Span::new(colon_start, colon_start + 1);
         let count = comments.partition_point(|comment| comment.span.end <= colon.start);
         let (before, after) = comments.split_at(count);
-        let key_trailing = if self.has_suppression && property.computed(self.ast) {
-            self.comments.in_range(Span::new(
-                property.key(self.ast).span(self.ast).end,
-                colon.start,
-            ))
+        let key_trailing = if property.computed(self.ast) {
+            &inspected[..inside_count + count]
         } else {
             before
         };
-        let key_leading = (self.has_suppression && property.computed(self.ast)).then(|| {
-            Span::new(
-                property.span(self.ast).start + 1,
-                property.key(self.ast).span(self.ast).start,
-            )
-        });
-        let opening = self.source_opening_packet(property.value(self.ast));
-        let inspection_end = opening.map_or(value_start, |packet| packet.content_start);
-        let inspection_after = self.comments.in_range(Span::new(colon.end, inspection_end));
+        let key_leading = (self.has_suppression && property.computed(self.ast))
+            .then(|| Span::new(property.span(self.ast).start + 1, key_span.start));
+        let inspection_after = &inspected[inside_count + count..];
         let suppression = self.property_suppression(
             key_leading,
             key_trailing,
@@ -793,6 +914,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
             inspection_end,
         );
+        let mut boundary = ObjectPropertyBoundary {
+            comments,
+            opening,
+            suppression,
+            header: PropertyHeader {
+                before: &[],
+                after: &[],
+                gap: PropertyHeaderGap::Breakable,
+            },
+            before: PropertyBeforeColon::Key(&[]),
+            annotation: None,
+            value: PropertyValueHead {
+                operator_line: &[],
+                operator_line_start: colon.end,
+                leading: &[],
+                moved_join: CommentGap::Source(LineConstraint::SameLine),
+                separator: LineConstraint::Unconstrained,
+                layout: PropertyHeadLayout::Inline,
+            },
+            key_end,
+            colon,
+            value_start,
+            line_before_colon: false,
+        };
+        if comments.is_empty() {
+            boundary.value.separator = self.line_constraint(colon.end, value_start);
+            return Ok(boundary);
+        }
+        if self
+            .comment_binding(comments, gap, None)
+            .allows_relocation(None)
+        {
+            self.prepare_ordinary_property_packets(&mut boundary, before, after);
+            return Ok(boundary);
+        }
         // An ordinary end-of-line packet leads the complete data property.
         // Own-line packets and semantic/source-bound roles keep their existing owner.
         let header = before
@@ -868,26 +1024,216 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comment.kind == CommentKind::Line
                     || self.line_breaks(colon.end, comment.span.start) != 0
             });
-        Ok(ObjectPropertyBoundary {
-            opening,
-            suppression,
-            header,
-            before,
-            moved,
-            annotation: if promoted {
-                self.emitted_head_annotation(comments)
-            } else {
-                None
-            },
+        let before = if promoted {
+            PropertyBeforeColon::Value(moved)
+        } else {
+            PropertyBeforeColon::Key(before)
+        };
+        boundary.header = PropertyHeader {
+            before: header,
+            after: &[],
+            gap: PropertyHeaderGap::Line,
+        };
+        boundary.before = before;
+        boundary.annotation = if promoted {
+            self.emitted_head_annotation(comments)
+        } else {
+            None
+        };
+        // Bound packets retain their source geometry even when the colon moves.
+        let prefix_start = leading
+            .first()
+            .map_or(value_start, |comment| comment.span.start);
+        let after_colon = operator_line
+            .last()
+            .map_or(colon.end, |comment| comment.span.end);
+        let moved_join = moved.last().map_or(LineConstraint::SameLine, |last| {
+            let before = self.line_breaks(last.span.end, colon.start);
+            let after = self.line_breaks(colon.end, prefix_start);
+            match before.max(after) {
+                0 => LineConstraint::SameLine,
+                count => LineConstraint::NewLine(count),
+            }
+        });
+        boundary.value = PropertyValueHead {
             operator_line,
             operator_line_start,
             leading,
-            key_end,
-            colon,
-            value_start,
-            line_before_colon,
-            line_after_colon,
-        })
+            moved_join: CommentGap::Source(moved_join),
+            separator: self.line_constraint(after_colon, prefix_start),
+            layout: PropertyHeadLayout::required(line_after_colon),
+        };
+        boundary.line_before_colon = line_before_colon;
+        Ok(boundary)
+    }
+
+    fn property_packet(
+        &self,
+        comments: &'ast [Comment],
+        start: u32,
+        end: u32,
+    ) -> PropertyPacket<'ast> {
+        let mut header_count = None;
+        let mut header_breaks = 0;
+        let mut leading_breaks = 0;
+        let mut internal_line = false;
+        let mut grouped_layout = PropertyHeadLayout::Inline;
+        let mut previous: Option<Comment> = None;
+        for (index, &comment) in comments.iter().enumerate() {
+            let edge = previous.map(|previous| {
+                self.prepare_leading_comment_gap(
+                    previous.span,
+                    previous.kind,
+                    comment.span.start,
+                    false,
+                )
+            });
+            let breaks = edge.as_ref().map_or_else(
+                || self.line_breaks(start, comment.span.start),
+                |edge| edge.source_breaks,
+            );
+            if index == 0 {
+                leading_breaks = breaks;
+                if breaks != 0 {
+                    header_count = Some(0);
+                }
+            } else if header_count.is_none() && breaks != 0 {
+                header_count = Some(index);
+                header_breaks = breaks;
+                leading_breaks = breaks;
+            } else if header_count.is_some()
+                && let Some(edge) = edge
+            {
+                internal_line |= breaks != 0;
+                grouped_layout = grouped_layout.max(PropertyHeadLayout::from_gap(edge.gap));
+            }
+            previous = Some(comment);
+        }
+        let exit = previous.map(|previous| {
+            self.prepare_leading_comment_gap(previous.span, previous.kind, end, false)
+        });
+        let trailing_breaks = exit
+            .as_ref()
+            .map_or_else(|| self.line_breaks(start, end), |edge| edge.source_breaks);
+        let header_count = header_count.unwrap_or_else(|| {
+            if trailing_breaks != 0 {
+                header_breaks = trailing_breaks;
+                comments.len()
+            } else {
+                0
+            }
+        });
+        let (header, retained) = comments.split_at(header_count);
+        if !retained.is_empty()
+            && let Some(exit) = exit
+        {
+            grouped_layout = grouped_layout.max(PropertyHeadLayout::from_gap(exit.gap));
+        }
+        PropertyPacket {
+            header,
+            retained,
+            header_breaks,
+            leading_breaks,
+            trailing_breaks,
+            internal_line,
+            grouped_layout,
+        }
+    }
+
+    fn prepare_ordinary_property_packets(
+        &self,
+        boundary: &mut ObjectPropertyBoundary<'ast>,
+        before: &'ast [Comment],
+        after: &'ast [Comment],
+    ) {
+        let before = self.property_packet(before, boundary.key_end, boundary.colon.start);
+        let after = self.property_packet(after, boundary.colon.end, boundary.value_start);
+        let moved = !before.retained.is_empty() && before.leading_breaks != 0;
+        // A now precedes B, so its exit at the old colon replaces B's
+        // operator-leading edge. A removed header supplies neither edge.
+        let moved_join = match before.trailing_breaks {
+            0 if before
+                .retained
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line) =>
+            {
+                CommentGap::LineComment
+            }
+            0 => CommentGap::Source(LineConstraint::SameLine),
+            count => CommentGap::Source(LineConstraint::NewLine(count)),
+        };
+        let source_start = !moved && after.header.is_empty();
+        let leading_layout = if after.retained.is_empty() {
+            PropertyHeadLayout::Inline
+        } else {
+            after.grouped_layout.max(PropertyHeadLayout::required(
+                source_start && after.leading_breaks != 0,
+            ))
+        };
+        let header_end = after
+            .header
+            .last()
+            .map(|comment| (comment, after.header_breaks))
+            .or_else(|| {
+                before
+                    .header
+                    .last()
+                    .map(|comment| (comment, before.header_breaks))
+            });
+        let gap = match header_end {
+            Some((_, breaks)) if breaks > 1 => PropertyHeaderGap::EmptyLine,
+            Some((comment, _)) if comment.kind == CommentKind::Line => PropertyHeaderGap::Line,
+            _ => PropertyHeaderGap::Breakable,
+        };
+        boundary.header = PropertyHeader {
+            before: before.header,
+            after: after.header,
+            gap,
+        };
+        boundary.before = if moved {
+            PropertyBeforeColon::Value(before.retained)
+        } else {
+            PropertyBeforeColon::Key(before.retained)
+        };
+        boundary.annotation = None;
+        let prefix_start = after
+            .retained
+            .first()
+            .map_or(boundary.value_start, |comment| comment.span.start);
+        boundary.value = PropertyValueHead {
+            operator_line: &[],
+            operator_line_start: boundary.colon.end,
+            leading: after.retained,
+            moved_join,
+            separator: self.line_constraint(boundary.colon.end, prefix_start),
+            // Placement follows the complete packet's owned edges; a fresh
+            // start cannot inherit B's old operator-leading source gap.
+            layout: leading_layout.max(PropertyHeadLayout::required(
+                moved && (before.internal_line || moved_join.requires_line()),
+            )),
+        };
+        boundary.line_before_colon = false;
+    }
+
+    fn format_property_header(
+        &self,
+        header: &PropertyHeader<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_comment_run(header.before, CommentRunLayout::Source, writer)?;
+        if let (Some(before), Some(after)) = (header.before.last(), header.after.first()) {
+            self.comment_gap(before.span.end, after.span.start, writer);
+        }
+        self.format_comment_run(header.after, CommentRunLayout::Source, writer)?;
+        match header.gap {
+            PropertyHeaderGap::Breakable => writer.line(),
+            PropertyHeaderGap::Line => writer.hard_line(),
+            PropertyHeaderGap::EmptyLine => {
+                writer.hard_line();
+                writer.hard_line();
+            }
+        }
+        Ok(())
     }
 
     pub(in crate::formatter) fn property_suppression(
@@ -928,18 +1274,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         suppression
-    }
-
-    fn object_key_end(&self, property: ObjectProperty) -> Result<u32, FormatError> {
-        let key_end = property.key(self.ast).span(self.ast).end;
-        if !property.computed(self.ast) {
-            return Ok(key_end);
-        }
-        let gap = Span::new(key_end, property.value(self.ast).span(self.ast).start);
-        let comments = self.comments.in_range(gap);
-        self.find_token(gap, comments, "]")
-            .map(|closing| closing + 1)
-            .ok_or_else(|| self.unsupported("computed object key boundary", property))
     }
 
     fn format_object_key(

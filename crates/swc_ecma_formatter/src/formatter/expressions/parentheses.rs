@@ -80,6 +80,13 @@ pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
     pub(in crate::formatter) binding: CommentBinding,
 }
 
+pub(super) struct OptionalJsxHeadFrame<'ast> {
+    pub(super) span: Span,
+    pub(super) expression: Expr,
+    pub(super) content: Option<ExpressionContent>,
+    pub(super) head: ResolvedExpressionHead<'ast>,
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct EmittedHeadAnnotation {
     comment: Comment,
@@ -1663,6 +1670,94 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn expression_head_has_optional_jsx_frame(
+        &self,
+        has_comments: bool,
+        data: impl FnOnce() -> ExprData,
+        binding: CommentBinding,
+        context: ExpressionContext,
+    ) -> bool {
+        has_comments
+            && matches!(binding, CommentBinding::Unbound)
+            && context.content_mode == ContentMode::Formatted
+            && Self::jsx_expression_has_optional_frame(context)
+            && matches!(data(), ExprData::JsxElement(_) | ExprData::JsxFragment(_))
+    }
+
+    pub(super) fn format_optional_jsx_head_frame(
+        &mut self,
+        frame: OptionalJsxHeadFrame<'ast>,
+        context: ExpressionContext,
+        mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+        prefix: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<(), FormatError>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let OptionalJsxHeadFrame {
+            span,
+            expression,
+            content: prepared,
+            head: ResolvedExpressionHead { head, binding },
+        } = frame;
+        let head = NodeHead {
+            layout: CommentRunLayout::GroupedLeading(head.gap_end.unwrap_or(head.content_start)),
+            gap_end: None,
+            ..head
+        };
+        let source_tail = prepared
+            .as_ref()
+            .and_then(|content| content.parentheses)
+            .and_then(|removed| removed.tail)
+            .filter(|_| {
+                context.source_tail_owner == SourceTailOwner::Enclosure
+                    && context.tail_owner != TailOwner::ParentOperation
+            });
+        self.format_jsx_expression(span, context, writer, |formatter, writer| {
+            prefix(formatter, writer)?;
+            let tail = formatter.format_expression_leading_prepared(
+                expression,
+                prepared,
+                ResolvedExpressionHead { head, binding },
+                context.inside_parentheses(),
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+            let tail = formatter.format_parentheses_tail(
+                context.source_parentheses_tail,
+                tail,
+                array_comments.as_deref_mut(),
+                writer,
+            )?;
+            let tail = if let Some(owner) = source_tail
+                && tail.is_some()
+            {
+                if context.tail_boundary == TailBoundary::Separated {
+                    writer.break_parent();
+                }
+                let tail = formatter.capture_expression_tail(owner.span, tail)?;
+                formatter.format_expression_tail_with_array_comments(
+                    tail,
+                    array_comments.as_deref_mut(),
+                    writer,
+                )?;
+                None
+            } else {
+                tail
+            };
+            if context.tail_owner == TailOwner::ParentOperation
+                || context.source_tail_owner == SourceTailOwner::Enclosure
+            {
+                Ok(tail)
+            } else {
+                formatter.format_expression_tail_with_array_comments(
+                    tail,
+                    array_comments,
+                    writer,
+                )?;
+                Ok(None)
+            }
+        })
+    }
+
     fn format_expression_head_enclosure(
         &mut self,
         expression: Expr,
@@ -1697,77 +1792,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
         }
-        if !head.comments.is_empty()
-            && matches!(binding, CommentBinding::Unbound)
-            && context.content_mode == ContentMode::Formatted
-            && Self::jsx_expression_has_optional_frame(context)
-            && matches!(
+        if self.expression_head_has_optional_jsx_frame(
+            !head.comments.is_empty(),
+            || {
                 prepared
                     .get_or_insert_with(|| self.expression_content(expression))
-                    .data,
-                ExprData::JsxElement(_) | ExprData::JsxFragment(_)
-            )
-        {
-            let span = Span::new(head.comments[0].span.start, expression.span(self.ast).end);
-            let head = NodeHead {
-                layout: CommentRunLayout::GroupedLeading(
-                    head.gap_end.unwrap_or(head.content_start),
-                ),
-                gap_end: None,
-                ..head
-            };
-            let source_tail = prepared
-                .as_ref()
-                .and_then(|content| content.parentheses)
-                .and_then(|removed| removed.tail)
-                .filter(|_| {
-                    context.source_tail_owner == SourceTailOwner::Enclosure
-                        && context.tail_owner != TailOwner::ParentOperation
-                });
-            return self.format_jsx_expression(span, context, writer, |formatter, writer| {
-                let tail = formatter.format_expression_leading_prepared(
+                    .data
+            },
+            binding,
+            context,
+        ) {
+            return self.format_optional_jsx_head_frame(
+                OptionalJsxHeadFrame {
+                    span: Span::new(head.comments[0].span.start, expression.span(self.ast).end),
                     expression,
-                    prepared,
-                    ResolvedExpressionHead { head, binding },
-                    context.inside_parentheses(),
-                    array_comments.as_deref_mut(),
-                    writer,
-                )?;
-                let tail = formatter.format_parentheses_tail(
-                    context.source_parentheses_tail,
-                    tail,
-                    array_comments.as_deref_mut(),
-                    writer,
-                )?;
-                let tail = if let Some(owner) = source_tail
-                    && tail.is_some()
-                {
-                    if context.tail_boundary == TailBoundary::Separated {
-                        writer.break_parent();
-                    }
-                    let tail = formatter.capture_expression_tail(owner.span, tail)?;
-                    formatter.format_expression_tail_with_array_comments(
-                        tail,
-                        array_comments.as_deref_mut(),
-                        writer,
-                    )?;
-                    None
-                } else {
-                    tail
-                };
-                if context.tail_owner == TailOwner::ParentOperation
-                    || context.source_tail_owner == SourceTailOwner::Enclosure
-                {
-                    Ok(tail)
-                } else {
-                    formatter.format_expression_tail_with_array_comments(
-                        tail,
-                        array_comments,
-                        writer,
-                    )?;
-                    Ok(None)
-                }
-            });
+                    content: prepared,
+                    head: ResolvedExpressionHead { head, binding },
+                },
+                context,
+                array_comments,
+                writer,
+                |_, _| Ok(()),
+            );
         }
         // Added readability pairs have their own placement proof; the source
         // binding still owns ASI and diagnostic line constraints.
