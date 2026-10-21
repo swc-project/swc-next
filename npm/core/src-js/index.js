@@ -1,9 +1,11 @@
 import {
   langFromPath,
+  parseTransformSync as __parseTransformSync,
   parseSync as __parseSync,
   printSync as __printSync,
   sourceTypeFromPath,
   transformAstSync as __transformAstSync,
+  transformPrintSync as __transformPrintSync,
   transformSync as __transformSync,
 } from "./binding.js";
 import { createWalker } from "@swc-next/walker";
@@ -70,7 +72,7 @@ export function transformSync(source, options) {
   };
   const transformOptions = encodeTransformOptions(options?.transform);
   const codegenOptions = encodeCodegenOptions(options?.codegen);
-  const plugins = compilePlugins(options?.jsPlugins);
+  const plugins = compilePlugins(options?.plugin);
 
   if (plugins.before.length === 0 && plugins.after.length === 0) {
     const result = decodeTransformOutput(__transformSync(
@@ -84,19 +86,46 @@ export function transformSync(source, options) {
     return result;
   }
 
-  const parsed = parseSync(source, parserOptions);
-  throwOnDiagnostics(parsed.diagnostics, filename);
-  const program = parsed.program;
-  for (const plugin of plugins.before) plugin.walk(program);
+  let transformed;
+  let diagnostics;
+  if (plugins.before.length === 0) {
+    const sourceBytes = encodeSource(source);
+    transformed = decode(
+      __parseTransformSync(
+        sourceBytes,
+        source.length,
+        encodeParserOptions(parserOptions),
+        transformOptions,
+      ),
+      source,
+      sourceBytes,
+    );
+    diagnostics = transformed.diagnostics;
+  } else {
+    const parsed = parseSync(source, parserOptions);
+    throwOnDiagnostics(parsed.diagnostics, filename);
+    const program = parsed.program;
+    for (const plugin of plugins.before) plugin.walk(program);
+    const buffer = encode(program, parsed.meta);
 
-  // The Rust transform owns its AST and returns all strings in the extra pool.
-  // Spans remain UTF-16 offsets in the input, independent of the string pool.
-  const transformed = decode(
-    __transformAstSync(encode(program, parsed.meta), transformOptions),
-    "",
-    emptySourceBytes,
-  );
-  const diagnostics = [...parsed.diagnostics, ...transformed.diagnostics];
+    if (plugins.after.length === 0) {
+      const result = decodeTransformOutput(
+        __transformPrintSync(buffer, transformOptions, codegenOptions),
+      );
+      const diagnostics = [...parsed.diagnostics, ...result.diagnostics];
+      throwOnDiagnostics(diagnostics, filename);
+      return { code: result.code, diagnostics };
+    }
+
+    // A transferred AST has an empty source and strings in the extra pool.
+    // Its spans are already UTF-16 offsets in the original input.
+    transformed = decode(
+      __transformAstSync(buffer, transformOptions),
+      "",
+      emptySourceBytes,
+    );
+    diagnostics = [...parsed.diagnostics, ...transformed.diagnostics];
+  }
   throwOnDiagnostics(diagnostics, filename);
   const transformedProgram = transformed.program;
   for (const plugin of plugins.after) plugin.walk(transformedProgram);
@@ -150,7 +179,7 @@ function decodeTransformOutput(buffer) {
 function compilePlugins(plugins) {
   const phases = { before: [], after: [] };
   if (plugins === undefined) return phases;
-  if (!Array.isArray(plugins)) throw new TypeError("jsPlugins must be an array");
+  if (!Array.isArray(plugins)) throw new TypeError("plugin must be an array");
   for (const plugin of plugins) {
     if (plugin === null || typeof plugin !== "object" || Array.isArray(plugin)) {
       throw new TypeError("Each JS plugin must be an object");

@@ -81,8 +81,10 @@ export interface TransformOptions {
   parser?: Omit<ParserOptions, "semanticErrors"> | null;
   transform?: TransformPassOptions | null;
   codegen?: CodegenOptions | null;
-  /** Before plugins run first, then Rust transforms, then after plugins. */
-  jsPlugins?: readonly JsPlugin[];
+  /** Before plugins run first, then Rust transforms, then after plugins.
+   * Stages without plugins stay in Rust without transferring their AST.
+   */
+  plugin?: readonly JsPlugin[];
 }
 
 export interface TransformOutput extends CodegenOutput {
