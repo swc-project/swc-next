@@ -14,13 +14,13 @@ Hooks are named after node types. A function runs when the walker enters that no
 ```js
 import { parseSync, printSync, walk } from "@swc-next/core";
 
-const { program, meta } = parseSync("debugger; const answer = 42;");
+const { program } = parseSync("debugger; const answer = 42;");
 walk(program, {
   DebuggerStatement(node, context) {
     context.remove();
   },
 });
-console.log(printSync(program, {}, meta).code); // const answer = 42;
+console.log(printSync(program).code); // const answer = 42;
 ```
 
 Use context methods for structural edits. Simple values, such as an identifier's `name`, can be edited directly. Hooks must be synchronous.

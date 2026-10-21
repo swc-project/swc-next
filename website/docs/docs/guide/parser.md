@@ -12,12 +12,12 @@ Use `parseSync` to turn source text into an AST compatible with [ESTree](https:/
 ```js
 import { parseSync } from "@swc-next/core";
 
-const { program, diagnostics, meta } = parseSync("const answer = 42;");
+const { program, diagnostics } = parseSync("const answer = 42;");
 console.log(program.type); // Program
 console.log(diagnostics); // []
 ```
 
-Inspect diagnostics before transforming or printing recovered syntax. Keep `meta` alongside the AST for [Codegen](/guide/codegen).
+Inspect diagnostics before transforming or printing recovered syntax.
 
 ## Parse TypeScript or JSX
 

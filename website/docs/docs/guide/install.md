@@ -18,37 +18,34 @@ npm install @swc-next/core
 It provides `parseSync`, `printSync`, and `walk`:
 
 ```js
-import { parseSync, printSync, walk } from "@swc-next/core";
+import { parseSync, printSync } from "@swc-next/core";
+
+const { program } = parseSync("const answer = 42;");
+console.log(printSync(program).code); // const answer = 42;
 ```
 
 Use ESM imports, for example in an `.mjs` file. See the [Core API](/api/javascript/core) for its exports.
 
 ## Browser WebAssembly
 
-Install the browser package and, if you need AST traversal, the standalone walker:
+Install the browser package:
 
 ```sh
-npm install @swc-next/core-browser @swc-next/walker
+npm install @swc-next/core-browser
 ```
 
 Call `init()` once before parsing or printing. It loads the WebAssembly binary bundled with the package.
 
 ```js
 import init, { parseSync, printSync } from "@swc-next/core-browser";
-import { walk } from "@swc-next/walker";
 
 await init();
 
-const { program, meta } = parseSync("debugger; const answer = 42;");
-walk(program, {
-  DebuggerStatement(node, context) {
-    context.remove();
-  },
-});
-console.log(printSync(program, {}, meta).code);
+const { program } = parseSync("const answer = 42;");
+console.log(printSync(program).code); // const answer = 42;
 ```
 
-Use a bundler that serves the package's `.wasm` asset. The walker is pure JavaScript and does not require initialization. See the [Browser API](/api/javascript/core#browser-webassembly) for initialization and runtime details.
+Use a bundler that serves the package's `.wasm` asset. For AST traversal, add the standalone `@swc-next/walker` package. See the [Browser API](/api/javascript/core#browser-webassembly) for initialization and runtime details.
 
 ## Focused packages
 

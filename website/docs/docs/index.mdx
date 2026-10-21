@@ -1,44 +1,34 @@
 ---
 title: Overview
-description: Build JavaScript and TypeScript tools on a fast, extensible Rust foundation.
+description: A JavaScript and TypeScript toolchain focused on performance, JavaScript extensibility, and correctness.
 ---
 
-import { IntroActions, Pipeline, StartCards } from '../theme/Overview';
+# SWC Next
 
-<div className="intro-label">THE NEXT CHAPTER OF SWC</div>
+SWC Next is a fast JavaScript and TypeScript toolchain written in Rust, focused on performance and JavaScript extensibility.
 
-# Build with SWC Next.
+## Features
 
-<p className="intro-lead">A fast, extensible JavaScript and TypeScript toolchain, written in Rust. The building blocks for your next developer tool.</p>
+- **Fast.** Around **3× faster than SWC** in [native parser benchmarks](/guide/benchmark#rust-parse).
+- **JavaScript plugins.** Inspect and transform [ESTree](https://github.com/estree/estree)-compatible ASTs using JavaScript.
+- **Correct.** Passes **100% of the Test262 parser conformance suite**. See [results](/guide/testing#parser).
+- **Node.js and browsers.** Native bindings for Node.js and WebAssembly for the browser.
 
-<IntroActions />
-
-<Pipeline />
-
-## Find your starting point
-
-Use JavaScript to parse, inspect, edit, and print ASTs in Node.js or the browser.
-
-<StartCards />
-
-## One small program. A place to start.
-
-Install the core package to parse and print your first program.
+## Get started
 
 ```sh
 npm install @swc-next/core
 ```
 
+Parse a program and print it back to source:
+
 ```js title="index.mjs"
 import { parseSync, printSync } from "@swc-next/core";
 
-const { program, diagnostics, meta } = parseSync("const answer = 42;");
-console.log(diagnostics);
-console.log(printSync(program, {}, meta).code);
+const { program } = parseSync("const answer = 42;");
+console.log(printSync(program).code); // const answer = 42;
 ```
 
-## A different foundation
+See [Install](/guide/install) for browser setup, or explore the [JavaScript API](/api/javascript/core).
 
-A compact, flat AST sits at the center of SWC Next. The JavaScript API exposes an AST compatible with [ESTree](https://github.com/estree/estree), with TypeScript and JSX nodes following typescript-eslint's AST format.
-
-[Explore the architecture](/architecture/flat-ast) or [see benchmarks](/guide/benchmark).
+SWC Next is under development. See [Project status](/guide/status) for available features and the [Roadmap](https://github.com/swc-project/swc-next/issues/181) for planned work.
