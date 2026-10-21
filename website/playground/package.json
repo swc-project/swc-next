@@ -20,6 +20,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@fontsource-variable/inter": "catalog:",
     "@rsbuild/core": "^2.2.13",
     "@rsbuild/plugin-react": "^2.1.1",
     "@tailwindcss/postcss": "^4.3.3",

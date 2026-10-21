@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter/standard.css";
+@import "@fontsource-variable/inter/standard-italic.css";
+@import "../../styles/typography.css";
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
@@ -67,10 +70,12 @@
   --color-ast-number: var(--ast-number);
   --color-success: var(--green);
   --color-error: var(--red);
-  --font-sans:
-    "Inter Variable", Inter, "SF Pro Display", -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-sans: var(--swc-font-sans);
+  --font-mono: var(--swc-font-mono);
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.5;
 }
 
 @layer base {

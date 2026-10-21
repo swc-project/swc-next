@@ -25,11 +25,6 @@ export function Layout() {
           <span className="site-brand__docs">Docs</span>
         </Link>
       }
-      afterNavMenu={
-        <a className="playground-link" href="https://play.next.swc.rs" target="_blank" rel="noreferrer">
-          Playground <ArrowUpRight size={13} />
-        </a>
-      }
       beforeDocContent={
         <div className="doc-eyebrow">
           <BookOpen size={13} />
@@ -46,7 +41,6 @@ export function Layout() {
           <a href="https://github.com/swc-project/swc-next" target="_blank" rel="noreferrer">
             <Code2 size={15} /> GitHub repository
           </a>
-          <Link href="/resources/roadmap"><span className="status-dot" /> A toolchain in progress</Link>
         </div>
       }
     />
