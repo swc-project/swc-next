@@ -48,12 +48,3 @@ export function StartCards() {
     </div>
   );
 }
-
-export function ProjectNote() {
-  return (
-    <div className="project-note rp-not-doc">
-      <span className="status-dot" />
-      <div><strong>Built in the open. Moving forward.</strong><p>SWC Next is an active rewrite of SWC. Check the current capabilities and API boundaries before integrating.</p><Link href="/guide/status">View project status <ArrowRight size={13} /></Link></div>
-    </div>
-  );
-}

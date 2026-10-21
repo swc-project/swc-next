@@ -11,7 +11,7 @@ const guide = [
         "link": "/guide/status"
       },
       {
-        "text": "Compatibility with SWC",
+        "text": "Compatibility",
         "link": "/guide/compatibility"
       }
     ]

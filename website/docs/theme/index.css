@@ -177,11 +177,6 @@ body { letter-spacing: normal; line-height: 1.5; }
 .start-card__title { display: flex; align-items: center; justify-content: space-between; color: var(--rp-c-text-0); font-weight: 510; font-size: 15px; }
 .start-card__title svg { color: var(--rp-c-text-3); }
 .rp-doc .start-card p { margin: 7px 0 0; font-size: 14px; line-height: 22px; color: var(--rp-c-text-2); }
-.project-note { display: flex; align-items: flex-start; gap: 12px; border-top: 1px solid var(--rp-c-divider); padding-top: 24px; margin-top: 36px; }
-.project-note > .status-dot { margin-top: 7px; }
-.project-note strong { font-size: 14px; font-weight: 510; color: var(--rp-c-text-1); }
-.rp-doc .project-note p { font-size: 14px; color: var(--rp-c-text-2); margin: 8px 0; line-height: 22px; }
-.project-note a { display: inline-flex; align-items: center; gap: 7px; color: var(--site-accent); font-size: 14px; }
 
 .team-members { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-block: 28px; }
 .team-member { display: flex; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--rp-c-divider); border-radius: 7px; background: var(--site-card); transition: border-color .15s, background .15s; }
