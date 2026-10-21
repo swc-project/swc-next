@@ -7,6 +7,8 @@ description: Implementation status across the JavaScript packages and native com
 
 Parsing, AST editing, and printing are available in the JavaScript packages. Other stages of the compiler have different levels of implementation and JavaScript exposure.
 
+The [Roadmap](https://github.com/swc-project/swc-next/issues/181) tracks upcoming work. [Conformance results](/guide/testing#conformance) report how the current implementation performs against upstream test suites.
+
 ## Feature status
 
 The JavaScript column covers exported package APIs; Rust covers the native compiler components.

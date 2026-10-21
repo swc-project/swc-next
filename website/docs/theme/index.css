@@ -273,6 +273,12 @@ body { letter-spacing: normal; line-height: 1.5; }
 .benchmark-version { margin-top: 4px; color: var(--rp-c-text-2); }
 .benchmark-table td { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .benchmark-case details { margin-top: 20px; }
+.conformance-table { overflow-x: auto; margin-block: 24px; }
+.conformance-table table { margin: 0; font-size: 14px; }
+.conformance-table th, .conformance-table td { min-width: 0; padding: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.conformance-table th[scope="row"] { font-weight: 500; text-align: left; }
+.conformance-count { display: flex; flex-direction: column; gap: 3px; }
+.conformance-count > span:last-child { color: var(--rp-c-text-2); font-size: 13px; }
 @media (width <= 768px) {
   .benchmark-legend { gap: 20px; }
   .benchmark-legend__item { min-width: 0; flex: 1 1 140px; }

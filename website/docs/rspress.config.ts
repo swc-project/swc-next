@@ -1,11 +1,17 @@
 import { defineConfig } from "@rspress/core";
 import { loadBenchmarkReport } from "./benchmark-report";
+import { loadConformanceReport } from "./conformance-report";
 import { sidebar } from "./navigation";
 
 export default defineConfig({
   root: "docs",
   builderConfig: {
-    source: { define: { BENCHMARK_REPORT: JSON.stringify(loadBenchmarkReport()) } },
+    source: {
+      define: {
+        BENCHMARK_REPORT: JSON.stringify(loadBenchmarkReport()),
+        CONFORMANCE_REPORT: JSON.stringify(loadConformanceReport()),
+      },
+    },
   },
   title: "SWC Next",
   description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",

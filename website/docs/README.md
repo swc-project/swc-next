@@ -52,6 +52,12 @@ replaces it with full Hyperfine exports.
 
 ## Existing documents
 
+The Testing page reads the headers of `tasks/testsuite/snapshots/*.snap` during
+the build and renders conformance counts by runner and suite. It uses the
+checked-in results without running the suites or requiring external fixtures.
+Update snapshots with the commands in the [test suite README](../../tasks/testsuite/README.md),
+then rebuild the site. Missing or inconsistent summary counts fail the build.
+
 The Performance page is in `docs/guide/publish-results.mdx`. The flat AST design
 document is in `docs/architecture/flat-ast.md`. Shared images are in
 `docs/public/images/`.

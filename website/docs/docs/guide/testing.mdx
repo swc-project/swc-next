@@ -1,0 +1,44 @@
+---
+title: Testing
+description: Conformance results for parsing, code generation, transformations, ESTree, and codecs.
+---
+
+import { ConformanceTable } from "../../theme/Conformance";
+
+# Testing
+
+## Conformance
+
+### Parser
+
+- **Positive passed**: valid fixtures that parse and meet their early-error expectations, divided by all positive fixtures.
+- **Negative passed**: invalid fixtures that produce a parse or semantic early error, divided by all negative fixtures.
+
+<ConformanceTable kind="parser" />
+
+### Code generation
+
+- **Positive passed**: printing and reparsing preserve the AST, and printing again produces identical code.
+
+<ConformanceTable kind="codegen" />
+
+### Transformations
+
+- **Positive passed**: normalized output matches the expected output. Without an output baseline, repeated transformation must produce identical code; declaration inputs must emit no JavaScript.
+- **Skipped**: unsupported options, or inputs/outputs that cannot be parsed, checked, or normalized. Included in the positive total, but not passes.
+
+<ConformanceTable kind="transform" />
+
+### ESTree
+
+- **AST parsed**: AST generation and serialization complete for every source unit in a fixture.
+- **AST matched**: every unit's AST matches its reference. Rates count fixtures.
+
+<ConformanceTable kind="estree" />
+
+### Codec
+
+- **Codec passed**: a source unit's JavaScript decode/encode path prints exactly the same code as the native path. Each source unit counts separately.
+- **Excluded**: units rejected with parser error diagnostics. Exceptions and output mismatches count as not passed.
+
+<ConformanceTable kind="codec" />
