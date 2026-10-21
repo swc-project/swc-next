@@ -182,18 +182,19 @@ fn write_value(
         }
     };
 
-    if let Some((_, optional)) = string_type(ty, schema) {
+    if let Some((string, optional)) = string_type(ty, schema) {
         let encoder = "encStr";
+        let wtf8 = if string == "AstWtf8" { ", true" } else { "" };
         let destination = buffer_destination(location);
         if optional {
             writeln!(output, "    if ({value} == null) {{").unwrap();
             writeln!(output, "      {}", setter("U32", 0, "NULL")).unwrap();
             writeln!(output, "      {}", setter("U32", 4, "0")).unwrap();
             writeln!(output, "    }} else {{").unwrap();
-            writeln!(output, "      {encoder}({value}, {destination});").unwrap();
+            writeln!(output, "      {encoder}({value}, {destination}{wtf8});").unwrap();
             output.push_str("    }\n");
         } else {
-            writeln!(output, "    {encoder}({value}, {destination});").unwrap();
+            writeln!(output, "    {encoder}({value}, {destination}{wtf8});").unwrap();
         }
         return;
     }
@@ -995,6 +996,18 @@ const writeUtf8 = (() => {
 const HEADER_SIZE = 40;
 const NATIVE_LITTLE_ENDIAN =
   new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+const isWellFormed = String.prototype.isWellFormed
+  ? value => value.isWellFormed()
+  : value => {
+      for (let index = 0; index < value.length; index++) {
+        const code = value.charCodeAt(index);
+        if (code >= 0xd800 && code <= 0xdbff) {
+          const next = value.charCodeAt(++index);
+          if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+        } else if (code >= 0xdc00 && code <= 0xdfff) return false;
+      }
+      return true;
+    };
 
 const ENUMS = Object.freeze({
   Lang: ["js", "ts", "jsx", "tsx", "dts"],
@@ -1058,6 +1071,7 @@ function encode(program, meta = {}) {
   let poolCapacity = Math.max(4096, (sizeHint / 8) | 0);
   let pool = new Uint8Array(poolCapacity);
   let poolLength = 0;
+  let hasWtf8 = false;
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
@@ -1148,7 +1162,7 @@ function encode(program, meta = {}) {
     view.setUint32(offset + 4, start + length, true);
   }
 
-  function encStr(value, view, offset) {
+  function encStr(value, view, offset, wtf8 = false) {
     if (value == null || value === "") {
       view.setUint32(offset, 0, true);
       view.setUint32(offset + 4, 0, true);
@@ -1174,7 +1188,11 @@ function encode(program, meta = {}) {
       }
     }
     ensurePool(length * 3);
-    const written = writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
+    const useWtf8 = wtf8 && !isWellFormed(value);
+    const written = useWtf8
+      ? writeWtf8(value, start)
+      : writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
+    hasWtf8 ||= useWtf8;
     poolLength += written;
     if (firstNonAsciiPos === NULL && written !== length) {
       let index = 0;
@@ -1183,6 +1201,36 @@ function encode(program, meta = {}) {
     }
     view.setUint32(offset, start, true);
     view.setUint32(offset + 4, poolLength, true);
+  }
+
+  function writeWtf8(value, start) {
+    let offset = start;
+    for (let index = 0; index < value.length; index++) {
+      let code = value.charCodeAt(index);
+      if (code < 0x80) {
+        pool[offset++] = code;
+      } else if (code < 0x800) {
+        pool[offset++] = 0xc0 | (code >> 6);
+        pool[offset++] = 0x80 | (code & 0x3f);
+      } else {
+        if (code >= 0xd800 && code <= 0xdbff) {
+          const next = value.charCodeAt(index + 1);
+          if (next >= 0xdc00 && next <= 0xdfff) {
+            code = 0x10000 + ((code - 0xd800) << 10) + next - 0xdc00;
+            index++;
+            pool[offset++] = 0xf0 | (code >> 18);
+            pool[offset++] = 0x80 | ((code >> 12) & 0x3f);
+            pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
+            pool[offset++] = 0x80 | (code & 0x3f);
+            continue;
+          }
+        }
+        pool[offset++] = 0xe0 | (code >> 12);
+        pool[offset++] = 0x80 | ((code >> 6) & 0x3f);
+        pool[offset++] = 0x80 | (code & 0x3f);
+      }
+    }
+    return offset - start;
   }
 
   function ensurePool(additionalBytes) {
@@ -1328,8 +1376,10 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
 
   view.setUint32(0, nodeCount, true);
   view.setUint32(4, extraCount, true);
-  view.setUint32(8, 0, true);
-  view.setUint32(12, poolLength, true);
+  // A source section must be valid UTF-8. Move strings containing lone
+  // surrogates into the extra WTF-8 pool without changing any string offset.
+  view.setUint32(8, hasWtf8 ? poolLength : 0, true);
+  view.setUint32(12, hasWtf8 ? 0 : poolLength, true);
   view.setUint32(16, 0, true);
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
@@ -1337,7 +1387,7 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
   const sourceType = enumValue("SourceType", meta.sourceType ?? program.sourceType);
   const lang = meta.lang ?? (isTs ? "ts" : "js");
   view.setUint32(32, sourceType | (enumValue("Lang", lang) << 2), true);
-  view.setUint32(36, firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
+  view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   if (NATIVE_LITTLE_ENDIAN) {
     bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);

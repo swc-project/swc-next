@@ -45,6 +45,25 @@ test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
 });
 
+test("printSync preserves lone surrogates in string values", () => {
+  for (const lang of ["js", "ts"]) {
+    const { program } = parseSync('const text = "";', { lang });
+    const value = "\uD800é😀\0\uDC00";
+    program.body[0].declarations[0].init.value = value;
+
+    const buffer = encode(program, { lang });
+    const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    assert.ok(header.getUint32(8, true) > 0);
+    assert.equal(header.getUint32(12, true), 0);
+    const printed = printSync(program, {}, { lang });
+    assert.equal(parseSync(printed.code).program.body[0].declarations[0].init.value, value);
+
+    const escaped = parseSync('const text = "\\uD800";', { lang }).program;
+    const roundtrip = parseSync(printSync(escaped, {}, { lang }).code).program;
+    assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
+  }
+});
+
 test("printSync preserves special numeric values across FFI", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].init.value = -0;
@@ -220,6 +239,7 @@ function encodeWithBufferMode(program, mode) {
     import { Buffer as NodeBuffer } from "node:buffer";
     import { readFileSync } from "node:fs";
     const { program, mode } = JSON.parse(readFileSync(0, "utf8"));
+    if (mode === "absent") delete String.prototype.isWellFormed;
     globalThis.Buffer = mode === "absent" ? undefined
       : mode === "missing" ? { prototype: {} }
       : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
@@ -233,7 +253,7 @@ function encodeWithBufferMode(program, mode) {
   return JSON.parse(output).map(value => Uint8Array.from(Buffer.from(value, "base64")));
 }
 
-test("encoder UTF-8 fallback matches Node", () => {
+test("encoder string fallbacks match Node", () => {
   const { program } = parseSync('"prefix"; "value"; "tail";');
   program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF";
   program.body[1].expression.raw = null;
