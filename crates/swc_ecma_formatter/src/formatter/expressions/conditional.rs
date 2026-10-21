@@ -10,6 +10,7 @@ use super::{
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
 
@@ -70,6 +71,7 @@ struct ConditionalOperand {
     original: Expr,
     content: ExpressionContent,
     source_end: u32,
+    operand_end: u32,
     content_start: u32,
 }
 
@@ -96,16 +98,23 @@ struct ConditionalBoundary<'ast> {
     source_range: Span,
     comments: &'ast [Comment],
     next_binding: CommentBinding,
-    source: Option<ConditionalSourceBoundary>,
+    source: Option<ConditionalSourceBoundary<'ast>>,
 }
 
-struct ConditionalSourceBoundary {
+struct ConditionalSourceBoundary<'ast> {
     operator_start: u32,
     binding: CommentBinding,
     previous_mode: ContentMode,
     next_mode: ContentMode,
+    suppression: Option<ConditionalSuppression<'ast>>,
     before_operator: LineConstraint,
     after_operator: LineConstraint,
+}
+
+/// Source suppression targets do not change when an inner envelope releases comments.
+struct ConditionalSuppression<'ast> {
+    previous: &'ast [Comment],
+    following: &'ast [Comment],
 }
 
 impl ConditionalBoundary<'_> {
@@ -291,9 +300,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn conditional_operand(&self, original: Expr) -> ConditionalOperand {
         let content = self.expression_content(original);
+        let mut operand = original;
+        if self.has_suppression {
+            while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(operand) {
+                operand = pair.expression(self.ast);
+            }
+        }
         ConditionalOperand {
             original,
             source_end: original.span(self.ast).end,
+            operand_end: operand.span(self.ast).end,
             content_start: content.expression.span(self.ast).start,
             content,
         }
@@ -323,6 +339,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let test_chain = self.conditional_test_chain(chain, test.original);
         let write_test = |writer: &mut Writer<'ast>| {
+            let mut test_context = ExpressionContext::at(ExpressionPosition::ConditionalTest)
+                .with_parent_head(context)
+                .with_operand_indent(operand_indent)
+                .with_conditional_chain(test_chain)
+                .with_content_mode(question.previous_mode())
+                .with_tail_owner(TailOwner::ParentOperation);
+            if question.previous_mode() == ContentMode::Verbatim {
+                test_context.ignored_parentheses_closing =
+                    Some(Span::new(test.operand_end, test.source_end));
+            }
             self.format_prepared_expression_with_leading_comments(
                 test.original,
                 test.content,
@@ -332,12 +358,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     layout: CommentRunLayout::Source,
                     gap_end: None,
                 },
-                ExpressionContext::at(ExpressionPosition::ConditionalTest)
-                    .with_parent_head(context)
-                    .with_operand_indent(operand_indent)
-                    .with_conditional_chain(test_chain)
-                    .with_content_mode(question.previous_mode())
-                    .with_tail_owner(TailOwner::ParentOperation),
+                test_context,
                 writer,
             )
         };
@@ -429,12 +450,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // Placement around punctuation does not determine the ignored operand:
         // own-line packets lead the next operand, while end-of-line packets
         // after the operator still trail the preceding operand.
-        let (trailing, leading) = self.split_separator_comments(
-            comments,
-            before_count,
-            previous.source_end,
-            Some(next.content_start),
-        );
+        let suppression = (self.content_mode(comments) == ContentMode::Verbatim).then(|| {
+            self.conditional_suppression(
+                comments,
+                before_count,
+                previous.operand_end,
+                next.content_start,
+            )
+        });
+        let (trailing, leading) = match &suppression {
+            Some(suppression) => (suppression.previous, suppression.following),
+            None => self.split_separator_comments(
+                comments,
+                before_count,
+                previous.source_end,
+                Some(next.content_start),
+            ),
+        };
         let previous_binding = self.comment_run_binding(before.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.is_ordinary() || semantics.suppression {
@@ -480,6 +512,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let previous_mode = self.content_mode(trailing);
         let mut before_operator = self.line_constraint(previous_end, operator_start);
         if previous_mode == ContentMode::Verbatim
+            && self
+                .ignored_expression_retained_parentheses(
+                    previous.original,
+                    if operator == "?" {
+                        ExpressionPosition::ConditionalTest
+                    } else {
+                        ExpressionPosition::ConditionalConsequent
+                    },
+                )
+                .is_some_and(|frame| self.line_breaks(previous.operand_end, frame.end) != 0)
+            && trailing.last().is_some_and(|comment| {
+                comment.span.end <= operator_start
+                    && self.line_breaks(comment.span.end, operator_start) == 0
+            })
+        {
+            // A retained wrapper can put its real operand on an earlier line.
+            // Keep an inline trailing packet inline even when that frame expands,
+            // so it cannot reattach to the following conditional operand.
+            before_operator = LineConstraint::SameLine;
+        }
+        if previous_mode == ContentMode::Verbatim
             && !binding.allows_relocation(None)
             && self.line_breaks(previous.source_end, operator_start) == 0
             && trailing.iter().any(|&comment| {
@@ -500,10 +553,88 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 binding,
                 previous_mode,
                 next_mode: self.content_mode(leading),
+                suppression,
                 before_operator,
                 after_operator: self.line_constraint(operator_start + 1, next_start),
             }),
         })
+    }
+
+    fn conditional_suppression(
+        &self,
+        comments: &'ast [Comment],
+        before_operator: usize,
+        operand_end: u32,
+        following_start: u32,
+    ) -> ConditionalSuppression<'ast> {
+        let mut trailing = 0;
+        let mut offset = 0;
+        for run in comments.chunk_by(|left, right| {
+            self.line_breaks(left.span.end, right.span.start) == 0
+                && self
+                    .source(Span::new(left.span.end, right.span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+        }) {
+            let first = run[0];
+            let last = run[run.len() - 1];
+            let end = offset + run.len();
+            let next = comments
+                .get(end)
+                .map_or(following_start, |comment| comment.span.start);
+            let ends_line = self.comment_run_ends_line(last, next);
+            if self.source_position_starts_line(first.span.start)
+                || ends_line && self.line_breaks(operand_end, first.span.start) != 0
+            {
+                break;
+            }
+            if offset < before_operator || ends_line {
+                trailing = end;
+            }
+            if ends_line {
+                break;
+            }
+            offset = end;
+        }
+        let (previous, following) = comments.split_at(trailing);
+        ConditionalSuppression {
+            previous,
+            following,
+        }
+    }
+
+    fn split_conditional_suppression_comments(
+        &self,
+        suppression: &ConditionalSuppression<'ast>,
+        comments: &'ast [Comment],
+        source_range: Span,
+        source_end: u32,
+        before_operator: usize,
+    ) -> (&'ast [Comment], &'ast [Comment]) {
+        let inner_count =
+            comments.partition_point(|comment| comment.span.end <= source_range.start);
+        let inner = &comments[..inner_count];
+        if !suppression.previous.is_empty()
+            || self.diagnostic_range_is_sensitive(Span::new(source_end, source_range.start))
+            || inner
+                .iter()
+                .any(|&comment| !self.comment_semantics(comment).is_ordinary())
+        {
+            let end = suppression
+                .previous
+                .last()
+                .map_or(source_range.start, |comment| comment.span.end);
+            return comments.split_at(comments.partition_point(|comment| comment.span.end <= end));
+        }
+        // Classify the complete emitted run, while the source packet keeps its
+        // prepared following-operand target regardless of ordinary placement.
+        let (trailing, _) = self.split_separator_comments(
+            comments,
+            before_operator,
+            source_end,
+            Some(source_range.end),
+        );
+        comments.split_at(trailing.len().min(inner_count))
     }
 
     fn resolve_conditional_boundary(
@@ -528,18 +659,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             None => boundary.comments,
         };
-        let (trailing, leading, next_mode, before_operator, after_operator) = match boundary.source
+        let suppression = boundary
+            .source
+            .as_ref()
+            .and_then(|source| source.suppression.as_ref());
+        let leading_before_operator = boundary.source.as_ref().is_some_and(|source| {
+            !source.binding.allows_relocation(None)
+                && source.next_mode == ContentMode::Verbatim
+                && suppression.is_some_and(|suppression| {
+                    suppression
+                        .following
+                        .first()
+                        .is_some_and(|comment| comment.span.start < source.operator_start)
+                })
+        });
+        let (trailing, leading, next_mode, before_operator, after_operator) = match boundary
+            .source
+            .as_ref()
         {
             Some(source) => {
                 let before_count =
                     comments.partition_point(|comment| comment.span.end <= source.operator_start);
                 let (trailing, leading) = if source.binding.allows_relocation(None) {
-                    self.split_separator_comments(
-                        comments,
-                        before_count,
-                        source_end,
-                        Some(boundary.source_range.end),
-                    )
+                    if let Some(suppression) = &source.suppression {
+                        self.split_conditional_suppression_comments(
+                            suppression,
+                            comments,
+                            boundary.source_range,
+                            source_end,
+                            before_count,
+                        )
+                    } else {
+                        self.split_separator_comments(
+                            comments,
+                            before_count,
+                            source_end,
+                            Some(boundary.source_range.end),
+                        )
+                    }
                 } else {
                     comments.split_at(before_count)
                 };
@@ -593,7 +750,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         self.comments.claim(comments)?;
-        self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
+        if let Some(suppression) = suppression {
+            let prefix =
+                trailing.partition_point(|comment| comment.span.end <= boundary.source_range.start);
+            let (inner, outer) = trailing.split_at(prefix);
+            self.format_comment_run(inner, CommentRunLayout::SourceAfter(source_end), writer)?;
+            // The removed closing delimiter owned the old inter-packet gap.
+            // The exterior packet keeps its own source relationship to that
+            // delimiter instead of inheriting the inner tail's old line break.
+            if leading_before_operator && !outer.is_empty() {
+                let previous = suppression.previous.last().map_or(0, |last| {
+                    outer.partition_point(|comment| comment.span.end <= last.span.end)
+                });
+                let (previous, following) = outer.split_at(previous);
+                self.format_comment_run(
+                    previous,
+                    CommentRunLayout::SourceAfter(boundary.source_range.start),
+                    writer,
+                )?;
+                // Bound annotations cannot cross the operator. Keep a following
+                // ignore's packet off the preceding operand's emitted line.
+                writer.hard_line();
+                self.format_comment_run(following, CommentRunLayout::Source, writer)?;
+            } else {
+                self.format_comment_run(
+                    outer,
+                    CommentRunLayout::SourceAfter(boundary.source_range.start),
+                    writer,
+                )?;
+            }
+        } else {
+            self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
+        }
         let before_operator = if before_operator == LineConstraint::Unconstrained
             && (trailing
                 .last()
@@ -651,7 +839,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             original,
             content,
             content_start,
-            ..
+            operand_end,
+            source_end,
         } = operand;
         let mode = if following_mode == ContentMode::Verbatim {
             ContentMode::Verbatim
@@ -727,11 +916,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 OperandIndent::Parent
             };
-            let context = ExpressionContext::at(position)
+            let mut context = ExpressionContext::at(position)
                 .with_operand_indent(operand_indent)
                 .with_conditional_chain(chain)
                 .with_content_mode(mode)
                 .with_tail_owner(TailOwner::ParentOperation);
+            if following_mode == ContentMode::Verbatim {
+                context.ignored_parentheses_closing = Some(Span::new(operand_end, source_end));
+            }
             let generated = boundary.annotation.and_then(|annotation| {
                 self.emitted_head_enclosure_owner(
                     original,

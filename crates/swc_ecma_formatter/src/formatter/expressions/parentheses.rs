@@ -724,6 +724,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(super) fn ignored_expression_retained_parentheses(
+        &self,
+        mut expression: Expr,
+        position: ExpressionPosition,
+    ) -> Option<Span> {
+        let context = ExpressionContext::at(position)
+            .with_content_mode(ContentMode::Verbatim)
+            .with_tail_owner(TailOwner::ParentOperation);
+        while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression) {
+            if !self.verbatim_parentheses_are_removable(pair, position) {
+                return Some(pair.span(self.ast));
+            }
+            match self.source_parentheses_choice(pair, context) {
+                SourceParenthesesChoice::Verbatim | SourceParenthesesChoice::Retained { .. } => {
+                    return Some(pair.span(self.ast));
+                }
+                SourceParenthesesChoice::Content {
+                    ignored_child: Some(child),
+                    ..
+                } => {
+                    expression = child;
+                }
+                SourceParenthesesChoice::Content {
+                    ignored_child: None,
+                    ..
+                } => {
+                    let inner = self.expression_content(expression).expression;
+                    if inner == expression {
+                        return Some(pair.span(self.ast));
+                    }
+                    expression = inner;
+                }
+            }
+        }
+        None
+    }
+
     fn verbatim_parentheses_are_removable(
         &self,
         parenthesized: ParenthesizedExpression,
@@ -3281,7 +3318,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let last = trailing
             .last()
             .map_or(inner_span.end, |comment| comment.span.end);
-        let closing = self.line_constraint(last, span.end - 1);
+        let closing = if context
+            .ignored_parentheses_closing
+            .is_some_and(|owner| owner.start <= last && span.end <= owner.end)
+        {
+            // The retained delimiter separates an ignored operand from exterior
+            // packets. Its physical line must not change their attachment.
+            self.source_line_constraint(last, span.end - 1)
+        } else {
+            self.line_constraint(last, span.end - 1)
+        };
         let expand = matches!(kind, RetainedParentheses::Cast)
             && (source_comments
                 .head
@@ -3354,6 +3400,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner_context.member_layout = context.member_layout;
             }
             inner_context.protected_head_start = protected_head_start;
+            inner_context.ignored_parentheses_closing = context.ignored_parentheses_closing;
             if let Some((sequence, _)) = sequence_head {
                 inner_context.head_comments = super::HeadComments::ClaimedSequence(sequence);
             }
