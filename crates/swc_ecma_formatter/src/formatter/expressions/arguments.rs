@@ -8,6 +8,7 @@ use super::{
 };
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
+    SourceSeparatorTransition,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
@@ -34,6 +35,7 @@ pub(super) struct ArrayArgumentSlot {
     pub(super) following: FollowingArgument,
     pub(super) mode: ContentMode,
     pub(super) layout: ArgumentLayout,
+    pub(super) transition: Option<SourceSeparatorTransition>,
 }
 
 #[derive(Clone, Copy)]
@@ -70,6 +72,8 @@ pub(in crate::formatter) enum TrailingCommaPolicy {
 struct ItemComments<'item, 'ast> {
     head: CommentRunLayout,
     array: Option<&'item mut ArrayCommentOwner<'ast>>,
+    /// The preceding boundary's certificate for borrowing the leading comment packet.
+    separator_transition: Option<SourceSeparatorTransition>,
 }
 
 pub(in crate::formatter) struct PreparedItem {
@@ -129,6 +133,7 @@ pub(in crate::formatter) struct ItemBoundary {
     pub(in crate::formatter) separator: Separator,
     pub(in crate::formatter) following_mode: ContentMode,
     pub(in crate::formatter) elisions: ElisionLayout,
+    pub(in crate::formatter) transition: Option<SourceSeparatorTransition>,
 }
 
 impl ArgumentLayout {
@@ -192,6 +197,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             following,
             mode,
             layout,
+            transition,
         } = slot;
         let following = match following {
             FollowingArgument::Argument(argument) => FollowingItem::Node(argument.span(self.ast)),
@@ -209,6 +215,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ItemComments {
                 head: CommentRunLayout::Source,
                 array: array_comments.as_deref_mut(),
+                separator_transition: transition,
             },
             writer,
         )?;
@@ -236,6 +243,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: FollowingItem,
         span: Span,
         trailing_comma: bool,
+        transition: Option<SourceSeparatorTransition>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         self.prepare_delimited_item_with_comments(
@@ -246,6 +254,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ItemComments {
                 head: CommentRunLayout::Source,
                 array: None,
+                separator_transition: transition,
             },
             writer,
         )
@@ -257,6 +266,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: FollowingItem,
         span: Span,
         trailing_comma: bool,
+        transition: Option<SourceSeparatorTransition>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedItem, FormatError> {
         self.prepare_delimited_item_with_comments(
@@ -267,6 +277,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ItemComments {
                 head: CommentRunLayout::GroupedLeading(item_span.start),
                 array: None,
+                separator_transition: transition,
             },
             writer,
         )
@@ -303,6 +314,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .between(Span::new(span.start, item_span.start))?;
         let has_leading_comments = !leading.is_empty();
+        let packet = (has_leading_comments
+            && suppression.is_none()
+            && self.content_mode(leading) == ContentMode::Formatted)
+            .then(|| {
+                self.source_separator_packet(leading, item_span, comments.separator_transition)
+            })
+            .flatten();
         let leading = self.comments.take(leading.len());
         let leading_mode = self.content_mode(leading);
         let mode = if leading_mode == ContentMode::Verbatim
@@ -350,27 +368,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             gap_end: source_head.then_some(item_span.start),
         };
-        self.format_comment_run_with_array_comments(
+        self.format_comment_run_with_source_packet(
             head.comments,
             head.layout,
+            packet.as_ref(),
             comments.array,
             writer,
         )?;
         if let Some(end) = head.gap_end
             && let Some(last) = head.comments.last()
         {
-            let gap_start = if mode == ContentMode::Formatted {
-                // A comma left in the unconsumed head belongs to ordinary
-                // attachment: protected, elision and suppression boundaries
-                // already consumed it. Measure the final gap after that comma,
-                // preserving real blank lines rather than the punctuation line.
-                self.find_comma(Span::new(last.span.end, end), &[])
-                    .filter(|&comma| self.diagnostic_separator_precedes_uncovered_item(comma, end))
-                    .map_or(last.span.end, |comma| comma + 1)
-            } else {
-                last.span.end
-            };
-            self.comment_gap(gap_start, end, writer);
+            self.comment_gap_with_packet(last.span.end, end, packet.as_ref(), writer);
         }
         Ok(item)
     }
@@ -446,6 +454,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 end: source.end,
                 separator: Separator::Source(source.following),
                 following_mode,
+                transition: None,
                 elisions: match following {
                     FollowingItem::Elision { holes, .. } => ElisionLayout::Source(holes),
                     _ => ElisionLayout::Formatted,
@@ -497,8 +506,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 separator,
                 following_mode,
                 elisions: ElisionLayout::Formatted,
+                transition: None,
             });
         }
+        let mut transition = match following {
+            FollowingItem::Node(next)
+                if mode == ContentMode::Formatted
+                    && suppression.is_none()
+                    && !self.diagnostic_line_is_sensitive(item_span.end)
+                    && !self.diagnostic_line_is_sensitive(content_end)
+                    && !self.diagnostic_line_is_sensitive(next.start) =>
+            {
+                comma.map(|comma| SourceSeparatorTransition {
+                    source: gap,
+                    destination: next,
+                    comma,
+                    pre_packet_empty: false,
+                })
+            }
+            _ => None,
+        };
         let (trailing_count, physical_break, inline_line) = if ordinary_attachment {
             let before_separator = comma.map_or(comments.len(), |comma| {
                 comments.partition_point(|comment| comment.span.end <= comma)
@@ -580,6 +607,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .max(trailing_count)
                 }),
         };
+        let boundary_end = comments[..boundary_count]
+            .last()
+            .map_or(content_end, |comment| comment.span.end);
+        // Resolve the complete leading packet's separator before claiming it.
+        // A real post-comma blank belongs here, not in its internal comment gap.
+        let before_packet_empty = transition.is_some()
+            && ordinary_attachment
+            && !canonical_run
+            && comments
+                .get(boundary_count)
+                .is_some_and(|first| self.next_line_is_empty(boundary_end, first.span.start));
+        let pre_packet_empty = before_packet_empty
+            || comma.is_some_and(|comma| {
+                let after_comma = comments.partition_point(|comment| comment.span.start <= comma);
+                let next = comments
+                    .get(boundary_count.max(after_comma))
+                    .map_or(gap.end, |comment| comment.span.start);
+                let start = (comma + 1).max(boundary_end);
+                start < next && self.next_line_is_empty(start, next)
+            });
+        if let Some(transition) = transition.as_mut() {
+            transition.pre_packet_empty = pre_packet_empty;
+        }
         let boundary = self.comments.take(boundary_count);
         let (trailing, before_comma) = if canonical_run {
             (&boundary[..0], &boundary[..0])
@@ -602,9 +652,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
         }
-        let boundary_end = boundary
-            .last()
-            .map_or(content_end, |comment| comment.span.end);
         // Fill must retain the leading packet's own-line attachment for blocks too.
         let mut separator = if comments[boundary_count..].iter().any(|comment| {
             comment.kind == CommentKind::Line || self.source_line_starts_line(comment.span.start)
@@ -635,17 +682,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             writer.text(",");
-            if let Some(comma) = comma {
-                let after_separator = Span::new(comma + 1, gap.end);
-                // The source gap after the comma is independent of comment ownership.
-                let after_comma = comments.partition_point(|comment| comment.span.start <= comma);
-                let next_start = comments
-                    .get(boundary_count.max(after_comma))
-                    .map_or(gap.end, |comment| comment.span.start);
-                let start = after_separator.start.max(boundary_end);
-                if start < next_start && self.next_line_is_empty(start, next_start) {
-                    separator = Separator::EmptyLine;
-                }
+            if pre_packet_empty {
+                separator = Separator::EmptyLine;
             }
         } else if matches!(trailing_comma, TrailingCommaPolicy::IfBreak) {
             writer.if_break(",");
@@ -693,6 +731,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             separator,
             following_mode,
             elisions: ElisionLayout::Formatted,
+            transition,
         })
     }
 }
@@ -1966,7 +2005,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 previous.separator
             };
-            frame.separator(separator, self.line_constraint(end, next), writer);
+            frame.separator(
+                separator,
+                self.source_separator_constraint(end, next, previous.transition.as_ref()),
+                writer,
+            );
         }
         let following = following.map_or(FollowingItem::End, |argument| {
             FollowingItem::Node(argument.span(self.ast))
@@ -1976,6 +2019,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             following,
             Span::new(end, content.end),
             trailing_comma,
+            previous.and_then(|boundary| boundary.transition),
             writer,
         )?;
         if let Some(previous) = previous {

@@ -365,7 +365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map_or(span.start, |comment| comment.span.start);
                 ArgumentLayout::Lines.separator(
                     previous.separator,
-                    self.line_constraint(end, next),
+                    self.source_separator_constraint(end, next, previous.transition.as_ref()),
                     writer,
                 );
             }
@@ -377,6 +377,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 following,
                 Span::new(end, list_end),
                 false,
+                previous.and_then(|boundary| boundary.transition),
                 writer,
             )?;
             item.set_leading_mode(previous.map_or(first_mode, |previous| previous.following_mode));

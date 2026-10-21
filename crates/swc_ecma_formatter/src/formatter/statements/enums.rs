@@ -265,7 +265,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .map_or(member.span.start, |comment| comment.span.start);
                         ArgumentLayout::Lines.separator(
                             boundary.separator,
-                            self.line_constraint(previous_end, next_start),
+                            self.source_separator_constraint(
+                                previous_end,
+                                next_start,
+                                boundary.transition.as_ref(),
+                            ),
                             writer,
                         );
                     }
@@ -277,6 +281,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(previous_end, content.end),
                         self.options.trailing_commas != TrailingCommas::None,
+                        previous.and_then(|boundary| boundary.transition),
                         writer,
                     )?;
                     if let Some(boundary) = previous {

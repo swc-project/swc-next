@@ -157,6 +157,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         writer.group(false, |writer| {
             let mut previous_end = trivia_start;
+            let mut transition = None;
             let mut separator = Separator::Line;
             let mut following_mode = None;
             let mut first_item = true;
@@ -182,7 +183,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             && has_value
                             && !matches!(separator, Separator::Source(_))
                         {
-                            self.line_constraint(previous_end, next).write(
+                            self.source_separator_constraint(
+                                previous_end,
+                                next,
+                                transition.as_ref(),
+                            )
+                            .write(
                                 writer,
                                 FlatSeparator::Space,
                                 Writer::hard_line,
@@ -190,7 +196,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             ArgumentLayout::Lines.separator(
                                 separator,
-                                self.line_constraint(previous_end, next),
+                                self.source_separator_constraint(
+                                    previous_end,
+                                    next,
+                                    transition.as_ref(),
+                                ),
                                 writer,
                             );
                         }
@@ -200,6 +210,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(previous_end, end),
                         false,
+                        transition,
                         writer,
                     )?;
                     if let Some(mode) = following_mode {
@@ -233,6 +244,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 previous_end = boundary.end;
                 separator = boundary.separator;
+                transition = boundary.transition;
                 following_mode = Some(boundary.following_mode);
                 first_item = false;
             }

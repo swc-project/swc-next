@@ -1031,6 +1031,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                 }
                 let mut end = content.start;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut has_slot = false;
                 let mut following_mode = None;
@@ -1119,7 +1120,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .between(Span::new(end, binding.span(ast).start))?
                             .first()
                             .map_or(binding.span(ast).start, |comment| comment.span.start);
-                        binding_separator(separator, self.line_constraint(end, next), writer);
+                        binding_separator(
+                            separator,
+                            self.source_separator_constraint(end, next, transition.as_ref()),
+                            writer,
+                        );
                     }
                     let following = match slots.peek() {
                         Some(slot) if slot.holes != 0 => FollowingItem::Elision {
@@ -1140,6 +1145,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(end, content.end),
                         !rest && self.options.trailing_commas != TrailingCommas::None,
+                        transition,
                         writer,
                     )?;
                     item.set_leading_mode(mode);
@@ -1147,6 +1153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let boundary = self.finish_delimited_item(item, tail, writer)?;
                     end = boundary.end;
                     separator = boundary.separator;
+                    transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
                     elisions = boundary.elisions;
                     has_slot = true;
@@ -1222,6 +1229,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.binding_brace_line(content, writer);
                 }
                 let mut end = content.start;
+                let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut has_previous = false;
                 let mut following_mode = None;
@@ -1229,7 +1237,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if has_previous {
                         binding_separator(
                             separator,
-                            self.line_constraint(end, property.span(ast).start),
+                            self.source_separator_constraint(
+                                end,
+                                property.span(ast).start,
+                                transition.as_ref(),
+                            ),
                             writer,
                         );
                     }
@@ -1243,6 +1255,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         following,
                         Span::new(end, content.end),
                         self.options.trailing_commas != TrailingCommas::None,
+                        transition,
                         writer,
                     )?;
                     if let Some(mode) = following_mode {
@@ -1257,6 +1270,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let boundary = self.finish_delimited_item(item, tail, writer)?;
                     end = boundary.end;
                     separator = boundary.separator;
+                    transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
                     has_previous = true;
                 }
@@ -1264,7 +1278,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if has_previous {
                         binding_separator(
                             separator,
-                            self.line_constraint(end, rest.span(ast).start),
+                            self.source_separator_constraint(
+                                end,
+                                rest.span(ast).start,
+                                transition.as_ref(),
+                            ),
                             writer,
                         );
                     }
@@ -1273,6 +1291,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         FollowingItem::End,
                         Span::new(end, content.end),
                         false,
+                        transition,
                         writer,
                     )?;
                     if let Some(mode) = following_mode {

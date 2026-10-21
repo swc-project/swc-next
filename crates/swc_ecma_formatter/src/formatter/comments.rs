@@ -110,6 +110,28 @@ pub(super) enum CommentRunLayout {
     OwnLineTrailing,
 }
 
+/// A real-node transition certified before comments or punctuation are claimed.
+#[derive(Clone, Copy)]
+pub(super) struct SourceSeparatorTransition {
+    pub(super) source: Span,
+    pub(super) destination: Span,
+    pub(super) comma: u32,
+    pub(super) pre_packet_empty: bool,
+}
+
+#[derive(Clone, Copy)]
+enum SourceSeparatorGap {
+    BeforePacket,
+    WithinPacket,
+}
+
+/// The certified transition reborrows its still-unclaimed comment packet.
+#[derive(Clone, Copy)]
+pub(super) struct SourceSeparatorPacket<'ast> {
+    pub(super) comments: &'ast [Comment],
+    transition: SourceSeparatorTransition,
+}
+
 /// A claimed leading run and the source gap owned by its node.
 pub(super) struct NodeHead<'ast> {
     pub(super) comments: &'ast [Comment],
@@ -1131,6 +1153,116 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    pub(super) fn source_separator_packet(
+        &self,
+        comments: &'ast [Comment],
+        destination: Span,
+        transition: Option<SourceSeparatorTransition>,
+    ) -> Option<SourceSeparatorPacket<'ast>> {
+        let transition = transition?;
+        if transition.destination != destination
+            || comments
+                .first()
+                .is_some_and(|comment| comment.span.start < transition.source.start)
+            || comments
+                .last()
+                .is_some_and(|comment| comment.span.end > transition.source.end)
+        {
+            return None;
+        }
+        Some(SourceSeparatorPacket {
+            comments,
+            transition,
+        })
+    }
+
+    pub(super) fn source_separator_constraint(
+        &self,
+        start: u32,
+        end: u32,
+        transition: Option<&SourceSeparatorTransition>,
+    ) -> LineConstraint {
+        let Some(transition) = transition else {
+            return self.line_constraint(start, end);
+        };
+        self.source_transition_constraint(
+            start,
+            end,
+            Some(transition),
+            SourceSeparatorGap::BeforePacket,
+        )
+    }
+
+    fn source_transition_constraint(
+        &self,
+        start: u32,
+        end: u32,
+        transition: Option<&SourceSeparatorTransition>,
+        owner: SourceSeparatorGap,
+    ) -> LineConstraint {
+        let constraint = self.line_constraint(start, end);
+        if matches!(constraint, LineConstraint::Unconstrained) {
+            return constraint;
+        }
+        if let Some(transition) = transition
+            && start <= transition.comma
+            && transition.comma < end
+            && start >= transition.source.start
+            && end <= transition.source.end
+        {
+            let (breaks, empty) = self.transition_gap_lines(start, end, Some(transition), owner);
+            return if breaks == 0 {
+                LineConstraint::SameLine
+            } else {
+                LineConstraint::NewLine(if empty { 2 } else { 1 })
+            };
+        }
+        constraint
+    }
+
+    pub(super) fn packet_gap_lines(
+        &self,
+        start: u32,
+        end: u32,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+    ) -> (u8, bool) {
+        self.transition_gap_lines(
+            start,
+            end,
+            packet.map(|packet| &packet.transition),
+            SourceSeparatorGap::WithinPacket,
+        )
+    }
+
+    fn transition_gap_lines(
+        &self,
+        start: u32,
+        end: u32,
+        transition: Option<&SourceSeparatorTransition>,
+        owner: SourceSeparatorGap,
+    ) -> (u8, bool) {
+        if let Some(transition) = transition
+            && start <= transition.comma
+            && transition.comma < end
+        {
+            let before = self.line_breaks(start, transition.comma);
+            let after = self.line_breaks(transition.comma + 1, end);
+            return match owner {
+                SourceSeparatorGap::BeforePacket => {
+                    (before.max(after), transition.pre_packet_empty)
+                }
+                // The source gap after the comma belongs before the complete
+                // leading packet. Only its pre-comma blank stays inside it.
+                SourceSeparatorGap::WithinPacket => (
+                    before.max(after.min(1)),
+                    self.next_line_is_empty(start, transition.comma),
+                ),
+            };
+        }
+        let breaks = self.line_breaks(start, end);
+        (breaks, breaks > 1 && self.next_line_is_empty(start, end))
+    }
+
     pub(super) fn comment_gap(&self, start: u32, end: u32, writer: &mut Writer<'ast>) {
         self.line_constraint(start, end)
             .write(writer, FlatSeparator::Space, |writer| {
@@ -1147,6 +1279,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
     }
 
+    pub(super) fn comment_gap_with_packet(
+        &self,
+        start: u32,
+        end: u32,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) {
+        if packet.is_none() {
+            self.comment_gap(start, end, writer);
+            return;
+        }
+        let (breaks, empty) = self.packet_gap_lines(start, end, packet);
+        self.source_transition_constraint(
+            start,
+            end,
+            packet.map(|packet| &packet.transition),
+            SourceSeparatorGap::WithinPacket,
+        )
+        .write(writer, FlatSeparator::Space, |writer| match breaks {
+            0 => writer.space(),
+            1 => writer.hard_line(),
+            _ => {
+                writer.hard_line();
+                if empty {
+                    writer.hard_line();
+                }
+            }
+        });
+    }
+
     fn leading_comment_gap(
         &self,
         comment: &PreparedComment<'ast>,
@@ -1155,29 +1317,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         inline: bool,
         writer: &mut Writer<'ast>,
     ) {
-        self.line_constraint(comment.span.end, next_start).write(
-            writer,
-            FlatSeparator::Space,
-            |writer| match self.line_breaks(comment.span.end, next_start) {
-                0 if comment.kind == CommentKind::Block => writer.space(),
-                1 if comment.kind == CommentKind::Block
-                    && (inline || !self.source_position_starts_line(comment.span.start)) =>
-                {
-                    if grouped {
-                        writer.line();
-                    } else {
-                        writer.space();
-                    }
+        self.leading_comment_gap_with_packet(comment, next_start, grouped, inline, None, writer);
+    }
+
+    fn leading_comment_gap_with_packet(
+        &self,
+        comment: &PreparedComment<'ast>,
+        next_start: u32,
+        grouped: bool,
+        inline: bool,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) {
+        let (breaks, empty) = self.packet_gap_lines(comment.span.end, next_start, packet);
+        self.source_transition_constraint(
+            comment.span.end,
+            next_start,
+            packet.map(|packet| &packet.transition),
+            SourceSeparatorGap::WithinPacket,
+        )
+        .write(writer, FlatSeparator::Space, |writer| match breaks {
+            0 if comment.kind == CommentKind::Block => writer.space(),
+            1 if comment.kind == CommentKind::Block
+                && (inline || !self.source_position_starts_line(comment.span.start)) =>
+            {
+                if grouped {
+                    writer.line();
+                } else {
+                    writer.space();
                 }
-                0 | 1 => writer.hard_line(),
-                _ => {
+            }
+            0 | 1 => writer.hard_line(),
+            _ => {
+                writer.hard_line();
+                if empty {
                     writer.hard_line();
-                    if self.next_line_is_empty(comment.span.end, next_start) {
-                        writer.hard_line();
-                    }
                 }
-            },
-        );
+            }
+        });
     }
 
     fn block_comment_packet(&self, comments: &[Comment]) -> Option<BlockCommentPacket> {
@@ -1270,18 +1447,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         comments: &[Comment],
         layout: CommentRunLayout,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if comments.is_empty() {
+            return Ok(());
+        }
+        self.format_comment_run_with_source_packet(comments, layout, None, array_comments, writer)
+    }
+
+    pub(super) fn format_comment_run_with_source_packet(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        let comments = packet.map_or(comments, |packet| packet.comments);
         let mut previous: Option<PreparedComment<'ast>> = None;
-        let mut packet: Option<BlockCommentPacket> = None;
+        let mut block_packet: Option<BlockCommentPacket> = None;
         for (index, &comment) in comments.iter().enumerate() {
             if matches!(layout, CommentRunLayout::OwnLineTrailing)
-                && packet
+                && block_packet
                     .as_ref()
                     .is_none_or(|packet| comment.span.start >= packet.end)
             {
-                packet = self.block_comment_packet(&comments[index..]);
+                block_packet = self.block_comment_packet(&comments[index..]);
             }
             if let Some(owner) = array_comments.as_deref_mut() {
                 owner.consume(self, comment);
@@ -1303,13 +1495,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && prepared.is_alignable();
                 if !nestled && !line_suffix {
                     match layout {
-                        CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => {
-                            self.comment_gap(previous.span.end, prepared.span.start, writer)
-                        }
+                        CommentRunLayout::Source | CommentRunLayout::SourceAfter(_) => self
+                            .comment_gap_with_packet(
+                                previous.span.end,
+                                prepared.span.start,
+                                packet,
+                                writer,
+                            ),
                         CommentRunLayout::OwnLineTrailing
                             if previous.kind == CommentKind::Block
                                 && prepared.kind == CommentKind::Block
-                                && packet.as_ref().is_some_and(|packet| packet.multiline)
+                                && block_packet.as_ref().is_some_and(|packet| packet.multiline)
                                 && self.line_breaks(previous.span.end, prepared.span.start)
                                     == 0 =>
                         {
@@ -1330,16 +1526,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .write(writer, FlatSeparator::Space, Writer::hard_line),
                         CommentRunLayout::Leading(_)
                         | CommentRunLayout::GroupedLeading(_)
-                        | CommentRunLayout::InlineLeading(_) => self.leading_comment_gap(
-                            previous,
-                            prepared.span.start,
-                            !matches!(layout, CommentRunLayout::Leading(_)),
-                            matches!(layout, CommentRunLayout::InlineLeading(_))
-                                && comments
-                                    .first()
-                                    .is_some_and(|first| first.span == previous.span),
-                            writer,
-                        ),
+                        | CommentRunLayout::InlineLeading(_) => self
+                            .leading_comment_gap_with_packet(
+                                previous,
+                                prepared.span.start,
+                                !matches!(layout, CommentRunLayout::Leading(_)),
+                                matches!(layout, CommentRunLayout::InlineLeading(_))
+                                    && comments
+                                        .first()
+                                        .is_some_and(|first| first.span == previous.span),
+                                packet,
+                                writer,
+                            ),
                         CommentRunLayout::FlatLeading(_) => self
                             .line_constraint(previous.span.end, prepared.span.start)
                             .write(writer, FlatSeparator::Space, |writer| match previous.kind {
@@ -1351,7 +1549,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else if let CommentRunLayout::SourceAfter(start) = layout
                 && !line_suffix
             {
-                self.comment_gap(start, prepared.span.start, writer);
+                self.comment_gap_with_packet(start, prepared.span.start, packet, writer);
             }
             if comment.kind == CommentKind::Line {
                 writer.line_suffix_boundary();
@@ -1365,12 +1563,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match (layout, previous) {
             (CommentRunLayout::Leading(next), Some(previous)) => {
-                self.leading_comment_gap(&previous, next, false, false, writer)
+                self.leading_comment_gap_with_packet(&previous, next, false, false, packet, writer)
             }
             (
                 CommentRunLayout::GroupedLeading(next) | CommentRunLayout::InlineLeading(next),
                 Some(previous),
-            ) => self.leading_comment_gap(
+            ) => self.leading_comment_gap_with_packet(
                 &previous,
                 next,
                 true,
@@ -1378,6 +1576,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && comments
                         .first()
                         .is_some_and(|first| first.span == previous.span),
+                packet,
                 writer,
             ),
             (CommentRunLayout::FlatLeading(next), Some(previous)) => self
