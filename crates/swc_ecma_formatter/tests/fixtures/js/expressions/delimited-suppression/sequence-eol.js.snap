@@ -7,30 +7,29 @@ c+d);
 ---------- Options ----------
 {}
 ---------- Output ----------
-(a+b, /* prettier-ignore */
-  c + d);
+(a+b /* prettier-ignore */, c + d);
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-(a+b, /* prettier-ignore */
+(a+b /* prettier-ignore */,
   c + d);
 
 ---------- Options ----------
 {"printWidth":1}
 ---------- Output ----------
-(a+b, /* prettier-ignore */
+(a+b /* prettier-ignore */,
   c +
     d);
 
 ---------- Options ----------
 {"printWidth":20,"semi":false,"trailingComma":"none"}
 ---------- Output ----------
-;(a+b, /* prettier-ignore */
+;(a+b /* prettier-ignore */,
   c + d)
 
 ---------- Options ----------
 {"printWidth":20,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-(a+b, /* prettier-ignore */
+(a+b /* prettier-ignore */,
 	c + d);
