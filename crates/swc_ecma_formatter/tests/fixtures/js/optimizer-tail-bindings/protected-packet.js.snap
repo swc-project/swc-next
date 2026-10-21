@@ -10,7 +10,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ;[
   (
     item /* #__PURE__ */ // @ts-ignore
-  ), other,]
+  ), other,
+]
 
 ---------- Options ----------
 {"printWidth":30}
@@ -18,4 +19,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 [
   (
     item /* #__PURE__ */ // @ts-ignore
-  ), other,];
+  ), other,
+];

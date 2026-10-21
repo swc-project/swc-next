@@ -16,7 +16,8 @@ third + fourth];
   // @ts-ignore
   second,
   // @ts-ignore
-  third + fourth,]
+  third + fourth,
+]
 
 ---------- Options ----------
 {"printWidth":10,"semi":true}
@@ -26,4 +27,5 @@ third + fourth];
   // @ts-ignore
   second,
   // @ts-ignore
-  third + fourth,];
+  third + fourth,
+];

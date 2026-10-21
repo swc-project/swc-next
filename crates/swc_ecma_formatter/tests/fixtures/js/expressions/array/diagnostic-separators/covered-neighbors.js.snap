@@ -12,7 +12,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],]
+  , [third, fourth],
+]
 
 ---------- Options ----------
 {"printWidth":10,"semi":true}
@@ -22,4 +23,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
     first,
     second,
   ] // @ts-expect-error
-  , [third, fourth],];
+  , [third, fourth],
+];
