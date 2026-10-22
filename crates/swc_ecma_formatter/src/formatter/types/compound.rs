@@ -1958,7 +1958,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         leading_comments.unwrap_or_else(|| self.comments.in_range(leading));
                     if self.content_mode(comments) == ContentMode::Verbatim {
                         self.select_type_head_comments(&mut current, comments, first_start);
-                        self.format_verbatim(leading, writer)?;
+                        self.format_source_gap(leading, writer)?;
                         leading_operator = true;
                     } else if let Some(operator) = self.find_token(leading, comments, kind.token())
                     {
@@ -2164,7 +2164,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (before, after) = match boundary {
-            TypeBoundaryLayout::Source(gap) => return self.format_verbatim(gap, writer),
+            TypeBoundaryLayout::Source(gap) => return self.format_source_gap(gap, writer),
             TypeBoundaryLayout::Formatted { before, after } => (before, after),
         };
         self.format_comment_boundary(&before, writer)?;

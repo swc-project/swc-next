@@ -389,7 +389,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (before, after) = match boundary.layout {
-            TypeBoundaryLayout::Source(gap) => return self.format_verbatim(gap, writer),
+            TypeBoundaryLayout::Source(gap) => return self.format_source_gap(gap, writer),
             TypeBoundaryLayout::Formatted { before, after } => (before, after),
         };
         self.format_comment_boundary(&before, writer)?;

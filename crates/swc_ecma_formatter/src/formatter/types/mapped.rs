@@ -671,7 +671,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match &boundary.layout {
-            TypeBoundaryLayout::Source(span) => self.format_verbatim(*span, writer),
+            TypeBoundaryLayout::Source(span) => self.format_source_gap(*span, writer),
             TypeBoundaryLayout::Formatted { before, after } => {
                 self.format_type_comment_gap(before, FlatSeparator::Space, writer)?;
                 writer.text(separator.text());
