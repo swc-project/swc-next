@@ -90,8 +90,8 @@ UTF-8 string pool
 
 Integers are little endian. Each instruction has a one-byte opcode followed by
 its operands. Text uses an offset and length in the string pool; shared fragments
-use numeric IDs. Group definitions receive stable Symbols within each decode call; logical IDs
-resolve to those definitions or a constant mode. Scope endings
+use numeric IDs. Named group IDs receive stable Symbols within each decode call.
+Scope endings
 identify the corresponding scope; normal, absolute, and conditional indents
 share one ending instruction.
 
@@ -112,102 +112,48 @@ are internal interfaces whose versions must match the plugin.
 
 #### Document Conversion
 
-Most instructions map directly to Prettier's public Doc builders:
+The instructions map to Prettier's public Doc builders:
 
-| Rust document                    | Prettier document                                              |
-| -------------------------------- | -------------------------------------------------------------- |
-| Text                             | Strings, with raw CR/LF converted to literal lines             |
-| Space                            | Deferred whitespace, emitted as a string                       |
-| Line / soft line                 | `line` / `softline`                                            |
-| Hard / literal line              | `hardlineWithoutBreakParent` / `literallineWithoutBreakParent` |
-| Group                            | `group`, preserving the computed expansion state               |
-| Indent, absolute indent, align   | `indent`, root-relative alignment, `align`                     |
-| Conditional content / indent     | `ifBreak` / `indentIfBreak`, with constant mode folding          |
-| Forced-flat named group          | Flat logical binding, without a width-dependent host group      |
-| Display / canonical alternatives | `conditionalGroup` (see limitations below)                     |
-| Fill entries and separators      | Alternating `fill` parts                                       |
-| Line suffix scope                | `lineSuffix(contents)`, preserving its complete Doc            |
-| Line suffix boundary             | `lineSuffixBoundary`                                           |
-| Shared / flat fragment           | Cached normal or flattened Doc references                      |
+| Rust document | Prettier document |
+| --- | --- |
+| Single-line Text | String |
+| Line / soft line | `line` / `softline` |
+| Hard / literal line | `hardline` / `literalline` |
+| Literal line with active indentation | `markAsRoot(literalline)` |
+| Break parent | `breakParent` |
+| Group | `group`, preserving the expansion request and optional ID |
+| Indent, absolute indent, align | `indent`, root-relative alignment, `align` |
+| Conditional content / indent | `ifBreak` / `indentIfBreak` |
+| Alternatives | `conditionalGroup` |
+| Fill entries and separators | Alternating `fill` parts |
+| Line suffix scope / boundary | `lineSuffix` / `lineSuffixBoundary` |
+| Shared / flat fragment | Cached normal or statically projected Doc references |
 
-Line suffixes add no whitespace or parent break of their own. Producers include
-the desired spaces and `breakParent` explicitly in the Doc. Suffixes retain their
-insertion mode and indentation when flushed, including when they contain nested
-layout instructions. A suffix boundary flushes pending suffixes with a hard line;
-without pending suffixes it leaves the layout unchanged. Fit measurement rejects
-a flat layout that would flush pending suffixes at a boundary.
+Ordinary Text cannot contain CR or LF. Source text with physical lines is
+constructed as explicit literal lines, which follow the resolved output EOL.
+Spaces are actual text; consecutive spaces and flat `line` nodes remain distinct.
+Ordinary broken lines trim trailing horizontal whitespace, while literal lines
+preserve it. Line suffixes carry their complete Doc, including any separating
+space and parent break, and flush according to standard Prettier semantics.
 
-Before conversion, closed suffix packets at hard boundaries and program EOF
-are normalized into their execution order. Their incoming gap and any spaces
-between queued scopes belong to the packet, coalesce with its own gaps, and are
-discarded if no suffix text consumes them. Queue-only shared fragments become
-shared body fragments, so normalization does not expand their graph. Queues with
-intervening main-stream content retain their original deferred position.
+Conditions explicitly target either the current execution mode or a named
+group. Both full conditional branches remain visible to break propagation.
+Named IDs map directly to stable Symbols, including IDs referenced before their
+group has executed; Prettier owns their print and fit behavior. A fragment that
+defines a named group cannot be forced flat, so conversion requires no dynamic
+binding emulation or extra width-dependent groups.
 
-Space needs special handling because the native printer defers it until content
-is written. The decoder keeps a pending-space state to
-merge consecutive spaces and discard spaces before hard lines. Structural scopes
-carry pending spaces through to their next text. Conditional branches preserve
-the incoming gap when they do not print. Conditional gaps remain pending across
-soft lines when their logical group stays flat, so fitting does not count a
-space that a broken branch will discard. Unconditional gaps retain their fit
-width because the transport currently uses the same instruction for deferred
-and reserved spaces.
+The encoder's flat projection removes eligible anonymous layout scopes and
+projects their contents before transport. Named conditional indent scopes keep
+their condition while projecting their body. The decoder builds each fragment
+once in dependency order and reuses the resulting Doc. Both sides use explicit
+work lists, preserving a shared DAG without recursion through references.
 
-Conditions on the nearest logical group use Prettier's current mode while that
-mode still belongs to the group. Fill entries and alternative candidates can
-choose their own mode, so conditions within them explicitly reference the
-logical group. Deferred gaps also retain that binding because they can be
-consumed after leaving the group. This lets Prettier evaluate current-group
-conditions during fitting, before a named group has been printed.
-
-Group expansion distinguishes a source preference from a required break.
-Canonical alternatives use a cached flat projection for fitting, removing only
-source preferences, then render the original candidate with its source layout.
-Required breaks remain active in both views. The projection uses an explicit
-work stack and shares completed subdocuments with the decoded document graph.
-
-Shared fragments receive the incoming whitespace state and return the outgoing
-state. Anonymous groups keep the identity of their encoded scope. A linear
-analysis of the fragment graph finds free nearest-group dependencies, so only
-fragments that observe their caller's group include it in their cache key. The
-remaining key records the incoming gap, raw trailing whitespace, and whether the
-current mode belongs to the group. This preserves graph sharing across layout
-alternatives while retaining the context needed by conditions. Explicit work
-stacks handle dependency analysis and deeply nested references.
-
-`FlatGroup` is an existing SWC internal optimization, not a new public Doc
-primitive. It cannot be mapped to Prettier's Auto group: even an empty Auto
-group may break when the current column exceeds the width. Keeping the original
-group after removing soft lines would also change this native contract. The
-adapter therefore resolves the constant mode before emitting public Docs.
-
-Named group modes use immutable bindings. A forced-flat marker assigns Flat
-instead of emitting an empty Auto group that could break under narrow widths.
-Definitions and conditionals return binding effects across shared references;
-only the IDs read or written by a fragment enter its cache context. Persistent
-interned tries project those contexts and overlay effects without copying maps.
-Conditional definitions retain their predicate's binding. Alternatives with
-different outgoing states use nested two-way `conditionalGroup` decisions and
-query those groups' actual modes. This binds subsequent conditions to the
-selected candidate on every execution without adding separate selection markers. Conversion and predicate rendering
-use explicit work stacks; trie operations have the fixed depth of a wire ID.
-
-Line Docs absorb a preceding pending gap. Flat fragments use the native IR's
-flattening rules before encoding. Both encoders and decoders use explicit work
-lists for fragment references.
-
-The adapter emits only public Prettier Doc nodes. The native IR's canonical fit
-measurement and flat-width bounds are not directly expressible with those
-builders. The adapter uses Prettier's measurement and
-group selection, so exact width boundaries can differ from the native printer.
-An unprinted logical group starts Flat, matching the native printer. Repeated
-shared canonical choices can still retain a host mode from an earlier occurrence.
-Prettier also normalizes input line endings before calling the plugin. Raw
-trailing spaces, including Markdown hard breaks in comments, use literal line Docs with
-the active indentation marked as their root. Differences are retained in
-validation reports. The plugin does not promise
-byte-for-byte native output parity.
+The protocol has no deferred whitespace, canonical fitting view, inherited
+group, or forced-flat named binding operation. Version 1 rejects the old tags
+instead of silently approximating them. Prettier handles all final layout
+choices; language formatting policy remains in Rust's producers. Validation
+compares native and Prettier output with identical normalized source and options.
 
 ### Current Scope
 

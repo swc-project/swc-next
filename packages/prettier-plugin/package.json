@@ -12,7 +12,6 @@
     "index.js",
     "index.d.ts",
     "decode.js",
-    "groups.js",
     "options.js",
     "README.md"
   ],
