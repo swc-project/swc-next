@@ -70,7 +70,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         loop {
-            expression = match self.expression_content(expression).data {
+            expression = match self.expression_data(expression) {
                 ExprData::MemberExpression(member) => {
                     let Ok(head) = self.prepare_member_head(member) else {
                         return false;
@@ -151,7 +151,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let member_callee = arguments.callee_mode == ContentMode::Formatted
             && !arguments.has_fixed_argument_frame()
             && matches!(
-                self.expression_content(arguments.callee).data,
+                self.expression_data(arguments.callee),
                 ExprData::MemberExpression(_)
             )
             && self.expression_needs_parentheses(
@@ -219,7 +219,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        let data = self.expression_content(expression).data;
+        let data = self.expression_data(expression);
         let ExprData::MemberExpression(member) = data else {
             return None;
         };
@@ -259,7 +259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // https://github.com/prettier/prettier/commit/c93e014c288aa94c22aa5641a71bf8d8be76d4ce
         if !call.optional(ast)
             && call_arguments.len() == 1
-            && matches!(self.call_callee_content_data(callee), ExprData::IdentifierReference(identifier)
+            && matches!(self.expression_data(callee), ExprData::IdentifierReference(identifier)
                 if ast.get_utf8(identifier.name(ast)) == "Boolean")
         {
             arguments.binary_indent = OperandIndent::Parent;
@@ -301,16 +301,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.curried_call_callee(callee, call_arguments, arguments.callee_mode);
         Ok(arguments)
     }
-    pub(in crate::formatter) fn call_callee_content_data(&self, callee: Expr) -> ExprData {
-        match self.ast.expr_data(callee) {
-            ExprData::ParenthesizedExpression(_) => self.expression_content(callee).data,
-            data => data,
-        }
-    }
-
     pub(super) fn is_test_setup_callee(&self, expression: Expr) -> bool {
         let ast = self.ast;
-        matches!(self.call_callee_content_data(expression), ExprData::IdentifierReference(identifier)
+        matches!(self.expression_data(expression), ExprData::IdentifierReference(identifier)
             if matches!(ast.get_utf8(identifier.name(ast)), "beforeEach" | "beforeAll" | "afterEach" | "afterAll"))
     }
 
@@ -320,7 +313,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn test_callee(&self, expression: Expr) -> Option<TestCallee> {
         let ast = self.ast;
-        match self.call_callee_content_data(expression) {
+        match self.expression_data(expression) {
             ExprData::IdentifierReference(identifier) => match ast.get_utf8(identifier.name(ast)) {
                 "it" => Some(TestCallee::It),
                 "describe" => Some(TestCallee::Describe),
@@ -382,16 +375,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut items = arguments.iter().map(|id| ast.get_node_in_sub_range(id));
         let first = items.next()?;
         let data = match ast.argument_data(first) {
-            ArgumentData::Expr(expression) => Some(self.expression_content(expression).data),
+            ArgumentData::Expr(expression) => Some(self.expression_data(expression)),
             ArgumentData::SpreadElement(_) => None,
         };
         let definition = matches!(module, ModuleCallee::Define);
         let shape = if definition {
             arguments.len() == 1
                 || arguments.len() == 2 && matches!(data, Some(ExprData::ArrayExpression(_)))
-                || arguments.len() == 3 && matches!(data, Some(ExprData::StringLiteral(_)))
-                    && items.next().is_some_and(|argument| matches!(ast.argument_data(argument), ArgumentData::Expr(expression)
-                        if matches!(self.expression_content(expression).data, ExprData::ArrayExpression(_))))
+                || arguments.len() == 3
+                    && matches!(data, Some(ExprData::StringLiteral(_)))
+                    && items.next().is_some_and(|argument| {
+                        matches!(ast.argument_data(argument), ArgumentData::Expr(expression)
+                        if matches!(self.expression_data(expression), ExprData::ArrayExpression(_)))
+                    })
         } else {
             matches!(module, ModuleCallee::Require) && arguments.len() > 1
                 || arguments.len() == 1 && matches!(data, Some(ExprData::StringLiteral(_)))
@@ -405,7 +401,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn module_callee(&self, expression: Expr) -> Option<ModuleCallee> {
         let ast = self.ast;
-        match self.call_callee_content_data(expression) {
+        match self.expression_data(expression) {
             ExprData::IdentifierReference(identifier) => match ast.get_utf8(identifier.name(ast)) {
                 "require" => Some(ModuleCallee::Require),
                 "define" => Some(ModuleCallee::Define),
@@ -469,8 +465,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ArgumentData::Expr(expression) = ast.argument_data(argument) else {
             return None;
         };
-        let ExprData::ArrowFunctionExpression(arrow) = self.expression_content(expression).data
-        else {
+        let ExprData::ArrowFunctionExpression(arrow) = self.expression_data(expression) else {
             return None;
         };
         if !matches!(
@@ -479,20 +474,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ) {
             return None;
         }
-        let ExprData::CallExpression(factory) = self.call_callee_content_data(call.callee(ast))
-        else {
+        let ExprData::CallExpression(factory) = self.expression_data(call.callee(ast)) else {
             return None;
         };
         if factory.optional(ast) {
             return None;
         }
-        match self.call_callee_content_data(factory.callee(ast)) {
+        match self.expression_data(factory.callee(ast)) {
             ExprData::IdentifierReference(_) => Some(arrow),
             ExprData::MemberExpression(member)
                 if !member.computed(ast)
                     && !member.optional(ast)
                     && matches!(
-                        self.call_callee_content_data(member.object(ast)),
+                        self.expression_data(member.object(ast)),
                         ExprData::IdentifierReference(_)
                     )
                     && matches!(
@@ -515,7 +509,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if arguments.is_empty() || mode != ContentMode::Formatted {
             return None;
         }
-        match self.expression_content(callee).data {
+        match self.expression_data(callee) {
             ExprData::CallExpression(child)
                 if child.arguments(self.ast).len() > arguments.len() =>
             {

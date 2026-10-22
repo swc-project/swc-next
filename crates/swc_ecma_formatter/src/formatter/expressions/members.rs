@@ -446,7 +446,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(owner, MemberLookupOwner::Receiver) {
             return MemberLookupLayout::Grouped;
         }
-        let receiver = self.expression_content(member.object).data;
+        let receiver = self.expression_data(member.object);
         if matches!(receiver, ExprData::IdentifierReference(_)) {
             return MemberLookupLayout::Inline;
         }

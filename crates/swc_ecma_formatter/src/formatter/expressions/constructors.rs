@@ -117,7 +117,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     mode = context.content_mode;
                     data = if mode == ContentMode::Formatted {
-                        self.expression_content(tag).data
+                        self.expression_data(tag)
                     } else {
                         self.ast.expr_data(tag)
                     };
@@ -125,7 +125,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::TsNonNullExpression(assertion) => {
                     let expression = assertion.expression(self.ast);
                     data = if mode == ContentMode::Formatted {
-                        self.expression_content(expression).data
+                        self.expression_data(expression)
                     } else {
                         self.ast.expr_data(expression)
                     };
@@ -133,7 +133,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::MemberExpression(member) => {
                     let object = member.object(self.ast);
                     data = if mode == ContentMode::Formatted {
-                        self.expression_content(object).data
+                        self.expression_data(object)
                     } else {
                         self.ast.expr_data(object)
                     };

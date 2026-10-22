@@ -324,8 +324,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(ExprData::CallExpression(call)) = self.call_argument_data(argument) else {
             return None;
         };
-        let ExprData::IdentifierReference(identifier) =
-            self.call_callee_content_data(call.callee(ast))
+        let ExprData::IdentifierReference(identifier) = self.expression_data(call.callee(ast))
         else {
             return None;
         };
@@ -456,7 +455,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
             return None;
         };
-        let data = self.expression_content(expression).data;
+        let data = self.expression_data(expression);
         if matches!(
             data,
             ExprData::ChainExpression(_) | ExprData::TsNonNullExpression(_)
@@ -509,7 +508,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::ObjectExpression(object) if allow_final_collection => {
                 if let Some(previous) = items.next_back()
                     && matches!(ast.argument_data(previous), ArgumentData::Expr(expression)
-                        if matches!(self.expression_content(expression).data, ExprData::ObjectExpression(_)))
+                        if matches!(self.expression_data(expression), ExprData::ObjectExpression(_)))
                 {
                     return None;
                 }
@@ -532,7 +531,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let Some(previous) = items.next_back()
                     && let ArgumentData::Expr(expression) = ast.argument_data(previous)
                 {
-                    let previous = self.expression_content(expression).data;
+                    let previous = self.expression_data(expression);
                     if matches!(previous, ExprData::ArrayExpression(_))
                         || arguments.len() == 2
                             && matches!(previous, ExprData::ArrowFunctionExpression(_))
@@ -625,7 +624,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn short_callback_neighbor(&self, expression: Expr) -> bool {
         let ast = self.ast;
-        let data = self.expression_content(expression).data;
+        let data = self.expression_data(expression);
         match data {
             ExprData::TsAsExpression(assertion) => {
                 self.short_argument_type(assertion.type_annotation(ast))
@@ -662,7 +661,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if depth == 0 {
             return false;
         }
-        let data = self.expression_content(expression).data;
+        let data = self.expression_data(expression);
         self.simple_callback_neighbor_data(data, depth)
     }
 
@@ -789,7 +788,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 _ => return false,
             };
-            data = self.expression_content(next).data;
+            data = self.expression_data(next);
         }
     }
 

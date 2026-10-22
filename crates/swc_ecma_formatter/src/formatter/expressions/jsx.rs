@@ -1321,7 +1321,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 _ => break,
             };
-            data = self.expression_content(expression).data;
+            data = self.expression_data(expression);
         }
         match data {
             ExprData::CallExpression(call) => JsxCallbackContext::ContainerCall(call),

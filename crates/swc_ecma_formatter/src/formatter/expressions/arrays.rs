@@ -404,7 +404,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
                 return None;
             };
-            match self.expression_content(expression).data {
+            match self.expression_data(expression) {
                 ExprData::ArrayExpression(child) if child.elements(self.ast).len() > 1 => {
                     Some(ArrayChildKind::Array)
                 }
@@ -431,7 +431,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
                 return None;
             };
-            let data = self.expression_content(expression).data;
+            let data = self.expression_data(expression);
             let numeric = match data {
                 ExprData::NumericLiteral(_) => true,
                 ExprData::UnaryExpression(unary)
@@ -440,7 +440,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         UnaryOperator::Positive | UnaryOperator::Negate
                     ) =>
                 {
-                    let argument = self.expression_content(unary.argument(self.ast)).data;
+                    let argument = self.expression_data(unary.argument(self.ast));
                     matches!(argument, ExprData::NumericLiteral(_))
                         && self.comments.in_range(unary.span(self.ast)).is_empty()
                 }
