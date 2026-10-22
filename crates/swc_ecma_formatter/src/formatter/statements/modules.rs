@@ -18,7 +18,7 @@ use crate::formatter::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::literals::StringContext;
-use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use crate::{FormatError, TrailingCommas, document::Writer};
 
 #[derive(Clone, Copy)]
@@ -106,6 +106,7 @@ struct ModuleList {
     breakable: bool,
     expand: bool,
     named: bool,
+    terminal: Option<DelimitedSuppression>,
 }
 
 enum ModuleSourcePrefix<'a> {
@@ -132,6 +133,7 @@ struct ModuleSource {
     from: Option<Span>,
     mode: ContentMode,
     preceding: ContentMode,
+    specifier_tail: Option<DelimitedSuppression>,
     attributes: Option<ModuleAttributes>,
     empty_header: Option<Span>,
 }
@@ -447,7 +449,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if source.empty_header.is_some() {
             writer.space();
             writer.text("{}");
-        } else if let Some(list) = list {
+        } else if let Some(mut list) = list {
+            list.terminal = source.specifier_tail;
             let mut leading = None;
             if standalone.is_none() {
                 let comments = self.comments.in_range(Span::new(end, list.span.start));
@@ -500,7 +503,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
         let last = specifiers.last().map(|id| ast.get_node_in_sub_range(id));
-        let list = self.module_list(
+        let mut list = self.module_list(
             keyword_end,
             node.source(ast)
                 .map_or(span.end, |node| node.span(ast).start),
@@ -524,6 +527,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             })
             .transpose()?;
+        list.terminal = source.as_ref().and_then(|source| source.specifier_tail);
         if first.is_none()
             && source.is_none()
             && self.content_mode(
@@ -833,6 +837,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && self.line_breaks(opening.end, first.map_or(closing.start, |span| span.start))
                     != 0,
             named,
+            terminal: None,
         })
     }
 
@@ -863,6 +868,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             from.map_or(preceding_end, |token| token.end),
             source_span.start,
         )));
+        let specifier_tail = match &prefix {
+            ModuleSourcePrefix::Braced {
+                list,
+                last: Some(last),
+                ..
+            } => self
+                .module_source_specifier_boundary(*last, Span::new(last.end, list.span.end - 1))
+                .filter(|relation| relation.following == ContentMode::Verbatim),
+            _ => None,
+        };
+        if specifier_tail.is_some() {
+            mode = ContentMode::Verbatim;
+        }
         if self.has_suppression
             && let ModuleSourcePrefix::Star(header) = &prefix
             && self.content_mode(self.comments.in_range(*header)) == ContentMode::Verbatim
@@ -872,13 +890,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut preceding_mode = ContentMode::Formatted;
         if let Some(from) = from {
             let before = self.comments.in_range(Span::new(preceding_end, from.start));
-            for position in self.suppression_positions(before, from.start) {
-                if matches!(position, SuppressionPosition::OwnLine) && list.is_none() {
-                    mode = ContentMode::Verbatim;
-                } else if preceding.is_some() {
-                    preceding_mode = ContentMode::Verbatim;
-                } else {
-                    mode = ContentMode::Verbatim;
+            if let Some(last) = preceding.filter(|_| list.is_some()) {
+                if let Some(relation) = self
+                    .module_source_specifier_boundary(last, Span::new(preceding_end, from.start))
+                {
+                    if relation.following == ContentMode::Verbatim {
+                        mode = ContentMode::Verbatim;
+                    }
+                    if relation.preceding.is_some() {
+                        preceding_mode = ContentMode::Verbatim;
+                    }
+                }
+            } else {
+                for position in self.suppression_positions(before, from.start) {
+                    if matches!(position, SuppressionPosition::OwnLine) && list.is_none() {
+                        mode = ContentMode::Verbatim;
+                    } else if preceding.is_some() {
+                        preceding_mode = ContentMode::Verbatim;
+                    } else {
+                        mode = ContentMode::Verbatim;
+                    }
                 }
             }
         }
@@ -1029,9 +1060,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             from,
             mode,
             preceding: preceding_mode,
+            specifier_tail,
             attributes,
             empty_header,
         })
+    }
+
+    /// A named list's following literal remains a real comment target across its closer.
+    fn module_source_specifier_boundary(
+        &self,
+        last: Span,
+        boundary: Span,
+    ) -> Option<DelimitedSuppression> {
+        if !self.has_suppression {
+            return None;
+        }
+        let comments = self.comments.in_range(boundary);
+        if self.content_mode(comments) != ContentMode::Verbatim {
+            return None;
+        }
+        let mut relation = DelimitedSuppression {
+            preceding: None,
+            following: ContentMode::Formatted,
+        };
+        for (run, position) in self.suppressed_comment_runs(comments, boundary.end) {
+            for (index, &comment) in run.iter().enumerate() {
+                if self.content_mode(std::slice::from_ref(&comment)) != ContentMode::Verbatim {
+                    continue;
+                }
+                let next = run
+                    .get(index + 1)
+                    .map_or(boundary.end, |comment| comment.span.start);
+                if matches!(position, SuppressionPosition::OwnLine)
+                    && !self.comment_run_ends_line(comment, next)
+                {
+                    relation.following = ContentMode::Verbatim;
+                } else {
+                    relation.preceding = Some(last);
+                }
+            }
+        }
+        Some(relation)
+    }
+
+    fn format_module_source_specifier_tail(
+        &mut self,
+        boundary: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<u32, FormatError> {
+        let comments = self.comments.between(boundary)?;
+        let mut end = boundary.start;
+        if let Some(comma) = self.find_comma(boundary, comments) {
+            self.format_module_gap(end, comma, false, writer)?;
+            writer.text(",");
+            end = comma + 1;
+        }
+        let comments = self.comments.between(Span::new(end, boundary.end))?;
+        self.comments.claim(comments)?;
+        self.format_comment_run(comments, CommentRunLayout::SourceAfter(end), writer)?;
+        Ok(comments.last().map_or(end, |comment| comment.span.end))
     }
 
     fn format_module_source(
@@ -1177,7 +1264,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let following = match next {
                         Some(next) if list.named => FollowingItem::ModuleSpecifier(next.span(self)),
                         Some(next) => FollowingItem::Node(next.span(self)),
-                        None => FollowingItem::End,
+                        None => list
+                            .terminal
+                            .map_or(FollowingItem::End, FollowingItem::ResolvedTerminal),
                     };
                     let mut prepared = self.prepare_delimited_item(
                         span,
@@ -1194,6 +1283,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         prepared.set_leading_mode(incoming);
                     }
                     self.format_module_item(span, prepared_content, prepared.mode, writer)?;
+                    if next.is_none() && list.terminal.is_some() {
+                        end = self.format_module_source_specifier_tail(
+                            Span::new(span.end, content.end),
+                            writer,
+                        )?;
+                        break;
+                    }
                     let boundary = self.finish_delimited_item(prepared, None, writer)?;
                     end = boundary.end;
                     transition = boundary.transition;
@@ -1232,7 +1328,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 Ok::<_, FormatError>(end)
             })?;
-            self.line_constraint(end, content.end).write(
+            let closing = if list.terminal.is_some() {
+                self.source_line_constraint(end, content.end)
+            } else {
+                self.line_constraint(end, content.end)
+            };
+            closing.write(
                 writer,
                 if self.options.bracket_spacing {
                     FlatSeparator::Space
