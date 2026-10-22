@@ -1,16 +1,13 @@
 use std::borrow::Cow;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::SourceType;
-use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Parser};
-use swc_next_type_strip::{Lang, Options, Severity, Span, StripResult, strip_types};
+use swc_next_ecma_parser::{NoTokenParserConfig, Parser};
+use swc_next_type_strip::{Lang, Options, Severity, SourceType, Span, StripResult, strip_types};
 
 fn options(lang: Lang) -> Options {
     Options {
         source_type: SourceType::Unambiguous,
         lang,
-        preserve_parens: true,
-        comments: CommentMode::None,
     }
 }
 
@@ -27,7 +24,13 @@ fn assert_valid_javascript(source: &str, lang: Lang) {
         Lang::Js
     };
     let allocator = Allocator::default();
-    let parsed = Parser::init(&allocator, source, options(lang), NoTokenParserConfig).parse();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        options(lang).into(),
+        NoTokenParserConfig,
+    )
+    .parse();
     assert!(parsed.diagnostics.is_empty());
 }
 
@@ -125,7 +128,7 @@ fn parser_error_stops_processing() {
 }
 
 #[test]
-fn parser_options_select_language() {
+fn language() {
     let source = "const element = <Component<Type> />;";
     let result = strip_types(source, options(Lang::Ts));
     assert!(!result.diagnostics.is_empty());
@@ -136,29 +139,16 @@ fn parser_options_select_language() {
 }
 
 #[test]
-fn preserve_parens_option_does_not_change_output() {
-    let source = "(value) as Type;";
-    let mut parser_options = options(Lang::Ts);
-    parser_options.preserve_parens = false;
-    let result = strip_types(source, parser_options);
-
-    assert_utf16_len_preserved(source, &result.code);
-    assert_eq!(result.code, "(value)        ;");
-    assert!(result.diagnostics.is_empty());
-    assert_valid_javascript(&result.code, Lang::Ts);
+fn parentheses() {
+    assert_strip("(value) as Type;", "(value)        ;");
 }
 
 #[test]
-fn comments_option_does_not_change_output() {
-    let source = "/* lead */ let value: number = 1; // tail";
-    let mut parser_options = options(Lang::Ts);
-    parser_options.comments = CommentMode::Flat;
-    let result = strip_types(source, parser_options);
-
-    assert_utf16_len_preserved(source, &result.code);
-    assert_eq!(result.code, "/* lead */ let value         = 1; // tail");
-    assert!(result.diagnostics.is_empty());
-    assert_valid_javascript(&result.code, Lang::Ts);
+fn comments() {
+    assert_strip(
+        "/* lead */ let value: number = 1; // tail",
+        "/* lead */ let value         = 1; // tail",
+    );
 }
 
 #[test]

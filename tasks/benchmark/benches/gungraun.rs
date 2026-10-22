@@ -21,7 +21,7 @@ use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,
 };
-use swc_next_type_strip::strip_types;
+use swc_next_type_strip::{Options as StripOptions, strip_types};
 
 const MINIFIER_SEMANTIC: &str =
     include_str!("../../../crates/swc_ecma_minifier/tests/fixtures/semantic/combined/input.js");
@@ -199,12 +199,10 @@ fn bench_transform(input: TransformInput) {
     black_box((ast, result));
 }
 
-fn type_strip_options(lang: Lang) -> Options {
-    Options {
+fn type_strip_options(lang: Lang) -> StripOptions {
+    StripOptions {
         source_type: SourceType::Module,
         lang,
-        preserve_parens: true,
-        comments: CommentMode::None,
     }
 }
 
@@ -216,7 +214,7 @@ fn type_strip_options(lang: Lang) -> Options {
 #[bench::astro_config(ASTRO_CONFIG, type_strip_options(Lang::Ts))]
 #[bench::effect_schema_ast(EFFECT_SCHEMA_AST, type_strip_options(Lang::Ts))]
 #[bench::hono_types(HONO_TYPES, type_strip_options(Lang::Ts))]
-fn bench_type_strip(source: &str, options: Options) {
+fn bench_type_strip(source: &str, options: StripOptions) {
     black_box(strip_types(black_box(source), black_box(options)));
 }
 

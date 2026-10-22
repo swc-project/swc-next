@@ -22,9 +22,10 @@ use swc_next_ecma_ast::{
     TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation, VariableDeclaration,
     VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
 };
-pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, Span};
-pub use swc_next_ecma_parser::Options;
-use swc_next_ecma_parser::{CommentMode, ParseReturn, Parser, Token, TokenParserConfig, TokenTag};
+pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, SourceType, Span};
+use swc_next_ecma_parser::{
+    CommentMode, Options as ParserOptions, ParseReturn, Parser, Token, TokenParserConfig, TokenTag,
+};
 
 use crate::token_cursor::TokenCursor;
 
@@ -35,6 +36,42 @@ mod token_cursor;
 const UNSUPPORTED_LANG_MESSAGE: &str = "TypeError: Unsupported lang variant";
 const ERASABLE_SYNTAX_ONLY_MESSAGE: &str =
     "SyntaxError: This syntax is not allowed when `erasableSyntaxOnly` is enabled";
+
+/// Options for [`strip_types`].
+///
+/// Converting from [`ParserOptions`] retains only [`Self::source_type`] and
+/// [`Self::lang`]. Converting back enables parenthesized nodes and disables
+/// comment collection.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Options {
+    /// How the source is parsed and evaluated. Defaults to [`SourceType::Module`].
+    pub source_type: SourceType,
+    /// Language variant of the source.
+    ///
+    /// Must be [`Lang::Ts`] or [`Lang::Tsx`] (defaults to [`Lang::Js`]).
+    /// [`Lang::Tsx`] preserves JSX syntax in the output without lowering it.
+    pub lang: Lang,
+}
+
+impl From<ParserOptions> for Options {
+    fn from(options: ParserOptions) -> Self {
+        Self {
+            source_type: options.source_type,
+            lang: options.lang,
+        }
+    }
+}
+
+impl From<Options> for ParserOptions {
+    fn from(options: Options) -> Self {
+        Self {
+            source_type: options.source_type,
+            lang: options.lang,
+            preserve_parens: true,
+            comments: CommentMode::None,
+        }
+    }
+}
 
 /// Stripped output and diagnostics returned by [`strip_types`].
 #[derive(Debug, Eq, PartialEq)]
@@ -70,8 +107,7 @@ pub struct StripResult<'source> {
 ///
 /// [`Options::lang`] must be [`Lang::Ts`] or [`Lang::Tsx`]; [`Lang::Tsx`] preserves
 /// JSX syntax without lowering it, and other [`Lang`] variants return `source`
-/// unchanged with an error diagnostic. [`Options::preserve_parens`] and
-/// [`Options::comments`] have no effect on the output.
+/// unchanged with an error diagnostic.
 #[cfg_attr(feature = "benchmarking", inline(never))]
 pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     if !matches!(options.lang, Lang::Ts | Lang::Tsx) {
@@ -81,11 +117,8 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         };
     }
 
-    let mut parser_options = options;
-    parser_options.preserve_parens = true;
-    parser_options.comments = CommentMode::None;
     let allocator = Allocator::default();
-    let parse = Parser::init(&allocator, source, parser_options, TokenParserConfig).parse();
+    let parse = Parser::init(&allocator, source, options.into(), TokenParserConfig).parse();
     #[cfg(feature = "benchmarking")]
     let parse = benchmark_parse_boundary(parse);
     let ParseReturn {
