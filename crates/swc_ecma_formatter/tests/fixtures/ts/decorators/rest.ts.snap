@@ -7,7 +7,7 @@ class C { method(@dec /* before dots */ ... /* after dots */ values: number[]) {
 {}
 ---------- Output ----------
 class C {
-  method(@dec /* before dots */ ... /* after dots */values: number[]) {}
+  method(@dec /* before dots */ .../* after dots */ values: number[]) {}
 }
 
 ---------- Options ----------
@@ -16,7 +16,7 @@ class C {
 class C {
   method(
     @dec /* before dots */
-    ... /* after dots */values: number[]
+    .../* after dots */ values: number[]
   ) {}
 }
 
@@ -26,6 +26,6 @@ class C {
 class C {
   method(
     @dec /* before dots */
-    ... /* after dots */values: number[]
+    .../* after dots */ values: number[]
   ) {}
 }
