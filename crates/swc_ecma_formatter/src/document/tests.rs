@@ -786,6 +786,123 @@ fn pending_whitespace() {
 }
 
 #[test]
+fn standard_line_spaces() {
+    let adjacent = flat_width_document(3, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.line();
+            writer.text("b");
+        });
+    });
+    assert_eq!(adjacent, "a  b");
+
+    let trailing = flat_width_document(3, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+        });
+    });
+    assert_eq!(trailing, "a ");
+
+    let projected = flat_width_document(3, |writer| {
+        let lines = record(writer, |writer| {
+            writer.line();
+            writer.line();
+        });
+        writer.text("a");
+        writer.write_flat_fragment(lines.try_flat().unwrap());
+        writer.text("b");
+    });
+    assert_eq!(projected, "a  b");
+
+    let fragments = flat_width_document(3, |writer| {
+        let line = record(writer, Writer::line);
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.write_fragment(line);
+            writer.write_fragment(line);
+            writer.text("b");
+        });
+    });
+    assert_eq!(fragments, "a  b");
+}
+
+#[test]
+fn literal_spaces() {
+    let lines = flat_width_document(3, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.space();
+            writer.line();
+            writer.space();
+            writer.line();
+            writer.space();
+            writer.text("b");
+        });
+    });
+    assert_eq!(lines, "a\n\n b");
+
+    let text = flat_width_document(3, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.text(" ");
+        writer.space();
+        writer.text("b");
+    });
+    assert_eq!(text, "a   b");
+
+    let raw = flat_width_document(80, |writer| {
+        writer.text("a");
+        writer.space();
+        writer.text("  ");
+        writer.text("b");
+    });
+    assert_eq!(raw, "a   b");
+}
+
+#[test]
+fn standard_line_whitespace() {
+    let ordinary = flat_width_document(80, |writer| {
+        writer.text("a  \t");
+        writer.hard_line();
+        writer.text("b");
+    });
+    assert_eq!(ordinary, "a\nb");
+
+    let literal = flat_width_document(80, |writer| {
+        writer.text("a  \t");
+        writer.literal_line();
+        writer.text("b");
+    });
+    assert_eq!(literal, "a  \t\nb");
+
+    let aligned = flat_width_document(80, |writer| {
+        writer.indent(|writer| {
+            writer.hard_line();
+            writer.text("a  ");
+            writer.literal_line_with_indent();
+            writer.text("b");
+        });
+    });
+    assert_eq!(aligned, "\n  a  \n  b");
+
+    let pending_indent = flat_width_document(80, |writer| {
+        writer.text("a");
+        writer.indent(Writer::hard_line);
+        writer.literal_line();
+        writer.text("b");
+    });
+    assert_eq!(pending_indent, "a\n  \nb");
+
+    let terminal_indent = flat_width_document(80, |writer| {
+        writer.text("a");
+        writer.indent(Writer::hard_line);
+    });
+    assert_eq!(terminal_indent, "a\n  ");
+}
+
+#[test]
 fn deep_indentation() {
     let allocator = Allocator::new();
     let mut elements = vec![FormatElement::StartIndent; 1025];
@@ -1580,6 +1697,192 @@ fn current_mode_scopes() {
     assert_eq!(current_mode_group(5), "B\nx");
 }
 
+fn conditional_document(width: u16) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let broken = record(&mut writer, |writer| {
+        writer.indent(|writer| {
+            writer.line();
+            writer.text("b");
+        });
+        writer.line();
+        writer.text("c");
+    });
+    let flat = record(&mut writer, |writer| {
+        writer.text(" ");
+        writer.group(false, |writer| {
+            writer.text("d");
+            writer.line();
+            writer.text("e");
+        });
+    });
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.if_break_doc(ConditionTarget::Current, broken, flat);
+    });
+    writer.finish().print(FormatOptions {
+        line_width: width,
+        ..FormatOptions::prettier()
+    })
+}
+
+fn named_condition_document(printed: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let group = writer.next_group_id();
+    let named = record(&mut writer, |writer| {
+        writer.group_with_id(GroupRequest::Auto, Some(group), |writer| {
+            writer.text("a");
+            writer.line();
+            writer.text("b");
+        });
+    });
+    if printed {
+        writer.text("xxxx");
+        writer.write_fragment(named);
+        writer.hard_line();
+    }
+    writer.group(false, |writer| {
+        writer.write_fragment(named);
+        writer.line();
+        writer.if_break_for(ConditionTarget::Group(group), "!");
+        writer.if_flat_for(ConditionTarget::Group(group), "long");
+    });
+    writer.finish().print(FormatOptions {
+        line_width: 5,
+        ..FormatOptions::prettier()
+    })
+}
+
+#[test]
+fn conditional_documents() {
+    assert_eq!(conditional_document(20), "a d e");
+
+    assert_eq!(conditional_document(4), "a\n  b\nc");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let broken = record(&mut writer, |writer| writer.text("B"));
+    let flat = record(&mut writer, |writer| {
+        writer.hard_line();
+        writer.text("flat");
+    });
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.if_break_doc(ConditionTarget::Current, broken, flat);
+        writer.text("b");
+    });
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "aBb");
+
+    let mut writer = Writer::new(&allocator);
+    let empty = record(&mut writer, |_| {});
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.if_break_doc(ConditionTarget::Current, empty, empty);
+        writer.line();
+        writer.text("b");
+    });
+    let narrow = FormatOptions {
+        line_width: 3,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(writer.finish().print(narrow), "a b");
+}
+
+#[test]
+fn named_condition_measurement() {
+    assert_eq!(named_condition_document(false), "a b\nlong");
+
+    // A repeated group still has its previously printed mode during probing.
+    // Printing the accepted flat candidate then updates that binding.
+    assert_eq!(named_condition_document(true), "xxxxa\nb\na b long");
+}
+
+fn named_indent_projection(printed: bool, retained: bool) -> String {
+    flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        if printed {
+            writer.group_with_id(GroupRequest::Expanded, Some(group), |writer| {
+                writer.text("g");
+            });
+        }
+        let write = |writer: &mut Writer<'_>| {
+            writer.text("a");
+            writer.indent_if_break(group, |writer| {
+                writer.line();
+                writer.text("F");
+            });
+            writer.text("b");
+        };
+        if retained {
+            let fragment = record(writer, write);
+            writer.write_flat_fragment(fragment.try_flat().unwrap());
+        } else {
+            writer.flat(write);
+        }
+        writer.hard_line();
+        writer.text("z");
+    })
+}
+
+#[test]
+fn named_condition_bindings() {
+    let unprinted = flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        writer.text("a");
+        writer.if_break_for(ConditionTarget::Group(group), "B");
+        writer.if_flat_for(ConditionTarget::Group(group), "F");
+        writer.text("b");
+    });
+    assert_eq!(unprinted, "ab");
+
+    let unprinted_indent = flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        writer.text("a");
+        writer.indent_if_break(group, |writer| writer.text("F"));
+        writer.text("b");
+    });
+    assert_eq!(unprinted_indent, "ab");
+
+    let retained_definition = flat_width_document(80, |writer| {
+        let group = writer.flat(|writer| writer.named_group(true, |writer| writer.text("a")));
+        writer.if_break_for(ConditionTarget::Group(group), "B");
+        writer.if_flat_for(ConditionTarget::Group(group), "F");
+    });
+    assert_eq!(retained_definition, "aB");
+
+    let fill_binding = flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        let definition = record(writer, |writer| {
+            writer.group_with_id(GroupRequest::Expanded, Some(group), |_| {});
+        });
+        assert!(definition.try_flat().is_none());
+        writer.write_fragment(definition);
+        let projected = record(writer, |writer| {
+            writer.flat(|writer| writer.write_fragment(definition));
+        });
+        let empty = record(writer, |_| {});
+        writer.group(true, |writer| {
+            writer.fill(|writer| {
+                writer.fill_entry(|writer| {
+                    writer.if_break_doc(ConditionTarget::Current, empty, projected);
+                });
+            });
+        });
+        writer.if_break_for(ConditionTarget::Group(group), "B");
+        writer.if_flat_for(ConditionTarget::Group(group), "F");
+    });
+    assert_eq!(fill_binding, "B");
+
+    assert_eq!(named_indent_projection(false, false), "ab\nz");
+
+    assert_eq!(named_indent_projection(false, true), "ab\nz");
+
+    assert_eq!(named_indent_projection(true, false), "ga Fb\nz");
+
+    assert_eq!(named_indent_projection(true, true), "ga Fb\nz");
+}
+
 fn record<'a>(writer: &mut Writer<'a>, write: impl FnOnce(&mut Writer<'a>)) -> super::Fragment<'a> {
     writer
         .record_with_value(|writer| {
@@ -1951,6 +2254,161 @@ fn recorded_group_layouts() {
         completed_group_document(write_group_lines, true),
         "first\nbroken"
     );
+}
+
+fn record_choice<'a>(writer: &mut Writer<'a>, write: impl FnOnce(&mut Writer<'a>)) -> Fragment<'a> {
+    writer
+        .record_with_value(|writer| {
+            write(writer);
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap()
+        .0
+}
+
+fn selected_choice_document(
+    options: FormatOptions,
+    expand: bool,
+    write: impl FnOnce(&mut Writer<'_>),
+) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let compact = record_choice(&mut writer, write);
+    let expanded = record_choice(&mut writer, |writer| {
+        writer.text("f");
+        writer.if_break("!");
+    });
+    writer.group(expand, |writer| {
+        writer.write_alternatives(&[compact], expanded);
+        writer.if_break("?");
+        writer.if_flat(".");
+    });
+    writer.finish().print(options)
+}
+
+fn write_selected_choice_lines(writer: &mut Writer<'_>) {
+    writer.text("a");
+    writer.line();
+    writer.text("b");
+    writer.if_break(",");
+}
+
+fn write_selected_choice_nested(writer: &mut Writer<'_>) {
+    let nested = record(writer, |writer| {
+        writer.text("long");
+        let group = writer.named_group(true, |writer| {
+            writer.text("(");
+            writer.hard_line();
+            writer.text("inner");
+            writer.if_break("!");
+            writer.hard_line();
+            writer.text(")");
+        });
+        writer.indent_if_break(group, |writer| {
+            writer.hard_line();
+            writer.text("named");
+        });
+    });
+    let expanded = record(writer, |writer| {
+        writer.text("other");
+        writer.hard_line();
+        writer.text("rest");
+    });
+    writer.text("a");
+    writer.line();
+    writer.write_alternatives(&[nested], expanded);
+    writer.if_flat(".");
+}
+
+fn write_selected_choice_suffix(writer: &mut Writer<'_>) {
+    writer.text("a");
+    writer.line_suffix(|writer| {
+        writer.if_flat(" flat");
+        writer.if_break(" broken");
+    });
+    writer.group(true, |writer| {
+        writer.hard_line();
+        writer.text("b");
+    });
+}
+
+fn selected_suffix_document() -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let compact = record_choice(&mut writer, |writer| {
+        writer.text("a");
+        writer.line_suffix(|writer| {
+            writer.if_flat(" flat");
+            writer.if_break(" broken");
+        });
+    });
+    writer.group(true, |writer| {
+        writer.write_alternatives(&[compact], compact);
+        writer.hard_line();
+        writer.text("b");
+        writer.if_break("?");
+    });
+    writer.finish().print(FormatOptions::prettier())
+}
+
+#[test]
+fn selected_layout_modes() {
+    let wide = FormatOptions {
+        line_width: 4,
+        ..FormatOptions::prettier()
+    };
+    let narrow = FormatOptions {
+        line_width: 3,
+        ..wide
+    };
+    let nested = FormatOptions {
+        line_width: 20,
+        ..wide
+    };
+
+    let output = selected_choice_document(wide, false, write_selected_choice_lines);
+    assert_eq!(output, "a b.");
+
+    let output = selected_choice_document(wide, true, write_selected_choice_lines);
+    assert_eq!(output, "a b?");
+
+    let output = selected_choice_document(narrow, false, write_selected_choice_lines);
+    assert_eq!(output, "f!?");
+
+    let output = selected_choice_document(narrow, true, write_selected_choice_lines);
+    assert_eq!(output, "f!?");
+
+    let output = selected_choice_document(nested, true, write_selected_choice_nested);
+    assert_eq!(output, "a long(\ninner!\n)\n  named.?");
+
+    let output = selected_choice_document(wide, true, write_selected_choice_nested);
+    assert_eq!(output, "f!?");
+
+    let output = selected_choice_document(nested, true, write_selected_choice_suffix);
+    assert_eq!(output, "a flat\nb?");
+
+    let output = selected_suffix_document();
+    assert_eq!(output, "a flat\nb?");
+}
+
+#[test]
+fn selected_layout_capabilities() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let text = record_choice(&mut writer, |writer| writer.text("text"));
+    assert!(text.try_neutral().is_some());
+
+    let conditional = record_choice(&mut writer, write_selected_choice_lines);
+    assert!(conditional.try_neutral().is_none());
+    writer.group(true, |writer| {
+        writer.write_flat_fragment(conditional.try_flat().unwrap());
+    });
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a b");
+
+    let mut writer = Writer::new(&allocator);
+    let required = record_choice(&mut writer, Writer::hard_line);
+    assert!(required.try_flat().is_none());
+    assert!(required.preferred_breaks());
 }
 
 fn write_group_suffix(writer: &mut Writer<'_>) {
@@ -3009,12 +3467,68 @@ fn forced_line_remeasurement() {
     );
 }
 
+fn fill_suffix_document(write: impl FnOnce(&mut Writer<'_>)) -> String {
+    flat_width_document(4, |writer| {
+        let suffix = record(writer, |writer| {
+            writer.line_suffix(|writer| writer.fill(write));
+        });
+        writer.fill(|writer| {
+            writer.fill_entry(|writer| writer.write_fragment(suffix));
+        });
+    })
+}
+
 #[test]
 fn fill_measurement_boundaries() {
     assert_eq!(
         remeasurement_document(|writer| writer.literal_line(), true, false),
         "head\n{\n  longName\n} tail"
     );
+
+    let propagated = flat_width_document(12, |writer| {
+        writer.group(false, |writer| {
+            writer.text("head");
+            writer.literal_line();
+            writer.fill(|writer| {
+                writer.fill_entry(|writer| writer.group(false, remeasured_value));
+            });
+            writer.text(" tail");
+        });
+    });
+    assert_eq!(propagated, "head\n{longName} tail");
+
+    let suffix = fill_suffix_document(|writer| {
+        writer.fill_entry(|writer| writer.text("aaaaa"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("b"));
+    });
+    assert_eq!(suffix, "aaaaa\nb");
+
+    let forced_suffix = fill_suffix_document(|writer| {
+        writer.fill_entry(|writer| writer.group(true, |writer| writer.text("a")));
+        writer.fill_entry(Writer::line);
+    });
+    assert_eq!(forced_suffix, "a\n");
+
+    let nested_lines = flat_width_document(4, |writer| {
+        let inner = record(writer, |writer| {
+            writer.fill(|writer| {
+                writer.fill_entry(|writer| writer.text(" "));
+                writer.fill_entry(Writer::line);
+                writer.fill_entry(Writer::literal_line);
+                writer.fill_entry(Writer::soft_line);
+                writer.fill_entry(|writer| writer.text(" "));
+            });
+        });
+        writer.fill(|writer| {
+            writer.fill_entry(|writer| {
+                writer.text("bb");
+                writer.line();
+                writer.write_fragment(inner);
+            });
+        });
+    });
+    assert_eq!(nested_lines, "bb   \n\n ");
 }
 
 fn remeasured_fill_continuation(depth: u8) -> String {

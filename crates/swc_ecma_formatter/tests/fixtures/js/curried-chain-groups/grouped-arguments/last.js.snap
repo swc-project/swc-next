@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b(c, (d) => ({ d }))(e).f();
+---------- Options ----------
+{}
+---------- Output ----------
+abc
+  .b(c, (d) => ({ d }))(e)
+  .f();

@@ -12,7 +12,7 @@ function f() {
   return call(
     first,
     // @ts-ignore
-    second,); }
+    second); }
 
 ---------- Options ----------
 {"semi":false}
@@ -21,4 +21,4 @@ function f() {
   return call(
     first,
     // @ts-ignore
-    second,) }
+    second) }

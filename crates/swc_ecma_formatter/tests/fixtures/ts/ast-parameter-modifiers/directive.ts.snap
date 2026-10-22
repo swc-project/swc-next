@@ -8,11 +8,11 @@ class C { constructor(public /* @ts-expect-error */ readonly readonly /* keep */
 ---------- Output ----------
 class C {
   constructor(
-    public /* @ts-expect-error */ readonly /* keep */ value: number,) {} }
+    public /* @ts-expect-error */ readonly /* keep */ value: number) {} }
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 class C {
   constructor(
-    public /* @ts-expect-error */ readonly /* keep */ value: number,) {} }
+    public /* @ts-expect-error */ readonly /* keep */ value: number) {} }

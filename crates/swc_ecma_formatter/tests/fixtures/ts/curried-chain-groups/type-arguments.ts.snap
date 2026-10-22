@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b<T>(c, d)<U>(e).f<V>();
+---------- Options ----------
+{}
+---------- Output ----------
+abc.b<T>(c, d)<U>(e).f<V>();
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+abc
+  .b<T>(
+    c,
+    d,
+  )<U>(e)
+  .f<V>();

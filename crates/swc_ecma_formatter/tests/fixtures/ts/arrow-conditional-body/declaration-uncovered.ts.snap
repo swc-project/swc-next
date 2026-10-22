@@ -18,7 +18,7 @@ const outsideSentinel: number = "x";
 {"printWidth":28}
 ---------- Output ----------
 // @ts-expect-error
-const fn = (foo: boolean,) => foo ? missingA :
+const fn = (foo: boolean) => foo ? missingA :
         missingB;
 const outsideSentinel: number =
   "x";
@@ -27,7 +27,7 @@ const outsideSentinel: number =
 {"arrowParens":"avoid","printWidth":20,"semi":false}
 ---------- Output ----------
 // @ts-expect-error
-const fn = (foo: boolean,) => foo ? missingA :
+const fn = (foo: boolean) => foo ? missingA :
         missingB
 const outsideSentinel: number =
   "x"
@@ -36,6 +36,6 @@ const outsideSentinel: number =
 {"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 // @ts-expect-error
-const fn = (foo: boolean,) => foo ? missingA :
+const fn = (foo: boolean) => foo ? missingA :
 				missingB;
 const outsideSentinel: number = "x";

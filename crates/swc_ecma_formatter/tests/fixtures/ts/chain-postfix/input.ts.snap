@@ -57,7 +57,7 @@ result =
     .property.final;
 consume(
   collection.read(1).select(2)[0]! // @ts-expect-error
-    .missing.value,);
+    .missing.value);
 
 ---------- Options ----------
 {"printWidth":80}
@@ -78,7 +78,7 @@ result = collection
 result = collection.read(1).select(2)[0] /* prettier-ignore */ !.property.final;
 consume(
   collection.read(1).select(2)[0]! // @ts-expect-error
-    .missing.value,);
+    .missing.value);
 
 ---------- Options ----------
 {"printWidth":52,"semi":false}
@@ -121,4 +121,4 @@ result =
     .property.final
 consume(
   collection.read(1).select(2)[0]! // @ts-expect-error
-    .missing.value,)
+    .missing.value)

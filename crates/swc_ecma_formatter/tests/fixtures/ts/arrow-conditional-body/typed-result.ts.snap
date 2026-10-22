@@ -27,5 +27,6 @@ const pick = (
 ---------- Options ----------
 {"arrowParens":"avoid","printWidth":40,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-const pick = (value: boolean): number =>
-	value ? 11 : 23;
+const pick = (
+	value: boolean,
+): number => (value ? 11 : 23);

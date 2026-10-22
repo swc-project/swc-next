@@ -11,7 +11,7 @@ second); // )
 call(
   first,
   // @ts-ignore
-  second,); // )
+  second); // )
 
 ---------- Options ----------
 {"semi":false}
@@ -19,4 +19,4 @@ call(
 call(
   first,
   // @ts-ignore
-  second,) // )
+  second) // )

@@ -11,7 +11,7 @@ Missing) { return value; }
 function f(
   value:
   // @ts-expect-error
-  Missing,) { return value; }
+  Missing) { return value; }
 
 ---------- Options ----------
 {"printWidth":20}
@@ -19,7 +19,7 @@ function f(
 function f(
   value:
   // @ts-expect-error
-  Missing,) { return value; }
+  Missing) { return value; }
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
@@ -27,7 +27,7 @@ function f(
 function f(
   value:
   // @ts-expect-error
-  Missing,) { return value }
+  Missing) { return value }
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
@@ -35,4 +35,4 @@ function f(
 function f(
 	value:
 	// @ts-expect-error
-	Missing,) { return value; }
+	Missing) { return value; }

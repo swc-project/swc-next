@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+use(abc.b(c, d)(e).f());
+---------- Options ----------
+{}
+---------- Output ----------
+use(abc.b(c, d)(e).f());
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+use(
+  abc
+    .b(
+      c,
+      d,
+    )(e)
+    .f(),
+);

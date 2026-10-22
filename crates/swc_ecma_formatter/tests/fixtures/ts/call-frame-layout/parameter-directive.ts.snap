@@ -13,7 +13,7 @@ it(
   function (
     done,
     // @ts-expect-error
-    result: Missing,) { return done(result); },);
+    result: Missing) { return done(result); });
 
 ---------- Options ----------
 {"printWidth":36}
@@ -23,7 +23,7 @@ it(
   function (
     done,
     // @ts-expect-error
-    result: Missing,) { return done(result); },);
+    result: Missing) { return done(result); });
 
 ---------- Options ----------
 {"printWidth":18,"semi":false}
@@ -33,4 +33,4 @@ it(
   function (
     done,
     // @ts-expect-error
-    result: Missing,) { return done(result) },)
+    result: Missing) { return done(result) })
