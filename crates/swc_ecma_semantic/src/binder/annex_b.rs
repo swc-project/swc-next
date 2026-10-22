@@ -12,6 +12,7 @@ pub(super) struct AnnexBFunction {
 struct AnnexBScope<'a> {
     functions: Vec<usize>,
     blockers: Vec<&'a [u8]>,
+    block_functions: HashMap<&'a [u8], usize, FxBuildHasher>,
 }
 
 impl<'a> SymbolTracker<'a> {
@@ -33,13 +34,19 @@ impl<'a> SymbolTracker<'a> {
         // declaration occurrences still belong to the containing body, just
         // like private lexical declarations and parameters.
         for declaration in &self.declarations {
-            if annex_b_var_blocker(tree, scopes.get(declaration.scope), declaration.flags) {
+            let scope = scopes.get(declaration.scope);
+            if annex_b_var_blocker(tree, scope, declaration.flags) {
                 let name = self.symbols[declaration.symbol.index()].name;
-                facts
-                    .entry(declaration.scope)
-                    .or_default()
-                    .blockers
-                    .push(tree.get_wtf8(name).as_bytes());
+                let name = tree.get_wtf8(name).as_bytes();
+                let local = facts.entry(declaration.scope).or_default();
+                local.blockers.push(name);
+                if declaration.flags.contains(SymbolFlags::FUNCTION)
+                    && !declaration
+                        .flags
+                        .contains(SymbolFlags::NON_ANNEX_B_FUNCTION)
+                {
+                    *local.block_functions.entry(name).or_default() += 1;
+                }
             }
         }
         let mut eligible = vec![false; self.annex_b_functions.len()];
@@ -79,7 +86,24 @@ impl<'a> SymbolTracker<'a> {
                 for &index in &local.functions {
                     let name = self.annex_b_functions[index].name;
                     let text = tree.get_utf8(name.name(tree)).as_bytes();
-                    eligible[index] = !blocked.contains_key(&(scope.hoist_target, text));
+                    let branch_local = self.symbol_of_node(name.node_id()).is_some_and(|symbol| {
+                        self.symbols[symbol.index()]
+                            .flags
+                            .contains(SymbolFlags::ANNEX_B_IF_FUNCTION)
+                    });
+                    // Ordinary functions in this block may share companions.
+                    // Ancestor blocks still block promotion; an if-clause's
+                    // implicit block is nested inside this scope as well.
+                    let same_block = if branch_local {
+                        0
+                    } else {
+                        local.block_functions.get(text).copied().unwrap_or(0)
+                    };
+                    let blockers = blocked
+                        .get(&(scope.hoist_target, text))
+                        .copied()
+                        .unwrap_or(0);
+                    eligible[index] = blockers == same_block;
                 }
             }
             walk.push((id, false));
@@ -215,5 +239,5 @@ fn annex_b_var_blocker(tree: &Ast<'_>, scope: Scope, flags: SymbolFlags) -> bool
     }
     flags.intersects(SymbolFlags::BLOCK_SCOPED_LIKE.difference(SymbolFlags::FUNCTION))
         || flags.contains(SymbolFlags::PARAMETER)
-        || (!scope.kind.is_hoist_target() && flags.contains(SymbolFlags::NON_ANNEX_B_FUNCTION))
+        || (!scope.kind.is_hoist_target() && flags.contains(SymbolFlags::FUNCTION))
 }

@@ -159,9 +159,46 @@ fn annex_b_companion_bindings() {
 
         assert_annex_b_dual_binding("{ function f() { return f; } } f;", script);
 
-        assert_annex_b_dual_binding(
-            "{ function f() {} { function f() { return f; } } } f;",
+        assert_annex_b_companions(
+            "{ function f() {} { function f(value) {} } } f;",
             script,
+            &["f() {}"],
+        );
+
+        assert_annex_b_companions(
+            "{ { function f(value) {} } function f() {} } f;",
+            script,
+            &["f() {}"],
+        );
+
+        assert_annex_b_companions(
+            "{ function f() {} function f(value) {} } f;",
+            script,
+            &["f() {}", "f(value) {}"],
+        );
+
+        assert_annex_b_companions(
+            "{ function f() {} if (condition) function f(value) {} } f;",
+            script,
+            &["f() {}"],
+        );
+
+        assert_annex_b_companions(
+            "switch (value) { case 0: function f() {} { function f(value) {} } } f;",
+            script,
+            &["f() {}"],
+        );
+
+        assert_annex_b_companions(
+            "{ function f() {} } { function f(value) {} } f;",
+            script,
+            &["f() {}", "f(value) {}"],
+        );
+
+        assert_annex_b_companions(
+            "{ function f() {} function g() { { function f(value) {} } return f; } }",
+            script,
+            &["f(value) {}"],
         );
 
         assert_annex_b_dual_binding("{ function f() {} function f() { return f; } } f;", script);
@@ -261,6 +298,34 @@ fn annex_b_companion_bindings() {
         "namespace N { type f = string; export var f; if (condition) function f() { return f; } f; }",
         ts_script,
     );
+}
+
+#[track_caller]
+fn assert_annex_b_companions(source: &str, options: Options, declarations: &[&str]) {
+    let allocator = Allocator::new();
+    let expected = declarations
+        .iter()
+        .map(|declaration| source.find(declaration).unwrap() as u32)
+        .collect::<Vec<_>>();
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let analyze_options = AnalyzeOptions {
+            check_syntax,
+            ..AnalyzeOptions::default()
+        };
+        let (ast, semantic) = analyze_with_options(&allocator, source, options, analyze_options);
+        let outer = reference_symbols(&ast, &semantic, b"f")
+            .pop()
+            .unwrap()
+            .unwrap();
+        let actual = semantic
+            .declarations(outer)
+            .map(|declaration| {
+                assert_eq!(declaration.flags, SymbolFlags::FUNCTION_SCOPED_VAR);
+                ast.span(declaration.node).start
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(actual, expected);
+    }
 }
 
 #[track_caller]
