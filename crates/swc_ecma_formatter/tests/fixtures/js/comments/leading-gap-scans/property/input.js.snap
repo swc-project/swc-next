@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object = { key: /* a */
+/* b */ value };
+---------- Options ----------
+{}
+---------- Output ----------
+const object = { /* a */ key: /* b */ value };
+
+---------- Options ----------
+{"printWidth":25}
+---------- Output ----------
+const object = {
+  /* a */
+  key: /* b */ value,
+};
+
+---------- Options ----------
+{"printWidth":25,"semi":false}
+---------- Output ----------
+const object = {
+  /* a */
+  key: /* b */ value,
+}
