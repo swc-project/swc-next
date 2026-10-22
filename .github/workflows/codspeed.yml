@@ -1,0 +1,40 @@
+name: CodSpeed Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codspeed-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  benchmarks:
+    name: Measure walltime
+    if: >-
+      github.event_name == 'push' ||
+      (contains(github.event.pull_request.labels.*.name, 'Codspeed') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'Codspeed'))
+    runs-on: codspeed-macro-x64-ryzen-9950x-ubuntu-24-04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+      - name: Install cargo-codspeed
+        uses: taiki-e/install-action@25435dc8dd3baed7417e0c96d3fe89013a5b2e09 # v2
+        with:
+          tool: cargo-codspeed@6.0.0
+      - name: Build walltime benchmarks
+        run: cargo codspeed build -m walltime -p benchmark --bench parser --bench visit --bench semantic --locked
+      - name: Run walltime benchmarks
+        uses: CodSpeedHQ/action@821a40cd6c80e3cfe387caf55668287addd808da # v5.5.0
+        with:
+          mode: walltime
+          run: cargo codspeed run -m walltime -p benchmark --bench parser --bench visit --bench semantic

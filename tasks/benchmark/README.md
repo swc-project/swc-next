@@ -11,6 +11,12 @@ cargo bench -p benchmark --bench parser
 
 Select `visit` or `semantic` instead of `parser` for those components.
 
+The [CodSpeed workflow](../../.github/workflows/codspeed.yml) measures these
+benchmarks on CodSpeed Macro Runners for every push to `main`. Pull requests run
+only when they have the `Codspeed` label, including when the label is added.
+CodSpeed must be enabled for the repository, and the organization's runner group
+must allow this public repository to use Macro Runners.
+
 ## Parser comparisons
 
 Compare native operations with SWC and JavaScript parsing and traversal with
