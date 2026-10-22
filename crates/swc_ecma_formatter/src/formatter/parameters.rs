@@ -1,9 +1,9 @@
 //! Actual runtime parameter boundaries and receiver/formal/rest ownership.
 
 use swc_next_ecma_ast::{
-    Ast, Decorator, FormalParameter, FormalParameterItemData, FormalParameterPatternData,
-    FormalParameterRest, FormalParameters, FunctionBody, GetSpan, MethodDefinition, Span, SubRange,
-    TsParameterProperty, TsThisParameter,
+    Ast, BindingPattern, Comment, Decorator, FormalParameter, FormalParameterItemData,
+    FormalParameterPatternData, FormalParameterRest, FormalParameters, FunctionBody, GetSpan,
+    MethodDefinition, Span, SubRange, TsParameterProperty, TsThisParameter,
 };
 
 use super::Formatter;
@@ -73,6 +73,19 @@ impl RuntimeParameter {
                 item.span(ast),
             )),
         }
+    }
+}
+
+/// The argument owns comments after the ellipsis, separately from its annotation.
+pub(super) struct RestParameterHead<'ast> {
+    argument: BindingPattern,
+    comments: &'ast [Comment],
+    mode: ContentMode,
+}
+
+impl RestParameterHead<'_> {
+    pub(super) fn argument_end(&self, ast: &Ast<'_>) -> u32 {
+        self.argument.span(ast).end
     }
 }
 
@@ -1013,19 +1026,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let prepared = self.prepare_typed_rest_parameter(rest, mode, annotation)?;
             return self.format_prepared_parameter_item(prepared, writer);
         }
-        let argument = rest.argument(self.ast);
-        writer.text("...");
-        let leading = self.comments.between(Span::new(
+        let head = self.prepare_rest_parameter_head(rest);
+        self.format_rest_parameter_head(head, writer)
+    }
+
+    pub(super) fn prepare_rest_parameter_head(
+        &self,
+        rest: FormalParameterRest,
+    ) -> RestParameterHead<'ast> {
+        let argument = self.parameter_binding(rest.argument(self.ast));
+        let comments = self.comments.in_range(Span::new(
             rest.span(self.ast).start + 3,
             argument.span(self.ast).start,
-        ))?;
-        let mode = self.content_mode(leading);
-        self.comments.claim(leading)?;
+        ));
+        RestParameterHead {
+            argument,
+            comments,
+            mode: self.content_mode(comments),
+        }
+    }
+
+    pub(super) fn format_rest_parameter_head(
+        &mut self,
+        head: RestParameterHead<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        writer.text("...");
+        self.comments.claim(head.comments)?;
         self.format_comment_run(
-            leading,
-            CommentRunLayout::FlatLeading(argument.span(self.ast).start),
+            head.comments,
+            CommentRunLayout::FlatLeading(head.argument.span(self.ast).start),
             writer,
         )?;
-        self.format_parameter_binding(argument, mode, writer)
+        self.format_parameter_pattern(head.argument, head.mode, writer)
     }
 }

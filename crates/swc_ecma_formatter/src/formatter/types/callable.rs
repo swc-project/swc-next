@@ -17,6 +17,7 @@ use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use crate::formatter::parameters::RestParameterHead;
 use crate::formatter::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use crate::{FormatError, TrailingCommas, document::Writer};
 
@@ -216,8 +217,8 @@ enum ParameterBinding<'ast> {
     Pattern {
         node: BindingPattern,
         mode: ContentMode,
-        spread: Option<TypeGap<'ast>>,
     },
+    Rest(RestParameterHead<'ast>),
     This(TsThisParameter),
     SignatureObject(BindingPattern),
 }
@@ -294,7 +295,6 @@ impl PreparedParameterItem<'_> {
                 && let ParameterBinding::Pattern {
                     node,
                     mode: ContentMode::Formatted,
-                    spread: None,
                 } = &left.binding
             {
                 left.binding = ParameterBinding::SignatureObject(*node);
@@ -1367,7 +1367,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ParameterBinding::Pattern {
                         node: pattern,
                         mode: ContentMode::Formatted,
-                        spread: None,
                     },
                     annotation,
                     pattern.span(ast).end,
@@ -1380,24 +1379,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     return Err(self.unsupported("callable type rest decorator", rest));
                 }
-                let pattern = self.parameter_binding(rest.argument(ast));
-                let gap = Span::new(rest.span(ast).start + 3, pattern.span(ast).start);
-                let mode = if self.has_suppression {
-                    self.content_mode(self.comments.in_range(gap))
-                } else {
-                    ContentMode::Formatted
-                };
-                let spread = self.prepare_type_gap(gap, mode == ContentMode::Verbatim);
-                (
-                    ParameterBinding::Pattern {
-                        node: pattern,
-                        mode,
-                        spread: Some(spread),
-                    },
-                    annotation,
-                    pattern.span(ast).end,
-                    None,
-                )
+                let head = self.prepare_rest_parameter_head(rest);
+                let end = head.argument_end(ast);
+                (ParameterBinding::Rest(head), annotation, end, None)
             }
         };
         if initializer.is_none()
@@ -1496,7 +1480,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let shared_annotation = left.annotation.is_some()
             && matches!(&left.binding, ParameterBinding::Pattern {
-                node, mode: ContentMode::Formatted, spread: None,
+                node, mode: ContentMode::Formatted,
             } if node.as_object_pattern(self.ast).is_some());
         let write = |writer: &mut Writer<'ast>| {
             let end = match left.binding {
@@ -1514,11 +1498,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     pattern.span(self.ast).end
                 }
-                ParameterBinding::Pattern { node, mode, spread } => {
-                    if let Some(gap) = spread {
-                        writer.text("...");
-                        self.format_type_gap(gap, FlatSeparator::Empty, writer)?;
-                    }
+                ParameterBinding::Rest(head) => {
+                    let end = head.argument_end(self.ast);
+                    let tail = self.format_rest_parameter_head(head, writer)?;
+                    self.format_expression_tail(tail, writer)?;
+                    end
+                }
+                ParameterBinding::Pattern { node, mode } => {
                     let tail = if shared_annotation {
                         self.format_binding_with_group(node, BindingGroup::Parent, mode, writer)?
                     } else {
