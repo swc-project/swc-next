@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [\u004b in /* prettier-ignore
+*/ | B |  C]: X };---------- Options ----------
+{}
+---------- Output ----------
+type T = {
+  [
+    K in /* prettier-ignore
+     */ | B |  C
+  ]: X;
+};
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+type T = {
+	[
+		K in /* prettier-ignore
+		 */ | B |  C
+	]: X;
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = {
+  [
+    K in /* prettier-ignore
+     */ | B |  C
+  ]: X
+}
