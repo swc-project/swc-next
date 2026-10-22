@@ -72,7 +72,7 @@ struct ConditionalOperand {
     content: ExpressionContent,
     source_end: u32,
     operand_end: u32,
-    content_start: u32,
+    source_start: u32,
 }
 
 struct PreparedConditional<'ast> {
@@ -310,7 +310,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             original,
             source_end: original.span(self.ast).end,
             operand_end: operand.span(self.ast).end,
-            content_start: content.expression.span(self.ast).start,
+            // The operand owns its inner head even when a source wrapper can
+            // disappear. A following ignore can still retain that raw wrapper.
+            source_start: original.span(self.ast).start,
             content,
         }
     }
@@ -354,7 +356,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 test.content,
                 NodeHead {
                     comments: &[],
-                    content_start: test.content_start,
+                    content_start: test.source_start,
                     layout: CommentRunLayout::Source,
                     gap_end: None,
                 },
@@ -423,7 +425,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         next: &ConditionalOperand,
         operator: &'static str,
     ) -> Result<ConditionalBoundary<'ast>, FormatError> {
-        let span = Span::new(previous.source_end, next.content_start);
+        let span = Span::new(previous.source_end, next.source_start);
         let comments = self.comments.in_range(span);
         let sensitive = self.diagnostic_range_is_sensitive(span);
         if comments.is_empty() && !sensitive {
@@ -455,7 +457,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comments,
                 before_count,
                 previous.operand_end,
-                next.content_start,
+                next.source_start,
             )
         });
         let (trailing, leading) = match &suppression {
@@ -464,7 +466,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comments,
                 before_count,
                 previous.source_end,
-                Some(next.content_start),
+                Some(next.source_start),
             ),
         };
         let previous_binding = self.comment_run_binding(before.iter().copied(), |comment| {
@@ -634,7 +636,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_end,
             Some(source_range.end),
         );
-        comments.split_at(trailing.len().min(inner_count))
+        // Ordinary comments outside a retained closing delimiter can still
+        // trail that delimiter. Only the following semantic packet fixes the
+        // placement frontier; its source suppression target is unchanged.
+        let protected = comments[inner_count..]
+            .iter()
+            .position(|&comment| !self.comment_semantics(comment).is_ordinary())
+            .map_or(comments.len(), |offset| inner_count + offset);
+        comments.split_at(trailing.len().min(protected))
     }
 
     fn resolve_conditional_boundary(
@@ -838,7 +847,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ConditionalOperand {
             original,
             content,
-            content_start,
+            source_start,
             operand_end,
             source_end,
         } = operand;
@@ -864,7 +873,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let first = boundary
                 .leading
                 .first()
-                .map_or(content_start, |comment| comment.span.start);
+                .map_or(source_start, |comment| comment.span.start);
             let end = content.expression.span(self.ast).end;
             (
                 self.line_constraint(first, first),
@@ -883,13 +892,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary
                 .after_operator
                 .write(writer, FlatSeparator::Empty, |_| {});
-            // The semantic head must stay on its own line even when this branch
-            // has no generated enclosure. Otherwise its marker becomes a trailing
-            // comment of the preceding operand after punctuation is emitted.
+            // Preserve an own-line semantic head at its physical run. Earlier
+            // comments already supply the run's source line break, so that
+            // constraint must not move the complete packet off the operator.
             if boundary.after_operator == LineConstraint::Unconstrained
                 && self
-                    .suppression_positions(boundary.leading, content_start)
-                    .any(|position| matches!(position, SuppressionPosition::OwnLine))
+                    .suppressed_comment_runs(boundary.leading, source_start)
+                    .next()
+                    .is_some_and(|(run, position)| {
+                        matches!(position, SuppressionPosition::OwnLine)
+                            && run[0].span.start == boundary.leading[0].span.start
+                    })
             {
                 writer.hard_line();
             }
@@ -901,15 +914,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             let head = NodeHead {
                 comments: boundary.leading,
-                content_start,
+                content_start: source_start,
                 layout: if source_head {
                     CommentRunLayout::Source
                 } else {
                     // This head follows the emitted operator, so source-owned
                     // opening lines become breakable inline comment gaps.
-                    CommentRunLayout::InlineLeading(content_start)
+                    CommentRunLayout::InlineLeading(source_start)
                 },
-                gap_end: source_head.then_some(content_start),
+                gap_end: source_head.then_some(source_start),
             };
             let operand_indent = if self.is_nullish_conditional_operand(content.data, position) {
                 operand_indent
