@@ -31,15 +31,14 @@ pub(super) fn lines(source: &str) -> impl Iterator<Item = &str> {
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_position_starts_line(&self, position: u32) -> bool {
         let before = &self.ast.source()[..position as usize];
-        let line = match before
-            .char_indices()
-            .rev()
-            .find(|(_, character)| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
-        {
-            Some((index, character)) => &before[index + character.len_utf8()..],
-            None => before,
-        };
-        line.chars().all(is_source_whitespace)
+        for character in before.chars().rev() {
+            match character {
+                '\n' | '\r' | '\u{2028}' | '\u{2029}' => return true,
+                _ if !is_source_whitespace(character) => return false,
+                _ => {}
+            }
+        }
+        true
     }
 
     pub(super) fn find_comma(&self, span: Span, comments: &[Comment]) -> Option<u32> {
