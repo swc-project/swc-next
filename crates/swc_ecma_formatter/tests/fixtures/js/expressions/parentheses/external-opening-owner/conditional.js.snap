@@ -10,7 +10,6 @@ first
 ---------- Output ----------
 test
   ? // @ts-ignore
-
     first
   : other;
 
@@ -19,6 +18,5 @@ test
 ---------- Output ----------
 test
   ? // @ts-ignore
-
     first
   : other
