@@ -326,6 +326,9 @@ importers:
       oxc-parser:
         specifier: 'catalog:'
         version: 0.142.0
+      prettier:
+        specifier: 3.9.9
+        version: 3.9.9
       tinybench:
         specifier: 'catalog:'
         version: 6.1.2
