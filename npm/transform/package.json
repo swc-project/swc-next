@@ -1,0 +1,75 @@
+{
+  "name": "@swc-next/transform",
+  "version": "0.3.2",
+  "description": "The focused JavaScript and TypeScript transformer for SWC Next",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "npm/transform"
+  },
+  "main": "src-js/index.js",
+  "type": "module",
+  "types": "./src-js/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src-js/index.js",
+      "types": "./src-js/index.d.ts"
+    }
+  },
+  "files": [
+    "src-js/binding.d.ts",
+    "src-js/binding.js",
+    "src-js/index.d.ts",
+    "src-js/index.js"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "napi build --platform --no-js --dts binding.d.ts --output-dir src-js",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build transform --output-dir src-js"
+  },
+  "keywords": [
+    "ast",
+    "javascript",
+    "swc",
+    "transform",
+    "typescript"
+  ],
+  "license": "Apache-2.0",
+  "napi": {
+    "constEnum": false,
+    "binaryName": "swc-next-transform",
+    "packageName": "@swc-next/transform-binding",
+    "targets": [
+      "aarch64-apple-darwin",
+      "aarch64-pc-windows-msvc",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "i686-pc-windows-msvc",
+      "powerpc64le-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-musl",
+      "s390x-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl"
+    ]
+  },
+  "dependencies": {
+    "@swc-next/decoder": "workspace:*",
+    "@swc-next/encoder": "workspace:*",
+    "@swc-next/types": "workspace:*",
+    "@swc-next/walker": "workspace:*"
+  },
+  "wasm": {
+    "binaryName": "swc-next-transform",
+    "packageName": "@swc-next/transform-binding-wasm"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

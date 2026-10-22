@@ -102,17 +102,9 @@ fn write_node_case(
         if skip {
             continue;
         }
-        // These fields are source-backed, and node spans use UTF-16 offsets.
-        let expression = match (ast.name.as_str(), field.name.as_str()) {
-            ("StringLiteral", "raw") | ("JsxText", "value") => "source.slice(start, end)".into(),
-            ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
-            ("NumericLiteral", "raw") => {
-                let raw_start = read_i32(&location, aligned_i32);
-                let raw_end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("{raw_start} === NULL && {raw_end} === 0 ? null : source.slice(start, end)")
-            }
-            _ => read_expression(field_ty, schema, &location, aligned_i32),
-        };
+        // String offsets remain authoritative after transforms move a field to
+        // the extra pool or preserve its spelling at a different node span.
+        let expression = read_expression(field_ty, schema, &location, aligned_i32);
         let field_name = estree_field_name(&ast.name, &field.name);
         let range = matches!(field_ty, AstType::SubRange(_)).then(|| {
             format!(

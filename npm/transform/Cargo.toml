@@ -1,0 +1,19 @@
+[package]
+description.workspace = true
+edition               = "2024"
+homepage.workspace    = true
+keywords.workspace    = true
+license.workspace     = true
+name                  = "swc_next_transform_bridge"
+repository.workspace  = true
+version               = "0.3.2"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+swc_next_bridge   = { workspace = true, features = ["codegen", "parser", "transformer"] }
+swc_next_ecma_ast = { workspace = true }
+
+[build-dependencies]
+napi-build = { workspace = true }

@@ -14,5 +14,6 @@ Pass the decoder result's `meta: { lang, sourceType }` to preserve source
 metadata. `encode(program)` supports TypeScript by default; `encodeJs` and
 `encodeTs` are available when the language is known.
 
-Node spans use UTF-16 offsets. Lone surrogates in encoded string values are
-replaced with U+FFFD.
+Node spans use UTF-16 offsets. String literal values and cooked template values
+preserve lone surrogates through the WTF-8 pool. UTF-8 fields, including
+identifiers and raw source text, replace lone surrogates with U+FFFD.

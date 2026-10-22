@@ -12,16 +12,18 @@ version               = "0.3.2"
 crate-type = ["lib", "cdylib"]
 
 [features]
-codegen = ["dep:swc_next_ecma_codegen"]
-parser  = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
+codegen     = ["dep:swc_next_ecma_codegen"]
+parser      = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
+transformer = ["dep:swc_next_ecma_semantic", "dep:swc_next_ecma_transformer"]
 
 [dependencies]
-swc_next_allocator     = { workspace = true }
-swc_next_bridge_macros = { workspace = true }
-swc_next_ecma_ast      = { workspace = true }
-swc_next_ecma_codegen  = { workspace = true, optional = true }
-swc_next_ecma_parser   = { workspace = true, optional = true }
-swc_next_ecma_semantic = { workspace = true, optional = true }
+swc_next_allocator        = { workspace = true }
+swc_next_bridge_macros    = { workspace = true }
+swc_next_ecma_ast         = { workspace = true }
+swc_next_ecma_codegen     = { workspace = true, optional = true }
+swc_next_ecma_parser      = { workspace = true, optional = true }
+swc_next_ecma_semantic    = { workspace = true, optional = true }
+swc_next_ecma_transformer = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 # `#[bridge]` expands to NAPI-RS types and attributes for native targets.

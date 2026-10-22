@@ -2778,6 +2778,7 @@ dependencies = [
  "swc_next_ecma_codegen",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_ecma_transformer",
 ]
 
 [[package]]
@@ -2938,6 +2939,15 @@ dependencies = [
 [[package]]
 name = "swc_next_simd"
 version = "0.3.2"
+
+[[package]]
+name = "swc_next_transform_bridge"
+version = "0.3.2"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_ecma_ast",
+]
 
 [[package]]
 name = "swc_next_type_strip"

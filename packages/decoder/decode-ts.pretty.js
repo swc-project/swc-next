@@ -283,20 +283,20 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 3: {
         const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const f_raw = str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         result = { type: "Literal", start, end, value: f_value, raw: f_raw };
         break;
       }
       case 4: {
         const f_value = _dv.getFloat64(payload + 0, true);
-        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : source.slice(start, end);
+        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         const value = f_value;
         const raw = f_raw ?? String(value);
         result = { type: "Literal", start, end, value, raw };
         break;
       }
       case 5: {
-        const f_raw = source.slice(start, end - 1);
+        const f_raw = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         const raw = `${f_raw}n`;
         const value = BigInt(f_raw.replaceAll("_", ""));
         result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
@@ -1716,7 +1716,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
         break;
       }
       case 174: {
-        const f_value = source.slice(start, end);
+        const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         result = { type: "JSXText", start, end, value: f_value, raw: f_value };
         break;
       }

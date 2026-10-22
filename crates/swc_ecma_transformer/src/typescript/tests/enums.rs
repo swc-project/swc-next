@@ -1,4 +1,75 @@
 use super::*;
+use swc_next_ecma_ast::{Ast, FunctionBody, Program, Stmt, SubRange, VisitMut, VisitMutWith};
+
+fn transformed_reversed_code(source: &str) -> String {
+    struct ReverseBodies<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl ReverseBodies<'_, '_> {
+        fn reverse(&mut self, body: SubRange<Stmt>) -> SubRange<Stmt> {
+            let mut statements: Vec<_> = body
+                .iter()
+                .map(|id| self.0.get_node_in_sub_range(id))
+                .collect();
+            statements.reverse();
+            self.0.add_sub_range(statements)
+        }
+    }
+
+    impl<'ast> VisitMut<'ast> for ReverseBodies<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_program(&mut self, program: Program) -> Option<Program> {
+            let body = self.reverse(program.body(self.0));
+            program.set_body(self.0, body);
+            program.visit_mut_children_with(self)
+        }
+
+        fn visit_mut_function_body(&mut self, function: FunctionBody) -> Option<FunctionBody> {
+            let body = self.reverse(function.body(self.0));
+            function.set_body(self.0, body);
+            function.visit_mut_children_with(self)
+        }
+    }
+
+    let allocator = Allocator::new();
+    let options = ParserOptions {
+        lang: Lang::Ts,
+        ..ParserOptions::default()
+    };
+    let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let mut ast = parsed.ast;
+    ast.root_program()
+        .visit_mut_with(&mut ReverseBodies(&mut ast));
+    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    transform(
+        ast.root_program(),
+        &mut ast,
+        &semantic,
+        TypeScriptOptions::default(),
+    );
+    swc_next_ecma_codegen::print(&allocator, &ast, Default::default())
+        .code
+        .to_owned()
+}
+
+#[test]
+fn enum_edited_order() {
+    let code = transformed_reversed_code("const v=1; enum E { A=v }");
+    assert!(code.contains("E[\"A\"] = v"));
+
+    let code = transformed_reversed_code("enum E { A=v } const v=1;");
+    assert!(code.contains("E[\"A\"] = 1"));
+
+    let code = transformed_reversed_code("function f(){ const v=1; enum E { A=v } }");
+    assert!(code.contains("E[\"A\"] = v"));
+
+    let code = transformed_reversed_code("const v=1; function f(){ enum E { A=v } }");
+    assert!(code.contains("E[\"A\"] = 1"));
+}
 
 #[test]
 fn enum_container_bindings() {

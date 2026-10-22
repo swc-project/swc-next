@@ -14,10 +14,21 @@ pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer};
 #[cfg(feature = "codegen")]
 mod codegen;
 #[cfg(feature = "codegen")]
-pub use {
-    codegen::{CodegenOptions, CodegenOutput, print_from_buffer},
-    swc_next_ecma_ast::ffi::ast::DeserializeError,
-};
+pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer};
+
+#[cfg(feature = "transformer")]
+mod transformer;
+#[cfg(all(feature = "transformer", feature = "parser"))]
+pub use transformer::parse_transform_to_buffer;
+#[cfg(all(feature = "transformer", feature = "codegen"))]
+pub use transformer::transform_print_from_buffer;
+#[cfg(all(feature = "transformer", feature = "parser", feature = "codegen"))]
+pub use transformer::transform_source_to_buffer;
+#[cfg(feature = "transformer")]
+pub use transformer::{TransformPassOptions, transform_from_buffer};
+
+#[cfg(any(feature = "codegen", feature = "transformer"))]
+pub use swc_next_ecma_ast::ffi::ast::DeserializeError;
 
 #[cfg(not(target_family = "wasm"))]
 #[doc(hidden)]

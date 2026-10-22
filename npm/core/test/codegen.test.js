@@ -3,7 +3,7 @@ import test from "node:test";
 import { execFileSync } from "node:child_process";
 
 import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
-import { parseSync, printSync } from "../src-js/index.js";
+import { parseSync, printSync, transformSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
   const buffer = encode({
@@ -45,6 +45,25 @@ test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
 });
 
+test("printSync preserves lone surrogates in string values", () => {
+  for (const lang of ["js", "ts"]) {
+    const { program } = parseSync('const text = "";', { lang });
+    const value = "\uD800é😀\0\uDC00";
+    program.body[0].declarations[0].init.value = value;
+
+    const buffer = encode(program, { lang });
+    const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    assert.ok(header.getUint32(8, true) > 0);
+    assert.equal(header.getUint32(12, true), 0);
+    const printed = printSync(program, {}, { lang });
+    assert.equal(parseSync(printed.code).program.body[0].declarations[0].init.value, value);
+
+    const escaped = parseSync('const text = "\\uD800";', { lang }).program;
+    const roundtrip = parseSync(printSync(escaped, {}, { lang }).code).program;
+    assert.equal(roundtrip.body[0].declarations[0].init.value, "\uD800");
+  }
+});
+
 test("printSync preserves special numeric values across FFI", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].init.value = -0;
@@ -53,6 +72,48 @@ test("printSync preserves special numeric values across FFI", () => {
 
   program.body[0].declarations[0].init.value = -Infinity;
   assert.equal(printSync(program).code, "const value = -1 / 0;\n");
+});
+
+test("encoder ignores empty numeric and BigInt raw spellings", () => {
+  for (const lang of ["js", "ts"]) {
+    const number = parseSync("0;", { lang }).program;
+    number.body[0].expression.raw = "";
+    assert.equal(printSync(number, {}, { lang }).code, "0;\n");
+
+    const bigint = parseSync("0n;", { lang }).program;
+    bigint.body[0].expression.raw = "n";
+    assert.equal(printSync(bigint, {}, { lang }).code, "0n;\n");
+  }
+});
+
+test("decoder preserves literal spelling from the transformed string pool", () => {
+  function transformedLiteral(source, lang) {
+    let literal;
+    transformSync(source, {
+      jsc: { parser: { syntax: lang === "ts" ? "typescript" : "ecmascript" } },
+      swcNext: { typescript: false },
+      plugins: [{
+        name: "inspect-literal",
+        phase: "after",
+        visitors: { Literal(node) { literal = node; } },
+      }],
+    });
+    return literal;
+  }
+
+  for (const lang of ["js", "ts"]) {
+    const number = transformedLiteral("0x0;", lang);
+    assert.equal(number.value, 0);
+    assert.equal(number.raw, "0x0");
+
+    const bigint = transformedLiteral("0x1_2n;", lang);
+    assert.equal(bigint.value, 18n);
+    assert.equal(bigint.raw, "0x1_2n");
+
+    const string = transformedLiteral('"é\\u0061";', lang);
+    assert.equal(string.value, "éa");
+    assert.equal(string.raw, '"é\\u0061"');
+  }
 });
 
 test("encoder rebuilds the directive prologue after reordering", () => {
@@ -220,6 +281,7 @@ function encodeWithBufferMode(program, mode) {
     import { Buffer as NodeBuffer } from "node:buffer";
     import { readFileSync } from "node:fs";
     const { program, mode } = JSON.parse(readFileSync(0, "utf8"));
+    if (mode === "absent") delete String.prototype.isWellFormed;
     globalThis.Buffer = mode === "absent" ? undefined
       : mode === "missing" ? { prototype: {} }
       : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
@@ -233,7 +295,7 @@ function encodeWithBufferMode(program, mode) {
   return JSON.parse(output).map(value => Uint8Array.from(Buffer.from(value, "base64")));
 }
 
-test("encoder UTF-8 fallback matches Node", () => {
+test("encoder string fallbacks match Node", () => {
   const { program } = parseSync('"prefix"; "value"; "tail";');
   program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF";
   program.body[1].expression.raw = null;
