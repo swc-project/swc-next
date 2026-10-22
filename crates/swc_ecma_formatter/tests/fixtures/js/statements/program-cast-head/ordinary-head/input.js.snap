@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-check
+/* note */ [missing];
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-check
+/* note */ [missing];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-check
+/* note */ ;[missing]
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+// @ts-check
+/* note */ ;[
+  missing,
+]
