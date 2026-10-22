@@ -22,18 +22,6 @@ Use `swc.js` or `swc-next.js` for the other parsers. Each command validates the
 input, warms up five times, then runs the requested number of parses. Replace
 the iteration count with `--calibrate` to report milliseconds per parse.
 
-All three parse modules, select TypeScript and JSX syntax by extension,
-preserve parentheses, and collect comments. Babel disables comment attachment
-and enables error recovery so recoverable early errors, such as duplicate
-bindings, do not reject fixtures accepted by SWC.
-
-`parse-walk` parses a fresh AST and counts `Identifier` nodes on each iteration,
-using SWC Next's `walk`, SWC's `Visitor`, or Babel's `traverse` with `noScope: true`.
-No scope analysis, AST edits, or comment traversal is requested. Counts follow
-each parser's AST representation and can differ for shorthand properties.
-The comparison uses JavaScript inputs because SWC's JS Visitor does not
-implement TypeScript type traversal.
-
 ## Instructions and profiles
 
 On Linux with Valgrind and the `gungraun-runner` version matching the workspace's

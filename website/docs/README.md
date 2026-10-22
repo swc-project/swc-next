@@ -45,7 +45,8 @@ counts and process-local warmups. Both JavaScript groups compare SWC Next, SWC,
 and Babel. `parse-walk` parses a fresh AST and counts Identifiers without scope
 analysis; it uses JavaScript inputs because SWC's JS Visitor does not implement
 TypeScript type traversal. The MDX page renders tables and bar charts
-from this JSON during the static build. Wall time and peak RSS describe whole
+from this JSON during the static build, using SWC Next as the 1× baseline for
+each input and metric. Wall time and peak RSS describe whole
 processes, not individual operations. The first order is the primary comparison;
 reverse-order statistics are available separately.
 
