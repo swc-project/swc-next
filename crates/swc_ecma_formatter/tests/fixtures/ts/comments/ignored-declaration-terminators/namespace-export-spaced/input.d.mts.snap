@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+export as namespace Foo  ;
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+export as namespace Foo  ;
