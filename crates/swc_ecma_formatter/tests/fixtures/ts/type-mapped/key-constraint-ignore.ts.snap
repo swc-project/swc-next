@@ -7,7 +7,7 @@ type A<T> = { [K /* prettier-ignore */ in /* prettier-ignore */ ( keyof T )]: T[
 {"printWidth":80}
 ---------- Output ----------
 type A<T> = {
-  [K /* prettier-ignore */ in /* prettier-ignore */ ( keyof T )]: T[K];
+  [K /* prettier-ignore */ in /* prettier-ignore */ keyof T]: T[K];
 };
 
 ---------- Options ----------
@@ -15,7 +15,7 @@ type A<T> = {
 ---------- Output ----------
 type A<T> = {
   [
-    K /* prettier-ignore */ in /* prettier-ignore */ ( keyof T )
+    K /* prettier-ignore */ in /* prettier-ignore */ keyof T
   ]: T[K];
 };
 
@@ -27,7 +27,7 @@ type A<
 > =
   {
     [
-      K /* prettier-ignore */ in /* prettier-ignore */ ( keyof T )
+      K /* prettier-ignore */ in /* prettier-ignore */ keyof T
     ]: T[K]
   }
 
@@ -36,6 +36,6 @@ type A<
 ---------- Output ----------
 type A<T> = {
 	[
-		K /* prettier-ignore */ in /* prettier-ignore */ ( keyof T )
+		K /* prettier-ignore */ in /* prettier-ignore */ keyof T
 	]: T[K];
 };

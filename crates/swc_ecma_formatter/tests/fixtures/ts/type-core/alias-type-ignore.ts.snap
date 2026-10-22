@@ -10,25 +10,25 @@ type A
 ---------- Output ----------
 type A
 /* prettier-ignore */
-= ( Tools . Member );
+= Tools . Member;
 
 ---------- Options ----------
 {"printWidth":80,"semi":true}
 ---------- Output ----------
 type A
 /* prettier-ignore */
-= ( Tools . Member );
+= Tools . Member;
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 type A
 /* prettier-ignore */
-= ( Tools . Member )
+= Tools . Member
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":1,"semi":false}
 ---------- Output ----------
 type A
 /* prettier-ignore */
-= ( Tools . Member )
+= Tools . Member
