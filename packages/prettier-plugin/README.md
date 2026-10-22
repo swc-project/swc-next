@@ -42,13 +42,12 @@ whole-document fallback. Browser standalone is not yet packaged.
 
 Output inherits SWC formatter's documented differences and existing idempotency
 limitations; it is not a byte-identical replacement for Prettier's built-in JS
-printer. Native hints for canonical measurement have no direct public Prettier
-equivalent, so some width boundaries also differ from the native printer.
-Forced-flat logical groups are folded into conditional mode bindings. Prettier normalizes input line endings before parsing;
-the resolved output `endOfLine` also reaches Rust document construction. Raw
-trailing spaces, including Markdown hard breaks in comments, are preserved
-through literal line Docs. Errors carry source locations for Prettier's
-code frames. See the [design notes](../../website/docs/PrettierPlugin.md) for details.
+printer. The transport maps the formatter's layout operations to public
+Prettier Docs. Prettier normalizes input line endings before parsing; the
+resolved output `endOfLine` also reaches Rust document construction. Literal
+line Docs preserve source whitespace, including Markdown hard breaks in
+comments. Errors carry source locations for Prettier's code frames. See the
+[design notes](../../website/docs/PrettierPlugin.md) for details.
 
 The binary document format and `formatDocBufferSync` are internal, version-matched
 interfaces. Consumers should use the Prettier plugin API.
