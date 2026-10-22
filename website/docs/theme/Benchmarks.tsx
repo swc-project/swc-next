@@ -10,6 +10,8 @@ const metrics = [
 const benchmarks: Benchmark[] = report.benchmarks;
 const format = (value: number) => value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 const engineName = (name: string) => name.split(";")[0].replace(/@([a-f0-9]{40})(-dirty)?$/, (_, commit: string, dirty: string = "") => `@${commit.slice(0, 8)}${dirty}`);
+const engineLabel = (name: string) => name.startsWith("@babel/") ? "Babel" : name.startsWith("@swc-next/") || name.startsWith("swc-next@") ? "SWC Next" : "SWC";
+const iterationUnit = (benchmark: Benchmark) => benchmark.operation === "parse-walk" ? "parse + walk iterations" : benchmark.type === "js" ? "parses" : "iterations";
 
 function resultsFor(benchmark: Benchmark, session = 0): Result[] {
   const run = benchmark.sessions[session];
@@ -29,7 +31,7 @@ function resultsFor(benchmark: Benchmark, session = 0): Result[] {
 for (const benchmark of benchmarks) {
   for (let session = 0; session < Math.max(1, benchmark.sessions.length); session++) {
     const results = resultsFor(benchmark, session);
-    if (results.length !== 2) throw new Error(`Expected two engines: ${benchmark.id}`);
+    if (results.length !== 2 && !(benchmark.type === "js" && results.length === 3)) throw new Error(`Unexpected engine count: ${benchmark.id}`);
     for (const result of results) {
       for (const metric of metrics) {
         const statistic = result.summary[metric.key];
@@ -59,8 +61,8 @@ function MetricBars({ results, metric, maximum }: { results: Result[]; metric: M
     {results.map((result, index) => {
       const value = result.summary[metric.key].mean;
       const label = `${format(value * metric.scale)} ${metric.unit}`;
-      const relative = index === 0 ? comparison(value, baseline, metric) : null;
-      return <div className="benchmark-bar" key={result.name} aria-label={`${index === 0 ? "SWC Next" : "SWC"}: ${label}${relative ? `, ${relative}` : ""}`}>
+      const relative = index !== 1 ? comparison(value, baseline, metric) : null;
+      return <div className="benchmark-bar" key={result.name} aria-label={`${engineLabel(result.name)}: ${label}${relative ? `, ${relative}` : ""}`}>
         <div className="benchmark-bar__track"><div className={`benchmark-bar__fill benchmark-engine-${index}`} style={{ width: `${value / maximum * 100}%` }} /></div>
         <div className="benchmark-bar__value"><strong>{label}</strong>{relative && <span>({relative})</span>}</div>
       </div>;
@@ -89,6 +91,7 @@ function Statistics({ results }: { results: Result[] }) {
 
 export function BenchmarkGroup({ title }: { title: string }) {
   const cases = benchmarks.filter((benchmark) => benchmark.title === title);
+  if (cases.length === 0) return <p>No results recorded yet.</p>;
   const results = cases.map((benchmark) => resultsFor(benchmark));
   const maxima = metrics.map((metric) => Math.max(...results.flatMap((pair) => pair.map((result) => result.summary[metric.key].mean))));
   return <section className="benchmark-group">
@@ -96,14 +99,14 @@ export function BenchmarkGroup({ title }: { title: string }) {
       <div className="benchmark-legend">
         {results[0].map((result, index) => <div className="benchmark-legend__item" key={result.name} title={result.name}>
           <span className={`benchmark-swatch benchmark-engine-${index}`} />
-          <div><strong>{index === 0 ? "SWC Next" : "SWC"}</strong><span>{engineName(result.name)}</span></div>
+          <div><strong>{engineLabel(result.name)}</strong><span>{engineName(result.name)}</span></div>
         </div>)}
       </div>
       <div className="benchmark-comparison__scroll rp-scrollbar">
         <div className="benchmark-grid">
           <div className="benchmark-grid__header"><span>Input</span>{metrics.map((metric) => <div key={metric.key}><strong>{metric.title}</strong><span>vs SWC</span></div>)}</div>
           {cases.map((benchmark, index) => <div className="benchmark-grid__row" key={benchmark.id}>
-            <div className="benchmark-input" id={benchmark.id}><strong>{benchmark.file}</strong><span>{benchmark.iterations.toLocaleString("en-US")} {benchmark.type === "js" ? "parses" : "iterations"} per process</span></div>
+            <div className="benchmark-input" id={benchmark.id}><strong>{benchmark.file}</strong><span>{benchmark.iterations.toLocaleString("en-US")} {iterationUnit(benchmark)} per process</span></div>
             {metrics.map((metric, metricIndex) => <MetricBars key={metric.key} metric={metric} results={results[index]} maximum={maxima[metricIndex]} />)}
           </div>)}
         </div>
@@ -113,7 +116,7 @@ export function BenchmarkGroup({ title }: { title: string }) {
     <details className="benchmark-statistics"><summary>Detailed statistics</summary>
       {cases.map((benchmark, index) => <div className="benchmark-case" key={benchmark.id}>
         <h3>{benchmark.file}</h3>
-        <p className="benchmark-method">{benchmark.runs} runs per engine · {benchmark.iterations.toLocaleString("en-US")} {benchmark.type === "js" ? "parses" : "iterations"} per process{benchmark.type === "js" ? ` + ${benchmark.validations} validation + ${benchmark.processWarmups} warmups` : ` · ${benchmark.warmup} warmup runs`}</p>
+        <p className="benchmark-method">{benchmark.runs} runs per engine · {benchmark.iterations.toLocaleString("en-US")} {iterationUnit(benchmark)} per process{benchmark.type === "js" ? ` + ${benchmark.validations} validation + ${benchmark.processWarmups} warmups` : ` · ${benchmark.warmup} warmup runs`}</p>
         <Statistics results={results[index]} />
         {benchmark.sessions.length > 1 && <details><summary>Reverse-order verification</summary><Statistics results={resultsFor(benchmark, 1)} /></details>}
       </div>)}

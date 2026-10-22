@@ -194,13 +194,14 @@ body { letter-spacing: normal; line-height: 1.5; }
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
 
-.benchmark-group { --benchmark-next: #e58b36; --benchmark-swc: #7ca9d5; margin-block: 28px 44px; min-width: 0; }
+.benchmark-group { --benchmark-next: #e58b36; --benchmark-swc: #7ca9d5; --benchmark-babel: #b497c7; margin-block: 28px 44px; min-width: 0; }
 .benchmark-comparison { margin: 0; }
 .benchmark-legend { display: flex; flex-wrap: wrap; gap: 24px 64px; padding-bottom: 24px; }
 .benchmark-legend__item { display: flex; align-items: flex-start; gap: 12px; min-width: 200px; }
 .benchmark-swatch { display: block; width: 16px; height: 16px; margin-top: 4px; flex-shrink: 0; }
 .benchmark-engine-0 { background: var(--benchmark-next); }
 .benchmark-engine-1 { background: var(--benchmark-swc); }
+.benchmark-engine-2 { background: var(--benchmark-babel); }
 .benchmark-legend__item > div { display: flex; flex-direction: column; gap: 4px; }
 .benchmark-legend__item strong { color: var(--rp-c-text-0); font-size: 16px; font-weight: 550; }
 .benchmark-legend__item > div > span { color: var(--rp-c-text-2); font-size: 14px; overflow-wrap: anywhere; }

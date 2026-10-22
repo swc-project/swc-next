@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@babel/parser": "catalog:",
+    "@babel/traverse": "catalog:",
     "@swc/core": "catalog:",
     "@swc-next/core": "workspace:*"
   }

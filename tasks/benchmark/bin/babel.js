@@ -4,8 +4,9 @@ import { extname } from "node:path";
 import { parse } from "@babel/parser";
 import { bench } from "./bench.js";
 
-const [file, iterations] = process.argv.slice(2);
-assert(file, "usage: node babel.js <file> [iterations|--calibrate]");
+const [file, iterations, operation = "parse"] = process.argv.slice(2);
+assert(file, "usage: node babel.js <file> [iterations|--calibrate] [parse|parse-walk]");
+assert(operation === "parse" || operation === "parse-walk", "unknown operation");
 const source = readFileSync(file, "utf8");
 const extension = extname(file);
 const plugins = [];
@@ -20,5 +21,20 @@ const parserOptions = {
   // Keep recoverable early errors from rejecting fixtures accepted by SWC.
   errorRecovery: true,
 };
-parse(source, parserOptions);
-bench(() => parse(source, parserOptions).program.body.length, iterations);
+const traverse = operation === "parse-walk"
+  ? (await import("@babel/traverse")).default
+  : null;
+let identifiers = 0;
+const visitor = {
+  noScope: true,
+  Identifier() { identifiers++; },
+};
+const run = traverse
+  ? () => {
+      identifiers = 0;
+      traverse(parse(source, parserOptions), visitor);
+      return identifiers;
+    }
+  : () => parse(source, parserOptions).program.body.length;
+run();
+bench(run, iterations);

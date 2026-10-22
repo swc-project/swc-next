@@ -3,7 +3,7 @@ import { performance } from "node:perf_hooks";
 
 // Adapted from .agents/skills/js-parser-benchmark/scripts/bench.mjs.
 // Calibration keeps the best ~10 ms round. Hyperfine then runs a fixed number
-// of parses, shared by both engines, so it measures the same amount of work.
+// of operations, shared by all engines, so it measures the same amount of work.
 export function bench(run, argument = "10") {
   if (argument === "--calibrate") {
     calibrate(run);

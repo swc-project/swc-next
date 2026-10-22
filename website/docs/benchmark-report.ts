@@ -16,6 +16,7 @@ export interface Benchmark {
   id: string;
   title: string;
   type: string;
+  operation: string;
   file: string;
   iterations: number;
   runs: number;

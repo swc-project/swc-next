@@ -46,7 +46,15 @@ const benchmarks = [
   {
     title: "JS parser",
     type: "js",
+    operation: "parse",
     files: parseFiles,
+  },
+  {
+    title: "JS parse + walk",
+    type: "js",
+    operation: "parse-walk",
+    // SWC's JS Visitor does not implement TypeScript type traversal.
+    files: ["typescript.js", "jquery-1.9.1.js"],
   },
 ];
 
@@ -94,7 +102,9 @@ function main() {
   ]);
   const require = createRequire(path.join(root, "tasks/benchmark/package.json"));
   const coreVersion = require("@swc/core/package.json").version;
-  const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`];
+  const babelVersion = require("@babel/parser/package.json").version;
+  const traverseVersion = require("@babel/traverse/package.json").version;
+  const jsNames = [`@swc-next/core@${commit}`, `@swc/core@${coreVersion}`, `@babel/parser@${babelVersion}`];
   const hyperfineVersion = measure("hyperfine", ["--version"]);
   build();
 
@@ -123,7 +133,8 @@ function main() {
       for (const file of files) {
         console.error(`${title}: ${file}`);
         const input = path.join("tasks/benchmark/files", file);
-        const commands = ["swc-next", "swc"].map((engine) =>
+        const engines = isJs ? ["swc-next", "swc", "babel"] : ["swc-next", "swc"];
+        const commands = engines.map((engine) =>
           isJs
             ? [
                 process.execPath,
@@ -147,7 +158,7 @@ function main() {
         );
         if (isJs) {
           const timings = commands.map(([command, ...args]) =>
-            Number(measure(command, [...args, "--calibrate"])),
+            Number(measure(command, [...args, "--calibrate", operation])),
           );
           assert(
             timings.every((ms) => Number.isFinite(ms) && ms > 0),
@@ -157,17 +168,24 @@ function main() {
             5,
             Math.ceil(jsTimeMs / Math.min(...timings)),
           );
-          for (const command of commands) command.push(String(iterations));
+          for (const command of commands) command.push(String(iterations), operation);
+          const unit = operation === "parse-walk" ? "parse + walk iterations" : "parses";
           names = jsNames.map(
-            (name) => `${name}; ${iterations} parses + 1 validation + 5 warmups`,
+            (name, index) => {
+              const walker = operation === "parse-walk" && index === 2
+                ? ` + @babel/traverse@${traverseVersion}`
+                : "";
+              return `${name}${walker}; ${iterations} ${unit} + 1 validation + 5 warmups`;
+            },
           );
           console.error(
-            `JS batch: ${iterations} parses per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/parse`,
+            `JS batch: ${iterations} ${unit} per engine; calibration ${timings.map((ms) => ms.toFixed(3)).join(" / ")} ms/iteration`,
           );
         }
         // Each JS process warms its own V8 state; hyperfine warmups would use
         // separate processes and would not warm the measured parser.
-        const sessions = [[0, 1], [1, 0]].map((order, sessionIndex) => {
+        const forward = commands.map((_, index) => index);
+        const sessions = [forward, [...forward].reverse()].map((order, sessionIndex) => {
           const exportPath = path.join(temporaryDirectory, `${sessionIndex}.json`);
           const log = measure("hyperfine", [
             "--style",
@@ -201,10 +219,10 @@ function main() {
           return { order: order.map((index) => names[index]), report: result };
         });
         report.benchmarks.push({
-          id: `${isJs ? "js-parse" : operation}-${file.replaceAll(".", "-")}`,
+          id: `${isJs ? `js-${operation}` : operation}-${file.replaceAll(".", "-")}`,
           title,
           type,
-          operation: isJs ? "parse" : operation,
+          operation,
           file,
           iterations,
           runs: isJs ? jsRuns : runs,

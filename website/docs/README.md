@@ -41,7 +41,10 @@ report intact.
 The JSON groups Hyperfine exports by operation and input. Both command orders
 retain their full exports, including samples, summaries, units, and metadata.
 Native batches run ten iterations; JavaScript batches use calibrated iteration
-counts and process-local warmups. The MDX page renders tables and bar charts
+counts and process-local warmups. Both JavaScript groups compare SWC Next, SWC,
+and Babel. `parse-walk` parses a fresh AST and counts Identifiers without scope
+analysis; it uses JavaScript inputs because SWC's JS Visitor does not implement
+TypeScript type traversal. The MDX page renders tables and bar charts
 from this JSON during the static build. Wall time and peak RSS describe whole
 processes, not individual operations. The first order is the primary comparison;
 reverse-order statistics are available separately.
