@@ -1736,14 +1736,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if context.needs_parentheses(data, self.ast) {
-            if matches!(
-                data,
-                TsTypeData::TsIntersectionType(_)
-                    | TsTypeData::TsFunctionType(_)
-                    | TsTypeData::TsConstructorType(_)
-            ) || matches!(context, TypeContext::TypeConstraint)
-                && matches!(data, TsTypeData::TsConditionalType(_))
-            {
+            // Unions and nested conditional tests own a block frame.
+            // Other types keep their own breaks inside tight parentheses.
+            let block = matches!(
+                (data, context),
+                (TsTypeData::TsUnionType(_), _)
+                    | (
+                        TsTypeData::TsConditionalType(_),
+                        TypeContext::ConditionalCheck | TypeContext::ConditionalExtends
+                    )
+            );
+            if !block {
                 writer.text("(");
                 let tail = print(self, TypeLayout::Root, TypeEnclosure::Parentheses, writer)?;
                 self.format_expression_tail(tail, writer)?;
