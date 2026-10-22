@@ -1589,12 +1589,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
-        let inline = match placement {
-            Some(HeadGapPlacement::Inline) => true,
-            Some(HeadGapPlacement::OwnLine) => false,
-            None => !self.source_position_starts_line(comment.span.start),
-        };
         if packet.is_none() {
+            let inline = matches!(placement, Some(HeadGapPlacement::Inline));
             self.prepare_leading_comment_gap(comment.span, comment.kind, next_start, inline)
                 .gap
                 .write(writer, FlatSeparator::Space, |writer| {
@@ -1615,7 +1611,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
         .write(writer, FlatSeparator::Space, |writer| match breaks {
             0 if comment.kind == CommentKind::Block => writer.space(),
-            1 if comment.kind == CommentKind::Block && inline => {
+            1 if comment.kind == CommentKind::Block
+                && match placement {
+                    Some(HeadGapPlacement::Inline) => true,
+                    Some(HeadGapPlacement::OwnLine) => false,
+                    None => !self.source_position_starts_line(comment.span.start),
+                } =>
+            {
                 if grouped {
                     writer.line();
                 } else {
