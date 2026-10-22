@@ -13,7 +13,7 @@ use testsuite::{
         },
     },
     runner::{
-        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
+        Runner, codegen::CodegenRunner, parser::ParserRunner, semantic::SemanticRunner,
         transform::TransformerRunner,
     },
 };
@@ -23,7 +23,7 @@ enum RunnerName {
     Parser,
     Codegen,
     Transform,
-    Resolver,
+    Semantic,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -93,10 +93,10 @@ fn main() {
                     .into(),
             ),
         },
-        RunnerName::Resolver if matches!(args.case, CaseSet::SwcResolver) => {
-            run_filtered::<ResolverRunner, SwcResolverCase>(&args.filter)
+        RunnerName::Semantic if matches!(args.case, CaseSet::SwcResolver) => {
+            run_filtered::<SemanticRunner, SwcResolverCase>(&args.filter)
         }
-        RunnerName::Resolver => Err("`resolver` runner requires `--case swc_resolver`".into()),
+        RunnerName::Semantic => Err("`semantic` runner requires `--case swc_resolver`".into()),
     };
     println!("{:?}", res);
 }
@@ -110,7 +110,7 @@ where
         CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
         CaseSet::SwcResolver | CaseSet::Swc => {
-            Err("parser/codegen do not run SWC transform/resolver cases".into())
+            Err("parser/codegen do not run SWC transform/semantic cases".into())
         }
     }
 }

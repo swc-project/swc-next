@@ -1,4 +1,4 @@
-resolver * swc_resolver
+semantic * swc_resolver
 ========================
 Positive Passed: 20207/20355 (99.27%)
 Negative Passed: 0/0 (0.00%)

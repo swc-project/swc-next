@@ -12,7 +12,7 @@ use testsuite::{
         typescript::{parser::TypeScriptParserCase, transform::TypeScriptTransformCase},
     },
     runner::{
-        Runner, codegen::CodegenRunner, parser::ParserRunner, resolver::ResolverRunner,
+        Runner, codegen::CodegenRunner, parser::ParserRunner, semantic::SemanticRunner,
         transform::TransformerRunner,
     },
     suite::TestResult,
@@ -28,7 +28,7 @@ pub fn main() -> ExitCode {
         update_snapshots::<Test262Case>(),
         update_snapshots::<TypeScriptParserCase>(),
         update_snapshots::<BabelParserCase>(),
-        update_snapshot::<ResolverRunner, SwcResolverCase>(&SwcResolverCase::read()),
+        update_snapshot::<SemanticRunner, SwcResolverCase>(&SwcResolverCase::read()),
         update_snapshot::<TransformerRunner, BabelTransformCase>(&BabelTransformCase::read()),
         update_snapshot::<TransformerRunner, SwcTransformCase>(&SwcTransformCase::read()),
         update_snapshot::<TransformerRunner, TypeScriptTransformCase>(

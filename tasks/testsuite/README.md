@@ -5,9 +5,12 @@ fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
 - Codegen suites check AST round trips and printing stability.
-- Resolver suites compare identifier end offsets and semantic binding identities
+- Semantic suites compare identifier end offsets and semantic binding identities
   with reference output.
 - Transform suites compare normalized output or check output syntax and stability.
+
+Semantic fixtures use SWC's legacy resolver as a reference, including its parser
+and identifier-marking model.
 
 ## Usage
 
@@ -33,7 +36,7 @@ cargo run -p testsuite --bin debug -- --runner parser --case test262 --filter '<
 ```
 
 Parser and codegen runners accept `test262`, `typescript`, or `babel`.
-Transform accepts `babel`, `typescript`, or `swc`; resolver accepts `swc_resolver`.
+Transform accepts `babel`, `typescript`, or `swc`; semantic accepts `swc_resolver`.
 See `--help` for additional options.
 
 ## JavaScript conformance

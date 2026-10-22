@@ -14,10 +14,10 @@ use crate::{
     suite::TestResult,
 };
 
-pub struct ResolverRunner;
+pub struct SemanticRunner;
 
-impl Runner<SwcResolverCase> for ResolverRunner {
-    const NAME: &'static str = "resolver";
+impl Runner<SwcResolverCase> for SemanticRunner {
+    const NAME: &'static str = "semantic";
 
     fn run(case: &SwcResolverCase) -> TestResult {
         let path = case.relative_path().to_path_buf();
@@ -44,7 +44,7 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let allocator = Allocator::new();
     let ast = parse_case(&allocator, case)?;
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    let actual = resolver_snapshot(&ast, &semantic);
+    let actual = semantic_snapshot(&ast, &semantic);
 
     if actual == case.expected() {
         Ok(())
@@ -55,7 +55,7 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
 
 // Identifier end offsets make ordering independent of AST traversal and scope allocation.
 // Zero denotes a name without an explicit binding in the semantic model.
-fn resolver_snapshot(ast: &Ast<'_>, semantic: &Semantic<'_>) -> String {
+fn semantic_snapshot(ast: &Ast<'_>, semantic: &Semantic<'_>) -> String {
     let mut identifiers = BTreeMap::new();
     for entry in semantic.iter_declarations() {
         let node = entry.declaration.node;

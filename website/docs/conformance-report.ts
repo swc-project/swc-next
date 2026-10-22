@@ -1,6 +1,6 @@
 import { closeSync, openSync, readSync, readdirSync } from "node:fs";
 
-export type ConformanceKind = "parser" | "codegen" | "resolver" | "transform" | "estree" | "codec";
+export type ConformanceKind = "parser" | "codegen" | "semantic" | "transform" | "estree" | "codec";
 export interface Count {
   passed: number;
   total: number;
@@ -19,7 +19,7 @@ export interface ConformanceResult {
   panicked?: number;
 }
 
-const kinds = new Set<ConformanceKind>(["parser", "codegen", "resolver", "transform", "estree", "codec"]);
+const kinds = new Set<ConformanceKind>(["parser", "codegen", "semantic", "transform", "estree", "codec"]);
 
 export function parseConformanceHeader(snapshot: string, header: string): ConformanceResult {
   const name = snapshot.match(/^([a-z]+)_(.+)\.snap$/);
