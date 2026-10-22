@@ -10,7 +10,7 @@ use super::Formatter;
 use super::comments::{CommentRunLayout, ExpressionTail};
 use super::decorators::{DecoratorLayout, DecoratorPrefix};
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use super::expressions::arguments::{ArgumentLayout, DelimitedClose, FollowingItem, Separator};
 use super::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use super::types::TypeGap;
 use super::types::callable::{CallableParameter, SignatureParameterHug, SignatureParameterLayout};
@@ -570,6 +570,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_expression_tail(tail, writer)?;
             return Ok(());
         }
+        let closing = private_boundary
+            .as_ref()
+            .map_or(DelimitedClose::Source, |source| {
+                DelimitedClose::Fixed(source.closing)
+            });
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("(");
             let mut write_items = |writer: &mut Writer<'ast>| {
@@ -674,7 +679,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     let hug = if has_previous { None } else { hugged_parameter };
                     let tail = self.format_runtime_parameter(parameter, item.mode, hug, writer)?;
-                    let boundary = self.finish_delimited_item(item, tail, writer)?;
+                    let boundary =
+                        self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
                     end = boundary.end;
                     separator = boundary.separator;
                     transition = boundary.transition;
@@ -698,17 +704,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(write_items)?
             };
             if !hug && (has_parameters || end != content.start) {
-                private_boundary
-                    .as_ref()
-                    .map_or_else(
-                        || self.line_constraint(end, content.end),
-                        |source| source.closing,
-                    )
-                    .write(writer, FlatSeparator::Empty, |writer| {
+                closing.constraint(self, end, content.end).write(
+                    writer,
+                    FlatSeparator::Empty,
+                    |writer| {
                         if frame == ParameterFrame::Ordinary {
                             writer.soft_line();
                         }
-                    });
+                    },
+                );
             }
             writer.text(")");
             Ok(())

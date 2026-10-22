@@ -24,10 +24,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let operator = unary.operator(self.ast);
         writer.text(operator.as_str());
-        if matches!(
+        let word_operator = matches!(
             operator,
             UnaryOperator::Typeof | UnaryOperator::Void | UnaryOperator::Delete
-        ) {
+        );
+        if word_operator {
             writer.space();
         }
         let position = ExpressionPosition::UnaryArgument(operator);
@@ -78,7 +79,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if diagnostic_sensitive {
             let operator_end = span.start + operator.as_str().len() as u32;
             self.comments.claim(leading)?;
-            self.format_comment_run(leading, CommentRunLayout::SourceAfter(operator_end), writer)?;
+            let layout = CommentRunLayout::SourceAfter(operator_end);
+            if word_operator {
+                self.format_comment_run_after_separator(leading, layout, writer)?;
+            } else {
+                self.format_comment_run(leading, layout, writer)?;
+            }
             let flat = if leading.is_empty() {
                 FlatSeparator::Empty
             } else {

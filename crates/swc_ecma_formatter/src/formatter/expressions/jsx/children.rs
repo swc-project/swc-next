@@ -11,7 +11,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, QuoteStyle,
-    document::{FillEntry, Fragment, Writer},
+    document::{ConditionTarget, FillEntry, Fragment, GroupId, Writer},
 };
 
 #[derive(Default)]
@@ -23,14 +23,24 @@ pub(super) struct JsxChildrenLayout {
     pub(super) leading_inline: bool,
     pub(super) trailing_inline: bool,
     pub(super) source: Option<Span>,
+    pub(super) group: Option<GroupId>,
     grouped_text: bool,
     leading_space: Option<(usize, LineConstraint)>,
     trailing_space: bool,
     only_space: Option<usize>,
     single_quote: bool,
+    fixed_line: bool,
 }
 
 impl JsxChildrenLayout {
+    fn space_layout(&self) -> JsxSpaceLayout {
+        if self.fixed_line {
+            JsxSpaceLayout::Fixed
+        } else {
+            JsxSpaceLayout::Conditional(ConditionTarget::Current)
+        }
+    }
+
     pub(super) fn write<'ast>(&self, content: Fragment<'ast>, writer: &mut Writer<'ast>) {
         if let Some(spaces) = self.only_space {
             write_jsx_space(
@@ -38,6 +48,7 @@ impl JsxChildrenLayout {
                 spaces,
                 JsxSpacePlacement::Lone,
                 LineConstraint::Unconstrained,
+                self.space_layout(),
                 writer,
             );
             return;
@@ -49,6 +60,7 @@ impl JsxChildrenLayout {
                     spaces,
                     JsxSpacePlacement::Leading,
                     following,
+                    self.space_layout(),
                     writer,
                 );
             }
@@ -141,6 +153,7 @@ impl JsxChildrenStream {
                     spaces,
                     JsxSpacePlacement::Between,
                     following,
+                    self.layout.space_layout(),
                     writer,
                 );
             }
@@ -233,6 +246,16 @@ impl JsxChildrenStream {
                 self.layout.trailing_space = true;
                 self.layout.trailing_inline = false;
                 let before = formatter.line_constraint(previous.end, source.start);
+                // The trailing space belongs to the enclosing JSX layout, while
+                // its retained fill entry may independently fit on one line.
+                self.layout.group =
+                    (spaces == 1 && !self.layout.fixed_line).then(|| writer.next_group_id());
+                let layout = self
+                    .layout
+                    .group
+                    .map_or(self.layout.space_layout(), |group| {
+                        JsxSpaceLayout::Conditional(ConditionTarget::Group(group))
+                    });
                 writer.extend_fill_entry(entry, |writer| {
                     before.write(writer, FlatSeparator::Empty, |_| {});
                     write_jsx_space(
@@ -240,6 +263,7 @@ impl JsxChildrenStream {
                         spaces,
                         JsxSpacePlacement::Trailing,
                         LineConstraint::Unconstrained,
+                        layout,
                         writer,
                     );
                 });
@@ -264,11 +288,18 @@ enum JsxSpacePlacement {
     Lone,
 }
 
+#[derive(Clone, Copy)]
+enum JsxSpaceLayout {
+    Fixed,
+    Conditional(ConditionTarget),
+}
+
 fn write_jsx_space<'ast>(
     single_quote: bool,
     spaces: usize,
     placement: JsxSpacePlacement,
     following: LineConstraint,
+    layout: JsxSpaceLayout,
     writer: &mut Writer<'ast>,
 ) {
     if spaces > 1 {
@@ -288,12 +319,14 @@ fn write_jsx_space<'ast>(
     if matches!(following, LineConstraint::NewLine(_)) {
         // Text space before a required line break has no JSX value.
         writer.text(space);
-    } else if matches!(placement, JsxSpacePlacement::Between) {
-        writer.if_current_break(space);
-        writer.if_current_flat(" ");
     } else {
-        writer.if_break(space);
-        writer.if_flat(" ");
+        match layout {
+            JsxSpaceLayout::Fixed => writer.text(" "),
+            JsxSpaceLayout::Conditional(target) => {
+                writer.if_break_for(target, space);
+                writer.if_flat_for(target, " ");
+            }
+        }
     }
     if matches!(
         placement,
@@ -368,11 +401,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_jsx_children(
         &mut self,
         children: SubRange<JsxChild>,
+        fixed_line: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<JsxChildrenLayout, FormatError> {
         let ast = self.ast;
         let mut stream = JsxChildrenStream::default();
         stream.layout.single_quote = self.options.quote_style == QuoteStyle::Single;
+        stream.layout.fixed_line = fixed_line;
         let mut previous_ignore = false;
         writer.fill_with_empty_line_policy(|writer| {
             for id in children.iter() {

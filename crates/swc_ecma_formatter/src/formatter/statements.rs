@@ -31,6 +31,7 @@ use crate::{FormatError, Semicolons, document::Writer};
 #[derive(Clone, Copy)]
 pub(super) enum StatementSequenceKind<'ast> {
     Program {
+        hashbang_end: Option<u32>,
         has_source_items: bool,
         header_barrier: Option<Span>,
     },
@@ -306,6 +307,10 @@ impl StatementPunctuation {
 
 #[derive(Clone, Copy)]
 enum StatementBoundary {
+    /// The program already emitted this prefix's literal terminating line.
+    Hashbang {
+        end: u32,
+    },
     Semicolon {
         end: u32,
         terminator: u32,
@@ -345,7 +350,8 @@ impl From<StatementBoundary> for PrintedStatement<'_> {
 impl StatementBoundary {
     fn end(self) -> u32 {
         match self {
-            Self::Semicolon { end, .. }
+            Self::Hashbang { end }
+            | Self::Semicolon { end, .. }
             | Self::SourceTerminator { end, .. }
             | Self::SourceEnd { end, .. }
             | Self::TypeDeclarationEnd { end, .. } => end,
@@ -354,7 +360,7 @@ impl StatementBoundary {
 
     fn has_terminator(self) -> bool {
         match self {
-            Self::Semicolon { .. } | Self::SourceTerminator { .. } => true,
+            Self::Hashbang { .. } | Self::Semicolon { .. } | Self::SourceTerminator { .. } => true,
             Self::SourceEnd { has_terminator, .. }
             | Self::TypeDeclarationEnd { has_terminator, .. } => has_terminator,
         }
@@ -376,6 +382,7 @@ impl StatementBoundary {
 
     fn with_end(self, end: u32) -> Self {
         match self {
+            Self::Hashbang { .. } => Self::Hashbang { end },
             Self::Semicolon { terminator, .. } => Self::Semicolon { end, terminator },
             Self::SourceTerminator { terminator, .. } => Self::SourceTerminator { end, terminator },
             Self::SourceEnd { has_terminator, .. } => Self::SourceEnd {
@@ -438,7 +445,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         mut statements: std::iter::Peekable<impl Iterator<Item = StatementItem>>,
         span: Span,
-        previous_end: Option<u32>,
         kind: StatementSequenceKind<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<StatementSequence, FormatError> {
@@ -459,10 +465,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | StatementSequenceKind::Case { leading, .. } => leading,
             _ => StatementBodyLeading::empty(),
         };
-        let mut previous = previous_end.map(|end| StatementBoundary::SourceEnd {
-            end,
-            has_terminator: false,
-        });
+        let hashbang_end = match kind {
+            StatementSequenceKind::Program { hashbang_end, .. } => hashbang_end,
+            _ => None,
+        };
+        let mut previous = hashbang_end.map(|end| StatementBoundary::Hashbang { end });
         let header_barrier = match kind {
             StatementSequenceKind::Program { header_barrier, .. } => header_barrier,
             _ => None,
@@ -474,9 +481,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => DirectivePrologue::Closed,
         };
         let mut first_statement = true;
-        let mut previous_span_end = previous_end.unwrap_or(span.start);
+        let mut previous_span_end = hashbang_end.unwrap_or(span.start);
         let mut previous_omitted: Option<OmittedStatementTail<'ast>> = None;
-        let mut prepared_end = previous_end.unwrap_or(span.start);
+        let mut prepared_end = hashbang_end.unwrap_or(span.start);
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(
                 item,
@@ -695,7 +702,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     FlatSeparator::Space
                 };
-                constraint.write(writer, separator, Writer::hard_line);
+                if !matches!(boundary, StatementBoundary::Hashbang { .. }) {
+                    constraint.write(writer, separator, Writer::hard_line);
+                }
                 if constraint == LineConstraint::Unconstrained {
                     let empty_line = if let Some(tail) = previous_omitted {
                         self.next_line_is_empty(tail.source_gap.start, tail.source_gap.end)
@@ -911,7 +920,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(first) = dangling.first()
             && let Some(boundary) = previous
         {
-            self.comment_gap(boundary.end(), first.span.start, writer);
+            if matches!(boundary, StatementBoundary::Hashbang { .. }) {
+                if self.next_line_is_empty(boundary.end(), first.span.start) {
+                    writer.hard_line();
+                }
+            } else {
+                self.comment_gap(boundary.end(), first.span.start, writer);
+            }
         }
         let layout = match (previous, kind) {
             (
@@ -933,7 +948,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.format_comment_run(dangling, layout, writer)?;
         Ok(StatementSequence {
-            has_content: previous.is_some() || !dangling.is_empty() || !transferred.is_empty(),
+            has_content: !first_statement || !dangling.is_empty() || !transferred.is_empty(),
             end: dangling.last().map_or_else(
                 || previous.map_or(span.start, StatementBoundary::end),
                 |comment| comment.span.end,
@@ -1791,7 +1806,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             let sequence = writer.indent(|writer| {
                 opening.write(writer, FlatSeparator::Space, Writer::hard_line);
-                self.format_statement_sequence(items, content, None, kind, writer)
+                self.format_statement_sequence(items, content, kind, writer)
             })?;
             self.line_constraint(sequence.end, content.end).write(
                 writer,

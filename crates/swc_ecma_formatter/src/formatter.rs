@@ -39,6 +39,14 @@ pub(crate) struct Formatter<'ast, 'source> {
     enclosing_await: Option<AwaitExpression>,
     for_initializer_span: Option<Span>,
     terminal_close_owner: diagnostics::TerminalCloseOwner,
+    source_object_layout: SourceObjectLayout,
+}
+
+/// Language construction facts for stable chain selection, never Doc fitting.
+#[derive(Default)]
+struct SourceObjectLayout {
+    observing: bool,
+    generation: usize,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -65,6 +73,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             enclosing_await: None,
             for_initializer_span: None,
             terminal_close_owner: diagnostics::TerminalCloseOwner::Source,
+            source_object_layout: SourceObjectLayout::default(),
         };
         for &comment in ast.comments() {
             if !formatter.has_type_casts {
@@ -142,6 +151,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(hashbang) = hashbang {
             writer.text("#!");
             writer.text(self.ast.get_utf8(hashbang.value(self.ast)));
+            // The complete payload, including trailing whitespace, is significant.
+            writer.literal_line();
         }
         let ast = self.ast;
         let statements = program
@@ -155,8 +166,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let has_content = self.format_statement_sequence(
             directives.chain(statements).peekable(),
             program.span(ast),
-            hashbang.map(|node| node.span(ast).end),
             StatementSequenceKind::Program {
+                hashbang_end: hashbang.map(|node| node.span(ast).end),
                 header_barrier: self.program_header_barrier(program),
                 has_source_items: !program.body(ast).is_empty()
                     || !program.directives(ast).is_empty(),

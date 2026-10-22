@@ -25,7 +25,7 @@ use crate::formatter::types::generics::TypeParameterContext;
 use crate::formatter::types::{TypeContext, TypeGap};
 use crate::{
     ArrowParentheses, FormatError, Semicolons, TrailingCommas,
-    document::{Fragment, RecordedGroup, Writer},
+    document::{ConditionTarget, Fragment, RecordedGroup, Writer},
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -125,7 +125,7 @@ struct PreparedArrowGenerics<'ast> {
     mode: ContentMode,
     prefix: TypeGap<'ast>,
     following: TypeGap<'ast>,
-    tail: TrailingCommaPolicy,
+    requires_comma: bool,
 }
 
 pub(super) struct FormattedArrowHead<'a> {
@@ -366,19 +366,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let member = self.ast.get_node_in_sub_range(id);
                     member.constraint(self.ast).is_none()
                 });
-            let tail = if requires_comma {
-                TrailingCommaPolicy::Required
-            } else if self.options.trailing_commas == TrailingCommas::None {
-                TrailingCommaPolicy::Forbidden
-            } else {
-                TrailingCommaPolicy::IfBreak
-            };
             PreparedArrowGenerics {
                 node,
                 mode,
                 prefix: self.prepare_type_gap(prefix_gap, prefix_source),
                 following: self.prepare_type_gap(following_gap, following_source),
-                tail,
+                requires_comma,
             }
         });
         let result = annotation.map(|annotation| ArrowReturnInput {
@@ -1085,12 +1078,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FlatSeparator::Empty
                 };
                 self.format_type_gap(generic.prefix, prefix_separator, writer)?;
+                let tail = if generic.requires_comma {
+                    TrailingCommaPolicy::Required
+                } else if self.options.trailing_commas == TrailingCommas::None {
+                    TrailingCommaPolicy::Forbidden
+                } else {
+                    TrailingCommaPolicy::IfBreak(ConditionTarget::Current)
+                };
                 let mut write_generics = |writer: &mut Writer<'ast>| {
                     self.format_type_parameters_with_tail(
                         generic.node,
                         TypeParameterContext::Callable,
                         generic.mode,
-                        generic.tail,
+                        tail,
                         writer,
                     )
                 };

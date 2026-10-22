@@ -8,6 +8,7 @@ use swc_next_ecma_ast::{
 use super::Formatter;
 use super::arguments::{
     ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingArgument, Separator,
+    TrailingCommaPolicy,
 };
 use super::parentheses::NumericContentView;
 use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
@@ -15,7 +16,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalClose
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, TrailingCommas,
-    document::{Fragment, Writer},
+    document::{ConditionTarget, Fragment, GroupId, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -200,9 +201,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("[]");
                 Ok(())
             }
-            SourceArray::Formatted(source) => writer.group(source.expand, |writer| {
-                self.format_array_contents(source, writer).map(|_| ())
-            }),
+            SourceArray::Formatted(source) => {
+                let group = self.array_trailing_comma_group(source.layout, writer);
+                writer.group_with_id(source.expand.into(), group, |writer| {
+                    self.format_array_contents(source, group, writer)
+                        .map(|_| ())
+                })
+            }
         }
     }
 
@@ -223,10 +228,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let expand = source.expand;
+        let group = self.array_trailing_comma_group(source.layout, writer);
         let (content, concise) =
-            writer.record_with_value(|writer| self.format_array_contents(source, writer))?;
+            writer.record_with_value(|writer| self.format_array_contents(source, group, writer))?;
         let (normal, ()) = writer.record_with_value(|writer| {
-            writer.group(expand, |writer| writer.write_fragment(content));
+            writer.group_with_id(expand.into(), group, |writer| {
+                writer.write_fragment(content)
+            });
             Ok::<_, FormatError>(())
         })?;
         if concise {
@@ -236,7 +244,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         } else {
             let (forced, ()) = writer.record_with_value(|writer| {
-                writer.group(true, |writer| writer.write_fragment(content));
+                writer.group_with_id(true.into(), group, |writer| writer.write_fragment(content));
                 Ok::<_, FormatError>(())
             })?;
             Some(forced)
@@ -250,6 +258,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_array_contents(
         &mut self,
         source: PreparedArray<'ast>,
+        group: Option<GroupId>,
         writer: &mut Writer<'ast>,
     ) -> Result<bool, FormatError> {
         let PreparedArray {
@@ -269,6 +278,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     array,
                     content,
                     layout,
+                    group,
                     numeric_comments.as_mut(),
                     writer,
                 ),
@@ -277,6 +287,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         array,
                         content,
                         layout,
+                        group,
                         numeric_comments.as_mut(),
                         writer,
                     )
@@ -295,6 +306,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(numeric_comments
             .as_ref()
             .is_some_and(ArrayCommentOwner::is_concise))
+    }
+
+    fn array_trailing_comma_group(
+        &self,
+        layout: ArgumentLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Option<GroupId> {
+        // Fill entries choose their own modes; the comma still belongs to the array.
+        (matches!(layout, ArgumentLayout::Fill)
+            && self.options.trailing_commas != TrailingCommas::None)
+            .then(|| writer.next_group_id())
     }
 
     /// Selected Multiple qualification reduces two decisions in one element pass.
@@ -473,6 +495,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array: ArrayExpression,
         span: Span,
         layout: ArgumentLayout,
+        group: Option<GroupId>,
         mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<u32, FormatError> {
@@ -489,6 +512,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut following_mode = None;
         let mut elisions = ElisionLayout::Formatted;
         let constrained = self.diagnostic_range_is_sensitive(span);
+        let trailing_comma = if self.options.trailing_commas == TrailingCommas::None {
+            TrailingCommaPolicy::Forbidden
+        } else {
+            TrailingCommaPolicy::IfBreak(
+                group.map_or(ConditionTarget::Current, ConditionTarget::Group),
+            )
+        };
         while let Some(item) = items.next() {
             // Resolve the initial source prefix before its elisions claim comments.
             // Later real items receive their binding from the preceding source gap.
@@ -597,7 +627,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         },
                     },
                     Span::new(previous_end, span.end),
-                    self.options.trailing_commas != TrailingCommas::None,
+                    trailing_comma,
                     numeric_comments.as_deref_mut(),
                     writer,
                 )

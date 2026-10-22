@@ -706,6 +706,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        let body_gap_written = !node.colon_comments.is_empty()
+            && matches!(
+                node.colon_layout,
+                CommentRunLayout::FlatLeading(_) | CommentRunLayout::InlineLeading(_)
+            );
         if !node.colon_comments.is_empty() {
             self.comments.claim(node.colon_comments)?;
             if !matches!(node.colon_layout, CommentRunLayout::SourceAfter(_)) {
@@ -731,15 +736,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
             } else if first.is_some() {
-                self.opening_line_constraint(body_span).write(
-                    writer,
-                    FlatSeparator::Space,
-                    if block {
-                        Writer::space
-                    } else {
-                        Writer::hard_line
-                    },
-                );
+                if !body_gap_written {
+                    self.opening_line_constraint(body_span).write(
+                        writer,
+                        FlatSeparator::Space,
+                        if block {
+                            Writer::space
+                        } else {
+                            Writer::hard_line
+                        },
+                    );
+                }
             } else if let Some(comment) = self.comments.in_range(body_span).first() {
                 self.comment_gap(body_span.start, comment.span.start, writer);
             }
@@ -750,7 +757,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_statement_sequence(
                 items,
                 body_span,
-                None,
                 StatementSequenceKind::Case {
                     leading: node.body_leading,
                     incoming: node.incoming,

@@ -362,12 +362,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(prefix) = flat_import_fragment(prefix)
             && let Some(suffix) = flat_import_fragment(suffix)
         {
+            // Import options own their surrounding expansion independently of
+            // the conditional group's candidate-local break requests.
+            if object.normal.preferred_breaks() {
+                writer.break_parent();
+            }
             let grouped = writer.flat_delimited_fragment("(", prefix, object.normal, suffix, ")");
             if let Some(forced) = object.forced {
                 let expanded = writer.flat_delimited_fragment("(", prefix, forced, suffix, ")");
-                writer.write_alternatives(fallback, &[grouped, expanded], fallback);
+                writer.write_alternatives(&[grouped, expanded], fallback);
             } else {
-                writer.write_alternatives(fallback, &[grouped], fallback);
+                writer.write_alternatives(&[grouped], fallback);
             }
         } else {
             writer.write_fragment(fallback);

@@ -5,9 +5,9 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Alternatives, BreakEffect, CanonicalCandidate, Doc, FlatFragment, FormatElement, Fragment,
-    FragmentCapabilities, GroupId, GroupRequest, Measurement, NeutralFragment, RecordedGroup,
-    SpaceKind, text::Text,
+    Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
+    Fragment, FragmentCapabilities, GroupId, GroupRequest, NeutralFragment, RecordedGroup,
+    text::Text,
 };
 
 pub(crate) struct Writer<'a> {
@@ -17,6 +17,7 @@ pub(crate) struct Writer<'a> {
     flattening: bool,
     group_count: usize,
     conditional_lines: bool,
+    intrinsic_lines: bool,
 }
 
 /// A completed entry can retain a suffix while it is still the final scope.
@@ -34,6 +35,7 @@ impl<'a> Writer<'a> {
             flattening: false,
             group_count: 0,
             conditional_lines: false,
+            intrinsic_lines: false,
         }
     }
 
@@ -49,7 +51,11 @@ impl<'a> Writer<'a> {
             Cow::Borrowed(text) => text,
             Cow::Owned(text) => self.allocator.alloc_str(&text),
         };
-        self.elements.push(FormatElement::Text(Text::new(text)));
+        let text = Text::new(text);
+        if !text.is_single_line() {
+            self.intrinsic_lines = true;
+        }
+        self.elements.push(FormatElement::Text(text));
     }
 
     /// Copies transient text into storage owned by this formatting call.
@@ -58,7 +64,11 @@ impl<'a> Writer<'a> {
             return;
         }
         let text = self.allocator.alloc_str(text);
-        self.elements.push(FormatElement::Text(Text::new(text)));
+        let text = Text::new(text);
+        if !text.is_single_line() {
+            self.intrinsic_lines = true;
+        }
+        self.elements.push(FormatElement::Text(text));
     }
 
     /// Literal source lines retain their contents without structural indentation.
@@ -81,24 +91,28 @@ impl<'a> Writer<'a> {
     }
 
     pub(crate) fn hard_line(&mut self) {
+        self.intrinsic_lines = true;
         self.elements.push(FormatElement::HardLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     pub(crate) fn literal_line(&mut self) {
+        self.intrinsic_lines = true;
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    pub(crate) fn space(&mut self) {
-        self.elements
-            .push(FormatElement::Space(SpaceKind::Deferred));
+    /// Preserves source whitespace while returning to the current indentation.
+    /// This is the standard Doc composition `markAsRoot(literalline)`.
+    pub(crate) fn literal_line_with_indent(&mut self) {
+        self.intrinsic_lines = true;
+        self.elements.push(FormatElement::LiteralLineWithIndent);
+        self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    /// A canonical separator counts during fit probing and disappears at a break.
-    pub(crate) fn reserved_space(&mut self) {
-        self.elements
-            .push(FormatElement::Space(SpaceKind::Reserved));
+    /// Writes one literal separator; the syntax owner decides whether it is needed.
+    pub(crate) fn space(&mut self) {
+        self.elements.push(FormatElement::Text(Text::new(" ")));
     }
 
     pub(crate) fn soft_line(&mut self) {
@@ -115,25 +129,83 @@ impl<'a> Writer<'a> {
     }
 
     pub(crate) fn if_break(&mut self, text: &'a str) {
-        self.elements.push(FormatElement::IfBreak(Text::new(text)));
+        self.if_break_for(ConditionTarget::Current, text);
     }
 
     pub(crate) fn if_flat(&mut self, text: &'a str) {
-        self.elements.push(FormatElement::IfFlat(Text::new(text)));
+        self.if_flat_for(ConditionTarget::Current, text);
     }
 
-    /// Unlike group-bound conditionals, fill entries observe their local mode.
-    pub(crate) fn if_current_break(&mut self, text: &'a str) {
-        self.elements
-            .push(FormatElement::IfCurrentBreak(Text::new(text)));
+    pub(crate) fn if_break_for(&mut self, target: ConditionTarget, text: &'a str) {
+        if !text.is_empty() {
+            match target {
+                ConditionTarget::Current => {
+                    let text = Text::new(text);
+                    self.intrinsic_lines |= !text.is_single_line();
+                    self.elements.push(FormatElement::IfBreak(text));
+                }
+                ConditionTarget::Group(_) => {
+                    let broken = self.text_fragment(text);
+                    let flat = self.text_fragment("");
+                    self.if_break_doc(target, broken, flat);
+                }
+            }
+        }
     }
 
-    pub(crate) fn if_current_flat(&mut self, text: &'a str) {
-        self.elements
-            .push(FormatElement::IfCurrentFlat(Text::new(text)));
+    pub(crate) fn if_flat_for(&mut self, target: ConditionTarget, text: &'a str) {
+        if !text.is_empty() {
+            match target {
+                ConditionTarget::Current => {
+                    let text = Text::new(text);
+                    self.intrinsic_lines |= !text.is_single_line();
+                    self.elements.push(FormatElement::IfFlat(text));
+                }
+                ConditionTarget::Group(_) => {
+                    let broken = self.text_fragment("");
+                    let flat = self.text_fragment(text);
+                    self.if_break_doc(target, broken, flat);
+                }
+            }
+        }
+    }
+
+    fn text_fragment(&self, text: &'a str) -> Fragment<'a> {
+        let text = Text::new(text);
+        let elements: &[FormatElement<'a>] = if text.source.is_empty() {
+            &[]
+        } else {
+            self.allocator.alloc([FormatElement::Text(text)])
+        };
+        Fragment {
+            elements,
+            effect: BreakEffect::default(),
+            capabilities: FragmentCapabilities::classify(elements),
+            conditional_lines: false,
+            intrinsic_lines: !text.is_single_line(),
+        }
+    }
+
+    /// Both branches contribute break effects, including the unselected branch.
+    pub(crate) fn if_break_doc(
+        &mut self,
+        target: ConditionTarget,
+        broken: Fragment<'a>,
+        flat: Fragment<'a>,
+    ) {
+        self.effect = self.effect.join(broken.effect).join(flat.effect);
+        self.conditional_lines |= broken.conditional_lines || flat.conditional_lines;
+        self.intrinsic_lines |= broken.intrinsic_lines || flat.intrinsic_lines;
+        let conditional = self.allocator.alloc(Conditional {
+            target,
+            broken,
+            flat,
+        });
+        self.elements.push(FormatElement::Conditional(conditional));
     }
 
     pub(crate) fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.intrinsic_lines = true;
         let start = self.elements.len();
         self.elements
             .push(FormatElement::StartLineSuffix { end_offset: 0 });
@@ -192,13 +264,18 @@ impl<'a> Writer<'a> {
         request: GroupRequest,
         write: impl FnOnce(&mut Self),
     ) -> GroupId {
-        let id = GroupId(self.group_count);
-        self.group_count += 1;
+        let id = self.next_group_id();
         self.group_with_id(request, Some(id), write);
         id
     }
 
-    fn group_with_id<T>(
+    /// Reserves an identity before recording contents shared by layout alternatives.
+    pub(crate) fn next_group_id(&mut self) -> GroupId {
+        self.group_count += 1;
+        GroupId(super::NonZeroUsize::new(self.group_count).expect("group identity is nonzero"))
+    }
+
+    pub(crate) fn group_with_id<T>(
         &mut self,
         request: GroupRequest,
         id: Option<GroupId>,
@@ -232,29 +309,17 @@ impl<'a> Writer<'a> {
         if self.flattening {
             return write(self);
         }
-        let start = self.elements.len();
-        let effect = self.effect;
-        let conditional_lines = self.conditional_lines;
-        self.flattening = true;
-        let result = write(self);
-        self.flattening = false;
-        if self.elements[start..]
-            .iter()
-            .any(|element| !element.permits_flat())
-        {
-            return result;
+        let (fragment, result) = self
+            .record_with_value(|writer| {
+                writer.flattening = true;
+                Ok::<_, std::convert::Infallible>(write(writer))
+            })
+            .unwrap_or_else(|never| match never {});
+        if let Some(flat) = fragment.try_flat() {
+            self.write_flat_fragment(flat);
+        } else {
+            self.write_fragment(fragment);
         }
-        let mut output = start;
-        for index in start..self.elements.len() {
-            let Some(element) = self.elements[index].flattened() else {
-                continue;
-            };
-            self.elements[output] = element;
-            output += 1;
-        }
-        self.elements.truncate(output);
-        self.effect = effect;
-        self.conditional_lines = conditional_lines;
         result
     }
 
@@ -283,8 +348,17 @@ impl<'a> Writer<'a> {
         group: GroupId,
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        self.elements.push(FormatElement::StartIndentIfBreak(group));
+        let start = self.elements.len();
+        self.elements.push(FormatElement::StartIndentIfBreak {
+            id: group,
+            end_offset: 0,
+        });
         let result = write(self);
+        let end_offset = self.elements.len() - start;
+        self.elements[start] = FormatElement::StartIndentIfBreak {
+            id: group,
+            end_offset,
+        };
         self.elements.push(FormatElement::EndIndent);
         result
     }
@@ -382,6 +456,19 @@ impl<'a> Writer<'a> {
         Ok(super::clean_text_width(&self.elements[start..]))
     }
 
+    /// Observes this construction scope without scanning its instruction stream.
+    pub(crate) fn write_with_intrinsic_lines<T, E>(
+        &mut self,
+        write: impl FnOnce(&mut Self) -> Result<T, E>,
+    ) -> Result<(T, bool), E> {
+        let outer = self.intrinsic_lines;
+        self.intrinsic_lines = false;
+        let result = write(self);
+        let intrinsic_lines = self.intrinsic_lines;
+        self.intrinsic_lines |= outer;
+        result.map(|value| (value, intrinsic_lines))
+    }
+
     /// Syntax is consumed once; only completed documents are retained.
     pub(crate) fn record_with_value<T, E>(
         &mut self,
@@ -403,6 +490,7 @@ impl<'a> Writer<'a> {
             effect: child.effect,
             capabilities,
             conditional_lines: child.conditional_lines,
+            intrinsic_lines: child.intrinsic_lines,
         };
         Ok((fragment, value))
     }
@@ -434,14 +522,25 @@ impl<'a> Writer<'a> {
         request: GroupRequest,
         fragment: Fragment<'a>,
     ) -> Fragment<'a> {
+        self.group_fragment_with_id(request, None, fragment)
+    }
+
+    pub(crate) fn group_fragment_with_id(
+        &self,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        fragment: Fragment<'a>,
+    ) -> Fragment<'a> {
         let effect = BreakEffect::from_request(request).join(fragment.effect);
-        let capabilities = if effect.preferred_breaks() || fragment.conditional_lines {
+        let capabilities = if id.is_some() {
+            FragmentCapabilities::General
+        } else if effect.preferred_breaks() || fragment.conditional_lines {
             FragmentCapabilities::from_flat(fragment.capabilities.permits_flat())
         } else {
             fragment.capabilities
         };
         let elements = self.allocator.alloc([
-            FormatElement::StartGroup { effect, id: None },
+            FormatElement::StartGroup { effect, id },
             FormatElement::Fragment(fragment),
             FormatElement::EndGroup,
         ]);
@@ -450,10 +549,11 @@ impl<'a> Writer<'a> {
             effect,
             capabilities,
             conditional_lines: fragment.conditional_lines,
+            intrinsic_lines: fragment.intrinsic_lines,
         }
     }
 
-    /// Joins complete scopes with the same optional deferred separator as `space`.
+    /// Joins complete scopes with an optional literal separator.
     pub(crate) fn join_fragments(
         &self,
         left: Fragment<'a>,
@@ -476,7 +576,7 @@ impl<'a> Writer<'a> {
         let elements: &'a [FormatElement<'a>] = if separate {
             self.allocator.alloc([
                 FormatElement::Fragment(left),
-                FormatElement::Space(SpaceKind::Deferred),
+                FormatElement::Text(Text::new(" ")),
                 FormatElement::Fragment(right),
             ])
         } else {
@@ -490,6 +590,7 @@ impl<'a> Writer<'a> {
             effect,
             capabilities,
             conditional_lines,
+            intrinsic_lines: left.intrinsic_lines || right.intrinsic_lines,
         }
     }
 
@@ -502,6 +603,8 @@ impl<'a> Writer<'a> {
         body: Fragment<'a>,
         close: &'a str,
     ) -> Fragment<'a> {
+        let open = Text::new(open);
+        let close = Text::new(close);
         let group_effect = BreakEffect::from_request(request).join(body.effect);
         let effect = prefix.effect.join(group_effect);
         let conditional_lines = prefix.conditional_lines || body.conditional_lines;
@@ -516,13 +619,13 @@ impl<'a> Writer<'a> {
                 effect: group_effect,
                 id: None,
             },
-            FormatElement::IfBreak(Text::new(open)),
+            FormatElement::IfBreak(open),
             FormatElement::StartIndent,
             FormatElement::SoftLine,
             FormatElement::Fragment(body),
             FormatElement::EndIndent,
             FormatElement::SoftLine,
-            FormatElement::IfBreak(Text::new(close)),
+            FormatElement::IfBreak(close),
             FormatElement::EndGroup,
         ]);
         Fragment {
@@ -530,6 +633,10 @@ impl<'a> Writer<'a> {
             effect,
             capabilities,
             conditional_lines,
+            intrinsic_lines: prefix.intrinsic_lines
+                || body.intrinsic_lines
+                || !open.is_single_line()
+                || !close.is_single_line(),
         }
     }
 
@@ -571,6 +678,9 @@ impl<'a> Writer<'a> {
             effect: body.effect,
             capabilities,
             conditional_lines: body.conditional_lines,
+            intrinsic_lines: body.intrinsic_lines
+                || !open.is_single_line()
+                || !close.is_single_line(),
         }
     }
 
@@ -611,12 +721,18 @@ impl<'a> Writer<'a> {
             effect,
             capabilities,
             conditional_lines,
+            intrinsic_lines: prefix.intrinsic_lines
+                || body.intrinsic_lines
+                || suffix.intrinsic_lines
+                || !open.is_single_line()
+                || !close.is_single_line(),
         }
     }
 
     pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.effect = self.effect.join(fragment.effect);
         self.conditional_lines |= fragment.conditional_lines;
+        self.intrinsic_lines |= fragment.intrinsic_lines;
         self.elements.push(FormatElement::Fragment(fragment));
     }
 
@@ -634,58 +750,30 @@ impl<'a> Writer<'a> {
             .push(FormatElement::FlatFragment(FlatFragment(fragment)));
     }
 
+    /// Writes a standard conditional group. Branch-local break requests do not
+    /// force an enclosing group; the selected branch still retains its own groups.
     pub(crate) fn write_alternatives(
         &mut self,
-        normal: Fragment<'a>,
         preferred: &[Fragment<'a>],
         fallback: Fragment<'a>,
     ) {
+        let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
-            self.write_fragment(fallback);
-            return;
+            choices.push(fallback);
+        } else {
+            choices.extend_from_slice(preferred);
         }
-        let mut choices = ArenaVec::with_capacity_in(preferred.len(), self.allocator);
-        choices.extend_from_slice(preferred);
-        self.write_recorded_alternatives(normal, choices, fallback, Measurement::Display);
-    }
-
-    pub(crate) fn write_canonical_alternatives(
-        &mut self,
-        normal: Fragment<'a>,
-        preferred: &[CanonicalCandidate<'a>],
-        fallback: Fragment<'a>,
-    ) {
-        if preferred.is_empty() {
-            self.write_fragment(fallback);
-            return;
-        }
-        let mut choices = ArenaVec::with_capacity_in(preferred.len(), self.allocator);
-        choices.extend(preferred.iter().map(|candidate| candidate.0));
-        self.write_recorded_alternatives(normal, choices, fallback, Measurement::Canonical);
-    }
-
-    fn write_recorded_alternatives(
-        &mut self,
-        normal: Fragment<'a>,
-        preferred: ArenaVec<'a, Fragment<'a>>,
-        fallback: Fragment<'a>,
-        measurement: Measurement,
-    ) {
-        // The normal layout owns outward expansion. Optional display variants
-        // retain their own groups without expanding the parent.
-        self.effect = self.effect.join(normal.effect);
-        self.conditional_lines |= normal.conditional_lines
-            || fallback.conditional_lines
+        self.conditional_lines |= fallback.conditional_lines
             || preferred.iter().any(|fragment| fragment.conditional_lines);
         let alternatives = self.allocator.alloc(Alternatives {
-            preferred: preferred.into_bump_slice(),
+            preferred: choices.into_bump_slice(),
             fallback,
         });
-        let element = match measurement {
-            Measurement::Display => FormatElement::Alternatives(alternatives),
-            Measurement::Canonical => FormatElement::CanonicalAlternatives(alternatives),
-        };
-        self.elements.push(element);
+        // Only the first candidate participates in the language summary. Later
+        // choices can introduce layout lines without making them intrinsic.
+        self.intrinsic_lines |= alternatives.first().intrinsic_lines;
+        self.elements
+            .push(FormatElement::Alternatives(alternatives));
     }
 
     pub(crate) fn finish(self) -> Doc<'a> {
@@ -693,7 +781,6 @@ impl<'a> Writer<'a> {
             allocator: self.allocator,
             elements: self.elements.into_bump_slice(),
             group_count: self.group_count,
-            conditional_lines: self.conditional_lines,
         }
     }
 }

@@ -10,7 +10,9 @@ use super::{
     Formatter, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout, TypeBoundaryTail,
     TypeLayout,
 };
-use crate::formatter::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLayout};
+use crate::formatter::comments::{
+    CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{
@@ -282,6 +284,7 @@ pub(super) struct PendingTypeHead<'ast> {
     next_start: u32,
     leading: Option<MovableTypeHead<'ast>>,
     position: TypeHeadPosition,
+    opening: CommentOpening,
 }
 
 enum TypeHeadPosition {
@@ -302,7 +305,13 @@ impl<'ast> PendingTypeHead<'ast> {
             next_start,
             leading,
             position: TypeHeadPosition::Leading,
+            opening: CommentOpening::Needed,
         }
+    }
+
+    pub(super) fn with_opening(mut self, opening: CommentOpening) -> Self {
+        self.opening = opening;
+        self
     }
 
     pub(super) fn with_inline_prefix(mut self) -> Self {
@@ -1690,6 +1699,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(first) = comments.first() else {
             return Ok(());
         };
+        let opening = std::mem::replace(&mut pending.opening, CommentOpening::Needed);
         self.comments.claim(comments)?;
         let mut riding = &[][..];
         if matches!(pending.position, TypeHeadPosition::Inline) {
@@ -1716,7 +1726,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let comments = if let Some(last) = riding.last() {
             let (_, remaining) = comments.split_at(riding.len());
-            self.format_inline_trailing_comments(riding, writer)?;
+            self.format_inline_trailing_comments_with_opening(riding, opening, writer)?;
             let next = remaining
                 .first()
                 .map_or(next_start, |comment| comment.span.start);
