@@ -12,8 +12,15 @@ const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../..",
 );
-const swcCoreVersion = "82.1.0";
-const fastStripVersion = "59.0.1";
+const cargoPackages = [...readFileSync(path.join(root, "Cargo.lock"), "utf8")
+  .matchAll(/\[\[package\]\]\r?\nname = "([^"]+)"\r?\nversion = "([^"]+)"/g)];
+function crateVersion(name) {
+  const packages = cargoPackages.filter(([, crate]) => crate === name);
+  assert.equal(packages.length, 1, `Expected one locked version of ${name}`);
+  return packages[0][2];
+}
+const swcCoreVersion = crateVersion("swc_core");
+const fastStripVersion = crateVersion("swc_ts_fast_strip");
 const runs = 200;
 const warmup = 20;
 const nativeIterations = 10;
