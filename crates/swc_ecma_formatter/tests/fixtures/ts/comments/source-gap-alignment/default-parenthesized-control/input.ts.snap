@@ -8,7 +8,7 @@ type T<A = /* c
 ---------- Output ----------
 type T<
   A = /* c
-   * x */ /* prettier-ignore */ ( B |  C ),
+   * x */ /* prettier-ignore */ B |  C,
 > = A;
 
 ---------- Options ----------
@@ -16,7 +16,7 @@ type T<
 ---------- Output ----------
 type T<
 	A = /* c
-	 * x */ /* prettier-ignore */ ( B |  C ),
+	 * x */ /* prettier-ignore */ B |  C,
 > = A;
 
 ---------- Options ----------
@@ -24,5 +24,5 @@ type T<
 ---------- Output ----------
 type T<
   A = /* c
-   * x */ /* prettier-ignore */ ( B |  C ),
+   * x */ /* prettier-ignore */ B |  C,
 > = A

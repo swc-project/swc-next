@@ -28,7 +28,7 @@ type Tail<T extends unknown[]> = T extends [
   unknown,
   ...
   // prettier-ignore
-  ( infer    R ),
+  infer    R,
 ]
   ? R
   : never;
@@ -57,7 +57,7 @@ type Tail<T extends unknown[]> =
     unknown,
     ...
   // prettier-ignore
-  ( infer    R ),
+  infer    R,
   ]
     ? R
     : never;
@@ -87,7 +87,7 @@ type Tail<T extends unknown[]> = T extends [
   unknown,
   ...
   // prettier-ignore
-  ( infer    R ),
+  infer    R,
 ]
   ? R
   : never
@@ -116,7 +116,7 @@ type Tail<T extends unknown[]> =
 		unknown,
 		...
   // prettier-ignore
-  ( infer    R )
+  infer    R
 	]
 		? R
 		: never;
