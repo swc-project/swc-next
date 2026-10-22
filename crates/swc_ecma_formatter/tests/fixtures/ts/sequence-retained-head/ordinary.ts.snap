@@ -25,13 +25,13 @@ invoke(
   (
     /* outer */ /* inner */ first, last
     // @ts-ignore
-  ),);
+  ));
 
 invoke(
   (
     /* inner */ first, last
     // @ts-ignore
-  ),);
+  ));
 
 ---------- Options ----------
 {"printWidth":80}
@@ -40,13 +40,13 @@ invoke(
   (
     /* outer */ /* inner */ first, last
     // @ts-ignore
-  ),);
+  ));
 
 invoke(
   (
     /* inner */ first, last
     // @ts-ignore
-  ),);
+  ));
 
 ---------- Options ----------
 {"printWidth":40,"semi":false}
@@ -55,10 +55,10 @@ invoke(
   (
     /* outer */ /* inner */ first, last
     // @ts-ignore
-  ),)
+  ))
 
 invoke(
   (
     /* inner */ first, last
     // @ts-ignore
-  ),)
+  ))

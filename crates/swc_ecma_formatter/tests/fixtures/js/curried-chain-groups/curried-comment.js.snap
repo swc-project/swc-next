@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b(c, d) /* between */ (e).f();
+---------- Options ----------
+{}
+---------- Output ----------
+abc.b(c, d)(/* between */ e).f();
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+abc
+  .b(
+    c,
+    d,
+  )(
+    /* between */ e,
+  )
+  .f();

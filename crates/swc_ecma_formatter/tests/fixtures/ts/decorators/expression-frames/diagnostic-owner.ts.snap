@@ -18,11 +18,11 @@ function make(argument: string) {
     value;
 }
 // @ts-expect-error
-const complete = @make(1,) class Item { static value: string = 1; };
+const complete = @make(1) class Item { static value: string = 1; };
 const enclosed =
   (
     // @ts-expect-error
-    @make(1,) class Item { static value: string = 1; }).missing();
+    @make(1) class Item { static value: string = 1; }).missing();
 
 ---------- Options ----------
 {"printWidth":40,"semi":false}
@@ -32,8 +32,8 @@ function make(argument: string) {
     value
 }
 // @ts-expect-error
-const complete = @make(1,) class Item { static value: string = 1 }
+const complete = @make(1) class Item { static value: string = 1 }
 const enclosed =
   (
     // @ts-expect-error
-    @make(1,) class Item { static value: string = 1 }).missing()
+    @make(1) class Item { static value: string = 1 }).missing()

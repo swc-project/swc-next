@@ -8,19 +8,23 @@ receiver.start().finish({
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-receiver.start().finish(
-  {
-    value: 1,
-  },
-  () => {},
-);
+receiver
+  .start()
+  .finish(
+    {
+      value: 1,
+    },
+    () => {},
+  );
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
-receiver.start().finish(
-  {
-    value: 1,
-  },
-  () => {},
-);
+receiver
+  .start()
+  .finish(
+    {
+      value: 1,
+    },
+    () => {},
+  );

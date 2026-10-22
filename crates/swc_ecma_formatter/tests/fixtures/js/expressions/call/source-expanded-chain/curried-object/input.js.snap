@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.b().c({ veryLongPropertyName: someVeryLongValue })(x);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+abc
+  .b()
+  .c({
+    veryLongPropertyName:
+      someVeryLongValue,
+  })(x);
+
+---------- Options ----------
+{"printWidth":57}
+---------- Output ----------
+abc
+  .b()
+  .c({ veryLongPropertyName: someVeryLongValue })(x);
+
+---------- Options ----------
+{"printWidth":58}
+---------- Output ----------
+abc.b().c({ veryLongPropertyName: someVeryLongValue })(x);

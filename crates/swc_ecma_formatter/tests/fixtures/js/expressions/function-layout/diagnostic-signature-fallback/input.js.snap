@@ -13,4 +13,4 @@ consume(
   (
     value =
       // @ts-expect-error
-      missing(),) => { return value; },); second();
+      missing()) => { return value; }); second();

@@ -13,7 +13,7 @@ second) /* @ts-expect-error */
   call(
     first,
     // @ts-ignore
-    second,) /* @ts-expect-error */
+    second) /* @ts-expect-error */
 );
 
 ---------- Options ----------
@@ -23,5 +23,5 @@ second) /* @ts-expect-error */
   call(
     first,
     // @ts-ignore
-    second,) /* @ts-expect-error */
+    second) /* @ts-expect-error */
 )

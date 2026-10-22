@@ -33,7 +33,7 @@ const value3 = (
     {receiver
       .a(
         // @ts-ignore
-        missingPaired(1),).b(2,).c(3,)}</MissingPanel>);
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
 {"printWidth":40}
@@ -55,7 +55,7 @@ const value3 = (
     {receiver
       .a(
         // @ts-ignore
-        missingPaired(1),).b(2,).c(3,)}</MissingPanel>);
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
 {"printWidth":80}
@@ -77,7 +77,7 @@ const value3 = (
     {receiver
       .a(
         // @ts-ignore
-        missingPaired(1),).b(2).c(3)}</MissingPanel>);
+        missingPaired(1)).b(2).c(3)}</MissingPanel>);
 
 ---------- Options ----------
 {"printWidth":12,"semi":false,"tabWidth":3,"useTabs":true}
@@ -101,7 +101,7 @@ const value3 =
 			{receiver
 				.a(
 					// @ts-ignore
-					missingPaired(1),).b(2,).c(3,)}</MissingPanel>)
+					missingPaired(1)).b(2).c(3)}</MissingPanel>)
 
 ---------- Options ----------
 {"printWidth":100,"trailingComma":"none"}
