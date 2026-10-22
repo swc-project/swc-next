@@ -1,1 +1,1 @@
-const element = <div>{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?.bbbbbbbbbbbbbbbbbbbbbbbbb.apply((value, index) => <p key={index}>{value}</p>) /* suffix */ !}</div>;
+const view = <Panel>{items?.map(value => <Cell value={value} />) /* suffix */!}</Panel>;

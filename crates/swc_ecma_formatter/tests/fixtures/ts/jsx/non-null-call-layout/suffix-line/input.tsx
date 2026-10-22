@@ -1,0 +1,2 @@
+const view = <Box>{items.map(x => <Cell />)! // suffix
+}</Box>;
