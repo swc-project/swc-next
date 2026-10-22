@@ -791,7 +791,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match boundary.layout {
             BinaryTypeLayout::Source(gap) => {
-                self.format_verbatim(gap, writer)?;
+                self.format_source_gap(gap, writer)?;
                 self.format_prepared_type_with_layout(
                     node,
                     TypeContext::Root,

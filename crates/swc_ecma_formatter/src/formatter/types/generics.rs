@@ -1076,8 +1076,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 layout: super::TypeBoundaryLayout::Source(_),
                 ..
             } => {
+                self.format_type_boundary(&source, writer)?;
                 let pending = writer.indent(|writer| {
-                    self.format_type_boundary(&source, writer)?;
                     self.format_prepared_type_with_layout(
                         bound.node,
                         context,

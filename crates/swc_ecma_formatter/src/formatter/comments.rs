@@ -707,6 +707,29 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// Source-bound punctuation keeps its geometry without making its comments
+    /// part of a protected node's verbatim contents.
+    pub(super) fn format_source_gap(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let comments = self.comments.between(span)?;
+        self.comments.claim(comments)?;
+        let mut start = span.start;
+        for &comment in comments {
+            let prepared = self.prepare_comment(comment)?;
+            if !prepared.is_alignable() {
+                continue;
+            }
+            writer.literal_text(self.source(Span::new(start, comment.span.start)));
+            prepared.text.write(writer);
+            start = comment.span.end;
+        }
+        writer.literal_text(self.source(Span::new(start, span.end)));
+        Ok(())
+    }
+
     fn format_comment_line_suffix_with_opening(
         &self,
         comment: Comment,

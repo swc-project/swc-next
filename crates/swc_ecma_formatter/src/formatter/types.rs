@@ -322,7 +322,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match content.prefix {
             TypeBoundaryLayout::Source(gap) => {
-                self.format_verbatim(gap, writer)?;
+                self.format_source_gap(gap, writer)?;
                 if layout == TypeLayout::Root {
                     layout = TypeLayout::OpeningProvided;
                 }
@@ -725,7 +725,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let (before, after) = match &boundary.layout {
             TypeBoundaryLayout::Source(gap) => {
-                self.format_verbatim(*gap, writer)?;
+                self.format_source_gap(*gap, writer)?;
                 return Ok(None);
             }
             TypeBoundaryLayout::Formatted { before, after } => (before, after),
@@ -863,7 +863,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (before, after) = match &boundary.layout {
             TypeBoundaryLayout::Source(gap) => {
-                self.format_verbatim(*gap, writer)?;
+                self.format_source_gap(*gap, writer)?;
                 return self.format_prepared_type_with_layout(
                     node,
                     TypeContext::Root,
