@@ -74,6 +74,27 @@ test("printSync preserves special numeric values across FFI", () => {
   assert.equal(printSync(program).code, "const value = -1 / 0;\n");
 });
 
+test("printSync falls back to values for empty numeric raw text", () => {
+  for (const lang of ["js", "ts"]) {
+    const meta = { lang };
+    const printLiteral = (value, raw) => {
+      const { program } = parseSync(typeof value === "bigint" ? "0n;" : "0;", meta);
+      Object.assign(program.body[0].expression, { value, raw });
+      return printSync(program, {}, meta).code;
+    };
+
+    assert.equal(printLiteral(0, ""), "0;\n");
+    assert.equal(printLiteral(-0, ""), "-0;\n");
+    assert.equal(printLiteral(0n, ""), "0n;\n");
+    assert.equal(printLiteral(0n, "n"), "0n;\n");
+
+    assert.equal(printLiteral(42, "1"), "42;\n");
+    assert.equal(printLiteral(2n, "1n"), "2n;\n");
+    assert.equal(printLiteral(16, "0x10"), "0x10;\n");
+    assert.equal(printLiteral(16n, "0x10n"), "0x10n;\n");
+  }
+});
+
 test("encoder rebuilds the directive prologue after reordering", () => {
   const { program } = parseSync('"use strict"; work();');
   program.body.reverse();

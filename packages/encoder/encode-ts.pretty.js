@@ -270,7 +270,7 @@ function encodeTs(program, meta = {}) {
     return prefix === "x" ? "hex" : prefix === "o" || /^0[0-7]+$/.test(raw) ? "octal" : prefix === "b" ? "binary" : "decimal";
   }
   function numericRaw(node) {
-    if (typeof node.raw !== "string") return null;
+    if (typeof node.raw !== "string" || node.raw.length === 0) return null;
     const normalized = node.raw.includes("_") ? node.raw.replaceAll("_", "") : node.raw;
     const kind = numericKind(normalized);
     const value = kind === "octal" && normalized[1]?.toLowerCase() !== "o"
@@ -285,7 +285,7 @@ function encodeTs(program, meta = {}) {
 
   function bigIntRaw(node) {
     const value = bigIntValue(node);
-    if (typeof node.raw === "string" && node.raw.endsWith("n")) {
+    if (typeof node.raw === "string" && node.raw.length > 1 && node.raw.endsWith("n")) {
       const raw = node.raw.slice(0, -1);
       try {
         if (BigInt(raw.replaceAll("_", "")) === value) return raw;
