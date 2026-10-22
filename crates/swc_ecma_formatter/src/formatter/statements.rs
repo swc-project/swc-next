@@ -417,6 +417,23 @@ impl StatementBoundary {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    fn program_header_guard_prefix(&self, comments: &[Comment]) -> Option<usize> {
+        let end = comments
+            .iter()
+            .rposition(|&comment| self.comment_is_file_directive(comment))?
+            + 1;
+        comments[..end]
+            .iter()
+            .all(|&comment| {
+                let semantics = self.comment_semantics(comment);
+                !semantics.suppression
+                    && !semantics.diagnostic
+                    && !semantics.has_target_annotation()
+                    && !self.comment_needs_jsdoc_enclosure(comment)
+            })
+            .then_some(end)
+    }
+
     pub(super) fn format_statement_sequence(
         &mut self,
         mut statements: std::iter::Peekable<impl Iterator<Item = StatementItem>>,
@@ -611,8 +628,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let leading = self.comments.take(leading.len());
             let mut expression_start = ExpressionStart::StatementPending;
-            if first_statement
-                && matches!(kind, StatementSequenceKind::Program { .. })
+            let mut header_prefix = 0;
+            let first_program_statement =
+                first_statement && matches!(kind, StatementSequenceKind::Program { .. });
+            if first_program_statement
                 && (leading
                     .iter()
                     .any(|&comment| self.comment_needs_jsdoc_enclosure(comment))
@@ -626,17 +645,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             _ => false,
                         },
                         StatementItem::Directive(_) => false,
-                    }
-                    || self.has_file_directives
-                        && leading
-                            .iter()
-                            .any(|&comment| self.comment_is_file_directive(comment))
-                        && leading
-                            .iter()
-                            .any(|&comment| self.comment_has_target_annotation(comment)))
+                    })
             {
-                // Program start already separates the first statement. Keep its header intact.
+                // Program start already separates the first statement's JSDoc owner.
                 expression_start = ExpressionStart::StatementGuarded;
+            } else if (first_program_statement || self.options.semicolons == Semicolons::AsNeeded)
+                && self.has_file_directives
+                && leading
+                    .iter()
+                    .any(|&comment| self.comment_is_file_directive(comment))
+                && leading
+                    .iter()
+                    .any(|&comment| self.comment_has_target_annotation(comment))
+            {
+                if self.options.semicolons == Semicolons::AsNeeded
+                    && let Some(prefix) = self.program_header_guard_prefix(leading)
+                {
+                    // A file header precedes the guard; the target packet still
+                    // owns its emitted expression head on every formatting pass.
+                    header_prefix = prefix;
+                } else if first_program_statement {
+                    // Interleaved target annotations cannot cross a header barrier.
+                    expression_start = ExpressionStart::StatementGuarded;
+                }
             }
             let mut prior_statement_terminated =
                 first_statement || previous.is_none_or(StatementBoundary::has_terminator);
@@ -693,6 +724,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_comment_run(
                     transferred,
                     CommentRunLayout::Leading(statement_span.start),
+                    writer,
+                )?;
+            }
+            let (header, leading) = leading.split_at(header_prefix);
+            if let Some(first) = leading.first()
+                && !header.is_empty()
+            {
+                self.format_node_head(
+                    NodeHead {
+                        comments: header,
+                        content_start: first.span.start,
+                        layout: CommentRunLayout::Source,
+                        gap_end: Some(first.span.start),
+                    },
+                    ExpressionStart::None,
+                    None,
                     writer,
                 )?;
             }
