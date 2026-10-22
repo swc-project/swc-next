@@ -14,7 +14,7 @@ const options = /\.[cm]?tsx?$/.test(extension)
 const parserOptions = {
   ...options,
   isModule: true,
-  comments: false,
+  comments: true,
   target: "esnext",
 };
 parseSync(source, parserOptions);

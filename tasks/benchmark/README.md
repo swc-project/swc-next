@@ -11,6 +11,21 @@ cargo bench -p benchmark --bench parser
 
 Select `visit` or `semantic` instead of `parser` for those components.
 
+## JavaScript parser batches
+
+```sh
+node tasks/benchmark/bin/babel.js tasks/benchmark/files/typescript.js 10
+```
+
+Use `swc.js` or `swc-next.js` for the other parsers. Each command validates the
+input, warms up five times, then runs the requested number of parses. Replace
+the iteration count with `--calibrate` to report milliseconds per parse.
+
+All three parse modules, select TypeScript and JSX syntax by extension,
+preserve parentheses, and collect comments. Babel disables comment attachment
+and enables error recovery so recoverable early errors, such as duplicate
+bindings, do not reject fixtures accepted by SWC.
+
 ## Instructions and profiles
 
 On Linux with Valgrind and the `gungraun-runner` version matching the workspace's

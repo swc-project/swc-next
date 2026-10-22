@@ -385,6 +385,9 @@ importers:
 
   tasks/benchmark:
     dependencies:
+      '@babel/parser':
+        specifier: 'catalog:'
+        version: 8.0.4
       '@swc-next/core':
         specifier: workspace:*
         version: link:../../npm/core

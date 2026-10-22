@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@babel/parser": "catalog:",
     "@swc/core": "catalog:",
     "@swc-next/core": "workspace:*"
   }

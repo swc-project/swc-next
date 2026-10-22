@@ -9,7 +9,7 @@ const source = readFileSync(file, "utf8");
 const parserOptions = {
   lang: langFromPath(file),
   sourceType: "module",
-  comments: "none",
+  comments: "flat",
 };
 assert.equal(parseSync(source, parserOptions).diagnostics.length, 0);
 bench(() => parseSync(source, parserOptions).program.body.length, iterations);
