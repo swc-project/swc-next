@@ -40,7 +40,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return self.format_verbatim_statement(
                 span,
-                StatementContent::Semicolon(content_end),
+                StatementContent::Semicolon(content_end).into(),
                 punctuation,
                 writer,
             );
@@ -110,7 +110,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if enclosing_mode == ContentMode::Verbatim {
             let span = node.span(ast);
             let content = self.statement_content(StatementItem::Statement(statement));
-            return self.format_verbatim_statement(span, content, punctuation, writer);
+            return self.format_verbatim_statement(span, content.into(), punctuation, writer);
         }
         let mut body = self
             .prepare_controlled_body(

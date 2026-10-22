@@ -10,7 +10,7 @@ mod typescript_modules;
 pub(in crate::formatter) use self::declarations::DeclarationKeyword;
 mod tails;
 
-use self::tails::{StatementContent, StatementTailModes, StatementTailRelation};
+use self::tails::{StatementContent, StatementTailModes, StatementTailRelation, VerbatimContent};
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
@@ -190,7 +190,7 @@ impl PreparedStatement<'_> {
 
 enum StatementMode {
     Formatted,
-    Verbatim(StatementContent),
+    Verbatim(VerbatimContent),
 }
 
 fn statement_body_has_items(
@@ -829,7 +829,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 || self.statement_content(StatementItem::Statement(statement)),
                                 |tail| tail.content,
                             );
-                            StatementMode::Verbatim(content)
+                            StatementMode::Verbatim(self.verbatim_statement_content(
+                                StatementItem::Statement(statement),
+                                content,
+                            ))
                         } else {
                             StatementMode::Formatted
                         };
@@ -1231,7 +1234,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None => (statement.span(self.ast), None),
         };
         let content = if mode == ContentMode::Verbatim {
-            StatementMode::Verbatim(self.statement_content(StatementItem::Statement(statement)))
+            let item = StatementItem::Statement(statement);
+            StatementMode::Verbatim(
+                self.verbatim_statement_content(item, self.statement_content(item)),
+            )
         } else {
             StatementMode::Formatted
         };
@@ -1524,12 +1530,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_verbatim_statement(
         &mut self,
         span: Span,
-        content: StatementContent,
+        content: VerbatimContent,
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         match content {
-            StatementContent::Semicolon(end) => {
+            VerbatimContent::FormattedTerminator(end) => {
                 let punctuation = if self.has_suppression
                     && matches!(punctuation, StatementPunctuation::Canonical(_))
                     && let Some(terminator) = self.statement_source_terminator(span)
@@ -1543,7 +1549,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_verbatim(Span::new(span.start, end), writer)?;
                 self.finish_statement(end, None, punctuation, writer)
             }
-            StatementContent::Complete(_) => {
+            VerbatimContent::SourceNode => {
                 self.format_verbatim(span, writer)?;
                 Ok(StatementBoundary::SourceEnd {
                     end: span.end,

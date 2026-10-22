@@ -57,7 +57,64 @@ impl StatementContent {
     }
 }
 
+/// Prepared source boundary for a statement printed verbatim.
+/// The retained envelope can surround a protected descendant; it does not
+/// identify the consumer's ignored target. Grammar content ends stay separate:
+/// a declaration can own its source terminator while an export wrapper does not.
+#[derive(Clone, Copy)]
+pub(super) enum VerbatimContent {
+    SourceNode,
+    FormattedTerminator(u32),
+}
+
+impl From<StatementContent> for VerbatimContent {
+    fn from(content: StatementContent) -> Self {
+        match content {
+            StatementContent::Semicolon(end) => Self::FormattedTerminator(end),
+            StatementContent::Complete(_) => Self::SourceNode,
+        }
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn verbatim_statement_content(
+        &self,
+        item: StatementItem,
+        content: StatementContent,
+    ) -> VerbatimContent {
+        if let StatementItem::Statement(node) = item {
+            match self.ast.stmt_data(node) {
+                StmtData::Declaration(declaration) => {
+                    return self.verbatim_declaration_content(declaration, Some(content));
+                }
+                StmtData::TsExportAssignment(_) | StmtData::TsNamespaceExportDeclaration(_) => {
+                    return VerbatimContent::SourceNode;
+                }
+                _ => {}
+            }
+        }
+        content.into()
+    }
+
+    pub(super) fn verbatim_declaration_content(
+        &self,
+        declaration: Decl,
+        prepared: Option<StatementContent>,
+    ) -> VerbatimContent {
+        if matches!(
+            self.ast.decl_data(declaration),
+            DeclData::VariableDeclaration(_)
+        ) {
+            VerbatimContent::FormattedTerminator(
+                prepared
+                    .unwrap_or_else(|| self.declaration_content(declaration))
+                    .end(),
+            )
+        } else {
+            VerbatimContent::SourceNode
+        }
+    }
+
     /// Probe the lexical tail before following a compound statement's final body.
     pub(super) fn prepare_statement_suppression_tail(
         &self,
