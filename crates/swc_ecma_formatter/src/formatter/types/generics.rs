@@ -16,7 +16,7 @@ use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
     PreparedBoundaryComments,
 };
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{
     ArgumentLayout, FollowingItem, Separator, TrailingCommaPolicy,
 };
@@ -507,11 +507,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let mut node = self.prepare_type(first, ContentMode::Formatted);
                 self.select_delimited_type_head(&mut node, comments, gap.end, true);
+                // Compact and expanded openings must select the same ignored type.
+                let attachment = self.type_attachment_head(node.node);
+                let opening = self.opening_line_constraint(content);
                 let mut moved = node;
-                moved.source_owner = None;
-                self.select_type_head(&mut moved, SuppressionPosition::OwnLine);
+                let changes_own_line = if opening == LineConstraint::SameLine {
+                    false
+                } else {
+                    moved.source_owner = None;
+                    self.select_type_head_with_attachment(
+                        &mut moved,
+                        &attachment,
+                        SuppressionPosition::OwnLine,
+                    );
+                    moved.source_owner != node.source_owner
+                };
+                // Source comment gaps containing a line force the list to expand.
+                let can_inline = !matches!(opening, LineConstraint::NewLine(_))
+                    && comments.iter().enumerate().all(|(index, comment)| {
+                        let next = comments
+                            .get(index + 1)
+                            .map_or(gap.end, |comment| comment.span.start);
+                        comment.kind != CommentKind::Line
+                            && self.source_line_constraint(comment.span.start, next)
+                                == LineConstraint::SameLine
+                    });
+                let changes_inline = if can_inline {
+                    moved.source_owner = None;
+                    self.select_type_head_with_attachment(
+                        &mut moved,
+                        &attachment,
+                        SuppressionPosition::Inline,
+                    );
+                    moved.source_owner != node.source_owner
+                } else {
+                    false
+                };
                 first_type = Some(node);
-                (moved.source_owner != node.source_owner).then_some(gap)
+                (changes_own_line || changes_inline).then_some(gap)
             })
         } else {
             None

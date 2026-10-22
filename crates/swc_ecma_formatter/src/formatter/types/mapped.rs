@@ -448,23 +448,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let split = comments.partition_point(|comment| comment.span.end <= operator.start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
+        let attachment = self.type_attachment_head(right.node);
+        let before_head = self.prepare_type_suppression_head(&attachment, before);
         for (_, position) in self.suppressed_comment_runs(before, operator.start) {
             if matches!(position, SuppressionPosition::OwnLine) {
-                self.select_type_head(right, position);
+                self.select_type_head_with_retention(right, &attachment, before_head, position);
             } else {
                 left_mode = ContentMode::Verbatim;
             }
         }
-        let attachment = self.type_attachment_head(right.node);
+        let after_head = self.prepare_type_suppression_head(&attachment, after);
         for (run, position) in self.suppressed_comment_runs(after, gap.end) {
             let selected = self
                 .prepare_type_suppression_run(
                     &attachment,
+                    after_head,
                     run,
                     position,
                     super::TypeSuppressionContext::TypeBoundary,
                 )
-                .apply(right);
+                .apply(right, self.ast);
             if selected.preceding() {
                 left_mode = ContentMode::Verbatim;
             }
@@ -476,7 +479,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if matches!(position, SuppressionPosition::EndOfLine) {
                 left_mode = ContentMode::Verbatim;
             } else {
-                self.select_type_head(right, position);
+                self.select_type_head_with_attachment(right, &attachment, position);
             }
         }
         left_mode

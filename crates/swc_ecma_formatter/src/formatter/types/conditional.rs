@@ -295,16 +295,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             let attachment = self.type_attachment_head(right.node);
+            let head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
                 source = true;
                 let selected = self
                     .prepare_type_suppression_run(
                         &attachment,
+                        head,
                         run,
                         position,
                         super::TypeSuppressionContext::TypeBoundary,
                     )
-                    .apply(right);
+                    .apply(right, self.ast);
                 if selected.preceding() {
                     left.source_owner = Some(left.node);
                 }

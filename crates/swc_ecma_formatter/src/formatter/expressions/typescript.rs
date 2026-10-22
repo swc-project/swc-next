@@ -583,25 +583,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let const_marker =
                 matches!(operator, TypeBinaryOperator::As) && self.is_const_marker_type(*right);
+            let attachment = self.type_attachment_head(right.node);
+            let before_head = self.prepare_type_suppression_head(&attachment, before);
             for (_, position) in self.suppressed_comment_runs(before, start) {
                 source = true;
                 if matches!(position, SuppressionPosition::OwnLine) {
-                    self.select_expression_type_head(right, position);
+                    self.select_type_head_with_retention(right, &attachment, before_head, position);
                 } else {
                     left_mode = ContentMode::Verbatim;
                 }
             }
-            let attachment = self.type_attachment_head(right.node);
+            let after_head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
                 source = true;
                 let selected = self
                     .prepare_type_suppression_run(
                         &attachment,
+                        after_head,
                         run,
                         position,
                         super::super::types::TypeSuppressionContext::ExpressionBoundary,
                     )
-                    .apply(right);
+                    .apply(right, self.ast);
                 if selected.preceding() {
                     left_mode = ContentMode::Verbatim;
                 }
@@ -613,7 +616,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if const_marker || matches!(position, SuppressionPosition::EndOfLine) {
                     left_mode = ContentMode::Verbatim;
                 } else {
-                    self.select_expression_type_head(right, position);
+                    self.select_type_head_with_attachment(right, &attachment, position);
                 }
             }
         }
@@ -832,35 +835,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    /// The expression caller's whole type owner excludes removable type parentheses.
-    /// Own-line union comments are consumed by its real first member instead.
-    fn select_expression_type_head(
-        &self,
-        prepared: &mut PreparedType,
-        position: SuppressionPosition,
-    ) {
-        let mut node = prepared.node;
-        let mut data = prepared.data;
-        while let TsTypeData::TsParenthesizedType(parentheses) = data {
-            node = parentheses.type_annotation(self.ast);
-            data = self.ast.ts_type_data(node);
-        }
-        if prepared.source_owner == Some(node) {
-            return;
-        }
-        let owner = if matches!(position, SuppressionPosition::OwnLine)
-            && let TsTypeData::TsUnionType(union) = data
-        {
-            union
-                .types(self.ast)
-                .first()
-                .map_or(node, |id| self.ast.get_node_in_sub_range(id))
-        } else {
-            node
-        };
-        prepared.source_owner = Some(owner);
-    }
-
     pub(super) fn source_non_null(
         &self,
         node: TsNonNullExpression,
@@ -984,8 +958,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let before = Span::new(span.start + 1, annotation_span.start);
         let leading = self.comments.in_range(before);
         if self.has_suppression && self.content_mode(leading) == ContentMode::Verbatim {
+            let attachment = self.type_attachment_head(type_node.node);
+            let head = self.prepare_type_suppression_head(&attachment, leading);
             for (_, position) in self.suppressed_comment_runs(leading, before.end) {
-                self.select_expression_type_head(&mut type_node, position);
+                self.select_type_head_with_retention(&mut type_node, &attachment, head, position);
             }
         }
         let suffix = Span::new(annotation_span.end, expression_span.start);
@@ -998,7 +974,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let type_source =
             self.has_suppression && self.content_mode(type_tail) == ContentMode::Verbatim;
         if type_source {
-            self.select_expression_type_head(&mut type_node, SuppressionPosition::Inline);
+            self.select_type_head(&mut type_node, SuppressionPosition::Inline);
         }
         let before =
             self.prepare_type_expression_gap(before, leading, type_node.source_owner.is_some());
