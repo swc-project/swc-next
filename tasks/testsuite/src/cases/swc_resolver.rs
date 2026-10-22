@@ -12,18 +12,6 @@ use crate::{
     util::workspace_root,
 };
 
-// The legacy snapshots preserve identifier escapes while the flat AST stores cooked names.
-const IGNORED_TESTS: &[&str] = &[
-    "test262/test/language/future-reserved-words/implements.js",
-    "test262/test/language/future-reserved-words/interface.js",
-    "test262/test/language/future-reserved-words/package.js",
-    "test262/test/language/future-reserved-words/private.js",
-    "test262/test/language/future-reserved-words/protected.js",
-    "test262/test/language/future-reserved-words/public.js",
-    "test262/test/language/future-reserved-words/static.js",
-    "test262/test/language/statements/labeled/value-yield-non-strict-escaped.js",
-];
-
 pub struct SwcResolverCase {
     path: PathBuf,
     relative_path: PathBuf,
@@ -56,13 +44,6 @@ impl SwcResolverCase {
             .filter(|entry| entry.file_type().is_file())
             .map(|entry| entry.path())
             .filter(|path| path.to_string_lossy().ends_with(".snap"))
-            .filter(|path| {
-                let relative_path = path.strip_prefix(&oracle_root).unwrap();
-                let source_path = relative_path.with_extension("");
-                !IGNORED_TESTS
-                    .iter()
-                    .any(|ignored| source_path == Path::new(ignored))
-            })
             .collect::<Vec<_>>();
         oracle_paths.sort_unstable();
 

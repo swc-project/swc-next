@@ -37,7 +37,6 @@ mod builder;
 mod context;
 mod ecmascript;
 mod module_record;
-pub mod name_resolver;
 pub mod scope;
 mod scope_model;
 mod syntax_checks;

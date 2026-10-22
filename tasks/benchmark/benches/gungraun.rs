@@ -14,9 +14,7 @@ use swc_next_ecma_ast::{
 use swc_next_ecma_codegen::{Options as CodegenOptions, print};
 use swc_next_ecma_minifier::{Minifier, MinifierOptions};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
-use swc_next_ecma_semantic::{
-    AnalyzeOptions, Semantic, SyntaxChecks, analyze, name_resolver::resolver as resolve_names,
-};
+use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
     proposal::ProposalOptions, typescript::TypeScriptOptions,
@@ -145,12 +143,6 @@ fn bench_syntax_check(ast: Ast<'static>) {
             ..AnalyzeOptions::default()
         },
     ));
-}
-
-#[library_benchmark]
-#[bench::typescript(setup_program(TYPESCRIPT, Lang::Js))]
-fn bench_resolver(ast: Ast<'static>) {
-    black_box(resolve_names(&ast));
 }
 
 #[library_benchmark]
@@ -388,8 +380,6 @@ library_benchmark_group!(
     benchmarks = [bench_analyze, bench_syntax_check]
 );
 
-library_benchmark_group!(name = resolver, benchmarks = bench_resolver);
-
 library_benchmark_group!(name = codegen, benchmarks = bench_codegen);
 
 library_benchmark_group!(name = minifier, benchmarks = bench_minifier);
@@ -409,6 +399,6 @@ main!(
             Callgrind::with_args(["--branch-sim=no", "--cache-sim=no",]).format([EventKind::Ir]),
         ),
     library_benchmark_groups = [
-        parser, semantic, resolver, codegen, minifier, transform, type_strip, visit
+        parser, semantic, codegen, minifier, transform, type_strip, visit
     ]
 );

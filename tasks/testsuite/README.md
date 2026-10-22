@@ -5,7 +5,8 @@ fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
 - Codegen suites check AST round trips and printing stability.
-- Resolver suites compare name resolution with reference output.
+- Resolver suites compare identifier end offsets and semantic binding identities
+  with reference output.
 - Transform suites compare normalized output or check output syntax and stability.
 
 ## Usage
