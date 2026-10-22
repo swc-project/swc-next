@@ -11,21 +11,17 @@ type Keys = (keyof Namespace.Record)[];
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-type Keys = (
-  keyof Namespace.Record
-)[];
+type Keys =
+  (keyof Namespace.Record)[];
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
 ---------- Output ----------
 type Keys =
-  (
-    keyof Namespace.Record
-  )[]
+  (keyof Namespace.Record)[]
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
 ---------- Output ----------
-type Keys = (
-	keyof Namespace.Record
-)[];
+type Keys =
+	(keyof Namespace.Record)[];

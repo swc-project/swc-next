@@ -11,6 +11,5 @@ type Value = !(A[]);
 ---------- Options ----------
 {"printWidth":16,"semi":false}
 ---------- Output ----------
-type Value = !(
-  A[]
-)
+type Value =
+  !(A[])

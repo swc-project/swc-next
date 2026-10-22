@@ -11,6 +11,5 @@ type Value = ?(?);
 ---------- Options ----------
 {"printWidth":16,"semi":false}
 ---------- Output ----------
-type Value = ?(
-  ?
-)
+type Value =
+  ?(?)

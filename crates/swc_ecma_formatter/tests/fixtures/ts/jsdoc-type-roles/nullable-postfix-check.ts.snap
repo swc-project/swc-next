@@ -11,8 +11,7 @@ type Value = ("x"?) extends B ? C : D;
 ---------- Options ----------
 {"printWidth":16,"semi":false}
 ---------- Output ----------
-type Value = (
-  "x"?
-) extends B
-  ? C
-  : D
+type Value =
+  ("x"?) extends B
+    ? C
+    : D

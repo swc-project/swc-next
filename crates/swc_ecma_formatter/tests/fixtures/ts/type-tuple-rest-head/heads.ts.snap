@@ -17,9 +17,7 @@ type Tail<T extends unknown[]> = T extends [
 ---------- Output ----------
 type Tail<T extends unknown[]> =
   T extends [
-    .../* rest */ /* outer */ /* inner */ (
-      infer R
-    )[],
+    .../* rest */ /* outer */ /* inner */ (infer R)[],
   ]
     ? R
     : never;
@@ -34,9 +32,7 @@ type Tail<T extends unknown[]> = T extends [.../* rest */ /* outer */ /* inner *
 ---------- Output ----------
 type Tail<T extends unknown[]> =
 	T extends [
-		.../* rest */ /* outer */ /* inner */ (
-			infer R
-		)[]
+		.../* rest */ /* outer */ /* inner */ (infer R)[]
 	]
 		? R
 		: never;
