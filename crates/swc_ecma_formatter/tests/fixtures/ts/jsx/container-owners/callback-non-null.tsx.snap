@@ -2,42 +2,24 @@
 source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
-const element = <div>{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?.bbbbbbbbbbbbbbbbbbbbbbbbb.apply((value, index) => <p key={index}>{value}</p>)!}</div>;
+const view = <Panel>{items?.map(value => <Cell value={value} />)!}</Panel>;
 ---------- Options ----------
 {}
 ---------- Output ----------
-const element = (
-  <div>
-    {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?.bbbbbbbbbbbbbbbbbbbbbbbbb.apply(
-      (value, index) => (
-        <p key={index}>{value}</p>
-      ),
-    )!}
-  </div>
-);
+const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>;
 
 ---------- Options ----------
 {"printWidth":40}
 ---------- Output ----------
-const element = (
-  <div>
-    {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?.bbbbbbbbbbbbbbbbbbbbbbbbb.apply(
-      (value, index) => (
-        <p key={index}>{value}</p>
-      ),
-    )!}
-  </div>
+const view = (
+  <Panel>
+    {items?.map((value) => (
+      <Cell value={value} />
+    ))!}
+  </Panel>
 );
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-const element = (
-  <div>
-    {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?.bbbbbbbbbbbbbbbbbbbbbbbbb.apply(
-      (value, index) => (
-        <p key={index}>{value}</p>
-      ),
-    )!}
-  </div>
-)
+const view = <Panel>{items?.map((value) => <Cell value={value} />)!}</Panel>

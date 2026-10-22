@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const React: any, Box: any;
+declare function consume(value: number): any;
+const view = <Box>{consume(
+  // @ts-expect-error
+  "wrong"
+) /* suffix */ !}</Box>;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+declare const React: any, Box: any;
+declare function consume(
+  value: number,
+): any;
+const view = (
+  <Box>
+    {consume(
+      // @ts-expect-error
+      "wrong",
+    ) /* suffix */!}
+  </Box>
+);

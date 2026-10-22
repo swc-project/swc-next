@@ -6,10 +6,4 @@ const view = <Box>{items.map(x => <Cell />)!}</Box>;
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-const view = (
-  <Box>
-    {items.map((x) => (
-      <Cell />
-    ))!}
-  </Box>
-);
+const view = <Box>{items.map((x) => <Cell />)!}</Box>;
