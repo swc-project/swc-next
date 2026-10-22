@@ -49,10 +49,6 @@ from this JSON during the static build. Wall time and peak RSS describe whole
 processes, not individual operations. The first order is the primary comparison;
 reverse-order statistics are available separately.
 
-The checked-in initial JSON preserves the previous report's rounded summaries;
-it has no individual samples or reverse-order measurements. A new benchmark run
-replaces it with full Hyperfine exports.
-
 ## Existing documents
 
 The Testing page reads the headers of `tasks/testsuite/snapshots/*.snap` during
