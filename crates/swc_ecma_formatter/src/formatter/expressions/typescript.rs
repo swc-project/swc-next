@@ -205,7 +205,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::TsNonNullExpression(assertion) => assertion.expression(self.ast),
                 _ => return data,
             };
-            data = self.expression_content(expression).data;
+            data = self.expression_data(expression);
         }
     }
 
@@ -481,7 +481,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
             let next = match mode {
-                ContentMode::Formatted => self.expression_content(expression).data,
+                ContentMode::Formatted => self.expression_data(expression),
                 ContentMode::Verbatim => self.ast.expr_data(expression),
             };
             let content = self.source_parentheses_head_content(
@@ -1308,10 +1308,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !is_left_shift_right_operand(position) {
             return ExpressionPosition::Nested;
         }
-        let data = content.map_or_else(
-            || self.expression_content(expression).data,
-            |content| content.data,
-        );
+        let data = content.map_or_else(|| self.expression_data(expression), |content| content.data);
         if matches!(data, ExprData::TsTypeAssertion(_)) {
             position
         } else {

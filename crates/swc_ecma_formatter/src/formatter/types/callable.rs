@@ -550,17 +550,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let pattern = node.pattern(ast);
                 let initializer = node.initializer(ast);
-                if initializer.is_some_and(|expression| {
-                    match self.expression_content(expression).data {
-                        swc_next_ecma_ast::ExprData::IdentifierReference(_) => false,
-                        swc_next_ecma_ast::ExprData::ArrayExpression(array) => {
-                            !array.elements(ast).is_empty()
-                        }
-                        swc_next_ecma_ast::ExprData::ObjectExpression(object) => {
-                            !object.properties(ast).is_empty()
-                        }
-                        _ => true,
+                if initializer.is_some_and(|expression| match self.expression_data(expression) {
+                    swc_next_ecma_ast::ExprData::IdentifierReference(_) => false,
+                    swc_next_ecma_ast::ExprData::ArrayExpression(array) => {
+                        !array.elements(ast).is_empty()
                     }
+                    swc_next_ecma_ast::ExprData::ObjectExpression(object) => {
+                        !object.properties(ast).is_empty()
+                    }
+                    _ => true,
                 }) {
                     return None;
                 }

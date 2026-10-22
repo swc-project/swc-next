@@ -923,13 +923,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::Class(class) if !class.decorators(self.ast).is_empty() => return None,
             ExprData::AssignmentExpression(assignment) => {
                 return (!matches!(
-                    self.expression_content(assignment.right(self.ast)).data,
+                    self.expression_data(assignment.right(self.ast)),
                     ExprData::AssignmentExpression(_)
                 ))
                 .then_some(content);
             }
             ExprData::ConditionalExpression(conditional) => {
-                let test = self.expression_content(conditional.test(self.ast)).data;
+                let test = self.expression_data(conditional.test(self.ast));
                 let break_after = BinaryLike::from_data(test, self.ast).is_some_and(|binary| {
                     !self.inline_logical_operand(binary.operator, binary.right)
                 });
@@ -1018,7 +1018,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return true;
                 }
             };
-            data = self.expression_content(receiver).data;
+            data = self.expression_data(receiver);
         }
     }
 
@@ -1051,7 +1051,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let threshold = usize::from(self.options.line_width) / 4;
         loop {
-            let data = self.expression_content(expression).data;
+            let data = self.expression_data(expression);
             return match data {
                 ExprData::IdentifierReference(identifier) => {
                     rhs_text_is_short(ast.get_utf8(identifier.name(ast)), threshold)

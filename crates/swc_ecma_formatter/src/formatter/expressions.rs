@@ -643,7 +643,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
                     || !update && source.starts_with(['(', '[', '/', '+', '-', '`']));
             }
-            let data = self.expression_content(expression).data;
+            let data = self.expression_data(expression);
             if self.expression_is_parenthesized(data, context)
                 || matches!(
                     data,
@@ -794,7 +794,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         };
         self.ast.get_utf8(identifier.name(self.ast)) == "let"
-            && matches!(self.expression_content(receiver).data,
+            && matches!(self.expression_data(receiver),
                 ExprData::IdentifierReference(node) if node == identifier)
     }
 
@@ -886,7 +886,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     _ => return false,
                 }
             };
-            data = self.expression_content(expression).data;
+            data = self.expression_data(expression);
             if self.expression_needs_parentheses(data, position, mode) == Some(true) {
                 return false;
             }

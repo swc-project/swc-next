@@ -646,11 +646,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
                 !inline_right
                     || !has_right_prefix
-                        && !BinaryLike::from_data(
-                            self.expression_content(binary.left).data,
-                            self.ast,
-                        )
-                        .is_some_and(|left| binary.operator.flattens(left.operator))
+                        && !BinaryLike::from_data(self.expression_data(binary.left), self.ast)
+                            .is_some_and(|left| binary.operator.flattens(left.operator))
             }
             _ => false,
         };
@@ -1144,7 +1141,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ),
         };
         let same_kind = |expression| {
-            let data = self.expression_content(expression).data;
+            let data = self.expression_data(expression);
             BinaryOperatorKind::from_data(data, self.ast)
                 .is_some_and(|child| child.same_kind(binary.operator))
         };

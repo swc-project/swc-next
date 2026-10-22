@@ -229,6 +229,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// Inspect data after removing source parentheses transparent in the current
+    /// comment scope, without preparing a source envelope for an ordinary node.
+    pub(in crate::formatter) fn expression_data(&self, expression: Expr) -> ExprData {
+        match self.ast.expr_data(expression) {
+            ExprData::ParenthesizedExpression(_) => self.expression_content(expression).data,
+            data => data,
+        }
+    }
+
     fn verbatim_parentheses_are_removable(
         &self,
         parenthesized: ParenthesizedExpression,
@@ -1523,7 +1532,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             if let Some(binary) = binary {
                 asi_guard |= self.expression_needs_parentheses(
-                    self.expression_content(binary.left).data,
+                    self.expression_data(binary.left),
                     ExpressionPosition::BinaryOperand {
                         operator: binary.operator,
                         side: super::binary::OperandSide::Left,

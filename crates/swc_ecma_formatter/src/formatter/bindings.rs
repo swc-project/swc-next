@@ -427,7 +427,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let ExprData::AssignmentExpression(assignment) = data
             && matches!(
-                self.expression_content(assignment.right(ast)).data,
+                self.expression_data(assignment.right(ast)),
                 ExprData::AssignmentExpression(_)
             )
         {

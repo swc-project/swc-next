@@ -497,7 +497,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(context);
         };
         let mut expression = target.expression();
-        let root_data = self.expression_content(expression).data;
+        let root_data = self.expression_data(expression);
         let bare = matches!(
             root_data,
             swc_next_ecma_ast::ExprData::IdentifierReference(_)
@@ -526,7 +526,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             expression = child;
             context = child_context;
-            data = self.expression_content(expression).data;
+            data = self.expression_data(expression);
         }
     }
 
