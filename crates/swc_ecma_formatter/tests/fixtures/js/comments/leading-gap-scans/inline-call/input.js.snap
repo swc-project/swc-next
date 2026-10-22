@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+call(/* a */ /* b */ /* c */ value);
+---------- Options ----------
+{}
+---------- Output ----------
+call(/* a */ /* b */ /* c */ value);
+
+---------- Options ----------
+{"printWidth":25}
+---------- Output ----------
+call(
+  /* a */ /* b */ /* c */ value,
+);
+
+---------- Options ----------
+{"printWidth":25,"semi":false}
+---------- Output ----------
+call(
+  /* a */ /* b */ /* c */ value,
+)
