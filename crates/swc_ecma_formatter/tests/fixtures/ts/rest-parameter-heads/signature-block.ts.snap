@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type F = (... /* c */ x: number[]) => void;
+---------- Options ----------
+{}
+---------- Output ----------
+type F = (.../* c */ x: number[]) => void;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type F = (
+  .../* c */ x: number[]
+) => void;
