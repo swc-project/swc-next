@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import {first,
+/* prettier-ignore */ // tail
+} from '\u006d';
+---------- Options ----------
+{}
+---------- Output ----------
+import {
+  first,
+  /* prettier-ignore */ // tail
+} from '\u006d';
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+import {
+  first,
+  /* prettier-ignore */ // tail
+} from '\u006d'
