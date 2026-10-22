@@ -888,7 +888,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .comments
                     .in_range(Span::new(core_span.end, closing))
                     .is_empty()
-                && self.jsx_expression_hugs(data, role, jsx_callback);
+                && self.jsx_expression_hugs(data, role);
             // A source-constrained closing gap belongs to the container alone.
             let arrow_layout = if hug
                 && matches!(data, ExprData::ArrowFunctionExpression(_))
@@ -1260,12 +1260,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Inline braces let the expression own its continuation indentation.
     /// Binary and conditional expressions inline only as element children.
-    fn jsx_expression_hugs(
-        &self,
-        mut data: ExprData,
-        role: JsxBraceRole,
-        mut callback: JsxCallbackContext,
-    ) -> bool {
+    fn jsx_expression_hugs(&self, mut data: ExprData, role: JsxBraceRole) -> bool {
         let mut child = matches!(role, JsxBraceRole::Child);
         loop {
             match data {
@@ -1299,29 +1294,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         return true;
                     }
                     child = false;
-                    callback = self.jsx_container_callback(data);
                 }
-                _ => return matches!(callback, JsxCallbackContext::ContainerCall(_)),
+                _ => return matches!(self.chain_element_data(data), ExprData::CallExpression(_)),
             }
         }
     }
 
     fn jsx_container_callback(&self, mut data: ExprData) -> JsxCallbackContext {
-        loop {
-            let expression = match data {
-                ExprData::ChainExpression(chain) => chain.expression(self.ast),
-                ExprData::TsNonNullExpression(assertion) => {
-                    let Ok(source) = self.source_non_null(assertion) else {
-                        return JsxCallbackContext::Ordinary;
-                    };
-                    if source.source_break() {
-                        return JsxCallbackContext::Ordinary;
-                    }
-                    source.expression
-                }
-                _ => break,
-            };
-            data = self.expression_data(expression);
+        while let ExprData::ChainExpression(chain) = data {
+            data = self.expression_data(chain.expression(self.ast));
         }
         match data {
             ExprData::CallExpression(call) => JsxCallbackContext::ContainerCall(call),
