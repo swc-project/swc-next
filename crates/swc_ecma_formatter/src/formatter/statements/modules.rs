@@ -149,49 +149,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let data = self.ast.decl_data(declaration);
         if mode == ContentMode::Verbatim {
             let span = declaration.span(self.ast);
-            let end = if matches!(
+            let content = self.verbatim_declaration_content(declaration, None);
+            let mut printed = self.format_verbatim_statement(span, content, punctuation, writer)?;
+            if matches!(
                 data,
                 DeclData::TsFunction(_)
+                    | DeclData::TsTypeAliasDeclaration(_)
                     | DeclData::TsModuleDeclaration(_)
                     | DeclData::TsGlobalDeclaration(_)
+                    | DeclData::TsImportEqualsDeclaration(_)
                     | DeclData::TsEnumDeclaration(_)
+                    | DeclData::TsInterfaceDeclaration(_)
             ) {
-                span.end
-            } else {
-                self.declaration_content_end(declaration)
-            };
-            self.format_verbatim(Span::new(span.start, end), writer)?;
-            return match data {
-                DeclData::VariableDeclaration(_) => {
-                    self.finish_statement(end, None, punctuation, writer)
-                }
-                DeclData::TsFunction(_)
-                | DeclData::TsModuleDeclaration(_)
-                | DeclData::TsGlobalDeclaration(_)
-                | DeclData::TsImportEqualsDeclaration(_)
-                | DeclData::TsEnumDeclaration(_) => Ok(StatementBoundary::SourceEnd {
-                    end,
-                    has_terminator: self.source(span).ends_with(';'),
-                }
-                .type_declaration()
-                .into()),
-                DeclData::TsInterfaceDeclaration(_) => Ok(StatementBoundary::SourceEnd {
-                    end,
-                    has_terminator: false,
-                }
-                .type_declaration()
-                .into()),
-                DeclData::TsTypeAliasDeclaration(_) => {
-                    let mut printed = self.finish_statement(end, None, punctuation, writer)?;
-                    printed.boundary = printed.boundary.type_declaration();
-                    Ok(printed)
-                }
-                _ => Ok(StatementBoundary::SourceEnd {
-                    end,
-                    has_terminator: false,
-                }
-                .into()),
-            };
+                printed.boundary = printed.boundary.type_declaration();
+            }
+            return Ok(printed);
         }
         let ambient = match data {
             DeclData::TsFunction(node) => node.declare(self.ast),
