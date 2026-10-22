@@ -61,6 +61,16 @@ SWC Next plans to support selected SWC [`.swcrc` options](https://swc.rs/docs/co
 
 Configuration compatibility has not been implemented yet.
 
+## Sponsors
+
+<a href="https://codspeed.io/?utm_source=oss-sponsorship&utm_medium=swc-project">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://codspeed.io/codspeed-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://codspeed.io/codspeed-logo-light.svg">
+    <img alt="CodSpeed logo" src="https://codspeed.io/codspeed-logo-light.svg" width="400">
+  </picture>
+</a>
+
 ## Credits
 
 Thanks to:
