@@ -61,7 +61,17 @@ SWC Next plans to support selected SWC [`.swcrc` options](https://swc.rs/docs/co
 
 Configuration compatibility has not been implemented yet.
 
+## Powered by
+
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
+
 ## Sponsors
+
+<p align="center">
+  <a href="https://opencollective.com/swc">
+    <img src="https://raw.githubusercontent.com/swc-project/swc-sponsor-images/main/sponsors.svg" alt="Sponsors">
+  </a>
+</p>
 
 <a href="https://codspeed.io/?utm_source=oss-sponsorship&utm_medium=swc-project">
   <picture>
