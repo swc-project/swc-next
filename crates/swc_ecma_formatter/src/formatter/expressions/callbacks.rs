@@ -9,7 +9,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::{
-    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, SourceArguments,
+    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, ChainArgumentFacts,
+    DelimitedClose, SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
@@ -352,11 +353,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         callback: TestCallback,
         jsx_call: Option<CallExpression>,
-        missing_function: &mut Option<&mut bool>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if let Some(function) = missing_function.take() {
-            *function = true;
+        if let Some(facts) = chain_facts.as_deref_mut() {
+            facts.has_function = true;
         }
         let mut selected = SelectedCallback {
             argument: callback.argument,
@@ -936,7 +937,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: Span,
         head: ArgumentHead,
         mut selected: SelectedArgument,
-        mut missing_function: Option<&mut bool>,
+        mut chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -993,6 +994,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if previous.is_none() && head.first_mode == ContentMode::Verbatim {
                 item.set_leading_mode(head.first_mode);
             }
+            let source_generation = self.source_object_layout.generation;
             let (value, tail) = match &mut selected {
                 SelectedArgument::Callback(selected)
                     if argument == selected.argument
@@ -1002,8 +1004,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && (selected.role != CallbackRole::Last
                             || !self.argument_has_boundary_comments(&item)) =>
                 {
-                    if let Some(function) = missing_function.take() {
-                        *function = true;
+                    if let Some(facts) = chain_facts.as_deref_mut() {
+                        facts.has_function = true;
                     }
                     let (mut value, tail) = self.record_callback(
                         selected,
@@ -1062,20 +1064,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         outcome = SelectionOutcome::Ordinary;
                     }
                     let (value, tail) = writer.record_with_value(|writer| {
-                        self.format_argument_with_function_fact(
+                        self.format_argument_with_chain_facts(
                             argument,
                             item.mode,
                             head.binary_indent,
                             head.jsx_call,
-                            &mut missing_function,
+                            &mut chain_facts,
                             writer,
                         )
                     })?;
                     (RecordedValue::Ordinary(value), tail)
                 }
             };
-            let (suffix, boundary) = writer
-                .record_with_value(|writer| self.finish_delimited_item(item, tail, writer))?;
+            if let Some(facts) = chain_facts.as_deref_mut() {
+                let normal = match &value {
+                    RecordedValue::Ordinary(normal) | RecordedValue::Callback { normal, .. } => {
+                        *normal
+                    }
+                    RecordedValue::FinalObject(object) => object.normal,
+                    RecordedValue::FinalArray(array) => array.normal,
+                };
+                facts.source_expanded_object |= source_generation
+                    != self.source_object_layout.generation
+                    && !normal.has_intrinsic_lines();
+            }
+            let (suffix, boundary) = writer.record_with_value(|writer| {
+                self.finish_delimited_item_with_closing(item, tail, DelimitedClose::Source, writer)
+            })?;
             previous = Some(boundary);
             recorded.push(RecordedArgument {
                 prefix,
@@ -1156,6 +1171,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(opening) = grouping_view(opening, policy)
             && let Some(flat_closing) = grouping_view(closing, policy)
         {
+            // Expanding a selected argument also expands its surrounding syntax.
+            // Conditional groups isolate candidate-local requests, so the call
+            // owner emits this explicitly, as Prettier's willBreak check does.
+            if fallback.preferred_breaks() {
+                writer.break_parent();
+            }
             let (grouped, ()) = writer.record_with_value(|writer| {
                 write_grouped_arguments(
                     opening,
@@ -1187,9 +1208,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     );
                     Ok::<_, FormatError>(())
                 })?;
-                writer.write_alternatives(fallback, &[grouped, expanded], fallback);
+                writer.write_alternatives(&[grouped, expanded], fallback);
             } else {
-                writer.write_alternatives(fallback, &[grouped], fallback);
+                writer.write_alternatives(&[grouped], fallback);
             }
         } else {
             writer.write_fragment(fallback);

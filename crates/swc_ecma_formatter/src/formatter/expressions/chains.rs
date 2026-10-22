@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     CallExpression, Expr, ExprData, GetSpan, IdentifierName, ParenthesizedExpression, Span,
 };
 
-use super::arguments::{ArgumentGroup, SourceArguments};
+use super::arguments::{ArgumentGroup, ChainArgumentFacts, SourceArguments};
 use super::members::{
     MemberBoundary, MemberHead, MemberLookupLayout, MemberLookupOwner, PreparedMember, SourceMember,
 };
@@ -350,7 +350,7 @@ struct RecordedBoundary<'ast> {
 
 #[derive(Default)]
 struct GroupFacts {
-    has_function: bool,
+    arguments: ChainArgumentFacts,
     has_boundary_comments: bool,
     source_break: bool,
     preferred_breaks: bool,
@@ -360,18 +360,16 @@ struct GroupFacts {
 struct ChainGroup<'ast> {
     doc: Fragment<'ast>,
     before: Option<RecordedBoundary<'ast>>,
-    can_flat: bool,
     facts: GroupFacts,
 }
 
 impl<'ast> ChainGroup<'ast> {
     fn new(doc: Fragment<'ast>, before: Option<RecordedBoundary<'ast>>, facts: GroupFacts) -> Self {
-        Self {
-            doc,
-            before,
-            can_flat: doc.try_flat().is_some(),
-            facts,
-        }
+        Self { doc, before, facts }
+    }
+
+    fn source_expanded(&self) -> bool {
+        self.facts.arguments.source_expanded_object && !self.doc.has_intrinsic_lines()
     }
 }
 
@@ -382,6 +380,7 @@ struct ChainGroups<'ast> {
 
 enum ChainLayout<'ast> {
     Expanded,
+    SourceExpanded,
     Shared(NeutralFragment<'ast>),
     Alternatives,
 }
@@ -394,20 +393,32 @@ impl<'ast> ChainGroups<'ast> {
         let Some((last, earlier)) = self.tail.split_last() else {
             return ChainLayout::Alternatives;
         };
-        if self.head.facts.preferred_breaks || !self.head.can_flat {
+        let mut source_expanded = self.head.source_expanded();
+        if self.head.facts.preferred_breaks && !source_expanded {
             return ChainLayout::Expanded;
         }
-        let mut has_function = self.head.facts.has_function;
+        let mut has_function = self.head.facts.arguments.has_function;
         let mut local_scopes = true;
         for group in earlier {
-            if group.facts.source_break || group.facts.preferred_breaks || !group.can_flat {
+            let source_group = group.source_expanded();
+            if group.facts.source_break || group.facts.preferred_breaks && !source_group {
                 return ChainLayout::Expanded;
             }
-            has_function |= group.facts.has_function;
+            source_expanded |= source_group;
+            has_function |= group.facts.arguments.has_function;
             local_scopes &= !group.facts.has_parent_call_group;
         }
-        let last_breaks = last.facts.preferred_breaks || !last.can_flat;
-        if last.facts.source_break || last_breaks && has_function {
+        let last_breaks = last.facts.preferred_breaks;
+        if last.facts.source_break {
+            return ChainLayout::Expanded;
+        }
+        // Source-preserved objects can make a standard candidate fit at its
+        // first inner newline. This is a language layout choice: retain real
+        // group expansion while keeping its separators explicitly flattenable.
+        if source_expanded || last.source_expanded() {
+            return ChainLayout::SourceExpanded;
+        }
+        if last_breaks && has_function {
             return ChainLayout::Expanded;
         }
         local_scopes &= !last.facts.has_parent_call_group;
@@ -1234,20 +1245,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ChainLayout::Expanded => {
                         writer.group(false, |writer| write_expanded(&groups, merge_head, writer));
                     }
+                    ChainLayout::SourceExpanded => {
+                        writer.group(true, |writer| {
+                            write_group(&groups.head, false, writer);
+                            write_breakable_tail(&groups, merge_head, writer);
+                        });
+                    }
                     ChainLayout::Shared(head) => {
-                        let (fragment, ()) = writer.record_with_value(|writer| {
-                            write_shared(&groups, head, merge_head, writer);
-                            Ok::<_, FormatError>(())
-                        })?;
-                        // Candidate measurement remains independent of an
-                        // enclosing Flat group, as in the compact layout.
-                        writer.write_canonical_alternatives(
-                            fragment,
-                            &[fragment.canonical_candidate()],
-                            fragment,
-                        );
+                        writer.group(false, |writer| {
+                            write_shared(&groups, head, merge_head, writer)
+                        });
                     }
                     ChainLayout::Alternatives => {
+                        if groups
+                            .tail
+                            .last()
+                            .is_some_and(|last| last.facts.preferred_breaks)
+                        {
+                            writer.break_parent();
+                        }
+                        // Curried argument frames observe the selected candidate's
+                        // mode without another group choosing its breaks.
                         let (expanded, ()) = writer.record_with_value(|writer| {
                             write_expanded(&groups, merge_head, writer);
                             Ok::<_, FormatError>(())
@@ -1256,11 +1274,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             write_compact(&groups, writer);
                             Ok::<_, FormatError>(())
                         })?;
-                        writer.write_canonical_alternatives(
-                            compact,
-                            &[compact.canonical_candidate()],
-                            expanded,
-                        );
+                        writer.write_alternatives(&[compact], expanded);
                     }
                 }
             }
@@ -1606,17 +1620,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // Comments owned by the actual arguments may move inside their opener.
         // Only an outside prefix is a boundary for both merging and expansion.
         facts.has_parent_call_group |= matches!(arguments.group, ArgumentGroup::ParentCall);
-        let missing_function = if facts.has_function {
-            None
-        } else {
-            Some(&mut facts.has_function)
+        let mut argument_facts = ChainArgumentFacts {
+            has_function: facts.arguments.has_function,
+            ..ChainArgumentFacts::default()
         };
-        let output = self.format_source_arguments_with_function_fact(
+        let output = self.format_source_arguments_with_chain_facts(
             arguments,
             source.tail.take(),
-            missing_function,
+            Some(&mut argument_facts),
             writer,
         )?;
+        facts.arguments.has_function = argument_facts.has_function;
+        facts.arguments.source_expanded_object |= argument_facts.source_expanded_object;
         facts.has_boundary_comments |= output.has_outside_prefix;
         facts.source_break |= output.has_outside_prefix;
         source.tail = output.tail;
@@ -1695,6 +1710,14 @@ fn write_shared<'ast>(
     // A neutral head and local call scopes share their flat render view. Each
     // segment keeps its own scope when the chain's separators expand.
     writer.write_neutral_fragment(head);
+    write_breakable_tail(groups, merge_head, writer);
+}
+
+fn write_breakable_tail<'ast>(
+    groups: &ChainGroups<'ast>,
+    merge_head: bool,
+    writer: &mut Writer<'ast>,
+) {
     let tail = if merge_head && let Some((first, remaining)) = groups.tail.split_first() {
         write_group_boundary(first, false, writer);
         write_group_contents(first, writer);

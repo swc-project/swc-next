@@ -1,4 +1,4 @@
-//! Cached display widths for borrowed text; physical breaks retain column context.
+//! Cached display widths for single-line borrowed text.
 
 use crate::text_width;
 
@@ -20,6 +20,10 @@ impl<'a> Text<'a> {
         let width = if text_width::ascii_width(source).is_some() {
             Width::Ascii
         } else if source.chars().any(char::is_control) {
+            debug_assert!(
+                !source.contains(['\r', '\n']),
+                "physical lines must use literal_text or a line instruction"
+            );
             Width::Dynamic
         } else {
             Width::Unicode(u32::try_from(text_width::unicode_width(source)).unwrap_or(u32::MAX))

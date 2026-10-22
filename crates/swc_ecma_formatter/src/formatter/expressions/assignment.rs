@@ -8,8 +8,8 @@ use super::parentheses::{
 use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{
-    CommentBinding, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead, PreparedHeadGap,
-    PreparedHeadGaps,
+    CommentBinding, CommentOpening, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead,
+    PreparedHeadGap, PreparedHeadGaps,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
@@ -586,21 +586,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         })?;
         let (suffix, ()) = writer.record_with_value(|writer| {
-            writer.group(false, |writer| {
-                self.format_inline_trailing_comments(std::slice::from_ref(line), writer)
-            })
+            writer.text(self.source(line.span).trim_end());
+            Ok::<_, FormatError>(())
         })?;
+        let write_suffix = |opening: CommentOpening, writer: &mut Writer<'ast>| {
+            writer.group(false, |writer| {
+                writer.line_suffix_boundary();
+                opening.line_suffix(writer, |writer| writer.write_fragment(suffix));
+            });
+        };
         if matches!(layout, RhsLayout::NeverBreakAfterOperator) {
             writer.space();
             writer.write_fragment(prefix);
             writer.write_fragment(right);
-            writer.write_fragment(suffix);
+            write_suffix(CommentOpening::Needed, writer);
             return Ok(());
         }
         let (fallback, ()) = writer.record_with_value(|writer| {
             writer.space();
             writer.write_fragment(prefix);
-            writer.write_fragment(suffix);
+            write_suffix(CommentOpening::Provided, writer);
             writer.indent(|writer| {
                 writer.hard_line();
                 writer.write_fragment(right);
@@ -619,10 +624,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.space();
             writer.write_flat_fragment(prefix);
             writer.write_flat_fragment(right);
-            writer.write_fragment(suffix);
+            write_suffix(CommentOpening::Needed, writer);
             Ok::<_, FormatError>(())
         })?;
-        writer.write_canonical_alternatives(fallback, &[flat.canonical_candidate()], fallback);
+        // The operator's line comment requires an enclosing break even when
+        // its value fits beside the operator. Candidate groups isolate their
+        // own break requests, so this belongs to the assignment boundary.
+        writer.break_parent();
+        writer.write_alternatives(&[flat], fallback);
         Ok(())
     }
 

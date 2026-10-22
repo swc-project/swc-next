@@ -23,7 +23,7 @@ use crate::formatter::expressions::arguments::{
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{
     FormatError, TrailingCommas,
-    document::{GroupId, Writer},
+    document::{ConditionTarget, GroupId, Writer},
 };
 
 #[derive(Clone, Copy)]
@@ -412,7 +412,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let tail = if self.options.trailing_commas == TrailingCommas::None {
             TrailingCommaPolicy::Forbidden
         } else {
-            TrailingCommaPolicy::IfBreak
+            TrailingCommaPolicy::IfBreak(ConditionTarget::Current)
         };
         self.format_type_parameters_with_tail(node, context, mode, tail, writer)
     }
@@ -1206,18 +1206,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if modifiers.r#const {
             writer.text("const");
-            writer.space();
+            if modifiers.r#in || modifiers.out {
+                writer.space();
+            }
         }
         if modifiers.r#in {
             writer.text("in");
-            writer.space();
+            if modifiers.out {
+                writer.space();
+            }
         }
         if modifiers.out {
             writer.text("out");
-            writer.space();
         }
         if let Some(boundary) = name_leading {
             self.format_type_comment_gap(&boundary, FlatSeparator::Space, writer)?;
+        } else if !modifiers.is_empty() {
+            writer.space();
         }
         Ok(())
     }

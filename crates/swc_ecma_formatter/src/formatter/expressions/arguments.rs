@@ -14,7 +14,10 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalClose
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
-use crate::{FormatError, TrailingCommas, document::Writer};
+use crate::{
+    FormatError, TrailingCommas,
+    document::{ConditionTarget, Writer},
+};
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
     ExprData, GetSpan, Span, SubRange, TemplateElement,
@@ -65,8 +68,31 @@ impl FollowingItem {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TrailingCommaPolicy {
     Forbidden,
-    IfBreak,
+    IfBreak(ConditionTarget),
     Required,
+}
+
+/// The list's real closing owner also governs its optional terminal comma.
+#[derive(Clone, Copy)]
+pub(in crate::formatter) enum DelimitedClose {
+    Source,
+    Terminal(TerminalCloseBoundary),
+    Fixed(LineConstraint),
+}
+
+impl DelimitedClose {
+    pub(in crate::formatter) fn constraint(
+        self,
+        formatter: &Formatter<'_, '_>,
+        end: u32,
+        close: u32,
+    ) -> LineConstraint {
+        match self {
+            Self::Source => formatter.line_constraint(end, close),
+            Self::Terminal(boundary) => formatter.terminal_close_constraint(boundary, end),
+            Self::Fixed(constraint) => constraint,
+        }
+    }
 }
 
 struct ItemComments<'item, 'ast> {
@@ -188,7 +214,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         slot: ArrayArgumentSlot,
         span: Span,
-        trailing_comma: bool,
+        trailing_comma: TrailingCommaPolicy,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
@@ -211,7 +237,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             argument.span(self.ast),
             following,
             span,
-            trailing_comma,
+            !matches!(trailing_comma, TrailingCommaPolicy::Forbidden),
             ItemComments {
                 head: CommentRunLayout::Source,
                 array: array_comments.as_deref_mut(),
@@ -220,6 +246,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )?;
         item.set_leading_mode(mode);
+        item.set_trailing_comma(trailing_comma);
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
                 argument,
@@ -340,7 +367,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             has_leading_comments,
             trailing_comma: if trailing_comma {
-                TrailingCommaPolicy::IfBreak
+                TrailingCommaPolicy::IfBreak(ConditionTarget::Current)
             } else {
                 TrailingCommaPolicy::Forbidden
             },
@@ -401,11 +428,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.finish_delimited_item_with_array_comments(item, tail, None, writer)
     }
 
+    pub(in crate::formatter) fn finish_delimited_item_with_closing(
+        &mut self,
+        item: PreparedItem,
+        tail: Option<ExpressionTail<'ast>>,
+        closing: DelimitedClose,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ItemBoundary, FormatError> {
+        self.finish_delimited_item_with_boundary(item, tail, None, Some(closing), writer)
+    }
+
     fn finish_delimited_item_with_array_comments(
         &mut self,
         item: PreparedItem,
         tail: Option<ExpressionTail<'ast>>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ItemBoundary, FormatError> {
+        self.finish_delimited_item_with_boundary(item, tail, array_comments, None, writer)
+    }
+
+    fn finish_delimited_item_with_boundary(
+        &mut self,
+        item: PreparedItem,
+        tail: Option<ExpressionTail<'ast>>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        closing: Option<DelimitedClose>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
         let PreparedItem {
@@ -462,6 +510,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let comments = self.comments.between(gap)?;
+        let trailing_comma = if !has_more
+            && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+            && closing.is_some_and(|closing| {
+                let end = comments
+                    .last()
+                    .map_or(content_end, |comment| comment.span.end);
+                closing.constraint(self, end, span.end) == LineConstraint::SameLine
+            }) {
+            TrailingCommaPolicy::Forbidden
+        } else {
+            trailing_comma
+        };
         let comma = self.find_comma(gap, comments);
         // Preserve existing operand coverage. A directive covering only this
         // separator does not constrain ordinary comment attachment, even when
@@ -498,8 +558,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     separator = Separator::EmptyLine;
                 }
-            } else if matches!(trailing_comma, TrailingCommaPolicy::IfBreak) {
-                writer.if_break(",");
+            } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
+                writer.if_break_for(target, ",");
             }
             return Ok(ItemBoundary {
                 end: content_end,
@@ -686,8 +746,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if pre_packet_empty {
                 separator = Separator::EmptyLine;
             }
-        } else if matches!(trailing_comma, TrailingCommaPolicy::IfBreak) {
-            writer.if_break(",");
+        } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
+            writer.if_break_for(target, ",");
         }
         if let Some((_, run)) = prepared_run {
             // The next real separator owns its mandatory suffix termination.
@@ -1020,6 +1080,15 @@ impl<'ast> SourceArguments<'ast> {
     }
 }
 
+/// Facts needed only while recording fluent-chain arguments. Source-dependent
+/// collection policy stays in the language builder, outside document fitting.
+#[derive(Default)]
+pub(super) struct ChainArgumentFacts {
+    pub(super) has_function: bool,
+    /// An argument contains source-expanded objects without intrinsic newlines.
+    pub(super) source_expanded_object: bool,
+}
+
 /// The actual prefix owner reports its emitted boundary after receiving a tail.
 /// Its ordinary caller only needs the tail; a chain also consumes the layout fact.
 pub(super) struct FormattedArguments<'ast> {
@@ -1300,17 +1369,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(list)
     }
 
-    pub(super) fn format_argument_with_function_fact(
+    pub(super) fn format_argument_with_chain_facts(
         &mut self,
         argument: Argument,
         mode: ContentMode,
         binary_indent: OperandIndent,
         jsx_call: Option<CallExpression>,
-        missing_function: &mut Option<&mut bool>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if binary_indent == OperandIndent::Expression
-            && missing_function.is_none()
+            && chain_facts.is_none()
             && (jsx_call.is_none() || mode == ContentMode::Verbatim)
         {
             return self.format_argument(argument, mode, writer);
@@ -1324,8 +1393,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             content.as_ref().map(|content| content.data),
             Some(ExprData::Function(_) | ExprData::ArrowFunctionExpression(_))
         );
-        if has_function && let Some(function) = missing_function.take() {
-            *function = true;
+        if let Some(facts) = chain_facts.as_deref_mut() {
+            facts.has_function |= has_function;
         }
         let jsx_callback = content
             .as_ref()
@@ -1348,13 +1417,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_content_mode(mode)
             .with_arrow_layout(super::arrows::ArrowLayout::Argument)
             .with_jsx_callback(jsx_callback);
-        match data {
+        let source_generation = self.source_object_layout.generation;
+        let write = |writer: &mut Writer<'ast>| match data {
             ArgumentData::Expr(expression) => self.format_expression_prepared_with_array_comments(
                 expression, content, context, None, writer,
             ),
             ArgumentData::SpreadElement(_) => {
                 self.format_argument_data_with_array_comments(data, mode, None, writer)
             }
+        };
+        if let Some(facts) = chain_facts.as_deref_mut() {
+            let (tail, intrinsic_lines) = writer.write_with_intrinsic_lines(write)?;
+            // Required body/comment breaks must not become source-only facts
+            // when the formatted argument is parsed for a second pass.
+            facts.source_expanded_object |=
+                !intrinsic_lines && source_generation != self.source_object_layout.generation;
+            Ok(tail)
+        } else {
+            write(writer)
         }
     }
 
@@ -1669,17 +1749,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let output = self.format_source_arguments_with_function_fact(list, tail, None, writer)?;
+        let output = self.format_source_arguments_with_chain_facts(list, tail, None, writer)?;
         Ok(output.tail)
     }
 
-    pub(super) fn format_source_arguments_with_function_fact(
+    pub(super) fn format_source_arguments_with_chain_facts(
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        mut missing_function: Option<&mut bool>,
+        chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
+        let observing = self.source_object_layout.observing;
+        self.source_object_layout.observing |= chain_facts.is_some();
+        let result = self.format_observed_source_arguments(list, tail, chain_facts, writer);
+        // Retain nested discoveries while restoring the caller's observation scope,
+        // including when construction returns an error.
+        self.source_object_layout.observing = observing;
+        result
+    }
+
+    fn format_observed_source_arguments(
+        &mut self,
+        list: SourceArguments<'ast>,
+        tail: Option<ExpressionTail<'ast>>,
+        mut chain_facts: Option<&mut ChainArgumentFacts>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<FormattedArguments<'ast>, FormatError> {
+        if let Some(facts) = chain_facts.as_deref_mut() {
+            facts.source_expanded_object = false;
+        }
         let ast = self.ast;
         let SourceArguments {
             arguments,
@@ -1863,7 +1962,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     binary_indent,
                 },
                 selected,
-                missing_function,
+                chain_facts,
                 writer,
             )?;
             return Ok(FormattedArguments {
@@ -1871,6 +1970,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_outside_prefix,
             });
         }
+        let closing =
+            if fixed_frame || source_opening.is_some() || callee_mode != ContentMode::Formatted {
+                DelimitedClose::Source
+            } else {
+                DelimitedClose::Terminal(closing)
+            };
         let tail = group.write(expand, writer, |writer| {
             if let Some(opening) = source_opening {
                 self.format_verbatim(opening.span, writer)?;
@@ -1915,7 +2020,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let tail = if let Some(callback) = frame.test_callback()
                         && callback.argument == argument && item.mode == ContentMode::Formatted
                     {
-                        self.format_test_callback(callback, jsx_call, &mut missing_function, writer)?
+                        self.format_test_callback(callback, jsx_call, &mut chain_facts, writer)?
                     } else if let Some((wrapper_expression, wrapper)) = frame.angular_wrapper()
                         && matches!(ast.argument_data(argument), ArgumentData::Expr(expression) if expression == wrapper_expression)
                     {
@@ -1927,16 +2032,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer,
                         )?
                     } else {
-                        self.format_argument_with_function_fact(
+                        self.format_argument_with_chain_facts(
                             argument,
                             item.mode,
                             binary_indent,
                             jsx_call,
-                            &mut missing_function,
+                            &mut chain_facts,
                             writer,
                         )?
                     };
-                    previous = Some(self.finish_delimited_item(item, tail, writer)?);
+                    previous = Some(self.finish_delimited_item_with_closing(
+                        item,
+                        tail,
+                        closing,
+                        writer,
+                    )?);
                 }
                 let end = previous.map_or(content.start, |boundary| boundary.end);
                 self.format_argument_dangling(Span::new(end, content.end), writer)
@@ -1947,14 +2057,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(write_items)?
             };
             if !hugged && (first.is_some() || end != content.start) {
-                let constraint = if fixed_frame || source_opening.is_some()
-                    || callee_mode != ContentMode::Formatted
-                {
-                    self.line_constraint(end, content.end)
-                } else {
-                    self.terminal_close_constraint(closing, end)
-                };
-                constraint.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                closing.constraint(self, end, content.end)
+                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
             }
             if let CallArgumentFrame::Fixed { closing, .. } = frame {
                 closing.write(writer, FlatSeparator::Empty, |_| {});
@@ -1962,6 +2066,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(")");
             Ok(None)
         })?;
+        if fixed_frame && let Some(facts) = chain_facts {
+            facts.source_expanded_object = false;
+        }
         Ok(FormattedArguments {
             tail,
             has_outside_prefix,

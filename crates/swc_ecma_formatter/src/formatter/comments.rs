@@ -116,6 +116,40 @@ pub(super) enum CommentRunLayout {
     OwnLineTrailing,
 }
 
+/// A caller's separator covers only the first horizontal comment gap.
+#[derive(Clone, Copy)]
+pub(super) enum CommentOpening {
+    Needed,
+    Provided,
+}
+
+impl CommentOpening {
+    fn separator(self) -> FlatSeparator {
+        match self {
+            Self::Needed => FlatSeparator::Space,
+            Self::Provided => FlatSeparator::Empty,
+        }
+    }
+
+    fn write(self, writer: &mut Writer<'_>) {
+        if matches!(self, Self::Needed) {
+            writer.space();
+        }
+    }
+
+    pub(super) fn line_suffix<'a>(
+        self,
+        writer: &mut Writer<'a>,
+        contents: impl FnOnce(&mut Writer<'a>),
+    ) {
+        writer.line_suffix(|writer| {
+            self.write(writer);
+            contents(writer);
+        });
+        writer.break_parent();
+    }
+}
+
 /// A real-node transition certified before comments or punctuation are claimed.
 #[derive(Clone, Copy)]
 pub(super) struct SourceSeparatorTransition {
@@ -333,6 +367,16 @@ impl CommentGap {
         match self {
             Self::LineComment => writer.hard_line(),
             Self::Source(constraint) => constraint.write(writer, flat, default),
+        }
+    }
+
+    /// Resolve a token boundary to a required line break or one literal space.
+    pub(super) fn write_separator(self, writer: &mut Writer<'_>) {
+        match self {
+            Self::Source(LineConstraint::Unconstrained | LineConstraint::SameLine) => {
+                writer.text(" ");
+            }
+            _ => self.write(writer, FlatSeparator::Empty, |_| {}),
         }
     }
 }
@@ -559,12 +603,18 @@ impl<'ast> CommentText<'ast> {
             }
             Self::Aligned { first, rest, jsdoc } => {
                 writer.text(first.trim_end());
+                let mut preserve_trailing = false;
                 for line in lines(rest) {
-                    writer.hard_line();
+                    if preserve_trailing {
+                        writer.literal_line_with_indent();
+                    } else {
+                        writer.hard_line();
+                    }
                     writer.space();
                     let trimmed = line.trim();
                     writer.text(trimmed);
-                    if jsdoc && trimmed != "*" && line.ends_with("  ") {
+                    preserve_trailing = jsdoc && trimmed != "*" && line.ends_with("  ");
+                    if preserve_trailing {
                         // Markdown uses two trailing spaces as a hard line break.
                         writer.text("  ");
                     }
@@ -657,12 +707,15 @@ impl<'ast> CommentCursor<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    fn format_comment_line_suffix(&self, comment: Comment, writer: &mut Writer<'ast>) {
-        writer.line_suffix(|writer| {
-            writer.space();
+    fn format_comment_line_suffix_with_opening(
+        &self,
+        comment: Comment,
+        opening: CommentOpening,
+        writer: &mut Writer<'ast>,
+    ) {
+        opening.line_suffix(writer, |writer| {
             writer.text(self.source(comment.span).trim_end());
         });
-        writer.break_parent();
     }
 
     pub(super) fn prepare_comment_boundary(
@@ -705,6 +758,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_comment_boundary_with_layout(
             boundary,
             CommentRunLayout::SourceAfter(boundary.source_end),
+            writer,
+        )
+    }
+
+    pub(super) fn format_comment_boundary_after_separator(
+        &mut self,
+        boundary: &CommentBoundary<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(boundary.comments)?;
+        self.format_comment_run_with_opening(
+            boundary.comments,
+            CommentRunLayout::SourceAfter(boundary.source_end),
+            CommentOpening::Provided,
+            None,
+            None,
             writer,
         )
     }
@@ -1455,10 +1524,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn comment_gap(&self, start: u32, end: u32, writer: &mut Writer<'ast>) {
+        self.comment_gap_with_opening(start, end, CommentOpening::Needed, writer);
+    }
+
+    fn comment_gap_with_opening(
+        &self,
+        start: u32,
+        end: u32,
+        opening: CommentOpening,
+        writer: &mut Writer<'ast>,
+    ) {
         self.line_constraint(start, end)
-            .write(writer, FlatSeparator::Space, |writer| {
+            .write(writer, opening.separator(), |writer| {
                 match self.line_breaks(start, end) {
-                    0 => writer.space(),
+                    0 => opening.write(writer),
                     1 => writer.hard_line(),
                     _ => {
                         writer.hard_line();
@@ -1477,8 +1556,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         packet: Option<&SourceSeparatorPacket<'ast>>,
         writer: &mut Writer<'ast>,
     ) {
+        self.comment_gap_with_packet_and_opening(
+            start,
+            end,
+            packet,
+            CommentOpening::Needed,
+            writer,
+        );
+    }
+
+    fn comment_gap_with_packet_and_opening(
+        &self,
+        start: u32,
+        end: u32,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+        opening: CommentOpening,
+        writer: &mut Writer<'ast>,
+    ) {
         if packet.is_none() {
-            self.comment_gap(start, end, writer);
+            self.comment_gap_with_opening(start, end, opening, writer);
             return;
         }
         let (breaks, empty) = self.packet_gap_lines(start, end, packet);
@@ -1488,8 +1584,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             packet.map(|packet| &packet.transition),
             SourceSeparatorGap::WithinPacket,
         )
-        .write(writer, FlatSeparator::Space, |writer| match breaks {
-            0 => writer.space(),
+        .write(writer, opening.separator(), |writer| match breaks {
+            0 => opening.write(writer),
             1 => writer.hard_line(),
             _ => {
                 writer.hard_line();
@@ -1720,6 +1816,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         self.format_comment_run_with_array_comments(comments, layout, None, writer)
     }
+
+    pub(super) fn format_comment_run_after_separator(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_comment_run_with_opening(
+            comments,
+            layout,
+            CommentOpening::Provided,
+            None,
+            None,
+            writer,
+        )
+    }
     pub(super) fn format_comment_run_with_array_comments(
         &self,
         comments: &[Comment],
@@ -1737,6 +1849,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         comments: &[Comment],
         layout: CommentRunLayout,
+        packet: Option<&SourceSeparatorPacket<'ast>>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_comment_run_with_opening(
+            comments,
+            layout,
+            CommentOpening::Needed,
+            packet,
+            array_comments,
+            writer,
+        )
+    }
+
+    fn format_comment_run_with_opening(
+        &self,
+        comments: &[Comment],
+        layout: CommentRunLayout,
+        opening: CommentOpening,
         packet: Option<&SourceSeparatorPacket<'ast>>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
@@ -1841,13 +1972,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else if let CommentRunLayout::SourceAfter(start) = layout
                 && !line_suffix
             {
-                self.comment_gap_with_packet(start, prepared.span.start, packet, writer);
+                self.comment_gap_with_packet_and_opening(
+                    start,
+                    prepared.span.start,
+                    packet,
+                    opening,
+                    writer,
+                );
             }
             if comment.kind == CommentKind::Line {
                 writer.line_suffix_boundary();
             }
             if line_suffix {
-                self.format_comment_line_suffix(comment, writer);
+                let opening = if previous.is_none() {
+                    opening
+                } else {
+                    CommentOpening::Needed
+                };
+                self.format_comment_line_suffix_with_opening(comment, opening, writer);
             } else {
                 prepared.text.write(writer);
             }
@@ -1997,6 +2139,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         self.format_inline_trailing_comments_with_array_comments(comments, None, writer)
     }
+
+    pub(super) fn format_inline_trailing_comments_with_opening(
+        &self,
+        comments: &[Comment],
+        opening: CommentOpening,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_trailing_comment_run_with_opening(comments, None, opening, None, writer)
+    }
     pub(super) fn format_inline_trailing_comments_with_array_comments(
         &self,
         comments: &[Comment],
@@ -2010,6 +2161,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         comments: &[Comment],
         previous: Option<Comment>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_trailing_comment_run_with_opening(
+            comments,
+            previous,
+            CommentOpening::Needed,
+            array_comments,
+            writer,
+        )
+    }
+
+    fn format_trailing_comment_run_with_opening(
+        &self,
+        comments: &[Comment],
+        previous: Option<Comment>,
+        opening: CommentOpening,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
@@ -2031,7 +2199,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 match comment.kind {
                     CommentKind::Line => {
                         writer.line_suffix_boundary();
-                        self.format_comment_line_suffix(comment, writer);
+                        self.format_comment_line_suffix_with_opening(
+                            comment,
+                            if previous.is_none() {
+                                opening
+                            } else {
+                                CommentOpening::Needed
+                            },
+                            writer,
+                        );
                     }
                     CommentKind::Block => {
                         let nestled = previous.as_ref().is_some_and(|previous| {
@@ -2040,7 +2216,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 && prepared.is_alignable()
                         });
                         if !nestled {
-                            writer.space();
+                            if previous.is_none() {
+                                opening.write(writer);
+                            } else {
+                                writer.space();
+                            }
                         }
                         prepared.text.write(writer);
                     }

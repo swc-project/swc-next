@@ -22,7 +22,8 @@ pub(super) use self::generics::TypeArgumentOwner;
 use super::Formatter;
 use super::bindings::{BindingGroup, BindingInitializerOwner, DefiniteMarker, InitializerLayout};
 use super::comments::{
-    CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, PreparedTrailingRun,
+    CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail,
+    PreparedTrailingRun,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::TailOwner;
@@ -2829,6 +2830,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    /// The operator owns the opening space; the head retains required line breaks.
     pub(super) fn format_binary_type_rhs_head(
         &mut self,
         node: PreparedType,
@@ -2838,7 +2840,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let context = TypeContext::Root;
         if matches!(head.0, BinaryTypeHeadLayout::InlineNamed) {
-            writer.space();
             self.format_comment_boundary_with_layout(
                 after,
                 CommentRunLayout::FlatLeading(node.node.span(self.ast).start),
@@ -2848,13 +2849,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if matches!(head.0, BinaryTypeHeadLayout::Named) {
             let comments = after.comments();
-            if let Some(first) = comments.first() {
-                self.format_comment_boundary_with_layout(
-                    after,
-                    CommentRunLayout::SourceAfter(first.span.start),
-                    writer,
-                )?;
-            }
+            self.format_comment_boundary_with_layout(after, CommentRunLayout::Source, writer)?;
             if let Some(last) = comments.last() {
                 self.comment_gap(last.span.end, node.node.span(self.ast).start, writer);
             }
@@ -2862,16 +2857,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
             // This name has no nested token boundary to consume the leased packet.
-            writer.space();
             writer.text(self.ast.get_utf8(name.name(self.ast)));
             return Ok(Some(tail));
         }
         let BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line }) = head else {
-            self.format_type_comment_gap(after, FlatSeparator::Space, writer)?;
+            if after.is_empty() {
+                after.gap().write(writer, FlatSeparator::Empty, |_| {});
+            } else {
+                self.format_comment_boundary_after_separator(after, writer)?;
+                after
+                    .gap()
+                    .write(writer, FlatSeparator::Space, Writer::space);
+            }
             return self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer);
         };
         let mut pending =
-            PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, leading);
+            PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, leading)
+                .with_opening(CommentOpening::Provided);
         if own_line.is_none() {
             pending = pending.with_inline_prefix();
         }
@@ -2882,23 +2884,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer,
         )?;
         let opening = match own_line {
-            _ if recorded.riding => {
-                writer.space();
-                None
-            }
+            _ if recorded.riding => None,
             Some(opening)
                 if !matches!(recorded.content, compound::PreparedTypeContent::Union(_)) =>
             {
                 Some(opening)
             }
             _ => {
-                writer.space();
                 return self.format_recorded_type_head(recorded, context, TypeLayout::Root, writer);
             }
         };
         writer.indent(|writer| {
             if let Some(opening) = opening {
-                opening.write(writer, FlatSeparator::Space, Writer::hard_line);
+                opening.write(writer, FlatSeparator::Empty, Writer::hard_line);
             }
             self.format_recorded_type_head(recorded, context, TypeLayout::CallerIndented, writer)
         })

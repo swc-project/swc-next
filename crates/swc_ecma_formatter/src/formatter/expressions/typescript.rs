@@ -12,7 +12,7 @@ use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{AccessKind, ExpressionContext, ExpressionPosition, ParenthesesOwner, TailOwner};
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
-    CommentBinding, CommentBoundary, CommentRunLayout, ExpressionTail, NodeHead,
+    CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail, NodeHead,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
@@ -805,12 +805,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 tail,
             } => {
                 self.format_comment_boundary(&before, writer)?;
-                before
-                    .gap()
-                    .write(writer, FlatSeparator::Space, Writer::reserved_space);
-                self.comments.claim(prefix)?;
-                self.format_inline_trailing_comments(prefix, writer)?;
-                writer.reserved_space();
+                before.gap().write_separator(writer);
+                if !prefix.is_empty() {
+                    self.comments.claim(prefix)?;
+                    self.format_inline_trailing_comments_with_opening(
+                        prefix,
+                        CommentOpening::Provided,
+                        writer,
+                    )?;
+                    writer.text(" ");
+                }
                 writer.text("as const");
                 Ok(tail)
             }
@@ -820,11 +824,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head,
             } => {
                 self.format_comment_boundary(&before, writer)?;
-                before
-                    .gap()
-                    .write(writer, FlatSeparator::Space, Writer::reserved_space);
+                before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
-                writer.reserved_space();
+                writer.text(" ");
                 self.format_binary_type_rhs_head(node, &after, head, writer)
             }
         }
@@ -962,7 +964,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operand,
             ")",
         );
-        writer.write_alternatives(direct, &[direct, enclosed], direct);
+        writer.write_alternatives(&[direct, enclosed], direct);
         // Ordinary pending comments retain their enclosing expression owner.
         // Each candidate finishes its operand before returning the same lease.
         Ok(tail)

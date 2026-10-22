@@ -21,7 +21,7 @@ use crate::formatter::literals::StringContext;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, SuppressionPosition};
 use crate::{
     FormatError, QuoteProperties, QuoteStyle, TrailingCommas,
-    document::{Fragment, GroupRequest, Writer},
+    document::{Fragment, Writer},
 };
 
 /// A whole key group resolves `consistent` once before formatting any member.
@@ -244,12 +244,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match self.source_object(object)? {
             SourceObject::Verbatim(span) => self.format_verbatim(span, writer),
             SourceObject::Formatted(source) => {
-                let request = if source.expand {
-                    GroupRequest::PreserveSource
-                } else {
-                    GroupRequest::Auto
-                };
-                writer.group_with_request(request, |writer| {
+                if self.source_object_layout.observing && source.expand {
+                    let ((), intrinsic_lines) = writer.write_with_intrinsic_lines(|writer| {
+                        writer.group(true, |writer| {
+                            self.format_object_contents(source.contents, writer)
+                        })
+                    })?;
+                    if !intrinsic_lines {
+                        self.source_object_layout.generation += 1;
+                    }
+                    return Ok(());
+                }
+                writer.group(source.expand, |writer| {
                     self.format_object_contents(source.contents, writer)
                 })
             }
@@ -319,12 +325,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             SourceObject::Formatted(FormattedObject { expand, contents }) => {
                 let (content, ()) = writer
                     .record_with_value(|writer| self.format_object_contents(contents, writer))?;
-                let request = if expand {
-                    GroupRequest::PreserveSource
-                } else {
-                    GroupRequest::Auto
-                };
-                let normal = writer.group_fragment_with_request(request, content);
+                if self.source_object_layout.observing && expand && !content.has_intrinsic_lines() {
+                    self.source_object_layout.generation += 1;
+                }
+                let normal = writer.group_fragment(expand, content);
                 let forced = if normal.preferred_breaks() {
                     None
                 } else {

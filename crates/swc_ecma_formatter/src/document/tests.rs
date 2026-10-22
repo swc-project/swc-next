@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{Doc, FormatElement, Fragment, GroupRequest, Writer};
+use super::{ConditionTarget, Doc, FormatElement, Fragment, GroupRequest, Writer};
 use crate::{FormatOptions, IndentStyle, LineEnding};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -309,21 +309,19 @@ fn prepared_group_layouts() {
     assert_eq!(flat_width_layout(13), "return (\n  first\n  second\n);");
 }
 
-fn flat_width_gaps(reserved: bool) -> String {
+fn flat_width_spaces(literal: bool) -> String {
     flat_width_document(5, |writer| {
         writer.text("a");
-        if reserved {
-            writer.reserved_space();
+        if literal {
+            writer.text(" ");
         } else {
             writer.space();
         }
         writer.group_with_flat_width(|writer| {
             writer.space();
-            writer.reserved_space();
             writer.if_break("(");
             writer.text("b");
             writer.space();
-            writer.reserved_space();
             writer.space();
             writer.text("c");
             writer.space();
@@ -335,14 +333,14 @@ fn flat_width_gaps(reserved: bool) -> String {
 }
 
 #[test]
-fn prepared_group_gaps() {
-    assert_eq!(flat_width_gaps(false), "a b c\nd");
+fn prepared_group_spaces() {
+    assert_eq!(flat_width_spaces(false), "a  (b  c )\nd");
 
-    assert_eq!(flat_width_gaps(true), "a b c\nd");
+    assert_eq!(flat_width_spaces(true), "a  (b  c )\nd");
 
     let empty_leading = flat_width_document(4, |writer| {
         writer.text("a");
-        writer.reserved_space();
+        writer.text(" ");
         writer.group_with_flat_width(|writer| {
             writer.if_flat("");
             writer.space();
@@ -496,15 +494,15 @@ fn probe_overflow_boundaries() {
     assert_eq!(conditional, "a\nb\ncc");
 }
 
-fn probe_gap_continuation(reserved: bool) -> String {
+fn probe_space_continuation(literal: bool) -> String {
     flat_width_document(3, |writer| {
         writer.group(false, |writer| {
             writer.text("a");
             writer.line();
             writer.text("b");
         });
-        if reserved {
-            writer.reserved_space();
+        if literal {
+            writer.text(" ");
         } else {
             writer.space();
         }
@@ -514,10 +512,10 @@ fn probe_gap_continuation(reserved: bool) -> String {
 }
 
 #[test]
-fn probe_pending_gaps() {
-    assert_eq!(probe_gap_continuation(false), "a b\nc");
+fn probe_space_continuations() {
+    assert_eq!(probe_space_continuation(false), "a\nb\nc");
 
-    assert_eq!(probe_gap_continuation(true), "a\nb\nc");
+    assert_eq!(probe_space_continuation(true), "a\nb\nc");
 }
 
 fn dependent_document(options: FormatOptions) -> String {
@@ -607,14 +605,15 @@ fn named_group_scopes() {
             line_width: 8,
             ..FormatOptions::prettier()
         }),
-        "first second\nlast"
+        "first\nsecond\n  last"
     );
 }
 
 fn fill_document(parts: &[&str], width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.group(false, |writer| {
+    let group = writer.next_group_id();
+    writer.group_with_id(GroupRequest::Auto, Some(group), |writer| {
         writer.text("[");
         writer.indent(|writer| {
             writer.soft_line();
@@ -630,7 +629,7 @@ fn fill_document(parts: &[&str], width: u16) -> String {
                         if parts.peek().is_some() {
                             writer.text(",");
                         } else {
-                            writer.if_break(",");
+                            writer.if_break_for(ConditionTarget::Group(group), ",");
                         }
                     });
                     first = false;
@@ -650,7 +649,8 @@ fn fill_document(parts: &[&str], width: u16) -> String {
 fn grouped_fill_document(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.group(false, |writer| {
+    let group = writer.next_group_id();
+    writer.group_with_id(GroupRequest::Auto, Some(group), |writer| {
         writer.text("[");
         writer.indent(|writer| {
             writer.soft_line();
@@ -668,7 +668,7 @@ fn grouped_fill_document(width: u16) -> String {
                 writer.fill_entry(|writer| writer.line());
                 writer.fill_entry(|writer| {
                     writer.text("y");
-                    writer.if_break(",");
+                    writer.if_break_for(ConditionTarget::Group(group), ",");
                 });
             });
         });
@@ -696,11 +696,12 @@ fn text_fragments() {
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.text("first\r\nsecond");
-    assert_eq!(
-        writer.finish().print(FormatOptions::prettier()),
-        "first\r\nsecond"
-    );
+    writer.literal_text("first\r\nsecond");
+    let options = FormatOptions {
+        line_ending: LineEnding::CrLf,
+        ..FormatOptions::prettier()
+    };
+    assert_eq!(writer.finish().print(options), "first\r\nsecond");
 }
 
 #[test]
@@ -780,7 +781,7 @@ fn pending_whitespace() {
     });
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
-        "first\n\n\n  last"
+        "first\n\n\n  last "
     );
 }
 
@@ -795,7 +796,6 @@ fn deep_indentation() {
         allocator: &allocator,
         elements: &elements,
         group_count: 0,
-        conditional_lines: false,
     };
     let options = FormatOptions {
         indent_width: 64.try_into().unwrap(),
@@ -830,7 +830,7 @@ fn literal_lines() {
     writer.text("}");
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
-        "{\n  /* first\n original */\n  value;\n}"
+        "{\n  /* first \n original */\n  value;\n}"
     );
 }
 
@@ -876,11 +876,11 @@ fn group_breaks() {
             line_width: 3,
             ..FormatOptions::prettier()
         }),
-        "a b"
+        "a\nb"
     );
 }
 
-fn reserved_continuation(width: u16) -> String {
+fn literal_space_continuation(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.group(false, |writer| {
@@ -892,7 +892,7 @@ fn reserved_continuation(width: u16) -> String {
         writer.soft_line();
         writer.text(")");
     });
-    writer.reserved_space();
+    writer.text(" ");
     writer.soft_line();
     writer.text("rest");
     writer.finish().print(FormatOptions {
@@ -901,11 +901,11 @@ fn reserved_continuation(width: u16) -> String {
     })
 }
 
-fn reserved_fill(width: u16) -> String {
+fn literal_space_fill(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.text("aa");
-    writer.reserved_space();
+    writer.text(" ");
     writer.fill(|writer| {
         writer.fill_entry(|writer| writer.text("b"));
         writer.fill_entry(Writer::line);
@@ -917,27 +917,19 @@ fn reserved_fill(width: u16) -> String {
     })
 }
 
-fn reserved_candidate(width: u16, canonical: bool) -> String {
+fn literal_space_candidate(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let candidate = record(&mut writer, |writer| {
-        writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+        writer.group_with_request(GroupRequest::Expanded, |writer| {
             writer.soft_line();
             writer.text("b");
         });
     });
     let fallback = record(&mut writer, |writer| writer.text("F"));
     writer.text("aaa");
-    writer.reserved_space();
-    if canonical {
-        writer.write_canonical_alternatives(
-            candidate,
-            &[candidate.canonical_candidate()],
-            fallback,
-        );
-    } else {
-        writer.write_alternatives(candidate, &[candidate], fallback);
-    }
+    writer.text(" ");
+    writer.write_alternatives(&[candidate], fallback);
     writer.finish().print(FormatOptions {
         line_width: width,
         ..FormatOptions::prettier()
@@ -945,40 +937,38 @@ fn reserved_candidate(width: u16, canonical: bool) -> String {
 }
 
 #[test]
-fn reserved_gap_measurement() {
-    assert_eq!(reserved_continuation(6), "(aaa)\nrest");
+fn literal_space_gap_measurement() {
+    assert_eq!(literal_space_continuation(6), "(aaa)\nrest");
 
-    assert_eq!(reserved_continuation(5), "(\n  aaa\n)\nrest");
+    assert_eq!(literal_space_continuation(5), "(\n  aaa\n)\nrest");
 
-    assert_eq!(reserved_fill(6), "aa b c");
+    assert_eq!(literal_space_fill(6), "aa b c");
 
-    assert_eq!(reserved_fill(5), "aa b\nc");
+    assert_eq!(literal_space_fill(5), "aa b\nc");
 
-    assert_eq!(reserved_candidate(5, true), "aaa\nb");
+    assert_eq!(literal_space_candidate(5), "aaa\nb");
 
-    assert_eq!(reserved_candidate(4, true), "aaa F");
+    assert_eq!(literal_space_candidate(4), "aaa\nb");
 
-    assert_eq!(reserved_candidate(4, false), "aaa\nb");
-
-    assert_eq!(reserved_candidate(3, false), "aaa F");
+    assert_eq!(literal_space_candidate(3), "aaa F");
 }
 
-fn reserved_retry_continuation(width: u16) -> String {
+fn literal_space_retry_continuation(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let first = record(&mut writer, |writer| {
         writer.text("x");
-        writer.reserved_space();
+        writer.text(" ");
         writer.text("too long");
     });
     let second = record(&mut writer, |writer| {
         writer.text("b");
-        writer.reserved_space();
+        writer.text(" ");
     });
     let fallback = record(&mut writer, |writer| writer.text("F"));
     writer.text("a");
-    writer.reserved_space();
-    writer.write_alternatives(first, &[first, second], fallback);
+    writer.text(" ");
+    writer.write_alternatives(&[first, second], fallback);
     writer.group(false, |writer| {
         writer.soft_line();
         writer.if_flat("c");
@@ -991,87 +981,39 @@ fn reserved_retry_continuation(width: u16) -> String {
 }
 
 #[test]
-fn reserved_gap_selection_boundaries() {
-    assert_eq!(reserved_retry_continuation(5), "a b c");
+fn literal_space_gap_selection_boundaries() {
+    assert_eq!(literal_space_retry_continuation(5), "a b c");
 
-    assert_eq!(reserved_retry_continuation(4), "a b\nC");
+    assert_eq!(literal_space_retry_continuation(4), "a b\nC");
 
-    assert_eq!(reserved_retry_continuation(3), "a F\nC");
+    assert_eq!(literal_space_retry_continuation(3), "a F\nC");
 }
 
 #[test]
-fn reserved_gap_rendering() {
-    let allocator = Allocator::new();
-    let mut writer = Writer::new(&allocator);
-    writer.group(false, |writer| {
-        writer.text("a");
-        writer.space();
-        writer.reserved_space();
-        writer.reserved_space();
-        writer.space();
-        writer.line();
-        writer.text("b");
-    });
-    assert_eq!(
-        writer.finish().print(FormatOptions {
-            line_width: 3,
-            ..FormatOptions::prettier()
-        }),
-        "a b"
-    );
-
-    let allocator = Allocator::new();
-    let mut writer = Writer::new(&allocator);
-    writer.text("raw ");
-    writer.reserved_space();
-    writer.hard_line();
-    writer.text("next");
-    writer.reserved_space();
-    writer.literal_line();
-    writer.text(" original ");
-    assert_eq!(
-        writer.finish().print(FormatOptions::prettier()),
-        "raw \nnext\n original "
-    );
-
-    let allocator = Allocator::new();
-    let mut writer = Writer::new(&allocator);
-    writer.text("a");
-    writer.reserved_space();
-    writer.line_suffix(|writer| write_comment_suffix(writer, "// tail"));
-    writer.hard_line();
-    writer.text("b");
-    assert_eq!(
-        writer.finish().print(FormatOptions::prettier()),
-        "a // tail\nb"
-    );
-}
-
-#[test]
-fn reserved_gap_projection() {
+fn literal_space_projection() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let gap = record(&mut writer, |writer| {
         writer.space();
-        writer.reserved_space();
+        writer.text(" ");
     });
     assert!(gap.try_neutral().is_some());
     writer.text("a");
     writer.write_neutral_fragment(gap.try_neutral().unwrap());
     writer.text("b");
-    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a b");
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a  b");
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let gap = record(&mut writer, |writer| {
-        writer.reserved_space();
+        writer.text(" ");
         writer.line();
     });
     assert!(gap.try_flat().is_some());
     writer.text("a");
     writer.write_flat_fragment(gap.try_flat().unwrap());
     writer.text("b");
-    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a b");
+    assert_eq!(writer.finish().print(FormatOptions::prettier()), "a  b");
 }
 
 #[test]
@@ -1304,7 +1246,7 @@ fn clean_parts_width(parts: &[&str]) -> Option<usize> {
     writer
         .write_with_clean_text_width(|writer| {
             for part in parts {
-                writer.text(*part);
+                writer.literal_text(*part);
             }
             Ok::<_, ()>(())
         })
@@ -1370,11 +1312,17 @@ fn cached_text_columns() {
     assert_eq!(tab.clean_width(), Some(2));
     assert_eq!(tab.first_line(0), (2, false));
     assert_eq!(tab.last_line(0), (2, false));
+}
 
-    let lines = super::text::Text::new("é\r\n\u{7f}b");
-    assert_eq!(lines.clean_width(), None);
-    assert_eq!(lines.first_line(0), (1, true));
-    assert_eq!(lines.last_line(0), (1, true));
+fn literal_text_continuation(text: &'static str) -> String {
+    flat_width_document(8, |writer| {
+        writer.text("pre");
+        writer.literal_text(text);
+        writer.group(false, |writer| {
+            writer.line();
+            writer.text("next");
+        });
+    })
 }
 
 #[test]
@@ -1395,15 +1343,25 @@ fn text_line_measurement() {
     let separators = super::text::Text::new("a\u{2028}b\u{2029}c");
     assert_eq!(separators.last_line(3), (8, false));
 
-    let cr = super::text::Text::new("head\rtail");
-    assert_eq!(cr.last_line(3), (4, true));
+    assert_eq!(
+        literal_text_continuation("é\r\n\u{7f}b"),
+        "preé\n\u{7f}b next"
+    );
 
-    let lf = super::text::Text::new("head\n\t世界");
-    assert_eq!(lf.first_line(3), (7, true));
-    assert_eq!(lf.last_line(3), (4, true));
+    assert_eq!(
+        literal_text_continuation("head\rtail"),
+        "prehead\ntail\nnext"
+    );
 
-    let crlf = super::text::Text::new("head\r\ntail\n");
-    assert_eq!(crlf.last_line(3), (0, true));
+    assert_eq!(
+        literal_text_continuation("head\n\t世界"),
+        "prehead\n\t世界\nnext"
+    );
+
+    assert_eq!(
+        literal_text_continuation("head\r\ntail\n"),
+        "prehead\ntail\n next"
+    );
 }
 
 fn recorded_fill_document(width: u16, inherited: bool, nested: bool) -> String {
@@ -1574,14 +1532,15 @@ fn flat_scopes() {
 fn current_mode_fill(width: u16, expand_next: bool) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.group(true, |writer| {
+    let group = writer.next_group_id();
+    writer.group_with_id(GroupRequest::Expanded, Some(group), |writer| {
         writer.fill(|writer| {
             writer.fill_entry(|writer| writer.text("aa"));
             writer.fill_entry(|writer| {
-                writer.if_break(",");
-                writer.if_flat("unused");
-                writer.if_current_break("!");
-                writer.if_current_flat(" ");
+                writer.if_break_for(ConditionTarget::Group(group), ",");
+                writer.if_flat_for(ConditionTarget::Group(group), "unused");
+                writer.if_break("!");
+                writer.if_flat(" ");
                 writer.soft_line();
             });
             writer.fill_entry(|writer| writer.group(expand_next, |writer| writer.text("bb")));
@@ -1597,8 +1556,8 @@ fn current_mode_group(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     writer.group(false, |writer| {
-        writer.if_current_break("B");
-        writer.if_current_flat("1234");
+        writer.if_break("B");
+        writer.if_flat("1234");
         writer.line();
         writer.text("x");
     });
@@ -1655,13 +1614,25 @@ fn fragment_line_breaks() {
     let conditional = record(&mut writer, |writer| writer.soft_line_if_break(group));
     assert!(conditional.can_break());
 
+    let named = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Group(group), soft, soft);
+    });
+    assert!(named.can_break());
+
+    let flat_named = record(&mut writer, |writer| {
+        writer.write_flat_fragment(named.try_flat().unwrap());
+    });
+    assert!(!flat_named.can_break());
+
     let hard = record(&mut writer, Writer::hard_line);
     assert!(hard.can_break());
 
     let literal = record(&mut writer, Writer::literal_line);
     assert!(literal.can_break());
 
-    let current = record(&mut writer, |writer| writer.if_current_break("first\nlast"));
+    let current = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, soft, atom);
+    });
     assert!(current.can_break());
 
     let flat_current = record(&mut writer, |writer| {
@@ -1669,23 +1640,18 @@ fn fragment_line_breaks() {
     });
     assert!(!flat_current.can_break());
 
-    let multiline = record(&mut writer, |writer| writer.text("first\nlast"));
+    let multiline = record(&mut writer, |writer| writer.literal_text("first\nlast"));
     assert!(multiline.can_break());
 
     let fallback_only = record(&mut writer, |writer| {
-        writer.write_alternatives(atom, &[atom], hard)
+        writer.write_alternatives(&[atom], hard)
     });
     assert!(!fallback_only.can_break());
 
     let first = record(&mut writer, |writer| {
-        writer.write_alternatives(soft, &[soft], atom)
+        writer.write_alternatives(&[soft], atom)
     });
     assert!(first.can_break());
-
-    let canonical = record(&mut writer, |writer| {
-        writer.write_canonical_alternatives(atom, &[atom.canonical_candidate()], hard)
-    });
-    assert!(!canonical.can_break());
 }
 
 #[test]
@@ -1701,6 +1667,7 @@ fn fragment_capabilities() {
     });
     assert!(atom.try_neutral().is_some());
     assert!(atom.try_flat().is_some());
+    assert!(!atom.has_intrinsic_lines());
 
     let nested = record(&mut writer, |writer| {
         writer.write_fragment(atom);
@@ -1715,6 +1682,7 @@ fn fragment_capabilities() {
     });
     assert!(conditional.try_neutral().is_none());
     assert!(conditional.try_flat().is_some());
+    assert!(!conditional.has_intrinsic_lines());
 
     let flat_conditional = record(&mut writer, |writer| {
         writer.write_flat_fragment(conditional.try_flat().unwrap());
@@ -1722,37 +1690,52 @@ fn fragment_capabilities() {
     assert!(flat_conditional.try_neutral().is_none());
     assert!(flat_conditional.try_flat().is_some());
 
-    let current = record(&mut writer, |writer| {
-        writer.if_current_break("broken\nbranch");
-        writer.if_current_flat("flat");
-    });
+    let current = record(&mut writer, write_current_mode_lines);
     assert!(current.try_neutral().is_none());
     assert!(current.try_flat().is_some());
+    assert!(!current.has_intrinsic_lines());
 
     let projected = record(&mut writer, |writer| {
         writer.flat(|writer| writer.write_fragment(current));
     });
     assert!(projected.try_neutral().is_none());
     assert!(projected.try_flat().is_some());
+    assert!(!projected.has_intrinsic_lines());
     writer.write_flat_fragment(projected.try_flat().unwrap());
 
+    let empty = record(&mut writer, |_| {});
+    let multiline = record(&mut writer, |writer| writer.literal_text("first\nlast"));
     let multiline_current = record(&mut writer, |writer| {
-        writer.if_current_flat("first\nlast");
+        writer.if_break_doc(ConditionTarget::Current, empty, multiline);
     });
     assert!(multiline_current.try_neutral().is_none());
     assert!(multiline_current.try_flat().is_none());
 
     let named = record(&mut writer, |writer| {
-        writer.named_group(false, |writer| writer.text("value"));
+        writer.named_group(false, |writer| {
+            writer.text("value");
+            writer.soft_line();
+        });
     });
     assert!(named.try_neutral().is_none());
-    assert!(named.try_flat().is_some());
+    assert!(named.try_flat().is_none());
+    assert!(!named.has_intrinsic_lines());
+
+    let id = writer.next_group_id();
+    let named_fragment = writer.group_fragment_with_id(GroupRequest::Auto, Some(id), atom);
+    assert!(named_fragment.try_neutral().is_none());
+    assert!(named_fragment.try_flat().is_none());
 
     let expanded = record(&mut writer, |writer| {
         writer.group(true, |writer| writer.text("value"));
     });
     assert!(expanded.try_neutral().is_none());
     assert!(expanded.try_flat().is_some());
+    assert!(!expanded.has_intrinsic_lines());
+
+    let propagation = record(&mut writer, Writer::break_parent);
+    assert!(propagation.try_flat().is_none());
+    assert!(!propagation.has_intrinsic_lines());
 
     let mandatory = record(&mut writer, |writer| {
         writer.text("first");
@@ -1761,13 +1744,29 @@ fn fragment_capabilities() {
     });
     assert!(mandatory.try_neutral().is_none());
     assert!(mandatory.try_flat().is_none());
+    assert!(mandatory.has_intrinsic_lines());
+
+    let suffix = record(&mut writer, |writer| {
+        writer.line_suffix(|writer| writer.text("// tail"));
+    });
+    assert!(suffix.has_intrinsic_lines());
+
+    let broken_lines = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, mandatory, atom);
+    });
+    assert!(broken_lines.has_intrinsic_lines());
+
+    let flat_lines = record(&mut writer, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, atom, mandatory);
+    });
+    assert!(flat_lines.has_intrinsic_lines());
 
     let multiline = record(&mut writer, |writer| writer.text("first\u{2028}last"));
     assert!(multiline.try_neutral().is_none());
     assert!(multiline.try_flat().is_none());
 
     let choices = record(&mut writer, |writer| {
-        writer.write_alternatives(atom, &[atom], expanded);
+        writer.write_alternatives(&[atom], expanded);
     });
     assert!(choices.try_neutral().is_none());
     assert!(choices.try_flat().is_some());
@@ -1778,12 +1777,15 @@ fn fragment_capabilities() {
                 writer.text("value");
                 writer.if_break(",");
                 writer.if_flat(".");
-                writer.if_current_break("broken\nbranch");
-                writer.if_current_flat("flat");
+                write_current_mode_lines(writer);
             });
         });
     });
-    assert!(flattened.try_neutral().is_some());
+    assert!(flattened.try_flat().is_some());
+    let mut flattened_writer = Writer::new(&allocator);
+    flattened_writer.write_fragment(flattened);
+    let output = flattened_writer.finish().print(FormatOptions::prettier());
+    assert_eq!(output, "value.flat");
 
     let grouped = writer.group_fragment(false, atom);
     assert!(grouped.try_neutral().is_some());
@@ -1820,9 +1822,9 @@ fn fragment_capabilities() {
     assert!(!projected.conditional_lines);
 
     let multiline = writer.flat_delimited_fragment(
-        "(\n",
+        "(",
         atom.try_flat().unwrap(),
-        atom,
+        mandatory,
         atom.try_flat().unwrap(),
         ")",
     );
@@ -1862,31 +1864,33 @@ fn fragment_capabilities() {
     assert!(enclosed.try_flat().is_none());
     assert!(enclosed.preferred_breaks());
 
-    let enclosed =
-        writer.conditional_group_fragment(atom, GroupRequest::PreserveSource, "(", atom, ")");
+    let enclosed = writer.conditional_group_fragment(atom, GroupRequest::Expanded, "(", atom, ")");
     assert!(enclosed.try_neutral().is_none());
     assert!(enclosed.try_flat().is_some());
     assert!(enclosed.preferred_breaks());
-    assert!(!enclosed.effect.required());
+}
+
+fn write_current_mode_lines(writer: &mut Writer<'_>) {
+    let broken = record(writer, |writer| {
+        writer.text("broken");
+        writer.line();
+        writer.text("branch");
+    });
+    let flat = record(writer, |writer| writer.text("flat"));
+    writer.if_break_doc(ConditionTarget::Current, broken, flat);
 }
 
 #[test]
 fn current_mode_flat_projection() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let conditional = record(&mut writer, |writer| {
-        writer.if_current_break("broken\nbranch");
-        writer.if_current_flat("flat");
-    });
+    let conditional = record(&mut writer, write_current_mode_lines);
     writer.write_flat_fragment(conditional.try_flat().unwrap());
     assert_eq!(writer.finish().print(FormatOptions::prettier()), "flat");
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.flat(|writer| {
-        writer.if_current_break("broken\nbranch");
-        writer.if_current_flat("flat");
-    });
+    writer.flat(write_current_mode_lines);
     assert_eq!(writer.finish().print(FormatOptions::prettier()), "flat");
 }
 
@@ -2027,7 +2031,7 @@ fn completed_delimiter_document(width: u16) -> String {
     let suffix = suffix.try_flat().unwrap();
     let grouped = writer.flat_delimited_fragment("(", prefix, normal, suffix, ")");
     let expanded = writer.flat_delimited_fragment("(", prefix, forced, suffix, ")");
-    writer.write_alternatives(grouped, &[grouped, expanded], fallback);
+    writer.write_alternatives(&[grouped, expanded], fallback);
     writer.finish().print(FormatOptions {
         line_width: width,
         ..FormatOptions::prettier()
@@ -2056,24 +2060,18 @@ fn completed_delimiter_layouts() {
         .unwrap();
     let body = record(&mut writer, |writer| writer.text("value"));
     let suffix = record(&mut writer, |writer| writer.text("tail"));
-    let projected = writer.flat_delimited_fragment(
-        "(",
-        prefix.try_flat().unwrap(),
-        body,
-        suffix.try_flat().unwrap(),
-        ")",
-    );
-    assert!(!projected.preferred_breaks());
-    assert!(!projected.conditional_lines);
-    assert!(projected.try_neutral().is_none());
-    let unused = writer.indented_delimited_fragment("(", prefix, body, suffix, ")");
-    assert!(unused.preferred_breaks());
-    assert!(unused.conditional_lines);
-    writer.write_fragment(projected);
+    assert!(prefix.try_flat().is_none());
+    let fallback = writer.indented_delimited_fragment("(", prefix, body, suffix, ")");
+    assert!(fallback.preferred_breaks());
+    assert!(fallback.conditional_lines);
+    assert!(fallback.try_flat().is_none());
+    writer.flat(|writer| writer.write_fragment(fallback));
     let doc = writer.finish();
     assert_eq!(doc.group_count, 1);
-    assert!(!doc.conditional_lines);
-    assert_eq!(doc.print(FormatOptions::prettier()), "(sourcevaluetail)");
+    assert_eq!(
+        doc.print(FormatOptions::prettier()),
+        "(source\n  valuetail)"
+    );
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -2089,7 +2087,6 @@ fn completed_delimiter_layouts() {
     writer.hard_line();
     let doc = writer.finish();
     assert_eq!(doc.group_count, 1);
-    assert!(doc.conditional_lines);
     assert_eq!(
         doc.print(FormatOptions::prettier()),
         "<T>\n(\n  call()\n) // outside\n"
@@ -2104,15 +2101,15 @@ fn completed_delimiter_layouts() {
     let body = record(&mut writer, write_group_named_scope);
     let enclosed =
         writer.conditional_group_fragment(prefix, GroupRequest::Expanded, "(", body, ")");
-    writer.write_flat_fragment(enclosed.try_flat().unwrap());
+    assert!(enclosed.try_flat().is_none());
+    writer.flat(|writer| writer.write_fragment(enclosed));
     writer.line_suffix(|writer| write_comment_suffix(writer, "// outside"));
     writer.hard_line();
     let doc = writer.finish();
     assert_eq!(doc.group_count, 2);
-    assert!(!doc.conditional_lines);
     assert_eq!(
         doc.print(FormatOptions::prettier()),
-        "<T>first lasttail // outside\n"
+        "<T>\n(\n  first\n  last\n  tail\n) // outside\n"
     );
 }
 
@@ -2252,7 +2249,8 @@ fn retained_fill_suffix(width: u16, inherited: bool) -> String {
     let mut writer = Writer::new(&allocator);
     let (group, ()) = writer
         .record_group_with_value(|writer| {
-            writer.group(true, |writer| {
+            let group = writer.next_group_id();
+            writer.group_with_id(GroupRequest::Expanded, Some(group), |writer| {
                 writer.fill(|writer| {
                     writer.fill_entry(|writer| writer.text("aa"));
                     writer.fill_entry(Writer::line);
@@ -2260,8 +2258,8 @@ fn retained_fill_suffix(width: u16, inherited: bool) -> String {
                         writer.group(false, |writer| writer.text("bb"));
                     });
                     writer.extend_fill_entry(entry, |writer| {
-                        writer.if_break("!");
-                        writer.if_flat(".");
+                        writer.if_break_for(ConditionTarget::Group(group), "!");
+                        writer.if_flat_for(ConditionTarget::Group(group), ".");
                     });
                 });
             });
@@ -2327,7 +2325,7 @@ fn rejected_candidate(options: FormatOptions, alternatives: bool) -> String {
         })
         .unwrap();
     if alternatives {
-        writer.write_alternatives(preferred, &[preferred], fallback);
+        writer.write_alternatives(&[preferred], fallback);
     } else {
         writer.write_fragment(fallback);
     }
@@ -2359,10 +2357,7 @@ fn candidate_state() {
         line_width: 8,
         ..FormatOptions::prettier()
     };
-    assert_eq!(
-        rejected_candidate(narrow, true),
-        "a\n  b\nfirst\n  selected"
-    );
+    assert_eq!(rejected_candidate(narrow, true), "a\n  b\n  selected");
     assert_eq!(
         rejected_candidate(narrow, true),
         rejected_candidate(narrow, false)
@@ -2372,7 +2367,7 @@ fn candidate_state() {
         indent_style: IndentStyle::Tab,
         ..narrow
     };
-    assert_eq!(rejected_candidate(tabs, true), "a\n\tb\nfirst\n\tselected");
+    assert_eq!(rejected_candidate(tabs, true), "a\n\tb\n\tselected");
     assert_eq!(
         rejected_candidate(tabs, true),
         rejected_candidate(tabs, false)
@@ -2419,16 +2414,16 @@ fn source_break_candidate(expanded: bool) -> String {
     });
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
     writer.group(false, |writer| {
-        writer.write_alternatives(preferred, &[preferred], fallback)
+        writer.write_alternatives(&[preferred], fallback)
     });
     writer.finish().print(FormatOptions::prettier())
 }
 
 #[test]
 fn retained_flat_scopes() {
-    assert_eq!(source_break_fill(), "// required\nnext\ntail");
+    assert_eq!(source_break_fill(), "// requirednext tail");
 
-    assert_eq!(source_break_candidate(false), "fallback");
+    assert_eq!(source_break_candidate(false), "// requirednext");
 
     assert_eq!(source_break_candidate(true), "// required\nnext broken");
 
@@ -2442,10 +2437,7 @@ fn retained_flat_scopes() {
     assert!(mandatory.try_flat().is_none());
     let literal = record(&mut writer, |writer| writer.literal_text("a\nb"));
     assert!(literal.try_flat().is_none());
-    let raw = record(&mut writer, |writer| writer.text("a\nb"));
-    assert!(raw.try_flat().is_none());
-
-    let carriage_return = record(&mut writer, |writer| writer.text("a\rb"));
+    let carriage_return = record(&mut writer, |writer| writer.literal_text("a\rb"));
     assert!(carriage_return.try_flat().is_none());
 
     let line_separator = record(&mut writer, |writer| writer.text("a\u{2028}b"));
@@ -2478,7 +2470,7 @@ fn retained_flat_scopes() {
     assert!(source_break.try_flat().is_none());
     let compact = record(&mut writer, |writer| write_pair(writer, "a", "b"));
     let choices = record(&mut writer, |writer| {
-        writer.write_alternatives(compact, &[compact], mandatory)
+        writer.write_alternatives(&[compact], mandatory)
     });
     let flat = choices.try_flat().unwrap();
     writer.group(false, |writer| {
@@ -2503,7 +2495,7 @@ fn retained_flat_scopes() {
         writer.hard_line();
         writer.text("break");
     });
-    writer.flat(|writer| writer.write_alternatives(preferred, &[preferred], fallback));
+    writer.flat(|writer| writer.write_alternatives(&[preferred], fallback));
     assert_eq!(
         writer.finish().print(FormatOptions {
             line_width: 3,
@@ -2521,7 +2513,7 @@ fn retained_flat_scopes() {
     });
     let fallback = record(&mut writer, |writer| writer.text("flat"));
     let choices = record(&mut writer, |writer| {
-        writer.write_alternatives(first, &[first], fallback)
+        writer.write_alternatives(&[first], fallback)
     });
     assert!(choices.try_flat().is_none());
     writer.flat(|writer| writer.write_fragment(choices));
@@ -2543,7 +2535,7 @@ fn choice_continuation(width: u16) -> String {
         })
     });
     let choices = record(&mut writer, |writer| {
-        writer.write_alternatives(preferred, &[preferred], fallback)
+        writer.write_alternatives(&[preferred], fallback)
     });
     writer.group(false, |writer| {
         writer.write_fragment(choices);
@@ -2587,7 +2579,7 @@ fn named_line_reuse(alternatives: bool) -> String {
     });
     if alternatives {
         let preferred = record(&mut writer, |writer| writer.text("rejected candidate"));
-        writer.write_alternatives(preferred, &[preferred], fallback);
+        writer.write_alternatives(&[preferred], fallback);
     } else {
         writer.write_fragment(fallback);
     }
@@ -2599,7 +2591,9 @@ fn named_line_reuse(alternatives: bool) -> String {
 
 #[test]
 fn named_line_scopes() {
-    assert_eq!(named_line_reuse(false), "123456a\nb\na\nb\n123456");
+    // The continuation sees the previous printed binding while the reused group
+    // is measured; accepting that group then changes the named condition to flat.
+    assert_eq!(named_line_reuse(false), "123456a\nb\na b123456");
     assert_eq!(named_line_reuse(true), named_line_reuse(false));
 
     let allocator = Allocator::new();
@@ -2619,7 +2613,8 @@ fn named_line_scopes() {
         writer.named_group(true, |writer| writer.text("c"));
         writer.soft_line_if_break(id);
     });
-    writer.write_flat_fragment(fragment.try_flat().unwrap());
+    assert!(fragment.try_flat().is_none());
+    writer.flat(|writer| writer.write_fragment(fragment));
     assert_eq!(writer.finish().print(FormatOptions::prettier()), "abc");
 
     let allocator = Allocator::new();
@@ -2645,7 +2640,7 @@ fn alternative_expansion_boundaries() {
     });
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
     let scope = record(&mut writer, |writer| {
-        writer.write_alternatives(fallback, &[preferred], fallback)
+        writer.write_alternatives(&[preferred], fallback)
     });
     assert!(preferred.preferred_breaks());
     assert!(!scope.preferred_breaks());
@@ -2653,7 +2648,7 @@ fn alternative_expansion_boundaries() {
         writer.text("head ");
         writer.if_flat("F");
         writer.write_fragment(scope);
-        writer.if_current_flat(" tail");
+        writer.if_flat(" tail");
     });
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
@@ -2663,9 +2658,9 @@ fn alternative_expansion_boundaries() {
     let mut writer = Writer::new(&allocator);
     let normal = preferred;
     let inherited = record(&mut writer, |writer| {
-        writer.write_alternatives(normal, &[normal], fallback);
+        writer.write_alternatives(&[normal], fallback);
     });
-    assert!(inherited.preferred_breaks());
+    assert!(!inherited.preferred_breaks());
     let flat = inherited
         .try_flat()
         .expect("expansion metadata permits a flat view");
@@ -2676,24 +2671,24 @@ fn alternative_expansion_boundaries() {
     );
 }
 
-fn write_preserved_pair(writer: &mut Writer<'_>) {
-    writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+fn write_pliteral_space_pair(writer: &mut Writer<'_>) {
+    writer.group_with_request(GroupRequest::Expanded, |writer| {
         writer.text("a");
         writer.line();
         writer.text("bbb");
     });
 }
 
-fn canonical_group_document(request: GroupRequest, width: u16) -> String {
+fn conditional_group_document(request: GroupRequest, width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let candidate = record(&mut writer, |writer| {
         writer.group_with_request(request, |writer| {
-            writer.group(false, write_preserved_pair);
+            writer.group(false, write_pliteral_space_pair);
         });
     });
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
-    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_alternatives(&[candidate], fallback);
     writer.finish().print(FormatOptions {
         line_width: width,
         ..FormatOptions::prettier()
@@ -2701,22 +2696,22 @@ fn canonical_group_document(request: GroupRequest, width: u16) -> String {
 }
 
 #[test]
-fn canonical_group_scopes() {
-    assert_eq!(canonical_group_document(GroupRequest::Auto, 4), "fallback");
+fn conditional_group_scopes() {
+    assert_eq!(conditional_group_document(GroupRequest::Auto, 4), "a\nbbb");
 
-    assert_eq!(canonical_group_document(GroupRequest::Auto, 5), "a\nbbb");
+    assert_eq!(conditional_group_document(GroupRequest::Auto, 5), "a\nbbb");
 
     assert_eq!(
-        canonical_group_document(GroupRequest::Expanded, 4),
+        conditional_group_document(GroupRequest::Expanded, 4),
         "a\nbbb"
     );
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    writer.group_with_request(GroupRequest::PreserveSource, |writer| {
-        write_preserved_pair(writer);
+    writer.group_with_request(GroupRequest::Expanded, |writer| {
+        write_pliteral_space_pair(writer);
         writer.line();
-        write_preserved_pair(writer);
+        write_pliteral_space_pair(writer);
     });
     assert_eq!(
         writer.finish().print(FormatOptions::prettier()),
@@ -2724,13 +2719,13 @@ fn canonical_group_scopes() {
     );
 }
 
-fn canonical_named_document(width: u16) -> String {
+fn conditional_named_document(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let (candidate, id) = writer
         .record_with_value(|writer| {
             let id = writer.group(false, |writer| {
-                let id = writer.named_group_with_request(GroupRequest::PreserveSource, |writer| {
+                let id = writer.named_group_with_request(GroupRequest::Expanded, |writer| {
                     writer.text("a");
                     writer.line();
                     writer.if_flat("ffff");
@@ -2744,7 +2739,7 @@ fn canonical_named_document(width: u16) -> String {
         })
         .unwrap();
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
-    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_alternatives(&[candidate], fallback);
     writer.indent_if_break(id, |writer| {
         writer.hard_line();
         writer.text("after");
@@ -2756,44 +2751,44 @@ fn canonical_named_document(width: u16) -> String {
 }
 
 #[test]
-fn canonical_named_scopes() {
-    assert_eq!(canonical_named_document(8), "a\nb\ncc\n  after");
+fn conditional_named_scopes() {
+    assert_eq!(conditional_named_document(8), "a\nb\ncc\n  after");
 
-    assert_eq!(canonical_named_document(7), "fallback\nafter");
+    assert_eq!(conditional_named_document(7), "a\nb\ncc\n  after");
 }
 
-fn canonical_nested_alternative(width: u16) -> String {
+fn conditional_nested_alternative(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let preserved = record(&mut writer, write_preserved_pair);
+    let preserved = record(&mut writer, write_pliteral_space_pair);
     let unused = record(&mut writer, |writer| writer.text("unused"));
     let candidate = record(&mut writer, |writer| {
         writer.group(false, |writer| {
-            writer.write_alternatives(preserved, &[preserved], unused);
+            writer.write_alternatives(&[preserved], unused);
         });
     });
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
-    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_alternatives(&[candidate], fallback);
     writer.finish().print(FormatOptions {
         line_width: width,
         ..FormatOptions::prettier()
     })
 }
 
-fn canonical_continuation(width: u16) -> String {
+fn conditional_continuation(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let candidate = record(&mut writer, |writer| writer.text("aaa"));
     let fallback = record(&mut writer, |writer| writer.text("k"));
     let continuation = record(&mut writer, |writer| {
-        writer.if_current_break("!");
-        writer.group_with_request(GroupRequest::PreserveSource, |writer| {
+        writer.if_break("!");
+        writer.group_with_request(GroupRequest::Expanded, |writer| {
             writer.text("x");
             writer.line();
             writer.text("long value");
         });
     });
-    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_alternatives(&[candidate], fallback);
     writer.write_fragment(continuation);
     writer.finish().print(FormatOptions {
         line_width: width,
@@ -2801,21 +2796,16 @@ fn canonical_continuation(width: u16) -> String {
     })
 }
 
-fn canonical_choice_continuation() -> String {
+fn conditional_choice_continuation() -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let first = record(&mut writer, |writer| writer.text("aaa"));
     let first_fallback = record(&mut writer, |writer| writer.text("k"));
-    let second = record(&mut writer, write_preserved_pair);
-    let normal = record(&mut writer, |writer| writer.text("a"));
+    let second = record(&mut writer, write_pliteral_space_pair);
     let second_fallback = record(&mut writer, |writer| writer.text("z"));
     writer.group(false, |writer| {
-        writer.write_canonical_alternatives(first, &[first.canonical_candidate()], first_fallback);
-        writer.write_canonical_alternatives(
-            normal,
-            &[second.canonical_candidate()],
-            second_fallback,
-        );
+        writer.write_alternatives(&[first], first_fallback);
+        writer.write_alternatives(&[second], second_fallback);
     });
     writer.finish().print(FormatOptions {
         line_width: 4,
@@ -2824,32 +2814,28 @@ fn canonical_choice_continuation() -> String {
 }
 
 #[test]
-fn canonical_candidate_boundaries() {
-    assert_eq!(canonical_nested_alternative(4), "fallback");
+fn conditional_candidate_boundaries() {
+    assert_eq!(conditional_nested_alternative(4), "a\nbbb");
 
-    assert_eq!(canonical_nested_alternative(5), "a\nbbb");
+    assert_eq!(conditional_nested_alternative(5), "a\nbbb");
 
-    assert_eq!(canonical_continuation(5), "aaa!x\nlong value");
+    assert_eq!(conditional_continuation(5), "aaa!x\nlong value");
 
-    assert_eq!(canonical_continuation(4), "k!x\nlong value");
+    assert_eq!(conditional_continuation(4), "k!x\nlong value");
 
-    assert_eq!(canonical_choice_continuation(), "aaaz");
+    assert_eq!(conditional_choice_continuation(), "aaaa\nbbb");
 }
 
-fn canonical_fill_document() -> String {
+fn conditional_fill_document() -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let candidate = record(&mut writer, write_preserved_pair);
+    let candidate = record(&mut writer, write_pliteral_space_pair);
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
     writer.fill(|writer| {
         writer.fill_entry(|writer| {
-            writer.write_canonical_alternatives(
-                candidate,
-                &[candidate.canonical_candidate()],
-                fallback,
-            );
-            writer.if_current_flat("F");
-            writer.if_current_break("B");
+            writer.write_alternatives(&[candidate], fallback);
+            writer.if_flat("F");
+            writer.if_break("B");
         });
         writer.fill_entry(Writer::line);
         writer.fill_entry(|writer| writer.text("z"));
@@ -2857,16 +2843,15 @@ fn canonical_fill_document() -> String {
     writer.finish().print(FormatOptions::prettier())
 }
 
-fn canonical_display_group() -> String {
+fn conditional_display_group() -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let candidate = record(&mut writer, write_preserved_pair);
-    let normal = record(&mut writer, |writer| writer.text("a"));
+    let candidate = record(&mut writer, write_pliteral_space_pair);
     let fallback = record(&mut writer, |writer| writer.text("f"));
     writer.group(false, |writer| {
         writer.if_flat("F");
         writer.if_break("B");
-        writer.write_canonical_alternatives(normal, &[candidate.canonical_candidate()], fallback);
+        writer.write_alternatives(&[candidate], fallback);
         writer.line();
         writer.text("tail");
     });
@@ -2877,27 +2862,26 @@ fn canonical_display_group() -> String {
 }
 
 #[test]
-fn canonical_display_probes() {
-    assert_eq!(canonical_fill_document(), "a\nbbbB\nz");
+fn conditional_display_probes() {
+    assert_eq!(conditional_fill_document(), "a\nbbbB\nz");
 
-    assert_eq!(canonical_display_group(), "Ff tail");
+    assert_eq!(conditional_display_group(), "Fa\nbbb tail");
 }
 
-fn canonical_normal_effect(width: u16) -> String {
+fn conditional_nested_layout(width: u16) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let normal = record(&mut writer, write_preserved_pair);
     let preferred = record(&mut writer, |writer| writer.text("a"));
     let unused = record(&mut writer, |writer| writer.text("b"));
     let candidate = record(&mut writer, |writer| {
         writer.group(false, |writer| {
-            writer.write_alternatives(normal, &[preferred], unused);
+            writer.write_alternatives(&[preferred], unused);
             writer.line();
             writer.text("bbb");
         });
     });
     let fallback = record(&mut writer, |writer| writer.text("fallback"));
-    writer.write_canonical_alternatives(candidate, &[candidate.canonical_candidate()], fallback);
+    writer.write_alternatives(&[candidate], fallback);
     writer.finish().print(FormatOptions {
         line_width: width,
         ..FormatOptions::prettier()
@@ -2905,14 +2889,14 @@ fn canonical_normal_effect(width: u16) -> String {
 }
 
 #[test]
-fn canonical_retained_views() {
-    assert_eq!(canonical_normal_effect(4), "fallback");
+fn conditional_retained_views() {
+    assert_eq!(conditional_nested_layout(4), "fallback");
 
-    assert_eq!(canonical_normal_effect(5), "a\nbbb");
+    assert_eq!(conditional_nested_layout(5), "a bbb");
 
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
-    let preserved = record(&mut writer, write_preserved_pair);
+    let preserved = record(&mut writer, write_pliteral_space_pair);
     let body = record(&mut writer, |writer| writer.text("body"));
     let flat = preserved.try_flat().unwrap();
     let scope = writer.flat_delimited_fragment("(", flat, body, flat, ")");
@@ -2977,13 +2961,11 @@ fn remeasurement_document(
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let line = record(&mut writer, write_line);
-    let line = super::Fragment {
-        effect: super::BreakEffect::default(),
-        ..line
-    };
     writer.group(false, |writer| {
         writer.text("head");
-        writer.write_fragment(line);
+        // A standard conditional group contains the branch's break propagation,
+        // so this physical line still prints in an inherited flat mode.
+        writer.write_alternatives(&[line], line);
         let value = |writer: &mut Writer<'_>| {
             if bounded {
                 writer.group_with_flat_width(remeasured_value);
@@ -3017,7 +2999,7 @@ fn forced_line_remeasurement() {
     );
 
     assert_eq!(
-        remeasurement_document(|writer| writer.text("\n"), false, false),
+        remeasurement_document(|writer| writer.literal_text("\r\n"), false, false),
         "head\n{\n  longName\n} tail"
     );
 
@@ -3039,10 +3021,6 @@ fn remeasured_fill_continuation(depth: u8) -> String {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
     let line = record(&mut writer, Writer::literal_line);
-    let line = super::Fragment {
-        effect: super::BreakEffect::default(),
-        ..line
-    };
     let mut item = record(&mut writer, |writer| writer.group(false, remeasured_value));
     for _ in 0..depth {
         item = record(&mut writer, |writer| {
@@ -3051,7 +3029,7 @@ fn remeasured_fill_continuation(depth: u8) -> String {
     }
     writer.group(false, |writer| {
         writer.text("head");
-        writer.write_fragment(line);
+        writer.write_alternatives(&[line], line);
         writer.fill(|writer| {
             writer.fill_entry(|writer| writer.write_fragment(item));
             writer.fill_entry(Writer::line);
@@ -3119,7 +3097,7 @@ fn fill_remeasurement_scopes() {
     );
 
     assert_eq!(
-        remeasured_fill_scope(GroupRequest::PreserveSource),
+        remeasured_fill_scope(GroupRequest::Expanded),
         "first\na force\ngroup\nlongName name tail"
     );
 }

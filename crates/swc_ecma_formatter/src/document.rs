@@ -13,18 +13,32 @@ mod writer;
 
 pub(crate) use writer::{FillEntry, Writer};
 
+use std::num::NonZeroUsize;
+
 use crate::FormatOptions;
 use text::Text;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct GroupId(usize);
+pub(crate) struct GroupId(NonZeroUsize);
 
-/// Explicit layout requests stay distinct from preserved source layout.
+impl GroupId {
+    fn index(self) -> usize {
+        self.0.get() - 1
+    }
+}
+
+/// Conditions read either the active execution mode or an explicitly named group.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ConditionTarget {
+    Current,
+    Group(GroupId),
+}
+
+/// Explicit layout requests use the same meaning during measurement and printing.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum GroupRequest {
     Auto,
     Expanded,
-    PreserveSource,
 }
 
 impl From<bool> for GroupRequest {
@@ -33,20 +47,17 @@ impl From<bool> for GroupRequest {
     }
 }
 
-/// Effects join within each complete scope. Source preferences remain effective
-/// when printing, while required expansion also constrains canonical measurement.
+/// Required expansion joins within a group and stops at conditional groups.
 #[derive(Debug, Clone, Copy, Default)]
 struct BreakEffect(u8);
 
 impl BreakEffect {
-    const SOURCE: Self = Self(1);
-    const REQUIRED: Self = Self(2);
+    const REQUIRED: Self = Self(1);
 
     fn from_request(request: GroupRequest) -> Self {
         match request {
             GroupRequest::Auto => Self::default(),
             GroupRequest::Expanded => Self::REQUIRED,
-            GroupRequest::PreserveSource => Self::SOURCE,
         }
     }
 
@@ -57,39 +68,23 @@ impl BreakEffect {
     fn preferred_breaks(self) -> bool {
         self.0 != 0
     }
-
-    fn required(self) -> bool {
-        self.0 & Self::REQUIRED.0 != 0
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Measurement {
-    Display,
-    Canonical,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum SpaceKind {
-    Deferred,
-    /// One canonical gap reserves fit width before the next text commits it.
-    Reserved,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum FormatElement<'a> {
     Text(Text<'a>),
-    Space(SpaceKind),
     SoftLine,
     SoftLineIfBreak(GroupId),
     Line,
     HardLine,
     BreakParent,
     LiteralLine,
+    /// The standard composition `markAsRoot(literalline)`.
+    LiteralLineWithIndent,
     IfBreak(Text<'a>),
     IfFlat(Text<'a>),
-    IfCurrentBreak(Text<'a>),
-    IfCurrentFlat(Text<'a>),
+    Conditional(&'a Conditional<'a>),
+    FlatConditional(&'a Conditional<'a>),
     /// A deferred Doc scope; its contents own their spacing and break requests.
     StartLineSuffix {
         end_offset: usize,
@@ -106,12 +101,14 @@ enum FormatElement<'a> {
         width: usize,
     },
     EndGroup,
-    FlatGroup(GroupId),
     StartIndent,
     StartAbsoluteIndent {
         width: usize,
     },
-    StartIndentIfBreak(GroupId),
+    StartIndentIfBreak {
+        id: GroupId,
+        end_offset: usize,
+    },
     EndIndent,
     StartAlign {
         width: usize,
@@ -129,7 +126,6 @@ enum FormatElement<'a> {
     Fragment(Fragment<'a>),
     FlatFragment(FlatFragment<'a>),
     Alternatives(&'a Alternatives<'a>),
-    CanonicalAlternatives(&'a Alternatives<'a>),
 }
 
 /// A complete immutable scope, owned by the current formatting call.
@@ -139,6 +135,7 @@ pub(crate) struct Fragment<'a> {
     effect: BreakEffect,
     capabilities: FragmentCapabilities,
     conditional_lines: bool,
+    intrinsic_lines: bool,
 }
 
 /// Both views retain the same complete scope; only the anonymous outer group differs.
@@ -169,7 +166,6 @@ struct CleanTextWidth {
     width: usize,
     ascii_width: Option<usize>,
     unicode: Option<CleanUnicodeText>,
-    pending_space: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -184,22 +180,17 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
         ..CleanTextWidth::default()
     };
     add_clean_text_width(elements, &mut text)?;
-    let trailing_space = usize::from(text.pending_space);
     if let Some(width) = text.ascii_width {
         // This shortcut applies to the complete joined text, including DEL.
-        return Some(width.saturating_add(trailing_space));
+        return Some(width);
     }
     let Some(CleanUnicodeText::Joined(bytes)) = text.unicode else {
-        return Some(text.width.saturating_add(trailing_space));
+        return Some(text.width);
     };
     // Clean, non-ASCII text can compose emoji across instruction boundaries.
     // The synthesized spelling belongs to this measurement, not to the Doc.
-    let mut joined = String::with_capacity(bytes.saturating_add(trailing_space));
-    let mut pending_space = false;
-    append_clean_text(elements, &mut joined, &mut pending_space)?;
-    if pending_space {
-        joined.push(' ');
-    }
+    let mut joined = String::with_capacity(bytes);
+    append_clean_text(elements, &mut joined)?;
     Some(crate::text_width::width(&joined))
 }
 
@@ -209,36 +200,28 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
             FormatElement::Text(part) => {
                 let part_width = part.clean_width()?;
                 let ascii_width = part.clean_ascii_width();
-                let gap = usize::from(text.pending_space);
                 if let Some(unicode) = text.unicode {
                     let bytes = match unicode {
                         CleanUnicodeText::Single(bytes) | CleanUnicodeText::Joined(bytes) => bytes,
                     };
                     text.unicode = Some(CleanUnicodeText::Joined(
-                        bytes.saturating_add(gap).saturating_add(part.source.len()),
+                        bytes.saturating_add(part.source.len()),
                     ));
                 } else if ascii_width.is_none() {
                     // Until this first Unicode part, width also equals byte length.
-                    let bytes = text
-                        .width
-                        .saturating_add(gap)
-                        .saturating_add(part.source.len());
+                    let bytes = text.width.saturating_add(part.source.len());
                     text.unicode = Some(if text.width == 0 {
                         CleanUnicodeText::Single(bytes)
                     } else {
                         CleanUnicodeText::Joined(bytes)
                     });
                 }
-                text.width = text.width.saturating_add(gap).saturating_add(part_width);
+                text.width = text.width.saturating_add(part_width);
                 text.ascii_width = match (text.ascii_width, ascii_width) {
-                    (Some(width), Some(part_width)) => {
-                        Some(width.saturating_add(gap).saturating_add(part_width))
-                    }
+                    (Some(width), Some(part_width)) => Some(width.saturating_add(part_width)),
                     _ => None,
                 };
-                text.pending_space = false;
             }
-            FormatElement::Space(_) => text.pending_space = true,
             FormatElement::Fragment(fragment)
             | FormatElement::FlatFragment(FlatFragment(fragment)) => {
                 if fragment.effect.preferred_breaks() || fragment.conditional_lines {
@@ -252,24 +235,13 @@ fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidt
     Some(())
 }
 
-fn append_clean_text(
-    elements: &[FormatElement<'_>],
-    output: &mut String,
-    pending_space: &mut bool,
-) -> Option<()> {
+fn append_clean_text(elements: &[FormatElement<'_>], output: &mut String) -> Option<()> {
     for element in elements {
         match *element {
-            FormatElement::Text(text) => {
-                if *pending_space {
-                    output.push(' ');
-                    *pending_space = false;
-                }
-                output.push_str(text.source);
-            }
-            FormatElement::Space(_) => *pending_space = true,
+            FormatElement::Text(text) => output.push_str(text.source),
             FormatElement::Fragment(fragment)
             | FormatElement::FlatFragment(FlatFragment(fragment)) => {
-                append_clean_text(fragment.elements, output, pending_space)?;
+                append_clean_text(fragment.elements, output)?;
             }
             _ => return None,
         }
@@ -278,23 +250,22 @@ fn append_clean_text(
 }
 
 /// Measures only direct instructions whose flat mode cannot change before the
-/// scope ends. Leading and trailing gaps are excluded so the result remains a
-/// lower bound regardless of the caller's pending gap.
+/// scope ends. As in a fit probe, line spaces count only before later text.
 fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     let mut width = 0usize;
-    let mut has_text = false;
     let mut pending_space = false;
     for element in elements {
         match element {
             FormatElement::Text(text) | FormatElement::IfFlat(text) => {
                 let text_width = text.clean_ascii_width()?;
                 width = width
-                    .saturating_add(usize::from(has_text && pending_space))
+                    .saturating_add(usize::from(pending_space))
                     .saturating_add(text_width);
-                has_text = true;
                 pending_space = false;
             }
-            FormatElement::Space(_) | FormatElement::Line => pending_space = true,
+            FormatElement::Line => {
+                pending_space = true;
+            }
             FormatElement::SoftLine
             | FormatElement::IfBreak(_)
             | FormatElement::StartGroup {
@@ -337,22 +308,26 @@ impl<'a> Fragment<'a> {
                     | FormatElement::SoftLineIfBreak(_)
                     | FormatElement::Line
                     | FormatElement::HardLine
-                    | FormatElement::LiteralLine => return true,
+                    | FormatElement::LiteralLine
+                    | FormatElement::LiteralLineWithIndent => return true,
                     FormatElement::Text(text)
                     | FormatElement::IfBreak(text)
-                    | FormatElement::IfFlat(text)
-                    | FormatElement::IfCurrentBreak(text)
-                    | FormatElement::IfCurrentFlat(text) => {
+                    | FormatElement::IfFlat(text) => {
                         if !text.is_single_line() {
                             return true;
                         }
+                    }
+                    FormatElement::Conditional(conditional)
+                    | FormatElement::FlatConditional(conditional) => {
+                        let flat = matches!(element, FormatElement::FlatConditional(_));
+                        pending.push((conditional.broken.elements, flat));
+                        pending.push((conditional.flat.elements, flat));
                     }
                     FormatElement::Fragment(fragment) => pending.push((fragment.elements, false)),
                     FormatElement::FlatFragment(FlatFragment(fragment)) => {
                         pending.push((fragment.elements, true));
                     }
-                    FormatElement::Alternatives(alternatives)
-                    | FormatElement::CanonicalAlternatives(alternatives) => {
+                    FormatElement::Alternatives(alternatives) => {
                         pending.push((alternatives.first().elements, false));
                     }
                     _ => {}
@@ -366,9 +341,11 @@ impl<'a> Fragment<'a> {
         self.effect.preferred_breaks()
     }
 
-    /// Measures this complete scope without changing its retained render view.
-    pub(crate) fn canonical_candidate(self) -> CanonicalCandidate<'a> {
-        CanonicalCandidate(self)
+    /// Construction summary for language layout policy, independent of flat
+    /// projection eligibility. Group decisions and breakParent have no intrinsic
+    /// newline; literal lines, multiline text, and suffix scopes do.
+    pub(crate) fn has_intrinsic_lines(self) -> bool {
+        self.intrinsic_lines
     }
 
     pub(crate) fn try_flat(self) -> Option<FlatFragment<'a>> {
@@ -385,10 +362,6 @@ impl<'a> Fragment<'a> {
 /// A flat view whose complete scope cannot observe layout mode.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct NeutralFragment<'a>(Fragment<'a>);
-
-/// A zero-copy measurement request, distinct from a printed Flat projection.
-#[derive(Clone, Copy)]
-pub(crate) struct CanonicalCandidate<'a>(Fragment<'a>);
 
 #[derive(Debug, Clone, Copy)]
 enum FragmentCapabilities {
@@ -422,8 +395,7 @@ impl FragmentCapabilities {
                     }
                     continue;
                 }
-                FormatElement::Space(_)
-                | FormatElement::StartGroup {
+                FormatElement::StartGroup {
                     effect: BreakEffect(0),
                     id: None,
                 }
@@ -457,6 +429,13 @@ struct Alternatives<'a> {
     fallback: Fragment<'a>,
 }
 
+#[derive(Debug)]
+struct Conditional<'a> {
+    target: ConditionTarget,
+    broken: Fragment<'a>,
+    flat: Fragment<'a>,
+}
+
 impl<'a> Alternatives<'a> {
     /// Flat views and their eligibility always follow this exact path.
     fn first(&self) -> Fragment<'a> {
@@ -469,14 +448,20 @@ impl FormatElement<'_> {
         match self {
             Self::HardLine
             | Self::LiteralLine
+            | Self::LiteralLineWithIndent
             | Self::StartLineSuffix { .. }
             | Self::EndLineSuffix
-            | Self::BreakParent => false,
-            Self::Text(text) | Self::IfCurrentFlat(text) => text.is_single_line(),
-            Self::Fragment(fragment) => fragment.capabilities.permits_flat(),
-            Self::Alternatives(alternatives) | Self::CanonicalAlternatives(alternatives) => {
-                alternatives.first().capabilities.permits_flat()
+            | Self::BreakParent
+            // Named groups commit an observable layout decision. Removing that
+            // decision cannot be expressed by a flat view of standard Doc.
+            | Self::StartGroup { id: Some(_), .. } => false,
+            Self::Conditional(conditional) | Self::FlatConditional(conditional) => {
+                conditional.broken.capabilities.permits_flat()
+                    && conditional.flat.capabilities.permits_flat()
             }
+            Self::Text(text) | Self::IfFlat(text) => text.is_single_line(),
+            Self::Fragment(fragment) => fragment.capabilities.permits_flat(),
+            Self::Alternatives(alternatives) => alternatives.first().capabilities.permits_flat(),
             _ => true,
         }
     }
@@ -484,17 +469,21 @@ impl FormatElement<'_> {
     /// Applies a flat view without changing any retained instructions.
     fn flattened(self) -> Option<Self> {
         match self {
-            Self::Line => Some(Self::Space(SpaceKind::Deferred)),
-            Self::IfFlat(text) | Self::IfCurrentFlat(text) => Some(Self::Text(text)),
-            Self::StartGroup { id: Some(id), .. } => Some(Self::FlatGroup(id)),
+            Self::Line => Some(Self::Text(Text::new(" "))),
+            Self::IfFlat(text) => Some(Self::Text(text)),
+            Self::Conditional(conditional) | Self::FlatConditional(conditional) => {
+                Some(match conditional.target {
+                    ConditionTarget::Current => Self::FlatFragment(FlatFragment(conditional.flat)),
+                    ConditionTarget::Group(_) => Self::FlatConditional(conditional),
+                })
+            }
             Self::Fragment(fragment) => Some(Self::FlatFragment(FlatFragment(fragment))),
-            Self::Alternatives(alternatives) | Self::CanonicalAlternatives(alternatives) => {
+            Self::Alternatives(alternatives) => {
                 Some(Self::FlatFragment(FlatFragment(alternatives.first())))
             }
             element @ (Self::Text(_)
-            | Self::Space(_)
             | Self::LineSuffixBoundary
-            | Self::FlatGroup(_)
+            | Self::StartIndentIfBreak { .. }
             | Self::FlatFragment(_)) => Some(element),
             _ => None,
         }
@@ -505,17 +494,10 @@ pub(crate) struct Doc<'a> {
     allocator: &'a swc_next_allocator::Allocator,
     elements: &'a [FormatElement<'a>],
     group_count: usize,
-    conditional_lines: bool,
 }
 
 impl Doc<'_> {
     pub(crate) fn print(self, options: FormatOptions) -> String {
-        printer::print(
-            self.elements,
-            self.allocator,
-            self.group_count,
-            self.conditional_lines,
-            options,
-        )
+        printer::print(self.elements, self.allocator, self.group_count, options)
     }
 }
