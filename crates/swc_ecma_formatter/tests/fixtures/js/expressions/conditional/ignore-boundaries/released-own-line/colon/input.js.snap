@@ -12,8 +12,7 @@ test ? ((value
 ---------- Output ----------
 test
   ? value
-  :
-    // inner
+  : // inner
     /* outer */
     /* prettier-ignore */
     next  +last;
@@ -23,8 +22,7 @@ test
 ---------- Output ----------
 test
   ? value
-  :
-    // inner
+  : // inner
     /* outer */
     /* prettier-ignore */
     next  +last

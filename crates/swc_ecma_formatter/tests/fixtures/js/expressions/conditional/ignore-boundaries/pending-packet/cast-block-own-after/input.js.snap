@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @type {number} */ (1) /* tail */) ?
+/* prettier-ignore */
+a  +b : c;
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {number} */ (1) /* tail */
+  ?
+    /* prettier-ignore */
+    a  +b
+  : c;
+
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+/** @type {number} */ (
+  1
+) /* tail */
+  ?
+    /* prettier-ignore */
+    a  +b
+  : c;
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+;/** @type {number} */ (
+  1
+) /* tail */
+  ?
+    /* prettier-ignore */
+    a  +b
+  : c

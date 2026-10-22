@@ -10,8 +10,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 (first, second)
-  ?
-    /* inner */
+  ? /* inner */
     /* prettier-ignore */
     next  +last
   : end;
@@ -20,8 +19,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"semi":false}
 ---------- Output ----------
 ;(first, second)
-  ?
-    /* inner */
+  ? /* inner */
     /* prettier-ignore */
     next  +last
   : end
