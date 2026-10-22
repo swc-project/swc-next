@@ -11,16 +11,17 @@ cargo bench -p benchmark --bench parser
 
 Select `visit` or `semantic` instead of `parser` for those components.
 
-## JavaScript parser batches
+## Parser comparisons
+
+Compare native operations with SWC and JavaScript parsing and traversal with
+SWC and Babel. Requires Hyperfine 2, Rust, and the workspace dependencies.
+On Linux, install `taskset` and choose an available CPU with `BENCH_CPU`.
 
 ```sh
-node tasks/benchmark/bin/babel.js tasks/benchmark/files/typescript.js 10
-node tasks/benchmark/bin/babel.js tasks/benchmark/files/typescript.js 10 parse-walk
+BENCH_CPU=0 node website/docs/scripts/benchmark.js
 ```
 
-Use `swc.js` or `swc-next.js` for the other parsers. Each command validates the
-input, warms up five times, then runs the requested number of parses. Replace
-the iteration count with `--calibrate` to report milliseconds per parse.
+Results: [Benchmark page](../../website/docs/docs/guide/benchmark.mdx).
 
 ## Instructions and profiles
 
@@ -31,18 +32,7 @@ Gungraun dependency:
 cargo bench -p benchmark --bench gungraun
 ```
 
-For a comparison in Actions without a PR, push both revisions and dispatch
-[the Gungraun workflow](../../.github/workflows/gungraun.yml):
-
-```sh
-gh workflow run gungraun.yml --ref <workflow-branch> -f base_ref=<base-sha> -f head_ref=<head-sha> -f filter='<benchmark-filter>'
-```
-
-The workflow must exist on the default branch. Omit `head_ref` to compare against
-the dispatch revision, or `filter` to run all cases. PR runs compare the base
-with the merge revision. Check the resolved SHAs in the run summary; artifacts
-contain raw profiles. Instruction counts are not wall time.
-
+See the [Gungraun workflow](../../.github/workflows/gungraun.yml) for comparisons.
 For the JavaScript N-API boundary, use [JavaScript API Gungraun](js/README.md).
 
 ## Pipeline simulator

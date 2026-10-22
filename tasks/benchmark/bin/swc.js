@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { parseSync } from "@swc/core";
-import { bench } from "./bench.js";
 
-const [file, iterations, operation = "parse"] = process.argv.slice(2);
-assert(file, "usage: node swc.js <file> [iterations|--calibrate] [parse|parse-walk]");
+import { measure } from "./measure.js";
+
+const [file, operation = "parse", rounds = "100", iterations = "1"] = process.argv.slice(2);
+assert(file, "usage: node swc.js <file> [parse|parse-walk] [rounds] [iterations-per-round]");
 assert(operation === "parse" || operation === "parse-walk", "unknown operation");
 const source = readFileSync(file, "utf8");
 const extension = extname(file);
@@ -30,12 +31,10 @@ if (operation === "parse-walk") {
     }
   }();
 }
-const run = visitor
+await measure(visitor
   ? () => {
       visitor.identifiers = 0;
       visitor.visitProgram(parseSync(source, parserOptions));
       return visitor.identifiers;
     }
-  : () => parseSync(source, parserOptions).body.length;
-run();
-bench(run, iterations);
+  : () => parseSync(source, parserOptions).body.length, Number(rounds), Number(iterations));

@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { parse } from "@babel/parser";
-import { bench } from "./bench.js";
 
-const [file, iterations, operation = "parse"] = process.argv.slice(2);
-assert(file, "usage: node babel.js <file> [iterations|--calibrate] [parse|parse-walk]");
+import { measure } from "./measure.js";
+
+const [file, operation = "parse", rounds = "100", iterations = "1"] = process.argv.slice(2);
+assert(file, "usage: node babel.js <file> [parse|parse-walk] [rounds] [iterations-per-round]");
 assert(operation === "parse" || operation === "parse-walk", "unknown operation");
 const source = readFileSync(file, "utf8");
 const extension = extname(file);
@@ -29,12 +30,10 @@ const visitor = {
   noScope: true,
   Identifier() { identifiers++; },
 };
-const run = traverse
+await measure(traverse
   ? () => {
       identifiers = 0;
       traverse(parse(source, parserOptions), visitor);
       return identifiers;
     }
-  : () => parse(source, parserOptions).program.body.length;
-run();
-bench(run, iterations);
+  : () => parse(source, parserOptions).program.body.length, Number(rounds), Number(iterations));

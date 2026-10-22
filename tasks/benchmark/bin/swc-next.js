@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { langFromPath, parseSync, walk } from "@swc-next/core";
-import { bench } from "./bench.js";
 
-const [file, iterations, operation = "parse"] = process.argv.slice(2);
-assert(file, "usage: node swc-next.js <file> [iterations|--calibrate] [parse|parse-walk]");
+import { measure } from "./measure.js";
+
+const [file, operation = "parse", rounds = "100", iterations = "1"] = process.argv.slice(2);
+assert(file, "usage: node swc-next.js <file> [parse|parse-walk] [rounds] [iterations-per-round]");
 assert(operation === "parse" || operation === "parse-walk", "unknown operation");
 const source = readFileSync(file, "utf8");
 const parserOptions = {
@@ -12,18 +13,16 @@ const parserOptions = {
   sourceType: "module",
   comments: "flat",
 };
+{
+  const result = parseSync(source, parserOptions);
+  assert.equal(result.diagnostics.length, 0);
+}
 let identifiers = 0;
 const hooks = { Identifier() { identifiers++; } };
-const run = operation === "parse-walk"
+await measure(operation === "parse-walk"
   ? () => {
       identifiers = 0;
       walk(parseSync(source, parserOptions).program, hooks);
       return identifiers;
     }
-  : () => parseSync(source, parserOptions).program.body.length;
-{
-  const initial = parseSync(source, parserOptions);
-  assert.equal(initial.diagnostics.length, 0);
-  if (operation === "parse-walk") walk(initial.program, hooks);
-}
-bench(run, iterations);
+  : () => parseSync(source, parserOptions).program.body.length, Number(rounds), Number(iterations));
