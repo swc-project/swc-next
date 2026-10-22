@@ -3,6 +3,14 @@ name: CodSpeed Benchmarks
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/codspeed.yml'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'tasks/benchmark/**'
   pull_request:
     types: [opened, reopened, synchronize, labeled]
 
