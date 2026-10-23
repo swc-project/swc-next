@@ -1,11 +1,14 @@
 //! Conditional type children retain their grammar roles and prepared token gaps.
 
-use swc_next_ecma_ast::{GetSpan, Span, TsConditionalType, TsTypeData};
+use swc_next_ecma_ast::{GetSpan, Span, TsConditionalType, TsTypeData, TsTypeNameData};
 
 use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
-use super::{Formatter, PreparedType, RhsLayout, TypeBoundaryLayout, TypeLayout};
-use crate::formatter::comments::{CommentBinding, ExpressionTail};
+use super::{
+    Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, TypeLayout,
+    TypeSuppressionTarget,
+};
+use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
@@ -29,7 +32,16 @@ impl ConditionalTypeSeparator {
 
 struct ConditionalTypeBoundary<'ast> {
     separator: ConditionalTypeSeparator,
-    layout: TypeBoundaryLayout<'ast>,
+    layout: ConditionalTypeLayout<'ast>,
+}
+
+enum ConditionalTypeLayout<'ast> {
+    Source(Span),
+    Preceding(PreparedPrecedingTypePacket<'ast>),
+    Formatted {
+        before: CommentBoundary<'ast>,
+        after: CommentBoundary<'ast>,
+    },
 }
 
 pub(super) struct PreparedConditionalType<'ast> {
@@ -286,7 +298,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (before, after) = comments.split_at(split);
         let mut source = false;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
+            let packet_owner = match (separator, left.data) {
+                (ConditionalTypeSeparator::Extends, TsTypeData::TsTypeReference(reference))
+                    if reference.type_arguments(self.ast).is_none()
+                        && matches!(
+                            self.ast.ts_type_name_data(reference.type_name(self.ast)),
+                            TsTypeNameData::IdentifierReference(_)
+                        ) =>
+                {
+                    Some(left.node.span(self.ast))
+                }
+                _ => None,
+            };
             for (_, position) in self.suppressed_comment_runs(before, operator) {
+                if !matches!(position, SuppressionPosition::OwnLine)
+                    && let Some(owner) = packet_owner
+                    && let Some(packet) = self.prepare_preceding_type_packet(
+                        comments,
+                        owner,
+                        right,
+                        TypeSuppressionTarget::Preceding,
+                    )
+                {
+                    left.source_owner = Some(left.node);
+                    return Ok(ConditionalTypeBoundary {
+                        separator,
+                        layout: ConditionalTypeLayout::Preceding(packet),
+                    });
+                }
                 source = true;
                 if matches!(position, SuppressionPosition::OwnLine) {
                     right.source_owner = Some(right.node);
@@ -297,16 +336,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let attachment = self.type_attachment_head(right.node);
             let head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
+                let selection = self.prepare_type_suppression_run(
+                    &attachment,
+                    head,
+                    run,
+                    position,
+                    super::TypeSuppressionContext::TypeBoundary,
+                );
+                let original_target = if matches!(position, SuppressionPosition::EndOfLine) {
+                    TypeSuppressionTarget::Preceding
+                } else {
+                    selection.target()
+                };
+                if let Some(owner) = packet_owner
+                    && let Some(packet) =
+                        self.prepare_preceding_type_packet(comments, owner, right, original_target)
+                {
+                    left.source_owner = Some(left.node);
+                    return Ok(ConditionalTypeBoundary {
+                        separator,
+                        layout: ConditionalTypeLayout::Preceding(packet),
+                    });
+                }
                 source = true;
-                let selected = self
-                    .prepare_type_suppression_run(
-                        &attachment,
-                        head,
-                        run,
-                        position,
-                        super::TypeSuppressionContext::TypeBoundary,
-                    )
-                    .apply(right, self.ast);
+                let selected = selection.apply(right, self.ast);
                 if selected.preceding() {
                     left.source_owner = Some(left.node);
                 }
@@ -324,7 +377,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let binding = self.comment_binding(comments, gap, Some(right.node.span(self.ast)));
         let layout = if source || !matches!(binding, CommentBinding::Unbound) {
-            TypeBoundaryLayout::Source(gap)
+            ConditionalTypeLayout::Source(gap)
         } else {
             let (before, after) = match separator {
                 ConditionalTypeSeparator::Extends => (before, after),
@@ -332,7 +385,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.split_separator_comments(comments, split, gap.start, Some(gap.end))
                 }
             };
-            TypeBoundaryLayout::Formatted {
+            ConditionalTypeLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, operator),
                 after: self.prepare_comment_boundary(after, operator + token.len() as u32, gap.end),
             }
@@ -355,13 +408,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<T, FormatError> {
         let context = TypeContext::Root;
         let head = self.type_movable_head(node, context);
-        let emitted_prefix = matches!(&boundary.layout, TypeBoundaryLayout::Formatted { .. });
+        let emitted_prefix = !matches!(&boundary.layout, ConditionalTypeLayout::Source(_));
         let leading = match boundary.layout {
-            TypeBoundaryLayout::Source(gap) => {
+            ConditionalTypeLayout::Preceding(packet) => {
+                self.format_preceding_type_packet(&packet, writer)?;
+                writer.space();
+                writer.text(boundary.separator.token());
+                writer.space();
+                &[][..]
+            }
+            ConditionalTypeLayout::Source(gap) => {
                 self.format_verbatim(gap, writer)?;
                 &[][..]
             }
-            TypeBoundaryLayout::Formatted { before, after } => {
+            ConditionalTypeLayout::Formatted { before, after } => {
                 self.format_comment_boundary(&before, writer)?;
                 before
                     .gap()
@@ -393,8 +453,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (before, after) = match boundary.layout {
-            TypeBoundaryLayout::Source(gap) => return self.format_source_gap(gap, writer),
-            TypeBoundaryLayout::Formatted { before, after } => (before, after),
+            ConditionalTypeLayout::Preceding(packet) => {
+                self.format_preceding_type_packet(&packet, writer)?;
+                writer.space();
+                writer.text(boundary.separator.token());
+                writer.space();
+                return Ok(());
+            }
+            ConditionalTypeLayout::Source(gap) => return self.format_source_gap(gap, writer),
+            ConditionalTypeLayout::Formatted { before, after } => (before, after),
         };
         self.format_comment_boundary(&before, writer)?;
         before.gap().write(writer, FlatSeparator::Space, |writer| {
