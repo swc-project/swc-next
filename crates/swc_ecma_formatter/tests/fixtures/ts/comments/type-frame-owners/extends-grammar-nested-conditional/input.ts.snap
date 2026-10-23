@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = X extends /* prettier-ignore */ (/* frame */ (A extends B ? C : D)) ? Y : Z;
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type T =
+  X extends /* prettier-ignore */ /* frame */ (
+    A extends B ? C : D
+  )
+    ? Y
+    : Z;
