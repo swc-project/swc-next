@@ -34,6 +34,24 @@ trait ProbeKind {
     ) -> Option<usize> {
         None
     }
+
+    fn start_entry(&mut self, _column: usize, _pending_line: bool) {}
+
+    fn end_entry(&mut self) -> bool {
+        false
+    }
+
+    fn end_fill(&mut self) -> bool {
+        false
+    }
+
+    fn line(&mut self, _pending_line: bool) -> bool {
+        false
+    }
+
+    fn layout_dependency(&mut self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -50,13 +68,73 @@ impl ProbeKind for ContinuationProbe {
     }
 }
 
-struct FillProbe;
+#[derive(Default)]
+struct FillMeasurement {
+    current_fits: bool,
+    flat_pairs: usize,
+}
 
-impl ProbeKind for FillProbe {
+struct FillProbe<'result> {
+    result: &'result mut FillMeasurement,
+    entry_depth: usize,
+    completed_entries: usize,
+    can_batch: bool,
+    next_item_in_bounds: bool,
+    line_width: usize,
+}
+
+impl FillProbe<'_> {
+    fn checkpoint_only(&mut self) -> bool {
+        self.can_batch = false;
+        self.result.flat_pairs != 0
+    }
+}
+
+impl ProbeKind for FillProbe<'_> {
     const BOUNDED: bool = true;
 
     fn continuation(&self) -> Option<ContinuationProbe> {
         None
+    }
+
+    fn start_entry(&mut self, column: usize, pending_line: bool) {
+        self.entry_depth += 1;
+        if self.entry_depth == 1 && self.completed_entries.is_multiple_of(2) {
+            self.next_item_in_bounds =
+                column.saturating_add(usize::from(pending_line)) <= self.line_width;
+        }
+    }
+
+    fn end_entry(&mut self) -> bool {
+        self.entry_depth -= 1;
+        if self.entry_depth == 0 {
+            self.completed_entries += 1;
+            if self.completed_entries == 1 {
+                self.result.current_fits = true;
+            } else if self.completed_entries % 2 == 1 {
+                self.result.flat_pairs += 1;
+                return !self.can_batch || !self.next_item_in_bounds;
+            }
+        }
+        false
+    }
+
+    fn end_fill(&mut self) -> bool {
+        if self.entry_depth == 0 {
+            if self.can_batch {
+                self.result.flat_pairs += 1;
+            }
+            return true;
+        }
+        false
+    }
+
+    fn line(&mut self, pending_line: bool) -> bool {
+        pending_line && self.checkpoint_only()
+    }
+
+    fn layout_dependency(&mut self) -> bool {
+        self.checkpoint_only()
     }
 }
 
@@ -65,6 +143,126 @@ struct FillState {
     mode: Mode,
     separator: bool,
     separator_mode: Mode,
+}
+
+struct FillEntry<'a> {
+    current: Frame<'a>,
+    mode: Mode,
+    has_line_suffix: bool,
+}
+
+/// Live Fill layout decisions and their batch counts share one scope owner.
+/// Continuation probes only borrow `contexts`, whose representation stays small.
+#[derive(Default)]
+struct FillStack {
+    contexts: Vec<FillState>,
+    batches: Vec<usize>,
+}
+
+impl FillStack {
+    fn contexts(&self) -> &[FillState] {
+        &self.contexts
+    }
+
+    fn is_empty(&self) -> bool {
+        self.contexts.is_empty() && self.batches.is_empty()
+    }
+
+    #[inline(never)]
+    fn start(&mut self, mode: Mode) {
+        self.contexts.push(FillState {
+            mode,
+            separator: false,
+            separator_mode: Mode::Flat,
+        });
+        self.batches.push(0);
+    }
+
+    #[inline(never)]
+    fn end(&mut self) {
+        self.contexts
+            .pop()
+            .expect("fill scopes must close after opening");
+        self.batches
+            .pop()
+            .expect("fill batches close with their print scopes");
+    }
+
+    // Fill's checkpoints and batch initialization must not increase register
+    // pressure in the main interpreter, where ordinary text dominates.
+    #[inline(never)]
+    fn entry<'a>(
+        &mut self,
+        probe: &mut Probe<'a>,
+        entry: FillEntry<'a>,
+        parents: &[GroupState],
+        output: &Output,
+        options: FormatOptions,
+        committed_groups: &[Option<Mode>],
+    ) -> Mode {
+        let FillEntry {
+            current,
+            mode: incoming_mode,
+            has_line_suffix,
+        } = entry;
+        let fill = self
+            .contexts
+            .last_mut()
+            .expect("entries belong to an active fill");
+        if fill.separator {
+            fill.separator = false;
+            return fill.separator_mode;
+        }
+        fill.separator = true;
+        let batch = self
+            .batches
+            .len()
+            .checked_sub(1)
+            .expect("fill entries retain their scope's batch");
+        if self.batches[batch] != 0 {
+            self.batches[batch] -= 1;
+            fill.separator_mode = Mode::Flat;
+            return Mode::Flat;
+        }
+        let mut measurement = FillMeasurement::default();
+        // A bounded Fill decision does not consume a pending remeasurement
+        // request from a group in the print continuation.
+        let pair_fits = probe.fits(
+            ProbeRequest {
+                current,
+                pending: &[],
+                continuation: None,
+                kind: FillProbe {
+                    result: &mut measurement,
+                    entry_depth: 1,
+                    completed_entries: 0,
+                    can_batch: output.fit_state != FitState::Remeasure && !has_line_suffix,
+                    next_item_in_bounds: true,
+                    line_width: usize::from(options.line_width),
+                },
+                has_line_suffix,
+                fills: &[],
+                entries: &[],
+            },
+            parents,
+            output,
+            options,
+            incoming_mode,
+            committed_groups,
+        );
+        if pair_fits || measurement.flat_pairs != 0 {
+            self.batches[batch] = measurement.flat_pairs.saturating_sub(1);
+            fill.separator_mode = Mode::Flat;
+            Mode::Flat
+        } else {
+            fill.separator_mode = Mode::Break;
+            if measurement.current_fits {
+                Mode::Flat
+            } else {
+                Mode::Break
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -326,7 +524,7 @@ pub(super) fn print<'a>(
         suspended: Vec::new(),
         suffix_scopes: Vec::new(),
     };
-    let mut fills = Vec::new();
+    let mut fills = FillStack::default();
     let mut entries = Vec::new();
     loop {
         let Some((source_element, flat)) = cursor.next(&mut mode, &mut indent) else {
@@ -365,7 +563,7 @@ pub(super) fn print<'a>(
                                 continuation: Some(cursor.current),
                                 kind: ContinuationProbe::Candidate,
                                 has_line_suffix: !suffixes.is_empty(),
-                                fills: &fills,
+                                fills: fills.contexts(),
                                 entries: &entries,
                             },
                             &modes,
@@ -485,7 +683,7 @@ pub(super) fn print<'a>(
                                 continuation: None,
                                 kind: ContinuationProbe::Group,
                                 has_line_suffix: !suffixes.is_empty(),
-                                fills: &fills,
+                                fills: fills.contexts(),
                                 entries: &entries,
                             },
                             &modes,
@@ -518,7 +716,7 @@ pub(super) fn print<'a>(
                                 end_offset,
                             },
                             has_line_suffix: !suffixes.is_empty(),
-                            fills: &fills,
+                            fills: fills.contexts(),
                             entries: &entries,
                         },
                         &modes,
@@ -580,95 +778,21 @@ pub(super) fn print<'a>(
                     .checked_sub(1)
                     .expect("alignment scopes must close after opening");
             }
-            FormatElement::StartFill => fills.push(FillState {
-                mode,
-                separator: false,
-                separator_mode: Mode::Flat,
-            }),
-            FormatElement::EndFill => {
-                fills.pop().expect("fill scopes must close after opening");
-            }
-            FormatElement::StartEntry { end_offset } => {
-                let end = end_offset - 1;
-                let fill_index = fills
-                    .len()
-                    .checked_sub(1)
-                    .expect("entries belong to an active fill");
-                let fill = fills[fill_index];
-                let entry_mode = if fill.separator {
-                    fills[fill_index].separator = false;
-                    fill.separator_mode
-                } else {
-                    fills[fill_index].separator = true;
-                    let separator_start = end + 1;
-                    let next_end = match cursor.current.remaining.get(separator_start) {
-                        Some(FormatElement::StartEntry { end_offset }) => {
-                            let separator_end = separator_start + end_offset;
-                            let content_start = separator_end + 1;
-                            match cursor.current.remaining.get(content_start) {
-                                Some(FormatElement::StartEntry { end_offset }) => {
-                                    content_start + end_offset
-                                }
-                                _ => separator_end,
-                            }
-                        }
-                        _ => end,
-                    };
-                    // This bounded decision does not cover the print continuation;
-                    // a group remeasurement request must remain pending.
-                    let pair_fits = probe.fits(
-                        ProbeRequest {
-                            current: Frame {
-                                remaining: &cursor.current.remaining[..next_end],
-                                restore_mode: None,
-                                ..cursor.current
-                            },
-                            pending: &[],
-                            continuation: None,
-                            kind: FillProbe,
-                            has_line_suffix: !suffixes.is_empty(),
-                            fills: &[],
-                            entries: &[],
-                        },
-                        &modes,
-                        &output,
-                        options,
+            FormatElement::StartFill => fills.start(mode),
+            FormatElement::EndFill => fills.end(),
+            FormatElement::StartEntry { .. } => {
+                let entry_mode = fills.entry(
+                    &mut probe,
+                    FillEntry {
+                        current: cursor.current,
                         mode,
-                        group_modes,
-                    );
-                    if pair_fits {
-                        fills[fill_index].separator_mode = Mode::Flat;
-                        Mode::Flat
-                    } else {
-                        fills[fill_index].separator_mode = Mode::Break;
-                        if next_end != end
-                            && probe.fits(
-                                ProbeRequest {
-                                    current: Frame {
-                                        remaining: &cursor.current.remaining[..end],
-                                        restore_mode: None,
-                                        ..cursor.current
-                                    },
-                                    pending: &[],
-                                    continuation: None,
-                                    kind: FillProbe,
-                                    has_line_suffix: !suffixes.is_empty(),
-                                    fills: &[],
-                                    entries: &[],
-                                },
-                                &modes,
-                                &output,
-                                options,
-                                mode,
-                                group_modes,
-                            )
-                        {
-                            Mode::Flat
-                        } else {
-                            Mode::Break
-                        }
-                    }
-                };
+                        has_line_suffix: !suffixes.is_empty(),
+                    },
+                    &modes,
+                    &output,
+                    options,
+                    group_modes,
+                );
                 entries.push(mode);
                 mode = entry_mode;
             }
@@ -839,7 +963,7 @@ impl<'a> Probe<'a> {
             mut current,
             pending: pending_frames,
             continuation,
-            kind,
+            mut kind,
             mut has_line_suffix,
             fills: parent_fills,
             entries: parent_entries,
@@ -924,6 +1048,9 @@ impl<'a> Probe<'a> {
                     }
                 }
                 FormatElement::StartLineSuffix { end_offset } => {
+                    if kind.layout_dependency() {
+                        return true;
+                    }
                     has_line_suffix = true;
                     cursor.current.remaining = &cursor.current.remaining[end_offset..];
                 }
@@ -937,6 +1064,9 @@ impl<'a> Probe<'a> {
                 }
                 FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
                     if matches!(element, FormatElement::Line) {
+                        if kind.line(pending_line_space) {
+                            return true;
+                        }
                         pending_line_space = true;
                     }
                 }
@@ -945,7 +1075,10 @@ impl<'a> Probe<'a> {
                 | FormatElement::HardLine
                 | FormatElement::LiteralLine
                 | FormatElement::LiteralLineWithIndent => return true,
-                FormatElement::StartGroup { effect, .. } => {
+                FormatElement::StartGroup { effect, id } => {
+                    if id.is_some() && kind.layout_dependency() {
+                        return true;
+                    }
                     let expand = effect.preferred_breaks();
                     if expand && K::BOUNDED {
                         return false;
@@ -958,6 +1091,11 @@ impl<'a> Probe<'a> {
                     summary,
                     end_offset,
                 } => {
+                    // A fit summary can coalesce line spaces that printing
+                    // preserves. Do not extend a batch across this opaque scope.
+                    if kind.layout_dependency() {
+                        return true;
+                    }
                     if mode == Mode::Flat {
                         column = summary.advance(column, &mut pending_line_space);
                         if column > usize::from(options.line_width) {
@@ -983,6 +1121,11 @@ impl<'a> Probe<'a> {
                 }
                 FormatElement::Conditional(conditional)
                 | FormatElement::FlatConditional(conditional) => {
+                    if matches!(conditional.target, ConditionTarget::Group(_))
+                        && kind.layout_dependency()
+                    {
+                        return true;
+                    }
                     let fragment =
                         if conditional.target.mode(mode, committed_groups) == Some(Mode::Break) {
                             conditional.broken
@@ -1000,6 +1143,9 @@ impl<'a> Probe<'a> {
                     cursor.enter(fragment.0.elements, true, None)
                 }
                 FormatElement::Alternatives(alternatives) => {
+                    if kind.layout_dependency() {
+                        return true;
+                    }
                     let fragment = if mode == Mode::Flat {
                         alternatives.first()
                     } else {
@@ -1008,6 +1154,9 @@ impl<'a> Probe<'a> {
                     cursor.enter(fragment.elements, false, Some(mode));
                 }
                 FormatElement::SoftLineIfBreak(id) => {
+                    if kind.layout_dependency() {
+                        return true;
+                    }
                     if mode == Mode::Flat {
                         continue;
                     }
@@ -1046,16 +1195,32 @@ impl<'a> Probe<'a> {
                         .pop()
                         .expect("fit probe closes an active entry scope");
                 }
+                FormatElement::StartFill => {
+                    if kind.layout_dependency() {
+                        return true;
+                    }
+                }
+                FormatElement::EndFill => {
+                    if kind.end_fill() {
+                        return true;
+                    }
+                }
+                FormatElement::StartEntry { .. } => kind.start_entry(column, pending_line_space),
+                FormatElement::EndEntry => {
+                    if kind.end_entry() {
+                        return true;
+                    }
+                }
+                FormatElement::StartIndentIfBreak { .. } => {
+                    if kind.layout_dependency() {
+                        return true;
+                    }
+                }
                 FormatElement::StartIndent
                 | FormatElement::StartAbsoluteIndent { .. }
-                | FormatElement::StartIndentIfBreak { .. }
                 | FormatElement::EndIndent
                 | FormatElement::StartAlign { .. }
-                | FormatElement::EndAlign { .. }
-                | FormatElement::StartFill
-                | FormatElement::EndFill
-                | FormatElement::StartEntry { .. }
-                | FormatElement::EndEntry => {}
+                | FormatElement::EndAlign { .. } => {}
             }
         }
         column <= usize::from(options.line_width)
