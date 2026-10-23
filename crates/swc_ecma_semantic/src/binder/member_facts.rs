@@ -14,7 +14,7 @@ use super::lookup::lookup_scope_name;
 use super::{Range, SymbolFlags, SymbolTracker, TsScopeViewIndex};
 use crate::{
     ecmascript::unwrap_parentheses,
-    scope::{Scope, ScopeKind, ScopeTracker},
+    scope::{Scope, ScopeKind, ScopeTree},
 };
 
 /// The two containers TS7 checks when binding an expando assignment.
@@ -248,7 +248,8 @@ pub(super) fn is_expando_assignment(tree: &Ast, mut member: MemberExpression) ->
 impl TsExpandoBindingSite {
     pub(super) fn new(
         tree: &Ast,
-        scopes: &ScopeTracker<'_>,
+        scopes: &ScopeTree<'_>,
+        current_scope: ScopeId,
         ancestors: impl Iterator<Item = NodeId>,
     ) -> Self {
         let mut block_node = None;
@@ -279,9 +280,9 @@ impl TsExpandoBindingSite {
             );
             if container {
                 let find_scope = |owner| {
-                    let mut current = Some(scopes.current);
+                    let mut current = Some(current_scope);
                     while let Some(id) = current {
-                        let scope = &scopes.scopes[id.index()];
+                        let scope = &scopes.list[id.index()];
                         if scope.node == owner && !scope.kind.is_ts_lookup_view() {
                             return Some(id);
                         }

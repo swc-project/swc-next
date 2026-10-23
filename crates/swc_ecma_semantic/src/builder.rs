@@ -40,9 +40,9 @@ use swc_next_ecma_ast::{
 use crate::{
     ReferenceFlags, ReferenceSpace, SymbolFlags, SyntaxChecks,
     binder::PreparedDeclaration,
-    context::SemanticContext,
+    context::{DecoratorSite, SemanticContext},
     ecmascript,
-    scope::{DecoratorSite, ScopeKind},
+    scope::ScopeKind,
 };
 
 pub struct SemanticBuilder<'traverse, 'a> {
@@ -108,6 +108,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             self.ast,
             node,
             &self.state.scope,
+            self.state.current_scope,
             self.path.iter().rev().copied(),
         );
     }
@@ -117,7 +118,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .add_identifier_reference(self.ast, node, &state.scope, flags);
+            .add_identifier_reference(self.ast, node, state.current_scope, flags);
     }
 
     #[inline]
@@ -439,12 +440,16 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 self.ast,
                 node,
                 &state.scope,
+                state.current_scope,
                 prepared,
             );
         } else {
-            state
-                .symbols
-                .declare_binding_identifier(self.ast, node, &state.scope);
+            state.symbols.declare_binding_identifier(
+                self.ast,
+                node,
+                &state.scope,
+                state.current_scope,
+            );
         }
     }
 
@@ -507,7 +512,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_variable_declaration(self.ast, node, &state.scope);
+            .enter_variable_declaration(self.ast, node, &state.scope, state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::VariableDeclaration(node));
@@ -572,7 +577,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_catch_clause(node.node_id());
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_catch_clause(&state.scope);
+        state.symbols.enter_catch_clause(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -610,9 +615,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_function(self.ast, node);
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state
-            .symbols
-            .enter_function(self.ast, node, &state.scope, annex_b_if_body);
+        state.symbols.enter_function(
+            self.ast,
+            node,
+            &state.scope,
+            state.current_scope,
+            annex_b_if_body,
+        );
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::Function(node));
@@ -625,7 +634,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_function(self.ast, node, &state.scope);
+            .enter_ts_function(self.ast, node, &state.scope, state.current_scope);
         node.id(self.ast).visit_with(self);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
@@ -654,10 +663,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         // The receiver annotation has the same lookup rules as parameter annotations,
         // although it is stored on the signature and creates no runtime binding.
         self.state
-            .scope
             .enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
         node.visit_children_with(self);
-        self.state.scope.exit_ts_lookup_view(node.node_id());
+        self.state.exit_ts_lookup_view(node.node_id());
         self.leave_node(NodeKindData::TsThisParameter(node));
     }
 
@@ -671,16 +679,14 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         }
         let state = &mut self.state;
         // Bind parameters to their owner before entering the lookup-only region.
-        state.symbols.enter_formal_parameters(&state.scope);
+        state.symbols.enter_formal_parameters(state.current_scope);
         let parameter_view = self.ast.is_ts();
         if parameter_view {
-            state
-                .scope
-                .enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
+            state.enter_ts_lookup_view(node.node_id(), ScopeKind::TsSignatureParameter);
         }
         node.visit_children_with(self);
         if parameter_view {
-            self.state.scope.exit_ts_lookup_view(node.node_id());
+            self.state.exit_ts_lookup_view(node.node_id());
         }
         self.state.symbols.exit_formal_parameters();
         self.leave_node(NodeKindData::FormalParameters(node));
@@ -699,7 +705,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_class(node);
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_class(self.ast, node, &state.scope);
+        state
+            .symbols
+            .enter_class(self.ast, node, &state.scope, state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -793,7 +801,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_import_declaration(self.ast, node, &state.scope);
+            .enter_import_declaration(self.ast, node, state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::ImportDeclaration(node));
@@ -813,7 +821,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_import_equals_declaration(import_kind, &state.scope);
+            .enter_ts_import_equals_declaration(import_kind, state.current_scope);
         let mut flags = self.flags_with_space(ReferenceSpace::Any);
         if import_kind == ImportOrExportKind::Type {
             flags = flags.no_access();
@@ -882,6 +890,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
                 self.ast,
                 node,
                 &state.scope,
+                state.current_scope,
                 flags,
                 type_only,
             );
@@ -906,7 +915,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_enum_declaration(self.ast, node, &state.scope);
+            .enter_ts_enum_declaration(self.ast, node, state.current_scope);
         let id = node.id(self.ast);
         id.visit_with(self);
         let owner = self
@@ -925,7 +934,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_ts_enum_body(node.node_id());
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_enum_body(&state.scope);
+        state.symbols.enter_ts_enum_body(state.current_scope);
         node.visit_children_with(self);
         self.state.exit_scope(node.node_id());
         self.leave_node(NodeKindData::TsEnumBody(node));
@@ -934,9 +943,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_enum_member(&mut self, node: TsEnumMember) {
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        let prepared = state
-            .symbols
-            .prepare_ts_enum_member(self.ast, node, &state.scope);
+        let prepared =
+            state
+                .symbols
+                .prepare_ts_enum_member(self.ast, node, &state.scope, state.current_scope);
         if let Some(prepared) = prepared {
             if self.check_syntax.redeclarations() {
                 declarations::check_prepared_redeclaration(self, prepared);
@@ -954,7 +964,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_module_declaration(self.ast, node, &state.scope);
+            .enter_ts_module_declaration(self.ast, node, state.current_scope);
         let name = node.id(self.ast);
         let was_in_ts_module_name = std::mem::replace(&mut self.in_ts_module_name, true);
         name.visit_with(self);
@@ -975,7 +985,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_ts_module_block(node.node_id());
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_module_block(&state.scope);
+        state.symbols.enter_ts_module_block(state.current_scope);
         node.visit_children_with(self);
         self.state.exit_ts_module_block(node.node_id());
         self.leave_node(NodeKindData::TsModuleBlock(node));
@@ -1000,7 +1010,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .record_ts_global_export(self.ast, node, &state.scope);
+            .record_ts_global_export(self.ast, node, state.current_scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsNamespaceExportDeclaration(node));
     }
@@ -1009,9 +1019,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_ts_type_alias_declaration(node.node_id());
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state
-            .symbols
-            .enter_ts_type_alias_declaration(self.ast, node, &state.scope);
+        state.symbols.enter_ts_type_alias_declaration(
+            self.ast,
+            node,
+            &state.scope,
+            state.current_scope,
+        );
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1022,9 +1035,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_ts_interface_declaration(node.node_id());
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state
-            .symbols
-            .enter_ts_interface_declaration(self.ast, node, &state.scope);
+        state.symbols.enter_ts_interface_declaration(
+            self.ast,
+            node,
+            &state.scope,
+            state.current_scope,
+        );
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1067,13 +1083,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         });
         let view = signature_return.then_some(ScopeKind::TsSignatureReturn);
         if let Some(view) = view {
-            self.state.scope.enter_ts_lookup_view(node.node_id(), view);
+            self.state.enter_ts_lookup_view(node.node_id(), view);
         }
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
         node.visit_children_with(self);
         if view.is_some() {
-            self.state.scope.exit_ts_lookup_view(node.node_id());
+            self.state.exit_ts_lookup_view(node.node_id());
         }
         self.leave_node(NodeKindData::TsTypeAnnotation(node));
         self.state.exit_type_position(type_position);
@@ -1139,23 +1155,24 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_type_parameter(self.ast, parent, &state.scope);
+            .enter_ts_type_parameter(self.ast, parent, &state.scope, state.current_scope);
         node.name(self.ast).visit_with(self);
         let infer =
             parent.is_some_and(|parent| self.ast.node_kind(parent) == NodeKind::TsInferType);
         if infer {
             let state = &mut self.state;
-            state
-                .scope
-                .enter_ts_lookup_view(node.node_id(), ScopeKind::TsInferConstraint);
-            state
-                .symbols
-                .expose_ts_infer_parameter(self.ast, node.name(self.ast), &state.scope);
+            state.enter_ts_lookup_view(node.node_id(), ScopeKind::TsInferConstraint);
+            state.symbols.expose_ts_infer_parameter(
+                self.ast,
+                node.name(self.ast),
+                &state.scope,
+                state.current_scope,
+            );
         }
         node.constraint(self.ast).visit_with(self);
         node.default(self.ast).visit_with(self);
         if infer {
-            self.state.scope.exit_ts_lookup_view(node.node_id());
+            self.state.exit_ts_lookup_view(node.node_id());
         }
         self.state.symbols.exit_saved_context();
         self.leave_node(NodeKindData::TsTypeParameter(node));
@@ -1166,11 +1183,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_ts_type_parameter_declaration(&mut self, node: TsTypeParameterDeclaration) {
         let type_position = self.state.enter_type_position();
         self.state
-            .scope
             .enter_ts_lookup_view(node.node_id(), ScopeKind::TsTypeParameters);
         self.enter_node(node.node_id());
         node.visit_children_with(self);
-        self.state.scope.exit_ts_lookup_view(node.node_id());
+        self.state.exit_ts_lookup_view(node.node_id());
         self.leave_node(NodeKindData::TsTypeParameterDeclaration(node));
         self.state.exit_type_position(type_position);
     }
@@ -1357,9 +1373,12 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state
-            .symbols
-            .add_ts_type_predicate_reference(self.ast, node, &state.scope);
+        state.symbols.add_ts_type_predicate_reference(
+            self.ast,
+            node,
+            &state.scope,
+            state.current_scope,
+        );
         node.visit_children_with(self);
         self.leave_node(NodeKindData::TsTypePredicate(node));
         self.state.exit_type_position(type_position);
@@ -1372,10 +1391,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.state.enter_ts_conditional_type(node.node_id());
         let extends = node.extends_type(self.ast);
         self.state
-            .scope
             .enter_ts_lookup_view(extends.node_id(), ScopeKind::TsConditionalExtends);
         extends.visit_with(self);
-        self.state.scope.exit_ts_lookup_view(extends.node_id());
+        self.state.exit_ts_lookup_view(extends.node_id());
         node.true_type(self.ast).visit_with(self);
         self.state.exit_scope(node.node_id());
         node.false_type(self.ast).visit_with(self);
@@ -1388,7 +1406,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_function_type(&state.scope);
+        state.symbols.enter_ts_function_type(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1401,7 +1419,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_constructor_type(&state.scope);
+        state.symbols.enter_ts_constructor_type(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1417,7 +1435,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_mapped_type(self.ast, parent, &state.scope);
+            .enter_ts_mapped_type(self.ast, parent, &state.scope, state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1431,7 +1449,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.visit_type_member_key(node.key(self.ast), node.computed(self.ast));
         self.state.enter_ts_method_signature(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_method_signature(&state.scope);
+        state.symbols.enter_ts_method_signature(state.current_scope);
         node.type_parameters(self.ast).visit_with(self);
         node.this_param(self.ast).visit_with(self);
         node.params(self.ast).visit_with(self);
@@ -1450,7 +1468,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_call_signature_declaration(&state.scope);
+            .enter_ts_call_signature_declaration(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1466,7 +1484,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .enter_ts_construct_signature_declaration(&state.scope);
+            .enter_ts_construct_signature_declaration(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1479,7 +1497,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let type_position = self.state.enter_type_position();
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.enter_ts_index_signature(&state.scope);
+        state.symbols.enter_ts_index_signature(state.current_scope);
         node.visit_children_with(self);
         self.state.symbols.exit_saved_context();
         self.state.exit_scope(node.node_id());
@@ -1501,7 +1519,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.enter_node(node.node_id());
         self.state
             .symbols
-            .record_jsx_usage(self.state.scope.current, true);
+            .record_jsx_usage(self.state.current_scope, true);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxFragment(node));
     }
@@ -1509,10 +1527,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_jsx_opening_element(&mut self, node: JsxOpeningElement) {
         self.enter_node(node.node_id());
         let state = &mut self.state;
-        state.symbols.record_jsx_usage(state.scope.current, false);
+        state.symbols.record_jsx_usage(state.current_scope, false);
         state
             .symbols
-            .add_jsx_opening_element_reference(self.ast, node, &state.scope);
+            .add_jsx_opening_element_reference(self.ast, node, state.current_scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxOpeningElement(node));
     }
@@ -1522,7 +1540,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let state = &mut self.state;
         state
             .symbols
-            .add_jsx_closing_element_reference(self.ast, node, &state.scope);
+            .add_jsx_closing_element_reference(self.ast, node, state.current_scope);
         node.visit_children_with(self);
         self.leave_node(NodeKindData::JsxClosingElement(node));
     }

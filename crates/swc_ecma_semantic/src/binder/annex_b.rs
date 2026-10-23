@@ -16,7 +16,7 @@ struct AnnexBScope<'a> {
 }
 
 impl<'a> SymbolTracker<'a> {
-    pub(crate) fn bind_annex_b_functions(&mut self, tree: &Ast<'a>, scopes: &ScopeTracker<'a>) {
+    pub(crate) fn bind_annex_b_functions(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'a>) {
         if self.annex_b_functions.is_empty() {
             return;
         }
@@ -54,9 +54,9 @@ impl<'a> SymbolTracker<'a> {
         // Walk the completed scope tree once. Active blockers are keyed by
         // hoist target so declarations in an outer function cannot suppress
         // a companion binding in a nested function.
-        let mut children = vec![None; scopes.scopes.len()];
-        let mut siblings = vec![None; scopes.scopes.len()];
-        for (index, scope) in scopes.scopes.iter().enumerate().rev() {
+        let mut children = vec![None; scopes.list.len()];
+        let mut siblings = vec![None; scopes.list.len()];
+        for (index, scope) in scopes.list.iter().enumerate().rev() {
             if let Some(parent) = scope.parent {
                 siblings[index] = children[parent.index()];
                 children[parent.index()] = Some(ScopeId::from_usize(index));
@@ -128,7 +128,7 @@ impl<'a> SymbolTracker<'a> {
     fn bind_annex_b_var(
         &mut self,
         tree: &Ast<'a>,
-        scopes: &ScopeTracker<'a>,
+        scopes: &ScopeTree<'a>,
         target: ScopeId,
         name: BindingIdentifier,
     ) {

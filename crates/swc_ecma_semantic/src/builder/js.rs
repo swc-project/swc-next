@@ -10,7 +10,7 @@ pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, litera
     if !builder.check_syntax.octal_escapes() {
         return;
     }
-    if builder.state.in_type_position() || !builder.state.scope.is_strict() {
+    if builder.state.in_type_position() || !builder.state.is_strict() {
         return;
     }
     let span = builder.ast.span(literal.node_id());
@@ -35,7 +35,7 @@ pub(super) fn check_numeric_literal(
     if !builder.check_syntax.legacy_numeric_literals() {
         return;
     }
-    if builder.state.in_type_position() || !builder.state.scope.is_strict() {
+    if builder.state.in_type_position() || !builder.state.is_strict() {
         return;
     }
     let span = builder.ast.span(literal.node_id());
@@ -120,7 +120,7 @@ pub(super) fn check_binding_identifier<'traverse>(
         return None;
     }
     let strict_binding = !builder.state.in_type_position()
-        && builder.state.scope.is_strict()
+        && builder.state.is_strict()
         && !flags.contains(SymbolFlags::AMBIENT);
     if strict_binding {
         builder.check_strict_reserved(name, node_id, "a binding identifier");
@@ -177,7 +177,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         if !self.check_syntax.strict_reserved_words() {
             return;
         }
-        if !self.state.scope.is_strict() {
+        if !self.state.is_strict() {
             return;
         }
         if let Some(word) = match_strict_reserved(name) {
@@ -279,7 +279,7 @@ pub(super) fn check_unary_expression(
     }
     match builder.ast.kind_data(target) {
         NodeKindData::IdentifierReference(_)
-            if builder.check_syntax.delete_identifiers() && builder.state.scope.is_strict() =>
+            if builder.check_syntax.delete_identifiers() && builder.state.is_strict() =>
         {
             builder.report(
                 builder.ast.span(expression.node_id()),
@@ -312,7 +312,7 @@ pub(super) fn check_update_expression(
     if !builder.check_syntax.strict_assignment_targets() {
         return;
     }
-    if builder.state.scope.is_strict()
+    if builder.state.is_strict()
         && is_eval_or_arguments_reference(builder.ast, expression.argument(builder.ast).node_id())
     {
         builder.report(
@@ -327,7 +327,7 @@ pub(super) fn check_assignment_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: AssignmentExpression,
 ) {
-    if builder.state.scope.is_strict() {
+    if builder.state.is_strict() {
         builder.check_assign_target_eval_arguments(expression.left(builder.ast).node_id());
     }
 }
@@ -748,7 +748,7 @@ pub(super) fn check_for_in_statement(
 ) {
     let left = statement.left(builder.ast).node_id();
     builder.check_for_in_of_initializer(left, true);
-    if builder.state.scope.is_strict() {
+    if builder.state.is_strict() {
         builder.check_assign_target_eval_arguments(left);
     }
 }
@@ -770,7 +770,7 @@ pub(super) fn check_for_of_statement(
     }
     let left = statement.left(builder.ast).node_id();
     builder.check_for_in_of_initializer(left, false);
-    if builder.state.scope.is_strict() {
+    if builder.state.is_strict() {
         builder.check_assign_target_eval_arguments(left);
     }
 }
@@ -931,7 +931,7 @@ pub(super) fn check_with_statement(
     if !builder.check_syntax.with_statements() {
         return;
     }
-    if builder.state.scope.is_strict() {
+    if builder.state.is_strict() {
         builder.report(
             builder.ast.span(statement.node_id()),
             "'with' statements are not allowed in strict mode",
@@ -967,7 +967,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             let annex_b = is_for_in
                 && !self.ast.is_ts()
                 && declaration.kind(self.ast) == VariableKind::Var
-                && !self.state.scope.is_strict()
+                && !self.state.is_strict()
                 && self.ast.node_kind(declarator.id(self.ast).node_id())
                     == NodeKind::BindingIdentifier;
             if annex_b {
@@ -1109,7 +1109,6 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
     }
     let enclosing = builder
         .state
-        .scope
         .current_scope()
         .parent
         .expect("a function declaration scope has an enclosing scope");

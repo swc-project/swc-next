@@ -25,14 +25,14 @@ use super::{
 };
 use crate::{
     SyntaxChecks,
-    scope::{Scope, ScopeTracker},
+    scope::{Scope, ScopeTree},
 };
 
 impl<'a> SymbolTracker<'a> {
     pub(crate) fn resolve_ts_aliases(
         &mut self,
         tree: &Ast<'a>,
-        scopes: &ScopeTracker<'a>,
+        scopes: &ScopeTree<'a>,
         checks: SyntaxChecks,
     ) -> (Vec<TsNamespaceExportAliasIssue>, Vec<TsImportAliasIssue>) {
         self.resolve_ts_namespace_export_aliases(tree, scopes);
@@ -47,17 +47,17 @@ impl<'a> SymbolTracker<'a> {
 
     #[cold]
     #[inline(never)]
-    fn resolve_ts_namespace_export_aliases(&mut self, tree: &Ast<'a>, scopes: &ScopeTracker<'a>) {
+    fn resolve_ts_namespace_export_aliases(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'a>) {
         if self.pending_ts_namespace_export_aliases.is_empty() {
             return;
         }
-        self.sync_scope_maps(scopes.scopes.len());
+        self.sync_scope_maps(scopes.list.len());
         let scope_views = self
             .ts_scope_view_index
             .take()
-            .or_else(|| self.finalize_ts_scope_views(&scopes.scopes));
+            .or_else(|| self.finalize_ts_scope_views(&scopes.list));
         let states =
-            TsExportAliasResolver::new(self, tree, &scopes.scopes, scope_views.as_ref()).resolve();
+            TsExportAliasResolver::new(self, tree, &scopes.list, scope_views.as_ref()).resolve();
         for (index, state) in states.into_iter().enumerate() {
             let alias = self.pending_ts_namespace_export_aliases[index];
             if alias.previous.is_some() {
@@ -84,19 +84,15 @@ impl<'a> SymbolTracker<'a> {
     fn check_ts_namespace_export_aliases(
         &self,
         tree: &Ast<'a>,
-        scopes: &ScopeTracker<'a>,
+        scopes: &ScopeTree<'a>,
     ) -> Vec<TsNamespaceExportAliasIssue> {
         if self.pending_ts_namespace_export_aliases.is_empty() {
             return Vec::new();
         }
         // All public targets are resolved before this pass, including aliases
         // reached through another namespace. Validate each entry once.
-        let mut resolver = TsImportAliasResolver::new(
-            self,
-            tree,
-            &scopes.scopes,
-            self.ts_scope_view_index.as_ref(),
-        );
+        let mut resolver =
+            TsImportAliasResolver::new(self, tree, &scopes.list, self.ts_scope_view_index.as_ref());
         let mut issues = Vec::new();
         for alias in &self.pending_ts_namespace_export_aliases {
             if let Some(previous) = alias.previous {
@@ -167,20 +163,20 @@ impl<'a> SymbolTracker<'a> {
     fn resolve_ts_import_aliases(
         &mut self,
         tree: &Ast<'a>,
-        scopes: &ScopeTracker<'a>,
+        scopes: &ScopeTree<'a>,
         checks: SyntaxChecks,
     ) -> Vec<TsImportAliasIssue> {
         if self.ts_import_alias_targets.is_empty() {
             return Vec::new();
         }
-        self.sync_scope_maps(scopes.scopes.len());
+        self.sync_scope_maps(scopes.list.len());
         let scope_views = self
             .ts_scope_view_index
             .take()
-            .or_else(|| self.finalize_ts_scope_views(&scopes.scopes));
+            .or_else(|| self.finalize_ts_scope_views(&scopes.list));
         let (issues, aliases, module_spaces, erased_targets) = {
             let mut resolver =
-                TsImportAliasResolver::new(self, tree, &scopes.scopes, scope_views.as_ref());
+                TsImportAliasResolver::new(self, tree, &scopes.list, scope_views.as_ref());
             let mut issues = Vec::new();
             if checks.ts_import_aliases() {
                 for (index, &alias) in self.ts_import_alias_targets.iter().enumerate() {

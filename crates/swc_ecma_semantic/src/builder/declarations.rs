@@ -84,7 +84,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 && let Some(parameters) = find_formal_parameters(self)
             {
                 let kind = parameters.kind(self.ast);
-                let must_be_unique = self.state.scope.is_strict()
+                let must_be_unique = self.state.is_strict()
                     || matches!(
                         kind,
                         swc_next_ecma_ast::FormalParameterKind::UniqueFormalParameters
@@ -174,7 +174,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         // Per 14.2.1, a hoisting var conflicts with block-scoped names
         // in any intermediate block it passes through.
         if flags.is_hoisting_var() {
-            for scope_id in self.state.scope.ancestors(Some(self.state.scope.current)) {
+            for scope_id in self.state.scope.ancestors(Some(self.state.current_scope)) {
                 if scope_id == target {
                     break;
                 }
