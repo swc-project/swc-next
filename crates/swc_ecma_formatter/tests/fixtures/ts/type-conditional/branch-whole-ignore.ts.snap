@@ -10,7 +10,7 @@ type Outcome<T> = T extends string ?
 ---------- Output ----------
 type Outcome<T> = T extends string ?
 /* prettier-ignore */
-( 1  | 2 )
+1  | 2
   : 3;
 
 ---------- Options ----------
@@ -19,7 +19,7 @@ type Outcome<T> = T extends string ?
 type Outcome<T> =
   T extends string ?
 /* prettier-ignore */
-( 1  | 2 )
+1  | 2
     : 3;
 
 ---------- Options ----------
@@ -30,7 +30,7 @@ type Outcome<
 > =
   T extends string ?
 /* prettier-ignore */
-( 1  | 2 )
+1  | 2
     : 3
 
 ---------- Options ----------
@@ -39,5 +39,5 @@ type Outcome<
 type Outcome<T> =
 	T extends string ?
 /* prettier-ignore */
-( 1  | 2 )
+1  | 2
 		: 3;
