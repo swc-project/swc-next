@@ -3,8 +3,8 @@
 use swc_next_ecma_ast::{Comment, GetSpan, Span, TsMappedType, TsMappedTypeModifier, TsTypeData};
 
 use super::{
-    Formatter, PreparedPrecedingTypePacket, PreparedType, TypeContext, TypeLayout,
-    TypeSuppressionTarget,
+    Formatter, PreparedPrecedingTypePacket, PreparedType, SuppressedTypeHead,
+    SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout, TypeSuppressionTarget,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
@@ -54,6 +54,7 @@ struct MappedBoundary<'ast> {
 enum MappedBoundaryLayout<'ast> {
     Source(Span),
     Preceding(PreparedPrecedingTypePacket<'ast>),
+    Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
@@ -64,9 +65,9 @@ impl MappedBoundary<'_> {
     fn following_layout(&self) -> TypeLayout {
         match self.layout {
             MappedBoundaryLayout::Source(_) => TypeLayout::OpeningProvided,
-            MappedBoundaryLayout::Preceding(_) | MappedBoundaryLayout::Formatted { .. } => {
-                TypeLayout::Root
-            }
+            MappedBoundaryLayout::Preceding(_)
+            | MappedBoundaryLayout::Suppressed(_)
+            | MappedBoundaryLayout::Formatted { .. } => TypeLayout::Root,
         }
     }
 }
@@ -438,14 +439,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let operator = Span::new(start, start + text.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= start);
         let (before, after) = comments.split_at(split);
+        let mut suppressed_head = None;
         let (left_mode, preceding_packet) =
             if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
-                self.mapped_suppression(gap, comments, operator, key, right)
+                let attachment = self.type_attachment_head(right.node);
+                let (left_mode, preceding_packet) =
+                    self.mapped_suppression(comments, operator, key, right, &attachment);
+                if left_mode == ContentMode::Formatted {
+                    suppressed_head = self.prepare_suppressed_type_head(
+                        *right,
+                        &attachment,
+                        gap,
+                        before,
+                        after,
+                        SuppressedTypeHeadRole::MappedBoundary,
+                    );
+                }
+                (left_mode, preceding_packet)
             } else {
                 (ContentMode::Formatted, None)
             };
         let layout = if let Some(packet) = preceding_packet {
             MappedBoundaryLayout::Preceding(packet)
+        } else if let Some(head) = suppressed_head {
+            MappedBoundaryLayout::Suppressed(head)
         } else if left_mode == ContentMode::Verbatim || right.source_owner.is_some() {
             MappedBoundaryLayout::Source(gap)
         } else {
@@ -459,17 +476,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn mapped_suppression(
         &self,
-        gap: Span,
         comments: &'ast [Comment],
         operator: Span,
         key: Option<Span>,
         right: &mut PreparedType,
+        attachment: &TypeAttachmentHead,
     ) -> (ContentMode, Option<PreparedPrecedingTypePacket<'ast>>) {
         let split = comments.partition_point(|comment| comment.span.end <= operator.start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
-        let attachment = self.type_attachment_head(right.node);
-        let before_head = self.prepare_type_suppression_head(&attachment, before);
+        let before_head = self.prepare_type_suppression_head(attachment, before);
         for (_, position) in self.suppressed_comment_runs(before, operator.start) {
             if !matches!(position, SuppressionPosition::OwnLine)
                 && let Some(owner) = key
@@ -483,15 +499,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return (ContentMode::Verbatim, Some(packet));
             }
             if matches!(position, SuppressionPosition::OwnLine) {
-                self.select_type_head_with_retention(right, &attachment, before_head, position);
+                self.select_type_head_with_retention(right, attachment, before_head, position);
             } else {
                 left_mode = ContentMode::Verbatim;
             }
         }
-        let after_head = self.prepare_type_suppression_head(&attachment, after);
-        for (run, position) in self.suppressed_comment_runs(after, gap.end) {
+        let after_head = self.prepare_type_suppression_head(attachment, after);
+        for (run, position) in self.suppressed_comment_runs(after, right.node.span(self.ast).start)
+        {
             let selection = self.prepare_type_suppression_run(
-                &attachment,
+                attachment,
                 after_head,
                 run,
                 position,
@@ -530,7 +547,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if matches!(position, SuppressionPosition::EndOfLine) {
                 left_mode = ContentMode::Verbatim;
             } else {
-                self.select_type_head_with_attachment(right, &attachment, position);
+                self.select_type_head_with_attachment(right, attachment, position);
             }
         }
         (left_mode, None)
@@ -572,8 +589,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let colon = Span::new(colon_start, colon_start + 1);
             if source {
+                let attachment = self.type_attachment_head(value.node);
                 if self
-                    .mapped_suppression(span, comments, colon, None, value)
+                    .mapped_suppression(comments, colon, None, value, &attachment)
                     .0
                     == ContentMode::Verbatim
                 {
@@ -729,6 +747,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         match &boundary.layout {
+            MappedBoundaryLayout::Suppressed(head) => {
+                writer.space();
+                writer.text(separator.text());
+                writer.space();
+                self.format_suppressed_type_head(head, writer)
+            }
             MappedBoundaryLayout::Preceding(packet) => {
                 self.format_preceding_type_packet(packet, writer)?;
                 writer.space();

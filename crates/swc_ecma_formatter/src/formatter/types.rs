@@ -223,11 +223,19 @@ pub(super) enum TypeLayout {
     ConditionalAlternate,
 }
 
-/// A marker-only type head whose ignored owner survives either line layout.
+/// A complete leading packet whose ignored owner survives either line layout.
 /// The caller formats its operator and indentation; the selected raw type stays separate.
 pub(super) struct SuppressedTypeHead<'ast> {
     comments: &'ast [Comment],
     next_start: u32,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum SuppressedTypeHeadRole {
+    TypeBoundary,
+    ExpressionBoundary,
+    ConditionalExtends,
+    MappedBoundary,
 }
 
 /// A single marker whose preceding owner and inline placement have been proved.
@@ -1604,8 +1612,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | TypeBoundaryTarget::InferConstraint { node, .. }
                 | TypeBoundaryTarget::Default { node, .. } = &target
             {
-                suppressed_head =
-                    self.prepare_suppressed_type_head(**node, attachment, gap, before, after);
+                suppressed_head = self.prepare_suppressed_type_head(
+                    **node,
+                    attachment,
+                    gap,
+                    before,
+                    after,
+                    SuppressedTypeHeadRole::TypeBoundary,
+                );
             }
         }
         let layout = if let Some(head) = suppressed_head {
@@ -1838,9 +1852,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// Admit only a head whose attachment is independent of its printed line.
-    /// Keep the marker run and type opening together: an end-of-line marker can
-    /// select the preceding operand. Ordinary packets, union member selection and
-    /// diagnostic coverage keep their source gap.
+    /// Every comment must lead the same complete RHS when the packet is inline
+    /// or on its own line. The caller has already selected the original raw owner.
     pub(super) fn prepare_suppressed_type_head(
         &self,
         node: PreparedType,
@@ -1848,40 +1861,85 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         before: &[Comment],
         after: &'ast [Comment],
+        role: SuppressedTypeHeadRole,
     ) -> Option<SuppressedTypeHead<'ast>> {
-        if attachment.union
-            || node.source_owner != Some(attachment.node)
+        let first = after.first()?;
+        let source_span = node.node.span(self.ast);
+        if node.source_owner != Some(attachment.node)
             || !before.is_empty()
-            || after.first().is_none_or(|first| {
-                self.line_breaks(first.span.start, node.node.span(self.ast).start) != 0
-            })
-            || self
-                .diagnostic_range_is_sensitive(Span::new(gap.start, node.node.span(self.ast).end))
-            || !after.iter().all(|&comment| {
-                comment.kind == CommentKind::Block
-                    && is_suppression_comment(self.ast, comment)
-                    && self.line_breaks(comment.span.start, comment.span.end) == 0
-            })
+            || self.line_breaks(first.span.start, source_span.start) != 0
+            || self.diagnostic_range_is_sensitive(Span::new(gap.start, source_span.end))
         {
             return None;
         }
-        // A retained singleton `|` or `&` can interrupt the marker's leading
-        // chain even though its attachment is not a union. Resolve the projected
-        // inline run with the same facts; single-line markers share this policy
-        // at type and expression boundaries.
-        let inline = self.prepare_type_suppression_run(
-            attachment,
-            TypeHeadRetention::Unchanged,
-            after,
-            SuppressionPosition::Inline,
-            TypeSuppressionContext::TypeBoundary,
-        );
-        if !matches!(inline.target, TypeSuppressionTarget::Following) {
+        let context = match role {
+            SuppressedTypeHeadRole::ExpressionBoundary => {
+                TypeSuppressionContext::ExpressionBoundary
+            }
+            _ => TypeSuppressionContext::TypeBoundary,
+        };
+        let mut tie = attachment.prefix;
+        let mut markers = 0;
+        let mut all_following = true;
+        let mut marker_types_following = true;
+        for &comment in after.iter().rev() {
+            if comment.kind != CommentKind::Block
+                || self.line_breaks(comment.span.start, comment.span.end) != 0
+            {
+                return None;
+            }
+            all_following &= self.advance_type_comment_tie(&mut tie, comment, true, context);
+            if is_suppression_comment(self.ast, comment) {
+                markers += 1;
+                // Markers do not attach independently. This is the original
+                // type-boundary projection, including its use by binary callers.
+                marker_types_following &= tie.type_leading;
+            }
+        }
+        if markers == 0 {
             return None;
+        }
+        // Keep the existing marker-only contract, including independently retained
+        // source frames. Broader packets must also account for a removable prefix.
+        let marker_only = markers == after.len();
+        let existing_marker_head = !attachment.union
+            && marker_only
+            && marker_types_following
+            && matches!(
+                role,
+                SuppressedTypeHeadRole::TypeBoundary | SuppressedTypeHeadRole::ExpressionBoundary
+            );
+        if !existing_marker_head {
+            let attachment_start = attachment.node.span(self.ast).start;
+            if !all_following
+                || self.line_breaks(first.span.start, attachment_start) != 0
+                || attachment.union
+                    && !(matches!(role, SuppressedTypeHeadRole::ConditionalExtends)
+                        && marker_only
+                        && markers == 1)
+            {
+                return None;
+            }
+            // Removing transparent pairs can expose ordinary prefix comments as
+            // part of this packet. Admit that same layout on the first pass;
+            // the existing body emitter still consumes the internal prefix.
+            // For a nonunion, same-line block comments have no independent
+            // attachment, so the shared leading chain proves their whole owner.
+            let inner = self.comments.in_range(source_span);
+            if !inner.is_empty()
+                && (attachment.union
+                    || inner.iter().any(|&comment| {
+                        comment.span.end > attachment_start
+                            || comment.kind != CommentKind::Block
+                            || is_suppression_comment(self.ast, comment)
+                    }))
+            {
+                return None;
+            }
         }
         Some(SuppressedTypeHead {
             comments: after,
-            next_start: node.node.span(self.ast).start,
+            next_start: source_span.start,
         })
     }
 
