@@ -1519,48 +1519,48 @@ function encodeJs(program, meta = {}) {
 
   function encStmt(n) {
     switch (n.type) {
-      case "BlockStatement":
-        return encBlockStatement(n);
-      case "BreakStatement":
-        return encBreakStatement(n);
-      case "ContinueStatement":
-        return encContinueStatement(n);
-      case "DebuggerStatement":
-        return encDebuggerStatement(n);
-      case "DoWhileStatement":
-        return encDoWhileStatement(n);
-      case "EmptyStatement":
-        return encEmptyStatement(n);
       case "ExpressionStatement":
         return encExpressionStatement(n);
-      case "ForInStatement":
-        return encForInStatement(n);
-      case "ForOfStatement":
-        return encForOfStatement(n);
-      case "ForStatement":
-        return encForStatement(n);
+      case "BlockStatement":
+        return encBlockStatement(n);
       case "IfStatement":
         return encIfStatement(n);
-      case "LabeledStatement":
-        return encLabeledStatement(n);
       case "ReturnStatement":
         return encReturnStatement(n);
-      case "SwitchStatement":
-        return encSwitchStatement(n);
-      case "ThrowStatement":
-        return encThrowStatement(n);
-      case "TryStatement":
-        return encTryStatement(n);
-      case "WhileStatement":
-        return encWhileStatement(n);
-      case "WithStatement":
-        return encWithStatement(n);
       case "ImportDeclaration":
         return encImportDeclaration(n);
       case "ExportNamedDeclaration":
         return encExportNamedDeclaration(n);
+      case "ForStatement":
+        return encForStatement(n);
+      case "BreakStatement":
+        return encBreakStatement(n);
+      case "ThrowStatement":
+        return encThrowStatement(n);
+      case "WhileStatement":
+        return encWhileStatement(n);
+      case "ForOfStatement":
+        return encForOfStatement(n);
+      case "SwitchStatement":
+        return encSwitchStatement(n);
+      case "TryStatement":
+        return encTryStatement(n);
+      case "ForInStatement":
+        return encForInStatement(n);
       case "ExportDefaultDeclaration":
         return encExportDefaultDeclaration(n);
+      case "ContinueStatement":
+        return encContinueStatement(n);
+      case "DoWhileStatement":
+        return encDoWhileStatement(n);
+      case "EmptyStatement":
+        return encEmptyStatement(n);
+      case "LabeledStatement":
+        return encLabeledStatement(n);
+      case "DebuggerStatement":
+        return encDebuggerStatement(n);
+      case "WithStatement":
+        return encWithStatement(n);
       case "ExportAllDeclaration":
         return encExportAllDeclaration(n);
       default: return encDecl(n);
@@ -1583,12 +1583,8 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
+      case "MemberExpression":
+        return encMemberExpression(n);
       case "Literal":
         if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
         if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
@@ -1596,56 +1592,60 @@ function encodeJs(program, meta = {}) {
         if (typeof n.value === "number") return encNumericLiteral(n);
         if (typeof n.value === "boolean") return encBooleanLiteral(n);
         return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
       case "CallExpression":
         return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
+      case "BinaryExpression":
+        return encBinaryExpression(n);
+      case "AssignmentExpression":
+        return encAssignmentExpression(n);
+      case "LogicalExpression":
+        return encLogicalExpression(n);
+      case "ThisExpression":
+        return encThisExpression(n);
       case "ObjectExpression":
         return encObjectExpression(n);
+      case "UnaryExpression":
+        return encUnaryExpression(n);
       case "ParenthesizedExpression":
         return encParenthesizedExpression(n);
       case "FunctionExpression":
         return encFunction(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
+      case "ConditionalExpression":
+        return encConditionalExpression(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "ArrowFunctionExpression":
+        return encArrowFunctionExpression(n);
+      case "ArrayExpression":
+        return encArrayExpression(n);
+      case "TemplateLiteral":
+        return encTemplateLiteral(n);
+      case "ChainExpression":
+        return encChainExpression(n);
+      case "NewExpression":
+        return encNewExpression(n);
+      case "UpdateExpression":
+        return encUpdateExpression(n);
+      case "AwaitExpression":
+        return encAwaitExpression(n);
+      case "PrivateIdentifier":
+        return encPrivateIdentifier(n);
+      case "SequenceExpression":
+        return encSequenceExpression(n);
+      case "TaggedTemplateExpression":
+        return encTaggedTemplateExpression(n);
       case "JSXFragment":
         return encJsxFragment(n);
+      case "ImportExpression":
+        return encImportExpression(n);
+      case "Super":
+        return encSuper(n);
+      case "YieldExpression":
+        return encYieldExpression(n);
+      case "MetaProperty":
+        return encMetaProperty(n);
+      case "ClassExpression":
+        return encClass(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -1654,24 +1654,24 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);
+      case "ObjectPattern":
+        return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       case "AssignmentPattern":
         return encAssignmentPattern(n);
       case "RestElement":
         return encBindingRestElement(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
-      case "ObjectPattern":
-        return encObjectPattern(n);
       default: return encSimpleAssignmentTarget(n);
     }
   }
 
   function encAssignmentTarget(n) {
     switch (n.type) {
-      case "ArrayPattern":
-        return encArrayPattern(n);
       case "ObjectPattern":
         return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       default: return encSimpleAssignmentTarget(n);
     }
   }
@@ -1750,9 +1750,9 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encFormalParameter(n);
-      case "ArrayPattern":
-        return encFormalParameter(n);
       case "ObjectPattern":
+        return encFormalParameter(n);
+      case "ArrayPattern":
         return encFormalParameter(n);
       case "AssignmentPattern":
         return encFormalParameter(n);
@@ -1764,10 +1764,10 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
       case "ObjectPattern":
         return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -1812,10 +1812,10 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "JSXIdentifier":
         return encJsxIdentifier(n);
-      case "JSXNamespacedName":
-        return encJsxNamespacedName(n);
       case "JSXMemberExpression":
         return encJsxMemberExpression(n);
+      case "JSXNamespacedName":
+        return encJsxNamespacedName(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -1855,10 +1855,10 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "Literal":
         return encStringLiteral(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "JSXExpressionContainer":
+        return encJsxExpressionContainer(n);
       case "JSXFragment":
         return encJsxFragment(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
@@ -1877,14 +1877,14 @@ function encodeJs(program, meta = {}) {
     switch (n.type) {
       case "JSXText":
         return encJsxText(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
-      case "JSXSpreadChild":
-        return encJsxSpreadChild(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "JSXExpressionContainer":
+        return encJsxExpressionContainer(n);
       case "JSXFragment":
         return encJsxFragment(n);
+      case "JSXSpreadChild":
+        return encJsxSpreadChild(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }

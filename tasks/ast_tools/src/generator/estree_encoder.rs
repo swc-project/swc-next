@@ -14,6 +14,130 @@ use super::js_minifier::minify_encoder;
 
 const OUTPUT_DIR: &str = "packages/encoder";
 
+// Switch hit frequencies from the 25 codec benchmark fixtures, normalized per
+// fixture and combined across JS/TS. Unobserved cases retain their schema order.
+const ESTREE_TYPE_ORDER: &[&str] = &[
+    "Identifier",
+    "MemberExpression",
+    "Literal",
+    "CallExpression",
+    "VariableDeclaration",
+    "ExpressionStatement",
+    "TSTypeReference",
+    "BinaryExpression",
+    "Property",
+    "AssignmentExpression",
+    "BlockStatement",
+    "JSXIdentifier",
+    "IfStatement",
+    "LogicalExpression",
+    "ReturnStatement",
+    "ThisExpression",
+    "ObjectExpression",
+    "FunctionDeclaration",
+    "JSXAttribute",
+    "UnaryExpression",
+    "JSXText",
+    "ParenthesizedExpression",
+    "FunctionExpression",
+    "ImportSpecifier",
+    "ConditionalExpression",
+    "JSXElement",
+    "JSXExpressionContainer",
+    "ArrowFunctionExpression",
+    "ImportDeclaration",
+    "ArrayExpression",
+    "TemplateLiteral",
+    "ObjectPattern",
+    "TSAsExpression",
+    "ChainExpression",
+    "NewExpression",
+    "ImportDefaultSpecifier",
+    "UpdateExpression",
+    "TSStringKeyword",
+    "TSPropertySignature",
+    "MethodDefinition",
+    "AwaitExpression",
+    "TSUnionType",
+    "PrivateIdentifier",
+    "ExportNamedDeclaration",
+    "TSAnyKeyword",
+    "TSIntersectionType",
+    "TSTupleType",
+    "TSLiteralType",
+    "SpreadElement",
+    "ForStatement",
+    "TSIndexedAccessType",
+    "TSVoidKeyword",
+    "BreakStatement",
+    "TSNonNullExpression",
+    "TSTypeLiteral",
+    "TSTypeAliasDeclaration",
+    "TSUndefinedKeyword",
+    "ThrowStatement",
+    "TSBooleanKeyword",
+    "SequenceExpression",
+    "TSNumberKeyword",
+    "PropertyDefinition",
+    "WhileStatement",
+    "TSArrayType",
+    "TSTypeQuery",
+    "TSFunctionType",
+    "TSInterfaceDeclaration",
+    "TSNullKeyword",
+    "TSMethodSignature",
+    "TSConditionalType",
+    "TSQualifiedName",
+    "TSImportType",
+    "ForOfStatement",
+    "TaggedTemplateExpression",
+    "SwitchStatement",
+    "TryStatement",
+    "ArrayPattern",
+    "ClassDeclaration",
+    "JSXMemberExpression",
+    "ForInStatement",
+    "AssignmentPattern",
+    "TSCallSignatureDeclaration",
+    "TSNeverKeyword",
+    "ExportDefaultDeclaration",
+    "TSUnknownKeyword",
+    "ContinueStatement",
+    "JSXFragment",
+    "TSEnumDeclaration",
+    "TSIndexSignature",
+    "TSInferType",
+    "TSTypeOperator",
+    "JSXSpreadAttribute",
+    "TSTemplateLiteralType",
+    "ImportNamespaceSpecifier",
+    "TSParenthesizedType",
+    "ImportExpression",
+    "TSInstantiationExpression",
+    "TSMappedType",
+    "Super",
+    "DoWhileStatement",
+    "TSModuleDeclaration",
+    "EmptyStatement",
+    "JSXEmptyExpression",
+    "TSNamedTupleMember",
+    "LabeledStatement",
+    "TSDeclareFunction",
+    "TSTypePredicate",
+    "TSAbstractMethodDefinition",
+    "YieldExpression",
+    "TSRestType",
+    "TSObjectKeyword",
+    "MetaProperty",
+    "TSAbstractPropertyDefinition",
+    "TSSymbolKeyword",
+    "TSConstructorType",
+    "TSSatisfiesExpression",
+    "ClassExpression",
+    "TSModuleBlock",
+    "DebuggerStatement",
+];
+
 pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
     let mut outputs = Vec::new();
     for (is_ts, suffix, name) in [(false, "js", "encodeJs"), (true, "ts", "encodeTs")] {
@@ -808,23 +932,38 @@ fn write_enum_encoders(output: &mut String, dispatch: &EncoderDispatch) {
         if name == "JsxAttributeValue" {
             output.push_str("    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n");
         }
-        output.push_str("    switch (n.type) {\n");
+        let mut cases = Vec::new();
         for estree in &current.direct.order {
-            writeln!(output, "      case \"{estree}\":").unwrap();
-            write_dispatch(output, estree, &current.direct.groups[estree]);
+            cases.push((estree, None));
         }
-        if let [(nested, _)] = current.nested.as_slice() {
-            writeln!(output, "      default: return enc{nested}(n);").unwrap();
-        } else {
+        if current.nested.len() != 1 {
             let mut emitted = current.direct.order.iter().cloned().collect::<HashSet<_>>();
             for (nested, inner) in &current.nested {
                 for estree in &inner.order {
                     if emitted.insert(estree.clone()) {
-                        writeln!(output, "      case \"{estree}\": return enc{nested}(n);")
-                            .unwrap();
+                        cases.push((estree, Some(nested)));
                     }
                 }
             }
+        }
+        cases.sort_by_key(|(estree, _)| {
+            ESTREE_TYPE_ORDER
+                .iter()
+                .position(|candidate| candidate == estree)
+                .unwrap()
+        });
+        output.push_str("    switch (n.type) {\n");
+        for (estree, nested) in cases {
+            if let Some(nested) = nested {
+                writeln!(output, "      case \"{estree}\": return enc{nested}(n);").unwrap();
+            } else {
+                writeln!(output, "      case \"{estree}\":").unwrap();
+                write_dispatch(output, estree, &current.direct.groups[estree]);
+            }
+        }
+        if let [(nested, _)] = current.nested.as_slice() {
+            writeln!(output, "      default: return enc{nested}(n);").unwrap();
+        } else {
             output.push_str(
                 "      default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);\n",
             );

@@ -2317,48 +2317,48 @@ function encodeTs(program, meta = {}) {
 
   function encStmt(n) {
     switch (n.type) {
-      case "BlockStatement":
-        return encBlockStatement(n);
-      case "BreakStatement":
-        return encBreakStatement(n);
-      case "ContinueStatement":
-        return encContinueStatement(n);
-      case "DebuggerStatement":
-        return encDebuggerStatement(n);
-      case "DoWhileStatement":
-        return encDoWhileStatement(n);
-      case "EmptyStatement":
-        return encEmptyStatement(n);
       case "ExpressionStatement":
         return encExpressionStatement(n);
-      case "ForInStatement":
-        return encForInStatement(n);
-      case "ForOfStatement":
-        return encForOfStatement(n);
-      case "ForStatement":
-        return encForStatement(n);
+      case "BlockStatement":
+        return encBlockStatement(n);
       case "IfStatement":
         return encIfStatement(n);
-      case "LabeledStatement":
-        return encLabeledStatement(n);
       case "ReturnStatement":
         return encReturnStatement(n);
-      case "SwitchStatement":
-        return encSwitchStatement(n);
-      case "ThrowStatement":
-        return encThrowStatement(n);
-      case "TryStatement":
-        return encTryStatement(n);
-      case "WhileStatement":
-        return encWhileStatement(n);
-      case "WithStatement":
-        return encWithStatement(n);
       case "ImportDeclaration":
         return encImportDeclaration(n);
       case "ExportNamedDeclaration":
         return encExportNamedDeclaration(n);
+      case "ForStatement":
+        return encForStatement(n);
+      case "BreakStatement":
+        return encBreakStatement(n);
+      case "ThrowStatement":
+        return encThrowStatement(n);
+      case "WhileStatement":
+        return encWhileStatement(n);
+      case "ForOfStatement":
+        return encForOfStatement(n);
+      case "SwitchStatement":
+        return encSwitchStatement(n);
+      case "TryStatement":
+        return encTryStatement(n);
+      case "ForInStatement":
+        return encForInStatement(n);
       case "ExportDefaultDeclaration":
         return encExportDefaultDeclaration(n);
+      case "ContinueStatement":
+        return encContinueStatement(n);
+      case "DoWhileStatement":
+        return encDoWhileStatement(n);
+      case "EmptyStatement":
+        return encEmptyStatement(n);
+      case "LabeledStatement":
+        return encLabeledStatement(n);
+      case "DebuggerStatement":
+        return encDebuggerStatement(n);
+      case "WithStatement":
+        return encWithStatement(n);
       case "ExportAllDeclaration":
         return encExportAllDeclaration(n);
       case "TSExportAssignment":
@@ -2375,19 +2375,19 @@ function encodeTs(program, meta = {}) {
         return encVariableDeclaration(n);
       case "FunctionDeclaration":
         return encFunction(n);
-      case "ClassDeclaration":
-        return encClass(n);
-      case "TSDeclareFunction":
-        return encTsFunction(n);
       case "TSTypeAliasDeclaration":
         return encTsTypeAliasDeclaration(n);
       case "TSInterfaceDeclaration":
         return encTsInterfaceDeclaration(n);
+      case "ClassDeclaration":
+        return encClass(n);
       case "TSEnumDeclaration":
         return encTsEnumDeclaration(n);
       case "TSModuleDeclaration":
         if (n.global || n.kind === "global") return encTsGlobalDeclaration(n);
         return encTsModuleDeclaration(n);
+      case "TSDeclareFunction":
+        return encTsFunction(n);
       case "TSImportEqualsDeclaration":
         return encTsImportEqualsDeclaration(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
@@ -2398,12 +2398,8 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encIdentifierReference(n);
-      case "ThisExpression":
-        return encThisExpression(n);
-      case "Super":
-        return encSuper(n);
-      case "MetaProperty":
-        return encMetaProperty(n);
+      case "MemberExpression":
+        return encMemberExpression(n);
       case "Literal":
         if (n.regex != null || n.value instanceof RegExp) return encRegExpLiteral(n);
         if (n.bigint != null || typeof n.value === "bigint") return encBigIntLiteral(n);
@@ -2411,66 +2407,70 @@ function encodeTs(program, meta = {}) {
         if (typeof n.value === "number") return encNumericLiteral(n);
         if (typeof n.value === "boolean") return encBooleanLiteral(n);
         return encNullLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
-      case "BinaryExpression":
-        return encBinaryExpression(n);
-      case "LogicalExpression":
-        return encLogicalExpression(n);
-      case "UnaryExpression":
-        return encUnaryExpression(n);
-      case "UpdateExpression":
-        return encUpdateExpression(n);
-      case "AssignmentExpression":
-        return encAssignmentExpression(n);
-      case "ConditionalExpression":
-        return encConditionalExpression(n);
-      case "SequenceExpression":
-        return encSequenceExpression(n);
-      case "MemberExpression":
-        return encMemberExpression(n);
       case "CallExpression":
         return encCallExpression(n);
-      case "ChainExpression":
-        return encChainExpression(n);
-      case "NewExpression":
-        return encNewExpression(n);
-      case "TaggedTemplateExpression":
-        return encTaggedTemplateExpression(n);
-      case "ArrowFunctionExpression":
-        return encArrowFunctionExpression(n);
-      case "ArrayExpression":
-        return encArrayExpression(n);
+      case "BinaryExpression":
+        return encBinaryExpression(n);
+      case "AssignmentExpression":
+        return encAssignmentExpression(n);
+      case "LogicalExpression":
+        return encLogicalExpression(n);
+      case "ThisExpression":
+        return encThisExpression(n);
       case "ObjectExpression":
         return encObjectExpression(n);
+      case "UnaryExpression":
+        return encUnaryExpression(n);
       case "ParenthesizedExpression":
         return encParenthesizedExpression(n);
       case "FunctionExpression":
         return encFunction(n);
-      case "ClassExpression":
-        return encClass(n);
-      case "ImportExpression":
-        return encImportExpression(n);
-      case "AwaitExpression":
-        return encAwaitExpression(n);
-      case "YieldExpression":
-        return encYieldExpression(n);
-      case "PrivateIdentifier":
-        return encPrivateIdentifier(n);
-      case "TSAsExpression":
-        return encTsAsExpression(n);
-      case "TSSatisfiesExpression":
-        return encTsSatisfiesExpression(n);
-      case "TSTypeAssertion":
-        return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
-      case "TSInstantiationExpression":
-        return encTsInstantiationExpression(n);
+      case "ConditionalExpression":
+        return encConditionalExpression(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "ArrowFunctionExpression":
+        return encArrowFunctionExpression(n);
+      case "ArrayExpression":
+        return encArrayExpression(n);
+      case "TemplateLiteral":
+        return encTemplateLiteral(n);
+      case "TSAsExpression":
+        return encTsAsExpression(n);
+      case "ChainExpression":
+        return encChainExpression(n);
+      case "NewExpression":
+        return encNewExpression(n);
+      case "UpdateExpression":
+        return encUpdateExpression(n);
+      case "AwaitExpression":
+        return encAwaitExpression(n);
+      case "PrivateIdentifier":
+        return encPrivateIdentifier(n);
+      case "TSNonNullExpression":
+        return encTsNonNullExpression(n);
+      case "SequenceExpression":
+        return encSequenceExpression(n);
+      case "TaggedTemplateExpression":
+        return encTaggedTemplateExpression(n);
       case "JSXFragment":
         return encJsxFragment(n);
+      case "ImportExpression":
+        return encImportExpression(n);
+      case "TSInstantiationExpression":
+        return encTsInstantiationExpression(n);
+      case "Super":
+        return encSuper(n);
+      case "YieldExpression":
+        return encYieldExpression(n);
+      case "MetaProperty":
+        return encMetaProperty(n);
+      case "TSSatisfiesExpression":
+        return encTsSatisfiesExpression(n);
+      case "ClassExpression":
+        return encClass(n);
+      case "TSTypeAssertion":
+        return encTsTypeAssertion(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2479,24 +2479,24 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);
+      case "ObjectPattern":
+        return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       case "AssignmentPattern":
         return encAssignmentPattern(n);
       case "RestElement":
         return encBindingRestElement(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
-      case "ObjectPattern":
-        return encObjectPattern(n);
       default: return encSimpleAssignmentTarget(n);
     }
   }
 
   function encAssignmentTarget(n) {
     switch (n.type) {
-      case "ArrayPattern":
-        return encArrayPattern(n);
       case "ObjectPattern":
         return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       default: return encSimpleAssignmentTarget(n);
     }
   }
@@ -2509,12 +2509,12 @@ function encodeTs(program, meta = {}) {
         return encMemberExpression(n);
       case "TSAsExpression":
         return encTsAsExpression(n);
+      case "TSNonNullExpression":
+        return encTsNonNullExpression(n);
       case "TSSatisfiesExpression":
         return encTsSatisfiesExpression(n);
       case "TSTypeAssertion":
         return encTsTypeAssertion(n);
-      case "TSNonNullExpression":
-        return encTsNonNullExpression(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2583,9 +2583,9 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encFormalParameter(n);
-      case "ArrayPattern":
-        return encFormalParameter(n);
       case "ObjectPattern":
+        return encFormalParameter(n);
+      case "ArrayPattern":
         return encFormalParameter(n);
       case "AssignmentPattern":
         return encFormalParameter(n);
@@ -2599,10 +2599,10 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "Identifier":
         return encBindingIdentifier(n);
-      case "ArrayPattern":
-        return encArrayPattern(n);
       case "ObjectPattern":
         return encObjectPattern(n);
+      case "ArrayPattern":
+        return encArrayPattern(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2612,22 +2612,22 @@ function encodeTs(program, meta = {}) {
       case "MethodDefinition":
         if (n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
         return encMethodDefinition(n);
+      case "PropertyDefinition":
+        return encPropertyDefinition(n);
+      case "TSIndexSignature":
+        return encTsIndexSignature(n);
       case "TSAbstractMethodDefinition":
         isTs = true;
         if (n.value?.type === "TSEmptyBodyFunctionExpression") return encTsMethodDefinition(n);
         return encMethodDefinition(n);
-      case "PropertyDefinition":
+      case "TSAbstractPropertyDefinition":
         return encPropertyDefinition(n);
       case "AccessorProperty":
-        return encPropertyDefinition(n);
-      case "TSAbstractPropertyDefinition":
         return encPropertyDefinition(n);
       case "TSAbstractAccessorProperty":
         return encPropertyDefinition(n);
       case "StaticBlock":
         return encStaticBlock(n);
-      case "TSIndexSignature":
-        return encTsIndexSignature(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2648,94 +2648,94 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "FunctionDeclaration":
         return encFunction(n);
+      case "TSInterfaceDeclaration":
+        return encTsInterfaceDeclaration(n);
       case "ClassDeclaration":
         return encClass(n);
       case "TSDeclareFunction":
         return encTsFunction(n);
-      case "TSInterfaceDeclaration":
-        return encTsInterfaceDeclaration(n);
       default: return encExpr(n);
     }
   }
 
   function encTsType(n) {
     switch (n.type) {
-      case "TSAnyKeyword":
-        return encTsAnyKeyword(n);
-      case "TSUnknownKeyword":
-        return encTsUnknownKeyword(n);
-      case "TSNeverKeyword":
-        return encTsNeverKeyword(n);
-      case "TSVoidKeyword":
-        return encTsVoidKeyword(n);
-      case "TSNullKeyword":
-        return encTsNullKeyword(n);
-      case "TSUndefinedKeyword":
-        return encTsUndefinedKeyword(n);
+      case "TSTypeReference":
+        return encTsTypeReference(n);
       case "TSStringKeyword":
         return encTsStringKeyword(n);
-      case "TSNumberKeyword":
-        return encTsNumberKeyword(n);
-      case "TSBigIntKeyword":
-        return encTsBigIntKeyword(n);
+      case "TSUnionType":
+        return encTsUnionType(n);
+      case "TSAnyKeyword":
+        return encTsAnyKeyword(n);
+      case "TSIntersectionType":
+        return encTsIntersectionType(n);
+      case "TSTupleType":
+        return encTsTupleType(n);
+      case "TSLiteralType":
+        return encTsLiteralType(n);
+      case "TSIndexedAccessType":
+        return encTsIndexedAccessType(n);
+      case "TSVoidKeyword":
+        return encTsVoidKeyword(n);
+      case "TSTypeLiteral":
+        return encTsTypeLiteral(n);
+      case "TSUndefinedKeyword":
+        return encTsUndefinedKeyword(n);
       case "TSBooleanKeyword":
         return encTsBooleanKeyword(n);
-      case "TSSymbolKeyword":
-        return encTsSymbolKeyword(n);
+      case "TSNumberKeyword":
+        return encTsNumberKeyword(n);
+      case "TSArrayType":
+        return encTsArrayType(n);
+      case "TSTypeQuery":
+        return encTsTypeQuery(n);
+      case "TSFunctionType":
+        return encTsFunctionType(n);
+      case "TSNullKeyword":
+        return encTsNullKeyword(n);
+      case "TSConditionalType":
+        return encTsConditionalType(n);
+      case "TSImportType":
+        return encTsImportType(n);
+      case "TSNeverKeyword":
+        return encTsNeverKeyword(n);
+      case "TSUnknownKeyword":
+        return encTsUnknownKeyword(n);
+      case "TSInferType":
+        return encTsInferType(n);
+      case "TSTypeOperator":
+        return encTsTypeOperator(n);
+      case "TSTemplateLiteralType":
+        return encTsTemplateLiteralType(n);
+      case "TSParenthesizedType":
+        return encTsParenthesizedType(n);
+      case "TSMappedType":
+        return encTsMappedType(n);
+      case "TSTypePredicate":
+        return encTsTypePredicate(n);
+      case "TSRestType":
+        return encTsRestType(n);
       case "TSObjectKeyword":
         return encTsObjectKeyword(n);
+      case "TSSymbolKeyword":
+        return encTsSymbolKeyword(n);
+      case "TSConstructorType":
+        return encTsConstructorType(n);
+      case "TSBigIntKeyword":
+        return encTsBigIntKeyword(n);
       case "TSIntrinsicKeyword":
         return encTsIntrinsicKeyword(n);
       case "TSThisType":
         return encTsThisType(n);
-      case "TSTypeReference":
-        return encTsTypeReference(n);
-      case "TSTypeQuery":
-        return encTsTypeQuery(n);
-      case "TSImportType":
-        return encTsImportType(n);
-      case "TSLiteralType":
-        return encTsLiteralType(n);
-      case "TSTemplateLiteralType":
-        return encTsTemplateLiteralType(n);
-      case "TSArrayType":
-        return encTsArrayType(n);
-      case "TSIndexedAccessType":
-        return encTsIndexedAccessType(n);
-      case "TSTupleType":
-        return encTsTupleType(n);
       case "TSOptionalType":
         return encTsOptionalType(n);
-      case "TSRestType":
-        return encTsRestType(n);
       case "TSJSDocNullableType":
         return encTsJsDocNullableType(n);
       case "TSJSDocNonNullableType":
         return encTsJsDocNonNullableType(n);
       case "TSJSDocUnknownType":
         return encTsJsDocUnknownType(n);
-      case "TSUnionType":
-        return encTsUnionType(n);
-      case "TSIntersectionType":
-        return encTsIntersectionType(n);
-      case "TSConditionalType":
-        return encTsConditionalType(n);
-      case "TSInferType":
-        return encTsInferType(n);
-      case "TSTypeOperator":
-        return encTsTypeOperator(n);
-      case "TSParenthesizedType":
-        return encTsParenthesizedType(n);
-      case "TSFunctionType":
-        return encTsFunctionType(n);
-      case "TSConstructorType":
-        return encTsConstructorType(n);
-      case "TSTypePredicate":
-        return encTsTypePredicate(n);
-      case "TSTypeLiteral":
-        return encTsTypeLiteral(n);
-      case "TSMappedType":
-        return encTsMappedType(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2790,10 +2790,10 @@ function encodeTs(program, meta = {}) {
         if (typeof n.value === "number") return encNumericLiteral(n);
         if (typeof n.value === "boolean") return encBooleanLiteral(n);
         return encStringLiteral(n);
-      case "TemplateLiteral":
-        return encTemplateLiteral(n);
       case "UnaryExpression":
         return encUnaryExpression(n);
+      case "TemplateLiteral":
+        return encTemplateLiteral(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2814,10 +2814,10 @@ function encodeTs(program, meta = {}) {
         return encTsMethodSignature(n);
       case "TSCallSignatureDeclaration":
         return encTsCallSignatureDeclaration(n);
-      case "TSConstructSignatureDeclaration":
-        return encTsConstructSignatureDeclaration(n);
       case "TSIndexSignature":
         return encTsIndexSignature(n);
+      case "TSConstructSignatureDeclaration":
+        return encTsConstructSignatureDeclaration(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2858,10 +2858,10 @@ function encodeTs(program, meta = {}) {
 
   function encTsModuleBody(n) {
     switch (n.type) {
-      case "TSModuleBlock":
-        return encTsModuleBlock(n);
       case "TSModuleDeclaration":
         return encTsModuleDeclaration(n);
+      case "TSModuleBlock":
+        return encTsModuleBlock(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2878,10 +2878,10 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "JSXIdentifier":
         return encJsxIdentifier(n);
-      case "JSXNamespacedName":
-        return encJsxNamespacedName(n);
       case "JSXMemberExpression":
         return encJsxMemberExpression(n);
+      case "JSXNamespacedName":
+        return encJsxNamespacedName(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
@@ -2921,10 +2921,10 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "Literal":
         return encStringLiteral(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "JSXExpressionContainer":
+        return encJsxExpressionContainer(n);
       case "JSXFragment":
         return encJsxFragment(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
@@ -2943,14 +2943,14 @@ function encodeTs(program, meta = {}) {
     switch (n.type) {
       case "JSXText":
         return encJsxText(n);
-      case "JSXExpressionContainer":
-        return encJsxExpressionContainer(n);
-      case "JSXSpreadChild":
-        return encJsxSpreadChild(n);
       case "JSXElement":
         return encJsxElement(n);
+      case "JSXExpressionContainer":
+        return encJsxExpressionContainer(n);
       case "JSXFragment":
         return encJsxFragment(n);
+      case "JSXSpreadChild":
+        return encJsxSpreadChild(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
