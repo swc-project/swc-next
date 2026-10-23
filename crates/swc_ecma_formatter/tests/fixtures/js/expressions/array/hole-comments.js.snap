@@ -6,13 +6,13 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {}
 ---------- Output ----------
-[/* leading */ , value, , /* trailing */];
+[/* leading */, value, , /* trailing */];
 
 ---------- Options ----------
 {"printWidth":14}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -21,7 +21,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":13}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -30,7 +30,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -39,7 +39,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":0}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -47,13 +47,13 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-;[/* leading */ , value, , /* trailing */]
+;[/* leading */, value, , /* trailing */]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -62,7 +62,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
@@ -71,7 +71,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 [
-	/* leading */ ,
+	/* leading */,
 	value,
 	, /* trailing */
 ];
@@ -80,7 +80,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 [
-  /* leading */ ,
+  /* leading */,
   value,
   , /* trailing */
 ];
