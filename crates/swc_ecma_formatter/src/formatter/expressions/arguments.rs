@@ -150,7 +150,28 @@ pub(in crate::formatter) enum Separator {
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum ElisionLayout {
     Formatted,
+    /// The preceding real separator has already been emitted. Comments before
+    /// it can still belong to this slot, so retain a separate token frontier.
+    Located {
+        comma: u32,
+        separator: u32,
+    },
     Source(usize),
+}
+
+struct PreparedElision {
+    comma: u32,
+    separator: u32,
+    trailing: usize,
+}
+
+impl PreparedElision {
+    fn layout(self) -> ElisionLayout {
+        ElisionLayout::Located {
+            comma: self.comma,
+            separator: self.separator,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -536,19 +557,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && !self.diagnostic_line_is_sensitive(content_end)
             });
         let constrained = !separator_only_coverage && self.diagnostic_range_is_sensitive(span);
-        let preserve_comma = constrained || matches!(following, FollowingItem::Elision { .. });
+        let elision = if matches!(following, FollowingItem::Elision { .. })
+            && mode == ContentMode::Formatted
+            && suppression.is_none()
+            && !constrained
+        {
+            comma.and_then(|comma| self.prepare_elision_boundary(comments, gap, comma))
+        } else {
+            None
+        };
+        let preserve_comma =
+            constrained || matches!(following, FollowingItem::Elision { .. }) && elision.is_none();
         // A directive-covered separator owns the comments on its source side.
         let protected_comma =
             comma.filter(|&position| constrained && self.diagnostic_line_is_sensitive(position));
-        let trailing_limit = if matches!(following, FollowingItem::Elision { .. }) {
-            // The next elision owns the comments after this item's separator.
+        let trailing_limit = if let Some(elision) = &elision {
+            elision.comma
+        } else if matches!(following, FollowingItem::Elision { .. }) {
             comma.unwrap_or(gap.end)
         } else {
             gap.end
         };
         let ordinary_attachment = mode == ContentMode::Formatted
             && !constrained
-            && !matches!(following, FollowingItem::Elision { .. });
+            && (!matches!(following, FollowingItem::Elision { .. }) || elision.is_some());
         if comments.is_empty() && ordinary_attachment {
             let mut separator = Separator::Line;
             if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
@@ -565,7 +597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 end: content_end,
                 separator,
                 following_mode,
-                elisions: ElisionLayout::Formatted,
+                elisions: elision.map_or(ElisionLayout::Formatted, PreparedElision::layout),
                 transition: None,
             });
         }
@@ -586,7 +618,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => None,
         };
-        let (trailing_count, physical_break, inline_line) = if ordinary_attachment {
+        let (trailing_count, physical_break, inline_line) = if let Some(elision) = &elision {
+            let trailing = &comments[..elision.trailing];
+            (
+                trailing.len(),
+                false,
+                trailing
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line),
+            )
+        } else if ordinary_attachment {
             let before_separator = comma.map_or(comments.len(), |comma| {
                 comments.partition_point(|comment| comment.span.end <= comma)
             });
@@ -634,13 +675,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (trailing_count, physical_break, inline_line)
         };
         let prepare_run = (physical_break || inline_line) && ordinary_attachment;
-        let optimizer_run = ordinary_attachment
+        let optimizer_run = (ordinary_attachment && elision.is_none())
             .then(|| self.prepare_delimited_optimizer_run(comments, tail.as_ref(), comma))
             .flatten();
         let prepared_run = optimizer_run.map(|run| (&comments[..0], run)).or_else(|| {
             if prepare_run {
                 self.prepare_delimited_trailing_run(
-                    comments,
+                    if elision.is_some() {
+                        &comments[..trailing_count]
+                    } else {
+                        comments
+                    },
                     content_end,
                     trailing_limit,
                     following_span.is_some(),
@@ -767,7 +812,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             end = end.max(comma + 1);
         }
-        if !has_more || !preserve_comma && following_span.is_none() {
+        if !has_more
+            || !preserve_comma
+                && following_span.is_none()
+                && !matches!(following, FollowingItem::Elision { .. })
+        {
             let own_line = self.comments.between(Span::new(end, span.end))?;
             let own_line = self.comments.take(own_line.len());
             if let Some(first) = own_line.first() {
@@ -797,9 +846,177 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end,
             separator,
             following_mode,
-            elisions: ElisionLayout::Formatted,
+            elisions: elision.map_or(ElisionLayout::Formatted, PreparedElision::layout),
             transition,
         })
+    }
+
+    fn prepare_elision_boundary(
+        &self,
+        comments: &[Comment],
+        gap: Span,
+        separator: u32,
+    ) -> Option<PreparedElision> {
+        let after_separator = comments.partition_point(|comment| comment.span.end <= separator);
+        let comma = self.find_comma(
+            Span::new(separator + 1, gap.end),
+            &comments[after_separator..],
+        )?;
+        let before_hole = comments.partition_point(|comment| comment.span.end <= comma);
+        let packet = &comments[..before_hole];
+        if !packet
+            .iter()
+            .all(|&comment| self.comment_semantics(comment).is_ordinary())
+        {
+            return None;
+        }
+        // A hole is not an AST comment owner. An inline source run trails the
+        // real element even when its comma anchors a new physical line.
+        let mut trailing = 0;
+        for comment in packet {
+            if self.source_line_starts_line(comment.span.start) {
+                break;
+            }
+            trailing += 1;
+            if comment.kind == CommentKind::Line {
+                break;
+            }
+        }
+        // Leading comments before the separator and trailing comments after it
+        // can have interleaved owners. Keep their physical comma as the boundary.
+        if trailing < after_separator && after_separator < before_hole
+            || packet
+                .get(trailing.max(after_separator))
+                .is_some_and(|comment| !self.source_line_starts_line(comment.span.start))
+        {
+            return None;
+        }
+        Some(PreparedElision {
+            comma,
+            separator,
+            trailing,
+        })
+    }
+
+    pub(in crate::formatter) fn format_array_elisions(
+        &mut self,
+        holes: usize,
+        gap: Span,
+        elisions: ElisionLayout,
+        previous: Option<Separator>,
+        layout: ArgumentLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(u32, Separator), FormatError> {
+        if let ElisionLayout::Source(count) = elisions {
+            debug_assert_eq!(
+                count, holes,
+                "a source elision boundary covers the prepared AST slots"
+            );
+            return Ok((gap.start, previous.unwrap_or(Separator::Line)));
+        }
+        let mut comments = self.comments.between(gap)?;
+        let constrained = self.diagnostic_range_is_sensitive(gap);
+        let mut end = gap.start;
+        let mut separator = previous.unwrap_or(Separator::Line);
+        let mut has_slot = previous.is_some();
+        let mut located = match elisions {
+            ElisionLayout::Located { comma, separator } => Some((comma, separator)),
+            ElisionLayout::Formatted | ElisionLayout::Source(_) => None,
+        };
+        // Borrow the packet once and advance its comment and token frontiers
+        // together. Dense arrays never enter this path.
+        for _ in 0..holes {
+            if constrained || !comments.is_empty() || located.is_some() {
+                let relocated = located.take();
+                let comma = match relocated
+                    .map(|(comma, _)| comma)
+                    .or_else(|| self.find_comma(Span::new(end, gap.end), comments))
+                {
+                    Some(comma) => comma,
+                    None => {
+                        return Err(FormatError::unsupported(
+                            "array elision boundary",
+                            None,
+                            gap,
+                        ));
+                    }
+                };
+                let count = comments.partition_point(|comment| comment.span.end <= comma);
+                let leading = self.comments.take(count);
+                comments = &comments[count..];
+                match (leading.first(), has_slot) {
+                    (Some(first), _) => {
+                        if has_slot {
+                            let start = relocated
+                                .map(|(_, separator)| separator)
+                                .filter(|&separator| {
+                                    end <= separator && separator < first.span.start
+                                })
+                                .map_or(end, |separator| separator + 1);
+                            self.comment_gap(start, first.span.start, writer);
+                        }
+                        if !constrained
+                            && leading
+                                .iter()
+                                .all(|&comment| self.comment_semantics(comment).is_ordinary())
+                        {
+                            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
+                            let last = leading.last().expect("a nonempty elision comment packet");
+                            if let Some((_, source_separator)) = relocated
+                                && last.span.end <= source_separator
+                            {
+                                // This packet preceded the old real separator.
+                                // Its following blank belongs to the hole boundary,
+                                // rather than to the removed comma inside the packet.
+                                self.line_constraint(source_separator + 1, comma).write(
+                                    writer,
+                                    FlatSeparator::Empty,
+                                    |writer| {
+                                        if matches!(separator, Separator::EmptyLine) {
+                                            writer.hard_line();
+                                            writer.hard_line();
+                                        } else if last.kind == CommentKind::Line {
+                                            writer.hard_line();
+                                        }
+                                    },
+                                );
+                            } else {
+                                self.prepare_leading_comment_gap(
+                                    last.span, last.kind, comma, false,
+                                )
+                                .gap
+                                .write(
+                                    writer,
+                                    FlatSeparator::Empty,
+                                    |_| {},
+                                );
+                            }
+                        } else {
+                            self.format_comment_run(
+                                leading,
+                                CommentRunLayout::Leading(comma),
+                                writer,
+                            )?;
+                        }
+                    }
+                    (None, true) => {
+                        layout.separator(separator, self.line_constraint(end, comma), writer)
+                    }
+                    // The array opener already owns this physical gap.
+                    (None, false) => {}
+                }
+                writer.text(",");
+                end = comma + 1;
+            } else {
+                if has_slot {
+                    layout.separator(separator, LineConstraint::Unconstrained, writer);
+                }
+                writer.text(",");
+            }
+            separator = Separator::Line;
+            has_slot = true;
+        }
+        Ok((end, separator))
     }
 }
 

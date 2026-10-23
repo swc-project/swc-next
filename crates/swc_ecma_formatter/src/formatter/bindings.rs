@@ -1044,7 +1044,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut has_slot = false;
                 let mut following_mode = None;
                 let mut elisions = ElisionLayout::Formatted;
-                let constrained = self.diagnostic_range_is_sensitive(content);
                 while let Some(slot) = slots.next() {
                     let mode =
                         slot.binding.map_or(ContentMode::Formatted, |binding| {
@@ -1059,64 +1058,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 }
                             })
                         });
-                    let source_elisions = match elisions {
-                        ElisionLayout::Formatted => 0,
-                        ElisionLayout::Source(holes) => {
-                            debug_assert_eq!(
-                                holes, slot.holes,
-                                "a source elision boundary covers the prepared AST slots"
-                            );
-                            holes
+                    if slot.holes != 0 {
+                        if matches!(separator, Separator::EmptyLine) {
+                            writer.break_parent();
                         }
-                    };
-                    for _ in source_elisions..slot.holes {
-                        if constrained || self.has_suppression {
-                            let next = slot
-                                .binding
-                                .map_or(content.end, |node| node.span(ast).start);
-                            let gap = Span::new(end, next);
-                            let comments = self.comments.between(gap)?;
-                            if constrained || !comments.is_empty() {
-                                let Some(comma) = self.find_token(gap, comments, ",") else {
-                                    return Err(self.unsupported("binding elision boundary", array));
-                                };
-                                let count =
-                                    comments.partition_point(|comment| comment.span.end <= comma);
-                                let leading = self.comments.take(count);
-                                match (leading.first(), has_slot) {
-                                    (Some(first), _) => {
-                                        if has_slot {
-                                            self.comment_gap(end, first.span.start, writer);
-                                        }
-                                        self.format_comment_run(
-                                            leading,
-                                            CommentRunLayout::Leading(comma),
-                                            writer,
-                                        )?;
-                                    }
-                                    (None, true) => binding_separator(
-                                        separator,
-                                        self.line_constraint(end, comma),
-                                        writer,
-                                    ),
-                                    (None, false) => self.line_constraint(end, comma).write(
-                                        writer,
-                                        FlatSeparator::Empty,
-                                        |_| {},
-                                    ),
-                                }
-                                writer.text(",");
-                                end = comma + 1;
-                                separator = Separator::Line;
-                                has_slot = true;
-                                continue;
-                            }
-                        }
-                        if has_slot {
-                            binding_separator(separator, LineConstraint::Unconstrained, writer);
-                            separator = Separator::Line;
-                        }
-                        writer.text(",");
+                        (end, separator) = self.format_array_elisions(
+                            slot.holes,
+                            Span::new(
+                                end,
+                                slot.binding
+                                    .map_or(content.end, |binding| binding.span(ast).start),
+                            ),
+                            elisions,
+                            has_slot.then_some(separator),
+                            ArgumentLayout::Lines,
+                            writer,
+                        )?;
                         has_slot = true;
                     }
                     let Some(binding) = slot.binding else {
