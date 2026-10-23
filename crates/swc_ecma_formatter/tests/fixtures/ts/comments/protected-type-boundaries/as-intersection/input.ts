@@ -1,0 +1,2 @@
+const x = value as
+/* prettier-ignore */ & B &  C;
