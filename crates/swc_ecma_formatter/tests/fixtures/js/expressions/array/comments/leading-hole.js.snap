@@ -6,13 +6,13 @@ void [/* slot */, call()];
 ---------- Options ----------
 {}
 ---------- Output ----------
-void [/* slot */ , call()];
+void [/* slot */, call()];
 
 ---------- Options ----------
 {"printWidth":14}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];
 
@@ -20,7 +20,7 @@ void [
 {"printWidth":13}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];
 
@@ -28,7 +28,7 @@ void [
 {"printWidth":10}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];
 
@@ -36,20 +36,20 @@ void [
 {"printWidth":0}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-void [/* slot */ , call()]
+void [/* slot */, call()]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call()
 ];
 
@@ -57,7 +57,7 @@ void [
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];
 
@@ -65,7 +65,7 @@ void [
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 void [
-	/* slot */ ,
+	/* slot */,
 	call(),
 ];
 
@@ -73,6 +73,6 @@ void [
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 void [
-  /* slot */ ,
+  /* slot */,
   call(),
 ];

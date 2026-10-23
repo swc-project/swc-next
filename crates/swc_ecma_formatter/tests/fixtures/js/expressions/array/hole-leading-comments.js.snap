@@ -9,7 +9,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -18,7 +18,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -27,7 +27,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -36,7 +36,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -45,7 +45,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -54,7 +54,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 ;[
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ]
 
@@ -63,7 +63,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last
 ];
 
@@ -72,7 +72,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
 
@@ -81,7 +81,7 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
 	first,
-	/* hole */ ,
+	/* hole */,
 	/* next */ last,
 ];
 
@@ -90,6 +90,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first,
-  /* hole */ ,
+  /* hole */,
   /* next */ last,
 ];
