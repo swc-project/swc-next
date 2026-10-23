@@ -309,6 +309,85 @@ fn prepared_group_layouts() {
     assert_eq!(flat_width_layout(13), "return (\n  first\n  second\n);");
 }
 
+fn prepared_boundary(
+    width: u16,
+    before: &'static str,
+    after: &'static str,
+    write: impl FnOnce(&mut Writer<'_>),
+) -> String {
+    flat_width_document(width, |writer| {
+        writer.text(before);
+        writer.group_with_flat_width(write);
+        writer.text(after);
+    })
+}
+
+fn write_prepared_lines(writer: &mut Writer<'_>) {
+    writer.line();
+    writer.text("b");
+    writer.line();
+}
+
+fn write_empty_prepared_lines(writer: &mut Writer<'_>) {
+    writer.line();
+    writer.line();
+}
+
+fn prepared_empty_continuation(width: u16) -> String {
+    flat_width_document(width, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.group_with_flat_width(|_| {});
+            writer.text("b");
+        });
+    })
+}
+
+fn prepared_nested_continuation(width: u16) -> String {
+    flat_width_document(width, |writer| {
+        writer.group_with_flat_width(|writer| {
+            writer.text("a");
+            writer.line();
+            writer.group_with_flat_width(|writer| {
+                writer.text("b");
+                writer.line();
+                writer.text("c");
+            });
+        });
+        writer.text(" d");
+    })
+}
+
+#[test]
+fn prepared_group_continuations() {
+    assert_eq!(
+        prepared_boundary(5, "a", "c", write_prepared_lines),
+        "a b c"
+    );
+
+    assert_eq!(
+        prepared_boundary(4, "a", "c", write_prepared_lines),
+        "a\nb\nc"
+    );
+
+    assert_eq!(
+        prepared_boundary(3, "a", "c", write_empty_prepared_lines),
+        "a  c"
+    );
+
+    assert_eq!(
+        prepared_boundary(1, "a", "", write_empty_prepared_lines),
+        "a  "
+    );
+
+    assert_eq!(prepared_empty_continuation(2), "a\nb");
+
+    assert_eq!(prepared_nested_continuation(6), "a\nb c d");
+
+    assert_eq!(prepared_nested_continuation(4), "a\nb\nc d");
+}
+
 fn flat_width_spaces(literal: bool) -> String {
     flat_width_document(5, |writer| {
         writer.text("a");
