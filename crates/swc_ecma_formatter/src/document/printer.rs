@@ -1,6 +1,9 @@
 //! Interpretation of flat formatting instructions and bounded fit probes.
 
-use super::{ConditionTarget, FlatSummary, FormatElement, text::Text};
+use super::{
+    ConditionTarget, FlatSummary, FormatElement,
+    text::{Text, Width},
+};
 use crate::{FormatOptions, IndentStyle};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
@@ -496,7 +499,7 @@ impl Indentation {
 pub(super) fn print<'a>(
     elements: &'a [FormatElement<'a>],
     allocator: &'a Allocator,
-    group_count: usize,
+    group_count: u32,
     options: FormatOptions,
 ) -> String {
     let mut output = Output {
@@ -509,6 +512,7 @@ pub(super) fn print<'a>(
     let mut indent = Indentation::default();
     let mut indents = ArenaVec::with_capacity_in(8, allocator);
     let mut modes = ArenaVec::with_capacity_in(8, allocator);
+    let group_count = group_count as usize;
     let mut group_modes = ArenaVec::with_capacity_in(group_count, allocator);
     group_modes.resize(group_count, None);
     let group_modes = group_modes.into_bump_slice_mut();
@@ -545,8 +549,10 @@ pub(super) fn print<'a>(
             source_element
         };
         match *element {
-            FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
-            FormatElement::FlatFragment(fragment) => cursor.enter(fragment.0.elements, true, None),
+            FormatElement::Fragment { elements, .. } => cursor.enter(elements.get(), false, None),
+            FormatElement::FlatFragment { elements, .. } => {
+                cursor.enter(elements.get(), true, None)
+            }
             FormatElement::Alternatives(alternatives) => {
                 let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
                 let selected = if inherit_flat {
@@ -557,7 +563,7 @@ pub(super) fn print<'a>(
                             ProbeRequest {
                                 current: Frame {
                                     restore_mode: Some(mode),
-                                    ..Frame::new(fragment.elements)
+                                    ..Frame::new(fragment.elements())
                                 },
                                 pending: &cursor.suspended,
                                 continuation: Some(cursor.current),
@@ -579,7 +585,7 @@ pub(super) fn print<'a>(
                         (*fragment, Mode::Flat)
                     });
                 output.record_group_mode(selected_mode, inherit_flat);
-                cursor.enter(fragment.elements, false, Some(mode));
+                cursor.enter(fragment.elements(), false, Some(mode));
                 mode = selected_mode;
             }
             FormatElement::SoftLineIfBreak(id) => {
@@ -598,7 +604,9 @@ pub(super) fn print<'a>(
                 }
             }
             FormatElement::BreakParent => {}
-            FormatElement::Text(text) => output.write(text, options, mode),
+            FormatElement::Text { source, width } => {
+                output.write(Text::from_parts(source, width), options, mode)
+            }
             FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
                 if matches!(element, FormatElement::Line) {
                     output.write(Text::new(" "), options, mode);
@@ -635,10 +643,10 @@ pub(super) fn print<'a>(
                 };
                 output.literal_line(next_indent, options, mode);
             }
-            FormatElement::IfBreak(text) | FormatElement::IfFlat(text) => {
+            FormatElement::IfBreak { source, width } | FormatElement::IfFlat { source, width } => {
                 let broken = mode == Mode::Break;
-                if broken == matches!(element, FormatElement::IfBreak(..)) {
-                    output.write(text, options, mode);
+                if broken == matches!(element, FormatElement::IfBreak { .. }) {
+                    output.write(Text::from_parts(source, width), options, mode);
                 }
             }
             FormatElement::Conditional(conditional)
@@ -649,13 +657,13 @@ pub(super) fn print<'a>(
                     None => continue,
                 };
                 cursor.enter(
-                    fragment.elements,
+                    fragment.elements(),
                     matches!(element, FormatElement::FlatConditional(_)),
                     None,
                 );
             }
             FormatElement::StartLineSuffix { end_offset } => {
-                let (contents, remaining) = cursor.current.remaining.split_at(end_offset);
+                let (contents, remaining) = cursor.current.remaining.split_at(end_offset as usize);
                 suffixes.push(LineSuffix {
                     elements: &contents[..contents.len() - 1],
                     mode,
@@ -713,7 +721,7 @@ pub(super) fn print<'a>(
                             continuation: None,
                             kind: PreparedGroup {
                                 summary,
-                                end_offset,
+                                end_offset: end_offset as usize,
                             },
                             has_line_suffix: !suffixes.is_empty(),
                             fills: fills.contexts(),
@@ -742,12 +750,13 @@ pub(super) fn print<'a>(
             }
             FormatElement::StartAbsoluteIndent { width } => {
                 indents.push(indent);
-                indent = Indentation::absolute(width, options);
+                indent = Indentation::absolute(width as usize, options);
             }
             FormatElement::StartIndentIfBreak { id, end_offset } => {
                 let binding = group_modes[id.index()];
                 if flat || binding.is_none() {
-                    let (contents, remaining) = cursor.current.remaining.split_at(end_offset);
+                    let (contents, remaining) =
+                        cursor.current.remaining.split_at(end_offset as usize);
                     cursor.current.remaining = remaining;
                     if binding.is_some() {
                         cursor.enter(&contents[..contents.len() - 1], true, None);
@@ -765,13 +774,13 @@ pub(super) fn print<'a>(
                     .expect("indent scopes must close after opening");
             }
             FormatElement::StartAlign { width } => {
-                indent.alignment += width;
+                indent.alignment += width as usize;
                 indent.alignments += 1;
             }
             FormatElement::EndAlign { width } => {
                 indent.alignment = indent
                     .alignment
-                    .checked_sub(width)
+                    .checked_sub(width as usize)
                     .expect("alignment scopes must close after opening");
                 indent.alignments = indent
                     .alignments
@@ -861,10 +870,15 @@ impl Output {
         }
     }
 
+    #[inline]
     fn write(&mut self, text: Text<'_>, options: FormatOptions, mode: Mode) {
+        self.write_parts(text.source(), text.width(), options, mode);
+    }
+
+    fn write_parts(&mut self, source: &str, width: Width, options: FormatOptions, mode: Mode) {
         self.write_indent(options);
-        self.text.push_str(text.source);
-        let (column, multiline) = text.last_line(self.column);
+        self.text.push_str(source);
+        let (column, multiline) = Text::from_source_parts(source, width).last_line(self.column);
         self.column = column;
         if multiline {
             self.invalidate_line(mode);
@@ -1021,12 +1035,12 @@ impl<'a> Probe<'a> {
                 element
             };
             match *element {
-                FormatElement::Text(text)
-                | FormatElement::IfBreak(text)
-                | FormatElement::IfFlat(text) => {
+                FormatElement::Text { source, width }
+                | FormatElement::IfBreak { source, width }
+                | FormatElement::IfFlat { source, width } => {
                     let active = match element {
-                        FormatElement::IfBreak(_) => mode == Mode::Break,
-                        FormatElement::IfFlat(_) => mode == Mode::Flat,
+                        FormatElement::IfBreak { .. } => mode == Mode::Break,
+                        FormatElement::IfFlat { .. } => mode == Mode::Flat,
                         _ => true,
                     };
                     if !active {
@@ -1038,7 +1052,8 @@ impl<'a> Probe<'a> {
                         column += 1;
                     }
                     pending_line_space = false;
-                    let (next_column, multiline) = text.first_line(column);
+                    let (next_column, multiline) =
+                        Text::from_parts(source, width).first_line(column);
                     column = next_column;
                     if multiline {
                         return column <= usize::from(options.line_width);
@@ -1052,7 +1067,7 @@ impl<'a> Probe<'a> {
                         return true;
                     }
                     has_line_suffix = true;
-                    cursor.current.remaining = &cursor.current.remaining[end_offset..];
+                    cursor.current.remaining = &cursor.current.remaining[end_offset as usize..];
                 }
                 FormatElement::EndLineSuffix => {
                     unreachable!("fit probes skip complete line suffix scopes")
@@ -1101,7 +1116,7 @@ impl<'a> Probe<'a> {
                         if column > usize::from(options.line_width) {
                             return false;
                         }
-                        cursor.current.remaining = &cursor.current.remaining[end_offset..];
+                        cursor.current.remaining = &cursor.current.remaining[end_offset as usize..];
                     } else {
                         modes.push(GroupState { restore_mode: mode });
                     }
@@ -1133,14 +1148,16 @@ impl<'a> Probe<'a> {
                             conditional.flat
                         };
                     cursor.enter(
-                        fragment.elements,
+                        fragment.elements(),
                         matches!(element, FormatElement::FlatConditional(_)),
                         None,
                     );
                 }
-                FormatElement::Fragment(fragment) => cursor.enter(fragment.elements, false, None),
-                FormatElement::FlatFragment(fragment) => {
-                    cursor.enter(fragment.0.elements, true, None)
+                FormatElement::Fragment { elements, .. } => {
+                    cursor.enter(elements.get(), false, None)
+                }
+                FormatElement::FlatFragment { elements, .. } => {
+                    cursor.enter(elements.get(), true, None)
                 }
                 FormatElement::Alternatives(alternatives) => {
                     if kind.layout_dependency() {
@@ -1151,7 +1168,7 @@ impl<'a> Probe<'a> {
                     } else {
                         alternatives.fallback
                     };
-                    cursor.enter(fragment.elements, false, Some(mode));
+                    cursor.enter(fragment.elements(), false, Some(mode));
                 }
                 FormatElement::SoftLineIfBreak(id) => {
                     if kind.layout_dependency() {
