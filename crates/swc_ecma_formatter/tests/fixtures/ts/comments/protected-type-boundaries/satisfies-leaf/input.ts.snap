@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = value satisfies
+/* prettier-ignore */ \u0042;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = value satisfies /* prettier-ignore */ \u0042;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const x =
+  value satisfies /* prettier-ignore */ \u0042;
