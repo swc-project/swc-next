@@ -120,6 +120,16 @@ pub(super) struct TypeAttachmentHead {
     union: bool,
     source_barrier: Option<TsType>,
     exterior_union_frame: Option<TsType>,
+    interior_union_frame: Option<TsType>,
+    prefix: TypeCommentTie,
+}
+
+#[derive(Clone, Copy)]
+struct TypeCommentTie {
+    next: u32,
+    type_leading: bool,
+    expression_leading: bool,
+    union_adjacency: bool,
 }
 
 pub(super) struct TypeSuppressionRun {
@@ -1626,11 +1636,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn type_attachment_head(&self, mut node: TsType) -> TypeAttachmentHead {
         let source = node;
         let mut source_barrier = None;
+        let mut interior_frame = None;
         let data = loop {
             let data = self.ast.ts_type_data(node);
             let (types, token) = match data {
                 TsTypeData::TsParenthesizedType(parentheses) => {
-                    node = parentheses.type_annotation(self.ast);
+                    let child = parentheses.type_annotation(self.ast);
+                    if matches!(
+                        self.ast.ts_type_data(child),
+                        TsTypeData::TsParenthesizedType(_)
+                    ) {
+                        let comments = self.comments.in_range(Span::new(
+                            parentheses.span(self.ast).start + 1,
+                            child.span(self.ast).start,
+                        ));
+                        if self.type_union_frame_has_comments(child, comments) {
+                            interior_frame = Some(child);
+                        }
+                    }
+                    node = child;
                     continue;
                 }
                 TsTypeData::TsUnionType(union) => (union.types(self.ast), "|"),
@@ -1659,6 +1683,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             union,
             source_barrier,
             exterior_union_frame: (source != node && union).then_some(source),
+            interior_union_frame: interior_frame.filter(|_| union),
+            prefix: self.prepare_type_comment_tie(
+                node,
+                union,
+                self.comments.in_range(Span::new(
+                    source.span(self.ast).start,
+                    node.span(self.ast).start,
+                )),
+            ),
         }
     }
 
@@ -1728,39 +1761,126 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         attachment: &TypeAttachmentHead,
         comments: &[Comment],
     ) -> TypeHeadRetention {
-        let exterior_union_comments = attachment.exterior_union_frame.is_some_and(|frame| {
-            let mut next = frame.span(self.ast).start;
-            for &comment in comments.iter().rev() {
-                if comment.span.end > next
-                    || !self
-                        .source(Span::new(comment.span.end, next))
-                        .chars()
-                        .all(|character| {
-                            is_source_whitespace(character)
-                                && !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
-                        })
-                {
-                    break;
-                }
-                if comment.kind == CommentKind::Block
-                    && !is_suppression_comment(self.ast, comment)
-                    && self.line_breaks(comment.span.start, comment.span.end) == 0
-                {
-                    return true;
-                }
-                next = comment.span.start;
-            }
-            false
-        });
-        if exterior_union_comments {
+        let frame = attachment.interior_union_frame.or_else(|| {
             attachment
                 .exterior_union_frame
-                .map_or(TypeHeadRetention::Unchanged, TypeHeadRetention::Source)
-        } else {
-            attachment
-                .source_barrier
-                .map_or(TypeHeadRetention::Unchanged, TypeHeadRetention::Source)
+                .filter(|&frame| self.type_union_frame_has_comments(frame, comments))
+        });
+        let owner = match (frame, attachment.source_barrier) {
+            (Some(frame), Some(barrier)) => Some(
+                if frame.span(self.ast).start < barrier.span(self.ast).start {
+                    frame
+                } else {
+                    barrier
+                },
+            ),
+            (frame, barrier) => frame.or(barrier),
+        };
+        owner.map_or(TypeHeadRetention::Unchanged, TypeHeadRetention::Source)
+    }
+
+    fn type_union_frame_has_comments(&self, frame: TsType, comments: &[Comment]) -> bool {
+        let mut next = frame.span(self.ast).start;
+        for &comment in comments.iter().rev() {
+            if comment.span.end > next
+                || !self
+                    .source(Span::new(comment.span.end, next))
+                    .chars()
+                    .all(|character| {
+                        is_source_whitespace(character)
+                            && !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+                    })
+            {
+                break;
+            }
+            if comment.kind == CommentKind::Block
+                && !is_suppression_comment(self.ast, comment)
+                && self.line_breaks(comment.span.start, comment.span.end) == 0
+            {
+                return true;
+            }
+            next = comment.span.start;
         }
+        false
+    }
+
+    fn prepare_type_comment_tie(
+        &self,
+        node: TsType,
+        union: bool,
+        comments: &[Comment],
+    ) -> TypeCommentTie {
+        let mut tie = TypeCommentTie {
+            next: node.span(self.ast).start,
+            type_leading: true,
+            expression_leading: true,
+            union_adjacency: union,
+        };
+        // Resolve the shared prefix once, before processing boundary runs.
+        // Markers inside these frames still belong to their own suppression runs.
+        let mut following_start = tie.next;
+        for run in comments
+            .chunk_by(|left, right| {
+                self.source(Span::new(left.span.end, right.span.start))
+                    .chars()
+                    .all(|character| {
+                        is_source_whitespace(character)
+                            && !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+                    })
+            })
+            .rev()
+        {
+            let first = run[0];
+            let last = run[run.len() - 1];
+            let tied = !self.source_position_starts_line(first.span.start)
+                && !self.comment_run_ends_line(last, following_start);
+            for &comment in run.iter().rev() {
+                self.advance_type_comment_tie(
+                    &mut tie,
+                    comment,
+                    tied,
+                    TypeSuppressionContext::TypeBoundary,
+                );
+            }
+            following_start = first.span.start;
+        }
+        tie
+    }
+
+    fn advance_type_comment_tie(
+        &self,
+        tie: &mut TypeCommentTie,
+        comment: Comment,
+        tied: bool,
+        context: TypeSuppressionContext,
+    ) -> bool {
+        let gap = self.source(Span::new(comment.span.end, tie.next));
+        let leading = tied
+            && gap
+                .chars()
+                .all(|character| is_source_whitespace(character) || character == '(');
+        tie.type_leading &= leading;
+        tie.expression_leading &= leading;
+        tie.union_adjacency &= gap.chars().all(|character| matches!(character, ' ' | '\t'));
+        let single_line = self.line_breaks(comment.span.start, comment.span.end) == 0;
+        let block = comment.kind == CommentKind::Block;
+        let type_attached = block
+            && tie.union_adjacency
+            && single_line
+            && !is_suppression_comment(self.ast, comment);
+        let expression_attached = type_attached || block && !single_line;
+        let following = match context {
+            TypeSuppressionContext::TypeBoundary => type_attached || tie.type_leading,
+            TypeSuppressionContext::ExpressionBoundary => {
+                expression_attached || tie.expression_leading
+            }
+        };
+        // Independently attached comments cannot form another comment's tie chain.
+        tie.type_leading &= !type_attached;
+        tie.expression_leading &= !expression_attached;
+        tie.union_adjacency &= single_line;
+        tie.next = comment.span.start;
+        following
     }
 
     /// Resolve the protected operands separately from their source attachment frame.
@@ -1778,33 +1898,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head,
             };
         }
-        let mut next = attachment.node.span(self.ast).start;
-        let mut leading_chain = true;
-        let mut union_adjacency = attachment.union;
+        let mut tie = attachment.prefix;
         let mut preceding = false;
         let mut following = false;
         for &comment in comments.iter().rev() {
-            let gap = self.source(Span::new(comment.span.end, next));
-            leading_chain &= gap
-                .chars()
-                .all(|character| is_source_whitespace(character) || character == '(');
-            union_adjacency &= gap.chars().all(|character| matches!(character, ' ' | '\t'));
-            let suppression = is_suppression_comment(self.ast, comment);
-            let single_line = self.line_breaks(comment.span.start, comment.span.end) == 0;
-            let attached = comment.kind == CommentKind::Block
-                && (matches!(context, TypeSuppressionContext::ExpressionBoundary) && !single_line
-                    || union_adjacency && single_line && !suppression);
-            if suppression {
-                if attached || leading_chain {
+            let selected_following =
+                self.advance_type_comment_tie(&mut tie, comment, true, context);
+            if is_suppression_comment(self.ast, comment) {
+                if selected_following {
                     following = true;
                 } else {
                     preceding = true;
                 }
             }
-            // Independently attached comments cannot form another comment's tie chain.
-            leading_chain &= !attached;
-            union_adjacency &= single_line;
-            next = comment.span.start;
         }
         let target = match (preceding, following) {
             (true, true) => TypeSuppressionTarget::Both,
@@ -2251,7 +2357,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .in_range(Span::new(child_span.end, span.end - 1));
         let sensitive = self.diagnostic_range_is_sensitive(span);
-        let source_frame = source_head == Some(TsType::TsParenthesizedType(node));
+        // A retained attachment pair keeps its complete source-envelope spine.
+        // The raw content owner stays independent; the child consumes the head
+        // only when it reaches that exact pair.
+        let source_frame = source_head.is_some_and(|head| {
+            matches!(
+                self.ast.ts_type_data(head),
+                TsTypeData::TsParenthesizedType(_)
+            )
+        });
         let retained = source_frame || !before.is_empty() || !after.is_empty() || sensitive;
         let (source, movable) = if retained {
             if self.has_suppression && self.content_mode(before) == ContentMode::Verbatim {
