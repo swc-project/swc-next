@@ -237,7 +237,7 @@ impl<'a> Writer<'a> {
         self.group_with_id(request, None, write)
     }
 
-    /// Prepares a flat-width rejection from this completed group's own Doc.
+    /// Retains exact flat measurements and the boundary of a complete group.
     /// Unsupported instructions keep the ordinary Auto group unchanged.
     pub(crate) fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
@@ -246,10 +246,13 @@ impl<'a> Writer<'a> {
             unreachable!("group scope retains its opening instruction");
         };
         if !effect.preferred_breaks()
-            && let Some(width) =
-                super::flat_width(&self.elements[start + 1..self.elements.len() - 1])
+            && let Some(summary) =
+                super::flat_summary(&self.elements[start + 1..self.elements.len() - 1])
         {
-            self.elements[start] = FormatElement::StartGroupWithFlatWidth { width };
+            self.elements[start] = FormatElement::StartGroupWithFlatWidth {
+                summary,
+                end_offset: self.elements.len() - start - 1,
+            };
         }
         result
     }

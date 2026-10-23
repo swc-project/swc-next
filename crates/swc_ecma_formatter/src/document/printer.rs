@@ -1,6 +1,6 @@
 //! Interpretation of flat formatting instructions and bounded fit probes.
 
-use super::{ConditionTarget, FormatElement, text::Text};
+use super::{ConditionTarget, FlatSummary, FormatElement, text::Text};
 use crate::{FormatOptions, IndentStyle};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
@@ -23,9 +23,20 @@ enum FitState {
 trait ProbeKind {
     const BOUNDED: bool;
 
-    fn continuation(self) -> Option<ContinuationProbe>;
+    fn continuation(&self) -> Option<ContinuationProbe>;
+
+    /// An exact prefix advances the cursor before the continuation is measured.
+    fn prepare(
+        &self,
+        _current: &mut Frame<'_>,
+        _column: usize,
+        _pending_line: &mut bool,
+    ) -> Option<usize> {
+        None
+    }
 }
 
+#[derive(Clone, Copy)]
 enum ContinuationProbe {
     Group,
     Candidate,
@@ -34,8 +45,8 @@ enum ContinuationProbe {
 impl ProbeKind for ContinuationProbe {
     const BOUNDED: bool = false;
 
-    fn continuation(self) -> Option<ContinuationProbe> {
-        Some(self)
+    fn continuation(&self) -> Option<ContinuationProbe> {
+        Some(*self)
     }
 }
 
@@ -44,7 +55,7 @@ struct FillProbe;
 impl ProbeKind for FillProbe {
     const BOUNDED: bool = true;
 
-    fn continuation(self) -> Option<ContinuationProbe> {
+    fn continuation(&self) -> Option<ContinuationProbe> {
         None
     }
 }
@@ -491,27 +502,31 @@ pub(super) fn print<'a>(
                 modes.push(GroupState { restore_mode: mode });
                 mode = group_mode;
             }
-            FormatElement::StartGroupWithFlatWidth { width } => {
+            FormatElement::StartGroupWithFlatWidth {
+                summary,
+                end_offset,
+            } => {
                 let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
-                let column = output.column;
                 let flat = inherit_flat
-                    || column.saturating_add(width) <= usize::from(options.line_width)
-                        && probe.fits(
-                            ProbeRequest {
-                                current: cursor.current,
-                                pending: &cursor.suspended,
-                                continuation: None,
-                                kind: ContinuationProbe::Group,
-                                has_line_suffix: !suffixes.is_empty(),
-                                fills: &fills,
-                                entries: &entries,
+                    || probe.fits(
+                        ProbeRequest {
+                            current: cursor.current,
+                            pending: &cursor.suspended,
+                            continuation: None,
+                            kind: PreparedGroup {
+                                summary,
+                                end_offset,
                             },
-                            &modes,
-                            &output,
-                            options,
-                            mode,
-                            group_modes,
-                        );
+                            has_line_suffix: !suffixes.is_empty(),
+                            fills: &fills,
+                            entries: &entries,
+                        },
+                        &modes,
+                        &output,
+                        options,
+                        mode,
+                        group_modes,
+                    );
                 let group_mode = if flat { Mode::Flat } else { Mode::Break };
                 output.record_group_mode(group_mode, inherit_flat);
                 modes.push(GroupState { restore_mode: mode });
@@ -780,6 +795,29 @@ struct ProbeRequest<'a, 'pending, K> {
     entries: &'pending [Mode],
 }
 
+struct PreparedGroup {
+    summary: FlatSummary,
+    end_offset: usize,
+}
+
+impl ProbeKind for PreparedGroup {
+    const BOUNDED: bool = false;
+
+    fn continuation(&self) -> Option<ContinuationProbe> {
+        Some(ContinuationProbe::Group)
+    }
+
+    fn prepare(
+        &self,
+        current: &mut Frame<'_>,
+        column: usize,
+        pending_line: &mut bool,
+    ) -> Option<usize> {
+        current.remaining = &current.remaining[self.end_offset..];
+        Some(self.summary.advance(column, pending_line))
+    }
+}
+
 struct Probe<'a> {
     modes: Vec<GroupState>,
     frames: Vec<Frame<'a>>,
@@ -798,7 +836,7 @@ impl<'a> Probe<'a> {
         committed_groups: &[Option<Mode>],
     ) -> bool {
         let ProbeRequest {
-            current,
+            mut current,
             pending: pending_frames,
             continuation,
             kind,
@@ -827,19 +865,22 @@ impl<'a> Probe<'a> {
         if let Some(continuation) = continuation {
             frames.push(continuation);
         }
+        let mut mode = Mode::Flat;
+        if let Some(next_column) = kind.prepare(&mut current, column, &mut pending_line_space) {
+            column = next_column;
+            mode = incoming_mode;
+        } else if let Some(ContinuationProbe::Group) = kind.continuation() {
+            modes.push(GroupState {
+                restore_mode: incoming_mode,
+            });
+        }
         let mut cursor = ProbeCursor {
             current,
             frames,
             parents: pending_frames,
             parent_len: pending_frames.len(),
         };
-        if let Some(ContinuationProbe::Group) = kind.continuation() {
-            modes.push(GroupState {
-                restore_mode: incoming_mode,
-            });
-        }
         let mut parent_len = parents.len();
-        let mut mode = Mode::Flat;
         if column > usize::from(options.line_width) {
             return false;
         }
@@ -913,13 +954,19 @@ impl<'a> Probe<'a> {
                     modes.push(GroupState { restore_mode: mode });
                     mode = group_mode;
                 }
-                FormatElement::StartGroupWithFlatWidth { width } => {
-                    if mode == Mode::Flat
-                        && column.saturating_add(width) > usize::from(options.line_width)
-                    {
-                        return false;
+                FormatElement::StartGroupWithFlatWidth {
+                    summary,
+                    end_offset,
+                } => {
+                    if mode == Mode::Flat {
+                        column = summary.advance(column, &mut pending_line_space);
+                        if column > usize::from(options.line_width) {
+                            return false;
+                        }
+                        cursor.current.remaining = &cursor.current.remaining[end_offset..];
+                    } else {
+                        modes.push(GroupState { restore_mode: mode });
                     }
-                    modes.push(GroupState { restore_mode: mode });
                 }
                 FormatElement::EndGroup => {
                     if let Some(group) = modes.pop() {
