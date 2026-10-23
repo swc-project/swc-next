@@ -96,9 +96,11 @@ enum FormatElement<'a> {
         effect: BreakEffect,
         id: Option<GroupId>,
     },
-    /// An anonymous Auto group with a lower bound for its own flat contents.
+    /// An anonymous Auto group with exact context-free flat measurements and
+    /// the distance from this opening instruction to its matching EndGroup.
     StartGroupWithFlatWidth {
-        width: usize,
+        summary: FlatSummary,
+        end_offset: usize,
     },
     EndGroup,
     StartIndent,
@@ -249,23 +251,53 @@ fn append_clean_text(elements: &[FormatElement<'_>], output: &mut String) -> Opt
     Some(())
 }
 
-/// Measures only direct instructions whose flat mode cannot change before the
-/// scope ends. As in a fit probe, line spaces count only before later text.
-fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
-    let mut width = 0usize;
-    let mut pending_space = false;
+/// Context-free ASCII measurements. Literal text spaces remain part of `width`;
+/// only spaces contributed by `line` remain pending at the scope boundaries.
+#[derive(Debug, Clone, Copy, Default)]
+struct FlatSummary {
+    width: usize,
+    has_text: bool,
+    starts_with_line: bool,
+    ends_with_line: bool,
+}
+
+impl FlatSummary {
+    /// Advances a flat fit probe without consuming pending line spaces twice.
+    fn advance(self, column: usize, pending_line: &mut bool) -> usize {
+        if self.has_text {
+            let column = column
+                .saturating_add(self.width)
+                .saturating_add(usize::from(*pending_line || self.starts_with_line));
+            *pending_line = self.ends_with_line;
+            column
+        } else {
+            *pending_line |= self.ends_with_line;
+            column
+        }
+    }
+}
+
+/// Measures a completed group once, retaining only context-free ASCII results.
+/// Literal text spaces count directly; flat line spaces stay pending until text.
+fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
+    let mut summary = FlatSummary::default();
     for element in elements {
         match element {
             FormatElement::Text(text) | FormatElement::IfFlat(text) => {
-                let text_width = text.clean_ascii_width()?;
-                width = width
-                    .saturating_add(usize::from(pending_space))
-                    .saturating_add(text_width);
-                pending_space = false;
+                let width = text.clean_ascii_width()?;
+                if summary.has_text {
+                    summary.width = summary
+                        .width
+                        .saturating_add(usize::from(summary.ends_with_line))
+                        .saturating_add(width);
+                } else {
+                    summary.starts_with_line = summary.ends_with_line;
+                    summary.width = width;
+                    summary.has_text = true;
+                }
+                summary.ends_with_line = false;
             }
-            FormatElement::Line => {
-                pending_space = true;
-            }
+            FormatElement::Line => summary.ends_with_line = true,
             FormatElement::SoftLine
             | FormatElement::IfBreak(_)
             | FormatElement::StartGroup {
@@ -281,7 +313,7 @@ fn flat_width(elements: &[FormatElement<'_>]) -> Option<usize> {
             _ => return None,
         }
     }
-    Some(width)
+    Some(summary)
 }
 
 impl<'a> Fragment<'a> {
