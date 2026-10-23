@@ -7,7 +7,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 use super::{
     Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
     Fragment, FragmentCapabilities, GroupId, GroupRequest, NeutralFragment, RecordedGroup,
-    text::Text,
+    text::Text, thin::ThinSlice,
 };
 
 pub(crate) struct Writer<'a> {
@@ -15,7 +15,7 @@ pub(crate) struct Writer<'a> {
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
     flattening: bool,
-    group_count: usize,
+    group_count: u32,
     conditional_lines: bool,
     intrinsic_lines: bool,
 }
@@ -24,6 +24,14 @@ pub(crate) struct Writer<'a> {
 pub(crate) struct FillEntry {
     start: usize,
     end: usize,
+}
+
+fn instruction_offset(value: usize) -> u32 {
+    u32::try_from(value).expect("document instruction distance exceeds u32::MAX")
+}
+
+fn indentation_width(value: usize) -> u32 {
+    u32::try_from(value).expect("document indentation exceeds u32::MAX")
 }
 
 impl<'a> Writer<'a> {
@@ -55,7 +63,7 @@ impl<'a> Writer<'a> {
         if !text.is_single_line() {
             self.intrinsic_lines = true;
         }
-        self.elements.push(FormatElement::Text(text));
+        self.elements.push(FormatElement::text(text));
     }
 
     /// Copies transient text into storage owned by this formatting call.
@@ -68,7 +76,7 @@ impl<'a> Writer<'a> {
         if !text.is_single_line() {
             self.intrinsic_lines = true;
         }
-        self.elements.push(FormatElement::Text(text));
+        self.elements.push(FormatElement::text(text));
     }
 
     /// Literal source lines retain their contents without structural indentation.
@@ -112,7 +120,7 @@ impl<'a> Writer<'a> {
 
     /// Writes one literal separator; the syntax owner decides whether it is needed.
     pub(crate) fn space(&mut self) {
-        self.elements.push(FormatElement::Text(Text::new(" ")));
+        self.elements.push(FormatElement::text(Text::new(" ")));
     }
 
     pub(crate) fn soft_line(&mut self) {
@@ -142,7 +150,7 @@ impl<'a> Writer<'a> {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
                     self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(FormatElement::IfBreak(text));
+                    self.elements.push(FormatElement::if_break(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment(text);
@@ -159,7 +167,7 @@ impl<'a> Writer<'a> {
                 ConditionTarget::Current => {
                     let text = Text::new(text);
                     self.intrinsic_lines |= !text.is_single_line();
-                    self.elements.push(FormatElement::IfFlat(text));
+                    self.elements.push(FormatElement::if_flat(text));
                 }
                 ConditionTarget::Group(_) => {
                     let broken = self.text_fragment("");
@@ -172,18 +180,18 @@ impl<'a> Writer<'a> {
 
     fn text_fragment(&self, text: &'a str) -> Fragment<'a> {
         let text = Text::new(text);
-        let elements: &[FormatElement<'a>] = if text.source.is_empty() {
+        let elements: &[FormatElement<'a>] = if text.source().is_empty() {
             &[]
         } else {
-            self.allocator.alloc([FormatElement::Text(text)])
+            self.allocator.alloc([FormatElement::text(text)])
         };
-        Fragment {
+        Fragment::new(
             elements,
-            effect: BreakEffect::default(),
-            capabilities: FragmentCapabilities::classify(elements),
-            conditional_lines: false,
-            intrinsic_lines: !text.is_single_line(),
-        }
+            BreakEffect::default(),
+            FragmentCapabilities::classify(elements),
+            false,
+            !text.is_single_line(),
+        )
     }
 
     /// Both branches contribute break effects, including the unselected branch.
@@ -193,9 +201,9 @@ impl<'a> Writer<'a> {
         broken: Fragment<'a>,
         flat: Fragment<'a>,
     ) {
-        self.effect = self.effect.join(broken.effect).join(flat.effect);
-        self.conditional_lines |= broken.conditional_lines || flat.conditional_lines;
-        self.intrinsic_lines |= broken.intrinsic_lines || flat.intrinsic_lines;
+        self.effect = self.effect.join(broken.effect()).join(flat.effect());
+        self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
+        self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
         let conditional = self.allocator.alloc(Conditional {
             target,
             broken,
@@ -210,7 +218,7 @@ impl<'a> Writer<'a> {
         self.elements
             .push(FormatElement::StartLineSuffix { end_offset: 0 });
         let result = write(self);
-        let end_offset = self.elements.len() - start;
+        let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = FormatElement::StartLineSuffix { end_offset };
         self.elements.push(FormatElement::EndLineSuffix);
         result
@@ -251,7 +259,7 @@ impl<'a> Writer<'a> {
         {
             self.elements[start] = FormatElement::StartGroupWithFlatWidth {
                 summary,
-                end_offset: self.elements.len() - start - 1,
+                end_offset: instruction_offset(self.elements.len() - start - 1),
             };
         }
         result
@@ -274,8 +282,11 @@ impl<'a> Writer<'a> {
 
     /// Reserves an identity before recording contents shared by layout alternatives.
     pub(crate) fn next_group_id(&mut self) -> GroupId {
-        self.group_count += 1;
-        GroupId(super::NonZeroUsize::new(self.group_count).expect("group identity is nonzero"))
+        self.group_count = self
+            .group_count
+            .checked_add(1)
+            .expect("document group count exceeds u32::MAX");
+        GroupId(super::NonZeroU32::new(self.group_count).expect("group identity is nonzero"))
     }
 
     pub(crate) fn group_with_id<T>(
@@ -339,6 +350,7 @@ impl<'a> Writer<'a> {
         width: usize,
         write: impl FnOnce(&mut Self) -> T,
     ) -> T {
+        let width = indentation_width(width);
         self.elements
             .push(FormatElement::StartAbsoluteIndent { width });
         let result = write(self);
@@ -357,7 +369,7 @@ impl<'a> Writer<'a> {
             end_offset: 0,
         });
         let result = write(self);
-        let end_offset = self.elements.len() - start;
+        let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = FormatElement::StartIndentIfBreak {
             id: group,
             end_offset,
@@ -370,6 +382,7 @@ impl<'a> Writer<'a> {
         if width == 0 {
             return write(self);
         }
+        let width = indentation_width(width);
         self.elements.push(FormatElement::StartAlign { width });
         let result = write(self);
         self.elements.push(FormatElement::EndAlign { width });
@@ -398,7 +411,7 @@ impl<'a> Writer<'a> {
                 let FormatElement::StartEntry { end_offset } = self.elements[index] else {
                     unreachable!("fill cleanup visits complete owned entries");
                 };
-                let end = index + end_offset;
+                let end = index + end_offset as usize;
                 if separator
                     && matches!(
                         self.elements[index + 1..end],
@@ -429,7 +442,7 @@ impl<'a> Writer<'a> {
         self.elements
             .push(FormatElement::StartEntry { end_offset: 0 });
         let result = write(self);
-        let end_offset = self.elements.len() - start;
+        let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = FormatElement::StartEntry { end_offset };
         self.elements.push(FormatElement::EndEntry);
         let end = self.elements.len();
@@ -444,7 +457,7 @@ impl<'a> Writer<'a> {
         );
         self.elements.pop();
         write(self);
-        let end_offset = self.elements.len() - entry.start;
+        let end_offset = instruction_offset(self.elements.len() - entry.start);
         self.elements[entry.start] = FormatElement::StartEntry { end_offset };
         self.elements.push(FormatElement::EndEntry);
     }
@@ -488,13 +501,13 @@ impl<'a> Writer<'a> {
         } else {
             FragmentCapabilities::classify(&child.elements)
         };
-        let fragment = Fragment {
-            elements: child.elements.into_bump_slice(),
-            effect: child.effect,
+        let fragment = Fragment::new(
+            child.elements.into_bump_slice(),
+            child.effect,
             capabilities,
-            conditional_lines: child.conditional_lines,
-            intrinsic_lines: child.intrinsic_lines,
-        };
+            child.conditional_lines,
+            child.intrinsic_lines,
+        );
         Ok((fragment, value))
     }
 
@@ -508,7 +521,7 @@ impl<'a> Writer<'a> {
             FormatElement::StartGroup { id: None, .. },
             ..,
             FormatElement::EndGroup,
-        ] = grouped.elements
+        ] = grouped.elements()
         else {
             unreachable!("recorded group retains its complete anonymous outer scope");
         };
@@ -534,26 +547,26 @@ impl<'a> Writer<'a> {
         id: Option<GroupId>,
         fragment: Fragment<'a>,
     ) -> Fragment<'a> {
-        let effect = BreakEffect::from_request(request).join(fragment.effect);
+        let effect = BreakEffect::from_request(request).join(fragment.effect());
         let capabilities = if id.is_some() {
             FragmentCapabilities::General
-        } else if effect.preferred_breaks() || fragment.conditional_lines {
-            FragmentCapabilities::from_flat(fragment.capabilities.permits_flat())
+        } else if effect.preferred_breaks() || fragment.conditional_lines() {
+            FragmentCapabilities::from_flat(fragment.capabilities().permits_flat())
         } else {
-            fragment.capabilities
+            fragment.capabilities()
         };
         let elements = self.allocator.alloc([
             FormatElement::StartGroup { effect, id },
-            FormatElement::Fragment(fragment),
+            FormatElement::fragment(fragment),
             FormatElement::EndGroup,
         ]);
-        Fragment {
+        Fragment::new(
             elements,
             effect,
             capabilities,
-            conditional_lines: fragment.conditional_lines,
-            intrinsic_lines: fragment.intrinsic_lines,
-        }
+            fragment.conditional_lines(),
+            fragment.has_intrinsic_lines(),
+        )
     }
 
     /// Joins complete scopes with an optional literal separator.
@@ -563,9 +576,9 @@ impl<'a> Writer<'a> {
         separate: bool,
         right: Fragment<'a>,
     ) -> Fragment<'a> {
-        let effect = left.effect.join(right.effect);
-        let conditional_lines = left.conditional_lines || right.conditional_lines;
-        let capabilities = match (left.capabilities, right.capabilities) {
+        let effect = left.effect().join(right.effect());
+        let conditional_lines = left.conditional_lines() || right.conditional_lines();
+        let capabilities = match (left.capabilities(), right.capabilities()) {
             (FragmentCapabilities::General, _) | (_, FragmentCapabilities::General) => {
                 FragmentCapabilities::General
             }
@@ -578,23 +591,23 @@ impl<'a> Writer<'a> {
         };
         let elements: &'a [FormatElement<'a>] = if separate {
             self.allocator.alloc([
-                FormatElement::Fragment(left),
-                FormatElement::Text(Text::new(" ")),
-                FormatElement::Fragment(right),
+                FormatElement::fragment(left),
+                FormatElement::text(Text::new(" ")),
+                FormatElement::fragment(right),
             ])
         } else {
             self.allocator.alloc([
-                FormatElement::Fragment(left),
-                FormatElement::Fragment(right),
+                FormatElement::fragment(left),
+                FormatElement::fragment(right),
             ])
         };
-        Fragment {
+        Fragment::new(
             elements,
             effect,
             capabilities,
             conditional_lines,
-            intrinsic_lines: left.intrinsic_lines || right.intrinsic_lines,
-        }
+            left.has_intrinsic_lines() || right.has_intrinsic_lines(),
+        )
     }
 
     /// Delimiters observe one complete group; the prefix keeps its own outer scope.
@@ -608,39 +621,39 @@ impl<'a> Writer<'a> {
     ) -> Fragment<'a> {
         let open = Text::new(open);
         let close = Text::new(close);
-        let group_effect = BreakEffect::from_request(request).join(body.effect);
-        let effect = prefix.effect.join(group_effect);
-        let conditional_lines = prefix.conditional_lines || body.conditional_lines;
+        let group_effect = BreakEffect::from_request(request).join(body.effect());
+        let effect = prefix.effect().join(group_effect);
+        let conditional_lines = prefix.conditional_lines() || body.conditional_lines();
         // Conditional delimiters disappear in a flat projection, and both
         // complete backing scopes retain their own projection eligibility.
         let capabilities = FragmentCapabilities::from_flat(
-            prefix.capabilities.permits_flat() && body.capabilities.permits_flat(),
+            prefix.capabilities().permits_flat() && body.capabilities().permits_flat(),
         );
         let elements = self.allocator.alloc([
-            FormatElement::Fragment(prefix),
+            FormatElement::fragment(prefix),
             FormatElement::StartGroup {
                 effect: group_effect,
                 id: None,
             },
-            FormatElement::IfBreak(open),
+            FormatElement::if_break(open),
             FormatElement::StartIndent,
             FormatElement::SoftLine,
-            FormatElement::Fragment(body),
+            FormatElement::fragment(body),
             FormatElement::EndIndent,
             FormatElement::SoftLine,
-            FormatElement::IfBreak(close),
+            FormatElement::if_break(close),
             FormatElement::EndGroup,
         ]);
-        Fragment {
+        Fragment::new(
             elements,
             effect,
             capabilities,
             conditional_lines,
-            intrinsic_lines: prefix.intrinsic_lines
-                || body.intrinsic_lines
+            prefix.has_intrinsic_lines()
+                || body.has_intrinsic_lines()
                 || !open.is_single_line()
                 || !close.is_single_line(),
-        }
+        )
     }
 
     /// Flat views project their backing scopes without propagating backing break flags.
@@ -654,37 +667,35 @@ impl<'a> Writer<'a> {
     ) -> Fragment<'a> {
         let open = Text::new(open);
         let close = Text::new(close);
-        let capabilities = if !body.capabilities.permits_flat()
+        let capabilities = if !body.capabilities().permits_flat()
             || !open.is_single_line()
             || !close.is_single_line()
         {
             FragmentCapabilities::General
-        } else if !body.effect.preferred_breaks()
-            && !body.conditional_lines
-            && matches!(prefix.0.capabilities, FragmentCapabilities::Neutral)
-            && matches!(body.capabilities, FragmentCapabilities::Neutral)
-            && matches!(suffix.0.capabilities, FragmentCapabilities::Neutral)
+        } else if !body.effect().preferred_breaks()
+            && !body.conditional_lines()
+            && matches!(prefix.0.capabilities(), FragmentCapabilities::Neutral)
+            && matches!(body.capabilities(), FragmentCapabilities::Neutral)
+            && matches!(suffix.0.capabilities(), FragmentCapabilities::Neutral)
         {
             FragmentCapabilities::Neutral
         } else {
             FragmentCapabilities::FlatEligible
         };
         let elements = self.allocator.alloc([
-            FormatElement::Text(open),
-            FormatElement::FlatFragment(prefix),
-            FormatElement::Fragment(body),
-            FormatElement::FlatFragment(suffix),
-            FormatElement::Text(close),
+            FormatElement::text(open),
+            FormatElement::flat_fragment(prefix),
+            FormatElement::fragment(body),
+            FormatElement::flat_fragment(suffix),
+            FormatElement::text(close),
         ]);
-        Fragment {
+        Fragment::new(
             elements,
-            effect: body.effect,
+            body.effect(),
             capabilities,
-            conditional_lines: body.conditional_lines,
-            intrinsic_lines: body.intrinsic_lines
-                || !open.is_single_line()
-                || !close.is_single_line(),
-        }
+            body.conditional_lines(),
+            body.has_intrinsic_lines() || !open.is_single_line() || !close.is_single_line(),
+        )
     }
 
     /// Only prefix and body gain the outer indent; suffix retains its own complete scopes.
@@ -698,59 +709,59 @@ impl<'a> Writer<'a> {
     ) -> Fragment<'a> {
         let open = Text::new(open);
         let close = Text::new(close);
-        let effect = prefix.effect.join(body.effect).join(suffix.effect);
+        let effect = prefix.effect().join(body.effect()).join(suffix.effect());
         let conditional_lines =
-            prefix.conditional_lines || body.conditional_lines || suffix.conditional_lines;
+            prefix.conditional_lines() || body.conditional_lines() || suffix.conditional_lines();
         let capabilities = FragmentCapabilities::from_flat(
-            prefix.capabilities.permits_flat()
-                && body.capabilities.permits_flat()
-                && suffix.capabilities.permits_flat()
+            prefix.capabilities().permits_flat()
+                && body.capabilities().permits_flat()
+                && suffix.capabilities().permits_flat()
                 && open.is_single_line()
                 && close.is_single_line(),
         );
         let elements = self.allocator.alloc([
             FormatElement::StartGroup { effect, id: None },
-            FormatElement::Text(open),
+            FormatElement::text(open),
             FormatElement::StartIndent,
-            FormatElement::Fragment(prefix),
-            FormatElement::Fragment(body),
+            FormatElement::fragment(prefix),
+            FormatElement::fragment(body),
             FormatElement::EndIndent,
-            FormatElement::Fragment(suffix),
-            FormatElement::Text(close),
+            FormatElement::fragment(suffix),
+            FormatElement::text(close),
             FormatElement::EndGroup,
         ]);
-        Fragment {
+        Fragment::new(
             elements,
             effect,
             capabilities,
             conditional_lines,
-            intrinsic_lines: prefix.intrinsic_lines
-                || body.intrinsic_lines
-                || suffix.intrinsic_lines
+            prefix.has_intrinsic_lines()
+                || body.has_intrinsic_lines()
+                || suffix.has_intrinsic_lines()
                 || !open.is_single_line()
                 || !close.is_single_line(),
-        }
+        )
     }
 
     pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
-        self.effect = self.effect.join(fragment.effect);
-        self.conditional_lines |= fragment.conditional_lines;
-        self.intrinsic_lines |= fragment.intrinsic_lines;
-        self.elements.push(FormatElement::Fragment(fragment));
+        self.effect = self.effect.join(fragment.effect());
+        self.conditional_lines |= fragment.conditional_lines();
+        self.intrinsic_lines |= fragment.has_intrinsic_lines();
+        self.elements.push(FormatElement::fragment(fragment));
     }
 
     pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
-        self.elements.push(FormatElement::FlatFragment(fragment));
+        self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
     pub(crate) fn write_neutral_fragment(
         &mut self,
         NeutralFragment(fragment): NeutralFragment<'a>,
     ) {
-        self.effect = self.effect.join(fragment.effect);
-        self.conditional_lines |= fragment.conditional_lines;
+        self.effect = self.effect.join(fragment.effect());
+        self.conditional_lines |= fragment.conditional_lines();
         self.elements
-            .push(FormatElement::FlatFragment(FlatFragment(fragment)));
+            .push(FormatElement::flat_fragment(FlatFragment(fragment)));
     }
 
     /// Writes a standard conditional group. Branch-local break requests do not
@@ -766,15 +777,17 @@ impl<'a> Writer<'a> {
         } else {
             choices.extend_from_slice(preferred);
         }
-        self.conditional_lines |= fallback.conditional_lines
-            || preferred.iter().any(|fragment| fragment.conditional_lines);
+        self.conditional_lines |= fallback.conditional_lines()
+            || preferred
+                .iter()
+                .any(|fragment| fragment.conditional_lines());
         let alternatives = self.allocator.alloc(Alternatives {
             preferred: choices.into_bump_slice(),
             fallback,
         });
         // Only the first candidate participates in the language summary. Later
         // choices can introduce layout lines without making them intrinsic.
-        self.intrinsic_lines |= alternatives.first().intrinsic_lines;
+        self.intrinsic_lines |= alternatives.first().has_intrinsic_lines();
         self.elements
             .push(FormatElement::Alternatives(alternatives));
     }
@@ -782,7 +795,7 @@ impl<'a> Writer<'a> {
     pub(crate) fn finish(self) -> Doc<'a> {
         Doc {
             allocator: self.allocator,
-            elements: self.elements.into_bump_slice(),
+            elements: ThinSlice::new(self.elements.into_bump_slice()).get(),
             group_count: self.group_count,
         }
     }

@@ -986,7 +986,7 @@ fn deep_indentation() {
     let allocator = Allocator::new();
     let mut elements = vec![FormatElement::StartIndent; 1025];
     elements.push(FormatElement::HardLine);
-    elements.push(FormatElement::Text(super::text::Text::new("value")));
+    elements.push(FormatElement::text(super::text::Text::new("value")));
     elements.extend(std::iter::repeat_n(FormatElement::EndIndent, 1025));
     let document = Doc {
         allocator: &allocator,
@@ -2255,7 +2255,7 @@ fn fragment_capabilities() {
     assert!(projected.try_neutral().is_none());
     assert!(projected.try_flat().is_some());
     assert!(!projected.preferred_breaks());
-    assert!(!projected.conditional_lines);
+    assert!(!projected.conditional_lines());
 
     let multiline = writer.flat_delimited_fragment(
         "(",
@@ -2654,7 +2654,7 @@ fn completed_delimiter_layouts() {
     assert!(prefix.try_flat().is_none());
     let fallback = writer.indented_delimited_fragment("(", prefix, body, suffix, ")");
     assert!(fallback.preferred_breaks());
-    assert!(fallback.conditional_lines);
+    assert!(fallback.conditional_lines());
     assert!(fallback.try_flat().is_none());
     writer.flat(|writer| writer.write_fragment(fallback));
     let doc = writer.finish();
