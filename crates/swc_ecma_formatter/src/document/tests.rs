@@ -1655,6 +1655,60 @@ fn fill_layout() {
     assert_eq!(recorded_fill_document(80, true, true), "p:\naa bb cc");
 }
 
+fn fill_entry_document(width: u16, write: impl FnOnce(&mut Writer<'_>)) -> String {
+    flat_width_document(width, |writer| writer.fill(write))
+}
+
+#[test]
+fn fill_separator_layouts() {
+    let separator_lines = fill_entry_document(5, |writer| {
+        writer.fill_entry(|writer| writer.text("a"));
+        writer.fill_entry(|writer| {
+            writer.line();
+            writer.line();
+        });
+        writer.fill_entry(|writer| writer.text("b"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("c"));
+    });
+    assert_eq!(separator_lines, "a  b\nc");
+
+    let trailing_line = fill_entry_document(5, |writer| {
+        writer.fill_entry(|writer| {
+            writer.text("a");
+            writer.line();
+        });
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("b"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("c"));
+    });
+    assert_eq!(trailing_line, "a  b\nc");
+
+    let empty_item = fill_entry_document(1, |writer| {
+        writer.fill_entry(|writer| writer.text("a"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|_| {});
+        writer.fill_entry(Writer::soft_line);
+        writer.fill_entry(|_| {});
+    });
+    assert_eq!(empty_item, "a\n");
+
+    let summarized_separator = fill_entry_document(5, |writer| {
+        writer.fill_entry(|writer| writer.text("a"));
+        writer.fill_entry(|writer| {
+            writer.group_with_flat_width(|writer| {
+                writer.line();
+                writer.line();
+            });
+        });
+        writer.fill_entry(|writer| writer.text("b"));
+        writer.fill_entry(Writer::line);
+        writer.fill_entry(|writer| writer.text("c"));
+    });
+    assert_eq!(summarized_separator, "a  b\nc");
+}
+
 #[test]
 fn flat_scopes() {
     let allocator = Allocator::new();
