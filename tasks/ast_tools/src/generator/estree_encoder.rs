@@ -15,7 +15,7 @@ use super::js_minifier::minify_encoder;
 const OUTPUT_DIR: &str = "packages/encoder";
 
 // Switch hit frequencies from the 25 codec benchmark fixtures, normalized per
-// fixture and combined across JS/TS. Unobserved cases retain their schema order.
+// fixture and combined across JS/TS. Unobserved cases follow the profiled cases.
 const ESTREE_TYPE_ORDER: &[&str] = &[
     "Identifier",
     "MemberExpression",
@@ -136,6 +136,28 @@ const ESTREE_TYPE_ORDER: &[&str] = &[
     "ClassExpression",
     "TSModuleBlock",
     "DebuggerStatement",
+    "WithStatement",
+    "ExportAllDeclaration",
+    "RestElement",
+    "AccessorProperty",
+    "StaticBlock",
+    "JSXNamespacedName",
+    "JSXSpreadChild",
+    "TSExportAssignment",
+    "TSNamespaceExportDeclaration",
+    "TSImportEqualsDeclaration",
+    "TSTypeAssertion",
+    "TSParameterProperty",
+    "TSAbstractAccessorProperty",
+    "TSBigIntKeyword",
+    "TSIntrinsicKeyword",
+    "TSThisType",
+    "TSOptionalType",
+    "TSJSDocNullableType",
+    "TSJSDocNonNullableType",
+    "TSJSDocUnknownType",
+    "TSConstructSignatureDeclaration",
+    "TSExternalModuleReference",
 ];
 
 pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {

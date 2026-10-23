@@ -2624,10 +2624,10 @@ function encodeTs(program, meta = {}) {
         return encPropertyDefinition(n);
       case "AccessorProperty":
         return encPropertyDefinition(n);
-      case "TSAbstractAccessorProperty":
-        return encPropertyDefinition(n);
       case "StaticBlock":
         return encStaticBlock(n);
+      case "TSAbstractAccessorProperty":
+        return encPropertyDefinition(n);
       default: throw new TypeError(`Unsupported ESTree node type ${n.type}`);
     }
   }
