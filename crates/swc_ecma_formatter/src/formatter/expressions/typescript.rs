@@ -19,7 +19,7 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
-    SuppressedTypeHead, TypeContext, TypeLayout, TypeSuppressionTarget,
+    SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout, TypeSuppressionTarget,
 };
 use crate::{
     FormatError,
@@ -663,8 +663,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             if left_mode == ContentMode::Formatted && !const_marker {
-                suppressed_head =
-                    self.prepare_suppressed_type_head(*right, &attachment, gap, before, after);
+                suppressed_head = self.prepare_suppressed_type_head(
+                    *right,
+                    &attachment,
+                    gap,
+                    before,
+                    after,
+                    SuppressedTypeHeadRole::ExpressionBoundary,
+                );
             }
         }
         if !source {

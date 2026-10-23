@@ -5,8 +5,8 @@ use swc_next_ecma_ast::{GetSpan, Span, TsConditionalType, TsTypeData, TsTypeName
 use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
 use super::{
-    Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, TypeLayout,
-    TypeSuppressionTarget,
+    Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, SuppressedTypeHead,
+    SuppressedTypeHeadRole, TypeLayout, TypeSuppressionTarget,
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
@@ -38,6 +38,7 @@ struct ConditionalTypeBoundary<'ast> {
 enum ConditionalTypeLayout<'ast> {
     Source(Span),
     Preceding(PreparedPrecedingTypePacket<'ast>),
+    Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
@@ -297,6 +298,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
         let mut source = false;
+        let mut suppressed_head = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let packet_owner = match (separator, left.data) {
                 (ConditionalTypeSeparator::Extends, TsTypeData::TsTypeReference(reference))
@@ -374,9 +376,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.select_type_source_owner(right, attachment.node, attachment.node);
                 }
             }
+            if matches!(separator, ConditionalTypeSeparator::Extends) && left.source_owner.is_none()
+            {
+                suppressed_head = self.prepare_suppressed_type_head(
+                    *right,
+                    &attachment,
+                    gap,
+                    before,
+                    after,
+                    SuppressedTypeHeadRole::ConditionalExtends,
+                );
+            }
         }
         let binding = self.comment_binding(comments, gap, Some(right.node.span(self.ast)));
-        let layout = if source || !matches!(binding, CommentBinding::Unbound) {
+        let layout = if let Some(head) = suppressed_head {
+            ConditionalTypeLayout::Suppressed(head)
+        } else if source || !matches!(binding, CommentBinding::Unbound) {
             ConditionalTypeLayout::Source(gap)
         } else {
             let (before, after) = match separator {
@@ -410,6 +425,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let head = self.type_movable_head(node, context);
         let emitted_prefix = !matches!(&boundary.layout, ConditionalTypeLayout::Source(_));
         let leading = match boundary.layout {
+            ConditionalTypeLayout::Suppressed(head) => {
+                writer.space();
+                writer.text(boundary.separator.token());
+                writer.space();
+                self.format_suppressed_type_head(&head, writer)?;
+                &[][..]
+            }
             ConditionalTypeLayout::Preceding(packet) => {
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
@@ -453,6 +475,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let (before, after) = match boundary.layout {
+            ConditionalTypeLayout::Suppressed(head) => {
+                writer.space();
+                writer.text(boundary.separator.token());
+                writer.space();
+                return self.format_suppressed_type_head(&head, writer);
+            }
             ConditionalTypeLayout::Preceding(packet) => {
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
