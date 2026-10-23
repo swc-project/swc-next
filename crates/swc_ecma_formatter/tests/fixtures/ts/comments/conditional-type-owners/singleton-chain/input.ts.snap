@@ -6,4 +6,4 @@ type T = A extends /* prettier-ignore */ (( | B )) ? C : D;
 ---------- Options ----------
 {}
 ---------- Output ----------
-type T = A extends /* prettier-ignore */ | B ? C : D;
+type T = A /* prettier-ignore */ extends B ? C : D;

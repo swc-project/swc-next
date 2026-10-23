@@ -12,15 +12,16 @@ type Alias<\u0054 /* prettier-ignore */ extends 12.0 = string> = T;
 {"printWidth":20}
 ---------- Output ----------
 type Alias<
-  \u0054 /* prettier-ignore */ extends 12.0 =
-    string,
+  \u0054 /* prettier-ignore */ extends
+    12.0 = string,
 > = T;
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
 ---------- Output ----------
 type Alias<
-  \u0054 /* prettier-ignore */ extends 12.0 =
+  \u0054 /* prettier-ignore */ extends
+    12.0 =
     string,
 > =
   T
@@ -29,6 +30,6 @@ type Alias<
 {"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
 ---------- Output ----------
 type Alias<
-	\u0054 /* prettier-ignore */ extends 12.0 =
-		string
+	\u0054 /* prettier-ignore */ extends
+		12.0 = string
 > = T;

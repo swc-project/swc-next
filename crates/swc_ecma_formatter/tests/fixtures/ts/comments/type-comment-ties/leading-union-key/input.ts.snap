@@ -7,11 +7,11 @@ type M = { [\u004b in /* prettier-ignore */ | \u0041]: number };---------- Optio
 ---------- Output ----------
 type M = {
   [
-    \u004b in /* prettier-ignore */ | A
+    \u004b /* prettier-ignore */ in A
   ]: number;
 };
 
 ---------- Options ----------
 {}
 ---------- Output ----------
-type M = { [\u004b in /* prettier-ignore */ | A]: number };
+type M = { [\u004b /* prettier-ignore */ in A]: number };

@@ -6,10 +6,11 @@ type T<\u004b extends /* prettier-ignore */ | \u0041> = K;---------- Options ---
 {"printWidth":18}
 ---------- Output ----------
 type T<
-  \u004b extends /* prettier-ignore */ | A,
+  \u004b /* prettier-ignore */ extends
+    A,
 > = K;
 
 ---------- Options ----------
 {}
 ---------- Output ----------
-type T<\u004b extends /* prettier-ignore */ | A> = K;
+type T<\u004b /* prettier-ignore */ extends A> = K;
