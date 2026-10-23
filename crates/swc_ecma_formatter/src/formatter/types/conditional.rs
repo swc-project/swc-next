@@ -316,7 +316,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(position, SuppressionPosition::EndOfLine) {
                     left.source_owner = Some(left.node);
                 } else {
-                    right.source_owner = Some(right.node);
+                    // Conditional operands keep their whole attachment target,
+                    // including own-line unions, independently of source frames.
+                    self.select_type_source_owner(right, attachment.node, attachment.node);
                 }
             }
         }

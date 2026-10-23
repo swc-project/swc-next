@@ -1843,10 +1843,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             attachment.node
         };
+        self.select_type_source_owner(node, owner, attachment.node);
+    }
+
+    fn select_type_source_owner(&self, node: &mut PreparedType, owner: TsType, enclosing: TsType) {
         node.source_owner = Some(merge_type_source_owner(
             node.source_owner,
             owner,
-            attachment.node,
+            enclosing,
             self.ast,
         ));
     }
