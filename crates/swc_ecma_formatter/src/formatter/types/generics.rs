@@ -904,7 +904,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let boundary = self.prepare_type_boundary(
                 Span::new(name_end, type_node.node.span(ast).start),
                 if matches!(context, TypeParameterContext::Infer) {
-                    TypeBoundaryTarget::InferConstraint(&mut type_node)
+                    TypeBoundaryTarget::InferConstraint {
+                        name,
+                        node: &mut type_node,
+                    }
                 } else {
                     TypeBoundaryTarget::Constraint {
                         name,
@@ -927,7 +930,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(name_end, |bound| bound.node.node.span(ast).end);
             let boundary = self.prepare_type_boundary(
                 Span::new(left_end, type_node.node.span(ast).start),
-                TypeBoundaryTarget::Default(&mut type_node),
+                TypeBoundaryTarget::Default {
+                    name: constraint.is_none().then_some(name),
+                    node: &mut type_node,
+                },
             )?;
             if boundary.left_mode == ContentMode::Verbatim {
                 if let Some(bound) = &mut constraint {
@@ -1105,6 +1111,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (role, before, after) = match bound.boundary {
+            TypeBoundary {
+                role,
+                layout: super::TypeOperatorLayout::Preceding { packet, after },
+                ..
+            } => {
+                self.format_preceding_type_packet(&packet, writer)?;
+                (
+                    role,
+                    CommentBoundary::adjacent(packet.comments[0].span.end),
+                    after,
+                )
+            }
             source @ TypeBoundary {
                 layout: super::TypeOperatorLayout::Source(_),
                 ..
