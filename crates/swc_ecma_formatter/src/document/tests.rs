@@ -54,6 +54,96 @@ fn independent_document(allocator: &Allocator) -> Doc<'_> {
 }
 
 #[test]
+fn compact_borrows() {
+    use super::thin::{ThinSlice, ThinStr};
+
+    let values = [String::from("first"), String::from("second")];
+    let borrowed = ThinSlice::new(&values);
+    let copied = borrowed;
+    assert_eq!(borrowed.get(), values);
+    assert_eq!(copied.get().as_ptr(), values.as_ptr());
+
+    let empty: &[u64] = &[];
+    let borrowed = ThinSlice::new(empty);
+    assert_eq!(borrowed.get(), empty);
+    assert_eq!(borrowed.get().as_ptr(), empty.as_ptr());
+
+    let source = String::from("世界👩\u{200d}💻");
+    let text = ThinStr::new(&source);
+    assert_eq!(text.as_str(), source);
+    assert_eq!(text.as_str().as_ptr(), source.as_ptr());
+
+    // Packed instruction payloads can place the stored pointer off its natural
+    // alignment. Reconstructing the borrow must copy it before dereferencing.
+    #[repr(C, packed)]
+    struct Packed<'a> {
+        prefix: u8,
+        values: ThinSlice<'a, u64>,
+        text: ThinStr<'a>,
+    }
+    let values = [1, 2, 3];
+    let packed = Packed {
+        prefix: 0,
+        values: ThinSlice::new(&values),
+        text,
+    };
+    let borrowed = packed.values;
+    let text = packed.text;
+    assert_eq!(borrowed.get(), values);
+    assert_eq!(text.as_str(), source);
+}
+
+#[test]
+fn compact_scopes() {
+    let allocator = Allocator::new();
+    let source = String::from("世界");
+    let mut writer = Writer::new(&allocator);
+    let fragment = record(&mut writer, |writer| writer.text(source.as_str()));
+    let flat = fragment.try_flat().unwrap();
+    writer.write_fragment(fragment);
+    writer.line_suffix(|writer| {
+        writer.text_copied(" // generated");
+        writer.break_parent();
+    });
+    writer.hard_line();
+    writer.write_flat_fragment(flat);
+    let doc = writer.finish();
+    // Later arena allocations must preserve the sealed instructions and text.
+    let _later = allocator.alloc_str(&"later".repeat(1024));
+    assert_eq!(
+        doc.print(FormatOptions::prettier()),
+        "世界 // generated\n世界"
+    );
+}
+
+#[test]
+fn compact_widths() {
+    use super::text::Text;
+
+    let ascii = "a".repeat(80_000);
+    let text = Text::new(&ascii);
+    assert_eq!(text.clean_ascii_width(), Some(80_000));
+    assert_eq!(text.first_line(17), (80_017, false));
+
+    let unicode = "界".repeat(40_000);
+    let text = Text::new(&unicode);
+    assert_eq!(text.clean_width(), Some(usize::from(u16::MAX)));
+    assert_eq!(text.first_line(17), (usize::from(u16::MAX) + 17, false));
+
+    let controls = "界\tend";
+    let text = Text::new(controls);
+    assert_eq!(text.clean_width(), Some(5));
+    assert_eq!(text.first_line(17), (22, false));
+}
+
+#[cfg(target_pointer_width = "64")]
+#[test]
+fn compact_bounds() {
+    let too_long = [(); u32::MAX as usize + 1];
+    assert!(std::panic::catch_unwind(|| super::thin::ThinSlice::new(&too_long)).is_err());
+}
+
+#[test]
 fn independent_documents() {
     let allocator = Allocator::new();
     let narrow = independent_document(&allocator);
