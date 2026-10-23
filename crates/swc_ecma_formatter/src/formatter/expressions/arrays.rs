@@ -511,7 +511,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut separator = Separator::Line;
         let mut following_mode = None;
         let mut elisions = ElisionLayout::Formatted;
-        let constrained = self.diagnostic_range_is_sensitive(span);
         let trailing_comma = if self.options.trailing_commas == TrailingCommas::None {
             TrailingCommaPolicy::Forbidden
         } else {
@@ -534,62 +533,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 })
             });
-            let source_elisions = match elisions {
-                ElisionLayout::Formatted => 0,
-                ElisionLayout::Source(holes) => {
-                    debug_assert_eq!(
-                        holes, item.holes,
-                        "a source elision boundary covers the prepared AST slots"
-                    );
-                    holes
-                }
-            };
-            for _ in source_elisions..item.holes {
-                let end = item
-                    .argument
-                    .map_or(span.end, |argument| argument.span(ast).start);
-                let gap = Span::new(previous_end, end);
-                let comments = self.comments.between(gap)?;
-                if constrained || !comments.is_empty() {
-                    let Some(comma) = self.find_token(gap, comments, ",") else {
-                        return Err(FormatError::unsupported(
-                            "array elision boundary",
-                            None,
-                            gap,
-                        ));
-                    };
-                    let count = comments.partition_point(|comment| comment.span.end <= comma);
-                    let comments = self.comments.take(count);
-                    match (comments.first(), has_slot) {
-                        (Some(first), has_slot) => {
-                            if has_slot {
-                                self.comment_gap(previous_end, first.span.start, writer);
-                            }
-                            self.format_comment_run(
-                                comments,
-                                CommentRunLayout::Leading(comma),
-                                writer,
-                            )?;
-                        }
-                        (None, true) => layout.separator(
-                            separator,
-                            self.line_constraint(previous_end, comma),
-                            writer,
-                        ),
-                        // The opening boundary already owns the first elision's gap.
-                        (None, false) => {}
-                    }
-                    writer.text(",");
-                    previous_end = comma + 1;
-                    separator = Separator::Line;
-                    has_slot = true;
-                    continue;
-                }
-                if has_slot {
-                    layout.separator(separator, LineConstraint::Unconstrained, writer);
-                    separator = Separator::Line;
-                }
-                writer.text(",");
+            if item.holes != 0 {
+                (previous_end, separator) = self.format_array_elisions(
+                    item.holes,
+                    Span::new(
+                        previous_end,
+                        item.argument
+                            .map_or(span.end, |argument| argument.span(ast).start),
+                    ),
+                    elisions,
+                    has_slot.then_some(separator),
+                    layout,
+                    writer,
+                )?;
                 has_slot = true;
             }
             let Some(argument) = item.argument else {
