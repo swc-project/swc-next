@@ -41,7 +41,6 @@ fn assert_separate_lexical_binding(source: &str, options: Options) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     });
 }
 
@@ -54,7 +53,6 @@ fn annex_b_if_bindings() {
     };
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     };
 
     let source = "if (condition) function f() { return f; }";
@@ -258,10 +256,7 @@ fn annex_b_companion_bindings() {
         let allocator = Allocator::new();
         let source = "if (condition) function f() {} { var g; } g;";
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            let options = AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            };
+            let options = AnalyzeOptions { check_syntax };
             let (ast, semantic) = analyze_with_options(&allocator, source, script, options);
             let variable = reference_symbol(&ast, &semantic, b"g").unwrap();
             let block = semantic
@@ -308,10 +303,7 @@ fn assert_annex_b_companions(source: &str, options: Options, declarations: &[&st
         .map(|declaration| source.find(declaration).unwrap() as u32)
         .collect::<Vec<_>>();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let analyze_options = AnalyzeOptions {
-            check_syntax,
-            ..AnalyzeOptions::default()
-        };
+        let analyze_options = AnalyzeOptions { check_syntax };
         let (ast, semantic) = analyze_with_options(&allocator, source, options, analyze_options);
         let outer = reference_symbols(&ast, &semantic, b"f")
             .pop()
@@ -335,13 +327,7 @@ fn assert_annex_b_dual_binding(source: &str, options: Options) {
     assert!(parse.diagnostics.is_empty());
     let mut previous = None;
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let result = analyze(
-            &parse.ast,
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
-        );
+        let result = analyze(&parse.ast, AnalyzeOptions { check_syntax });
         assert!(result.diagnostics.is_empty());
         let semantic = result.semantic;
         let references = reference_symbols(&parse.ast, &semantic, b"f");
@@ -422,7 +408,6 @@ fn expression_name_bindings() {
     let js = Options::default();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     };
 
     let source = "const f = function n(n) { return n; };";
@@ -592,7 +577,6 @@ fn merged_type_parameters_keep_occurrence_visibility() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     };
 
     let source = "type U = number; interface Box<T> { value: T; outer: U } interface Box<T, U = string> { extra: T; inner: U }";
@@ -672,7 +656,6 @@ fn default_type_parameters() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        build_module_record: true,
     };
 
     let source =

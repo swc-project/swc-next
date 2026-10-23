@@ -116,10 +116,7 @@ fn assert_namespace_type_export_does_not_shadow(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"Inner").unwrap();
         let container = symbol_named(&ast, &semantic, b"Outer");
@@ -162,10 +159,7 @@ fn global_export_aliases() {
             &allocator,
             source,
             dts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                build_module_record: true,
-            },
+            AnalyzeOptions { check_syntax },
         );
         let local = semantic.binding(ScopeId::MODULE, b"Foo").unwrap();
         let mut globals = semantic
@@ -190,24 +184,13 @@ fn global_export_aliases() {
                 .bindings(ScopeId::MODULE)
                 .any(|symbol| symbol == global)
         );
-        assert!(
-            semantic
-                .module_record()
-                .exports()
-                .iter()
-                .all(|entry| ast.node_kind(entry.statement)
-                    != swc_next_ecma_ast::NodeKind::TsNamespaceExportDeclaration)
-        );
 
         let source = "export as namespace Global; export declare const value: number;";
         let (_, semantic) = analyze_with_options(
             &allocator,
             source,
             dts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
         assert_eq!(
             semantic
@@ -491,7 +474,6 @@ fn enum_merging() {
     let ts_module = ts_module_options();
     let syntax_check = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     };
 
     let source = "enum Outer { A = (() => { enum Inner { X }; return 0; })(), B = 1, C = B }";
@@ -552,7 +534,6 @@ fn contextual_await() {
     };
     let syntax = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     };
 
     let source = "enum E{await=1,A=await}";

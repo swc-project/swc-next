@@ -14,8 +14,8 @@ use swc_next_ecma_ast::{Ast, Lang, ScopeId, SourceType, SymbolId};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 
 use swc_next_ecma_semantic::{
-    AnalyzeOptions, ExportOrigin, ExportTarget, NameResolution, ReferenceSpace, Semantic,
-    SemanticReturn, SymbolFlags, SyntaxChecks, analyze, check_syntax,
+    AnalyzeOptions, NameResolution, ReferenceSpace, Semantic, SemanticReturn, SymbolFlags,
+    SyntaxChecks, analyze, check_syntax,
 };
 
 #[track_caller]
@@ -61,7 +61,6 @@ fn analyze_syntax_source<'a>(
         &parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            ..AnalyzeOptions::default()
         },
     );
     assert_eq!(

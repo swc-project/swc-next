@@ -5,7 +5,6 @@ use swc_next_ecma_ast::{
 use crate::{
     Semantic,
     binder::{ReferenceFlags, ReferenceSpace, SymbolTracker},
-    module_record::ModuleRecordBuilder,
     scope::{DecoratorSite, ScopeTracker},
 };
 
@@ -15,7 +14,6 @@ use crate::{
 pub(crate) struct SemanticContext<'a> {
     pub scope: ScopeTracker<'a>,
     pub symbols: SymbolTracker<'a>,
-    pub module_record: ModuleRecordBuilder<'a>,
     // Type syntax and erased value expressions save and restore this default.
     default_reference_flags: ReferenceFlags,
     ts_namespace_depth: u32,
@@ -23,12 +21,10 @@ pub(crate) struct SemanticContext<'a> {
 }
 
 impl<'a> SemanticContext<'a> {
-    pub fn init(tree: &Ast<'a>, build_module_record: bool) -> Self {
-        let allocator = tree.allocator();
+    pub fn init(tree: &Ast<'a>) -> Self {
         Self {
             scope: ScopeTracker::init(tree),
             symbols: SymbolTracker::init(tree),
-            module_record: ModuleRecordBuilder::new(allocator, build_module_record),
             default_reference_flags: ReferenceFlags::default(),
             ts_namespace_depth: 0,
             reference_flags: ReferenceFlags::default(),
@@ -215,6 +211,6 @@ impl<'a> SemanticContext<'a> {
 
     pub fn finalize(self, tree: &Ast<'a>) -> Semantic<'a> {
         let scopes = self.scope.into_scope_tree();
-        self.symbols.finalize(tree, scopes, self.module_record)
+        self.symbols.finalize(tree, scopes)
     }
 }

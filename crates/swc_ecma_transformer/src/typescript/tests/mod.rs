@@ -71,7 +71,6 @@ pub(super) fn with_output_semantic(
         &parsed.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            build_module_record: false,
         },
     );
     assert!(analyzed.diagnostics.is_empty());

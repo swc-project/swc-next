@@ -172,7 +172,6 @@ fn main() -> Result<(), String> {
         &parse.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            ..AnalyzeOptions::default()
         },
     );
     for diagnostic in semantic.diagnostics {

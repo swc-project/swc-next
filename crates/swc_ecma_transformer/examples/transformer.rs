@@ -69,7 +69,6 @@ fn main() -> Result<(), String> {
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            build_module_record: false,
         },
     );
     report_diagnostics(path, &analyzed.diagnostics)?;

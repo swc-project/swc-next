@@ -1,7 +1,7 @@
 # swc_ecma_semantic
 
 Semantic analysis for SWC Next's flat AST. It builds scopes, symbols,
-references, and module records and reports early errors.
+and references and reports early errors.
 
 TypeScript analysis resolves declarations, names, and visibility; it does not
 perform full type checking or expression type inference.

@@ -1,7 +1,7 @@
 //! Scope, binding, declaration, and reference indexes for transforms.
 //!
 //! The model consumes Semantic's basic indexes without retaining its hoisting
-//! conflict tables, module record, or TypeScript member and alias lookup indexes.
+//! conflict tables or TypeScript member and alias lookup indexes.
 //! Index mutations take semantic records and identifiers, not an AST. Transforms
 //! read syntax and coordinate subtree edits through TransformCtx.
 

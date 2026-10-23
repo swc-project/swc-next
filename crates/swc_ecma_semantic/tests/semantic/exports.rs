@@ -1,114 +1,23 @@
 use super::*;
 
 #[test]
-fn module_records_link_imports_and_exports() {
-    let allocator = Allocator::new();
-    let js_module = Options::default();
-    let module_options = AnalyzeOptions {
-        build_module_record: true,
-        ..AnalyzeOptions::default()
-    };
-
-    let source = "export const value = 1;";
-    let (_, semantic) = analyze_source(&allocator, source, js_module);
-    assert!(semantic.module_record().exports().is_empty());
-
-    let source = "export { value }; const value = 1;";
-    let (ast, semantic) = analyze_with_options(&allocator, source, js_module, module_options);
-    let body = ast.root_program().body(&ast);
-    let statement = body.get_node(&ast, 0).unwrap();
-    let declaration = statement.as_export_named_declaration(&ast).unwrap();
-    let local_specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
-    let local_node = local_specifier.local(&ast).node_id();
-
-    let local_reference = semantic.reference_of(local_node).unwrap();
-    let local_reference_data = semantic.reference(local_reference);
-    let local_symbol = local_reference_data.symbol.unwrap();
-    assert_eq!(local_reference_data.flags.space, ReferenceSpace::Any);
-
-    let local_export = semantic
-        .module_record()
-        .exports()
-        .iter()
-        .find(|entry| entry.node == local_specifier.node_id())
-        .unwrap();
-    assert_eq!(local_export.origin, ExportOrigin::LocalSpecifier);
-    assert_eq!(
-        local_export.target,
-        ExportTarget::Local {
-            symbol: local_symbol,
-            reference: Some(local_reference),
-        }
-    );
-
-    let source = "export { external as alias } from 'dep';";
-    let (ast, semantic) = analyze_with_options(&allocator, source, js_module, module_options);
-    let body = ast.root_program().body(&ast);
-    let statement = body.get_node(&ast, 0).unwrap();
-    let declaration = statement.as_export_named_declaration(&ast).unwrap();
-    let re_export_specifier = declaration.specifiers(&ast).get_node(&ast, 0).unwrap();
-    let re_export_node = re_export_specifier.local(&ast).node_id();
-    assert_eq!(semantic.reference_of(re_export_node), None);
-
-    let re_export = semantic
-        .module_record()
-        .exports()
-        .iter()
-        .find(|entry| entry.node == re_export_specifier.node_id())
-        .unwrap();
-    assert_eq!(re_export.origin, ExportOrigin::ReExportSpecifier);
-    assert!(matches!(re_export.target, ExportTarget::External { .. }));
-}
-
-#[test]
 fn default_exports() {
     let allocator = Allocator::new();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        build_module_record: true,
     };
     let ts = ts_module_options();
     let dts = dts_module_options();
 
     let source = "export default function f(value: string): string; type F = typeof f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, dts, checked);
-    let symbol = default_export_symbol(&semantic);
+    let symbol = semantic.ts_default_export_symbol().unwrap();
     assert_eq!(reference_symbol(&ast, &semantic, b"f"), Some(symbol));
 
     let source = "export default function f(value: string): string; export default function f(value: number): number; export default function f(value: string | number) { return value; }";
     let (_, semantic) = analyze_with_options(&allocator, source, ts, checked);
-    let symbol = default_export_symbol(&semantic);
+    let symbol = semantic.ts_default_export_symbol().unwrap();
     assert_eq!(semantic.declarations(symbol).len(), 3);
-    assert_eq!(semantic.module_record().exports().len(), 3);
-    assert!(
-        semantic
-            .module_record()
-            .exports()
-            .iter()
-            .all(|entry| entry.target
-                == ExportTarget::Local {
-                    symbol,
-                    reference: None
-                })
-    );
-
-    let source = "export default function (value: string): string;";
-    let (_, semantic) = analyze_with_options(&allocator, source, dts, checked);
-    assert!(matches!(
-        semantic.module_record().exports()[0].target,
-        ExportTarget::AnonymousDeclaration { .. }
-    ));
-}
-
-fn default_export_symbol(semantic: &Semantic<'_>) -> SymbolId {
-    let ExportTarget::Local {
-        symbol,
-        reference: None,
-    } = semantic.module_record().exports()[0].target
-    else {
-        panic!("expected a named default declaration")
-    };
-    symbol
 }
 
 fn import_alias_symbol(semantic: &Semantic<'_>) -> SymbolId {
@@ -125,12 +34,11 @@ fn default_binding_spaces() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        build_module_record: true,
     };
 
     let source = "export default function f() {} export default interface I { value: string } let item: f; const fn = f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
-    let symbol = default_export_symbol(&semantic);
+    let symbol = semantic.ts_default_export_symbol().unwrap();
     assert_eq!(
         reference_symbols(&ast, &semantic, b"f"),
         [Some(symbol), Some(symbol)]
@@ -145,7 +53,7 @@ fn default_binding_spaces() {
 
     let source = "export default interface I { value: string } export default function f() {} let item: f; const fn = f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
-    let symbol = default_export_symbol(&semantic);
+    let symbol = semantic.ts_default_export_symbol().unwrap();
     assert_eq!(
         reference_symbols(&ast, &semantic, b"f"),
         [Some(symbol), Some(symbol)]
@@ -153,7 +61,7 @@ fn default_binding_spaces() {
 
     let source = "export default function f() {} export default interface I { value: string } type f = number; const value: f = 1; const fn = f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
-    let symbol = default_export_symbol(&semantic);
+    let symbol = semantic.ts_default_export_symbol().unwrap();
     let local = semantic.binding(ScopeId::MODULE, b"f").unwrap();
     assert_ne!(local, symbol);
     assert_eq!(
@@ -164,7 +72,7 @@ fn default_binding_spaces() {
     let source = "export default interface I<T> { extra: T } export default class C<T> { value!: T } const I = 1; const value = I;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
     let local = semantic.binding(ScopeId::MODULE, b"I").unwrap();
-    assert_ne!(local, default_export_symbol(&semantic));
+    assert_ne!(local, semantic.ts_default_export_symbol().unwrap());
     assert_eq!(reference_symbol(&ast, &semantic, b"I"), Some(local));
     assert_merged_type_parameter(&ast, &semantic, b"T");
 }
@@ -175,7 +83,6 @@ fn default_namespace_aliases() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        build_module_record: true,
     };
 
     let source = "export default function f() {} namespace f { export interface Item {} } const A = 1; type A = string; namespace Test { import A = f; export const fn: typeof A = A; export let text: A; }";
@@ -219,12 +126,11 @@ fn source_exports() {
     let dts = dts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        build_module_record: true,
     };
 
     let source = "export default function f() {} export default interface I { value: string } export type f = number; let item: f;";
     let (ast, semantic) = analyze_with_options(&allocator, source, ts, checked);
-    let default = default_export_symbol(&semantic);
+    let default = semantic.ts_default_export_symbol().unwrap();
     let module = semantic.ts_source_module_symbol().unwrap();
     let named = semantic.ts_namespace_member(module, b"f").unwrap();
     assert_ne!(named, default);
@@ -292,7 +198,6 @@ fn assert_forward_namespace_export(source: &str, target_name: &[u8]) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     });
 }
 
@@ -372,10 +277,7 @@ fn assert_public_alias_conflict_meanings(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
     }
 }
@@ -389,10 +291,7 @@ fn static_composed_exports() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         assert_eq!(
@@ -426,10 +325,7 @@ fn static_values_do_not_become_namespace_locals() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
         let x = semantic.binding(ScopeId::MODULE, b"x").unwrap();
         assert_eq!(reference_symbol(&ast, &semantic, b"x"), Some(x));
@@ -458,13 +354,7 @@ fn assert_composed_namespace_export_recovery(source: &str, runtime_read: bool) {
         let parse =
             Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
         assert!(parse.diagnostics.is_empty());
-        let result = analyze(
-            &parse.ast,
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
-        );
+        let result = analyze(&parse.ast, AnalyzeOptions { check_syntax });
         // These inputs can produce TS1379. Test recovery semantics,
         // without requiring either the presence or absence of diagnostics.
         let ast = &parse.ast;
@@ -515,7 +405,6 @@ fn assert_composed_namespace_export(source: &str) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     });
 }
 
@@ -641,7 +530,6 @@ fn assert_namespace_export_reference(
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     });
 }
 
@@ -1025,11 +913,8 @@ fn global_augmentation_exports() {
 #[track_caller]
 fn assert_global_augmentation_export(source: &str, value: bool) {
     let allocator = Allocator::new();
-    let check = |check_syntax, build_module_record| {
-        let options = AnalyzeOptions {
-            check_syntax,
-            build_module_record,
-        };
+    let check = |check_syntax| {
+        let options = AnalyzeOptions { check_syntax };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let target = semantic.binding(ScopeId::ROOT, b"X").unwrap();
@@ -1038,25 +923,10 @@ fn assert_global_augmentation_export(source: &str, value: bool) {
         if semantic.binding(ScopeId::MODULE, b"N").is_some() {
             let import = semantic.binding(ScopeId::MODULE, b"A").unwrap();
             assert_eq!(semantic.ts_import_alias_target(import), Some(target));
-        } else if build_module_record {
-            let [export] = semantic.module_record().exports() else {
-                panic!("expected one source export");
-            };
-            let ExportTarget::Local {
-                symbol,
-                reference: Some(reference),
-            } = export.target
-            else {
-                panic!("expected a resolved export reference");
-            };
-            assert_eq!(symbol, target);
-            assert!(semantic.uses(target).contains(&reference));
         }
     };
-    check(SyntaxChecks::empty(), false);
-    check(SyntaxChecks::all(), false);
-    check(SyntaxChecks::empty(), true);
-    check(SyntaxChecks::all(), true);
+    check(SyntaxChecks::empty());
+    check(SyntaxChecks::all());
 }
 
 fn nested_namespace_exports() -> String {

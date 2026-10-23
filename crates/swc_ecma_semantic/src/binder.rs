@@ -21,7 +21,6 @@ use swc_next_ecma_ast::{
 
 use crate::{
     DeclarationId, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, Semantic,
-    module_record::ModuleRecordBuilder,
     scope::{Scope, ScopeKind, ScopeTracker, ScopeTree},
 };
 
@@ -1833,9 +1832,7 @@ pub(crate) struct SymbolTracker<'a> {
 pub(crate) enum ExportState {
     #[default]
     None,
-    Named {
-        statement: NodeId,
-    },
+    Named,
     Default,
 }
 
@@ -1848,11 +1845,8 @@ impl ExportState {
         matches!(self, Self::Default)
     }
 
-    pub(crate) fn named(self) -> Option<NodeId> {
-        match self {
-            Self::Named { statement } => Some(statement),
-            Self::None | Self::Default => None,
-        }
+    pub(crate) fn is_named(self) -> bool {
+        matches!(self, Self::Named)
     }
 }
 
@@ -2087,9 +2081,7 @@ impl<'a> SymbolTracker<'a> {
         if declaration.declaration(tree).is_some()
             || declaration.export_kind(tree) != ImportOrExportKind::Type
         {
-            self.export_state = ExportState::Named {
-                statement: declaration.node_id(),
-            };
+            self.export_state = ExportState::Named;
         }
     }
 
@@ -2810,14 +2802,13 @@ impl<'a> SymbolTracker<'a> {
         tree: &Ast<'a>,
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
-    ) -> bool {
+    ) {
         let Some((node, name)) = self.binding_identifier_declaration(tree, identifier, scope)
         else {
-            return false;
+            return;
         };
         let declaration_id = self.declare(tree, name.into(), node);
         self.finish_binding_identifier(tree, name, declaration_id, scope);
-        true
     }
 
     pub(crate) fn declare_prepared_binding_identifier(
@@ -2826,16 +2817,15 @@ impl<'a> SymbolTracker<'a> {
         identifier: BindingIdentifier,
         scope: &ScopeTracker<'a>,
         prepared: PreparedDeclaration,
-    ) -> bool {
+    ) {
         let Some((node, name)) = self.binding_identifier_declaration(tree, identifier, scope)
         else {
-            return false;
+            return;
         };
         debug_assert_eq!(prepared.node(), node);
         debug_assert_eq!(prepared.name(), name.into());
         let declaration_id = self.declare_prepared(tree, prepared);
         self.finish_binding_identifier(tree, name, declaration_id, scope);
-        true
     }
 
     pub(crate) fn prepare_ts_enum_member(
@@ -4152,12 +4142,7 @@ impl<'a> SymbolTracker<'a> {
     /// declaration, use, and node indexes and resolves every reference
     /// to its declaring symbol. The result aliases tracker storage and
     /// remains valid for the source tree's arena lifetime.
-    pub fn finalize(
-        mut self,
-        tree: &Ast<'a>,
-        scopes: ScopeTree<'a>,
-        module_record: ModuleRecordBuilder<'a>,
-    ) -> Semantic<'a> {
+    pub fn finalize(mut self, tree: &Ast<'a>, scopes: ScopeTree<'a>) -> Semantic<'a> {
         // The walk must have ended balanced.
         debug_assert!(self.saved_stack.is_empty());
         debug_assert_eq!(self.export_state, ExportState::None);
@@ -4281,7 +4266,6 @@ impl<'a> SymbolTracker<'a> {
             ));
             *slot = NodeSemanticId::Scope(ScopeId::from_usize(index));
         }
-        let module_record = module_record.finalize(&self.node_semantic, &self.references);
         let declarations = self.declarations;
         let redeclarations = self.redeclarations;
         let node_semantic = self.node_semantic;
@@ -4300,7 +4284,6 @@ impl<'a> SymbolTracker<'a> {
             reference_candidates,
             declarations,
             redeclarations,
-            module_record,
             use_ids,
             use_ranges,
             scope_maps: self.scope_maps,

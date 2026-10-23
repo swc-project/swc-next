@@ -154,7 +154,7 @@ pub(super) fn check_binding_identifier<'traverse>(
     } else {
         None
     };
-    if builder.state.symbols.export_state.named().is_some() {
+    if builder.state.symbols.export_state.is_named() {
         builder.record_exported_name(name, node_id);
     }
     prepared

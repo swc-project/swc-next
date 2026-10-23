@@ -57,16 +57,12 @@ pub struct SemanticBuilder<'traverse, 'a> {
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(
-        ast: &'traverse Ast<'a>,
-        check_syntax: SyntaxChecks,
-        build_module_record: bool,
-    ) -> Self {
+    pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
             diagnostics: Vec::new(),
-            state: SemanticContext::init(ast, build_module_record),
+            state: SemanticContext::init(ast),
             ast,
             path: Vec::with_capacity(64),
             check_syntax,
@@ -437,25 +433,18 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         };
         let current = self.path.pop();
         debug_assert_eq!(current, Some(node.node_id()));
-        let direct_export = self.state.symbols.export_state.named();
-        let direct_export = direct_export.filter(|_| !self.state.in_ts_namespace());
         let state = &mut self.state;
-        let declared = if let Some(prepared) = prepared {
+        if let Some(prepared) = prepared {
             state.symbols.declare_prepared_binding_identifier(
                 self.ast,
                 node,
                 &state.scope,
                 prepared,
-            )
+            );
         } else {
             state
                 .symbols
-                .declare_binding_identifier(self.ast, node, &state.scope)
-        };
-        if declared && let Some(statement) = direct_export {
-            state
-                .module_record
-                .add_direct_export(self.ast, node.node_id(), statement);
+                .declare_binding_identifier(self.ast, node, &state.scope);
         }
     }
 
@@ -850,9 +839,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_export_default_declaration(&mut self, node: ExportDefaultDeclaration) {
         self.enter_node(node.node_id());
-        if !self.state.in_ts_namespace() {
-            self.state.module_record.add_default_export(self.ast, node);
-        }
         self.state.symbols.enter_export_default_declaration();
         let declaration = node.declaration(self.ast);
         let space = declaration
@@ -868,9 +854,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
 
     fn visit_export_all_declaration(&mut self, node: ExportAllDeclaration) {
         self.enter_node(node.node_id());
-        if !self.state.in_ts_namespace() {
-            self.state.module_record.add_export_all(self.ast, node);
-        }
         node.visit_children_with(self);
         self.leave_node(NodeKindData::ExportAllDeclaration(node));
     }
@@ -885,13 +868,6 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             };
             Some(declaration)
         });
-        if !self.state.in_ts_namespace()
-            && let Some(declaration) = declaration
-        {
-            self.state
-                .module_record
-                .add_specifier(self.ast, declaration, node);
-        }
         let type_only = node.export_kind(self.ast) == ImportOrExportKind::Type
             || declaration.is_some_and(|declaration| {
                 declaration.export_kind(self.ast) == ImportOrExportKind::Type

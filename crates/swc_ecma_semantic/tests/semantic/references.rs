@@ -309,7 +309,6 @@ fn computed_key_contexts() {
     let unchecked = AnalyzeOptions::default();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..unchecked
     };
     let queried = (ReferenceSpace::Typeof, false, false);
     let typed = (ReferenceSpace::Type, false, false);
@@ -430,7 +429,6 @@ fn assert_const_assertion_references(source: &str, count: usize) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
-        ..AnalyzeOptions::default()
     });
 }
 
@@ -458,60 +456,43 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
 
     for parser_options in [ts_module, ts_module_without_parens] {
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            for build_module_record in [false, true] {
-                let options = AnalyzeOptions {
-                    check_syntax,
-                    build_module_record,
-                };
-                let (ast, semantic) =
-                    analyze_with_options(&allocator, source, parser_options, options);
-                let entry = semantic
-                    .iter_references()
-                    .find(|entry| ast.get_utf8(entry.reference.name) == "X")
-                    .unwrap();
-                assert!(matches!(
-                    entry.reference.resolution(),
-                    NameResolution::Resolved(_)
-                ));
-                assert_eq!(entry.reference.flags.is_read(), read);
-                assert!(!entry.reference.flags.is_write());
-                let canonical = entry.reference.symbol.unwrap();
-                assert_eq!(
-                    semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
-                    [canonical],
-                );
-                assert!(semantic.uses(canonical).contains(&entry.id));
-                let target = value
-                    .map(|declaration| symbol_at_declaration(&ast, &semantic, source, declaration));
-                let expected = target
-                    .map(NameResolution::Resolved)
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                assert_eq!(
-                    semantic
-                        .reference_value_targets(&ast, entry.id)
-                        .collect::<Vec<_>>(),
-                    expected
-                );
-                if build_module_record && entry.reference.scope == ScopeId::MODULE {
-                    assert!(semantic.module_record().exports().iter().any(|export| {
-                        match export.target {
-                            ExportTarget::Local { reference, .. }
-                            | ExportTarget::Expression { reference, .. } => {
-                                reference == Some(entry.id)
-                            }
-                            _ => false,
-                        }
-                    }));
-                }
+            let options = AnalyzeOptions { check_syntax };
+            let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
+            let entry = semantic
+                .iter_references()
+                .find(|entry| ast.get_utf8(entry.reference.name) == "X")
+                .unwrap();
+            assert!(matches!(
+                entry.reference.resolution(),
+                NameResolution::Resolved(_)
+            ));
+            assert_eq!(entry.reference.flags.is_read(), read);
+            assert!(!entry.reference.flags.is_write());
+            let canonical = entry.reference.symbol.unwrap();
+            assert_eq!(
+                semantic.reference_candidates(entry.id).collect::<Vec<_>>(),
+                [canonical],
+            );
+            assert!(semantic.uses(canonical).contains(&entry.id));
+            let target = value
+                .map(|declaration| symbol_at_declaration(&ast, &semantic, source, declaration));
+            let expected = target
+                .map(NameResolution::Resolved)
+                .into_iter()
+                .collect::<Vec<_>>();
+            assert_eq!(
+                semantic
+                    .reference_value_targets(&ast, entry.id)
+                    .collect::<Vec<_>>(),
+                expected
+            );
 
-                if value.is_some() {
-                    let local_type = semantic
-                        .lookup(entry.reference.scope, b"X", ReferenceSpace::Type)
-                        .unwrap();
-                    assert_ne!(Some(local_type), target);
-                    assert_eq!(entry.reference.symbol, Some(local_type));
-                }
+            if value.is_some() {
+                let local_type = semantic
+                    .lookup(entry.reference.scope, b"X", ReferenceSpace::Type)
+                    .unwrap();
+                assert_ne!(Some(local_type), target);
+                assert_eq!(entry.reference.symbol, Some(local_type));
             }
         }
     }
@@ -595,10 +576,7 @@ fn export_value_references() {
 fn assert_alias_value_reference(source: &str, value: bool, read: bool) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let options = AnalyzeOptions {
-            check_syntax,
-            ..AnalyzeOptions::default()
-        };
+        let options = AnalyzeOptions { check_syntax };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let alias = symbol_named(&ast, &semantic, b"Alias");
@@ -669,10 +647,7 @@ fn assert_jsx_value_roots(source: &str, names: &[&[u8]]) {
                 lang: Lang::Tsx,
                 ..Options::default()
             },
-            AnalyzeOptions {
-                check_syntax,
-                ..AnalyzeOptions::default()
-            },
+            AnalyzeOptions { check_syntax },
         );
         let references = semantic
             .iter_references()

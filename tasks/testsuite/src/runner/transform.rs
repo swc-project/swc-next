@@ -137,7 +137,6 @@ fn transform_program<'a, C: TransformCase>(
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            build_module_record: false,
         },
     );
     if semantic_ret

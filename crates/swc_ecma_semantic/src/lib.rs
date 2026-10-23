@@ -1,4 +1,4 @@
-//! Scope, symbol, reference, module-record, and early-error analysis for the flat ECMAScript AST.
+//! Scope, symbol, reference, and early-error analysis for the flat ECMAScript AST.
 //!
 //! TypeScript analysis resolves declaration identities, spaces, and visibility.
 //! It does not infer expression types or evaluate conditional types. Member
@@ -36,17 +36,12 @@ mod binder;
 mod builder;
 mod context;
 mod ecmascript;
-mod module_record;
 pub mod scope;
 mod scope_model;
 mod syntax_checks;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
-};
-pub use module_record::{
-    ExportEntry, ExportName, ExportOrigin, ExportTarget, ExternalExportName, ModuleName,
-    ModuleRecord,
 };
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
@@ -107,7 +102,6 @@ pub struct Semantic<'a> {
     /// Each node records one binding, reference, or created scope identity.
     node_semantic: ArenaVec<'a, NodeSemanticId>,
 
-    module_record: ModuleRecord<'a>,
     ts_members: TsMemberIndex<'a>,
 }
 
@@ -165,12 +159,6 @@ impl<'a> Semantic<'a> {
     /// The declaration with the given id.
     pub fn declaration(&self, id: DeclarationId) -> Declaration {
         self.declarations[id.index()]
-    }
-
-    /// The source text module's export occurrences and resolved targets.
-    /// Empty unless [`AnalyzeOptions::build_module_record`] was enabled.
-    pub fn module_record(&self) -> &ModuleRecord<'a> {
-        &self.module_record
     }
 
     /// The scope with the given id.
@@ -700,11 +688,6 @@ pub struct AnalyzeOptions {
     ///
     /// Disabled by default. Use [`SyntaxChecks::all`] to enable every check.
     pub check_syntax: SyntaxChecks,
-    /// Whether to collect the source text module's export occurrences and
-    /// resolved targets in [`Semantic::module_record`].
-    ///
-    /// Disabled by default.
-    pub build_module_record: bool,
 }
 
 /// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
@@ -712,11 +695,9 @@ pub struct AnalyzeOptions {
 /// The checks selected by [`AnalyzeOptions::check_syntax`] report scope-dependent early
 /// errors separately from parser diagnostics. Their messages use
 /// the tree's arena, so the result is valid as long as the tree is alive.
-/// When [`AnalyzeOptions::build_module_record`] is disabled, the returned
-/// module record is empty.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = SemanticBuilder::new(ast, options.check_syntax, options.build_module_record);
+    let mut visitor = SemanticBuilder::new(ast, options.check_syntax);
     root.visit_with(&mut visitor);
     let (diagnostics, state) = visitor.finish();
     let semantic = state.finalize(ast);
@@ -737,7 +718,7 @@ pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'
     if checks.is_empty() {
         return Vec::new();
     }
-    let mut visitor = SemanticBuilder::new(ast, checks, false);
+    let mut visitor = SemanticBuilder::new(ast, checks);
     ast.root_program().visit_with(&mut visitor);
     visitor.finish().0
 }

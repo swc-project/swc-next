@@ -41,7 +41,6 @@ fn run_semantic<'a>(ast: &Ast<'a>) -> Semantic<'a> {
         ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            build_module_record: false,
         },
     )
     .semantic

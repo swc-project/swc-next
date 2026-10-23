@@ -126,7 +126,6 @@ fn minify_source(source: &str, options: &FixtureOptions) -> Result<String, Strin
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
-            ..AnalyzeOptions::default()
         },
     );
     check_diagnostics("semantic", &analysis.diagnostics)?;
