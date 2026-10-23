@@ -41,13 +41,11 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         debug_assert!(!name.is_empty() || flags.contains(SymbolFlags::ENUM_MEMBER));
         for candidate in prepared.conflict_candidates() {
             let existing_id = candidate.symbol;
-            let (existing_flags, existing_node) =
-                self.state.symbols.conflict_candidate_info(candidate);
+            let (existing_flags, existing_node) = self.symbols.conflict_candidate_info(candidate);
             if self.ast.is_ts()
                 && (flags.contains(SymbolFlags::EXPORTED)
                     || existing_flags.contains(SymbolFlags::EXPORTED))
                 && self
-                    .state
                     .symbols
                     .has_same_scope_export_visibility_conflict(prepared, existing_id)
             {
@@ -64,12 +62,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 && self.ast.is_ts()
                 && flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
                 && existing_flags.intersects(SymbolFlags::FUNCTION | SymbolFlags::CLASS)
-                && has_class_function_conflict(
-                    &self.state.symbols,
-                    candidate,
-                    flags,
-                    existing_flags,
-                );
+                && has_class_function_conflict(&self.symbols, candidate, flags, existing_flags);
             if declaration_conflict || invalid_class_function_merge {
                 self.report_redeclaration(self.ast, name, node, existing_node, existing_flags);
                 return;
@@ -84,7 +77,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 && let Some(parameters) = find_formal_parameters(self)
             {
                 let kind = parameters.kind(self.ast);
-                let must_be_unique = self.state.is_strict()
+                let must_be_unique = self.is_strict()
                     || matches!(
                         kind,
                         swc_next_ecma_ast::FormalParameterKind::UniqueFormalParameters
@@ -97,7 +90,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             }
         }
 
-        if let Some(existing) = self.state.symbols.hoisting_conflict(prepared, name) {
+        if let Some(existing) = self.symbols.hoisting_conflict(prepared, name) {
             self.report_redeclaration(self.ast, name, node, existing.node, existing.flags);
             return;
         }
@@ -126,13 +119,13 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         //
         //   function f(a = 1) { let a }   // still an error
         //   function f(a = 1) { var a }   // legal, var stays out
-        let target_scope = self.state.scope.get(target);
+        let target_scope = self.scope.get(target);
         let Some(outer) = target_scope.parent else {
             return;
         };
         let outer_holds_parameters = match target_scope.kind {
             ScopeKind::FunctionBody => true,
-            ScopeKind::Block => match self.ast.kind_data(self.state.scope.get(outer).node) {
+            ScopeKind::Block => match self.ast.kind_data(self.scope.get(outer).node) {
                 NodeKindData::CatchClause(catch) => {
                     catch.body(self.ast).node_id() == target_scope.node
                 }
@@ -143,10 +136,10 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         if !outer_holds_parameters {
             return;
         }
-        let Some(symbol_id) = self.state.symbols.own_binding(outer, name) else {
+        let Some(symbol_id) = self.symbols.own_binding(outer, name) else {
             return;
         };
-        let existing = self.state.symbols.symbol(symbol_id);
+        let existing = self.symbols.symbol(symbol_id);
         if existing
             .flags
             .intersects(SymbolFlags::PARAMETER | SymbolFlags::CATCH_VAR)
@@ -156,7 +149,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                 self.ast,
                 name,
                 node,
-                self.state.symbols.first_decl_of(symbol_id),
+                self.symbols.first_decl_of(symbol_id),
                 existing.flags,
             );
         }
@@ -174,20 +167,20 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         // Per 14.2.1, a hoisting var conflicts with block-scoped names
         // in any intermediate block it passes through.
         if flags.is_hoisting_var() {
-            for scope_id in self.state.scope.ancestors(Some(self.state.current_scope)) {
+            for scope_id in self.scope.ancestors(Some(self.current_scope)) {
                 if scope_id == target {
                     break;
                 }
-                let Some(symbol_id) = self.state.symbols.own_binding(scope_id, name) else {
+                let Some(symbol_id) = self.symbols.own_binding(scope_id, name) else {
                     continue;
                 };
-                let existing = self.state.symbols.symbol(symbol_id);
+                let existing = self.symbols.symbol(symbol_id);
                 if existing.flags.is_block_scoped_like() {
                     self.report_redeclaration(
                         self.ast,
                         name,
                         node,
-                        self.state.symbols.first_decl_of(symbol_id),
+                        self.symbols.first_decl_of(symbol_id),
                         existing.flags,
                     );
                     break;
@@ -197,7 +190,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                     // (14.15.1): a var colliding with a catch parameter is a
                     // syntax error, except for the Annex B.3.4 simple-binding
                     // web-compat carve-out.
-                    let catch_node = self.state.scope.get(scope_id).node;
+                    let catch_node = self.scope.get(scope_id).node;
                     let NodeKindData::CatchClause(catch) = self.ast.kind_data(catch_node) else {
                         unreachable!()
                     };
@@ -209,7 +202,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
                             self.ast,
                             name,
                             node,
-                            self.state.symbols.first_decl_of(symbol_id),
+                            self.symbols.first_decl_of(symbol_id),
                             existing.flags,
                         );
                         break;

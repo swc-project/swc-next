@@ -2432,7 +2432,7 @@ impl<'a> SymbolTracker<'a> {
         current_scope: ScopeId,
     ) {
         // The id binds in the surrounding scope. Type-parameter and
-        // body bindings live in a scope pushed by the context.
+        // body bindings live in a scope pushed by the builder.
         self.push_saved_context();
         self.pending = PendingBinding {
             flags: SymbolFlags::INTERFACE.with(

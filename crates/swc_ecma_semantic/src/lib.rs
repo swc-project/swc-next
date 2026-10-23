@@ -34,7 +34,6 @@ use crate::{
 
 mod binder;
 mod builder;
-mod context;
 mod ecmascript;
 pub mod scope;
 mod scope_model;
@@ -697,14 +696,9 @@ pub struct AnalyzeOptions {
 /// the tree's arena, so the result is valid as long as the tree is alive.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut visitor = SemanticBuilder::new(ast, options.check_syntax);
-    root.visit_with(&mut visitor);
-    let (diagnostics, state) = visitor.finish();
-    let semantic = state.finalize(ast);
-    SemanticReturn {
-        semantic,
-        diagnostics,
-    }
+    let mut builder = SemanticBuilder::new(ast, options.check_syntax);
+    root.visit_with(&mut builder);
+    builder.build()
 }
 
 /// Checks scope-dependent syntax errors without building a [`Semantic`] model.
@@ -718,7 +712,7 @@ pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'
     if checks.is_empty() {
         return Vec::new();
     }
-    let mut visitor = SemanticBuilder::new(ast, checks);
-    ast.root_program().visit_with(&mut visitor);
-    visitor.finish().0
+    let mut builder = SemanticBuilder::new(ast, checks);
+    ast.root_program().visit_with(&mut builder);
+    builder.into_diagnostics()
 }

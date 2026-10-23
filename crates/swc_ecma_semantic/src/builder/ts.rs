@@ -426,7 +426,7 @@ pub(super) fn check_ts_ambient_export_assignment_expression(
     if !builder.check_syntax.ts_ambient_export_assignments() {
         return;
     }
-    if !builder.state.symbols.in_ambient_context()
+    if !builder.symbols.in_ambient_context()
         || is_ts_entity_name_expression(builder.ast, expression)
         || !is_export_assignment_container(builder)
     {
@@ -531,8 +531,8 @@ pub(super) fn check_contextual_await(
         return;
     }
     let context = &*checker;
-    if context.state.in_type_position()
-        || context.state.symbols.in_ambient_context()
+    if context.in_type_position()
+        || context.symbols.in_ambient_context()
         || !context.ast.is_module()
         || !is_in_top_level_context(context, node)
     {
