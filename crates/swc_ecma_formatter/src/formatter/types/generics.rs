@@ -1039,7 +1039,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let movable = constraint.node.source_owner.is_none()
             && matches!(
                 &constraint.boundary.layout,
-                super::TypeBoundaryLayout::Formatted { .. }
+                super::TypeOperatorLayout::Formatted { .. }
             );
         match default {
             ParameterBound {
@@ -1047,7 +1047,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary:
                     TypeBoundary {
                         role,
-                        layout: super::TypeBoundaryLayout::Formatted { before, after },
+                        layout: super::TypeOperatorLayout::Formatted { before, after },
                         ..
                     },
             } if movable && !after.is_empty() => {
@@ -1106,7 +1106,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (role, before, after) = match bound.boundary {
             source @ TypeBoundary {
-                layout: super::TypeBoundaryLayout::Source(_),
+                layout: super::TypeOperatorLayout::Source(_),
                 ..
             } => {
                 self.format_type_boundary(&source, writer)?;
@@ -1127,7 +1127,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TypeBoundary {
                 role,
-                layout: super::TypeBoundaryLayout::Formatted { before, after },
+                layout: super::TypeOperatorLayout::Suppressed { before, head },
+                ..
+            } => {
+                self.format_formatted_type_boundary_operator(role, &before, writer)?;
+                let group = self.format_parameter_bound_separator(
+                    None,
+                    CommentGap::Source(LineConstraint::Unconstrained),
+                    writer,
+                )?;
+                let pending = writer.indent_if_break(group, |writer| {
+                    self.format_suppressed_type_head(&head, writer)?;
+                    self.format_prepared_type_with_layout(
+                        bound.node,
+                        context,
+                        TypeLayout::Root,
+                        writer,
+                    )
+                })?;
+                if let Some(tail) = tail {
+                    self.format_expression_tail(pending, writer)?;
+                    self.format_type_boundary_tail(tail, writer)?;
+                    return Ok(None);
+                }
+                return Ok(pending);
+            }
+            TypeBoundary {
+                role,
+                layout: super::TypeOperatorLayout::Formatted { before, after },
                 ..
             } => (role, before, after),
         };

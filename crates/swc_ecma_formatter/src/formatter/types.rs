@@ -203,8 +203,29 @@ pub(super) enum TypeLayout {
     ConditionalAlternate,
 }
 
+/// A marker-only type head whose ignored owner survives either line layout.
+/// The caller formats its operator and indentation; the selected raw type stays separate.
+pub(super) struct SuppressedTypeHead<'ast> {
+    comments: &'ast [Comment],
+    next_start: u32,
+}
+
 enum TypeBoundaryLayout<'ast> {
     Source(Span),
+    Formatted {
+        before: CommentBoundary<'ast>,
+        after: CommentBoundary<'ast>,
+    },
+}
+
+/// Operator boundaries can separate a proven suppressed head from source geometry.
+/// Other type punctuation still carries an ordinary or source-bound gap.
+enum TypeOperatorLayout<'ast> {
+    Source(Span),
+    Suppressed {
+        before: CommentBoundary<'ast>,
+        head: SuppressedTypeHead<'ast>,
+    },
     Formatted {
         before: CommentBoundary<'ast>,
         after: CommentBoundary<'ast>,
@@ -214,7 +235,7 @@ pub(super) struct TypeBoundary<'ast> {
     role: TypeBoundaryRole,
     pub(super) left_mode: ContentMode,
     pub(super) right_mode: ContentMode,
-    layout: TypeBoundaryLayout<'ast>,
+    layout: TypeOperatorLayout<'ast>,
 }
 
 pub(super) enum TypeGap<'ast> {
@@ -755,11 +776,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => FlatSeparator::Space,
         };
         let (before, after) = match &boundary.layout {
-            TypeBoundaryLayout::Source(gap) => {
+            TypeOperatorLayout::Source(gap) => {
                 self.format_source_gap(*gap, writer)?;
                 return Ok(None);
             }
-            TypeBoundaryLayout::Formatted { before, after } => (before, after),
+            TypeOperatorLayout::Suppressed { before, head } => {
+                self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+                writer.space();
+                self.format_suppressed_type_head(head, writer)?;
+                return Ok(None);
+            }
+            TypeOperatorLayout::Formatted { before, after } => (before, after),
         };
         self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
         Ok(Some((after, space)))
@@ -893,7 +920,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (before, after) = match &boundary.layout {
-            TypeBoundaryLayout::Source(gap) => {
+            TypeOperatorLayout::Source(gap) => {
                 self.format_source_gap(*gap, writer)?;
                 return self.format_prepared_type_with_layout(
                     node,
@@ -902,7 +929,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 );
             }
-            TypeBoundaryLayout::Formatted { before, after } => (before, after),
+            TypeOperatorLayout::Suppressed { before, head } => {
+                self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+                return writer.group(false, |writer| {
+                    rhs_layout.write(
+                        writer,
+                        |writer| match rhs_layout {
+                            RhsLayout::NeverBreakAfterOperator => writer.space(),
+                            RhsLayout::Fluid | RhsLayout::BreakAfterOperator => writer.line(),
+                        },
+                        |writer| {
+                            self.format_suppressed_type_head(head, writer)?;
+                            self.format_prepared_type_with_layout(
+                                node,
+                                TypeContext::Root,
+                                TypeLayout::OpeningProvided,
+                                writer,
+                            )
+                        },
+                    )
+                });
+            }
+            TypeOperatorLayout::Formatted { before, after } => (before, after),
         };
         if node.source_owner == Some(node.node) {
             self.format_type_boundary(boundary, writer)?;
@@ -1332,6 +1380,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
+        let mut suppressed_head = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let attachment = match &target {
                 TypeBoundaryTarget::Alias(node)
@@ -1432,9 +1481,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
+            if left_mode == ContentMode::Formatted
+                && right_mode == ContentMode::Verbatim
+                && let Some(attachment) = &attachment
+                && let TypeBoundaryTarget::Alias(node)
+                | TypeBoundaryTarget::Constraint { node, .. }
+                | TypeBoundaryTarget::InferConstraint(node)
+                | TypeBoundaryTarget::Default(node) = &target
+            {
+                suppressed_head =
+                    self.prepare_suppressed_type_head(**node, attachment, gap, before, after);
+            }
         }
-        let layout = if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
-            TypeBoundaryLayout::Source(gap)
+        let layout = if let Some(head) = suppressed_head {
+            TypeOperatorLayout::Suppressed {
+                before: self.prepare_comment_boundary(before, gap.start, operator.start),
+                head,
+            }
+        } else if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
+            TypeOperatorLayout::Source(gap)
         } else {
             if matches!(
                 role,
@@ -1446,7 +1511,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // SourceAfter prints this preceding run's existing line once.
                 role = TypeBoundaryRole::Constraint(LineConstraint::Unconstrained);
             }
-            TypeBoundaryLayout::Formatted {
+            TypeOperatorLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, operator.start),
                 after: self.prepare_comment_boundary(after, operator.end, gap.end),
             }
@@ -1595,6 +1660,67 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_barrier,
             exterior_union_frame: (source != node && union).then_some(source),
         }
+    }
+
+    /// Admit only a head whose attachment is independent of its printed line.
+    /// Keep the marker run and type opening together: an end-of-line marker can
+    /// select the preceding operand. Ordinary packets, union member selection and
+    /// diagnostic coverage keep their source gap.
+    pub(super) fn prepare_suppressed_type_head(
+        &self,
+        node: PreparedType,
+        attachment: &TypeAttachmentHead,
+        gap: Span,
+        before: &[Comment],
+        after: &'ast [Comment],
+    ) -> Option<SuppressedTypeHead<'ast>> {
+        if attachment.union
+            || node.source_owner != Some(attachment.node)
+            || !before.is_empty()
+            || after.first().is_none_or(|first| {
+                self.line_breaks(first.span.start, node.node.span(self.ast).start) != 0
+            })
+            || self
+                .diagnostic_range_is_sensitive(Span::new(gap.start, node.node.span(self.ast).end))
+            || !after.iter().all(|&comment| {
+                comment.kind == CommentKind::Block
+                    && is_suppression_comment(self.ast, comment)
+                    && self.line_breaks(comment.span.start, comment.span.end) == 0
+            })
+        {
+            return None;
+        }
+        // A retained singleton `|` or `&` can interrupt the marker's leading
+        // chain even though its attachment is not a union. Resolve the projected
+        // inline run with the same facts; single-line markers share this policy
+        // at type and expression boundaries.
+        let inline = self.prepare_type_suppression_run(
+            attachment,
+            TypeHeadRetention::Unchanged,
+            after,
+            SuppressionPosition::Inline,
+            TypeSuppressionContext::TypeBoundary,
+        );
+        if !matches!(inline.target, TypeSuppressionTarget::Following) {
+            return None;
+        }
+        Some(SuppressedTypeHead {
+            comments: after,
+            next_start: node.node.span(self.ast).start,
+        })
+    }
+
+    pub(super) fn format_suppressed_type_head(
+        &mut self,
+        head: &SuppressedTypeHead<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(head.comments)?;
+        self.format_comment_run(
+            head.comments,
+            CommentRunLayout::Leading(head.next_start),
+            writer,
+        )
     }
 
     pub(super) fn prepare_type_suppression_head(

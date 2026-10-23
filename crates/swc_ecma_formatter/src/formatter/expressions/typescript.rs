@@ -18,7 +18,8 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::{
-    BinaryTypeHead, PreparedDelimitedType, PreparedType, TypeContext, TypeLayout,
+    BinaryTypeHead, PreparedDelimitedType, PreparedType, SuppressedTypeHead, TypeContext,
+    TypeLayout,
 };
 use crate::{
     FormatError,
@@ -187,6 +188,10 @@ struct BinaryTypeBoundary<'ast> {
 
 enum BinaryTypeLayout<'ast> {
     Source(Span),
+    Suppressed {
+        before: CommentBoundary<'ast>,
+        head: SuppressedTypeHead<'ast>,
+    },
     ConstMarker {
         before: CommentBoundary<'ast>,
         prefix: &'ast [Comment],
@@ -580,6 +585,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
         let mut source = false;
+        let mut suppressed_head = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
             let const_marker =
                 matches!(operator, TypeBinaryOperator::As) && self.is_const_marker_type(*right);
@@ -619,11 +625,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.select_type_head_with_attachment(right, &attachment, position);
                 }
             }
+            if left_mode == ContentMode::Formatted && !const_marker {
+                suppressed_head =
+                    self.prepare_suppressed_type_head(*right, &attachment, gap, before, after);
+            }
         }
         if !source {
             *right = self.normalize_type_head(*right)?;
         }
-        let layout = if source {
+        let layout = if let Some(head) = suppressed_head {
+            BinaryTypeLayout::Suppressed {
+                before: self.prepare_comment_boundary(before, gap.start, start),
+                head,
+            }
+        } else if source {
             BinaryTypeLayout::Source(gap)
         } else if let Some((prefix, tail)) = self.prepare_const_marker_comments(
             *right,
@@ -795,6 +810,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match boundary.layout {
             BinaryTypeLayout::Source(gap) => {
                 self.format_source_gap(gap, writer)?;
+                self.format_prepared_type_with_layout(
+                    node,
+                    TypeContext::Root,
+                    TypeLayout::OpeningProvided,
+                    writer,
+                )
+            }
+            BinaryTypeLayout::Suppressed { before, head } => {
+                self.format_comment_boundary(&before, writer)?;
+                before.gap().write_separator(writer);
+                writer.text(boundary.operator.token());
+                writer.space();
+                self.format_suppressed_type_head(&head, writer)?;
                 self.format_prepared_type_with_layout(
                     node,
                     TypeContext::Root,
