@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[target
+/* own left */
+??= // right
+first ? second : third];---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  (target ??= // right
+    /* own left */
+    first
+      ? second
+      : third),
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+[
+  (target ??= // right
+    /* own left */
+    first ? second : third),
+];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;[
+  (target ??= // right
+    /* own left */
+    first
+      ? second
+      : third),
+]

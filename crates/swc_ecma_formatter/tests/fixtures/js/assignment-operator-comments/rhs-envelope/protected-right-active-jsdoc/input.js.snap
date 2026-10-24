@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let target;
+target
+/* own left */
+= /** @type {number} */ // right
+("bad");---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+let target;
+target =
+  /* own left */
+  /** @type {number} */ // right
+  ("bad");
