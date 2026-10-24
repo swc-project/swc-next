@@ -822,19 +822,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn source_comment_gap_is_run(&self, previous: Comment, next: Comment) -> bool {
         self.source(Span::new(previous.span.end, next.span.start))
             .chars()
-            .all(|character| {
-                matches!(
-                    character,
-                    '\u{0009}'
-                        | '\u{000b}'
-                        | '\u{000c}'
-                        | ' '
-                        | '\u{00a0}'
-                        | '\u{1680}'
-                        | '\u{2000}'
-                        ..='\u{200a}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}'
-                )
-            })
+            .all(super::source::is_source_horizontal_whitespace)
     }
 
     fn prepare_source_comment(

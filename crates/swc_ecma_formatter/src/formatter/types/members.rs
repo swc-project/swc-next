@@ -863,6 +863,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let (before, after) = comments
                     .split_at(comments.partition_point(|comment| comment.span.end <= colon));
                 if self.has_suppression {
+                    let mut attachment = None;
                     let before = if key.computed.is_some() {
                         self.comments
                             .in_range(Span::new(key.node.span(ast).end, colon))
@@ -871,12 +872,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     };
                     for (_, position) in self.suppressed_comment_runs(before, colon) {
                         if matches!(position, SuppressionPosition::OwnLine) {
-                            self.select_type_head(&mut type_node, position);
+                            let attachment = attachment
+                                .get_or_insert_with(|| self.type_attachment_head(type_node.node));
+                            self.select_type_head_with_attachment(
+                                &mut type_node,
+                                attachment,
+                                position,
+                            );
                         } else {
                             key.mode = ContentMode::Verbatim;
                         }
                     }
-                    self.select_type_head_comments(&mut type_node, after, gap.end);
+                    if self.content_mode(after) == ContentMode::Verbatim {
+                        let attachment = attachment
+                            .get_or_insert_with(|| self.type_attachment_head(type_node.node));
+                        self.resolve_type_head_comments(&mut type_node, attachment, after, gap.end);
+                    }
+                    if let Some(attachment) = attachment {
+                        self.finalize_type_head(&mut type_node, &attachment, comments);
+                    }
                 }
                 let type_node = self.normalize_type_head(type_node)?;
                 let relocate = key.mode == ContentMode::Formatted

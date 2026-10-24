@@ -137,15 +137,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let key_head_binding = self.comment_boundary_binding(&after_open, key_span);
         let expand = self.type_body_expands(content.start, first_token);
         let mut constraint = self.prepare_type(node.constraint(ast), ContentMode::Formatted);
-        let in_boundary = self.prepare_mapped_boundary(
-            Span::new(key_span.end, constraint.node.span(ast).start),
-            MappedSeparator::In,
-            Some(key_span),
-            &mut constraint,
-        )?;
-        let key_mode = in_boundary.left_mode;
-        let mut remap = if let Some(type_node) = node.name_type(ast) {
-            let mut type_node = self.prepare_type(type_node, ContentMode::Formatted);
+        let mut remap = node
+            .name_type(ast)
+            .map(|node| self.prepare_type(node, ContentMode::Formatted));
+        let mut value = node
+            .type_annotation(ast)
+            .map(|node| self.prepare_type(node, ContentMode::Formatted));
+        // Suffix and following-boundary packets can select a whole header.
+        // Resolve those owners before preparing any earlier header layout.
+        let last_header = remap.as_mut().unwrap_or(&mut constraint);
+        let suffix = self.prepare_mapped_suffix(node, last_header, &mut value, content.end);
+        let remap = remap.map(|mut type_node| {
             let boundary = self.prepare_mapped_boundary(
                 Span::new(
                     constraint.node.span(ast).end,
@@ -154,25 +156,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 MappedSeparator::As,
                 None,
                 &mut type_node,
-            )?;
-            if boundary.left_mode == ContentMode::Verbatim {
+            );
+            if boundary
+                .as_ref()
+                .is_ok_and(|boundary| boundary.left_mode == ContentMode::Verbatim)
+            {
                 constraint.source_owner = Some(constraint.node);
             }
-            Some(MappedBound {
-                node: type_node,
-                boundary,
-            })
-        } else {
-            None
-        };
-        let mut value = node
-            .type_annotation(ast)
-            .map(|type_node| self.prepare_type(type_node, ContentMode::Formatted));
-        let last_header = remap
-            .as_mut()
-            .map_or(&mut constraint, |bound| &mut bound.node);
-        let (suffix, tail) =
-            self.prepare_mapped_suffix(node, last_header, &mut value, content.end)?;
+            (type_node, boundary)
+        });
+        let in_boundary = self.prepare_mapped_boundary(
+            Span::new(key_span.end, constraint.node.span(ast).start),
+            MappedSeparator::In,
+            Some(key_span),
+            &mut constraint,
+        )?;
+        let key_mode = in_boundary.left_mode;
+        // Keep the original In, As, suffix error priority after owner resolution.
+        let remap = remap
+            .map(|(node, boundary)| boundary.map(|boundary| MappedBound { node, boundary }))
+            .transpose()?;
+        let (suffix, tail) = suffix?;
         writer.group(expand, |writer| {
             writer.text("{");
             let closing_gap = writer.indent(|writer| {
@@ -223,24 +227,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             writer.text(ast.get_utf8(key.name(ast)));
                         }
-                        self.format_mapped_boundary(&in_boundary, MappedSeparator::In, writer)?;
-                        let tail = self.format_prepared_type_with_layout(
+                        let tail = self.format_mapped_boundary(
+                            &in_boundary,
+                            MappedSeparator::In,
                             constraint,
-                            TypeContext::Root,
-                            in_boundary.following_layout(),
                             writer,
                         )?;
                         self.format_expression_tail(tail, writer)?;
                         if let Some(remap) = remap {
-                            self.format_mapped_boundary(
+                            let tail = self.format_mapped_boundary(
                                 &remap.boundary,
                                 MappedSeparator::As,
-                                writer,
-                            )?;
-                            let tail = self.format_prepared_type_with_layout(
                                 remap.node,
-                                TypeContext::Root,
-                                remap.boundary.following_layout(),
                                 writer,
                             )?;
                             self.format_expression_tail(tail, writer)?;
@@ -445,6 +443,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let attachment = self.type_attachment_head(right.node);
                 let (left_mode, preceding_packet) =
                     self.mapped_suppression(comments, operator, key, right, &attachment);
+                self.finalize_type_head(right, &attachment, comments);
                 if left_mode == ContentMode::Formatted {
                     suppressed_head = self.prepare_suppressed_type_head(
                         *right,
@@ -592,6 +591,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let tail = self
                     .prepare_mapped_tail(Span::new(value.node.span(ast).end, content_end), value);
+                self.finalize_type_head(value, &attachment, comments);
                 return Ok((
                     MappedSuffix::Source {
                         closing: Span::new(header_end, closing_span.end),
@@ -737,14 +737,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: &MappedBoundary<'ast>,
         separator: MappedSeparator,
+        node: PreparedType,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match &boundary.layout {
             MappedBoundaryLayout::Suppressed(head) => {
                 writer.space();
                 writer.text(separator.text());
                 writer.space();
-                self.format_suppressed_type_head(head, writer)
+                return self.format_suppressed_type_content(
+                    node,
+                    head,
+                    TypeContext::Root,
+                    boundary.following_layout(),
+                    writer,
+                );
             }
             MappedBoundaryLayout::Preceding(packet) => {
                 self.format_preceding_type_packet(packet, writer)?;
@@ -759,7 +766,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(separator.text());
                 self.format_type_comment_gap(after, FlatSeparator::Space, writer)
             }
-        }
+        }?;
+        self.format_prepared_type_with_layout(
+            node,
+            TypeContext::Root,
+            boundary.following_layout(),
+            writer,
+        )
     }
 
     fn format_mapped_token(

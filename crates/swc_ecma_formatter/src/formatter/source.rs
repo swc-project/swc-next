@@ -8,6 +8,14 @@ pub(super) fn is_source_whitespace(character: char) -> bool {
     character.is_whitespace() || character == '\u{feff}'
 }
 
+pub(super) fn is_source_horizontal_whitespace(character: char) -> bool {
+    matches!(
+        character,
+        '\u{0009}' | '\u{000b}' | '\u{000c}' | ' ' | '\u{00a0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200a}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}'
+    )
+}
+
 pub(super) fn split_line(source: &str) -> (&str, Option<&str>) {
     let Some(index) = memchr::memchr2(b'\n', b'\r', source.as_bytes()) else {
         return (source, None);

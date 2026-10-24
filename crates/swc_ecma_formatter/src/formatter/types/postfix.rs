@@ -173,14 +173,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let split = comments.partition_point(|comment| comment.span.end <= brackets.opening.start);
         let (before, after) = comments.split_at(split);
         let mut object_mode = self.content_mode(before);
+        let suffix = self.prepare_type_prefix(Span::new(index_span.end, brackets.closing.start));
+        if suffix.mode == ContentMode::Verbatim {
+            index_type.source_owner = Some(index);
+        }
         if self.has_suppression && self.content_mode(after) == ContentMode::Verbatim {
+            let attachment = self.type_attachment_head(index_type.node);
             for (_, position) in self.suppressed_comment_runs(after, index_span.start) {
                 if matches!(position, SuppressionPosition::EndOfLine) {
                     object_mode = ContentMode::Verbatim;
                 } else {
-                    self.select_type_head(&mut index_type, position);
+                    self.select_type_head_with_attachment(&mut index_type, &attachment, position);
                 }
             }
+            self.finalize_type_head(&mut index_type, &attachment, comments);
         }
         let prefix = if object_mode == ContentMode::Verbatim || index_type.source_owner.is_some() {
             TypeBoundaryLayout::Source(prefix_span)
@@ -194,10 +200,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 after: self.prepare_comment_boundary(after, brackets.opening.end, index_span.start),
             }
         };
-        let suffix = self.prepare_type_prefix(Span::new(index_span.end, brackets.closing.start));
-        if suffix.mode == ContentMode::Verbatim {
-            index_type.source_owner = Some(index);
-        }
         Ok(PreparedIndex {
             object: self.prepare_type(object, object_mode),
             index: index_type,

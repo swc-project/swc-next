@@ -289,6 +289,7 @@ pub(super) struct PendingTypeHead<'ast> {
 
 enum TypeHeadPosition {
     Leading,
+    SourceLines,
     Inline,
     Riding,
     Emitted,
@@ -1683,8 +1684,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let start = pending
                 .comments
                 .first()
-                .map_or(comments[0].span.start, |comment| comment.span.start);
-            pending.comments = self.comments.in_range(Span::new(start, last.span.end));
+                .map_or(comments[0].span.start, |comment| {
+                    comment.span.start.min(comments[0].span.start)
+                });
+            let end = pending
+                .comments
+                .last()
+                .map_or(last.span.end, |comment| comment.span.end.max(last.span.end));
+            pending.comments = self.comments.in_range(Span::new(start, end));
             pending.next_start = next_start;
         }
     }
@@ -1701,6 +1708,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let opening = std::mem::replace(&mut pending.opening, CommentOpening::Needed);
         self.comments.claim(comments)?;
+        if matches!(pending.position, TypeHeadPosition::SourceLines) {
+            // The caller owns the opening; keep this source frontier own-line.
+            writer.break_parent();
+            self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+            if let Some(last) = comments.last() {
+                self.comment_gap_constraint(last.span.end, next_start)
+                    .write(writer, FlatSeparator::Space, |_| {});
+            }
+            return Ok(());
+        }
         let mut riding = &[][..];
         if matches!(pending.position, TypeHeadPosition::Inline) {
             let mut end = first.span.start;
@@ -1767,6 +1784,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedTypeContent<'ast>, FormatError> {
         let content = loop {
+            if let Some(projection) = current.suppressed_projection()
+                && let Some(head) = self.projected_suppressed_type(projection)
+            {
+                if !head.comments.is_empty() {
+                    self.extend_type_head_packet(
+                        pending,
+                        head.comments,
+                        head.node.node.span(self.ast).start,
+                    );
+                    pending.position = TypeHeadPosition::SourceLines;
+                }
+                current = head.node;
+            }
             if current.source_owner == Some(current.node) || current.source_head.is_some() {
                 break PreparedTypeContent::Type(current);
             }
@@ -1840,7 +1870,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 TsTypeData::TsUnionType(union) => {
                     let mut union = self.prepare_union(current, union.types(self.ast))?;
-                    if let Some(first) = pending.comments.first()
+                    if !matches!(pending.position, TypeHeadPosition::SourceLines)
+                        && let Some(first) = pending.comments.first()
                         && union.accepts_inline_head()
                         && self.union_head_is_inline(pending.comments, pending.next_start)
                         && matches!(
@@ -2130,13 +2161,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return false;
         }
         let mut source = false;
+        let mut attachment = None;
         for (_, position) in self.suppressed_comment_runs(before, operator) {
             source = true;
             if matches!(position, SuppressionPosition::OwnLine) {
                 if UNION {
                     right.source_owner = Some(right.node);
                 } else {
-                    self.select_type_head(right, position);
+                    let attachment =
+                        attachment.get_or_insert_with(|| self.type_attachment_head(right.node));
+                    self.select_type_head_with_attachment(right, attachment, position);
                 }
             } else {
                 left.source_owner = Some(left.node);
@@ -2150,9 +2184,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if UNION {
                     right.source_owner = Some(right.node);
                 } else {
-                    self.select_type_head(right, position);
+                    let attachment =
+                        attachment.get_or_insert_with(|| self.type_attachment_head(right.node));
+                    self.select_type_head_with_attachment(right, attachment, position);
                 }
             }
+        }
+        if let Some(attachment) = attachment {
+            let start = before
+                .first()
+                .or(after.first())
+                .map_or(operator, |comment| comment.span.start);
+            let end = after
+                .last()
+                .or(before.last())
+                .map_or(operator, |comment| comment.span.end);
+            let comments = self.comments.in_range(Span::new(start, end));
+            self.finalize_type_head(right, &attachment, comments);
         }
         source
     }

@@ -376,6 +376,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // including own-line unions, independently of source frames.
                 self.select_type_source_owner(right, attachment.node, &attachment);
             }
+            self.finalize_type_head(right, &attachment, comments);
             if matches!(separator, ConditionalTypeSeparator::Extends) && left.source_owner.is_none()
             {
                 suppressed_head = self.prepare_suppressed_type_head(

@@ -14,6 +14,8 @@ mod postfix;
 mod templates;
 mod tuple;
 
+use std::num::NonZeroU32;
+
 use self::compound::{PendingTypeHead, PreparedTypeContent};
 pub(super) use self::context::TypeContext;
 use self::context::TypeEnclosure;
@@ -83,18 +85,25 @@ pub(super) struct PreparedType {
 struct SuppressedTypeProjection {
     source: TsType,
     owner: TsType,
-    barrier: TsType,
+    retained_head: Option<TsType>,
+    surviving_head: TsType,
+    /// One-based start of the original, still unclaimed outer packet.
+    packet_start: Option<NonZeroU32>,
 }
 
 impl PreparedType {
-    /// Owner or retained-head changes invalidate the prepared raw-content view.
-    fn projected_source_owner(&self) -> Option<TsType> {
-        let projection = self.suppressed_projection?;
+    fn suppressed_projection(&self) -> Option<&SuppressedTypeProjection> {
+        let projection = self.suppressed_projection.as_ref()?;
         (projection.source == self.node
             && Some(projection.owner) == self.source_owner
-            && Some(projection.barrier) == self.source_head)
-            .then_some(projection.owner)
+            && projection.retained_head == self.source_head)
+            .then_some(projection)
     }
+}
+
+struct ProjectedSuppressedType<'ast> {
+    node: PreparedType,
+    comments: &'ast [Comment],
 }
 
 #[derive(Clone, Copy)]
@@ -146,7 +155,18 @@ pub(super) struct TypeAttachmentHead {
     source_barrier: Option<TsType>,
     exterior_union_frame: Option<TsType>,
     interior_union_frame: Option<TsType>,
-    prefix: TypeCommentTie,
+    prefix: TypeCommentPrefix,
+    first_owner: std::cell::Cell<Option<TsType>>,
+    prefix_carrier: Option<TsType>,
+}
+
+#[derive(Clone, Copy)]
+struct TypeCommentPrefix {
+    tie: TypeCommentTie,
+    source_leads_head: bool,
+    source_lines_adjacency: bool,
+    preserves_union_owner: bool,
+    preserves_horizontal_owner: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -247,6 +267,7 @@ pub(super) enum TypeLayout {
 pub(super) struct SuppressedTypeHead<'ast> {
     comments: &'ast [Comment],
     next_start: u32,
+    own_line: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -906,10 +927,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if keyword.is_some_and(|keyword| keyword.suppresses_name(identifier)) {
             name_mode = ContentMode::Verbatim;
         }
-        let boundary = self.prepare_type_boundary(
-            Span::new(head_end, annotation_span.start),
-            TypeBoundaryTarget::Alias(&mut type_node),
-        )?;
         if self.has_suppression {
             let header = self
                 .comments
@@ -924,6 +941,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 type_node.source_owner = Some(annotation);
             }
         }
+        let boundary = self.prepare_type_boundary(
+            Span::new(head_end, annotation_span.start),
+            TypeBoundaryTarget::Alias(&mut type_node),
+        )?;
         if parameters.is_none() && boundary.left_mode == ContentMode::Verbatim {
             name_mode = ContentMode::Verbatim;
         }
@@ -1002,6 +1023,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             TypeOperatorLayout::Suppressed { before, head } => {
                 self.format_formatted_type_boundary_operator(boundary.role, before, writer)?;
+                if head.own_line {
+                    let recorded = self.record_type_head(
+                        PreparedTypeContent::Type(node),
+                        PendingTypeHead::new(head.comments, head.next_start, None),
+                        TypeContext::Root,
+                        writer,
+                    )?;
+                    return self.format_type_alias_head(recorded.head, recorded.content, writer);
+                }
                 return writer.group(false, |writer| {
                     rhs_layout.write(
                         writer,
@@ -1010,9 +1040,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             RhsLayout::Fluid | RhsLayout::BreakAfterOperator => writer.line(),
                         },
                         |writer| {
-                            self.format_suppressed_type_head(head, writer)?;
-                            self.format_prepared_type_with_layout(
+                            self.format_suppressed_type_content(
                                 node,
+                                head,
                                 TypeContext::Root,
                                 TypeLayout::OpeningProvided,
                                 writer,
@@ -1631,6 +1661,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.select_type_head_with_attachment(node, attachment, position);
                 }
             }
+            if let Some(attachment) = &attachment
+                && let TypeBoundaryTarget::Alias(node)
+                | TypeBoundaryTarget::Constraint { node, .. }
+                | TypeBoundaryTarget::InferConstraint { node, .. }
+                | TypeBoundaryTarget::Default { node, .. } = &mut target
+            {
+                self.finalize_type_head(node, attachment, comments);
+            }
             if left_mode == ContentMode::Formatted
                 && right_mode == ContentMode::Verbatim
                 && let Some(attachment) = &attachment
@@ -1750,6 +1788,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.select_type_head_with_retention(node, attachment, *head, position);
             }
         }
+        if let Some((attachment, _)) = attachment {
+            self.finalize_type_head(node, &attachment, comments);
+        }
     }
 
     fn format_type_with_context(
@@ -1768,11 +1809,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source = node;
         let mut source_barrier = None;
         let mut interior_frame = None;
+        let mut prefix_carrier = None;
         let data = loop {
             let data = self.ast.ts_type_data(node);
             let (types, token) = match data {
                 TsTypeData::TsParenthesizedType(parentheses) => {
                     let child = parentheses.type_annotation(self.ast);
+                    if !self
+                        .comments
+                        .in_range(Span::new(
+                            parentheses.span(self.ast).start + 1,
+                            child.span(self.ast).start,
+                        ))
+                        .is_empty()
+                    {
+                        prefix_carrier = Some(node);
+                    }
                     if matches!(
                         self.ast.ts_type_data(child),
                         TsTypeData::TsParenthesizedType(_)
@@ -1815,6 +1867,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source_barrier,
             exterior_union_frame: (source != node && union).then_some(source),
             interior_union_frame: interior_frame.filter(|_| union),
+            first_owner: std::cell::Cell::new(None),
+            prefix_carrier,
             prefix: self.prepare_type_comment_tie(
                 node,
                 union,
@@ -1892,7 +1946,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             // With no RHS prefix comments, single-line blocks share the type
             // and expression attachment projection.
-            let mut tie = attachment.prefix;
+            let mut tie = attachment.prefix.tie;
             let mut marker = false;
             for &comment in comments.iter().rev() {
                 if comment.kind != CommentKind::Block
@@ -1924,27 +1978,110 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_inline_trailing_comments(packet.comments, writer)
     }
 
-    /// Prove the complete source spine once, while its owner is selected.
+    /// Keep the formatted head separate from its already selected raw owner.
     fn prepare_suppressed_type_projection(
         &self,
         node: &PreparedType,
         attachment: &TypeAttachmentHead,
+        first_owner: Option<TsType>,
+        packet: &[Comment],
     ) -> Option<SuppressedTypeProjection> {
-        let barrier = node.source_head?;
+        let owner = node.source_owner?;
         let span = node.node.span(self.ast);
-        if node.source_owner != Some(attachment.node)
-            || node.node == attachment.node
-            || Some(barrier) != attachment.source_barrier
-            || attachment.union
-            || !self.comments.in_range(span).is_empty()
-            || self.diagnostic_range_is_sensitive(span)
+        if node.source_head != attachment.source_barrier || self.diagnostic_range_is_sensitive(span)
         {
             return None;
         }
+        let comments = self.comments.in_range(span);
+        let packet_start = if attachment.union {
+            if first_owner != Some(owner) {
+                return None;
+            }
+            let first = packet.first()?;
+            let prefix_span = Span::new(span.start, attachment.node.span(self.ast).start);
+            let prefix = self.comments.in_range(prefix_span);
+            if !self.source_position_starts_line(first.span.start)
+                || comments.len() != prefix.len()
+                || !matches!(
+                    self.comment_binding(prefix, prefix_span, None),
+                    CommentBinding::Unbound
+                )
+                || !self
+                    .comment_binding(
+                        packet,
+                        Span::new(first.span.start, span.end),
+                        Some(owner.span(self.ast)),
+                    )
+                    .allows_relocation(Some(owner.span(self.ast)))
+            {
+                return None;
+            }
+            let mut prefix = attachment.prefix;
+            let mut next = span.start;
+            for &comment in packet.iter().rev() {
+                // The whole caller packet must be the actual type frontier,
+                // with no intervening operator or earlier syntax owner.
+                if comment.span.end > next
+                    || !self
+                        .source(Span::new(comment.span.end, next))
+                        .chars()
+                        .all(is_source_whitespace)
+                {
+                    return None;
+                }
+                self.advance_type_comment_prefix(&mut prefix, comment, true);
+                next = comment.span.start;
+            }
+            if !prefix.preserves_union_owner {
+                return None;
+            }
+            // A nonempty comment starts below u32::MAX; preserve offset zero.
+            Some(NonZeroU32::new(first.span.start + 1).expect("comment start has a successor"))
+        } else {
+            if owner != attachment.node
+                || node.node == attachment.node
+                || node.source_head.is_none()
+                || !comments.is_empty()
+            {
+                return None;
+            }
+            None
+        };
         Some(SuppressedTypeProjection {
             source: node.node,
-            owner: attachment.node,
-            barrier,
+            owner,
+            retained_head: node.source_head,
+            surviving_head: attachment.node,
+            packet_start,
+        })
+    }
+
+    /// The same source identities and unclaimed packet authorize parent and body.
+    fn projected_suppressed_type(
+        &self,
+        projection: &SuppressedTypeProjection,
+    ) -> Option<ProjectedSuppressedType<'ast>> {
+        let comments = if let Some(start) = projection.packet_start {
+            let start = start.get() - 1;
+            let comments = self.comments.in_range(Span::new(
+                start,
+                projection.surviving_head.span(self.ast).start,
+            ));
+            if comments
+                .first()
+                .is_none_or(|comment| comment.span.start != start)
+            {
+                return None;
+            }
+            comments
+        } else {
+            &[]
+        };
+        let mut head = self.prepare_type(projection.surviving_head, ContentMode::Formatted);
+        head.source_owner = Some(projection.owner);
+        Some(ProjectedSuppressedType {
+            node: head,
+            comments,
         })
     }
 
@@ -1962,10 +2099,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<SuppressedTypeHead<'ast>> {
         let first = after.first()?;
         let source_span = node.node.span(self.ast);
-        if node.source_owner != Some(attachment.node)
-            || !before.is_empty()
-            || self.line_breaks(first.span.start, source_span.start) != 0
+        if !before.is_empty()
             || self.diagnostic_range_is_sensitive(Span::new(gap.start, source_span.end))
+        {
+            return None;
+        }
+        if attachment.union
+            && let Some(projection) = node.suppressed_projection()
+            && let Some(head) = self.projected_suppressed_type(projection)
+            && head.node.source_owner != Some(head.node.node)
+            && self.source_position_starts_line(first.span.start)
+            && after
+                .iter()
+                .any(|&comment| is_suppression_comment(self.ast, comment))
+            && matches!(
+                self.comment_run_binding(after.iter().copied(), |comment| {
+                    let semantics = self.comment_semantics(comment);
+                    if semantics.diagnostic || semantics.file_directive {
+                        CommentBinding::SourceBound
+                    } else {
+                        CommentBinding::Unbound
+                    }
+                }),
+                CommentBinding::Unbound
+            )
+        {
+            return Some(SuppressedTypeHead {
+                comments: head.comments,
+                next_start: head.node.node.span(self.ast).start,
+                own_line: true,
+            });
+        }
+        if node.source_owner != Some(attachment.node)
+            || self.line_breaks(first.span.start, source_span.start) != 0
         {
             return None;
         }
@@ -1975,8 +2141,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             _ => TypeSuppressionContext::TypeBoundary,
         };
-        let mut tie = attachment.prefix;
-        if node.projected_source_owner().is_some() {
+        let mut tie = attachment.prefix.tie;
+        if let Some(projection) = node.suppressed_projection()
+            && self.projected_suppressed_type(projection).is_some()
+        {
             tie.next = source_span.start;
         }
         let mut markers = 0;
@@ -2040,6 +2208,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(SuppressedTypeHead {
             comments: after,
             next_start: source_span.start,
+            own_line: false,
         })
     }
 
@@ -2054,6 +2223,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             CommentRunLayout::Leading(head.next_start),
             writer,
         )
+    }
+
+    pub(super) fn format_suppressed_type_content(
+        &mut self,
+        node: PreparedType,
+        head: &SuppressedTypeHead<'ast>,
+        context: TypeContext,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if !head.own_line {
+            self.format_suppressed_type_head(head, writer)?;
+            return self.format_prepared_type_with_layout(node, context, layout, writer);
+        }
+        let recorded = self.record_type_head(
+            PreparedTypeContent::Type(node),
+            PendingTypeHead::new(head.comments, head.next_start, None),
+            context,
+            writer,
+        )?;
+        let layout = if layout == TypeLayout::OpeningProvided {
+            TypeLayout::Root
+        } else {
+            layout
+        };
+        self.format_recorded_type_head(recorded, context, layout, writer)
     }
 
     pub(super) fn prepare_type_suppression_head(
@@ -2109,16 +2304,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         node: TsType,
         union: bool,
         comments: &[Comment],
-    ) -> TypeCommentTie {
-        let mut tie = TypeCommentTie {
-            next: node.span(self.ast).start,
-            type_leading: true,
-            expression_leading: true,
-            union_adjacency: union,
+    ) -> TypeCommentPrefix {
+        let mut prefix = TypeCommentPrefix {
+            tie: TypeCommentTie {
+                next: node.span(self.ast).start,
+                type_leading: true,
+                expression_leading: true,
+                union_adjacency: union,
+            },
+            source_leads_head: true,
+            source_lines_adjacency: union,
+            preserves_union_owner: true,
+            preserves_horizontal_owner: true,
         };
         // Resolve the shared prefix once, before processing boundary runs.
         // Markers inside these frames still belong to their own suppression runs.
-        let mut following_start = tie.next;
+        let mut following_start = prefix.tie.next;
         for run in comments
             .chunk_by(|left, right| {
                 self.source(Span::new(left.span.end, right.span.start))
@@ -2135,16 +2336,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let tied = !self.source_position_starts_line(first.span.start)
                 && !self.comment_run_ends_line(last, following_start);
             for &comment in run.iter().rev() {
-                self.advance_type_comment_tie(
-                    &mut tie,
-                    comment,
-                    tied,
-                    TypeSuppressionContext::TypeBoundary,
-                );
+                self.advance_type_comment_prefix(&mut prefix, comment, tied);
             }
             following_start = first.span.start;
         }
-        tie
+        prefix
+    }
+
+    /// Compare real source owners with the packet's physical SourceLines layout.
+    fn advance_type_comment_prefix(
+        &self,
+        prefix: &mut TypeCommentPrefix,
+        comment: Comment,
+        tied: bool,
+    ) {
+        let gap = self.source(Span::new(comment.span.end, prefix.tie.next));
+        prefix.source_leads_head &= gap
+            .chars()
+            .all(|character| is_source_whitespace(character) || character == '(');
+        prefix.source_lines_adjacency &= self.line_breaks(comment.span.end, prefix.tie.next) == 0;
+        self.advance_type_comment_tie(
+            &mut prefix.tie,
+            comment,
+            tied,
+            TypeSuppressionContext::TypeBoundary,
+        );
+        let single_line = self.line_breaks(comment.span.start, comment.span.end) == 0;
+        if self.comment_semantics(comment).is_ordinary() {
+            // A removed operator can expose a different owner even when both
+            // layouts are nonadjacent. Ordinary comments must lead this head.
+            prefix.preserves_union_owner &= prefix.source_leads_head;
+            if comment.kind == CommentKind::Block && single_line {
+                let same_owner = prefix.tie.union_adjacency == prefix.source_lines_adjacency;
+                prefix.preserves_union_owner &= same_owner;
+                if !same_owner
+                    && gap
+                        .chars()
+                        .all(super::source::is_source_horizontal_whitespace)
+                {
+                    prefix.preserves_horizontal_owner = false;
+                }
+            }
+        }
+        prefix.source_lines_adjacency &= single_line;
     }
 
     fn advance_type_comment_tie(
@@ -2207,7 +2441,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             SuppressionPosition::Inline => {}
         }
-        let mut tie = attachment.prefix;
+        let mut tie = attachment.prefix.tie;
         let mut preceding = false;
         let mut following = false;
         for &comment in comments.iter().rev() {
@@ -2230,14 +2464,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         TypeSuppressionRun { target, head }
     }
 
-    pub(super) fn select_type_head(&self, node: &mut PreparedType, position: SuppressionPosition) {
-        if node.source_owner == Some(node.node) {
-            return;
-        }
-        let attachment = self.type_attachment_head(node.node);
-        self.select_type_head_with_attachment(node, &attachment, position);
-    }
-
     pub(super) fn select_type_head_with_attachment(
         &self,
         node: &mut PreparedType,
@@ -2247,14 +2473,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if node.source_owner == Some(node.node) {
             return;
         }
-        let owner = if matches!(position, SuppressionPosition::OwnLine)
-            && let TsTypeData::TsUnionType(union) = self.ast.ts_type_data(attachment.node)
-        {
-            let first = union
-                .types(self.ast)
-                .first()
-                .map_or(attachment.node, |id| self.ast.get_node_in_sub_range(id));
-            self.type_attachment_head(first).node
+        let owner = if matches!(position, SuppressionPosition::OwnLine) && attachment.union {
+            match attachment.first_owner.get() {
+                Some(owner) => owner,
+                None => {
+                    let TsTypeData::TsUnionType(union) = self.ast.ts_type_data(attachment.node)
+                    else {
+                        unreachable!("prepared union attachment retains its union node");
+                    };
+                    let first = union
+                        .types(self.ast)
+                        .first()
+                        .map_or(attachment.node, |id| self.ast.get_node_in_sub_range(id));
+                    let owner = self.type_attachment_head(first).node;
+                    attachment.first_owner.set(Some(owner));
+                    owner
+                }
+            }
         } else {
             attachment.node
         };
@@ -2273,7 +2508,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             attachment.node,
             self.ast,
         ));
-        node.suppressed_projection = self.prepare_suppressed_type_projection(node, attachment);
+        node.suppressed_projection = None;
     }
 
     pub(super) fn select_type_head_with_retention(
@@ -2287,20 +2522,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.select_type_head_with_attachment(node, attachment, position);
     }
 
-    fn select_type_head_comments(
+    /// Resolve every owner and retained frame before preparing one emission view.
+    pub(super) fn finalize_type_head(
         &self,
         node: &mut PreparedType,
-        comments: &[swc_next_ecma_ast::Comment],
+        attachment: &TypeAttachmentHead,
+        packet: &[Comment],
+    ) {
+        node.suppressed_projection = None;
+        if node.source_owner.is_none() {
+            return;
+        }
+        if attachment.union
+            && attachment.first_owner.get() == node.source_owner
+            && node.source_head == attachment.source_barrier
+            && !attachment.prefix.preserves_horizontal_owner
+            && let Some(carrier) = attachment.prefix_carrier
+        {
+            TypeHeadRetention::Source(carrier).apply(node, self.ast);
+            return;
+        }
+        node.suppressed_projection = self.prepare_suppressed_type_projection(
+            node,
+            attachment,
+            attachment.first_owner.get(),
+            packet,
+        );
+    }
+
+    fn resolve_type_head_comments(
+        &self,
+        node: &mut PreparedType,
+        attachment: &TypeAttachmentHead,
+        comments: &[Comment],
         end: u32,
     ) {
+        let head = self.prepare_type_suppression_head(attachment, comments);
+        for (_, position) in self.suppressed_comment_runs(comments, end) {
+            self.select_type_head_with_retention(node, attachment, head, position);
+        }
+    }
+
+    fn select_type_head_comments(&self, node: &mut PreparedType, comments: &[Comment], end: u32) {
         if !self.has_suppression || self.content_mode(comments) != ContentMode::Verbatim {
             return;
         }
         let attachment = self.type_attachment_head(node.node);
-        let head = self.prepare_type_suppression_head(&attachment, comments);
-        for (_, position) in self.suppressed_comment_runs(comments, end) {
-            self.select_type_head_with_retention(node, &attachment, head, position);
-        }
+        self.resolve_type_head_comments(node, &attachment, comments, end);
+        self.finalize_type_head(node, &attachment, comments);
     }
     fn format_prepared_type(
         &mut self,
@@ -2318,8 +2587,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if let Some(owner) = node.projected_source_owner() {
-            node = self.prepare_type(owner, ContentMode::Verbatim);
+        if let Some(projection) = node.suppressed_projection()
+            && let Some(head) = self.projected_suppressed_type(projection)
+        {
+            if !head.comments.is_empty() {
+                let recorded = self.record_type_head(
+                    PreparedTypeContent::Type(node),
+                    PendingTypeHead::new(&[], node.node.span(self.ast).start, None),
+                    context,
+                    writer,
+                )?;
+                return self.format_recorded_type_head(recorded, context, layout, writer);
+            }
+            node = head.node;
         }
         if node.source_owner != Some(node.node)
             && let TsTypeData::TsParenthesizedType(parentheses) = node.data
@@ -2687,12 +2967,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => false,
         });
         let retained = source_frame || !before.is_empty() || !after.is_empty() || sensitive;
+        let mut selected_attachment = None;
         let (source, movable) = if retained {
             if self.has_suppression && self.content_mode(before) == ContentMode::Verbatim {
                 if matches!(context, TypeContext::UnionMember) {
                     child_type.source_owner = Some(child);
                 } else {
-                    self.select_type_head_comments(&mut child_type, before, child_span.start);
+                    let attachment = self.type_attachment_head(child_type.node);
+                    self.resolve_type_head_comments(
+                        &mut child_type,
+                        &attachment,
+                        before,
+                        child_span.start,
+                    );
+                    selected_attachment = Some(attachment);
                 }
             }
             if self.content_mode(after) == ContentMode::Verbatim {
@@ -2718,6 +3006,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Some(previous) if previous != owner => child,
                     _ => owner,
                 });
+            }
+            if let Some(attachment) = selected_attachment {
+                self.finalize_type_head(&mut child_type, &attachment, before);
             }
             let target = child_type
                 .source_owner
@@ -3407,7 +3698,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator_end: u32,
         tail_owner: TailOwner,
     ) -> BinaryTypeHead<'ast> {
-        if node.source_owner.is_some() {
+        let projected = node
+            .suppressed_projection()
+            .and_then(|projection| self.projected_suppressed_type(projection));
+        let node = match projected {
+            Some(head) => head.node,
+            None if node.source_owner.is_some() => {
+                return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+            }
+            None => node,
+        };
+        if node.source_owner == Some(node.node) {
             return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
         }
         let compound = matches!(
