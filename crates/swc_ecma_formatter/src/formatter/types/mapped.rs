@@ -486,13 +486,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
         let before_head = self.prepare_type_suppression_head(attachment, before);
-        for (_, position) in self.suppressed_comment_runs(before, operator.start) {
+        for (run, position) in self.suppressed_comment_runs(before, operator.start) {
             if !matches!(position, SuppressionPosition::OwnLine)
                 && let Some(owner) = key
                 && let Some(packet) = self.prepare_preceding_type_packet(
                     comments,
+                    run,
                     owner,
                     right,
+                    attachment,
                     TypeSuppressionTarget::Preceding,
                 )
             {
@@ -526,8 +528,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             if !compound_conflict
                 && let Some(owner) = key
-                && let Some(packet) =
-                    self.prepare_preceding_type_packet(comments, owner, right, selected)
+                && let Some(packet) = self.prepare_preceding_type_packet(
+                    comments, run, owner, right, attachment, selected,
+                )
             {
                 return (ContentMode::Verbatim, Some(packet));
             }

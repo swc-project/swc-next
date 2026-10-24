@@ -238,7 +238,7 @@ pub(super) enum SuppressedTypeHeadRole {
     MappedBoundary,
 }
 
-/// A single marker whose preceding owner and inline placement have been proved.
+/// A complete block packet whose preceding owner and placement have been proved.
 pub(super) struct PreparedPrecedingTypePacket<'ast> {
     comments: &'ast [Comment],
 }
@@ -1492,6 +1492,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.prepare_type_suppression_head(head, before)
                 });
             for (run, position) in self.suppressed_comment_runs(before, operator.start) {
+                if !matches!(position, SuppressionPosition::OwnLine)
+                    && let Some(owner) = packet_owner
+                    && let Some(attachment) = &attachment
+                    && let TypeBoundaryTarget::Constraint { node, .. }
+                    | TypeBoundaryTarget::InferConstraint { node, .. }
+                    | TypeBoundaryTarget::Default { node, .. } = &target
+                    && let Some(packet) = self.prepare_preceding_type_packet(
+                        comments,
+                        run,
+                        owner,
+                        node,
+                        attachment,
+                        TypeSuppressionTarget::Preceding,
+                    )
+                {
+                    left_mode = ContentMode::Verbatim;
+                    break 'layout TypeOperatorLayout::Preceding {
+                        packet,
+                        after: self.prepare_comment_boundary(&[], operator.end, gap.end),
+                    };
+                }
                 for &comment in run {
                     if !is_suppression_comment(self.ast, comment) {
                         continue;
@@ -1510,23 +1531,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     };
                     if preceding {
-                        if let Some(owner) = packet_owner
-                            && let TypeBoundaryTarget::Constraint { node, .. }
-                            | TypeBoundaryTarget::InferConstraint { node, .. }
-                            | TypeBoundaryTarget::Default { node, .. } = &target
-                            && let Some(packet) = self.prepare_preceding_type_packet(
-                                comments,
-                                owner,
-                                node,
-                                TypeSuppressionTarget::Preceding,
-                            )
-                        {
-                            left_mode = ContentMode::Verbatim;
-                            break 'layout TypeOperatorLayout::Preceding {
-                                packet,
-                                after: self.prepare_comment_boundary(&[], operator.end, gap.end),
-                            };
-                        }
                         left_mode = ContentMode::Verbatim;
                     } else {
                         right_mode = ContentMode::Verbatim;
@@ -1572,8 +1576,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         );
                         let selected = selection.target();
                         if let Some(owner) = packet_owner
-                            && let Some(packet) =
-                                self.prepare_preceding_type_packet(comments, owner, node, selected)
+                            && let Some(packet) = self.prepare_preceding_type_packet(
+                                comments, run, owner, node, attachment, selected,
+                            )
                         {
                             left_mode = ContentMode::Verbatim;
                             break 'layout TypeOperatorLayout::Preceding {
@@ -1824,30 +1829,68 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
     }
 
-    /// The caller resolves the actual owner before choosing its marker's placement.
-    /// An empty RHS envelope proves that skipping this marker's retention cannot
+    /// The caller resolves the actual owner before choosing the packet's placement.
+    /// An empty RHS envelope proves that skipping the packet's retention cannot
     /// discard an ordinary attachment frame or another ignored owner.
+    /// Broader packets must be the caller's complete physical comment run.
     pub(super) fn prepare_preceding_type_packet(
         &self,
         comments: &'ast [Comment],
+        run: &[Comment],
         owner: Span,
         right: &PreparedType,
+        attachment: &TypeAttachmentHead,
         target: TypeSuppressionTarget,
     ) -> Option<PreparedPrecedingTypePacket<'ast>> {
-        let [comment] = comments else {
-            return None;
-        };
-        let right_span = right.node.span(self.ast);
         if !matches!(target, TypeSuppressionTarget::Preceding)
-            || comment.kind != CommentKind::Block
-            || !is_suppression_comment(self.ast, *comment)
-            || self.line_breaks(owner.start, comment.span.end) != 0
-            || right.source_owner.is_some()
+            || comments.is_empty()
+            || comments.len() > 1 && run.len() != comments.len()
+        {
+            return None;
+        }
+        let right_span = right.node.span(self.ast);
+        if right.source_owner.is_some()
             || right.source_head.is_some()
             || !self.comments.in_range(right_span).is_empty()
             || self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
         {
             return None;
+        }
+        if let [comment] = comments {
+            // Keep the existing single-marker contract, including its EOL layout.
+            if comment.kind != CommentKind::Block
+                || !is_suppression_comment(self.ast, *comment)
+                || self.line_breaks(owner.start, comment.span.end) != 0
+            {
+                return None;
+            }
+        } else {
+            // A broader packet must be one complete inline run. A preceding
+            // marker alone does not prove that its ordinary neighbors precede.
+            if self.line_breaks(owner.start, right_span.start) != 0 {
+                return None;
+            }
+            // With no RHS prefix comments, single-line blocks share the type
+            // and expression attachment projection.
+            let mut tie = attachment.prefix;
+            let mut marker = false;
+            for &comment in comments.iter().rev() {
+                if comment.kind != CommentKind::Block
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0
+                    || self.advance_type_comment_tie(
+                        &mut tie,
+                        comment,
+                        true,
+                        TypeSuppressionContext::TypeBoundary,
+                    )
+                {
+                    return None;
+                }
+                marker |= is_suppression_comment(self.ast, comment);
+            }
+            if !marker {
+                return None;
+            }
         }
         Some(PreparedPrecedingTypePacket { comments })
     }
@@ -2576,14 +2619,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .comments
             .in_range(Span::new(child_span.end, span.end - 1));
         let sensitive = self.diagnostic_range_is_sensitive(span);
-        // A retained attachment pair keeps its complete source-envelope spine.
-        // The raw content owner stays independent; the child consumes the head
-        // only when it reaches that exact pair.
-        let source_frame = source_head.is_some_and(|head| {
-            matches!(
-                self.ast.ts_type_data(head),
-                TsTypeData::TsParenthesizedType(_)
-            )
+        // Retained attachment pairs keep their source-envelope spine. A retained
+        // singleton operator keeps its leading comment carrier because attachment
+        // projects through that operator. Raw content ownership stays separate.
+        let source_frame = source_head.is_some_and(|head| match self.ast.ts_type_data(head) {
+            TsTypeData::TsParenthesizedType(_) => true,
+            TsTypeData::TsUnionType(union) => !before.is_empty() && union.types(ast).len() == 1,
+            TsTypeData::TsIntersectionType(intersection) => {
+                !before.is_empty() && intersection.types(ast).len() == 1
+            }
+            _ => false,
         });
         let retained = source_frame || !before.is_empty() || !after.is_empty() || sensitive;
         let (source, movable) = if retained {

@@ -312,13 +312,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 _ => None,
             };
-            for (_, position) in self.suppressed_comment_runs(before, operator) {
+            let attachment = self.type_attachment_head(right.node);
+            for (run, position) in self.suppressed_comment_runs(before, operator) {
                 if !matches!(position, SuppressionPosition::OwnLine)
                     && let Some(owner) = packet_owner
                     && let Some(packet) = self.prepare_preceding_type_packet(
                         comments,
+                        run,
                         owner,
                         right,
+                        &attachment,
                         TypeSuppressionTarget::Preceding,
                     )
                 {
@@ -335,7 +338,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     left.source_owner = Some(left.node);
                 }
             }
-            let attachment = self.type_attachment_head(right.node);
             let head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
                 let selection = self.prepare_type_suppression_run(
@@ -347,8 +349,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let selected = selection.target();
                 if let Some(owner) = packet_owner
-                    && let Some(packet) =
-                        self.prepare_preceding_type_packet(comments, owner, right, selected)
+                    && let Some(packet) = self.prepare_preceding_type_packet(
+                        comments,
+                        run,
+                        owner,
+                        right,
+                        &attachment,
+                        selected,
+                    )
                 {
                     left.source_owner = Some(left.node);
                     return Ok(ConditionalTypeBoundary {
