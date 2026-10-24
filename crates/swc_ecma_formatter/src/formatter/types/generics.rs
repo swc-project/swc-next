@@ -13,7 +13,7 @@ use super::{
     TypeLayout,
 };
 use crate::formatter::comments::{
-    CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
+    CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout, ExpressionTail,
     PreparedBoundaryComments,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -506,9 +506,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     return None;
                 }
                 let mut node = self.prepare_type(first, ContentMode::Formatted);
-                self.select_delimited_type_head(&mut node, comments, gap.end, true);
-                // Compact and expanded openings must select the same ignored type.
                 let attachment = self.type_attachment_head(node.node);
+                self.resolve_type_head_comments(&mut node, &attachment, comments, gap.end);
+                self.finalize_type_head(&mut node, &attachment, comments);
+                // Compact and expanded openings must select the same ignored type.
                 let opening = self.opening_line_constraint(content);
                 let mut moved = node;
                 let changes_own_line = if opening == LineConstraint::SameLine {
@@ -899,56 +900,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let name = node.name(ast);
         let name_end = name.span(ast).end;
         let mut name_mode = ContentMode::Formatted;
-        let mut constraint = if let Some(type_node) = node.constraint(ast) {
-            let mut type_node = self.prepare_type(type_node, ContentMode::Formatted);
-            let boundary = self.prepare_type_boundary(
-                Span::new(name_end, type_node.node.span(ast).start),
-                if matches!(context, TypeParameterContext::Infer) {
-                    TypeBoundaryTarget::InferConstraint {
-                        name,
-                        node: &mut type_node,
-                    }
-                } else {
-                    TypeBoundaryTarget::Constraint {
-                        name,
-                        node: &mut type_node,
-                    }
-                },
-            )?;
-            name_mode = boundary.left_mode;
-            Some(ParameterBound {
-                node: type_node,
-                boundary,
-            })
-        } else {
-            None
-        };
-        let default = if let Some(type_node) = node.default(ast) {
+        let mut constraint = node
+            .constraint(ast)
+            .map(|node| self.prepare_type(node, ContentMode::Formatted));
+        // A default's preceding packet can select the complete constraint.
+        // Resolve it before materializing the constraint's leading head.
+        let default = node.default(ast).map(|type_node| {
             let mut type_node = self.prepare_type(type_node, ContentMode::Formatted);
             let left_end = constraint
                 .as_ref()
-                .map_or(name_end, |bound| bound.node.node.span(ast).end);
+                .map_or(name_end, |node| node.node.span(ast).end);
             let boundary = self.prepare_type_boundary(
                 Span::new(left_end, type_node.node.span(ast).start),
                 TypeBoundaryTarget::Default {
                     name: constraint.is_none().then_some(name),
                     node: &mut type_node,
                 },
-            )?;
-            if boundary.left_mode == ContentMode::Verbatim {
-                if let Some(bound) = &mut constraint {
-                    bound.node.source_owner = Some(bound.node.node);
+            );
+            if boundary
+                .as_ref()
+                .is_ok_and(|boundary| boundary.left_mode == ContentMode::Verbatim)
+            {
+                if let Some(node) = &mut constraint {
+                    node.source_owner = Some(node.node);
                 } else {
                     name_mode = ContentMode::Verbatim;
                 }
             }
-            Some(ParameterBound {
-                node: type_node,
-                boundary,
+            (type_node, boundary)
+        });
+        let constraint = constraint
+            .map(|mut type_node| {
+                let boundary = self.prepare_type_boundary(
+                    Span::new(name_end, type_node.node.span(ast).start),
+                    if matches!(context, TypeParameterContext::Infer) {
+                        TypeBoundaryTarget::InferConstraint {
+                            name,
+                            node: &mut type_node,
+                        }
+                    } else {
+                        TypeBoundaryTarget::Constraint {
+                            name,
+                            node: &mut type_node,
+                        }
+                    },
+                )?;
+                name_mode = boundary.left_mode;
+                Ok::<_, FormatError>(ParameterBound {
+                    node: type_node,
+                    boundary,
+                })
             })
-        } else {
-            None
-        };
+            .transpose()?;
+        // Preserve the original constraint-before-default error priority.
+        let default = default
+            .map(|(node, boundary)| boundary.map(|boundary| ParameterBound { node, boundary }))
+            .transpose()?;
         let prefix = self.prepare_parameter_prefix(node, name, modifiers, &mut name_mode);
         Ok(PreparedParameter {
             prefix,
@@ -1149,19 +1156,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ..
             } => {
                 self.format_formatted_type_boundary_operator(role, &before, writer)?;
+                let (opening, layout) = if head.own_line {
+                    (LineConstraint::NewLine(1), TypeLayout::CallerIndented)
+                } else {
+                    (LineConstraint::Unconstrained, TypeLayout::Root)
+                };
                 let group = self.format_parameter_bound_separator(
                     None,
-                    CommentGap::Source(LineConstraint::Unconstrained),
+                    CommentGap::Source(opening),
                     writer,
                 )?;
                 let pending = writer.indent_if_break(group, |writer| {
-                    self.format_suppressed_type_head(&head, writer)?;
-                    self.format_prepared_type_with_layout(
-                        bound.node,
-                        context,
-                        TypeLayout::Root,
-                        writer,
-                    )
+                    self.format_suppressed_type_content(bound.node, &head, context, layout, writer)
                 })?;
                 if let Some(tail) = tail {
                     self.format_expression_tail(pending, writer)?;
@@ -1196,6 +1202,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let Some(projection) = node.suppressed_projection()
+            && let Some(head) = self.projected_suppressed_type(projection)
+            && !head.comments.is_empty()
+        {
+            // Record the live source frontier before the separator can claim it.
+            let recorded = self.record_type_head(
+                super::compound::PreparedTypeContent::Type(node),
+                PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, None)
+                    .with_opening(CommentOpening::Provided),
+                context,
+                writer,
+            )?;
+            let group = self.format_parameter_bound_separator(
+                None,
+                CommentGap::Source(LineConstraint::NewLine(1)),
+                writer,
+            )?;
+            return writer.indent_if_break(group, |writer| {
+                self.format_recorded_type_head_with_boundary_tail(
+                    recorded,
+                    context,
+                    TypeLayout::CallerIndented,
+                    tail,
+                    writer,
+                )
+            });
+        }
         let (gap, inline_head) = match comments {
             PreparedBoundaryComments::Head { leading, gap } => {
                 if node.source_owner.is_none() {

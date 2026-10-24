@@ -270,9 +270,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (before, after) = comments.split_at(split);
         let mut label_mode = ContentMode::Formatted;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
+            let attachment = self.type_attachment_head(type_node.node);
             for (_, position) in self.suppressed_comment_runs(before, colon) {
                 if matches!(position, SuppressionPosition::OwnLine) {
-                    self.select_type_head(&mut type_node, position);
+                    self.select_type_head_with_attachment(&mut type_node, &attachment, position);
                 } else {
                     label_mode = ContentMode::Verbatim;
                 }
@@ -281,9 +282,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(position, SuppressionPosition::EndOfLine) {
                     label_mode = ContentMode::Verbatim;
                 } else {
-                    self.select_type_head(&mut type_node, position);
+                    self.select_type_head_with_attachment(&mut type_node, &attachment, position);
                 }
             }
+            self.finalize_type_head(&mut type_node, &attachment, comments);
         }
         let source = label_mode == ContentMode::Verbatim
             || type_node.source_owner.is_some()

@@ -42,9 +42,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let trailing_mode = self.content_mode(trailing);
         let mut node: PreparedType = self.prepare_type(annotation, trailing_mode);
         if leading_mode == ContentMode::Verbatim {
-            for (_, position) in self.suppressed_comment_runs(leading, span.start) {
-                self.select_type_head(&mut node, position);
-            }
+            self.select_type_head_comments(&mut node, leading, span.start);
         }
         let opening = if leading_mode == ContentMode::Verbatim {
             let start = leading

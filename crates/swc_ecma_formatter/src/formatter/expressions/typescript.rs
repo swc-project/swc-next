@@ -666,6 +666,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.select_type_head_with_attachment(right, &attachment, position);
                 }
             }
+            self.finalize_type_head(right, &attachment, comments);
             if left_mode == ContentMode::Formatted && !const_marker {
                 suppressed_head = self.prepare_suppressed_type_head(
                     *right,
@@ -889,9 +890,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_suppressed_type_head(&head, writer)?;
-                self.format_prepared_type_with_layout(
+                self.format_suppressed_type_content(
                     node,
+                    &head,
                     TypeContext::Root,
                     TypeLayout::OpeningProvided,
                     writer,
@@ -1052,11 +1053,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
         let before = Span::new(span.start + 1, annotation_span.start);
         let leading = self.comments.in_range(before);
+        let mut attachment = None;
         if self.has_suppression && self.content_mode(leading) == ContentMode::Verbatim {
-            let attachment = self.type_attachment_head(type_node.node);
-            let head = self.prepare_type_suppression_head(&attachment, leading);
+            let attachment =
+                attachment.get_or_insert_with(|| self.type_attachment_head(type_node.node));
+            let head = self.prepare_type_suppression_head(attachment, leading);
             for (_, position) in self.suppressed_comment_runs(leading, before.end) {
-                self.select_type_head_with_retention(&mut type_node, &attachment, head, position);
+                self.select_type_head_with_retention(&mut type_node, attachment, head, position);
             }
         }
         let suffix = Span::new(annotation_span.end, expression_span.start);
@@ -1069,7 +1072,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let type_source =
             self.has_suppression && self.content_mode(type_tail) == ContentMode::Verbatim;
         if type_source {
-            self.select_type_head(&mut type_node, SuppressionPosition::Inline);
+            let attachment =
+                attachment.get_or_insert_with(|| self.type_attachment_head(type_node.node));
+            self.select_type_head_with_attachment(
+                &mut type_node,
+                attachment,
+                SuppressionPosition::Inline,
+            );
+        }
+        if let Some(attachment) = attachment {
+            self.finalize_type_head(&mut type_node, &attachment, leading);
         }
         let before =
             self.prepare_type_expression_gap(before, leading, type_node.source_owner.is_some());
