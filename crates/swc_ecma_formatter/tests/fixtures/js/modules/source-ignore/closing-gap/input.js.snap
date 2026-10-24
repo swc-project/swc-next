@@ -7,6 +7,4 @@ export {first,
 ---------- Options ----------
 {}
 ---------- Output ----------
-export {
-  first,
-  /* prettier-ignore */ } from 'module';
+export { first } from /* prettier-ignore */ 'module';
