@@ -11,5 +11,5 @@ type T<A extends /* prettier-ignore */
 type T<
   A extends /* prettier-ignore */
 /* c */
-/* prettier-ignore */ | B,
+/* prettier-ignore */ B,
 > = A;

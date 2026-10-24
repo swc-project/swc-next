@@ -7,5 +7,4 @@ value as
 ---------- Options ----------
 {}
 ---------- Output ----------
-value as
-/* prettier-ignore */ | \u0042;
+value as /* prettier-ignore */ \u0042;
