@@ -633,21 +633,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     position,
                     super::super::types::TypeSuppressionContext::ExpressionBoundary,
                 );
-                let original_target = if matches!(position, SuppressionPosition::EndOfLine) {
-                    TypeSuppressionTarget::Preceding
-                } else {
-                    selection.target()
-                };
+                let selected = selection.target();
                 if let Some(owner) = packet_owner
                     && let Some(packet) =
-                        self.prepare_preceding_type_packet(comments, owner, right, original_target)
+                        self.prepare_preceding_type_packet(comments, owner, right, selected)
                 {
                     left_mode = ContentMode::Verbatim;
                     preceding_packet = Some(packet);
                     continue;
                 }
                 source = true;
-                let selected = selection.apply(right, self.ast);
+                selection.retain_source_head(right, self.ast);
                 if selected.preceding() {
                     left_mode = ContentMode::Verbatim;
                 }
@@ -656,7 +652,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 // The const assertion marker has no attachable type node.
                 // Its comments select the expression on the left instead.
-                if const_marker || matches!(position, SuppressionPosition::EndOfLine) {
+                if const_marker {
                     left_mode = ContentMode::Verbatim;
                 } else {
                     self.select_type_head_with_attachment(right, &attachment, position);

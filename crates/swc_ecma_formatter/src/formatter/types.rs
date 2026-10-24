@@ -148,9 +148,9 @@ impl TypeSuppressionRun {
         self.target
     }
 
-    pub(super) fn apply(self, node: &mut PreparedType, ast: &Ast<'_>) -> TypeSuppressionTarget {
+    /// Retain an attachment frame independently of the selected content owner.
+    pub(super) fn retain_source_head(self, node: &mut PreparedType, ast: &Ast<'_>) {
         self.head.apply(node, ast);
-        self.target
     }
 }
 
@@ -1432,8 +1432,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
-        let mut suppressed_head = None;
-        if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
+        let layout = 'layout: {
+            if !self.has_suppression || self.content_mode(comments) != ContentMode::Verbatim {
+                if matches!(
+                    role,
+                    TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
+                ) && before
+                    .last()
+                    .is_some_and(|comment| self.line_breaks(gap.start, comment.span.end) != 0)
+                {
+                    // SourceAfter prints this preceding run's existing line once.
+                    role = TypeBoundaryRole::Constraint(LineConstraint::Unconstrained);
+                }
+                break 'layout TypeOperatorLayout::Formatted {
+                    before: self.prepare_comment_boundary(before, gap.start, operator.start),
+                    after: self.prepare_comment_boundary(after, operator.end, gap.end),
+                };
+            }
             let packet_owner = match &target {
                 TypeBoundaryTarget::Constraint { name, .. }
                 | TypeBoundaryTarget::InferConstraint { name, .. }
@@ -1449,6 +1464,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } => Some(name.span(self.ast)),
                 _ => None,
             };
+            if before.is_empty()
+                && let Some(owner) = packet_owner
+                && let TypeBoundaryTarget::Constraint { node, .. }
+                | TypeBoundaryTarget::InferConstraint { node, .. }
+                | TypeBoundaryTarget::Default { node, .. } = &target
+                && self.can_format_preceding_line_type_boundary(after, owner, node)
+            {
+                left_mode = ContentMode::Verbatim;
+                break 'layout TypeOperatorLayout::Formatted {
+                    before: self.prepare_comment_boundary(before, gap.start, operator.start),
+                    after: self.prepare_comment_boundary(after, operator.end, gap.end),
+                };
+            }
             let attachment = match &target {
                 TypeBoundaryTarget::Alias(node)
                 | TypeBoundaryTarget::Constraint { node, .. }
@@ -1493,19 +1521,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 TypeSuppressionTarget::Preceding,
                             )
                         {
-                            return Ok(TypeBoundary {
-                                role,
-                                left_mode: ContentMode::Verbatim,
-                                right_mode: ContentMode::Formatted,
-                                layout: TypeOperatorLayout::Preceding {
-                                    packet,
-                                    after: self.prepare_comment_boundary(
-                                        &[],
-                                        operator.end,
-                                        gap.end,
-                                    ),
-                                },
-                            });
+                            left_mode = ContentMode::Verbatim;
+                            break 'layout TypeOperatorLayout::Preceding {
+                                packet,
+                                after: self.prepare_comment_boundary(&[], operator.end, gap.end),
+                            };
                         }
                         left_mode = ContentMode::Verbatim;
                     } else {
@@ -1550,35 +1570,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             position,
                             TypeSuppressionContext::TypeBoundary,
                         );
-                        let original_target = if matches!(position, SuppressionPosition::EndOfLine)
-                        {
-                            TypeSuppressionTarget::Preceding
-                        } else {
-                            selection.target()
-                        };
+                        let selected = selection.target();
                         if let Some(owner) = packet_owner
-                            && let Some(packet) = self.prepare_preceding_type_packet(
-                                comments,
-                                owner,
-                                node,
-                                original_target,
-                            )
+                            && let Some(packet) =
+                                self.prepare_preceding_type_packet(comments, owner, node, selected)
                         {
-                            return Ok(TypeBoundary {
-                                role,
-                                left_mode: ContentMode::Verbatim,
-                                right_mode: ContentMode::Formatted,
-                                layout: TypeOperatorLayout::Preceding {
-                                    packet,
-                                    after: self.prepare_comment_boundary(
-                                        &[],
-                                        operator.end,
-                                        gap.end,
-                                    ),
-                                },
-                            });
+                            left_mode = ContentMode::Verbatim;
+                            break 'layout TypeOperatorLayout::Preceding {
+                                packet,
+                                after: self.prepare_comment_boundary(&[], operator.end, gap.end),
+                            };
                         }
-                        selection.apply(node, self.ast)
+                        selection.retain_source_head(node, self.ast);
+                        selected
+                    }
+                    (_, TypeBoundaryTarget::Qualified)
+                        if matches!(position, SuppressionPosition::EndOfLine) =>
+                    {
+                        TypeSuppressionTarget::Preceding
                     }
                     _ => TypeSuppressionTarget::Following,
                 };
@@ -1588,20 +1597,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if !selected.following() {
                     continue;
                 }
-                if !matches!(role, TypeBoundaryRole::Alias)
-                    && matches!(position, SuppressionPosition::EndOfLine)
+                right_mode = ContentMode::Verbatim;
+                if let Some(attachment) = &attachment
+                    && let TypeBoundaryTarget::Alias(node)
+                    | TypeBoundaryTarget::Constraint { node, .. }
+                    | TypeBoundaryTarget::InferConstraint { node, .. }
+                    | TypeBoundaryTarget::Default { node, .. } = &mut target
                 {
-                    left_mode = ContentMode::Verbatim;
-                } else {
-                    right_mode = ContentMode::Verbatim;
-                    if let Some(attachment) = &attachment
-                        && let TypeBoundaryTarget::Alias(node)
-                        | TypeBoundaryTarget::Constraint { node, .. }
-                        | TypeBoundaryTarget::InferConstraint { node, .. }
-                        | TypeBoundaryTarget::Default { node, .. } = &mut target
-                    {
-                        self.select_type_head_with_attachment(node, attachment, position);
-                    }
+                    self.select_type_head_with_attachment(node, attachment, position);
                 }
             }
             if left_mode == ContentMode::Formatted
@@ -1611,39 +1614,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | TypeBoundaryTarget::Constraint { node, .. }
                 | TypeBoundaryTarget::InferConstraint { node, .. }
                 | TypeBoundaryTarget::Default { node, .. } = &target
-            {
-                suppressed_head = self.prepare_suppressed_type_head(
+                && let Some(head) = self.prepare_suppressed_type_head(
                     **node,
                     attachment,
                     gap,
                     before,
                     after,
                     SuppressedTypeHeadRole::TypeBoundary,
-                );
-            }
-        }
-        let layout = if let Some(head) = suppressed_head {
-            TypeOperatorLayout::Suppressed {
-                before: self.prepare_comment_boundary(before, gap.start, operator.start),
-                head,
-            }
-        } else if left_mode == ContentMode::Verbatim || right_mode == ContentMode::Verbatim {
-            TypeOperatorLayout::Source(gap)
-        } else {
-            if matches!(
-                role,
-                TypeBoundaryRole::Constraint(LineConstraint::NewLine(1))
-            ) && before
-                .last()
-                .is_some_and(|comment| self.line_breaks(gap.start, comment.span.end) != 0)
+                )
             {
-                // SourceAfter prints this preceding run's existing line once.
-                role = TypeBoundaryRole::Constraint(LineConstraint::Unconstrained);
+                break 'layout TypeOperatorLayout::Suppressed {
+                    before: self.prepare_comment_boundary(before, gap.start, operator.start),
+                    head,
+                };
             }
-            TypeOperatorLayout::Formatted {
-                before: self.prepare_comment_boundary(before, gap.start, operator.start),
-                after: self.prepare_comment_boundary(after, operator.end, gap.end),
-            }
+            // A suppressed packet without a proven canonical placement retains
+            // its boundary independently of which operand is copied verbatim.
+            TypeOperatorLayout::Source(gap)
         };
         Ok(TypeBoundary {
             role,
@@ -1812,6 +1799,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )),
             ),
         }
+    }
+
+    /// A trailing line marker ignores the name, not its bound's head or layout.
+    /// Keep the real after-operator run so its mandatory line remains in the
+    /// normal bound separator group.
+    fn can_format_preceding_line_type_boundary(
+        &self,
+        comments: &[Comment],
+        owner: Span,
+        right: &PreparedType,
+    ) -> bool {
+        let [comment] = comments else {
+            return false;
+        };
+        let right_span = right.node.span(self.ast);
+        comment.kind == CommentKind::Line
+            && is_suppression_comment(self.ast, *comment)
+            && right.source_owner.is_none()
+            && right.source_head.is_none()
+            && self.line_breaks(owner.start, comment.span.end) == 0
+            && self.line_breaks(comment.span.end, right_span.start) != 0
+            && self.comments.in_range(right_span).is_empty()
+            && !self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
     }
 
     /// The caller resolves the actual owner before choosing its marker's placement.
@@ -2092,11 +2102,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: SuppressionPosition,
         context: TypeSuppressionContext,
     ) -> TypeSuppressionRun {
-        if !matches!(position, SuppressionPosition::Inline) {
-            return TypeSuppressionRun {
-                target: TypeSuppressionTarget::Following,
-                head,
-            };
+        match position {
+            SuppressionPosition::OwnLine => {
+                return TypeSuppressionRun {
+                    target: TypeSuppressionTarget::Following,
+                    head,
+                };
+            }
+            SuppressionPosition::EndOfLine => {
+                return TypeSuppressionRun {
+                    target: TypeSuppressionTarget::Preceding,
+                    head,
+                };
+            }
+            SuppressionPosition::Inline => {}
         }
         let mut tie = attachment.prefix;
         let mut preceding = false;
