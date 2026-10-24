@@ -1121,7 +1121,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        let trailing_binding = self.source_parentheses_tail_binding(tail, boundary);
+        let trailing_binding =
+            self.source_parentheses_tail_binding(tail, boundary, diagnostic_owner.statement);
         if !trailing_binding.allows_relocation(None)
             || cast(ParenthesisCastPosition::Outer).is_some()
         {
@@ -1147,21 +1148,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         comments: &[Comment],
         boundary: SourceParentheses,
+        statement: Option<StatementSourceOwner>,
     ) -> CommentBinding {
-        let mut optimizer = false;
+        let statement_tail = statement.is_some_and(|owner| {
+            owner.source.start <= boundary.outer.start
+                && boundary.outer.end <= owner.source.end
+                && boundary.inner.start <= owner.destination.start
+                && owner.destination.end <= boundary.inner.end
+                && matches!(boundary.inner_target, ParenthesisInner::Expression(expression)
+                    if expression.span(self.ast) == boundary.inner)
+        });
+        let mut needs_trivia_tail = false;
+        let mut diagnostic_tail = false;
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
-            if semantics.suppression
-                || semantics.diagnostic
-                || semantics.file_directive
-                || semantics.type_cast
-            {
+            if semantics.suppression || semantics.file_directive || semantics.type_cast {
                 return CommentBinding::SourceBound;
             }
-            optimizer |= semantics.optimizer;
+            if semantics.diagnostic && !statement_tail {
+                return CommentBinding::SourceBound;
+            }
+            needs_trivia_tail |= semantics.optimizer || semantics.diagnostic;
+            diagnostic_tail |= semantics.diagnostic;
             CommentBinding::Unbound
         });
-        if !optimizer || matches!(binding, CommentBinding::SourceBound) {
+        if !needs_trivia_tail || matches!(binding, CommentBinding::SourceBound) {
             return binding;
         }
         let ParenthesisInner::Expression(_) = boundary.inner_target else {
@@ -1173,9 +1184,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.ast.source().as_bytes().get(closing as usize) != Some(&b')') {
             return CommentBinding::SourceBound;
         }
-        // A trailing marker cannot target the preceding expression. Its source
-        // frontier ends at the real closer, before any enclosing continuation.
+        // This complete source packet ends at the real closer. A statement
+        // owner can carry it past removed wrappers through its existing tail.
         let mut start = boundary.inner.end;
+        let mut on_operand_line = true;
         for comment in comments {
             if comment.span.start < start
                 || comment.span.end > closing
@@ -1185,6 +1197,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .all(is_source_whitespace)
             {
                 return CommentBinding::SourceBound;
+            }
+            if diagnostic_tail {
+                on_operand_line &= self.line_breaks(start, comment.span.start) == 0;
+                if !on_operand_line && self.comment_semantics(*comment).is_ordinary() {
+                    // An own-line ordinary suffix needs this real carrier to
+                    // remain attached to the preceding expression.
+                    return CommentBinding::SourceBound;
+                }
+                on_operand_line &= self.line_breaks(comment.span.start, comment.span.end) == 0;
             }
             start = comment.span.end;
         }
@@ -1639,7 +1660,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         outside_packet(comment) && !self.comment_semantics(*comment).is_ordinary()
                     }) || comments.tail.iter().any(outside_packet)
                         && !self
-                            .source_parentheses_tail_binding(comments.tail, nested)
+                            .source_parentheses_tail_binding(comments.tail, nested, None)
                             .allows_relocation(None)
                     {
                         return CommentBinding::SourceBound;
