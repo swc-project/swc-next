@@ -8,7 +8,7 @@ use super::{
 };
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
-    PreparedTrailingRun, SourceSeparatorTransition,
+    PreparedSeparatorGap, PreparedTrailingRun, SourceSeparatorTransition,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::{
@@ -462,6 +462,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             destination,
             comma,
             pre_packet_empty: false,
+            following_gap: None,
         })
     }
 
@@ -821,8 +822,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let start = (comma + 1).max(boundary_end);
                 start < next && self.next_line_is_empty(start, next)
             });
+        let required_comma = has_more
+            || protected_comma.is_some()
+            || matches!(trailing_comma, TrailingCommaPolicy::Required);
+        let mut end = boundary_end;
+        if required_comma
+            && let Some(comma) = comma
+            && (preserve_comma || separator_coverage_released)
+            && comments
+                .get(boundary_count)
+                .is_none_or(|comment| comment.span.start >= comma)
+        {
+            end = end.max(comma + 1);
+        }
         if let Some(transition) = transition.as_mut() {
             transition.pre_packet_empty = pre_packet_empty;
+            let owner_start = comments
+                .get(boundary_count)
+                .map_or(transition.destination.start, |comment| comment.span.start);
+            let bare_gap = separator_coverage_released
+                && boundary_count == comments.len()
+                && !canonical_run
+                && !inline_line
+                && !pre_packet_empty
+                && boundary_end <= transition.comma
+                && !self.next_line_is_empty(boundary_end, transition.comma);
+            let layout = if bare_gap {
+                LineConstraint::Unconstrained
+            } else {
+                self.source_separator_constraint(end, owner_start, Some(transition))
+            };
+            transition.following_gap = Some(PreparedSeparatorGap {
+                owner_start,
+                layout,
+            });
         }
         let boundary = self.comments.take(boundary_count);
         let (trailing, before_comma) = if let Some((blocks, _)) = &prepared_run {
@@ -854,9 +887,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             Separator::Line
         };
-        let required_comma = has_more
-            || protected_comma.is_some()
-            || matches!(trailing_comma, TrailingCommaPolicy::Required);
         if required_comma {
             if !separator_coverage_released
                 && let Some(comma) = comma
@@ -889,17 +919,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if !matches!(separator, Separator::EmptyLine) {
                 separator = Separator::TrailingLine;
             }
-        }
-        let mut end = boundary_end;
-        if required_comma
-            && let Some(comma) = comma
-            && (preserve_comma || separator_coverage_released)
-            && self
-                .comments
-                .first()
-                .is_none_or(|comment| comment.span.start >= comma)
-        {
-            end = end.max(comma + 1);
         }
         if !has_more
             || !preserve_comma

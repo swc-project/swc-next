@@ -157,6 +157,14 @@ pub(super) struct SourceSeparatorTransition {
     pub(super) destination: Span,
     pub(super) comma: u32,
     pub(super) pre_packet_empty: bool,
+    pub(super) following_gap: Option<PreparedSeparatorGap>,
+}
+
+/// Following layout belongs to its real owner, not the consumed comma frontier.
+#[derive(Clone, Copy)]
+pub(super) struct PreparedSeparatorGap {
+    pub(super) owner_start: u32,
+    pub(super) layout: LineConstraint,
 }
 
 #[derive(Clone, Copy)]
@@ -1468,6 +1476,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(transition) = transition else {
             return self.line_constraint(start, end);
         };
+        if let Some(gap) = transition.following_gap
+            && gap.owner_start == end
+            && transition.source.start <= start
+            && start <= end
+            && end <= transition.source.end
+        {
+            return gap.layout;
+        }
         self.source_transition_constraint(
             start,
             end,
