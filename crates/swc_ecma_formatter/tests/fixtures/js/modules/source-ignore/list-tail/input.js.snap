@@ -9,14 +9,12 @@ import {first,
 {}
 ---------- Output ----------
 import {
-  first,
-  /* prettier-ignore */ // tail
-} from '\u006d';
+  first, // tail
+} from /* prettier-ignore */ '\u006d';
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 import {
-  first,
-  /* prettier-ignore */ // tail
-} from '\u006d'
+  first, // tail
+} from /* prettier-ignore */ '\u006d'

@@ -9,6 +9,5 @@ import defaultName, {first,
 {"printWidth":20}
 ---------- Output ----------
 import defaultName, {
-  first,
-  /* prettier-ignore */ // tail
-} from 'module' with { type: "json" };
+  first, // tail
+} from /* prettier-ignore */ 'module' with { type: "json" };

@@ -9,6 +9,5 @@ import type {First,
 {}
 ---------- Output ----------
 import type {
-  First,
-  /* prettier-ignore */ // tail
-} from 'module';
+  First, // tail
+} from /* prettier-ignore */ 'module';
