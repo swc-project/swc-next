@@ -9,15 +9,15 @@ result = (f(1) as
 {"printWidth":80}
 ---------- Output ----------
 result = f(1) as
- /* prettier-ignore */
- string | number;
+  /* prettier-ignore */
+  string | number;
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 result = f(1) as
- /* prettier-ignore */
- string | number;
+  /* prettier-ignore */
+  string | number;
 
 ---------- Options ----------
 {"printWidth":1,"semi":false}
@@ -26,13 +26,13 @@ result =
   f(
     1,
   ) as
- /* prettier-ignore */
- | string
+    /* prettier-ignore */
+    | string
     | number
 
 ---------- Options ----------
 {"endOfLine":"crlf","printWidth":20,"useTabs":true}
 ---------- Output ----------
 result = f(1) as
- /* prettier-ignore */
- string | number;
+	/* prettier-ignore */
+	string | number;
