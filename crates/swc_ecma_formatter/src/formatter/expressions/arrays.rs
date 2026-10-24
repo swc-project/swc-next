@@ -257,51 +257,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_array_contents(
         &mut self,
-        source: PreparedArray<'ast>,
+        mut source: PreparedArray<'ast>,
         group: Option<GroupId>,
         writer: &mut Writer<'ast>,
     ) -> Result<bool, FormatError> {
-        let PreparedArray {
-            array,
-            content,
-            opening,
-            closing,
-            layout,
-            mut numeric_comments,
-            ..
-        } = source;
+        let mut numeric_comments = source.numeric_comments.take();
         writer.text("[");
-        let end = writer.indent(|writer| {
-            opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
-            match layout {
-                ArgumentLayout::Lines => self.format_array_items(
-                    array,
-                    content,
-                    layout,
-                    group,
-                    numeric_comments.as_mut(),
-                    writer,
-                ),
+        let closing = writer.indent(|writer| {
+            source
+                .opening
+                .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            match source.layout {
+                ArgumentLayout::Lines => {
+                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
+                }
                 ArgumentLayout::Fill => writer.fill(|writer| {
-                    self.format_array_items(
-                        array,
-                        content,
-                        layout,
-                        group,
-                        numeric_comments.as_mut(),
-                        writer,
-                    )
+                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
                 }),
             }
         })?;
-        self.terminal_close_constraint(closing, end).write(
-            writer,
-            FlatSeparator::Empty,
-            Writer::soft_line,
-        );
+        closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
         writer.text("]");
         if let Some(owner) = numeric_comments.as_mut() {
-            owner.finish_source(self, content.end);
+            owner.finish_source(self, source.content.end);
         }
         Ok(numeric_comments
             .as_ref()
@@ -492,15 +470,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_array_items(
         &mut self,
-        array: ArrayExpression,
-        span: Span,
-        layout: ArgumentLayout,
+        source: &PreparedArray<'ast>,
         group: Option<GroupId>,
         mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<u32, FormatError> {
+    ) -> Result<LineConstraint, FormatError> {
         let ast = self.ast;
-        let mut elements = array
+        let span = source.content;
+        let layout = source.layout;
+        let mut elements = source
+            .array
             .elements(ast)
             .iter()
             .map(|id| ast.get_node_in_sub_range(id));
@@ -511,6 +490,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut separator = Separator::Line;
         let mut following_mode = None;
         let mut elisions = ElisionLayout::Formatted;
+        let mut terminal_close = None;
         let trailing_comma = if self.options.trailing_commas == TrailingCommas::None {
             TrailingCommaPolicy::Forbidden
         } else {
@@ -571,6 +551,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         mode,
                         layout,
                         transition,
+                        closing: items.peek().is_none().then_some(source.closing),
                         following: match items.peek() {
                             Some(item) if item.holes != 0 => FollowingArgument::Elision {
                                 argument: item.argument,
@@ -593,6 +574,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             transition = boundary.transition;
             following_mode = Some(boundary.following_mode);
             elisions = boundary.elisions;
+            terminal_close = boundary.terminal_close;
             has_slot = true;
         }
         let dangling = self.comments.between(Span::new(previous_end, span.end))?;
@@ -612,8 +594,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             numeric_comments,
             writer,
         )?;
-        Ok(dangling
+        let end = dangling
             .last()
-            .map_or(previous_end, |comment| comment.span.end))
+            .map_or(previous_end, |comment| comment.span.end);
+        Ok(terminal_close
+            .filter(|_| dangling.is_empty())
+            .unwrap_or_else(|| self.terminal_close_constraint(source.closing, end)))
     }
 }
