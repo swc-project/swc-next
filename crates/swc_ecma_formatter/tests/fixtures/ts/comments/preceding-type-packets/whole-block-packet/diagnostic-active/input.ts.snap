@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+type T<A extends /* prettier-ignore */ /* c */ | A> = A;
+---------- Options ----------
+{"printWidth":10,"semi":true}
+---------- Output ----------
+// @ts-expect-error
+type T<A extends /* prettier-ignore */ /* c */ | A,> = A;
