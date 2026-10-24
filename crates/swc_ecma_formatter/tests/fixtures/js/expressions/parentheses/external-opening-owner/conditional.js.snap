@@ -8,15 +8,13 @@ first
 ) : other;---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
-test
-  ? // @ts-ignore
-    first
+test // @ts-ignore
+  ? first
   : other;
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
-test
-  ? // @ts-ignore
-    first
+test // @ts-ignore
+  ? first
   : other

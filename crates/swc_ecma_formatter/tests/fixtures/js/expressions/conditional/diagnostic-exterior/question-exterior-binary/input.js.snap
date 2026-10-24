@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+test ? // @ts-ignore
+(
+first + second
+) : other;
+---------- Options ----------
+{}
+---------- Output ----------
+test // @ts-ignore
+  ? first + second
+  : other;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+test // @ts-ignore
+  ? first +
+    second
+  : other;
