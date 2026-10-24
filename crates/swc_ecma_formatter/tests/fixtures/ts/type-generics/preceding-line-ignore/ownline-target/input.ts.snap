@@ -10,6 +10,6 @@ type T<A extends
 ---------- Output ----------
 type T<
   A extends
-// prettier-ignore
-| B | C,
+    // prettier-ignore
+    B | C,
 > = A;

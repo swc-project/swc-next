@@ -11,8 +11,8 @@ Default> = T;
 ---------- Output ----------
 type Alias<
   T extends
-/* prettier-ignore */
-12.00 | 13.0 = // suffix
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
     Default,
 > = T;
 
@@ -21,8 +21,8 @@ type Alias<
 ---------- Output ----------
 type Alias<
   T extends
-/* prettier-ignore */
-12.00 | 13.0 = // suffix
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
     Default,
 > = T;
 
@@ -31,8 +31,8 @@ type Alias<
 ---------- Output ----------
 type Alias<
   T extends
-/* prettier-ignore */
-12.00 | 13.0 = // suffix
+    /* prettier-ignore */
+    12.00 | 13.0 = // suffix
     Default,
 > = T;
 
@@ -41,7 +41,7 @@ type Alias<
 ---------- Output ----------
 type Alias<
 	T extends
-/* prettier-ignore */
-12.00 | 13.0 = // suffix
+		/* prettier-ignore */
+		12.00 | 13.0 = // suffix
 		Default
 > = T;

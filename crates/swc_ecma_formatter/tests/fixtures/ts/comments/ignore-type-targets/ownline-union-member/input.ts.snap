@@ -8,12 +8,12 @@ type T =
 {}
 ---------- Output ----------
 type T =
-// prettier-ignore
- (A |  B) | C;
+  // prettier-ignore
+  (A |  B) | C;
 
 ---------- Options ----------
 {"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 type T =
-// prettier-ignore
- (A |  B) | C;
+	// prettier-ignore
+	(A |  B) | C;

@@ -9,7 +9,7 @@ type M = { [\u004b in
 type M = {
   [
     K in
-/* prettier-ignore */ /* ordinary */ | (\u0041 & X)
+      /* prettier-ignore */ /* ordinary */ | (\u0041 & X)
       | B
   ]: number;
 };
@@ -20,6 +20,6 @@ type M = {
 type M = {
   [
     K in
-/* prettier-ignore */ /* ordinary */ (\u0041 & X) | B
+      /* prettier-ignore */ /* ordinary */ (\u0041 & X) | B
   ]: number;
 };
