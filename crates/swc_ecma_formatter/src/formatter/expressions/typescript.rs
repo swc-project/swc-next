@@ -603,13 +603,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .then(|| expression.span(self.ast));
             let attachment = self.type_attachment_head(right.node);
             let before_head = self.prepare_type_suppression_head(&attachment, before);
-            for (_, position) in self.suppressed_comment_runs(before, start) {
+            for (run, position) in self.suppressed_comment_runs(before, start) {
                 if !matches!(position, SuppressionPosition::OwnLine)
                     && let Some(owner) = packet_owner
                     && let Some(packet) = self.prepare_preceding_type_packet(
                         comments,
+                        run,
                         owner,
                         right,
+                        &attachment,
                         TypeSuppressionTarget::Preceding,
                     )
                 {
@@ -635,8 +637,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let selected = selection.target();
                 if let Some(owner) = packet_owner
-                    && let Some(packet) =
-                        self.prepare_preceding_type_packet(comments, owner, right, selected)
+                    && let Some(packet) = self.prepare_preceding_type_packet(
+                        comments,
+                        run,
+                        owner,
+                        right,
+                        &attachment,
+                        selected,
+                    )
                 {
                     left_mode = ContentMode::Verbatim;
                     preceding_packet = Some(packet);
