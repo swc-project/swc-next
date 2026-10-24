@@ -9,8 +9,7 @@ second];
 {"printWidth":10,"semi":false}
 ---------- Output ----------
 ;[
-  first // @ts-ignore
-  ,
+  first, // @ts-ignore
   second,
 ]
 
@@ -18,7 +17,6 @@ second];
 {"printWidth":10,"semi":true}
 ---------- Output ----------
 [
-  first // @ts-ignore
-  ,
+  first, // @ts-ignore
   second,
 ];
