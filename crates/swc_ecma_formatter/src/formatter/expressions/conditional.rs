@@ -69,7 +69,6 @@ enum ConditionalLayout {
 
 struct ConditionalOperand {
     original: Expr,
-    content: ExpressionContent,
     source_end: u32,
     operand_end: u32,
     source_start: u32,
@@ -97,7 +96,6 @@ struct ConditionalBoundary<'ast> {
     operator: &'static str,
     source_range: Span,
     comments: &'ast [Comment],
-    next_binding: CommentBinding,
     source: Option<ConditionalSourceBoundary<'ast>>,
 }
 
@@ -126,10 +124,12 @@ impl ConditionalBoundary<'_> {
 }
 
 /// One claimed packet supplies the previous tail and the following node head.
-/// This contains placement only; no already printed operand can change mode.
+/// Its following content and head share that final packet scope. No already
+/// printed operand can change mode.
 struct ResolvedConditionalBoundary<'ast> {
     operator: &'static str,
     leading: &'ast [Comment],
+    content: ExpressionContent,
     annotation: Option<EmittedHeadAnnotation>,
     next_binding: CommentBinding,
     next_mode: ContentMode,
@@ -299,7 +299,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn conditional_operand(&self, original: Expr) -> ConditionalOperand {
-        let content = self.expression_content(original);
         let mut operand = original;
         if self.has_suppression {
             while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(operand) {
@@ -313,7 +312,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // The operand owns its inner head even when a source wrapper can
             // disappear. A following ignore can still retain that raw wrapper.
             source_start: original.span(self.ast).start,
-            content,
         }
     }
 
@@ -340,7 +338,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => OperandIndent::Parent,
         };
         let test_chain = self.conditional_test_chain(chain, test.original);
-        let write_test = |writer: &mut Writer<'ast>| {
+        let mut write_test = |writer: &mut Writer<'ast>| {
             let mut test_context = ExpressionContext::at(ExpressionPosition::ConditionalTest)
                 .with_parent_head(context)
                 .with_operand_indent(operand_indent)
@@ -353,7 +351,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             self.format_prepared_expression_with_leading_comments(
                 test.original,
-                test.content,
+                self.expression_content(test.original),
                 NodeHead {
                     comments: &[],
                     content_start: test.source_start,
@@ -369,7 +367,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write_test(writer)?
         };
-        let question = self.resolve_conditional_boundary(question, tail, writer)?;
+        let question = self.resolve_conditional_boundary(question, &consequent, tail, writer)?;
         let options = self.options;
         let write_branches = |writer: &mut Writer<'ast>| {
             let colon = self.format_conditional_branch(
@@ -383,7 +381,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 chain,
                 writer,
                 |formatter, tail, _, writer| {
-                    formatter.resolve_conditional_boundary(colon, tail, writer)
+                    formatter.resolve_conditional_boundary(colon, &alternate, tail, writer)
                 },
             )?;
             self.format_conditional_branch(
@@ -433,10 +431,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 operator,
                 source_range: span,
                 comments,
-                next_binding: next
-                    .content
-                    .parentheses
-                    .map_or(CommentBinding::Unbound, |removed| removed.head.binding),
                 source: None,
             });
         }
@@ -485,30 +479,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentBinding::SourceBound
             }
         });
-        let following_binding = self.comment_run_binding(after.iter().copied(), |comment| {
-            if self.comment_semantics(comment).suppression {
-                CommentBinding::Unbound
-            } else {
-                self.expression_head_binding(std::slice::from_ref(&comment), next.original)
-            }
-        });
+        let (following_binding, opening_only) = if suppression.is_some() {
+            // The source suppression packet already owns its raw operand.
+            // Preserve its independent placement rule around punctuation.
+            (
+                self.comment_run_binding(after.iter().copied(), |comment| {
+                    if self.comment_semantics(comment).suppression {
+                        CommentBinding::Unbound
+                    } else {
+                        self.expression_head_binding(std::slice::from_ref(&comment), next.original)
+                    }
+                }),
+                false,
+            )
+        } else {
+            let prepared = self.prepare_expression_source_head(after, next.original);
+            let opening_only = sensitive
+                && !after.is_empty()
+                && self
+                    .source_expression_opening_packet(next.original)
+                    .is_some_and(|packet| {
+                        after.last() == Some(&packet)
+                            && !self.diagnostic_range_is_sensitive(Span::new(
+                                operator_start,
+                                packet.span.start,
+                            ))
+                    });
+            (
+                if opening_only {
+                    prepared.lexical_binding
+                } else {
+                    prepared.binding
+                },
+                opening_only,
+            )
+        };
+        // Only a complete opening-only packet can use lexical placement. Real
+        // operator coverage and all other bound heads keep their source boundary.
         let binding = previous_binding.combine(following_binding);
-        let binding = if sensitive {
+        let binding = if sensitive && !opening_only {
             CommentBinding::SourceBound
         } else {
             binding
         };
-        // Layout follows the packet the source owner will actually print before
-        // the operand. Suppression modes retain their separate source targets.
-        let emitted_leading = if binding.allows_relocation(None) {
-            leading
-        } else {
-            after
-        };
-        let next_binding = self.expression_head_binding(emitted_leading, next.original);
-        let next_binding = next.content.parentheses.map_or(next_binding, |removed| {
-            next_binding.combine(removed.head.binding)
-        });
         let previous_end = before.last().map_or(span.start, |comment| comment.span.end);
         let next_start = after.first().map_or(span.end, |comment| comment.span.start);
         let previous_mode = self.content_mode(trailing);
@@ -549,7 +562,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator,
             source_range: span,
             comments,
-            next_binding,
             source: Some(ConditionalSourceBoundary {
                 operator_start,
                 binding,
@@ -649,6 +661,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn resolve_conditional_boundary(
         &mut self,
         boundary: ConditionalBoundary<'ast>,
+        next: &ConditionalOperand,
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ResolvedConditionalBoundary<'ast>, FormatError> {
@@ -753,7 +766,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             }
         };
-        let annotation = if matches!(boundary.next_binding, CommentBinding::Unbound) {
+        // Prepare the child only after its complete emitted head is known.
+        // Source coverage stays immutable while the remaining packet determines
+        // which foreign comments still belong to this operand's opening scope.
+        let content = self.expression_content_with_leading(next.original, leading);
+        let next_binding = self.expression_head_binding(leading, next.original);
+        let next_binding = content.parentheses.map_or(next_binding, |removed| {
+            next_binding.combine(removed.head.binding)
+        });
+        let annotation = if matches!(next_binding, CommentBinding::Unbound) {
             self.emitted_head_annotation(leading)
         } else {
             None
@@ -806,8 +827,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(ResolvedConditionalBoundary {
             operator: boundary.operator,
             leading,
+            content,
             annotation,
-            next_binding: boundary.next_binding,
+            next_binding,
             next_mode,
             before_operator,
             after_operator,
@@ -844,9 +866,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         writer.text(boundary.operator);
         writer.space();
+        let content = boundary.content;
         let ConditionalOperand {
             original,
-            content,
             source_start,
             operand_end,
             source_end,

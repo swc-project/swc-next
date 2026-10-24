@@ -83,6 +83,8 @@ pub(super) struct RemovedExpressionParentheses {
 #[derive(Clone, Copy)]
 pub(super) struct SourceParenthesesHead {
     pub(super) binding: CommentBinding,
+    /// The same attachment before diagnostic line geometry protects the source head.
+    pub(super) lexical_binding: CommentBinding,
     pub(super) has_comments: bool,
     diagnostic_frontier: Option<DiagnosticHeadFrontier>,
 }
@@ -466,6 +468,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.expression_content_for_position(expression, ExpressionPosition::Nested)
     }
 
+    /// The caller supplies the complete head left after assigning its preceding packet.
+    pub(super) fn expression_content_with_leading(
+        &self,
+        expression: Expr,
+        leading: &[Comment],
+    ) -> ExpressionContent {
+        if leading.is_empty() || self.diagnostic_lines.is_empty() {
+            return self.expression_content(expression);
+        }
+        let external_opening = self
+            .source_expression_opening_owner(expression)
+            .filter(|owner| self.external_opening_packet_isolated(owner.packet, leading));
+        self.expression_content_with_diagnostic_owner(
+            expression,
+            DiagnosticParenthesesOwner {
+                external_opening,
+                ..DiagnosticParenthesesOwner::default()
+            },
+        )
+    }
+
     /// Inspect data after removing source parentheses transparent in the current
     /// comment scope, without preparing a source envelope for an ordinary node.
     pub(in crate::formatter) fn expression_data(&self, expression: Expr) -> ExprData {
@@ -569,7 +592,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner = child;
             }
             if supported {
-                owners[line] = self.external_opening_owner(SourceParentheses {
+                owners[line] = self.prepare_external_opening_owner(SourceParentheses {
                     outer,
                     inner: inner.span(self.ast),
                     inner_target: ParenthesisInner::Expression(inner),
@@ -580,6 +603,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     fn external_expression_opening_owner(&self, expression: Expr) -> Option<ExternalOpeningOwner> {
+        let owner = self.source_expression_opening_owner(expression)?;
+        let comments = self.ast.comments();
+        let end = comments.partition_point(|comment| comment.span.end <= owner.source.outer.start);
+        self.external_opening_packet_isolated(owner.packet, &comments[..end])
+            .then_some(owner)
+    }
+
+    /// Coverage geometry alone does not release a head's foreign packet fence.
+    fn source_expression_opening_owner(&self, expression: Expr) -> Option<ExternalOpeningOwner> {
         let outer = expression.span(self.ast);
         let (index, _) = self.diagnostic_lines.external_opening_tokens(outer.start)?;
         let owner = self.external_opening_owners.get(index).copied().flatten()?;
@@ -591,8 +623,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         .then_some(owner)
     }
 
+    /// Immutable coverage geometry for this actual source envelope. The caller
+    /// still resolves the complete packet's placement and foreign head scope.
+    pub(super) fn source_expression_opening_packet(&self, expression: Expr) -> Option<Comment> {
+        self.source_expression_opening_owner(expression)
+            .map(|owner| owner.packet)
+    }
+
     /// Both expression and recovered target chains provide their actual owner.
     pub(super) fn external_opening_owner(
+        &self,
+        boundary: SourceParentheses,
+    ) -> Option<ExternalOpeningOwner> {
+        let owner = self.prepare_external_opening_owner(boundary)?;
+        let comments = self.ast.comments();
+        let end = comments.partition_point(|comment| comment.span.end <= boundary.outer.start);
+        self.external_opening_packet_isolated(owner.packet, &comments[..end])
+            .then_some(owner)
+    }
+
+    fn external_opening_packet_isolated(&self, packet: Comment, comments: &[Comment]) -> bool {
+        let Some((&last, previous)) = comments.split_last() else {
+            return false;
+        };
+        last == packet
+            && previous.last().is_none_or(|previous| {
+                !self
+                    .source(Span::new(previous.span.end, packet.span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+            })
+    }
+
+    fn prepare_external_opening_owner(
         &self,
         boundary: SourceParentheses,
     ) -> Option<ExternalOpeningOwner> {
@@ -614,8 +677,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        // Read the immutable source packet before a parent can claim its cursor.
-        // A foreign adjacent comment keeps the complete mixed packet protected.
+        // Cache immutable coverage geometry before a parent can claim its cursor.
+        // The consuming head scope checks the packet's foreign adjacency.
         let comments = self.ast.comments();
         let end = comments.partition_point(|comment| comment.span.end <= boundary.outer.start);
         let index = end.checked_sub(1)?;
@@ -630,11 +693,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .source(Span::new(packet.span.end, boundary.outer.start))
                 .chars()
                 .all(is_source_whitespace)
-            || index.checked_sub(1).is_some_and(|previous| {
-                self.source(Span::new(comments[previous].span.end, packet.span.start))
-                    .chars()
-                    .all(is_source_whitespace)
-            })
         {
             return None;
         }
@@ -653,6 +711,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut inner = expression;
         let mut head = SourceParenthesesHead {
             binding: CommentBinding::Unbound,
+            lexical_binding: CommentBinding::Unbound,
             has_comments: false,
             diagnostic_frontier: None,
         };
@@ -700,6 +759,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             head = SourceParenthesesHead {
                 binding,
+                lexical_binding: head.lexical_binding.combine(next.head.lexical_binding),
                 has_comments: head.has_comments || next.head.has_comments,
                 diagnostic_frontier: frontier,
             };
@@ -1023,6 +1083,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(RemovableSourceParentheses {
                 head: SourceParenthesesHead {
                     binding: CommentBinding::Unbound,
+                    lexical_binding: CommentBinding::Unbound,
                     has_comments: false,
                     diagnostic_frontier: None,
                 },
@@ -1401,6 +1462,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if comments.is_empty() {
             return SourceParenthesesHead {
                 binding: CommentBinding::Unbound,
+                lexical_binding: CommentBinding::Unbound,
                 has_comments: false,
                 diagnostic_frontier: None,
             };
@@ -1527,6 +1589,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 binding
             },
+            lexical_binding: binding,
             has_comments: !comments.is_empty(),
             diagnostic_frontier,
         }
@@ -3572,8 +3635,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &[Comment],
         expression: Expr,
     ) -> CommentBinding {
+        self.prepare_expression_source_head(comments, expression)
+            .binding
+    }
+
+    /// Prepare lexical attachment and source-line protection independently.
+    pub(super) fn prepare_expression_source_head(
+        &self,
+        comments: &[Comment],
+        expression: Expr,
+    ) -> SourceParenthesesHead {
         let span = expression.span(self.ast);
-        self.source_parentheses_head_binding(
+        self.source_parentheses_head(
             comments,
             SourceParentheses {
                 outer: span,
@@ -3581,6 +3654,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner_target: ParenthesisInner::Expression(expression),
             },
             &mut None,
+            None,
             || self.source_type_cast(span.start),
         )
     }
