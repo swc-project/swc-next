@@ -436,13 +436,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(item)
     }
 
-    fn diagnostic_separator_precedes_uncovered_item(
+    fn prepare_source_separator_transition(
         &self,
+        comments: &[Comment],
+        source: Span,
+        destination: Span,
         comma: u32,
-        following_start: u32,
-    ) -> bool {
-        self.diagnostic_line_is_sensitive(comma)
-            && !self.diagnostic_line_is_sensitive(following_start)
+    ) -> Option<SourceSeparatorTransition> {
+        if self.diagnostic_line_is_sensitive(destination.start) {
+            let following = comments.partition_point(|comment| comment.span.start <= comma);
+            if !self.diagnostic_line_is_sensitive(comma)
+                || self
+                    .diagnostic_head_reset_coverage(
+                        &comments[following..],
+                        comma,
+                        destination.start,
+                    )
+                    .is_none()
+            {
+                return None;
+            }
+        }
+        Some(SourceSeparatorTransition {
+            source,
+            destination,
+            comma,
+            pre_packet_empty: false,
+        })
     }
 
     pub(in crate::formatter) fn finish_delimited_item(
@@ -472,6 +492,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
         self.finish_delimited_item_with_boundary(item, tail, array_comments, None, None, writer)
+    }
+
+    fn format_empty_delimited_separator(
+        &self,
+        has_more: bool,
+        trailing_comma: TrailingCommaPolicy,
+        comma: Option<u32>,
+        gap_end: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Separator {
+        let mut separator = Separator::Line;
+        if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
+            writer.text(",");
+            if let Some(comma) = comma
+                && self.next_line_is_empty(comma + 1, gap_end)
+            {
+                separator = Separator::EmptyLine;
+            }
+        } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
+            writer.if_break_for(target, ",");
+        }
+        separator
     }
 
     fn finish_delimited_item_with_boundary(
@@ -581,21 +623,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             trailing_comma
         };
-        // Preserve existing operand coverage. A directive covering only this
-        // separator does not constrain ordinary comment attachment, even when
-        // moving the comma makes the directive cover the following operand.
-        // Elisions retain their source ownership; arrays prepare their terminal
-        // punctuation independently from the original closing owner.
-        let separator_only_coverage = mode == ContentMode::Formatted
-            && suppression.is_none()
-            && comma.is_some_and(|position| {
-                matches!(following, FollowingItem::Node(next)
-                    if self.diagnostic_separator_precedes_uncovered_item(position, next.start))
-                    && !self.diagnostic_line_is_sensitive(item_span.end)
-                    && !self.diagnostic_line_is_sensitive(content_end)
+        // A plain slot returns no transition; prepare only its separator.
+        if comments.is_empty()
+            && mode == ContentMode::Formatted
+            && !source_constrained
+            && !matches!(following, FollowingItem::Elision { .. })
+        {
+            let separator = self.format_empty_delimited_separator(
+                has_more,
+                trailing_comma,
+                comma,
+                gap.end,
+                writer,
+            );
+            return Ok(ItemBoundary {
+                end: content_end,
+                separator,
+                following_mode,
+                elisions: ElisionLayout::Formatted,
+                transition: None,
+                terminal_close,
             });
+        }
+        // Prepare the next owner's complete packet before either side claims it.
+        // Its head is uncovered or retains independent post-comma coverage.
+        let mut transition = match following {
+            FollowingItem::Node(next)
+                if mode == ContentMode::Formatted
+                    && suppression.is_none()
+                    && !self.diagnostic_line_is_sensitive(item_span.end)
+                    && !self.diagnostic_line_is_sensitive(content_end) =>
+            {
+                comma.and_then(|comma| {
+                    self.prepare_source_separator_transition(comments, gap, next, comma)
+                })
+            }
+            _ => None,
+        };
+        let separator_coverage_released = transition
+            .as_ref()
+            .is_some_and(|transition| self.diagnostic_line_is_sensitive(transition.comma));
         let constrained =
-            source_constrained && !separator_only_coverage && terminal_close.is_none();
+            source_constrained && !separator_coverage_released && terminal_close.is_none();
         let elision = if matches!(following, FollowingItem::Elision { .. })
             && mode == ContentMode::Formatted
             && suppression.is_none()
@@ -621,17 +690,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !constrained
             && (!matches!(following, FollowingItem::Elision { .. }) || elision.is_some());
         if comments.is_empty() && ordinary_attachment {
-            let mut separator = Separator::Line;
-            if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
-                writer.text(",");
-                if let Some(comma) = comma
-                    && self.next_line_is_empty(comma + 1, gap.end)
-                {
-                    separator = Separator::EmptyLine;
-                }
-            } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
-                writer.if_break_for(target, ",");
-            }
+            let separator = self.format_empty_delimited_separator(
+                has_more,
+                trailing_comma,
+                comma,
+                gap.end,
+                writer,
+            );
             return Ok(ItemBoundary {
                 end: content_end,
                 separator,
@@ -641,23 +706,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 transition: None,
             });
         }
-        let mut transition = match following {
-            FollowingItem::Node(next)
-                if mode == ContentMode::Formatted
-                    && suppression.is_none()
-                    && !self.diagnostic_line_is_sensitive(item_span.end)
-                    && !self.diagnostic_line_is_sensitive(content_end)
-                    && !self.diagnostic_line_is_sensitive(next.start) =>
-            {
-                comma.map(|comma| SourceSeparatorTransition {
-                    source: gap,
-                    destination: next,
-                    comma,
-                    pre_packet_empty: false,
-                })
-            }
-            _ => None,
-        };
         let (trailing_count, physical_break, inline_line) = if let Some(elision) = &elision {
             let trailing = &comments[..elision.trailing];
             (
@@ -810,7 +858,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || protected_comma.is_some()
             || matches!(trailing_comma, TrailingCommaPolicy::Required);
         if required_comma {
-            if let Some(comma) = comma
+            if !separator_coverage_released
+                && let Some(comma) = comma
                 && let Some(last) = boundary.last()
                 && last.span.end <= comma
             {
@@ -844,7 +893,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut end = boundary_end;
         if required_comma
             && let Some(comma) = comma
-            && (preserve_comma || separator_only_coverage)
+            && (preserve_comma || separator_coverage_released)
             && self
                 .comments
                 .first()
