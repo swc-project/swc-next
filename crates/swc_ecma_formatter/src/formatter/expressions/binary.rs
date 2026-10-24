@@ -1335,6 +1335,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(OperandBoundary::Constrained {
                 constraint: if entry.suppression.is_some() {
                     self.source_line_constraint(previous, right_start)
+                } else if after
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Block)
+                {
+                    self.comment_gap_constraint(previous, right_start)
                 } else {
                     self.line_constraint_after_comments(after, operator_end, right_start)
                 },

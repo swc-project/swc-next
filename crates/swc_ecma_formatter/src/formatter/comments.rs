@@ -1557,19 +1557,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         opening: CommentOpening,
         writer: &mut Writer<'ast>,
     ) {
-        self.line_constraint(start, end)
-            .write(writer, opening.separator(), |writer| {
-                match self.line_breaks(start, end) {
-                    0 => opening.write(writer),
-                    1 => writer.hard_line(),
-                    _ => {
-                        writer.hard_line();
-                        if self.next_line_is_empty(start, end) {
-                            writer.hard_line();
-                        }
-                    }
-                }
-            });
+        self.comment_gap_constraint(start, end)
+            .write(writer, opening.separator(), |_| {});
+    }
+
+    /// Resolve the final source gap after an already-emitted comment packet.
+    /// Its own geometry remains independent of an earlier operator's layout.
+    pub(super) fn comment_gap_constraint(&self, start: u32, end: u32) -> LineConstraint {
+        match self.line_constraint(start, end) {
+            LineConstraint::Unconstrained => match self.line_breaks(start, end) {
+                0 => LineConstraint::SameLine,
+                1 => LineConstraint::NewLine(1),
+                _ => LineConstraint::NewLine(if self.next_line_is_empty(start, end) {
+                    2
+                } else {
+                    1
+                }),
+            },
+            constraint => constraint,
+        }
     }
 
     pub(super) fn comment_gap_with_packet(
