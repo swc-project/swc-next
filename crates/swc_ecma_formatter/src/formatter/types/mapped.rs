@@ -515,11 +515,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 super::TypeSuppressionContext::TypeBoundary,
             );
             let end_of_line = matches!(position, SuppressionPosition::EndOfLine);
-            let original_target = if end_of_line {
-                TypeSuppressionTarget::Preceding
-            } else {
-                selection.target()
-            };
+            let selected = selection.target();
             // Prettier's mapped EOL ownership differs for real compound types.
             // A leading singleton token alone does not make this a compound.
             let compound_conflict = end_of_line
@@ -531,24 +527,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if !compound_conflict
                 && let Some(owner) = key
                 && let Some(packet) =
-                    self.prepare_preceding_type_packet(comments, owner, right, original_target)
+                    self.prepare_preceding_type_packet(comments, owner, right, selected)
             {
                 return (ContentMode::Verbatim, Some(packet));
             }
-            let selected = selection.apply(right, self.ast);
+            selection.retain_source_head(right, self.ast);
             if selected.preceding() {
                 left_mode = ContentMode::Verbatim;
             }
             if !selected.following() {
                 continue;
             }
-            // A line-ending packet still trails the preceding key or type,
-            // even when the grammar separator appears before the comment.
-            if matches!(position, SuppressionPosition::EndOfLine) {
-                left_mode = ContentMode::Verbatim;
-            } else {
-                self.select_type_head_with_attachment(right, attachment, position);
-            }
+            self.select_type_head_with_attachment(right, attachment, position);
         }
         (left_mode, None)
     }

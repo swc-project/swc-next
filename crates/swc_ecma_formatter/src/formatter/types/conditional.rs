@@ -345,14 +345,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     position,
                     super::TypeSuppressionContext::TypeBoundary,
                 );
-                let original_target = if matches!(position, SuppressionPosition::EndOfLine) {
-                    TypeSuppressionTarget::Preceding
-                } else {
-                    selection.target()
-                };
+                let selected = selection.target();
                 if let Some(owner) = packet_owner
                     && let Some(packet) =
-                        self.prepare_preceding_type_packet(comments, owner, right, original_target)
+                        self.prepare_preceding_type_packet(comments, owner, right, selected)
                 {
                     left.source_owner = Some(left.node);
                     return Ok(ConditionalTypeBoundary {
@@ -361,20 +357,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     });
                 }
                 source = true;
-                let selected = selection.apply(right, self.ast);
+                selection.retain_source_head(right, self.ast);
                 if selected.preceding() {
                     left.source_owner = Some(left.node);
                 }
                 if !selected.following() {
                     continue;
                 }
-                if matches!(position, SuppressionPosition::EndOfLine) {
-                    left.source_owner = Some(left.node);
-                } else {
-                    // Conditional operands keep their whole attachment target,
-                    // including own-line unions, independently of source frames.
-                    self.select_type_source_owner(right, attachment.node, attachment.node);
-                }
+                // Conditional operands keep their whole attachment target,
+                // including own-line unions, independently of source frames.
+                self.select_type_source_owner(right, attachment.node, attachment.node);
             }
             if matches!(separator, ConditionalTypeSeparator::Extends) && left.source_owner.is_none()
             {
