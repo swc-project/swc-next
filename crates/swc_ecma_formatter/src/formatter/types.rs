@@ -76,6 +76,25 @@ pub(super) struct PreparedType {
     pub(super) source_owner: Option<TsType>,
     /// The attachment frame retained independently of an ignored content owner.
     pub(super) source_head: Option<TsType>,
+    suppressed_projection: Option<SuppressedTypeProjection>,
+}
+
+#[derive(Clone, Copy)]
+struct SuppressedTypeProjection {
+    source: TsType,
+    owner: TsType,
+    barrier: TsType,
+}
+
+impl PreparedType {
+    /// Owner or retained-head changes invalidate the prepared raw-content view.
+    fn projected_source_owner(&self) -> Option<TsType> {
+        let projection = self.suppressed_projection?;
+        (projection.source == self.node
+            && Some(projection.owner) == self.source_owner
+            && Some(projection.barrier) == self.source_head)
+            .then_some(projection.owner)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1702,6 +1721,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             data: self.ast.ts_type_data(node),
             source_owner: (mode == ContentMode::Verbatim).then_some(node),
             source_head: None,
+            suppressed_projection: None,
         }
     }
 
@@ -1904,6 +1924,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_inline_trailing_comments(packet.comments, writer)
     }
 
+    /// Prove the complete source spine once, while its owner is selected.
+    fn prepare_suppressed_type_projection(
+        &self,
+        node: &PreparedType,
+        attachment: &TypeAttachmentHead,
+    ) -> Option<SuppressedTypeProjection> {
+        let barrier = node.source_head?;
+        let span = node.node.span(self.ast);
+        if node.source_owner != Some(attachment.node)
+            || node.node == attachment.node
+            || Some(barrier) != attachment.source_barrier
+            || attachment.union
+            || !self.comments.in_range(span).is_empty()
+            || self.diagnostic_range_is_sensitive(span)
+        {
+            return None;
+        }
+        Some(SuppressedTypeProjection {
+            source: node.node,
+            owner: attachment.node,
+            barrier,
+        })
+    }
+
     /// Admit only a head whose attachment is independent of its printed line.
     /// Every comment must lead the same complete RHS when the packet is inline
     /// or on its own line. The caller has already selected the original raw owner.
@@ -1932,6 +1976,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => TypeSuppressionContext::TypeBoundary,
         };
         let mut tie = attachment.prefix;
+        if node.projected_source_owner().is_some() {
+            tie.next = source_span.start;
+        }
         let mut markers = 0;
         let mut all_following = true;
         let mut marker_types_following = true;
@@ -2211,16 +2258,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             attachment.node
         };
-        self.select_type_source_owner(node, owner, attachment.node);
+        self.select_type_source_owner(node, owner, attachment);
     }
 
-    fn select_type_source_owner(&self, node: &mut PreparedType, owner: TsType, enclosing: TsType) {
+    fn select_type_source_owner(
+        &self,
+        node: &mut PreparedType,
+        owner: TsType,
+        attachment: &TypeAttachmentHead,
+    ) {
         node.source_owner = Some(merge_type_source_owner(
             node.source_owner,
             owner,
-            enclosing,
+            attachment.node,
             self.ast,
         ));
+        node.suppressed_projection = self.prepare_suppressed_type_projection(node, attachment);
     }
 
     pub(super) fn select_type_head_with_retention(
@@ -2260,11 +2313,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(super) fn format_prepared_type_with_layout(
         &mut self,
-        node: PreparedType,
+        mut node: PreparedType,
         context: TypeContext,
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if let Some(owner) = node.projected_source_owner() {
+            node = self.prepare_type(owner, ContentMode::Verbatim);
+        }
         if node.source_owner != Some(node.node)
             && let TsTypeData::TsParenthesizedType(parentheses) = node.data
         {

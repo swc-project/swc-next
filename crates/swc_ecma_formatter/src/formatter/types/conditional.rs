@@ -374,7 +374,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 // Conditional operands keep their whole attachment target,
                 // including own-line unions, independently of source frames.
-                self.select_type_source_owner(right, attachment.node, attachment.node);
+                self.select_type_source_owner(right, attachment.node, &attachment);
             }
             if matches!(separator, ConditionalTypeSeparator::Extends) && left.source_owner.is_none()
             {
