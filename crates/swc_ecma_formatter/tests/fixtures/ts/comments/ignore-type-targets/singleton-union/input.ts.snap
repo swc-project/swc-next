@@ -5,4 +5,4 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 type T = /* prettier-ignore */ ( | ( B ) );---------- Options ----------
 {}
 ---------- Output ----------
-type T = /* prettier-ignore */ | B;
+type T = /* prettier-ignore */ B;
