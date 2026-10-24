@@ -8,14 +8,14 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"printWidth":10}
 ---------- Output ----------
 [
-  first
+  first,
   // @ts-expect-error
-  ,];
+];
 
 ---------- Options ----------
 {"printWidth":10,"semi":false}
 ---------- Output ----------
 ;[
-  first
+  first,
   // @ts-expect-error
-  ,]
+]
