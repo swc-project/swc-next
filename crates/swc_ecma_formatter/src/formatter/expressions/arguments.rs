@@ -39,6 +39,8 @@ pub(super) struct ArrayArgumentSlot {
     pub(super) mode: ContentMode,
     pub(super) layout: ArgumentLayout,
     pub(super) transition: Option<SourceSeparatorTransition>,
+    /// Only the real terminal slot borrows the array's prepared closing owner.
+    pub(super) closing: Option<TerminalCloseBoundary>,
 }
 
 #[derive(Clone, Copy)]
@@ -181,6 +183,8 @@ pub(in crate::formatter) struct ItemBoundary {
     pub(in crate::formatter) following_mode: ContentMode,
     pub(in crate::formatter) elisions: ElisionLayout,
     pub(in crate::formatter) transition: Option<SourceSeparatorTransition>,
+    /// The closing layout is independent of the consumed source frontier in `end`.
+    pub(in crate::formatter) terminal_close: Option<LineConstraint>,
 }
 
 impl ArgumentLayout {
@@ -245,6 +249,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             layout,
             transition,
+            closing,
         } = slot;
         let following = match following {
             FollowingArgument::Argument(argument) => FollowingItem::Node(argument.span(self.ast)),
@@ -282,7 +287,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ArgumentLayout::Lines => writer.group(false, write),
             ArgumentLayout::Fill => write(writer),
         }?;
-        self.finish_delimited_item_with_array_comments(item, tail, array_comments, writer)
+        self.finish_delimited_item_with_boundary(item, tail, array_comments, None, closing, writer)
     }
 
     pub(in crate::formatter) fn prepare_delimited_item(
@@ -456,7 +461,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         closing: DelimitedClose,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
-        self.finish_delimited_item_with_boundary(item, tail, None, Some(closing), writer)
+        self.finish_delimited_item_with_boundary(item, tail, None, Some(closing), None, writer)
     }
 
     fn finish_delimited_item_with_array_comments(
@@ -466,7 +471,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
-        self.finish_delimited_item_with_boundary(item, tail, array_comments, None, writer)
+        self.finish_delimited_item_with_boundary(item, tail, array_comments, None, None, writer)
     }
 
     fn finish_delimited_item_with_boundary(
@@ -475,6 +480,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         closing: Option<DelimitedClose>,
+        terminal_closing: Option<TerminalCloseBoundary>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
         let PreparedItem {
@@ -524,6 +530,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 separator: Separator::Source(source.following),
                 following_mode,
                 transition: None,
+                terminal_close: None,
                 elisions: match following {
                     FollowingItem::Elision { holes, .. } => ElisionLayout::Source(holes),
                     _ => ElisionLayout::Formatted,
@@ -531,23 +538,54 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let comments = self.comments.between(gap)?;
-        let trailing_comma = if !has_more
-            && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
-            && closing.is_some_and(|closing| {
+        let source_constrained = self.diagnostic_range_is_sensitive(span);
+        let terminal_closing = terminal_closing.filter(|_| {
+            matches!(following, FollowingItem::End)
+                && mode == ContentMode::Formatted
+                && suppression.is_none()
+                && !matches!(trailing_comma, TrailingCommaPolicy::Required)
+                && source_constrained
+                && !self.diagnostic_range_is_sensitive(item_span)
+        });
+        // A pending expression tail can start inside the real item's raw range.
+        // Only punctuation beyond that range can be the array's optional comma.
+        let comma = if terminal_closing.is_some() {
+            let after_item = comments.partition_point(|comment| comment.span.end <= item_span.end);
+            self.find_comma(Span::new(item_span.end, gap.end), &comments[after_item..])
+        } else {
+            self.find_comma(gap, comments)
+        };
+        let terminal_close = terminal_closing
+            .zip(comma)
+            .filter(|&(_, comma)| self.diagnostic_line_is_sensitive(comma))
+            .map(|(closing, comma)| {
                 let end = comments
                     .last()
                     .map_or(content_end, |comment| comment.span.end);
-                closing.constraint(self, end, span.end) == LineConstraint::SameLine
-            }) {
+                self.terminal_comma_close_constraint(closing, end, comma)
+            });
+        let trailing_comma = if !has_more
+            && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+            && terminal_close
+                .or_else(|| {
+                    closing.map(|closing| {
+                        let end = comments
+                            .last()
+                            .map_or(content_end, |comment| comment.span.end);
+                        closing.constraint(self, end, span.end)
+                    })
+                })
+                .is_some_and(|constraint| constraint == LineConstraint::SameLine)
+        {
             TrailingCommaPolicy::Forbidden
         } else {
             trailing_comma
         };
-        let comma = self.find_comma(gap, comments);
         // Preserve existing operand coverage. A directive covering only this
         // separator does not constrain ordinary comment attachment, even when
         // moving the comma makes the directive cover the following operand.
-        // Elisions and terminal boundaries retain their source ownership.
+        // Elisions retain their source ownership; arrays prepare their terminal
+        // punctuation independently from the original closing owner.
         let separator_only_coverage = mode == ContentMode::Formatted
             && suppression.is_none()
             && comma.is_some_and(|position| {
@@ -556,7 +594,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && !self.diagnostic_line_is_sensitive(item_span.end)
                     && !self.diagnostic_line_is_sensitive(content_end)
             });
-        let constrained = !separator_only_coverage && self.diagnostic_range_is_sensitive(span);
+        let constrained =
+            source_constrained && !separator_only_coverage && terminal_close.is_none();
         let elision = if matches!(following, FollowingItem::Elision { .. })
             && mode == ContentMode::Formatted
             && suppression.is_none()
@@ -597,6 +636,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 end: content_end,
                 separator,
                 following_mode,
+                terminal_close,
                 elisions: elision.map_or(ElisionLayout::Formatted, PreparedElision::layout),
                 transition: None,
             });
@@ -848,6 +888,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             following_mode,
             elisions: elision.map_or(ElisionLayout::Formatted, PreparedElision::layout),
             transition,
+            terminal_close,
         })
     }
 

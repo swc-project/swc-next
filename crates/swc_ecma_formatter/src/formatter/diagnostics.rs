@@ -387,6 +387,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// Removing an optional real comma does not turn its two gaps into a blank.
+    /// The original closing owner still decides whether that gap is constrained.
+    pub(super) fn terminal_comma_close_constraint(
+        &self,
+        boundary: TerminalCloseBoundary,
+        end: u32,
+        comma: u32,
+    ) -> LineConstraint {
+        let constraint = self.terminal_close_constraint(boundary, end);
+        if end <= comma && matches!(constraint, LineConstraint::NewLine(_)) {
+            let before = self.line_breaks(end, comma);
+            let after = self.line_breaks(comma + 1, boundary.close);
+            // The post-comma exterior belongs to the close, not the source packet.
+            LineConstraint::NewLine(before.max(after.min(1)))
+        } else {
+            constraint
+        }
+    }
+
     pub(super) fn diagnostic_line_is_sensitive(&self, position: u32) -> bool {
         self.diagnostic_lines.sensitive_at(position)
     }
