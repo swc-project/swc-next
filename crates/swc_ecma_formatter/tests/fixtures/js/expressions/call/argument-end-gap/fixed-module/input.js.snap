@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+define("name",
+
+/* packet */
+[dependency], function () {});
+---------- Options ----------
+{}
+---------- Output ----------
+define("name",
+/* packet */
+[dependency], function () {});

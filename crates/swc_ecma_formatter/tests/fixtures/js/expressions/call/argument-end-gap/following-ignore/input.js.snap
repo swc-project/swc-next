@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(a
+/* first */
+,
+
+// prettier-ignore
+/* last */ b  +  c);
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  a,
+  /* first */
+  // prettier-ignore
+  /* last */ b  +  c,
+);

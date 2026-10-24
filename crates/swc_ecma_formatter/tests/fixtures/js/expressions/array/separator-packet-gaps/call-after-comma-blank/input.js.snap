@@ -11,7 +11,6 @@ second);---------- Options ----------
 ---------- Output ----------
 f(
   first,
-
   /* before comma */
   second,
 )
@@ -21,7 +20,6 @@ f(
 ---------- Output ----------
 f(
   first,
-
   /* before comma */
   second,
 );
