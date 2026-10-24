@@ -104,6 +104,21 @@ struct ItemComments<'item, 'ast> {
     separator_transition: Option<SourceSeparatorTransition>,
 }
 
+#[derive(Clone, Copy)]
+enum SeparatorSpacing {
+    SourcePacket,
+    ArgumentEnd { empty_line: bool },
+}
+
+impl SeparatorSpacing {
+    fn empty_line(self, source_packet: impl FnOnce() -> bool) -> bool {
+        match self {
+            Self::SourcePacket => source_packet(),
+            Self::ArgumentEnd { empty_line } => empty_line,
+        }
+    }
+}
+
 pub(in crate::formatter) struct PreparedItem {
     item_span: Span,
     following: FollowingItem,
@@ -112,6 +127,7 @@ pub(in crate::formatter) struct PreparedItem {
     has_leading_comments: bool,
     trailing_comma: TrailingCommaPolicy,
     suppression: Option<DelimitedSuppression>,
+    separator_spacing: SeparatorSpacing,
 }
 
 impl PreparedItem {
@@ -398,6 +414,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TrailingCommaPolicy::Forbidden
             },
             suppression,
+            separator_spacing: SeparatorSpacing::SourcePacket,
         };
         if !has_leading_comments {
             return Ok(item);
@@ -499,6 +516,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         has_more: bool,
         trailing_comma: TrailingCommaPolicy,
+        spacing: SeparatorSpacing,
         comma: Option<u32>,
         gap_end: u32,
         writer: &mut Writer<'ast>,
@@ -506,9 +524,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut separator = Separator::Line;
         if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
             writer.text(",");
-            if let Some(comma) = comma
-                && self.next_line_is_empty(comma + 1, gap_end)
-            {
+            if spacing.empty_line(|| {
+                comma.is_some_and(|comma| self.next_line_is_empty(comma + 1, gap_end))
+            }) {
                 separator = Separator::EmptyLine;
             }
         } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
@@ -533,6 +551,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             trailing_comma,
             suppression,
+            separator_spacing,
             ..
         } = item;
         let following_span = following.node();
@@ -633,6 +652,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let separator = self.format_empty_delimited_separator(
                 has_more,
                 trailing_comma,
+                separator_spacing,
                 comma,
                 gap.end,
                 writer,
@@ -690,10 +710,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ordinary_attachment = mode == ContentMode::Formatted
             && !constrained
             && (!matches!(following, FollowingItem::Elision { .. }) || elision.is_some());
+        let separator_spacing = if ordinary_attachment {
+            separator_spacing
+        } else {
+            SeparatorSpacing::SourcePacket
+        };
         if comments.is_empty() && ordinary_attachment {
             let separator = self.format_empty_delimited_separator(
                 has_more,
                 trailing_comma,
+                separator_spacing,
                 comma,
                 gap.end,
                 writer,
@@ -805,23 +831,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let boundary_end = comments[..boundary_count]
             .last()
             .map_or(content_end, |comment| comment.span.end);
-        // Resolve the complete leading packet's separator before claiming it.
-        // A real post-comma blank belongs here, not in its internal comment gap.
-        let before_packet_empty = transition.is_some()
-            && ordinary_attachment
-            && !canonical_run
-            && comments
-                .get(boundary_count)
-                .is_some_and(|first| self.next_line_is_empty(boundary_end, first.span.start));
-        let pre_packet_empty = before_packet_empty
-            || comma.is_some_and(|comma| {
-                let after_comma = comments.partition_point(|comment| comment.span.start <= comma);
-                let next = comments
-                    .get(boundary_count.max(after_comma))
-                    .map_or(gap.end, |comment| comment.span.start);
-                let start = (comma + 1).max(boundary_end);
-                start < next && self.next_line_is_empty(start, next)
-            });
+        // The real list owner chooses spacing before this packet is claimed.
+        // Calls inspect the original argument end; other lists retain the packet's gap.
+        let pre_packet_empty = separator_spacing.empty_line(|| {
+            let before_packet_empty = transition.is_some()
+                && ordinary_attachment
+                && !canonical_run
+                && comments
+                    .get(boundary_count)
+                    .is_some_and(|first| self.next_line_is_empty(boundary_end, first.span.start));
+            before_packet_empty
+                || comma.is_some_and(|comma| {
+                    let after_comma =
+                        comments.partition_point(|comment| comment.span.start <= comma);
+                    let next = comments
+                        .get(boundary_count.max(after_comma))
+                        .map_or(gap.end, |comment| comment.span.start);
+                    let start = (comma + 1).max(boundary_end);
+                    start < next && self.next_line_is_empty(start, next)
+                })
+        });
         let required_comma = has_more
             || protected_comma.is_some()
             || matches!(trailing_comma, TrailingCommaPolicy::Required);
@@ -2263,9 +2292,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .scan(None, |previous, argument| {
                     let span = argument.span(ast);
                     let empty = previous.is_some_and(|previous| {
-                        let gap = Span::new(previous, span.start);
-                        self.find_token(gap, self.comments.in_range(gap), ",")
-                            .is_some_and(|comma| self.next_line_is_empty(comma + 1, span.start))
+                        self.call_argument_has_empty_line_after(Span::new(previous, span.start))
                     });
                     *previous = Some(span.end);
                     Some(empty)
@@ -2434,6 +2461,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PreparedItem, FormatError> {
         let CallArgumentSlot { node, following } = slot;
         let span = node.span(self.ast);
+        let separator_spacing = if frame.is_fixed() {
+            SeparatorSpacing::SourcePacket
+        } else {
+            following.map_or(SeparatorSpacing::SourcePacket, |following| {
+                SeparatorSpacing::ArgumentEnd {
+                    empty_line: self.call_argument_has_empty_line_after(Span::new(
+                        span.end,
+                        following.span(self.ast).start,
+                    )),
+                }
+            })
+        };
         let end = previous.map_or(content.start, |boundary| boundary.end);
         if let Some(previous) = previous {
             let leading = self.comments.between(Span::new(end, span.start))?;
@@ -2472,10 +2511,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous.and_then(|boundary| boundary.transition),
             writer,
         )?;
+        item.separator_spacing = separator_spacing;
         if let Some(previous) = previous {
             item.set_leading_mode(previous.following_mode);
         }
         Ok(item)
+    }
+
+    /// Inline comments belong to the argument's final line; an own-line packet ends it.
+    fn call_argument_has_empty_line_after(&self, gap: Span) -> bool {
+        let mut end = gap.start;
+        for comment in self.comments.in_range(gap) {
+            if self.line_breaks(end, comment.span.start) != 0 {
+                break;
+            }
+            end = comment.span.end;
+        }
+        self.next_line_is_empty(end, gap.end)
     }
 
     /// Reads the unconsumed outside boundary of this actual argument slot.
