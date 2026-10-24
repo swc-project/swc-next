@@ -1079,7 +1079,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExprData::JsxElement(_) | ExprData::JsxFragment(_)
         );
         let mut line_count = 0;
-        if !promoted && !before_line && !hugs_comments {
+        if !before_line && !hugs_comments {
             let operator_tail_end = content
                 .parentheses
                 .filter(|_| jsx_head)
@@ -1113,7 +1113,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // A movable left suffix and an operator-line suffix have the same
         // emitted owner. Resolve both before choosing the complete RHS layout.
         let tail = if left_tail { before } else { operator_line };
+        // Record a promoted RHS packet before claiming the later operator suffix.
+        // An operator prefix shares the RHS owner and must keep its source order.
+        let tail_preserves_packet_order =
+            !promoted || head_mode == ContentMode::Formatted && operator_line.len() == 1;
         let ordinary_tail = !tail.is_empty()
+            && tail_preserves_packet_order
             && leading.is_empty()
             && source_clear_right
             && !matches!(
@@ -1133,6 +1138,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             boundary.trailing = tail;
             leading
+        } else if promoted {
+            // The pending RHS packet still precedes this complete source run.
+            after
         } else {
             boundary.operator_line = operator_line;
             leading
