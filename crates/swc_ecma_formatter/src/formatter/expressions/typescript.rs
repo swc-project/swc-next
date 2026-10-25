@@ -1089,8 +1089,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(attachment) = attachment {
             self.finalize_type_head(&mut type_node, &attachment, leading);
         }
-        let before =
-            self.prepare_type_expression_gap(before, leading, type_node.source_owner.is_some());
+        let before = match self.prepare_type_expression_gap(
+            before,
+            leading,
+            type_node.source_owner.is_some(),
+        ) {
+            TypeExpressionGap::Source(span) => {
+                TypeExpressionGap::Source(self.type_angle_source_head(span, leading))
+            }
+            boundary => boundary,
+        };
         let body = self.prepare_delimited_type(type_node)?;
         let after_type = self.prepare_type_expression_gap(
             Span::new(suffix.start, closing),
