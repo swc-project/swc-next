@@ -623,9 +623,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn short_callback_neighbor(&self, expression: Expr) -> bool {
+    fn short_callback_neighbor(&self, mut expression: Expr) -> bool {
         let ast = self.ast;
-        let data = self.expression_data(expression);
+        // This root query inspects the neighbor beneath retained source pairs.
+        // Recursive simplicity still observes those pairs as complex syntax.
+        let data = loop {
+            match ast.expr_data(expression) {
+                ExprData::ParenthesizedExpression(parentheses) => {
+                    expression = parentheses.expression(ast);
+                }
+                data => break data,
+            }
+        };
         match data {
             ExprData::TsAsExpression(assertion) => {
                 self.short_argument_type(assertion.type_annotation(ast))
