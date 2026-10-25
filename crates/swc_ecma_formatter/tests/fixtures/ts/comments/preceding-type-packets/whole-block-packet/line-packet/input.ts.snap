@@ -8,6 +8,6 @@ type T<A extends /* c */ // prettier-ignore
 {"printWidth":80,"semi":true}
 ---------- Output ----------
 type T<
-  A extends /* c */ // prettier-ignore
-| B,
+  A /* c */ extends // prettier-ignore
+    B,
 > = A;
