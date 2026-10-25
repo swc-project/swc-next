@@ -107,13 +107,23 @@ struct ItemComments<'item, 'ast> {
 #[derive(Clone, Copy)]
 enum SeparatorSpacing {
     SourcePacket,
+    Canonical,
     ArgumentEnd { empty_line: bool },
 }
 
 impl SeparatorSpacing {
+    fn for_attachment(self, ordinary: bool, source_packet: impl FnOnce() -> bool) -> Self {
+        match (ordinary, self) {
+            (false, _) => Self::SourcePacket,
+            (true, Self::Canonical) if source_packet() => Self::SourcePacket,
+            (_, spacing) => spacing,
+        }
+    }
+
     fn empty_line(self, source_packet: impl FnOnce() -> bool) -> bool {
         match self {
             Self::SourcePacket => source_packet(),
+            Self::Canonical => false,
             Self::ArgumentEnd { empty_line } => empty_line,
         }
     }
@@ -131,6 +141,10 @@ pub(in crate::formatter) struct PreparedItem {
 }
 
 impl PreparedItem {
+    pub(in crate::formatter) fn set_canonical_separator_spacing(&mut self) {
+        self.separator_spacing = SeparatorSpacing::Canonical;
+    }
+
     pub(in crate::formatter) fn set_trailing_comma(&mut self, policy: TrailingCommaPolicy) {
         self.trailing_comma = policy;
     }
@@ -649,10 +663,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !source_constrained
             && !matches!(following, FollowingItem::Elision { .. })
         {
+            let spacing = separator_spacing.for_attachment(true, || {
+                suppression.is_some() || self.content_mode(comments) == ContentMode::Verbatim
+            });
             let separator = self.format_empty_delimited_separator(
                 has_more,
                 trailing_comma,
-                separator_spacing,
+                spacing,
                 comma,
                 gap.end,
                 writer,
@@ -710,11 +727,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ordinary_attachment = mode == ContentMode::Formatted
             && !constrained
             && (!matches!(following, FollowingItem::Elision { .. }) || elision.is_some());
-        let separator_spacing = if ordinary_attachment {
-            separator_spacing
-        } else {
-            SeparatorSpacing::SourcePacket
-        };
+        let separator_spacing = separator_spacing.for_attachment(ordinary_attachment, || {
+            suppression.is_some() || self.content_mode(comments) == ContentMode::Verbatim
+        });
         if comments.is_empty() && ordinary_attachment {
             let separator = self.format_empty_delimited_separator(
                 has_more,
@@ -832,7 +847,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .last()
             .map_or(content_end, |comment| comment.span.end);
         // The real list owner chooses spacing before this packet is claimed.
-        // Calls inspect the original argument end; other lists retain the packet's gap.
+        // Calls inspect the original argument end; type lists use canonical spacing.
         let pre_packet_empty = separator_spacing.empty_line(|| {
             let before_packet_empty = transition.is_some()
                 && ordinary_attachment

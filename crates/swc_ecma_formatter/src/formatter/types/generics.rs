@@ -805,6 +805,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer,
                         )?,
                     };
+                    item.set_canonical_separator_spacing();
                     item.set_trailing_comma(tail);
                     let selected_child = matches!(&prepared, PreparedGenericMember::Type(node) if node.source_owner.is_some_and(|owner| owner != node.node));
                     item.set_leading_mode(if selected_child {
