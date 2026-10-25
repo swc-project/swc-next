@@ -6,36 +6,38 @@ x = ((isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH).pi
 ---------- Options ----------
 {}
 ---------- Output ----------
-x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH)
-  .pipe(
-    first,
-    second,
-    third,
-    fourth,
-    fifth,
-    sixth,
-    seventh,
-    eighth,
-    ninth,
-    tenth,
-  );
+x = (
+  isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH
+).pipe(
+  first,
+  second,
+  third,
+  fourth,
+  fifth,
+  sixth,
+  seventh,
+  eighth,
+  ninth,
+  tenth,
+);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-x = (isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH)
-  .pipe(
-    first,
-    second,
-    third,
-    fourth,
-    fifth,
-    sixth,
-    seventh,
-    eighth,
-    ninth,
-    tenth,
-  )
+x = (
+  isSomethingTrue ? someValueWhenTrueIsHere : someOtherValueWhenFalseIsH
+).pipe(
+  first,
+  second,
+  third,
+  fourth,
+  fifth,
+  sixth,
+  seventh,
+  eighth,
+  ninth,
+  tenth,
+)
 
 ---------- Options ----------
 {"printWidth":40}
