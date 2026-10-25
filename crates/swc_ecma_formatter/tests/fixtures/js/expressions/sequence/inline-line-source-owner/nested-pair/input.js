@@ -1,0 +1,1 @@
+third, // @ts-ignore ( first, second );
