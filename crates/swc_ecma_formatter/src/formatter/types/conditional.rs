@@ -6,7 +6,7 @@ use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, SuppressedTypeHead,
-    SuppressedTypeHeadRole, TypeLayout, TypeSuppressionTarget,
+    SuppressedTypeHeadRole, TypeLayout,
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
@@ -321,8 +321,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         run,
                         owner,
                         right,
-                        &attachment,
-                        TypeSuppressionTarget::Preceding,
+                        &self.prepare_type_suppression_run(
+                            &attachment,
+                            super::TypeHeadRetention::Unchanged,
+                            run,
+                            position,
+                            super::TypeSuppressionContext::TypeBoundary,
+                        ),
                     )
                 {
                     left.source_owner = Some(left.node);
@@ -354,8 +359,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         run,
                         owner,
                         right,
-                        &attachment,
-                        selected,
+                        &selection,
                     )
                 {
                     left.source_owner = Some(left.node);

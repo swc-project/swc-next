@@ -19,7 +19,7 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
-    SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout, TypeSuppressionTarget,
+    SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout,
 };
 use crate::{
     FormatError,
@@ -593,6 +593,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut suppressed_head = None;
         let mut preceding_packet = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
+            let operator_span = Span::new(start, start + token.len() as u32);
             let const_marker =
                 matches!(operator, TypeBinaryOperator::As) && self.is_const_marker_type(*right);
             let packet_owner = (!const_marker
@@ -606,13 +607,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             for (run, position) in self.suppressed_comment_runs(before, start) {
                 if !matches!(position, SuppressionPosition::OwnLine)
                     && let Some(owner) = packet_owner
-                    && let Some(packet) = self.prepare_preceding_type_packet(
+                    && let Some(packet) = self.prepare_preceding_type_operator(
                         comments,
                         run,
                         owner,
                         right,
-                        &attachment,
-                        TypeSuppressionTarget::Preceding,
+                        &self.prepare_type_suppression_run(
+                            &attachment,
+                            before_head,
+                            run,
+                            position,
+                            super::super::types::TypeSuppressionContext::ExpressionBoundary,
+                        ),
+                        operator_span,
                     )
                 {
                     left_mode = ContentMode::Verbatim;
@@ -637,13 +644,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let selected = selection.target();
                 if let Some(owner) = packet_owner
-                    && let Some(packet) = self.prepare_preceding_type_packet(
+                    && let Some(packet) = self.prepare_preceding_type_operator(
                         comments,
                         run,
                         owner,
                         right,
-                        &attachment,
-                        selected,
+                        &selection,
+                        operator_span,
                     )
                 {
                     left_mode = ContentMode::Verbatim;
@@ -681,9 +688,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !source {
             *right = self.normalize_type_head(*right)?;
         }
-        let layout = if let Some(packet) = preceding_packet {
+        let layout = if let Some((packet, after)) = preceding_packet {
             let operator_end = start + token.len() as u32;
-            let after = self.prepare_comment_boundary(&[], operator_end, gap.end);
             let head = self.prepare_binary_type_head(*right, &after, operator_end, tail_owner);
             BinaryTypeLayout::Preceding {
                 packet,

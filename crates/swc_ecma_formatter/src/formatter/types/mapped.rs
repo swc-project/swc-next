@@ -4,7 +4,7 @@ use swc_next_ecma_ast::{Comment, GetSpan, Span, TsMappedType, TsMappedTypeModifi
 
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, SuppressedTypeHead,
-    SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout, TypeSuppressionTarget,
+    SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
@@ -493,8 +493,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     run,
                     owner,
                     right,
-                    attachment,
-                    TypeSuppressionTarget::Preceding,
+                    &self.prepare_type_suppression_run(
+                        attachment,
+                        before_head,
+                        run,
+                        position,
+                        super::TypeSuppressionContext::TypeBoundary,
+                    ),
                 )
             {
                 return (ContentMode::Verbatim, Some(packet));
@@ -527,9 +532,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             if !compound_conflict
                 && let Some(owner) = key
-                && let Some(packet) = self.prepare_preceding_type_packet(
-                    comments, run, owner, right, attachment, selected,
-                )
+                && let Some(packet) =
+                    self.prepare_preceding_type_packet(comments, run, owner, right, &selection)
             {
                 return (ContentMode::Verbatim, Some(packet));
             }
