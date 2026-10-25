@@ -6,13 +6,13 @@ type A=Generic< /* prettier-ignore */ string| number,boolean>;
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-type A = Generic< /* prettier-ignore */ string| number, boolean>;
+type A = Generic</* prettier-ignore */ string| number, boolean>;
 
 ---------- Options ----------
 {"printWidth":20}
 ---------- Output ----------
 type A =
-  Generic< /* prettier-ignore */ string| number,
+  Generic</* prettier-ignore */ string| number,
     boolean
   >;
 
@@ -20,7 +20,7 @@ type A =
 {"printWidth":1,"semi":false}
 ---------- Output ----------
 type A =
-  Generic< /* prettier-ignore */ string| number,
+  Generic</* prettier-ignore */ string| number,
     boolean
   >
 
@@ -28,6 +28,6 @@ type A =
 {"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
 ---------- Output ----------
 type A =
-	Generic< /* prettier-ignore */ string| number,
+	Generic</* prettier-ignore */ string| number,
 		boolean
 	>;

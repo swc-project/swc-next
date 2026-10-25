@@ -5,4 +5,4 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 \u0066< /* ordinary */ /* prettier-ignore */ (\u0041 | \u0042)>();---------- Options ----------
 {}
 ---------- Output ----------
-f< /* ordinary */ /* prettier-ignore */ (\u0041 | \u0042)>();
+f</* ordinary */ /* prettier-ignore */ (\u0041 | \u0042)>();

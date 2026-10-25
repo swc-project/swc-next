@@ -7,16 +7,16 @@ type A=import("m").Generic< /* prettier-ignore */ string| number,boolean>;
 {"printWidth":20}
 ---------- Output ----------
 type A =
-  import("m").Generic< /* prettier-ignore */ string| number,
+  import("m").Generic</* prettier-ignore */ string| number,
     boolean
   >;
 
 ---------- Options ----------
 {"printWidth":80}
 ---------- Output ----------
-type A = import("m").Generic< /* prettier-ignore */ string| number, boolean>;
+type A = import("m").Generic</* prettier-ignore */ string| number, boolean>;
 
 ---------- Options ----------
 {"printWidth":80,"semi":false}
 ---------- Output ----------
-type A = import("m").Generic< /* prettier-ignore */ string| number, boolean>
+type A = import("m").Generic</* prettier-ignore */ string| number, boolean>
