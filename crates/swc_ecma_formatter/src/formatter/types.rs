@@ -180,6 +180,15 @@ struct TypeCommentTie {
 pub(super) struct TypeSuppressionRun {
     target: TypeSuppressionTarget,
     head: TypeHeadRetention,
+    packet_projection: Option<PrecedingTypePacketProjection>,
+}
+
+#[derive(Clone, Copy)]
+enum PrecedingTypePacketProjection {
+    /// Every component precedes under the original boundary's attachment view.
+    Inline,
+    /// A physical trailing run still needs its operator's placement contract.
+    EndOfLine(TypeSuppressionContext),
 }
 
 impl TypeSuppressionRun {
@@ -1547,20 +1556,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && let TypeBoundaryTarget::Constraint { node, .. }
                     | TypeBoundaryTarget::InferConstraint { node, .. }
                     | TypeBoundaryTarget::Default { node, .. } = &target
-                    && let Some(packet) = self.prepare_preceding_type_packet(
+                    && let Some((packet, after)) = self.prepare_preceding_type_operator(
                         comments,
                         run,
                         owner,
                         node,
-                        attachment,
-                        TypeSuppressionTarget::Preceding,
+                        &self.prepare_type_suppression_run(
+                            attachment,
+                            before_head,
+                            run,
+                            position,
+                            TypeSuppressionContext::TypeBoundary,
+                        ),
+                        operator,
                     )
                 {
                     left_mode = ContentMode::Verbatim;
-                    break 'layout TypeOperatorLayout::Preceding {
-                        packet,
-                        after: self.prepare_comment_boundary(&[], operator.end, gap.end),
-                    };
+                    break 'layout TypeOperatorLayout::Preceding { packet, after };
                 }
                 for &comment in run {
                     if !is_suppression_comment(self.ast, comment) {
@@ -1625,15 +1637,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         );
                         let selected = selection.target();
                         if let Some(owner) = packet_owner
-                            && let Some(packet) = self.prepare_preceding_type_packet(
-                                comments, run, owner, node, attachment, selected,
+                            && let Some((packet, after)) = self.prepare_preceding_type_operator(
+                                comments, run, owner, node, &selection, operator,
                             )
                         {
                             left_mode = ContentMode::Verbatim;
-                            break 'layout TypeOperatorLayout::Preceding {
-                                packet,
-                                after: self.prepare_comment_boundary(&[], operator.end, gap.end),
-                            };
+                            break 'layout TypeOperatorLayout::Preceding { packet, after };
                         }
                         selection.retain_source_head(node, self.ast);
                         selected
@@ -1903,22 +1912,59 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
     }
 
-    /// The caller resolves the actual owner before choosing the packet's placement.
-    /// An empty RHS envelope proves that skipping the packet's retention cannot
-    /// discard an ordinary attachment frame or another ignored owner.
-    /// Broader packets must be the caller's complete physical comment run.
+    /// A packet-only caller keeps the existing inline attachment contract.
+    /// Its independently prepared header does not authorize an EOL operator projection.
     pub(super) fn prepare_preceding_type_packet(
         &self,
         comments: &'ast [Comment],
         run: &[Comment],
         owner: Span,
         right: &PreparedType,
-        attachment: &TypeAttachmentHead,
-        target: TypeSuppressionTarget,
+        selection: &TypeSuppressionRun,
     ) -> Option<PreparedPrecedingTypePacket<'ast>> {
-        if !matches!(target, TypeSuppressionTarget::Preceding)
+        self.prepare_preceding_type_packet_parts(comments, run, owner, right, selection, None)
+            .map(|(packet, _)| packet)
+    }
+
+    /// Prepare the complete packet before claiming either of its operator slots.
+    pub(super) fn prepare_preceding_type_operator(
+        &self,
+        comments: &'ast [Comment],
+        run: &[Comment],
+        owner: Span,
+        right: &PreparedType,
+        selection: &TypeSuppressionRun,
+        operator: Span,
+    ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
+        self.prepare_preceding_type_packet_parts(
+            comments,
+            run,
+            owner,
+            right,
+            selection,
+            Some(operator),
+        )
+    }
+
+    fn prepare_preceding_type_packet_parts(
+        &self,
+        comments: &'ast [Comment],
+        run: &[Comment],
+        owner: Span,
+        right: &PreparedType,
+        selection: &TypeSuppressionRun,
+        operator: Option<Span>,
+    ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
+        if !matches!(selection.target, TypeSuppressionTarget::Preceding)
             || comments.is_empty()
             || comments.len() > 1 && run.len() != comments.len()
+        {
+            return None;
+        }
+        // Packet-only layouts keep the complete packet on the owner's line,
+        // including line terminators inside block comments.
+        if operator.is_none()
+            && self.line_breaks(owner.start, comments[comments.len() - 1].span.end) != 0
         {
             return None;
         }
@@ -1930,43 +1976,96 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        if let [comment] = comments {
-            // Keep the existing single-marker contract, including its EOL layout.
-            if comment.kind != CommentKind::Block
-                || !is_suppression_comment(self.ast, *comment)
-                || self.line_breaks(owner.start, comment.span.end) != 0
+        let empty_after = || match operator {
+            Some(operator) => self.prepare_comment_boundary(&[], operator.end, right_span.start),
+            None => CommentBoundary::adjacent(right_span.start),
+        };
+        if let [comment] = comments
+            && comment.kind == CommentKind::Block
+            && is_suppression_comment(self.ast, *comment)
+            && self.line_breaks(owner.start, comment.span.end) == 0
+        {
+            // Preserve the old single-marker EOL gap as well as its raw owner.
+            return Some((PreparedPrecedingTypePacket { comments }, empty_after()));
+        }
+        let first = comments[0];
+        if self.line_breaks(owner.start, first.span.start) != 0 {
+            return None;
+        }
+        if matches!(
+            selection.packet_projection,
+            Some(PrecedingTypePacketProjection::Inline)
+        ) {
+            let last = comments[comments.len() - 1];
+            if comments
+                .iter()
+                .any(|comment| comment.kind != CommentKind::Block)
+                || self.line_breaks(last.span.end, right_span.start) != 0
             {
                 return None;
             }
+            if self.line_breaks(owner.start, right_span.start) == 0 {
+                return Some((PreparedPrecedingTypePacket { comments }, empty_after()));
+            }
         } else {
-            // A broader packet must be one complete inline run. A preceding
-            // marker alone does not prove that its ordinary neighbors precede.
-            if self.line_breaks(owner.start, right_span.start) != 0 {
+            let operator = operator?;
+            let Some(PrecedingTypePacketProjection::EndOfLine(context)) =
+                selection.packet_projection
+            else {
+                return None;
+            };
+            let (last, prefix) = comments.split_last()?;
+            // This envelope owns the complete physical slot after its operator.
+            // A preceding EOL run keeps its source boundary instead of crossing it.
+            if first.span.start < operator.end || last.span.end > right_span.start {
                 return None;
             }
-            // With no RHS prefix comments, single-line blocks share the type
-            // and expression attachment projection.
-            let mut tie = attachment.prefix.tie;
-            let mut marker = false;
-            for &comment in comments.iter().rev() {
-                if comment.kind != CommentKind::Block
-                    || self.line_breaks(comment.span.start, comment.span.end) != 0
-                    || self.advance_type_comment_tie(
-                        &mut tie,
-                        comment,
-                        true,
-                        TypeSuppressionContext::TypeBoundary,
-                    )
+            if last.kind == CommentKind::Line {
+                // A cast Line can attach to the enclosing declaration instead.
+                // Type-boundary callers must also consume the mandatory after gap.
+                if prefix.is_empty()
+                    || !matches!(context, TypeSuppressionContext::TypeBoundary)
+                    || prefix.iter().any(|comment| {
+                        comment.kind != CommentKind::Block
+                            || self.line_breaks(comment.span.start, comment.span.end) != 0
+                    })
+                    || !self
+                        .comment_binding(
+                            comments,
+                            Span::new(owner.start, right_span.end),
+                            Some(owner),
+                        )
+                        .allows_relocation(Some(owner))
                 {
                     return None;
                 }
-                marker |= is_suppression_comment(self.ast, comment);
+                let after = self.prepare_comment_boundary(
+                    &comments[prefix.len()..],
+                    operator.end,
+                    right_span.start,
+                );
+                return Some((PreparedPrecedingTypePacket { comments: prefix }, after));
             }
-            if !marker {
+            if comments.iter().any(|comment| {
+                comment.kind != CommentKind::Block
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0
+            }) {
                 return None;
             }
         }
-        Some(PreparedPrecedingTypePacket { comments })
+        if !self
+            .comment_binding(
+                comments,
+                Span::new(owner.start, right_span.end),
+                Some(owner),
+            )
+            .allows_relocation(Some(owner))
+        {
+            return None;
+        }
+        // The packet's own lines move with its preceding owner. They are not an
+        // additional source gap between the printed operator and formatted RHS.
+        Some((PreparedPrecedingTypePacket { comments }, empty_after()))
     }
 
     pub(super) fn format_preceding_type_packet(
@@ -2431,12 +2530,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TypeSuppressionRun {
                     target: TypeSuppressionTarget::Following,
                     head,
+                    packet_projection: None,
                 };
             }
             SuppressionPosition::EndOfLine => {
                 return TypeSuppressionRun {
                     target: TypeSuppressionTarget::Preceding,
                     head,
+                    packet_projection: Some(PrecedingTypePacketProjection::EndOfLine(context)),
                 };
             }
             SuppressionPosition::Inline => {}
@@ -2444,9 +2545,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut tie = attachment.prefix.tie;
         let mut preceding = false;
         let mut following = false;
+        let mut all_preceding = true;
         for &comment in comments.iter().rev() {
             let selected_following =
                 self.advance_type_comment_tie(&mut tie, comment, true, context);
+            all_preceding &= !selected_following;
             if is_suppression_comment(self.ast, comment) {
                 if selected_following {
                     following = true;
@@ -2461,7 +2564,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (false, true) => TypeSuppressionTarget::Following,
             (false, false) => TypeSuppressionTarget::Neither,
         };
-        TypeSuppressionRun { target, head }
+        TypeSuppressionRun {
+            target,
+            head,
+            packet_projection: (all_preceding
+                && matches!(target, TypeSuppressionTarget::Preceding))
+            .then_some(PrecedingTypePacketProjection::Inline),
+        }
     }
 
     pub(super) fn select_type_head_with_attachment(
