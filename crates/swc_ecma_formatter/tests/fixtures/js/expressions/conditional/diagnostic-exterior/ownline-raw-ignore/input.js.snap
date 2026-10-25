@@ -9,7 +9,6 @@ test ?
 {}
 ---------- Output ----------
 test
-  ?
-    // prettier-ignore
+  ? // prettier-ignore
     \u0066oo  +  bar
   : other;

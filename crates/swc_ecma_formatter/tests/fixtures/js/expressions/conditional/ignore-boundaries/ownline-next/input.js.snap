@@ -10,7 +10,6 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 first /* boundary */
-  ?
-    // prettier-ignore
+  ? // prettier-ignore
     second
   : third;

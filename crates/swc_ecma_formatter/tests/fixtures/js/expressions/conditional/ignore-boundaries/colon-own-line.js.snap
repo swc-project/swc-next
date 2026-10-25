@@ -10,8 +10,7 @@ first ? second
 ---------- Output ----------
 first
   ? second
-  :
-    // prettier-ignore
+  : // prettier-ignore
     1.0e+00
 
 ---------- Options ----------
@@ -19,6 +18,5 @@ first
 ---------- Output ----------
 first
   ? second
-  :
-    // prettier-ignore
+  : // prettier-ignore
     1.0e+00;

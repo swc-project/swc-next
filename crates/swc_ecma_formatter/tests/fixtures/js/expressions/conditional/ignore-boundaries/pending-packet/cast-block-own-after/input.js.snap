@@ -9,8 +9,7 @@ a  +b : c;
 {}
 ---------- Output ----------
 /** @type {number} */ (1) /* tail */
-  ?
-    /* prettier-ignore */
+  ? /* prettier-ignore */
     a  +b
   : c;
 
@@ -20,8 +19,7 @@ a  +b : c;
 /** @type {number} */ (
   1
 ) /* tail */
-  ?
-    /* prettier-ignore */
+  ? /* prettier-ignore */
     a  +b
   : c;
 
@@ -31,7 +29,6 @@ a  +b : c;
 ;/** @type {number} */ (
   1
 ) /* tail */
-  ?
-    /* prettier-ignore */
+  ? /* prettier-ignore */
     a  +b
   : c
