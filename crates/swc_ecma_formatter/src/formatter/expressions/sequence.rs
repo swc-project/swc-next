@@ -12,9 +12,10 @@ use crate::{FormatError, Semicolons, document::Writer};
 
 struct SequenceBoundary<'ast> {
     next: Expr,
+    next_content: Option<ExpressionContent>,
+    next_position: ExpressionPosition,
     next_start: u32,
     source_end: u32,
-    comments: &'ast [Comment],
     comma: Option<u32>,
     trailing: &'ast [Comment],
     leading: &'ast [Comment],
@@ -24,7 +25,7 @@ struct SequenceBoundary<'ast> {
     separator: LineConstraint,
 }
 
-/// A complete source-inline EOL Block run and its resolved original target.
+/// A complete source-inline EOL run and its resolved source ownership.
 struct SequenceTrailingPacket<'ast> {
     comments: &'ast [Comment],
     binding: SequencePacketBinding,
@@ -32,6 +33,10 @@ struct SequenceTrailingPacket<'ast> {
 
 #[derive(Clone, Copy)]
 enum SequencePacketBinding {
+    /// The outside Line suffix stays on its original comma side.
+    InlineLine {
+        source: Span,
+    },
     InactiveOptimizer,
     IgnoredPrevious(Span),
 }
@@ -39,6 +44,15 @@ enum SequencePacketBinding {
 enum SequenceComments {
     Formatted,
     SourceGap,
+}
+
+struct SequenceCommentPartition<'ast> {
+    comments: &'ast [Comment],
+    trailing: &'ast [Comment],
+    leading: &'ast [Comment],
+    before_count: usize,
+    packet_end: Option<usize>,
+    sensitive: bool,
 }
 
 struct SequenceItem<'ast> {
@@ -307,7 +321,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let tail = self.format_sequence_item(
                         SequenceItem {
                             expression: boundary.next,
-                            prepared: None,
+                            prepared: boundary.next_content.take(),
                             head: NodeHead {
                                 comments: boundary.leading,
                                 content_start: boundary.next_start,
@@ -420,20 +434,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: ExpressionPosition,
     ) -> Result<SequenceBoundary<'ast>, FormatError> {
         let start = previous.span(self.ast).end;
-        let content = self.expression_content(next);
         let suppression = self.delimited_suppression(
             previous.span(self.ast),
             next.span(self.ast).start,
             DelimitedFollowing::Node,
         );
-        let end = if self.sequence_member_pair_is_enclosed(next, &content, position)
-            || suppression.as_ref().is_some_and(|source| {
-                source.preceding.is_some() || source.following == ContentMode::Verbatim
-            }) {
-            next.span(self.ast).start
-        } else {
-            content.expression.span(self.ast).start
-        };
+        let end = next.span(self.ast).start;
         let span = Span::new(start, end);
         // Retain the borrowed run while the previous operand consumes its own
         // comments. Its returned tail determines the remaining suffix.
@@ -459,9 +465,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         Ok(SequenceBoundary {
             next,
+            next_content: None,
+            next_position: position,
             next_start: end,
             source_end: start,
-            comments,
             comma,
             trailing: &[],
             leading: &[],
@@ -481,12 +488,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         suppression: Option<DelimitedSuppression>,
     ) -> Option<SequenceTrailingPacket<'ast>> {
         let source = Span::new(previous.span(self.ast).end, next.span(self.ast).start);
-        if self.diagnostic_range_is_sensitive(source) || self.line_breaks(source.start, comma) != 0
-        {
+        if self.line_breaks(source.start, comma) != 0 {
             return None;
         }
-        // Only this separator's complete outside packet is considered. Source
-        // comments inside a removable next-operand pair keep their own owner.
+        // The source boundary excludes the next pair's interior. Within that
+        // gap, a Line comment also ends the comma-line packet before later heads.
         let first = comments.partition_point(|comment| comment.span.end <= comma);
         let end = comments.partition_point(|comment| comment.span.end <= source.end);
         let packet = &comments[first..end];
@@ -495,11 +501,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let opening = Span::new(comma + 1, first.span.start);
         if self.line_breaks(opening.start, opening.end) != 0
             || !self.source(opening).chars().all(is_source_whitespace)
-            || !self.comment_run_ends_line(*last, source.end)
+        {
+            return None;
+        }
+        // An outside EOL Line run already belongs to the preceding operand.
+        // Its source pair boundary, rather than a normalized content start,
+        // owns the following gap. Interior head comments are certified later.
+        if suppression.is_none()
+            && let Some(line) = packet
+                .iter()
+                .position(|comment| comment.kind == CommentKind::Line)
+        {
+            let inline = &packet[..=line];
+            let last = inline[line];
+            if self.line_breaks(first.span.start, last.span.end) == 0
+                && inline
+                    .windows(2)
+                    .all(|pair| self.source_comment_gap_is_run(pair[0], pair[1]))
+                && matches!(
+                    self.prepare_expression_source_head(inline, next)
+                        .lexical_binding,
+                    CommentBinding::Unbound
+                )
+            {
+                return Some(SequenceTrailingPacket {
+                    comments: inline,
+                    binding: SequencePacketBinding::InlineLine { source },
+                });
+            }
+        }
+        if !self.comment_run_ends_line(*last, source.end)
             || packet
                 .windows(2)
                 .any(|pair| !self.source_comment_gap_is_run(pair[0], pair[1]))
         {
+            return None;
+        }
+        if self.diagnostic_range_is_sensitive(source) {
             return None;
         }
         let mut optimizer = false;
@@ -541,20 +579,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    fn prepare_sequence_comments(
+    fn sequence_comment_partition(
         &self,
-        boundary: &mut SequenceBoundary<'ast>,
+        boundary: &SequenceBoundary<'ast>,
         span: Span,
-    ) -> Result<SequenceComments, FormatError> {
-        let count = boundary
-            .comments
-            .partition_point(|comment| comment.span.end <= span.start);
-        let comments = &boundary.comments[count..];
+    ) -> Result<SequenceCommentPartition<'ast>, FormatError> {
+        let comments = self.comments.in_range(span);
         let start = span.start;
         let end = span.end;
         let sensitive = self.diagnostic_range_is_sensitive(span);
         if comments.is_empty() && !sensitive {
-            return Ok(SequenceComments::Formatted);
+            return Ok(SequenceCommentPartition {
+                comments,
+                trailing: &[],
+                leading: &[],
+                before_count: 0,
+                packet_end: None,
+                sensitive,
+            });
         }
         let Some(comma) = boundary.comma else {
             return Err(FormatError::unsupported(
@@ -576,7 +618,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let end_index = first_index + packet.comments.len();
             // A pending operand tail cannot be moved merely to reach
             // this later packet. Its existing source partition stays intact.
-            (!sensitive
+            let owner_retained = match packet.binding {
+                SequencePacketBinding::InlineLine { source } => {
+                    source.start == start
+                        && last.span.end <= source.end
+                        && end_index
+                            == comments.partition_point(|comment| comment.span.end <= last.span.end)
+                }
+                _ => !sensitive,
+            };
+            (owner_retained
                 && trailing.len() >= first_index
                 && comments
                     .get(first_index)
@@ -586,6 +637,73 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .is_some_and(|comment| comment.span == last.span))
             .then_some(end_index)
         });
+        Ok(SequenceCommentPartition {
+            comments,
+            trailing,
+            leading,
+            before_count,
+            packet_end,
+            sensitive,
+        })
+    }
+
+    fn prepare_sequence_comments(
+        &self,
+        boundary: &mut SequenceBoundary<'ast>,
+    ) -> Result<SequenceComments, FormatError> {
+        let mut span = Span::new(boundary.source_end, boundary.next_start);
+        let mut partition = self.sequence_comment_partition(boundary, span)?;
+        let head = match (boundary.packet.as_ref(), partition.packet_end) {
+            (Some(packet), Some(end))
+                if matches!(packet.binding, SequencePacketBinding::InlineLine { .. }) =>
+            {
+                let leading = &partition.comments[end..];
+                // A distinct following head owns its opening scope. Otherwise
+                // the deferred Line suffix supplies the exterior coverage.
+                if leading.is_empty() {
+                    &packet.comments[packet.comments.len() - 1..]
+                } else {
+                    leading
+                }
+            }
+            _ => partition.leading,
+        };
+        // Resolve the complete separator packet before preparing this head.
+        // The renderer reuses it instead of restoring the old source prefix.
+        let content = self.expression_content_with_leading(boundary.next, head);
+        let end = if self.sequence_member_pair_is_enclosed(
+            boundary.next,
+            &content,
+            boundary.next_position,
+        ) || boundary.suppression.as_ref().is_some_and(|source| {
+            source.preceding.is_some() || source.following == ContentMode::Verbatim
+        }) {
+            boundary.next.span(self.ast).start
+        } else {
+            content.expression.span(self.ast).start
+        };
+        boundary.next_content = Some(content);
+        boundary.next_start = end;
+        if span.end != end {
+            span.end = end;
+            if boundary.comma.is_none() {
+                let comments = self.comments.in_range(span);
+                if !comments.is_empty() || self.diagnostic_range_is_sensitive(span) {
+                    boundary.comma = self.find_token(span, comments, ",");
+                }
+            }
+            partition = self.sequence_comment_partition(boundary, span)?;
+        }
+        let SequenceCommentPartition {
+            comments,
+            trailing,
+            leading,
+            before_count,
+            packet_end,
+            sensitive,
+        } = partition;
+        let start = span.start;
+        let end = span.end;
         let preserves_ignored_target = packet_end.is_some()
             && boundary.packet.as_ref().is_some_and(|packet| {
                 matches!(packet.binding, SequencePacketBinding::IgnoredPrevious(target)
@@ -601,13 +719,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         (boundary.trailing, boundary.leading) =
             packet_end.map_or((trailing, leading), |end| comments.split_at(end));
         if sensitive {
+            let comma = boundary.comma.ok_or_else(|| {
+                FormatError::unsupported("sequence separator boundary", None, span)
+            })?;
             let next = boundary
                 .leading
                 .first()
                 .map_or(end, |comment| comment.span.start);
-            boundary.before_comma =
-                self.line_constraint_after_comments(boundary.trailing, start, comma);
-            boundary.separator = self.line_constraint(comma + 1, next);
+            if let Some((packet, source)) = boundary.packet.as_ref().and_then(|packet| match packet
+                .binding
+            {
+                SequencePacketBinding::InlineLine { source } if packet_end.is_some() => {
+                    Some((packet, source))
+                }
+                _ => None,
+            }) {
+                // The deferred Line suffix is written after the comma. Only
+                // the actual pre-comma run can constrain punctuation here.
+                boundary.before_comma =
+                    self.line_constraint_after_comments(&comments[..before_count], start, comma);
+                let last = packet.comments[packet.comments.len() - 1];
+                boundary.separator = self.source_line_constraint(last.span.end, source.end);
+            } else {
+                boundary.before_comma =
+                    self.line_constraint_after_comments(boundary.trailing, start, comma);
+                boundary.separator = self.line_constraint(comma + 1, next);
+            }
         }
         Ok(SequenceComments::Formatted)
     }
@@ -621,11 +758,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(tail) = tail {
             boundary.source_end = tail.source_end;
         }
-        let gap = Span::new(boundary.source_end, boundary.next_start);
         if matches!(
-            self.prepare_sequence_comments(boundary, gap)?,
+            self.prepare_sequence_comments(boundary)?,
             SequenceComments::SourceGap
         ) {
+            let gap = Span::new(boundary.source_end, boundary.next_start);
             boundary.separator = self
                 .format_delimited_source_gap(gap, DelimitedFollowing::Node, writer)?
                 .following;
