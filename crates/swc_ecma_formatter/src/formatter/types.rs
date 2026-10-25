@@ -185,7 +185,7 @@ pub(super) struct TypeSuppressionRun {
 
 #[derive(Clone, Copy)]
 enum PrecedingTypePacketProjection {
-    /// Every component precedes under the original boundary's attachment view.
+    /// Every component precedes and the type prefix keeps its ordinary owner.
     Inline,
     /// A physical trailing run still needs its operator's placement contract.
     EndOfLine(TypeSuppressionContext),
@@ -1955,10 +1955,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         selection: &TypeSuppressionRun,
         operator: Option<Span>,
     ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
-        if !matches!(selection.target, TypeSuppressionTarget::Preceding)
-            || comments.is_empty()
-            || comments.len() > 1 && run.len() != comments.len()
-        {
+        if !matches!(selection.target, TypeSuppressionTarget::Preceding) || comments.is_empty() {
             return None;
         }
         // Packet-only layouts keep the complete packet on the owner's line,
@@ -1969,12 +1966,62 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let right_span = right.node.span(self.ast);
+        // An operator envelope carries the RHS opening independently of this
+        // preceding packet. Packet-only callers keep their source head contract.
         if right.source_owner.is_some()
             || right.source_head.is_some()
             || !self.comments.in_range(right_span).is_empty()
+                && (operator.is_none() || selection.packet_projection.is_none())
             || self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
         {
             return None;
+        }
+        if run.len() != comments.len() {
+            let operator = operator?;
+            if !matches!(
+                selection.packet_projection,
+                Some(PrecedingTypePacketProjection::Inline)
+            ) || run.is_empty()
+                || !comments.starts_with(run)
+            {
+                return None;
+            }
+            let (preceding, following) = comments.split_at(run.len());
+            let first_following = following.first()?;
+            let last_preceding = preceding.last()?;
+            // The complete source packet has two independent owners. Preserve
+            // its prefix on the preceding owner and pass the RHS head through
+            // the same operator boundary on both original and normalized input.
+            if last_preceding.span.end > operator.start
+                || first_following.span.start < operator.end
+                || self.line_breaks(owner.start, last_preceding.span.end) != 0
+                || preceding
+                    .iter()
+                    .any(|comment| comment.kind != CommentKind::Block)
+                || !self
+                    .comment_binding(
+                        preceding,
+                        Span::new(owner.start, right_span.end),
+                        Some(owner),
+                    )
+                    .allows_relocation(Some(owner))
+                || !matches!(
+                    self.comment_binding(
+                        following,
+                        Span::new(operator.end, right_span.start),
+                        Some(right_span),
+                    ),
+                    CommentBinding::Unbound
+                )
+            {
+                return None;
+            }
+            return Some((
+                PreparedPrecedingTypePacket {
+                    comments: preceding,
+                },
+                self.prepare_comment_boundary(following, operator.end, right_span.start),
+            ));
         }
         let empty_after = || match operator {
             Some(operator) => self.prepare_comment_boundary(&[], operator.end, right_span.start),
@@ -2537,7 +2584,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return TypeSuppressionRun {
                     target: TypeSuppressionTarget::Preceding,
                     head,
-                    packet_projection: Some(PrecedingTypePacketProjection::EndOfLine(context)),
+                    packet_projection: attachment
+                        .prefix
+                        .preserves_union_owner
+                        .then_some(PrecedingTypePacketProjection::EndOfLine(context)),
                 };
             }
             SuppressionPosition::Inline => {}
@@ -2568,8 +2618,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             target,
             head,
             packet_projection: (all_preceding
-                && matches!(target, TypeSuppressionTarget::Preceding))
-            .then_some(PrecedingTypePacketProjection::Inline),
+                && matches!(target, TypeSuppressionTarget::Preceding)
+                && attachment.prefix.preserves_union_owner)
+                .then_some(PrecedingTypePacketProjection::Inline),
         }
     }
 
@@ -3844,9 +3895,46 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        // The opening ends at the first physical RHS boundary, independently
+        // of any comment head exposed through removed frames or operators.
+        let opening_end = after
+            .comments()
+            .first()
+            .map_or(target.start, |first| first.span.start);
+        let empty_opening = match self.comment_gap_constraint(operator_end, opening_end) {
+            LineConstraint::NewLine(2) => Some(LineConstraint::NewLine(2)),
+            _ => None,
+        };
         let (comments, next_start) = if after.is_empty() {
             let Some(head) = leading else {
-                return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+                let Some(opening) = empty_opening else {
+                    return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
+                };
+                // A compound can keep its own first-member packet, rather than
+                // lend it to the caller. Only that real frontier needs this
+                // external opening; comments on later members do not qualify.
+                let first = match node.data {
+                    TsTypeData::TsUnionType(union) => union.types(self.ast).first(),
+                    TsTypeData::TsIntersectionType(intersection) => {
+                        intersection.types(self.ast).first()
+                    }
+                    _ => None,
+                };
+                let owns_head = first.is_some_and(|first| {
+                    let first: TsType = self.ast.get_node_in_sub_range(first);
+                    !self
+                        .comments
+                        .in_range(Span::new(target.start, first.span(self.ast).start))
+                        .is_empty()
+                });
+                return BinaryTypeHead(if owns_head {
+                    BinaryTypeHeadLayout::Caller {
+                        leading: None,
+                        own_line: Some(opening),
+                    }
+                } else {
+                    BinaryTypeHeadLayout::Direct
+                });
             };
             (head.comments, head.next_start)
         } else {
@@ -3856,7 +3944,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let blocks = comments
                 .iter()
                 .all(|comment| comment.kind == CommentKind::Block);
-            if blocks {
+            if blocks && empty_opening.is_none() {
                 let continuous = comments
                     .windows(2)
                     .all(|pair| self.line_breaks(pair[0].span.end, pair[1].span.start) == 0)
@@ -3899,7 +3987,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map_or(next_start, |next| next.span.start);
                 self.line_breaks(comment.span.end, next) != 0
             });
-        let own_line = comments.first().filter(|_| ends_line);
+        let own_line = empty_opening.or_else(|| {
+            comments
+                .first()
+                .filter(|_| ends_line)
+                .map(|first| self.line_constraint(operator_end, first.span.start))
+        });
         if own_line.is_none()
             && !compound
             && comments
@@ -3908,10 +4001,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
         }
-        BinaryTypeHead(BinaryTypeHeadLayout::Caller {
-            leading,
-            own_line: own_line.map(|first| self.line_constraint(operator_end, first.span.start)),
-        })
+        BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line })
     }
 
     /// The operator owns the opening space; the head retains required line breaks.
@@ -3969,17 +4059,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         let opening = match own_line {
             _ if recorded.riding => None,
-            Some(opening)
-                if !matches!(recorded.content, compound::PreparedTypeContent::Union(_)) =>
-            {
-                Some(opening)
-            }
+            Some(opening) => Some(opening),
             _ => {
                 return self.format_recorded_type_head(recorded, context, TypeLayout::Root, writer);
             }
         };
         writer.indent(|writer| {
             if let Some(opening) = opening {
+                // This boundary supplied the complete source opening. The RHS
+                // keeps its indentation without emitting another opening gap.
                 opening.write(writer, FlatSeparator::Empty, Writer::hard_line);
             }
             self.format_recorded_type_head(recorded, context, TypeLayout::CallerIndented, writer)
