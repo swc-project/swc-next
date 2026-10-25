@@ -31,29 +31,30 @@ const isWellFormed = String.prototype.isWellFormed
       return true;
     };
 
-const ENUMS = Object.freeze({
-  Lang: ["js", "ts", "jsx", "tsx", "dts"],
-  SourceType: ["module", "script", "commonjs", "unambiguous"],
-  MethodDefinitionKind: ["constructor", "method", "get", "set"],
-  Accessibility: [null, "public", "private", "protected"],
-  ClassType: ["ClassDeclaration", "ClassExpression"],
-  BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
-  LogicalOperator: ["&&", "||", "??"],
-  UnaryOperator: ["-", "+", "!", "~", "typeof", "void", "delete"],
-  UpdateOperator: ["++", "--"],
-  AssignmentOperator: ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="],
-  VariableKind: ["var", "let", "const", "using", "await using"],
-  FunctionType: ["FunctionDeclaration", "FunctionExpression"],
-  FormalParameterKind: ["formal", "unique", "arrow", "signature"],
-  PropertyKind: ["init", "get", "set"],
-  NumericLiteralKind: ["decimal", "hex", "octal", "binary"],
-  ImportOrExportKind: ["value", "type"],
-  ImportPhase: ["source", "defer"],
-  TsTypeOperatorKind: ["keyof", "unique", "readonly"],
-  TsMethodSignatureKind: ["method", "get", "set"],
-  TsModuleDeclarationKind: ["namespace", "module"],
-  TsMappedTypeModifier: [null, true, "+", "-"],
-});
+const ENUMS = Object.freeze([
+  ["js", "ts", "jsx", "tsx", "dts"], // Lang
+  ["module", "script", "commonjs", "unambiguous"], // SourceType
+  ["constructor", "method", "get", "set"], // MethodDefinitionKind
+  ["ClassDeclaration", "ClassExpression"], // ClassType
+  ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"], // BinaryOperator
+  ["&&", "||", "??"], // LogicalOperator
+  ["-", "+", "!", "~", "typeof", "void", "delete"], // UnaryOperator
+  ["++", "--"], // UpdateOperator
+  ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="], // AssignmentOperator
+  ["var", "let", "const", "using", "await using"], // VariableKind
+  ["FunctionDeclaration", "FunctionExpression"], // FunctionType
+  ["formal", "unique", "arrow", "signature"], // FormalParameterKind
+  ["init", "get", "set"], // PropertyKind
+  ["source", "defer"], // ImportPhase
+  [null, "public", "private", "protected"], // Accessibility
+  ["value", "type"], // ImportOrExportKind
+  ["keyof", "unique", "readonly"], // TsTypeOperatorKind
+  ["method", "get", "set"], // TsMethodSignatureKind
+  ["namespace", "module"], // TsModuleDeclarationKind
+  [null, true, "+", "-"], // TsMappedTypeModifier
+  ["decimal", "hex", "octal", "binary"], // NumericLiteralKind
+]);
+
 
 export function encodeOptions(options) {
   if (options === undefined || options === null) return 0;
@@ -97,8 +98,8 @@ function encodeTs(program, meta = {}) {
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
-  const enumValue = (name, value) => {
-    const index = ENUMS[name]?.indexOf(value);
+  const enumValue = (enumIndex, value) => {
+    const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
   };
   const asStart = n => n && typeof n.start === "number" ? n.start >>> 0 : 0;
@@ -627,7 +628,7 @@ function encodeTs(program, meta = {}) {
   function encBinaryExpression(n) {
     const v_0 = encExpr(n.left);
     const v_1 = encExpr(n.right);
-    const v_2 = enumValue("BinaryOperator", n.operator);
+    const v_2 = enumValue(4, n.operator);
     const index = allocNode(21, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -638,7 +639,7 @@ function encodeTs(program, meta = {}) {
   function encLogicalExpression(n) {
     const v_0 = encExpr(n.left);
     const v_1 = encExpr(n.right);
-    const v_2 = enumValue("LogicalOperator", n.operator);
+    const v_2 = enumValue(5, n.operator);
     const index = allocNode(22, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -659,7 +660,7 @@ function encodeTs(program, meta = {}) {
 
   function encUnaryExpression(n) {
     const v_0 = encExpr(n.argument);
-    const v_1 = enumValue("UnaryOperator", n.operator);
+    const v_1 = enumValue(6, n.operator);
     const index = allocNode(24, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU8(index, 4, v_1);
@@ -668,7 +669,7 @@ function encodeTs(program, meta = {}) {
 
   function encUpdateExpression(n) {
     const v_0 = encSimpleAssignmentTarget(n.argument);
-    const v_1 = enumValue("UpdateOperator", n.operator);
+    const v_1 = enumValue(7, n.operator);
     const v_2 = n.prefix ? 1 : 0;
     const index = allocNode(25, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -680,7 +681,7 @@ function encodeTs(program, meta = {}) {
   function encAssignmentExpression(n) {
     const v_0 = encAssignmentTarget(n.left);
     const v_1 = encExpr(n.right);
-    const v_2 = enumValue("AssignmentOperator", n.operator);
+    const v_2 = enumValue(8, n.operator);
     const index = allocNode(26, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -689,7 +690,7 @@ function encodeTs(program, meta = {}) {
   }
 
   function encVariableDeclaration(n) {
-    const v_0 = enumValue("VariableKind", n.kind);
+    const v_0 = enumValue(9, n.kind);
     const v_1 = encArray(n.declarations, encVariableDeclarator, false);
     const v_2 = n.declare ? 1 : 0;
     const index = allocNode(27, asStart(n), asEnd(n));
@@ -883,7 +884,7 @@ function encodeTs(program, meta = {}) {
   }
 
   function encClass(n) {
-    const v_0 = enumValue("ClassType", n.type === "ClassExpression" ? "ClassExpression" : "ClassDeclaration");
+    const v_0 = enumValue(3, n.type === "ClassExpression" ? "ClassExpression" : "ClassDeclaration");
     const v_1 = encArray(n.decorators, encDecorator, false);
     const v_2 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_3 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
@@ -920,13 +921,13 @@ function encodeTs(program, meta = {}) {
     const v_0 = encArray(n.decorators, encDecorator, false);
     const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_2 = encFunction(n.value);
-    const v_3 = enumValue("MethodDefinitionKind", n.kind);
+    const v_3 = enumValue(2, n.kind);
     const v_4 = n.computed ? 1 : 0;
     const v_5 = n.static ? 1 : 0;
     const v_6 = n.override ? 1 : 0;
     const v_7 = n.optional ? 1 : 0;
     const v_8 = n.type.startsWith("TSAbstract") ? 1 : 0;
-    const v_9 = enumValue("Accessibility", n.accessibility);
+    const v_9 = enumValue(14, n.accessibility);
     const extraId = allocExtra(2);
     const index = allocNode(49, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -957,7 +958,7 @@ function encodeTs(program, meta = {}) {
     const v_10 = n.definite ? 1 : 0;
     const v_11 = n.readonly ? 1 : 0;
     const v_12 = n.type.startsWith("TSAbstract") ? 1 : 0;
-    const v_13 = enumValue("Accessibility", n.accessibility);
+    const v_13 = enumValue(14, n.accessibility);
     const extraId = allocExtra(4);
     const index = allocNode(50, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -989,7 +990,7 @@ function encodeTs(program, meta = {}) {
     const _first = n.params?.[0];
     const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
     const _paramStart = _thisParam === null ? 0 : 1;
-    const v_0 = enumValue("FunctionType", n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
+    const v_0 = enumValue(10, n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
     const v_1 = n.id == null ? NULL : encBindingIdentifier(n.id);
     const v_2 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
     const v_3 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
@@ -1092,7 +1093,7 @@ function encodeTs(program, meta = {}) {
     }
     const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encFormalParameterRest(_rest);
-    const v_2 = enumValue("FormalParameterKind", 0);
+    const v_2 = enumValue(11, 0);
     const index = allocNode(58, _start, _end);
     writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
@@ -1155,7 +1156,7 @@ function encodeTs(program, meta = {}) {
   function encObjectProperty(n) {
     const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_1 = encExpr(n.value);
-    const v_2 = enumValue("PropertyKind", n.kind);
+    const v_2 = enumValue(12, n.kind);
     const v_3 = n.method ? 1 : 0;
     const v_4 = n.shorthand ? 1 : 0;
     const v_5 = n.computed ? 1 : 0;
@@ -1287,7 +1288,7 @@ function encodeTs(program, meta = {}) {
   function encImportExpression(n) {
     const v_0 = encExpr(n.source);
     const v_1 = n.options == null ? NULL : encExpr(n.options);
-    const v_2 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
+    const v_2 = n.phase == null ? 0xff : enumValue(13, n.phase);
     const v_3 = 0 ? 1 : 0;
     const extraId = allocExtra(1);
     const index = allocNode(76, asStart(n), asEnd(n));
@@ -1303,8 +1304,8 @@ function encodeTs(program, meta = {}) {
     const v_0 = encArray(n.specifiers, encImportDeclarationSpecifier, false);
     const v_1 = encStringLiteral(n.source);
     const v_2 = encArray(n.attributes, encImportAttribute, false);
-    const v_3 = n.phase == null ? 0xff : enumValue("ImportPhase", n.phase);
-    const v_4 = enumValue("ImportOrExportKind", n.importKind);
+    const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
+    const v_4 = enumValue(15, n.importKind);
     const extraId = allocExtra(3);
     const index = allocNode(77, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1319,7 +1320,7 @@ function encodeTs(program, meta = {}) {
   function encImportSpecifier(n) {
     const v_0 = encModuleExportName(n.imported);
     const v_1 = encBindingIdentifier(n.local);
-    const v_2 = enumValue("ImportOrExportKind", n.importKind);
+    const v_2 = enumValue(15, n.importKind);
     const index = allocNode(78, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1355,7 +1356,7 @@ function encodeTs(program, meta = {}) {
     const v_1 = encArray(n.specifiers, encExportSpecifier, false);
     const v_2 = n.source == null ? NULL : encStringLiteral(n.source);
     const v_3 = encArray(n.attributes, encImportAttribute, false);
-    const v_4 = enumValue("ImportOrExportKind", n.exportKind);
+    const v_4 = enumValue(15, n.exportKind);
     const extraId = allocExtra(2);
     const index = allocNode(82, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1378,7 +1379,7 @@ function encodeTs(program, meta = {}) {
     const v_0 = n.exported == null ? NULL : encModuleExportName(n.exported);
     const v_1 = encStringLiteral(n.source);
     const v_2 = encArray(n.attributes, encImportAttribute, false);
-    const v_3 = enumValue("ImportOrExportKind", n.exportKind);
+    const v_3 = enumValue(15, n.exportKind);
     const extraId = allocExtra(1);
     const index = allocNode(84, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1392,7 +1393,7 @@ function encodeTs(program, meta = {}) {
   function encExportSpecifier(n) {
     const v_0 = encModuleExportName(n.local);
     const v_1 = encModuleExportName(n.exported);
-    const v_2 = enumValue("ImportOrExportKind", n.exportKind);
+    const v_2 = enumValue(15, n.exportKind);
     const index = allocNode(85, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1439,13 +1440,13 @@ function encodeTs(program, meta = {}) {
     const v_0 = encArray(n.decorators, encDecorator, false);
     const v_1 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
     const v_2 = encTsFunction(n.value);
-    const v_3 = enumValue("MethodDefinitionKind", n.kind);
+    const v_3 = enumValue(2, n.kind);
     const v_4 = n.computed ? 1 : 0;
     const v_5 = n.static ? 1 : 0;
     const v_6 = n.override ? 1 : 0;
     const v_7 = n.optional ? 1 : 0;
     const v_8 = n.type.startsWith("TSAbstract") ? 1 : 0;
-    const v_9 = enumValue("Accessibility", n.accessibility);
+    const v_9 = enumValue(14, n.accessibility);
     const extraId = allocExtra(2);
     const index = allocNode(88, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1770,7 +1771,7 @@ function encodeTs(program, meta = {}) {
 
   function encTsTypeOperator(n) {
     isTs = true;
-    const v_0 = enumValue("TsTypeOperatorKind", n.operator);
+    const v_0 = enumValue(16, n.operator);
     const v_1 = encTsType(n.typeAnnotation);
     const index = allocNode(126, asStart(n), asEnd(n));
     setPayloadU8(index, 4, v_0);
@@ -1843,8 +1844,8 @@ function encodeTs(program, meta = {}) {
     const v_1 = encTsType(n.constraint);
     const v_2 = n.nameType == null ? NULL : encTsType(n.nameType);
     const v_3 = n.typeAnnotation == null ? NULL : encTsType(n.typeAnnotation);
-    const v_4 = enumValue("TsMappedTypeModifier", n.optional === false ? null : n.optional);
-    const v_5 = enumValue("TsMappedTypeModifier", n.readonly);
+    const v_4 = enumValue(19, n.optional === false ? null : n.optional);
+    const v_5 = enumValue(19, n.readonly);
     const extraId = allocExtra(2);
     const index = allocNode(132, asStart(n), asEnd(n));
     setPayloadU32(index, 12, extraId);
@@ -1883,7 +1884,7 @@ function encodeTs(program, meta = {}) {
     const v_2 = _thisParam == null ? NULL : encTsThisParameter(_thisParam);
     const v_3 = encFormalParameters(n.params, _paramStart);
     const v_4 = n.returnType == null ? NULL : encTsTypeAnnotation(n.returnType);
-    const v_5 = enumValue("TsMethodSignatureKind", n.kind);
+    const v_5 = enumValue(17, n.kind);
     const v_6 = n.computed ? 1 : 0;
     const v_7 = n.optional ? 1 : 0;
     const extraId = allocExtra(3);
@@ -2041,7 +2042,7 @@ function encodeTs(program, meta = {}) {
     isTs = true;
     const v_0 = encTsModuleName(n.id);
     const v_1 = n.body == null ? NULL : encTsModuleBody(n.body);
-    const v_2 = enumValue("TsModuleDeclarationKind", n.kind);
+    const v_2 = enumValue(18, n.kind);
     const v_3 = n.declare ? 1 : 0;
     const index = allocNode(146, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
@@ -2090,7 +2091,7 @@ function encodeTs(program, meta = {}) {
     const v_1 = encFormalParameter(n.parameter);
     const v_2 = n.override ? 1 : 0;
     const v_3 = n.readonly ? 1 : 0;
-    const v_4 = enumValue("Accessibility", n.accessibility);
+    const v_4 = enumValue(14, n.accessibility);
     const index = allocNode(149, asStart(n), asEnd(n));
     writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
@@ -2176,7 +2177,7 @@ function encodeTs(program, meta = {}) {
     isTs = true;
     const v_0 = encBindingIdentifier(n.id);
     const v_1 = encTsModuleReference(n.moduleReference);
-    const v_2 = enumValue("ImportOrExportKind", n.importKind);
+    const v_2 = enumValue(15, n.importKind);
     const index = allocNode(158, asStart(n), asEnd(n));
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -2985,9 +2986,9 @@ function encodeTs(program, meta = {}) {
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, root, true);
-  const sourceType = enumValue("SourceType", meta.sourceType ?? program.sourceType);
+  const sourceType = enumValue(1, meta.sourceType ?? program.sourceType);
   const lang = meta.lang ?? (isTs ? "ts" : "js");
-  view.setUint32(32, sourceType | (enumValue("Lang", lang) << 2), true);
+  view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
   if (NATIVE_LITTLE_ENDIAN) {

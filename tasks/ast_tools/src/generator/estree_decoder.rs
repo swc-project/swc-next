@@ -34,16 +34,20 @@ pub fn estree_decoder(schema: &Schema) -> Vec<RawOutput> {
 
 fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     let mut output = String::new();
-    let mut enums = String::from("const ENUMS = Object.freeze({\n");
-    for (name, values) in ENUMS {
-        if !is_ts
-            && (*name == "Accessibility" || *name == "ImportOrExportKind" || name.starts_with("Ts"))
-        {
-            continue;
-        }
-        writeln!(enums, "  {name}: [{}],", values.join(", ")).unwrap();
+    let decoder_enums: Vec<_> = ENUMS
+        .iter()
+        .filter(|(name, _)| {
+            is_ts
+                || !(*name == "Accessibility"
+                    || *name == "ImportOrExportKind"
+                    || name.starts_with("Ts"))
+        })
+        .collect();
+    let mut enums = String::from("const ENUMS = Object.freeze([\n");
+    for (name, values) in &decoder_enums {
+        writeln!(enums, "  [{}], // {name}", values.join(", ")).unwrap();
     }
-    enums.push_str("\n});");
+    enums.push_str("\n]);");
     output.push_str(&PREAMBLE.replace("__ENUMS__", &enums));
     output.push_str(DECODE_HELPERS);
     writeln!(
@@ -75,6 +79,15 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     }
 
     output.push_str(POSTAMBLE);
+    // Assign indices from the same filtered table used to emit the enum arrays.
+    for (index, (name, _)) in decoder_enums.iter().enumerate() {
+        for helper in ["enumValue", "optionalEnum"] {
+            output = output.replace(
+                &format!("{helper}(\"{name}\","),
+                &format!("{helper}({index},"),
+            );
+        }
+    }
     output
 }
 
@@ -897,13 +910,13 @@ const DECODE_PREAMBLE: &str = r#"
       strings + end - sourceLength,
     ));
   };
-  const enumValue = (name, value) => {
-    const values = ENUMS[name];
+  const enumValue = (index, value) => {
+    const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
   };
   const sourceType = enumValue("SourceType", flags & 3);
-  const optionalEnum = (name, value) =>
-    value === 0xff ? null : enumValue(name, value);
+  const optionalEnum = (index, value) =>
+    value === 0xff ? null : enumValue(index, value);
   const optionalNode = index => index === NULL ? null : node(index);
   const nodeArray = (start, end, holes) => {
     const result = new Array(end - start);

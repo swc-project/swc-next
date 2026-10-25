@@ -10,7 +10,7 @@ use crate::{
     schema::{AstStruct, AstType, FieldLocation, Schema, TypeId},
 };
 
-use super::js_minifier::minify_encoder;
+use super::{estree::ENUMS, js_minifier::minify_encoder};
 
 const OUTPUT_DIR: &str = "packages/encoder";
 
@@ -184,7 +184,20 @@ pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
 }
 
 fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
-    let mut output = PREAMBLE.replace(
+    let encoder_enums: Vec<_> = ENUMS
+        .iter()
+        .copied()
+        .chain([(
+            "NumericLiteralKind",
+            &["\"decimal\"", "\"hex\"", "\"octal\"", "\"binary\""][..],
+        )])
+        .collect();
+    let mut enums = String::from("const ENUMS = Object.freeze([\n");
+    for (name, values) in &encoder_enums {
+        writeln!(enums, "  [{}], // {name}", values.join(", ")).unwrap();
+    }
+    enums.push_str("]);\n");
+    let mut output = PREAMBLE.replace("__ENUMS__", &enums).replace(
         "function encode(program, meta = {})",
         &format!("function {name}(program, meta = {{}})"),
     );
@@ -208,6 +221,13 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     }
     write_enum_encoders(&mut output, &dispatch);
     output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
+    // Assign indices from the same table used to emit the enum arrays.
+    for (index, (name, _)) in encoder_enums.iter().enumerate() {
+        output = output.replace(
+            &format!("enumValue(\"{name}\","),
+            &format!("enumValue({index},"),
+        );
+    }
     output
 }
 
@@ -1170,29 +1190,7 @@ const isWellFormed = String.prototype.isWellFormed
       return true;
     };
 
-const ENUMS = Object.freeze({
-  Lang: ["js", "ts", "jsx", "tsx", "dts"],
-  SourceType: ["module", "script", "commonjs", "unambiguous"],
-  MethodDefinitionKind: ["constructor", "method", "get", "set"],
-  Accessibility: [null, "public", "private", "protected"],
-  ClassType: ["ClassDeclaration", "ClassExpression"],
-  BinaryOperator: ["==", "!=", "===", "!==", "<", "<=", ">", ">=", "+", "-", "*", "/", "%", "**", "|", "^", "&", "<<", ">>", ">>>", "in", "instanceof"],
-  LogicalOperator: ["&&", "||", "??"],
-  UnaryOperator: ["-", "+", "!", "~", "typeof", "void", "delete"],
-  UpdateOperator: ["++", "--"],
-  AssignmentOperator: ["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "|=", "^=", "&=", "||=", "&&=", "??="],
-  VariableKind: ["var", "let", "const", "using", "await using"],
-  FunctionType: ["FunctionDeclaration", "FunctionExpression"],
-  FormalParameterKind: ["formal", "unique", "arrow", "signature"],
-  PropertyKind: ["init", "get", "set"],
-  NumericLiteralKind: ["decimal", "hex", "octal", "binary"],
-  ImportOrExportKind: ["value", "type"],
-  ImportPhase: ["source", "defer"],
-  TsTypeOperatorKind: ["keyof", "unique", "readonly"],
-  TsMethodSignatureKind: ["method", "get", "set"],
-  TsModuleDeclarationKind: ["namespace", "module"],
-  TsMappedTypeModifier: [null, true, "+", "-"],
-});
+__ENUMS__
 
 export function encodeOptions(options) {
   if (options === undefined || options === null) return 0;
@@ -1236,8 +1234,8 @@ function encode(program, meta = {}) {
   let firstNonAsciiPos = NULL;
   let isTs = false;
 
-  const enumValue = (name, value) => {
-    const index = ENUMS[name]?.indexOf(value);
+  const enumValue = (enumIndex, value) => {
+    const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
   };
   const asStart = n => n && typeof n.start === "number" ? n.start >>> 0 : 0;
