@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"use strict";
+[(
+// @ts-ignore
+first = second
+)];
+---------- Options ----------
+{}
+---------- Output ----------
+"use strict";
+[
+  // @ts-ignore
+  (first = second),
+];

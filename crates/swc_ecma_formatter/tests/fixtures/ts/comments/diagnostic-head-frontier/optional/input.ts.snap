@@ -8,12 +8,12 @@ first ? second : third);
 {}
 ---------- Output ----------
 value ??
-  (// @ts-expect-error
-    first ? second : third);
+  // @ts-expect-error
+  (first ? second : third);
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 value ??
-  (// @ts-expect-error
-    first ? second : third)
+  // @ts-expect-error
+  (first ? second : third)
