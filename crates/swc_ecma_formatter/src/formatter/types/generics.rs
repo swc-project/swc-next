@@ -1,10 +1,10 @@
 //! Real generic list owners share the item/comma protocol and retain child bindings.
 
 use swc_next_ecma_ast::{
-    Ast, BindingIdentifier, ClassBody, CommentKind, FunctionBody, GetSpan, ObjectExpression, Span,
-    TemplateElement, TsLiteralData, TsMappedType, TsType, TsTypeData, TsTypeLiteral,
-    TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation, TsTypeReference,
-    UnaryOperator, Visit, VisitWith,
+    Ast, BindingIdentifier, ClassBody, Comment, CommentKind, FunctionBody, GetSpan,
+    ObjectExpression, Span, TemplateElement, TsLiteralData, TsMappedType, TsType, TsTypeData,
+    TsTypeLiteral, TsTypeParameter, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
+    TsTypeReference, UnaryOperator, Visit, VisitWith,
 };
 
 use super::compound::PendingTypeHead;
@@ -20,6 +20,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{
     ArgumentLayout, FollowingItem, Separator, TrailingCommaPolicy,
 };
+use crate::formatter::source::is_source_horizontal_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
 use crate::{
     FormatError, TrailingCommas,
@@ -477,6 +478,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// The angle token owns its horizontal opening; the source packet keeps
+    /// every gap that can select a different ignored type or physical line.
+    pub(in crate::formatter) fn type_angle_source_head(
+        &self,
+        span: Span,
+        comments: &[Comment],
+    ) -> Span {
+        let Some(first) = comments.first() else {
+            return span;
+        };
+        if self
+            .source(Span::new(span.start, first.span.start))
+            .chars()
+            .all(is_source_horizontal_whitespace)
+        {
+            Span::new(first.span.start, span.end)
+        } else {
+            span
+        }
+    }
+
     fn format_generic_list(
         &mut self,
         node: TypeList,
@@ -545,7 +567,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     false
                 };
                 first_type = Some(node);
-                (changes_own_line || changes_inline).then_some(gap)
+                (changes_own_line || changes_inline)
+                    .then(|| self.type_angle_source_head(gap, comments))
             })
         } else {
             None
