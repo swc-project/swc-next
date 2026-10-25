@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const object={first:1
+/* b */
+,
+
+/* c */ // d
+};
+---------- Options ----------
+{}
+---------- Output ----------
+const object = {
+  first: 1,
+  /* b */
+
+  /* c */ // d
+};

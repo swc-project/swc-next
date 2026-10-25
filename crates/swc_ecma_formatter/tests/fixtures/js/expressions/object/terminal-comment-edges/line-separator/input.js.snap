@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({first: 1, /* b */ // c });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  first: 1,
+  /* b */ // c
+});
