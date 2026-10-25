@@ -53,7 +53,7 @@ struct MappedBoundary<'ast> {
 
 enum MappedBoundaryLayout<'ast> {
     Source(Span),
-    Preceding(PreparedPrecedingTypePacket<'ast>),
+    Preceding(MappedPrecedingBoundary<'ast>),
     Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
         before: CommentBoundary<'ast>,
@@ -70,6 +70,11 @@ impl MappedBoundary<'_> {
             | MappedBoundaryLayout::Formatted { .. } => TypeLayout::Root,
         }
     }
+}
+
+struct MappedPrecedingBoundary<'ast> {
+    packet: PreparedPrecedingTypePacket<'ast>,
+    after: CommentBoundary<'ast>,
 }
 
 struct MappedBound<'ast> {
@@ -480,7 +485,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         key: Option<Span>,
         right: &mut PreparedType,
         attachment: &TypeAttachmentHead,
-    ) -> (ContentMode, Option<PreparedPrecedingTypePacket<'ast>>) {
+    ) -> (ContentMode, Option<MappedPrecedingBoundary<'ast>>) {
         let split = comments.partition_point(|comment| comment.span.end <= operator.start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
@@ -488,7 +493,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         for (run, position) in self.suppressed_comment_runs(before, operator.start) {
             if !matches!(position, SuppressionPosition::OwnLine)
                 && let Some(owner) = key
-                && let Some(packet) = self.prepare_preceding_type_packet(
+                && let Some((packet, after)) = self.prepare_preceding_type_operator(
                     comments,
                     run,
                     owner,
@@ -500,9 +505,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         position,
                         super::TypeSuppressionContext::TypeBoundary,
                     ),
+                    operator,
                 )
             {
-                return (ContentMode::Verbatim, Some(packet));
+                return (
+                    ContentMode::Verbatim,
+                    Some(MappedPrecedingBoundary { packet, after }),
+                );
             }
             if matches!(position, SuppressionPosition::OwnLine) {
                 self.select_type_head_with_retention(right, attachment, before_head, position);
@@ -532,10 +541,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             if !compound_conflict
                 && let Some(owner) = key
-                && let Some(packet) =
-                    self.prepare_preceding_type_packet(comments, run, owner, right, &selection)
+                && let Some((packet, after)) = self.prepare_preceding_type_operator(
+                    comments, run, owner, right, &selection, operator,
+                )
             {
-                return (ContentMode::Verbatim, Some(packet));
+                return (
+                    ContentMode::Verbatim,
+                    Some(MappedPrecedingBoundary { packet, after }),
+                );
             }
             selection.retain_source_head(right, self.ast);
             if selected.preceding() {
@@ -757,12 +770,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 );
             }
-            MappedBoundaryLayout::Preceding(packet) => {
-                self.format_preceding_type_packet(packet, writer)?;
+            MappedBoundaryLayout::Preceding(preceding) => {
+                self.format_preceding_type_packet(&preceding.packet, writer)?;
                 writer.space();
                 writer.text(separator.text());
-                writer.space();
-                Ok(())
+                return self.format_prepared_type_after_comments(
+                    node,
+                    TypeContext::Root,
+                    &preceding.after,
+                    boundary.following_layout(),
+                    writer,
+                );
             }
             MappedBoundaryLayout::Source(span) => self.format_source_gap(*span, writer),
             MappedBoundaryLayout::Formatted { before, after } => {
