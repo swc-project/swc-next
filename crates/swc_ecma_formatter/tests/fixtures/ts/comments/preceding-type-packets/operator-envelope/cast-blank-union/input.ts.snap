@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = \u0076alue /* prettier-ignore */ as
+
+/* head */ A | B;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+const x =
+  \u0076alue /* prettier-ignore */ as
+
+    | /* head */ A
+    | B;
