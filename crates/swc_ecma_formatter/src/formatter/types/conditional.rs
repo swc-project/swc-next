@@ -36,7 +36,10 @@ struct ConditionalTypeBoundary<'ast> {
 }
 
 enum ConditionalTypeLayout<'ast> {
-    Source(Span),
+    Source {
+        span: Span,
+        opening: TypeLayout,
+    },
     Preceding(PreparedPrecedingTypePacket<'ast>),
     Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
@@ -220,9 +223,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 };
                 self.format_expression_tail(tail, writer)?;
-                self.format_conditional_type_boundary(head, writer)?;
-                let tail =
-                    self.format_prepared_type(extends, TypeContext::ConditionalExtends, writer)?;
+                let opening = self.format_conditional_type_boundary(head, writer)?;
+                let tail = self.format_prepared_type_with_layout(
+                    extends,
+                    TypeContext::ConditionalExtends,
+                    opening,
+                    writer,
+                )?;
                 self.format_expression_tail(tail, writer)?;
                 Ok::<_, FormatError>(())
             };
@@ -354,13 +361,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
                 let selected = selection.target();
                 if let Some(owner) = packet_owner
-                    && let Some(packet) = self.prepare_preceding_type_packet(
-                        comments,
-                        run,
-                        owner,
-                        right,
-                        &selection,
-                    )
+                    && let Some(packet) =
+                        self.prepare_preceding_type_packet(comments, run, owner, right, &selection)
                 {
                     left.source_owner = Some(left.node);
                     return Ok(ConditionalTypeBoundary {
@@ -397,7 +399,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let layout = if let Some(head) = suppressed_head {
             ConditionalTypeLayout::Suppressed(head)
         } else if source || !matches!(binding, CommentBinding::Unbound) {
-            ConditionalTypeLayout::Source(gap)
+            let last_end = after
+                .last()
+                .map_or(operator + token.len() as u32, |comment| comment.span.end);
+            // The source boundary owns any line before the operand. Carry that
+            // opening forward so a formatted union does not emit a second one.
+            let opening = if self.line_breaks(last_end, gap.end) == 0 {
+                TypeLayout::Root
+            } else {
+                TypeLayout::OpeningProvided
+            };
+            ConditionalTypeLayout::Source { span: gap, opening }
         } else {
             let (before, after) = match separator {
                 ConditionalTypeSeparator::Extends => (before, after),
@@ -428,7 +440,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<T, FormatError> {
         let context = TypeContext::Root;
         let head = self.type_movable_head(node, context);
-        let emitted_prefix = !matches!(&boundary.layout, ConditionalTypeLayout::Source(_));
+        let emitted_prefix = !matches!(&boundary.layout, ConditionalTypeLayout::Source { .. });
         let leading = match boundary.layout {
             ConditionalTypeLayout::Suppressed(head) => {
                 writer.space();
@@ -444,7 +456,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
                 &[][..]
             }
-            ConditionalTypeLayout::Source(gap) => {
+            ConditionalTypeLayout::Source { span: gap, .. } => {
                 self.format_verbatim(gap, writer)?;
                 &[][..]
             }
@@ -478,22 +490,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: ConditionalTypeBoundary<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<TypeLayout, FormatError> {
         let (before, after) = match boundary.layout {
             ConditionalTypeLayout::Suppressed(head) => {
                 writer.space();
                 writer.text(boundary.separator.token());
                 writer.space();
-                return self.format_suppressed_type_head(&head, writer);
+                self.format_suppressed_type_head(&head, writer)?;
+                return Ok(TypeLayout::Root);
             }
             ConditionalTypeLayout::Preceding(packet) => {
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
                 writer.text(boundary.separator.token());
                 writer.space();
-                return Ok(());
+                return Ok(TypeLayout::Root);
             }
-            ConditionalTypeLayout::Source(gap) => return self.format_source_gap(gap, writer),
+            ConditionalTypeLayout::Source { span, opening } => {
+                self.format_source_gap(span, writer)?;
+                return Ok(opening);
+            }
             ConditionalTypeLayout::Formatted { before, after } => (before, after),
         };
         self.format_comment_boundary(&before, writer)?;
@@ -511,6 +527,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         after
             .gap()
             .write(writer, FlatSeparator::Space, Writer::space);
-        Ok(())
+        Ok(TypeLayout::Root)
     }
 }
