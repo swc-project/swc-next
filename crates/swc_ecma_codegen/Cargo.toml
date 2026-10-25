@@ -20,4 +20,6 @@ zmij_ecma          = { workspace = true }
 
 [dev-dependencies]
 clap                 = { workspace = true }
+serde_json           = { workspace = true }
+sourcemap            = { workspace = true }
 swc_next_ecma_parser = { workspace = true }

@@ -1643,6 +1643,7 @@ impl<'a> Printer<'a> {
 
     fn print_binding_identifier(&mut self, id: BindingIdentifier) {
         let name = self.ast.get_utf8(id.name(self.ast));
+        self.print_space_before_identifier();
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
         self.print_identifier(name);
     }
@@ -2572,6 +2573,7 @@ impl<'a> Printer<'a> {
             self.print("[");
             let old_forbid_in = self.forbid_in;
             self.forbid_in = false;
+            self.add_source_mapping(property.span(self.ast).start);
             self.print_property_key_expr(property, Precedence::Lowest);
             self.forbid_in = old_forbid_in;
             self.add_source_mapping(e.span(self.ast).end.saturating_sub(1));
@@ -5131,6 +5133,7 @@ impl<'a> Printer<'a> {
         self.print_comments_before(v.span(self.ast).start, false, false);
         match self.ast.jsx_attribute_value_data(v) {
             JsxAttributeValueData::StringLiteral(s) => {
+                self.add_source_mapping(s.span(self.ast).start);
                 let raw = self.ast.get_utf8(s.raw(self.ast));
                 if raw.is_empty() {
                     let value = self.ast.get_wtf8(s.value(self.ast));
