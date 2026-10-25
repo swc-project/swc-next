@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, NodeId, NodeKindData, ParenthesizedExpression,
-    Span,
+    Span, UnaryExpression,
 };
 
 use super::{
@@ -153,6 +153,15 @@ struct RemovableSourceParentheses {
 pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
     pub(in crate::formatter) head: NodeHead<'ast>,
     pub(in crate::formatter) binding: CommentBinding,
+}
+
+/// An interior source head transfers to the unary's replacement physical pair.
+pub(super) struct PreparedUnaryEnclosure<'ast> {
+    head: ResolvedExpressionHead<'ast>,
+    source: SourceParentheses,
+    operand_context: ExpressionContext<'ast>,
+    first_code: LineConstraint,
+    closing: LineConstraint,
 }
 
 pub(super) struct OptionalJsxHeadFrame<'ast> {
@@ -4063,6 +4072,124 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             source
         }
+    }
+
+    pub(super) fn prepare_unary_enclosure(
+        &self,
+        unary: UnaryExpression,
+        content: &ExpressionContent,
+        leading: &'ast [Comment],
+        context: ExpressionContext<'ast>,
+    ) -> Option<PreparedUnaryEnclosure<'ast>> {
+        if context.content_mode != ContentMode::Formatted
+            || leading.is_empty()
+            || self.diagnostic_line_is_sensitive(unary.span(self.ast).start)
+        {
+            return None;
+        }
+        let removed = content.parentheses?;
+        let source = removed.source;
+        let body = content.expression.span(self.ast);
+        if source.outer != unary.argument(self.ast).span(self.ast)
+            || source.outer.start >= body.start
+            || body.end >= source.outer.end
+            || self.diagnostic_line_is_sensitive(source.outer.start)
+        {
+            return None;
+        }
+        // The source opening must precede the complete packet. An exterior
+        // diagnostic can own that opening even when it covers no body tokens.
+        let frontier = removed.head.diagnostic_frontier?;
+        let (prefix, _) = frontier.split(leading)?;
+        let coverage = frontier.coverage?;
+        // Protect the actual first-code boundary. The remaining source interval
+        // keeps its own constraints independently of the operand's grammar.
+        if !prefix.is_empty()
+            || !coverage.contains(Span::new(body.start, body.start))
+            || !frontier.preserves_owner(
+                source.outer,
+                context
+                    .head_scope
+                    .map(|owner| owner.expression.span(self.ast)),
+            )
+            || !removed.head.lexical_binding.allows_relocation(Some(body))
+        {
+            return None;
+        }
+        let first_code =
+            self.line_constraint_after_comments(leading, source.outer.start + 1, body.start);
+        let trailing = self
+            .comments
+            .in_range(Span::new(body.end, source.outer.end));
+        // The complete operand owns its grammar independently of which source
+        // code line the head packet covers. Source and normalized input share
+        // this context even when the remaining operand spans several lines.
+        let position = ExpressionPosition::ParenthesizedUnaryArgument(unary.operator(self.ast));
+        let mut operand_context = ExpressionContext::at(position).inside_parentheses();
+        if self.expression_needs_parentheses(content.data, position, ContentMode::Formatted)
+            == Some(true)
+        {
+            operand_context.parentheses_owner = ParenthesesOwner::Expression;
+        }
+        let operand_context = self.with_head_scope(operand_context, content);
+        Some(PreparedUnaryEnclosure {
+            head: ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: leading,
+                    content_start: body.start,
+                    layout: CommentRunLayout::Source,
+                    gap_end: None,
+                },
+                binding: removed.head.binding,
+            },
+            source,
+            operand_context,
+            first_code,
+            closing: self.line_constraint_after_comments(trailing, body.end, source.outer.end - 1),
+        })
+    }
+
+    pub(super) fn format_prepared_unary_enclosure(
+        &mut self,
+        mut content: ExpressionContent,
+        enclosure: PreparedUnaryEnclosure<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let PreparedUnaryEnclosure {
+            head: ResolvedExpressionHead { head, binding },
+            source,
+            operand_context: mut context,
+            first_code,
+            closing,
+        } = enclosure;
+        let expression = content.expression;
+        let body = expression.span(self.ast);
+        context.protected_head_start = Some(body.start);
+        writer.group(false, |writer| {
+            writer.text("(");
+            writer.indent(|writer| {
+                writer.soft_line();
+                self.comments.claim(head.comments)?;
+                self.format_expression_head(expression, head, binding, context, None, writer)?;
+                first_code.write(writer, FlatSeparator::Space, Writer::line);
+                // This actual unary frame has consumed the complete source
+                // head. The child keeps its grammar pair, not the old head
+                // frontier; this frame retains the source envelope's tail.
+                content.parentheses = None;
+                let tail = self.format_expression_prepared(
+                    expression,
+                    Some(content),
+                    context.with_tail_owner(TailOwner::ParentOperation),
+                    writer,
+                )?;
+                let tail =
+                    self.capture_expression_tail(Span::new(body.end, source.outer.end), tail)?;
+                self.format_expression_tail(tail, writer)
+            })?;
+            closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+            writer.text(")");
+            Ok(None)
+        })
     }
 
     /// An interior packet resets coverage after this emitted prefix boundary.

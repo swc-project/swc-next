@@ -47,6 +47,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &content,
         );
         let diagnostic_sensitive = self.diagnostic_range_is_sensitive(span);
+        if diagnostic_sensitive
+            && let Some(enclosure) =
+                self.prepare_unary_enclosure(unary, &content, leading, argument_context)
+        {
+            return self.format_prepared_unary_enclosure(content, enclosure, writer);
+        }
         let source_pair = if diagnostic_sensitive {
             self.protected_grammar_parentheses(&content, argument_context)
         } else {
