@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = Box<A,
+
+B>;
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+type T =
+  Box<
+    A,
+    B
+  >;
