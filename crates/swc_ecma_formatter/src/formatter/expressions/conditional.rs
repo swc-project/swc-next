@@ -337,6 +337,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | ExpressionPosition::NewCallee => context.operand_indent,
             _ => OperandIndent::Parent,
         };
+        let default_before_operator = if chain.is_jsx() {
+            LineConstraint::SameLine
+        } else {
+            LineConstraint::Unconstrained
+        };
         let test_chain = self.conditional_test_chain(chain, test.original);
         let mut write_test = |writer: &mut Writer<'ast>| {
             let mut test_context = ExpressionContext::at(ExpressionPosition::ConditionalTest)
@@ -367,7 +372,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             write_test(writer)?
         };
-        let question = self.resolve_conditional_boundary(question, &consequent, tail, writer)?;
+        let question = self.resolve_conditional_boundary(
+            question,
+            &consequent,
+            tail,
+            default_before_operator,
+            writer,
+        )?;
         let options = self.options;
         let write_branches = |writer: &mut Writer<'ast>| {
             let colon = self.format_conditional_branch(
@@ -381,7 +392,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 chain,
                 writer,
                 |formatter, tail, _, writer| {
-                    formatter.resolve_conditional_boundary(colon, &alternate, tail, writer)
+                    formatter.resolve_conditional_boundary(
+                        colon,
+                        &alternate,
+                        tail,
+                        default_before_operator,
+                        writer,
+                    )
                 },
             )?;
             self.format_conditional_branch(
@@ -663,6 +680,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: ConditionalBoundary<'ast>,
         next: &ConditionalOperand,
         tail: Option<ExpressionTail<'ast>>,
+        default_before_operator: LineConstraint,
         writer: &mut Writer<'ast>,
     ) -> Result<ResolvedConditionalBoundary<'ast>, FormatError> {
         let source_end = tail
@@ -779,6 +797,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        let before_operator = if before_operator == LineConstraint::Unconstrained
+            && (trailing
+                .last()
+                .is_some_and(|comment| comment.kind == swc_next_ecma_ast::CommentKind::Line)
+                || self.comment_run_has_own_line_tail(trailing, source_end))
+        {
+            // Finish the preceding operand's packet before emitting punctuation;
+            // an inline line suffix must not drift into the following enclosure.
+            LineConstraint::NewLine(1)
+        } else {
+            before_operator
+        };
+        let before_operator = match before_operator {
+            LineConstraint::Unconstrained => default_before_operator,
+            constraint => constraint,
+        };
+        // A head can use the operator's opening only when its gap can break,
+        // independently of the following operand's raw target binding.
+        let operator_provides_opening = before_operator != LineConstraint::SameLine
+            && boundary
+                .source
+                .as_ref()
+                .is_some_and(|source| source.binding.allows_relocation(None));
+        let after_operator = if after_operator == LineConstraint::Unconstrained
+            && !operator_provides_opening
+            && self
+                .suppressed_comment_runs(leading, next.source_start)
+                .next()
+                .is_some_and(|(run, position)| {
+                    matches!(position, SuppressionPosition::OwnLine)
+                        && run[0].span.start == leading[0].span.start
+                }) {
+            LineConstraint::NewLine(1)
+        } else {
+            after_operator
+        };
         self.comments.claim(comments)?;
         if let Some(suppression) = suppression {
             let prefix =
@@ -812,18 +866,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
         }
-        let before_operator = if before_operator == LineConstraint::Unconstrained
-            && (trailing
-                .last()
-                .is_some_and(|comment| comment.kind == swc_next_ecma_ast::CommentKind::Line)
-                || self.comment_run_has_own_line_tail(trailing, source_end))
-        {
-            // Finish the preceding operand's packet before emitting punctuation;
-            // an inline line suffix must not drift into the following enclosure.
-            LineConstraint::NewLine(1)
-        } else {
-            before_operator
-        };
         Ok(ResolvedConditionalBoundary {
             operator: boundary.operator,
             leading,
@@ -857,13 +899,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } = branch;
         boundary
             .before_operator
-            .write(writer, FlatSeparator::Space, |writer| {
-                if chain.is_jsx() {
-                    writer.space();
-                } else {
-                    writer.line();
-                }
-            });
+            .write(writer, FlatSeparator::Space, Writer::line);
         writer.text(boundary.operator);
         writer.space();
         let content = boundary.content;
@@ -914,20 +950,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary
                 .after_operator
                 .write(writer, FlatSeparator::Empty, |_| {});
-            // Preserve an own-line semantic head at its physical run. Earlier
-            // comments already supply the run's source line break, so that
-            // constraint must not move the complete packet off the operator.
-            if boundary.after_operator == LineConstraint::Unconstrained
-                && self
-                    .suppressed_comment_runs(boundary.leading, source_start)
-                    .next()
-                    .is_some_and(|(run, position)| {
-                        matches!(position, SuppressionPosition::OwnLine)
-                            && run[0].span.start == boundary.leading[0].span.start
-                    })
-            {
-                writer.hard_line();
-            }
             let source_head = mode == ContentMode::Verbatim
                 || !matches!(boundary.next_binding, CommentBinding::Unbound)
                 || boundary.leading.iter().any(|comment| {
