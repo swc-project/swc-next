@@ -273,10 +273,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         let arrow_body = parenthesize && Self::sequence_grammar_pair_is_enclosed(context.position);
+        let (opening, closing) =
+            if arrow_body && context.protected_head_start == Some(sequence.span(ast).start) {
+                let span = sequence.span(ast);
+                (
+                    self.line_constraint(span.start, span.start),
+                    self.line_constraint(span.end, span.end),
+                )
+            } else {
+                (LineConstraint::Unconstrained, LineConstraint::Unconstrained)
+            };
         let tail = writer.group(false, |writer| {
             let write_items = |writer: &mut Writer<'ast>| {
                 if arrow_body {
-                    writer.soft_line();
+                    opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 }
                 let boundary = expressions
                     .next()
@@ -368,7 +378,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 tail
             };
             if arrow_body {
-                writer.soft_line();
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
             }
             Ok(tail)
         })?;

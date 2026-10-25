@@ -6,7 +6,9 @@ use swc_next_ecma_ast::{
     UpdateExpression, UpdateOperator,
 };
 
-use super::parentheses::{ExternalOpeningOwner, ParenthesisInner, SourceParentheses};
+use super::parentheses::{
+    ExternalOpeningOwner, ParenthesisInner, PreparedPairHead, SourceParentheses,
+};
 use super::{
     ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, MemberChainLayout,
     MemberLayout, TailOwner,
@@ -648,12 +650,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_parenthesized_expression(
                 simple.expression,
                 None,
-                NodeHead {
+                PreparedPairHead::Lexical(NodeHead {
                     comments: &[],
                     content_start: target.span.start,
                     layout: CommentRunLayout::Source,
                     gap_end: None,
-                },
+                }),
                 context,
                 None,
                 writer,

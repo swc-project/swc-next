@@ -155,6 +155,14 @@ pub(in crate::formatter) struct ResolvedExpressionHead<'ast> {
     pub(in crate::formatter) binding: CommentBinding,
 }
 
+/// The prepared pair owner selects its body, independently of a leased head.
+pub(super) enum PreparedPairHead<'ast> {
+    /// The expression's grammar owner selects its canonical body layout.
+    Grammar(NodeHead<'ast>),
+    /// A lexical cast or target owns the whole pair, including its body.
+    Lexical(NodeHead<'ast>),
+}
+
 /// An interior source head transfers to the unary's replacement physical pair.
 pub(super) struct PreparedUnaryEnclosure<'ast> {
     head: ResolvedExpressionHead<'ast>,
@@ -289,7 +297,22 @@ enum DiagnosticHeadFrameKind {
 
 struct PreparedHeadEnclosure<'ast> {
     resolved: ResolvedExpressionHead<'ast>,
-    frame: Option<DiagnosticHeadFrame>,
+    frame: Option<PreparedDiagnosticHeadFrame<'ast>>,
+}
+
+/// Packet ownership is independent of its placement around a replacement pair.
+enum PreparedDiagnosticHeadFrame<'ast> {
+    Inside(DiagnosticHeadFrame),
+    BeforeGenerated {
+        prefix: &'ast [Comment],
+        packet: DiagnosticHeadLease<'ast>,
+    },
+}
+
+/// A caller head has already been claimed; an interior source head is pending.
+enum DiagnosticHeadLease<'ast> {
+    Claimed(&'ast [Comment]),
+    Pending(&'ast [Comment]),
 }
 
 #[derive(Clone, Copy)]
@@ -2256,9 +2279,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let content = prepared.get_or_insert_with(|| self.expression_content(expression));
             context = self.with_head_scope(context, content);
         }
-        let frame = prepared
-            .as_ref()
-            .and_then(|content| self.prepare_diagnostic_head_frame(content, context));
+        let frame = prepared.as_ref().and_then(|content| {
+            let frame = self.prepare_diagnostic_head_frame(content, context)?;
+            Some(self.prepare_diagnostic_head_placement(frame, &resolved.head))
+        });
         // An empty head has no packet to place. Source-bound and inherited
         // protected heads still need the enclosing owner's placement proof.
         if frame.is_some()
@@ -2394,6 +2418,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // A newly selected frame invalidates a different gap destination
             // before even an exterior prefix can print.
             context.head_destination = None;
+            let frame = match frame {
+                PreparedDiagnosticHeadFrame::Inside(frame) => frame,
+                PreparedDiagnosticHeadFrame::BeforeGenerated { prefix, packet } => {
+                    let inner = content.expression;
+                    let start = inner.span(self.ast).start;
+                    let packet = match packet {
+                        DiagnosticHeadLease::Claimed(packet) => packet,
+                        DiagnosticHeadLease::Pending(packet) => {
+                            self.comments.claim(packet)?;
+                            packet
+                        }
+                    };
+                    if !prefix.is_empty() {
+                        context.expression_start = self.format_expression_head(
+                            expression,
+                            NodeHead {
+                                comments: prefix,
+                                content_start: packet[0].span.start,
+                                layout: head.layout,
+                                gap_end: head.gap_end.map(|_| packet[0].span.start),
+                            },
+                            binding,
+                            context,
+                            array_comments.as_deref_mut(),
+                            writer,
+                        )?;
+                    }
+                    context.expression_start = self.format_expression_head(
+                        inner,
+                        NodeHead {
+                            comments: packet,
+                            content_start: start,
+                            layout: CommentRunLayout::Leading(start),
+                            gap_end: None,
+                        },
+                        CommentBinding::SourceBound,
+                        context,
+                        array_comments.as_deref_mut(),
+                        writer,
+                    )?;
+                    // The actual grammar pair keeps first-code and closing
+                    // coverage, even though its unbound packet prints outside.
+                    content.parentheses = None;
+                    context.protected_head_start = Some(start);
+                    return self.format_parenthesized_expression(
+                        inner,
+                        Some(content),
+                        PreparedPairHead::Grammar(NodeHead {
+                            comments: &[],
+                            content_start: start,
+                            layout: CommentRunLayout::FlatLeading(start),
+                            gap_end: None,
+                        }),
+                        context,
+                        array_comments,
+                        writer,
+                    );
+                }
+            };
             let lease = frame.frontier.split(head.comments);
             let source_head = self.source_parentheses_comments(frame.boundary).head;
             let prefix = lease.map_or_else(
@@ -2433,10 +2516,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_parenthesized_expression(
                     inner,
                     Some(content),
-                    NodeHead {
+                    PreparedPairHead::Grammar(NodeHead {
                         comments: packet,
                         ..head
-                    },
+                    }),
                     context,
                     array_comments,
                     writer,
@@ -2480,7 +2563,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_parenthesized_expression(
                     expression,
                     prepared,
-                    head,
+                    PreparedPairHead::Grammar(head),
                     context,
                     array_comments,
                     writer,
@@ -2593,6 +2676,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 context,
             );
         if parenthesize_head {
+            // A first-member target keeps its own lexical pair. Only a target
+            // equal to this prepared whole envelope owns the new pair's body.
+            let inner_target = matches!(enclosure_binding, CommentBinding::BoundTo(target)
+                if target != expression.span(self.ast)
+                    && !prepared.as_ref().is_some_and(|content|
+                        target == content.expression.span(self.ast)
+                            || content.parentheses.is_some_and(|removed|
+                                target == removed.source.outer)));
+            let grammar_body = inner_cast.is_some() || inner_target;
             let head = if let Some(index) = inner_cast {
                 // Source constraints and a cast's inner target are independent:
                 // keep the prefix outside, and the cast inside the added pair.
@@ -2627,7 +2719,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_parenthesized_expression(
                 expression,
                 prepared,
-                head,
+                if grammar_body {
+                    PreparedPairHead::Grammar(head)
+                } else {
+                    PreparedPairHead::Lexical(head)
+                },
                 context,
                 array_comments.as_deref_mut(),
                 writer,
@@ -2734,12 +2830,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_parenthesized_expression(
                 expression,
                 prepared,
-                NodeHead {
+                PreparedPairHead::Grammar(NodeHead {
                     comments: &[],
                     content_start: expression.span(self.ast).start,
                     layout: CommentRunLayout::Source,
                     gap_end: None,
-                },
+                }),
                 context,
                 array_comments,
                 writer,
@@ -3917,6 +4013,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        // This known annotation owner is lexical even when the same pair also
+        // satisfies the expression's grammar requirement.
         let GeneratedEnclosureOwner {
             expression,
             annotation: _annotation,
@@ -3929,12 +4027,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_parenthesized_expression(
             expression,
             prepared,
-            NodeHead {
+            PreparedPairHead::Lexical(NodeHead {
                 comments: &[],
                 content_start: start,
                 layout: CommentRunLayout::FlatLeading(start),
                 gap_end: None,
-            },
+            }),
             context,
             array_comments,
             writer,
@@ -3945,13 +4043,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         mut prepared: Option<ExpressionContent>,
-        head: NodeHead<'ast>,
+        pair: PreparedPairHead<'ast>,
         context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if !head.comments.is_empty() && context.content_mode == ContentMode::Formatted {
+        let (head, grammar_body) = match pair {
+            PreparedPairHead::Grammar(head) => (head, true),
+            PreparedPairHead::Lexical(head) => (head, false),
+        };
+        if grammar_body && context.content_mode == ContentMode::Formatted {
             let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+            // The real grammar owner keeps the sequence's canonical body.
+            // A lexical cast pair instead uses the retained-cast body below.
             if let ExprData::SequenceExpression(sequence) = content.data {
                 let source_tail = content.parentheses.and_then(|removed| removed.tail);
                 let mut context = context;
@@ -4269,6 +4373,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             frontier,
             kind,
         })
+    }
+
+    fn prepare_diagnostic_head_placement(
+        &self,
+        frame: DiagnosticHeadFrame,
+        head: &NodeHead<'ast>,
+    ) -> PreparedDiagnosticHeadFrame<'ast> {
+        if !matches!(frame.kind, DiagnosticHeadFrameKind::Generated) {
+            return PreparedDiagnosticHeadFrame::Inside(frame);
+        }
+        if let Some((prefix, packet)) = frame.frontier.split(head.comments) {
+            return PreparedDiagnosticHeadFrame::BeforeGenerated {
+                prefix,
+                packet: DiagnosticHeadLease::Claimed(packet),
+            };
+        }
+        // A missing caller lease can be supplied only by the complete pending
+        // source packet. Never skip a foreign earlier comment or a partial head.
+        if head
+            .comments
+            .iter()
+            .any(|comment| comment.span.end > frame.frontier.packet.start)
+        {
+            return PreparedDiagnosticHeadFrame::Inside(frame);
+        }
+        let pending = self.comments.between(frame.frontier.packet).ok();
+        let packet = pending
+            .and_then(|comments| frame.frontier.split(comments))
+            .filter(|(prefix, _)| prefix.is_empty())
+            .map(|(_, packet)| packet);
+        match packet {
+            Some(packet) => PreparedDiagnosticHeadFrame::BeforeGenerated {
+                prefix: head.comments,
+                packet: DiagnosticHeadLease::Pending(packet),
+            },
+            None => PreparedDiagnosticHeadFrame::Inside(frame),
+        }
     }
 
     pub(super) fn protected_grammar_parentheses(
