@@ -1,6 +1,7 @@
 //! Callees and source-owned argument delimiters.
 use super::arguments::{ArgumentGroup, CallArgumentFrame, SourceArguments};
 use super::chains::FluentChainEligibility;
+use super::members::MemberLookupOwner;
 use super::parentheses::ExpressionContent;
 use super::{AccessKind, EmittedHeadBinding, OperandIndent};
 use super::{
@@ -242,8 +243,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some((member, callee_context)) =
                 self.direct_member_callee(arguments.callee, callee_context)
         {
+            let lookup_owner = if arguments.allow_composition
+                && matches!(arguments.frame, CallArgumentFrame::Ordinary)
+                && matches!(arguments.group, ArgumentGroup::Local)
+                && arguments.jsx_call.is_none()
+                && call.type_arguments(self.ast).is_none()
+                && matches!(
+                    callee_context.emitted_head_binding,
+                    EmittedHeadBinding::Absent
+                )
+                && callee_context.member_chain_layout != super::MemberChainLayout::Local
+                && !matches!(
+                    context.position,
+                    ExpressionPosition::NewCallee | ExpressionPosition::MemberAssignmentObject
+                )
+                && self.member_callee_has_conditional_receiver(member)
+                && self.call_span_is_source_clear(call.span(self.ast))
+            {
+                // The complete call owns this terminal continuation. Its
+                // receiver keeps the original grammar frame and inner groups.
+                MemberLookupOwner::InlineContext
+            } else {
+                MemberLookupOwner::from_context(callee_context)
+            };
             return writer.group(false, |writer| {
-                let (tail, group) = self.format_member_callee(member, callee_context, writer)?;
+                let (tail, group) =
+                    self.format_member_callee(member, callee_context, lookup_owner, writer)?;
                 let write = |writer: &mut Writer<'ast>| {
                     self.format_source_arguments(arguments, tail, writer)
                 };
@@ -267,6 +292,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(group) => group.write(false, writer, write),
                 None => write(writer),
             }
+        }
+    }
+
+    /// Inspect only receiver syntax after the existing compact path failed.
+    /// The conditional's grammar frame stays with its original expression owner.
+    fn member_callee_has_conditional_receiver(
+        &self,
+        member: swc_next_ecma_ast::MemberExpression,
+    ) -> bool {
+        let mut receiver = member.object(self.ast);
+        loop {
+            receiver = match self.ast.expr_data(receiver) {
+                ExprData::MemberExpression(member) => member.object(self.ast),
+                ExprData::ParenthesizedExpression(pair) => pair.expression(self.ast),
+                ExprData::ConditionalExpression(_) => return true,
+                _ => return false,
+            };
         }
     }
 

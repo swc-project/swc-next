@@ -404,6 +404,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         member: MemberExpression,
         context: ExpressionContext<'ast>,
+        lookup_owner: MemberLookupOwner,
         writer: &mut Writer<'ast>,
     ) -> Result<(Option<ExpressionTail<'ast>>, Option<GroupId>), FormatError> {
         let PreparedMember::Formatted(member) = self.source_member(member)? else {
@@ -417,8 +418,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let tail =
             self.format_expression(member.object, member.receiver_context(context), writer)?;
         let boundary = self.prepare_member_boundary(&member, tail)?;
-        let layout =
-            self.member_lookup_layout(&member, &boundary, MemberLookupOwner::from_context(context));
+        let layout = self.member_lookup_layout(&member, &boundary, lookup_owner);
         let gap = if boundary.owns_lookup_comments {
             None
         } else {
