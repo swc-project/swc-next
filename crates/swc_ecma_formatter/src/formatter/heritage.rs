@@ -380,6 +380,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 previous.and_then(|boundary| boundary.transition),
                 writer,
             )?;
+            item.set_canonical_separator_spacing();
             item.set_leading_mode(previous.map_or(first_mode, |previous| previous.following_mode));
             let tail = if item.mode == ContentMode::Verbatim {
                 self.format_verbatim(span, writer)?;
