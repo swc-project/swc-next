@@ -10,18 +10,14 @@ first = second
 {"printWidth":20}
 ---------- Output ----------
 test
-  ? (
-      // @ts-expect-error
-      first = second
-    )
+  ? // @ts-expect-error
+    (first = second)
   : other;
 
 ---------- Options ----------
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 test
-  ? (
-      // @ts-expect-error
-      first = second
-    )
+  ? // @ts-expect-error
+    (first = second)
   : other

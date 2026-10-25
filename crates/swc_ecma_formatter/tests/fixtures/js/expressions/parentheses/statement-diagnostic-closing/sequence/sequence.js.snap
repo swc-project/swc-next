@@ -8,7 +8,5 @@ missing, other
 );---------- Options ----------
 {}
 ---------- Output ----------
-(
-  // @ts-expect-error
-  missing, other
-);
+// @ts-expect-error
+(missing, other);
