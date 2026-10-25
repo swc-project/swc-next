@@ -1,0 +1,2 @@
+type T = X extends infer \u004b extends /* prettier-ignore */ /* ordinary */
+(\u0041 & \u0042) ? Y : Z;

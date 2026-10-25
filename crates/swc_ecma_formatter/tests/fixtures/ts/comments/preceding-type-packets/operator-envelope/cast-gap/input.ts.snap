@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+\u0078 as /* prettier-ignore */ /* ordinary */
+\u0041 | \u0042;---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+\u0078 /* prettier-ignore */ /* ordinary */ as
+  A | B;
