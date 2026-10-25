@@ -102,8 +102,6 @@ function encodeJs(program, meta = {}) {
     const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
   };
-  const asStart = n => n && typeof n.start === "number" ? n.start >>> 0 : 0;
-  const asEnd = n => n && typeof n.end === "number" ? n.end >>> 0 : 0;
 
   function ensureNodes() {
     if (nodeCount < nodeCapacity) return;
@@ -407,7 +405,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = encArraySlice(_body, encStmt, _directiveCount, _length);
     const v_2 = n.hashbang == null ? NULL : encHashbang(n.hashbang);
     const extraId = allocExtra(1);
-    const index = allocNode(0, asStart(n), asEnd(n));
+    const index = allocNode(0, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     writeRange(v_0, _directiveCount, payload, index * 16 + 0);
     writeRange(v_1, _length - _directiveCount, extra, (extraId + 0) * 8);
@@ -416,19 +414,19 @@ function encodeJs(program, meta = {}) {
   }
 
   function encSuper(n) {
-    const index = allocNode(1, asStart(n), asEnd(n));
+    const index = allocNode(1, n.start, n.end);
     return index;
   }
 
   function encThisExpression(n) {
-    const index = allocNode(2, asStart(n), asEnd(n));
+    const index = allocNode(2, n.start, n.end);
     return index;
   }
 
   function encStringLiteral(n) {
     const v_0 = n.value;
     const v_1 = n.raw;
-    const index = allocNode(3, asStart(n), asEnd(n));
+    const index = allocNode(3, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0, true);
     encStr(v_1, payload, index * 16 + 8);
     return index;
@@ -438,7 +436,7 @@ function encodeJs(program, meta = {}) {
     const _numericRaw = n.raw == null ? null : numericRaw(n);
     const v_0 = n.value ?? 0;
     const v_1 = _numericRaw;
-    const index = allocNode(4, asStart(n), asEnd(n));
+    const index = allocNode(4, n.start, n.end);
     setPayloadF64(index, 0, v_0);
     if (v_1 == null) {
       setPayloadU32(index, 8, NULL);
@@ -462,27 +460,27 @@ function encodeJs(program, meta = {}) {
       });
     }
     const v_0 = bigIntRaw(n);
-    const index = allocNode(5, asStart(n), asEnd(n));
+    const index = allocNode(5, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encBooleanLiteral(n) {
     const v_0 = n.value ? 1 : 0;
-    const index = allocNode(6, asStart(n), asEnd(n));
+    const index = allocNode(6, n.start, n.end);
     setPayloadU8(index, 0, v_0);
     return index;
   }
 
   function encNullLiteral(n) {
-    const index = allocNode(7, asStart(n), asEnd(n));
+    const index = allocNode(7, n.start, n.end);
     return index;
   }
 
   function encRegExpLiteral(n) {
     const v_0 = n.regex?.pattern ?? n.value?.source ?? "";
     const v_1 = n.regex?.flags ?? n.value?.flags ?? "";
-    const index = allocNode(8, asStart(n), asEnd(n));
+    const index = allocNode(8, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     encStr(v_1, payload, index * 16 + 8);
     return index;
@@ -491,7 +489,7 @@ function encodeJs(program, meta = {}) {
   function encTemplateLiteral(n) {
     const v_0 = encArray(n.quasis, encTemplateElement, false);
     const v_1 = encArray(n.expressions, encExpr, false);
-    const index = allocNode(9, asStart(n), asEnd(n));
+    const index = allocNode(9, n.start, n.end);
     writeArrayRange(v_0, n.quasis, payload, index * 16 + 0);
     writeArrayRange(v_1, n.expressions, payload, index * 16 + 8);
     return index;
@@ -503,7 +501,7 @@ function encodeJs(program, meta = {}) {
     const v_2 = n.tail ? 1 : 0;
     const v_3 = n.value?.cooked == null ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(10, asStart(n), asEnd(n));
+    const index = allocNode(10, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     encStr(v_0, payload, index * 16 + 0, true);
     encStr(v_1, extra, (extraId + 0) * 8);
@@ -514,35 +512,35 @@ function encodeJs(program, meta = {}) {
 
   function encIdentifierReference(n) {
     const v_0 = n.name;
-    const index = allocNode(11, asStart(n), asEnd(n));
+    const index = allocNode(11, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encPrivateIdentifier(n) {
     const v_0 = n.name;
-    const index = allocNode(12, asStart(n), asEnd(n));
+    const index = allocNode(12, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encBindingIdentifier(n) {
     const v_0 = n.name;
-    const index = allocNode(13, asStart(n), asEnd(n));
+    const index = allocNode(13, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encIdentifierName(n) {
     const v_0 = n.name;
-    const index = allocNode(14, asStart(n), asEnd(n));
+    const index = allocNode(14, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encLabelIdentifier(n) {
     const v_0 = n.name;
-    const index = allocNode(15, asStart(n), asEnd(n));
+    const index = allocNode(15, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
@@ -550,7 +548,7 @@ function encodeJs(program, meta = {}) {
   function encAssignmentPattern(n) {
     const v_0 = encBindingPattern(n.left);
     const v_1 = encExpr(n.right);
-    const index = allocNode(16, asStart(n), asEnd(n));
+    const index = allocNode(16, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -558,7 +556,7 @@ function encodeJs(program, meta = {}) {
 
   function encBindingRestElement(n) {
     const v_0 = encBindingPattern(n.argument);
-    const index = allocNode(17, asStart(n), asEnd(n));
+    const index = allocNode(17, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -577,7 +575,7 @@ function encodeJs(program, meta = {}) {
     }
     const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
-    const index = allocNode(18, asStart(n), asEnd(n));
+    const index = allocNode(18, n.start, n.end);
     writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
@@ -606,7 +604,7 @@ function encodeJs(program, meta = {}) {
     }
     const v_0 = _itemsStart;
     const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
-    const index = allocNode(19, asStart(n), asEnd(n));
+    const index = allocNode(19, n.start, n.end);
     writeRange(v_0, _itemCount, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     return index;
@@ -617,7 +615,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = encBindingPattern(n.value);
     const v_2 = n.shorthand ? 1 : 0;
     const v_3 = n.computed ? 1 : 0;
-    const index = allocNode(20, asStart(n), asEnd(n));
+    const index = allocNode(20, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -629,7 +627,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.left);
     const v_1 = encExpr(n.right);
     const v_2 = enumValue(4, n.operator);
-    const index = allocNode(21, asStart(n), asEnd(n));
+    const index = allocNode(21, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -640,7 +638,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.left);
     const v_1 = encExpr(n.right);
     const v_2 = enumValue(5, n.operator);
-    const index = allocNode(22, asStart(n), asEnd(n));
+    const index = allocNode(22, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -651,7 +649,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.test);
     const v_1 = encExpr(n.consequent);
     const v_2 = encExpr(n.alternate);
-    const index = allocNode(23, asStart(n), asEnd(n));
+    const index = allocNode(23, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -661,7 +659,7 @@ function encodeJs(program, meta = {}) {
   function encUnaryExpression(n) {
     const v_0 = encExpr(n.argument);
     const v_1 = enumValue(6, n.operator);
-    const index = allocNode(24, asStart(n), asEnd(n));
+    const index = allocNode(24, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU8(index, 4, v_1);
     return index;
@@ -671,7 +669,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encSimpleAssignmentTarget(n.argument);
     const v_1 = enumValue(7, n.operator);
     const v_2 = n.prefix ? 1 : 0;
-    const index = allocNode(25, asStart(n), asEnd(n));
+    const index = allocNode(25, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU8(index, 4, v_1);
     setPayloadU8(index, 5, v_2);
@@ -682,7 +680,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encAssignmentTarget(n.left);
     const v_1 = encExpr(n.right);
     const v_2 = enumValue(8, n.operator);
-    const index = allocNode(26, asStart(n), asEnd(n));
+    const index = allocNode(26, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -693,7 +691,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = enumValue(9, n.kind);
     const v_1 = encArray(n.declarations, encVariableDeclarator, false);
     const v_2 = 0;
-    const index = allocNode(27, asStart(n), asEnd(n));
+    const index = allocNode(27, n.start, n.end);
     setPayloadU8(index, 8, v_0);
     writeArrayRange(v_1, n.declarations, payload, index * 16 + 0);
     setPayloadU8(index, 9, v_2);
@@ -705,7 +703,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = NULL;
     const v_2 = n.init == null ? NULL : encExpr(n.init);
     const v_3 = 0;
-    const index = allocNode(28, asStart(n), asEnd(n));
+    const index = allocNode(28, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -717,7 +715,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.test);
     const v_1 = encStmt(n.consequent);
     const v_2 = n.alternate == null ? NULL : encStmt(n.alternate);
-    const index = allocNode(29, asStart(n), asEnd(n));
+    const index = allocNode(29, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -727,7 +725,7 @@ function encodeJs(program, meta = {}) {
   function encSwitchStatement(n) {
     const v_0 = encExpr(n.discriminant);
     const v_1 = encArray(n.cases, encSwitchCase, false);
-    const index = allocNode(30, asStart(n), asEnd(n));
+    const index = allocNode(30, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     writeArrayRange(v_1, n.cases, payload, index * 16 + 0);
     return index;
@@ -736,7 +734,7 @@ function encodeJs(program, meta = {}) {
   function encSwitchCase(n) {
     const v_0 = n.test == null ? NULL : encExpr(n.test);
     const v_1 = encArray(n.consequent, encStmt, false);
-    const index = allocNode(31, asStart(n), asEnd(n));
+    const index = allocNode(31, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     writeArrayRange(v_1, n.consequent, payload, index * 16 + 0);
     return index;
@@ -747,7 +745,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = n.test == null ? NULL : encExpr(n.test);
     const v_2 = n.update == null ? NULL : encExpr(n.update);
     const v_3 = encStmt(n.body);
-    const index = allocNode(32, asStart(n), asEnd(n));
+    const index = allocNode(32, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -759,7 +757,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encForStatementLeft(n.left);
     const v_1 = encExpr(n.right);
     const v_2 = encStmt(n.body);
-    const index = allocNode(33, asStart(n), asEnd(n));
+    const index = allocNode(33, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -771,7 +769,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = encExpr(n.right);
     const v_2 = encStmt(n.body);
     const v_3 = n.await ? 1 : 0;
-    const index = allocNode(34, asStart(n), asEnd(n));
+    const index = allocNode(34, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -783,7 +781,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encBlockStatement(n.block);
     const v_1 = n.handler == null ? NULL : encCatchClause(n.handler);
     const v_2 = n.finalizer == null ? NULL : encBlockStatement(n.finalizer);
-    const index = allocNode(35, asStart(n), asEnd(n));
+    const index = allocNode(35, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -794,7 +792,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = n.param == null ? NULL : encBindingPattern(n.param);
     const v_1 = NULL;
     const v_2 = encBlockStatement(n.body);
-    const index = allocNode(36, asStart(n), asEnd(n));
+    const index = allocNode(36, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -803,14 +801,14 @@ function encodeJs(program, meta = {}) {
 
   function encBreakStatement(n) {
     const v_0 = n.label == null ? NULL : encLabelIdentifier(n.label);
-    const index = allocNode(37, asStart(n), asEnd(n));
+    const index = allocNode(37, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encContinueStatement(n) {
     const v_0 = n.label == null ? NULL : encLabelIdentifier(n.label);
-    const index = allocNode(38, asStart(n), asEnd(n));
+    const index = allocNode(38, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -818,7 +816,7 @@ function encodeJs(program, meta = {}) {
   function encLabeledStatement(n) {
     const v_0 = encLabelIdentifier(n.label);
     const v_1 = encStmt(n.body);
-    const index = allocNode(39, asStart(n), asEnd(n));
+    const index = allocNode(39, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -826,32 +824,32 @@ function encodeJs(program, meta = {}) {
 
   function encExpressionStatement(n) {
     const v_0 = encExpr(n.expression);
-    const index = allocNode(40, asStart(n), asEnd(n));
+    const index = allocNode(40, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encReturnStatement(n) {
     const v_0 = n.argument == null ? NULL : encExpr(n.argument);
-    const index = allocNode(41, asStart(n), asEnd(n));
+    const index = allocNode(41, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encThrowStatement(n) {
     const v_0 = encExpr(n.argument);
-    const index = allocNode(42, asStart(n), asEnd(n));
+    const index = allocNode(42, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encDebuggerStatement(n) {
-    const index = allocNode(43, asStart(n), asEnd(n));
+    const index = allocNode(43, n.start, n.end);
     return index;
   }
 
   function encEmptyStatement(n) {
-    const index = allocNode(44, asStart(n), asEnd(n));
+    const index = allocNode(44, n.start, n.end);
     return index;
   }
 
@@ -870,7 +868,7 @@ function encodeJs(program, meta = {}) {
         : { ...n.expression, raw: "" };
     const v_0 = encStringLiteral(_directiveExpression);
     const v_1 = n.directive;
-    const index = allocNode(45, asStart(n), asEnd(n));
+    const index = allocNode(45, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     encStr(v_1, payload, index * 16 + 0);
     return index;
@@ -878,7 +876,7 @@ function encodeJs(program, meta = {}) {
 
   function encDecorator(n) {
     const v_0 = encExpr(n.expression);
-    const index = allocNode(46, asStart(n), asEnd(n));
+    const index = allocNode(46, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -895,7 +893,7 @@ function encodeJs(program, meta = {}) {
     const v_8 = 0;
     const v_9 = 0;
     const extraId = allocExtra(5);
-    const index = allocNode(47, asStart(n), asEnd(n));
+    const index = allocNode(47, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 8, v_0);
     writeArrayRange(v_1, n.decorators, extra, (extraId + 0) * 8);
@@ -912,7 +910,7 @@ function encodeJs(program, meta = {}) {
 
   function encClassBody(n) {
     const v_0 = encArray(n.body, encClassElement, false);
-    const index = allocNode(48, asStart(n), asEnd(n));
+    const index = allocNode(48, n.start, n.end);
     writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
@@ -929,7 +927,7 @@ function encodeJs(program, meta = {}) {
     const v_8 = 0;
     const v_9 = 0;
     const extraId = allocExtra(2);
-    const index = allocNode(49, asStart(n), asEnd(n));
+    const index = allocNode(49, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
@@ -960,7 +958,7 @@ function encodeJs(program, meta = {}) {
     const v_12 = 0;
     const v_13 = 0;
     const extraId = allocExtra(4);
-    const index = allocNode(50, asStart(n), asEnd(n));
+    const index = allocNode(50, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setExtraU32(extraId + 1, 0, v_1);
@@ -981,7 +979,7 @@ function encodeJs(program, meta = {}) {
 
   function encStaticBlock(n) {
     const v_0 = encArray(n.body, encStmt, false);
-    const index = allocNode(51, asStart(n), asEnd(n));
+    const index = allocNode(51, n.start, n.end);
     writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
@@ -997,7 +995,7 @@ function encodeJs(program, meta = {}) {
     const v_7 = n.generator ? 1 : 0;
     const v_8 = n.async ? 1 : 0;
     const extraId = allocExtra(4);
-    const index = allocNode(52, asStart(n), asEnd(n));
+    const index = allocNode(52, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 8, v_0);
     setPayloadU32(index, 0, v_1);
@@ -1025,7 +1023,7 @@ function encodeJs(program, meta = {}) {
     }
     const v_0 = encArraySlice(_body, encDirective, 0, _directiveCount);
     const v_1 = encArraySlice(_body, encStmt, _directiveCount, _length);
-    const index = allocNode(53, asStart(n), asEnd(n));
+    const index = allocNode(53, n.start, n.end);
     writeRange(v_0, _directiveCount, payload, index * 16 + 0);
     writeRange(v_1, _length - _directiveCount, payload, index * 16 + 8);
     return index;
@@ -1033,7 +1031,7 @@ function encodeJs(program, meta = {}) {
 
   function encBlockStatement(n) {
     const v_0 = encArray(n.body, encStmt, false);
-    const index = allocNode(54, asStart(n), asEnd(n));
+    const index = allocNode(54, n.start, n.end);
     writeArrayRange(v_0, n.body, payload, index * 16 + 0);
     return index;
   }
@@ -1041,7 +1039,7 @@ function encodeJs(program, meta = {}) {
   function encWhileStatement(n) {
     const v_0 = encExpr(n.test);
     const v_1 = encStmt(n.body);
-    const index = allocNode(55, asStart(n), asEnd(n));
+    const index = allocNode(55, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1050,7 +1048,7 @@ function encodeJs(program, meta = {}) {
   function encDoWhileStatement(n) {
     const v_0 = encStmt(n.body);
     const v_1 = encExpr(n.test);
-    const index = allocNode(56, asStart(n), asEnd(n));
+    const index = allocNode(56, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1059,7 +1057,7 @@ function encodeJs(program, meta = {}) {
   function encWithStatement(n) {
     const v_0 = encExpr(n.object);
     const v_1 = encStmt(n.body);
-    const index = allocNode(57, asStart(n), asEnd(n));
+    const index = allocNode(57, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1077,8 +1075,8 @@ function encodeJs(program, meta = {}) {
         _itemCount--;
       }
     }
-    const _start = _length > from ? asStart(_values[from]) : 0;
-    const _end = _length > from ? asEnd(_values[_length - 1]) : 0;
+    const _start = _length > from ? _values[from].start : 0;
+    const _end = _length > from ? _values[_length - 1].end : 0;
     const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
     let slot = _itemsStart;
     for (let i = from; i < _length; i++) {
@@ -1108,7 +1106,7 @@ function encodeJs(program, meta = {}) {
     const v_3 = _initializer == null ? NULL : encExpr(_initializer);
     const v_4 = 0;
     const extraId = allocExtra(2);
-    const index = allocNode(59, asStart(n), asEnd(n));
+    const index = allocNode(59, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
@@ -1122,7 +1120,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encArray(n.decorators, encDecorator, false);
     const v_1 = encFormalParameterPattern(n.argument);
     const v_2 = NULL;
-    const index = allocNode(60, asStart(n), asEnd(n));
+    const index = allocNode(60, n.start, n.end);
     writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
     setPayloadU32(index, 8, v_1);
     setPayloadU32(index, 12, v_2);
@@ -1131,21 +1129,21 @@ function encodeJs(program, meta = {}) {
 
   function encArrayExpression(n) {
     const v_0 = encArray(n.elements, encArgument, true);
-    const index = allocNode(61, asStart(n), asEnd(n));
+    const index = allocNode(61, n.start, n.end);
     writeArrayRange(v_0, n.elements, payload, index * 16 + 0);
     return index;
   }
 
   function encObjectExpression(n) {
     const v_0 = encArray(n.properties, encObjectPropertyKind, false);
-    const index = allocNode(62, asStart(n), asEnd(n));
+    const index = allocNode(62, n.start, n.end);
     writeArrayRange(v_0, n.properties, payload, index * 16 + 0);
     return index;
   }
 
   function encSpreadElement(n) {
     const v_0 = encExpr(n.argument);
-    const index = allocNode(63, asStart(n), asEnd(n));
+    const index = allocNode(63, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1157,7 +1155,7 @@ function encodeJs(program, meta = {}) {
     const v_3 = n.method ? 1 : 0;
     const v_4 = n.shorthand ? 1 : 0;
     const v_5 = n.computed ? 1 : 0;
-    const index = allocNode(64, asStart(n), asEnd(n));
+    const index = allocNode(64, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1169,7 +1167,7 @@ function encodeJs(program, meta = {}) {
 
   function encParenthesizedExpression(n) {
     const v_0 = encExpr(n.expression);
-    const index = allocNode(65, asStart(n), asEnd(n));
+    const index = allocNode(65, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1182,7 +1180,7 @@ function encodeJs(program, meta = {}) {
     const v_4 = NULL;
     const v_5 = encArrowFunctionBody(n.body);
     const extraId = allocExtra(2);
-    const index = allocNode(66, asStart(n), asEnd(n));
+    const index = allocNode(66, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU8(index, 8, v_0);
     setPayloadU8(index, 9, v_1);
@@ -1195,7 +1193,7 @@ function encodeJs(program, meta = {}) {
 
   function encSequenceExpression(n) {
     const v_0 = encArray(n.expressions, encExpr, false);
-    const index = allocNode(67, asStart(n), asEnd(n));
+    const index = allocNode(67, n.start, n.end);
     writeArrayRange(v_0, n.expressions, payload, index * 16 + 0);
     return index;
   }
@@ -1205,7 +1203,7 @@ function encodeJs(program, meta = {}) {
     const v_1 = n.computed ? encExpr(n.property) : encPropertyKey(n.property);
     const v_2 = n.computed ? 1 : 0;
     const v_3 = n.optional ? 1 : 0;
-    const index = allocNode(68, asStart(n), asEnd(n));
+    const index = allocNode(68, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1219,7 +1217,7 @@ function encodeJs(program, meta = {}) {
     const v_2 = encArray(n.arguments, encArgument, false);
     const v_3 = n.optional ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(69, asStart(n), asEnd(n));
+    const index = allocNode(69, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1230,7 +1228,7 @@ function encodeJs(program, meta = {}) {
 
   function encChainExpression(n) {
     const v_0 = encExpr(n.expression);
-    const index = allocNode(70, asStart(n), asEnd(n));
+    const index = allocNode(70, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1239,7 +1237,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.tag);
     const v_1 = NULL;
     const v_2 = encTemplateLiteral(n.quasi);
-    const index = allocNode(71, asStart(n), asEnd(n));
+    const index = allocNode(71, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU32(index, 8, v_2);
@@ -1250,7 +1248,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encExpr(n.callee);
     const v_1 = NULL;
     const v_2 = encArray(n.arguments, encArgument, false);
-    const index = allocNode(72, asStart(n), asEnd(n));
+    const index = allocNode(72, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     setPayloadU32(index, 12, v_1);
     writeArrayRange(v_2, n.arguments, payload, index * 16 + 0);
@@ -1259,7 +1257,7 @@ function encodeJs(program, meta = {}) {
 
   function encAwaitExpression(n) {
     const v_0 = encExpr(n.argument);
-    const index = allocNode(73, asStart(n), asEnd(n));
+    const index = allocNode(73, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1267,7 +1265,7 @@ function encodeJs(program, meta = {}) {
   function encYieldExpression(n) {
     const v_0 = n.argument == null ? NULL : encExpr(n.argument);
     const v_1 = n.delegate ? 1 : 0;
-    const index = allocNode(74, asStart(n), asEnd(n));
+    const index = allocNode(74, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU8(index, 4, v_1);
     return index;
@@ -1276,7 +1274,7 @@ function encodeJs(program, meta = {}) {
   function encMetaProperty(n) {
     const v_0 = encIdentifierName(n.meta);
     const v_1 = encIdentifierName(n.property);
-    const index = allocNode(75, asStart(n), asEnd(n));
+    const index = allocNode(75, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1288,7 +1286,7 @@ function encodeJs(program, meta = {}) {
     const v_2 = n.phase == null ? 0xff : enumValue(13, n.phase);
     const v_3 = 0 ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(76, asStart(n), asEnd(n));
+    const index = allocNode(76, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1304,7 +1302,7 @@ function encodeJs(program, meta = {}) {
     const v_3 = n.phase == null ? 0xff : enumValue(13, n.phase);
     const v_4 = 0;
     const extraId = allocExtra(3);
-    const index = allocNode(77, asStart(n), asEnd(n));
+    const index = allocNode(77, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     writeArrayRange(v_0, n.specifiers, extra, (extraId + 0) * 8);
     setPayloadU32(index, 0, v_1);
@@ -1318,7 +1316,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encModuleExportName(n.imported);
     const v_1 = encBindingIdentifier(n.local);
     const v_2 = 0;
-    const index = allocNode(78, asStart(n), asEnd(n));
+    const index = allocNode(78, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1327,14 +1325,14 @@ function encodeJs(program, meta = {}) {
 
   function encImportDefaultSpecifier(n) {
     const v_0 = encBindingIdentifier(n.local);
-    const index = allocNode(79, asStart(n), asEnd(n));
+    const index = allocNode(79, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encImportNamespaceSpecifier(n) {
     const v_0 = encBindingIdentifier(n.local);
-    const index = allocNode(80, asStart(n), asEnd(n));
+    const index = allocNode(80, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1342,7 +1340,7 @@ function encodeJs(program, meta = {}) {
   function encImportAttribute(n) {
     const v_0 = encModuleExportName(n.key);
     const v_1 = encStringLiteral(n.value);
-    const index = allocNode(81, asStart(n), asEnd(n));
+    const index = allocNode(81, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1355,7 +1353,7 @@ function encodeJs(program, meta = {}) {
     const v_3 = encArray(n.attributes, encImportAttribute, false);
     const v_4 = 0;
     const extraId = allocExtra(2);
-    const index = allocNode(82, asStart(n), asEnd(n));
+    const index = allocNode(82, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     writeArrayRange(v_1, n.specifiers, extra, (extraId + 0) * 8);
@@ -1367,7 +1365,7 @@ function encodeJs(program, meta = {}) {
 
   function encExportDefaultDeclaration(n) {
     const v_0 = encExportDefaultDeclarationKind(n.declaration);
-    const index = allocNode(83, asStart(n), asEnd(n));
+    const index = allocNode(83, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1378,7 +1376,7 @@ function encodeJs(program, meta = {}) {
     const v_2 = encArray(n.attributes, encImportAttribute, false);
     const v_3 = 0;
     const extraId = allocExtra(1);
-    const index = allocNode(84, asStart(n), asEnd(n));
+    const index = allocNode(84, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1391,7 +1389,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encModuleExportName(n.local);
     const v_1 = encModuleExportName(n.exported);
     const v_2 = 0;
-    const index = allocNode(85, asStart(n), asEnd(n));
+    const index = allocNode(85, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     setPayloadU8(index, 8, v_2);
@@ -1400,7 +1398,7 @@ function encodeJs(program, meta = {}) {
 
   function encHashbang(n) {
     const v_0 = n.value;
-    const index = allocNode(86, asStart(n), asEnd(n));
+    const index = allocNode(86, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
@@ -1409,7 +1407,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encJsxOpeningElement(n.openingElement);
     const v_1 = encArray(n.children, encJsxChild, false);
     const v_2 = n.closingElement == null ? NULL : encJsxClosingElement(n.closingElement);
-    const index = allocNode(161, asStart(n), asEnd(n));
+    const index = allocNode(161, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     writeArrayRange(v_1, n.children, payload, index * 16 + 0);
     setPayloadU32(index, 12, v_2);
@@ -1422,7 +1420,7 @@ function encodeJs(program, meta = {}) {
     const v_2 = encArray(n.attributes, encJsxAttributeItem, false);
     const v_3 = n.selfClosing ? 1 : 0;
     const extraId = allocExtra(1);
-    const index = allocNode(162, asStart(n), asEnd(n));
+    const index = allocNode(162, n.start, n.end);
     setPayloadU32(index, 12, extraId);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
@@ -1433,7 +1431,7 @@ function encodeJs(program, meta = {}) {
 
   function encJsxClosingElement(n) {
     const v_0 = encJsxElementName(n.name);
-    const index = allocNode(163, asStart(n), asEnd(n));
+    const index = allocNode(163, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
@@ -1442,7 +1440,7 @@ function encodeJs(program, meta = {}) {
     const v_0 = encJsxOpeningFragment(n.openingFragment);
     const v_1 = encArray(n.children, encJsxChild, false);
     const v_2 = encJsxClosingFragment(n.closingFragment);
-    const index = allocNode(164, asStart(n), asEnd(n));
+    const index = allocNode(164, n.start, n.end);
     setPayloadU32(index, 8, v_0);
     writeArrayRange(v_1, n.children, payload, index * 16 + 0);
     setPayloadU32(index, 12, v_2);
@@ -1450,18 +1448,18 @@ function encodeJs(program, meta = {}) {
   }
 
   function encJsxOpeningFragment(n) {
-    const index = allocNode(165, asStart(n), asEnd(n));
+    const index = allocNode(165, n.start, n.end);
     return index;
   }
 
   function encJsxClosingFragment(n) {
-    const index = allocNode(166, asStart(n), asEnd(n));
+    const index = allocNode(166, n.start, n.end);
     return index;
   }
 
   function encJsxIdentifier(n) {
     const v_0 = n.name;
-    const index = allocNode(167, asStart(n), asEnd(n));
+    const index = allocNode(167, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
@@ -1469,7 +1467,7 @@ function encodeJs(program, meta = {}) {
   function encJsxNamespacedName(n) {
     const v_0 = encJsxIdentifier(n.namespace);
     const v_1 = encJsxIdentifier(n.name);
-    const index = allocNode(168, asStart(n), asEnd(n));
+    const index = allocNode(168, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1478,7 +1476,7 @@ function encodeJs(program, meta = {}) {
   function encJsxMemberExpression(n) {
     const v_0 = encJsxMemberExpressionObject(n.object);
     const v_1 = encJsxIdentifier(n.property);
-    const index = allocNode(169, asStart(n), asEnd(n));
+    const index = allocNode(169, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1487,7 +1485,7 @@ function encodeJs(program, meta = {}) {
   function encJsxAttribute(n) {
     const v_0 = encJsxAttributeName(n.name);
     const v_1 = n.value == null ? NULL : encJsxAttributeValue(n.value);
-    const index = allocNode(170, asStart(n), asEnd(n));
+    const index = allocNode(170, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     setPayloadU32(index, 4, v_1);
     return index;
@@ -1495,33 +1493,33 @@ function encodeJs(program, meta = {}) {
 
   function encJsxSpreadAttribute(n) {
     const v_0 = encExpr(n.argument);
-    const index = allocNode(171, asStart(n), asEnd(n));
+    const index = allocNode(171, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encJsxExpressionContainer(n) {
     const v_0 = encJsxExpression(n.expression);
-    const index = allocNode(172, asStart(n), asEnd(n));
+    const index = allocNode(172, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }
 
   function encJsxEmptyExpression(n) {
-    const index = allocNode(173, asStart(n), asEnd(n));
+    const index = allocNode(173, n.start, n.end);
     return index;
   }
 
   function encJsxText(n) {
     const v_0 = n.value ?? n.raw ?? "";
-    const index = allocNode(174, asStart(n), asEnd(n));
+    const index = allocNode(174, n.start, n.end);
     encStr(v_0, payload, index * 16 + 0);
     return index;
   }
 
   function encJsxSpreadChild(n) {
     const v_0 = encExpr(n.expression);
-    const index = allocNode(175, asStart(n), asEnd(n));
+    const index = allocNode(175, n.start, n.end);
     setPayloadU32(index, 0, v_0);
     return index;
   }

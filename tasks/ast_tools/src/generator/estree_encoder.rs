@@ -538,14 +538,14 @@ fn encode_expression(
                 source.into()
             }
             AstType::Primitive(primitive) if primitive.name == "Span" => {
-                format!("{source} == null ? [0, 0] : [asStart({source}), asEnd({source})]")
+                format!("{source} == null ? [0, 0] : [{source}.start, {source}.end]")
             }
             inner => panic!("unsupported optional encoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
             "AstUtf8" | "AstWtf8" => source.into(),
             "bool" => format!("{source} ? 1 : 0"),
-            "Span" => format!("[asStart({source}), asEnd({source})]"),
+            "Span" => format!("[{source}.start, {source}.end]"),
             "ScopeId" | "SymbolId" => "0".into(),
             name if schema.repr_sizes.contains_key(name)
                 || matches!(
@@ -720,7 +720,8 @@ fn span_expression(node: &str) -> (&'static str, &'static str) {
     if node == "FormalParameters" {
         ("_start", "_end")
     } else {
-        ("asStart(n)", "asEnd(n)")
+        // Keep span loads local to each node shape; allocNode converts them to u32.
+        ("n.start", "n.end")
     }
 }
 
@@ -841,12 +842,12 @@ fn write_rest_array_prelude(
     if spans {
         writeln!(
             output,
-            "    const _start = _length > {from} ? asStart(_values[{from}]) : 0;"
+            "    const _start = _length > {from} ? _values[{from}].start : 0;"
         )
         .unwrap();
         writeln!(
             output,
-            "    const _end = _length > {from} ? asEnd(_values[_length - 1]) : 0;"
+            "    const _end = _length > {from} ? _values[_length - 1].end : 0;"
         )
         .unwrap();
     }
@@ -1238,8 +1239,6 @@ function encode(program, meta = {}) {
     const index = ENUMS[enumIndex]?.indexOf(value);
     return index == null || index < 0 ? 0 : index;
   };
-  const asStart = n => n && typeof n.start === "number" ? n.start >>> 0 : 0;
-  const asEnd = n => n && typeof n.end === "number" ? n.end >>> 0 : 0;
 
   function ensureNodes() {
     if (nodeCount < nodeCapacity) return;
