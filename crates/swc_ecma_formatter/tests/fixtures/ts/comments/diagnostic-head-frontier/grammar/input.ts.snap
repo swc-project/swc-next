@@ -7,11 +7,13 @@ first + second);
 ---------- Options ----------
 {"printWidth":10}
 ---------- Output ----------
-+(// @ts-expect-error
++(
+  // @ts-expect-error
   first + second);
 
 ---------- Options ----------
 {"printWidth":10,"semi":false}
 ---------- Output ----------
-;+(// @ts-expect-error
+;+(
+  // @ts-expect-error
   first + second)
