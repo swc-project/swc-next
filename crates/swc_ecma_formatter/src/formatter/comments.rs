@@ -568,11 +568,6 @@ impl<'ast> PreparedTrailingRun<'ast> {
     }
 }
 
-struct BlockCommentPacket {
-    end: u32,
-    multiline: bool,
-}
-
 enum CommentText<'ast> {
     Inline(&'ast str),
     Literal {
@@ -1763,27 +1758,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
     }
 
-    fn block_comment_packet(&self, comments: &[Comment]) -> Option<BlockCommentPacket> {
-        let first = comments.first()?;
-        if first.kind != CommentKind::Block {
-            return None;
-        }
-        let mut packet = BlockCommentPacket {
-            end: first.span.start,
-            multiline: false,
-        };
-        for comment in comments {
-            if comment.kind != CommentKind::Block
-                || self.line_breaks(packet.end, comment.span.start) != 0
-            {
-                break;
-            }
-            packet.end = comment.span.end;
-            packet.multiline |= self.line_breaks(comment.span.start, comment.span.end) != 0;
-        }
-        Some(packet)
-    }
-
     fn relocated_type_head_gap(
         &self,
         comment: &PreparedComment<'ast>,
@@ -1907,17 +1881,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let comments = packet.map_or(comments, |packet| packet.comments);
         let mut previous: Option<PreparedComment<'ast>> = None;
-        let mut block_packet: Option<BlockCommentPacket> = None;
         let mut source_run = None;
         let mut ordinary_prefix = true;
-        for (index, &comment) in comments.iter().enumerate() {
-            if matches!(layout, CommentRunLayout::OwnLineTrailing)
-                && block_packet
-                    .as_ref()
-                    .is_none_or(|packet| comment.span.start >= packet.end)
-            {
-                block_packet = self.block_comment_packet(&comments[index..]);
-            }
+        for &comment in comments {
             if matches!(layout, CommentRunLayout::SourceDangling) {
                 ordinary_prefix &= self.comment_semantics(comment).is_ordinary();
             }
@@ -1960,8 +1926,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         ),
                         CommentRunLayout::OwnLineTrailing
                             if previous.kind == CommentKind::Block
-                                && prepared.kind == CommentKind::Block
-                                && block_packet.as_ref().is_some_and(|packet| packet.multiline)
                                 && self.line_breaks(previous.span.end, prepared.span.start)
                                     == 0 =>
                         {
