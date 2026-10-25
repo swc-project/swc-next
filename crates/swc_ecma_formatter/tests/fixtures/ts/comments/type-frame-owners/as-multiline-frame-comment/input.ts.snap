@@ -7,5 +7,6 @@ const x = \u0076alue as /* prettier-ignore */ (/* frame
 ---------- Options ----------
 {}
 ---------- Output ----------
-const x = \u0076alue as /* prettier-ignore */ /* frame
- * ordinary */ A | B;
+const x = \u0076alue /* prettier-ignore */ as
+  /* frame
+   * ordinary */ A | B;

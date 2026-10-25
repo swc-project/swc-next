@@ -6,4 +6,12 @@ const x = value as /* prettier-ignore */ (/* frame */ \u0041  |  \u0042);
 ---------- Options ----------
 {}
 ---------- Output ----------
-const x = value as /* prettier-ignore */ /* frame */ A | B;
+const x = value /* prettier-ignore */ as /* frame */ A | B;
+
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+const x =
+  value /* prettier-ignore */ as
+    | /* frame */ A
+    | B;
