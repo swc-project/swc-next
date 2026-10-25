@@ -1,0 +1,1 @@
+flow.first(state[/** @type {string} */ (key)]).second(1).third(2).fourth();
