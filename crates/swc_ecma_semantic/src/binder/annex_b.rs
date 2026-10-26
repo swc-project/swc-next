@@ -18,7 +18,35 @@ struct AnnexBScope<'a> {
 }
 
 impl<'a> SymbolTracker<'a> {
-    pub(crate) fn bind_annex_b_functions(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'a>) {
+    pub(crate) fn bind_companion_declarations(
+        &mut self,
+        tree: &Ast<'a>,
+        scopes: &ScopeTree<'a>,
+        companions: &[(DeclarationId, SymbolId)],
+    ) {
+        if self.annex_b_functions.is_empty() && companions.is_empty() {
+            return;
+        }
+        let explicit = self.declarations.next_idx();
+        self.bind_annex_b_functions(tree, scopes);
+        // Append companions together, then restore declaration source order once.
+        for &(id, symbol) in companions {
+            let declaration = self.declarations[id];
+            let pending = PendingDeclaration {
+                name: self.symbols[declaration.symbol].name,
+                node: declaration.node,
+                binding: PendingBinding {
+                    flags: declaration.flags,
+                    excludes: Excludes::FUNCTION_SCOPED_VAR,
+                    scope: self.declarations[self.symbols[symbol].declaration].scope,
+                },
+            };
+            self.declare_symbol(tree, pending, Some(symbol), true);
+        }
+        self.order_companion_declarations(explicit);
+    }
+
+    fn bind_annex_b_functions(&mut self, tree: &Ast<'a>, scopes: &ScopeTree<'a>) {
         if self.annex_b_functions.is_empty() {
             return;
         }
@@ -115,7 +143,6 @@ impl<'a> SymbolTracker<'a> {
                 child = siblings[id.index()];
             }
         }
-        let explicit = self.declarations.next_idx();
         for (index, eligible) in eligible.into_iter().enumerate() {
             if eligible {
                 let function = self.annex_b_functions[index];
@@ -124,7 +151,6 @@ impl<'a> SymbolTracker<'a> {
             }
         }
         self.annex_b_functions.clear();
-        self.order_annex_b_declarations(explicit);
     }
 
     fn bind_annex_b_var(
@@ -183,13 +209,13 @@ impl<'a> SymbolTracker<'a> {
         }
     }
 
-    fn order_annex_b_declarations(&mut self, explicit: DeclarationId) {
+    fn order_companion_declarations(&mut self, explicit: DeclarationId) {
         if explicit.index() == self.declarations.len() {
             return;
         }
-        // Each companion follows its lexical declaration in the public
+        // Each companion follows its source declaration in the public
         // declaration iterator. Merge once instead of inserting into the
-        // arena vector for every function and shifting later declarations.
+        // arena vector for every companion and shifting later declarations.
         let companions = self.declarations[explicit..]
             .iter()
             .enumerate()

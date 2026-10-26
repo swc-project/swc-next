@@ -1,6 +1,124 @@
 use super::*;
 
 #[test]
+fn catch_variable_bindings() {
+    for lang in [Lang::Js, Lang::Ts] {
+        let script = Options {
+            lang,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+
+        assert_catch_var_binding(
+            "var e = 'outer'; try {} catch (e) { var e = 'inner'; e; } e;",
+            script,
+        );
+
+        assert_catch_var_binding("try {} catch (e) { var e = 1; e; } e;", script);
+
+        assert_catch_var_binding("try {} catch (e) { { var e; } e; } e;", script);
+
+        assert_catch_var_binding("try {} catch (e) { var { e } = value; e; } e;", script);
+
+        assert_catch_var_binding(
+            "try {} catch (e) { try {} catch (e) { var e = 1; e; } } e;",
+            script,
+        );
+
+        assert_catch_var_binding(
+            "try {} catch (e) { try {} catch (other) { var e = 1; } e; } e;",
+            script,
+        );
+
+        assert_catch_var_binding(
+            "try {} catch (e) { var e = 1; let other; if (condition) function f() {} e; } e;",
+            script,
+        );
+
+        let source =
+            "var f = 'outer'; try {} catch (e) { var e = 'caught', f = 'inner'; e; f; } e; f;";
+        assert_catch_var_binding(source, script);
+        assert_catch_var_hoisting(source, script);
+
+        assert_catch_var_hoisting(
+            "var f = 'outer'; try {} catch (e) { var f = 'inner'; f; } f;",
+            script,
+        );
+
+        let allocator = Allocator::new();
+        let checked = AnalyzeOptions {
+            check_syntax: SyntaxChecks::all(),
+        };
+        let source = "try {} catch (e) { function f() { var e = 1; return e; } }";
+        let (ast, semantic) = analyze_with_options(&allocator, source, script, checked);
+        let local = reference_symbol(&ast, &semantic, b"e").unwrap();
+        let declaration = semantic.declarations(local).next().unwrap();
+        assert_eq!(semantic.symbol_of(declaration.node), Some(local));
+        assert!(
+            !semantic
+                .symbol(local)
+                .flags
+                .contains(SymbolFlags::CATCH_VAR)
+        );
+        assert_eq!(semantic.declarations(local).len(), 1);
+    }
+}
+
+#[track_caller]
+fn assert_catch_var_hoisting(source: &str, options: Options) {
+    let allocator = Allocator::new();
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let (ast, semantic) =
+            analyze_with_options(&allocator, source, options, AnalyzeOptions { check_syntax });
+        let outer = semantic.binding(ScopeId::ROOT, b"f").unwrap();
+        assert_eq!(reference_symbols(&ast, &semantic, b"f"), [Some(outer); 2]);
+        assert_eq!(semantic.scope_of_symbol(outer), ScopeId::ROOT);
+        assert_eq!(semantic.declarations(outer).len(), 2);
+        let inner = semantic.declarations(outer).next_back().unwrap();
+        assert_eq!(semantic.symbol_of(inner.node), Some(outer));
+        assert_eq!(inner.scope, ScopeId::ROOT);
+    }
+}
+
+#[track_caller]
+fn assert_catch_var_binding(source: &str, options: Options) {
+    let allocator = Allocator::new();
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let (ast, semantic) =
+            analyze_with_options(&allocator, source, options, AnalyzeOptions { check_syntax });
+        let references = reference_symbols(&ast, &semantic, b"e");
+        assert_eq!(references.len(), 2);
+        let catch = references[0].unwrap();
+        let outer = references[1].unwrap();
+        assert_ne!(catch, outer);
+        let catch_scope = semantic.scope_of_symbol(catch);
+        assert_ne!(catch_scope, ScopeId::ROOT);
+        assert_eq!(semantic.scope_of_symbol(outer), ScopeId::ROOT);
+        assert_eq!(semantic.binding(catch_scope, b"e"), Some(catch));
+        assert_eq!(semantic.binding(ScopeId::ROOT, b"e"), Some(outer));
+
+        let hoisted = semantic.declarations(outer).next_back().unwrap();
+        assert_eq!(semantic.symbol_of(hoisted.node), Some(catch));
+        let redeclaration = semantic.declarations(catch).next_back().unwrap();
+        assert_eq!(redeclaration.node, hoisted.node);
+        assert_eq!(redeclaration.scope, catch_scope);
+        assert_eq!(redeclaration.flags, SymbolFlags::FUNCTION_SCOPED_VAR);
+        assert_eq!(semantic.declarations(catch).len(), 2);
+        assert!(
+            semantic
+                .iter_declarations()
+                .map(|entry| ast.span(entry.declaration.node).start)
+                .is_sorted()
+        );
+
+        let model = swc_next_ecma_semantic::ScopeModel::new(semantic);
+        assert_eq!(model.symbol_of(hoisted.node), Some(catch));
+        assert_eq!(model.scope_of_symbol(catch), catch_scope);
+        assert_eq!(model.binding(ScopeId::ROOT, b"e"), Some(outer));
+    }
+}
+
+#[test]
 fn hoisting_variables_keep_lexical_bindings() {
     let module = Options::default();
     let ts_module = ts_module_options();

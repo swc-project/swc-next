@@ -21,8 +21,8 @@ use swc_next_ecma_ast::{
     ImportSpecifier, JsxClosingElement, JsxIdentifier, JsxOpeningElement, JsxText, Label,
     MemberExpression, MethodDefinition, NodeId, NodeKind, NodeKindData, ObjectPattern,
     ParenthesizedExpression, PropertyDefinition, PropertyKey, PropertyKeyData, ScopeId, Severity,
-    Span, StaticBlock, SwitchCase, SwitchStatement, ThisExpression, TsArrayType, TsAsExpression,
-    TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
+    Span, StaticBlock, SwitchCase, SwitchStatement, SymbolId, ThisExpression, TsArrayType,
+    TsAsExpression, TsCallSignatureDeclaration, TsClassImplements, TsConditionalType,
     TsConstructSignatureDeclaration, TsConstructorType, TsEnumBody, TsEnumDeclaration,
     TsEnumMember, TsExportAssignment, TsFunction, TsFunctionType, TsGlobalDeclaration,
     TsImportEqualsDeclaration, TsImportType, TsIndexSignature, TsIndexedAccessType, TsInferType,
@@ -39,7 +39,7 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceFlags, ReferenceSpace, SemanticReturn, SymbolFlags, SyntaxChecks,
+    DeclarationId, ReferenceFlags, ReferenceSpace, SemanticReturn, SymbolFlags, SyntaxChecks,
     binder::{PreparedDeclaration, SymbolTracker},
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
@@ -48,6 +48,7 @@ use crate::{
 pub struct SemanticBuilder<'traverse, 'a> {
     exported_names: FxHashMap<&'traverse [u8], NodeId>,
     export_specifiers: Vec<ExportSpecifier>,
+    catch_variables: Vec<(DeclarationId, SymbolId)>,
     diagnostics: Vec<Diagnostic<'a>>,
     scope: ScopeTree<'a>,
     symbols: SymbolTracker<'a>,
@@ -69,6 +70,7 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         Self {
             exported_names: FxHashMap::default(),
             export_specifiers: Vec::new(),
+            catch_variables: Vec::new(),
             diagnostics: Vec::new(),
             scope,
             symbols: SymbolTracker::init(ast),
@@ -98,7 +100,8 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
 
     fn finish(&mut self) {
         let check_syntax = self.check_syntax;
-        self.symbols.bind_annex_b_functions(self.ast, &self.scope);
+        self.symbols
+            .bind_companion_declarations(self.ast, &self.scope, &self.catch_variables);
         let (export_alias_issues, import_alias_issues) =
             self.symbols
                 .resolve_ts_aliases(self.ast, &self.scope, check_syntax);
@@ -106,6 +109,31 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             ts::check_ts_alias_issues(self, export_alias_issues, import_alias_issues);
         }
         debug_assert!(self.path.is_empty());
+    }
+
+    fn bind_catch_variables(&mut self, node: CatchClause, first: usize) {
+        let tree = self.ast;
+        if let Some(parameter) = node.param(tree)
+            && let NodeKindData::BindingIdentifier(parameter) = tree.kind_data(parameter.node_id())
+        {
+            let symbol = self.symbols.symbol_of_node(parameter.node_id()).unwrap();
+            let name = tree.get_utf8(parameter.name(tree)).as_bytes();
+            let target = self.current_scope().hoist_target;
+            for index in first..self.symbols.declarations().len() {
+                let id = DeclarationId::from_usize(index);
+                let declaration = self.symbols.declarations()[id];
+                if declaration.scope != target
+                    || !declaration.flags.is_hoisting_var()
+                    || tree.get_wtf8(self.symbols.symbol(declaration.symbol).name).as_bytes() != name
+                    // A nested catch with the same name has already claimed its vars.
+                    || self.symbols.symbol_of_node(declaration.node) != Some(declaration.symbol)
+                {
+                    continue;
+                }
+                self.symbols.set_symbol_of_node(declaration.node, symbol);
+                self.catch_variables.push((id, symbol));
+            }
+        }
     }
 
     fn enter_node(&mut self, node: NodeId) -> ReferenceFlags {
@@ -846,8 +874,11 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_catch_clause(&mut self, node: CatchClause) {
         self.push_scope(ScopeKind::Block, node.node_id(), self.inherit_strict_flag());
         self.enter_node(node.node_id());
+        let first = self.symbols.declarations().len();
         self.symbols.enter_catch_clause(self.current_scope);
         node.visit_children_with(self);
+
+        self.bind_catch_variables(node, first);
         self.symbols.exit_saved_context();
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::CatchClause(node));

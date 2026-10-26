@@ -80,6 +80,9 @@ pub struct Symbol {
 /// Annex B functions can also contribute a lexical declaration and a
 /// companion var declaration to distinct symbols. Both retain the same node;
 /// the node's symbol identity belongs to the lexical declaration.
+///
+/// A `var` shadowed by a simple catch parameter likewise contributes to both
+/// symbols, and its node identifies the catch binding targeted by initialization.
 #[derive(Debug, Clone, Copy)]
 pub struct Declaration {
     pub node: NodeId,
@@ -3920,6 +3923,10 @@ impl<'a> SymbolTracker<'a> {
         self.symbols[id]
     }
 
+    pub(crate) fn declarations(&self) -> &Declarations {
+        &self.declarations
+    }
+
     #[inline]
     pub(crate) fn conflict_candidate_info(
         &self,
@@ -3980,6 +3987,11 @@ impl<'a> SymbolTracker<'a> {
 
     pub fn symbol_of_node(&self, node: NodeId) -> Option<SymbolId> {
         self.node_semantic[node].symbol()
+    }
+
+    pub(crate) fn set_symbol_of_node(&mut self, node: NodeId, symbol: SymbolId) {
+        debug_assert!(self.symbol_of_node(node).is_some());
+        self.node_semantic[node] = NodeSemanticId::Symbol(symbol);
     }
 
     fn default_export_symbol(&self) -> Option<SymbolId> {
