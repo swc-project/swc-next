@@ -26,7 +26,7 @@ use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
 use super::source::is_source_whitespace;
-use super::statements::IncomingStatement;
+use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
     is_suppression_comment,
@@ -213,6 +213,7 @@ struct SourceStaticBlock<'ast> {
     incoming: Option<IncomingStatement>,
     whole: bool,
     comments: &'ast [Comment],
+    leading: StatementBodyLeading<'ast>,
     gap: CommentGap,
 }
 
@@ -1986,10 +1987,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut whole = false;
         let mut incoming = None;
         let comments = self.comments.in_range(Span::new(span.start + 6, opening));
-        let last = comments
-            .last()
-            .map_or(span.start + 6, |comment| comment.span.end);
-        let mut constraint = self.line_constraint(last, opening);
         if self.has_suppression {
             if self.content_mode(comments) == ContentMode::Verbatim {
                 if let Some(first) = first {
@@ -2000,10 +1997,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     whole = true;
                 }
-                let last = comments
-                    .last()
-                    .map_or(span.start + 6, |comment| comment.span.end);
-                constraint = self.source_line_constraint(last, opening);
             }
             if first.is_none()
                 && self.content_mode(self.comments.in_range(Span::new(opening + 1, span.end - 1)))
@@ -2012,12 +2005,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 whole = true;
             }
         }
+        let leading = if comments.is_empty() || whole || incoming.is_some() {
+            StatementBodyLeading::empty()
+        } else {
+            // The static body owns one complete prefix, including any existing
+            // body head. Resolve it before either side claims the source stream.
+            let end = first.map_or(span.end - 1, |statement| {
+                self.statement_decorators(statement)
+                    .map_or(statement.span(ast).start, |(span, _)| span.start)
+            });
+            let prefix = Span::new(span.start + 6, end);
+            let packet = self.comments.in_range(prefix);
+            if self
+                .comment_binding(packet, prefix, None)
+                .allows_relocation(None)
+                && packet
+                    .iter()
+                    .all(|&comment| !self.comment_is_jsdoc_binding(comment))
+            {
+                StatementBodyLeading::new(packet, first)
+            } else {
+                StatementBodyLeading::empty()
+            }
+        };
+        let comments = if leading.comments().is_empty() {
+            comments
+        } else {
+            &[]
+        };
+        let last = comments
+            .last()
+            .map_or(span.start + 6, |comment| comment.span.end);
+        let constraint = if incoming.is_some() {
+            self.source_line_constraint(last, opening)
+        } else {
+            self.line_constraint(last, opening)
+        };
         Ok(SourceStaticBlock {
             node,
             braces,
             incoming,
             whole,
             comments,
+            leading,
             gap: if comments
                 .last()
                 .is_some_and(|comment| comment.kind == CommentKind::Line)
@@ -2040,6 +2070,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             incoming,
             whole,
             comments,
+            leading,
             gap,
         } = block;
         if whole {
@@ -2050,6 +2081,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.comments.claim(comments)?;
         self.format_comment_run(comments, CommentRunLayout::SourceAfter(end), writer)?;
         gap.write(writer, FlatSeparator::Space, Writer::space);
-        self.format_static_block_body(node, braces, incoming, writer)
+        self.comments.claim(leading.comments())?;
+        self.format_static_block_body(node, braces, incoming, leading, writer)
     }
 }
