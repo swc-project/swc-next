@@ -13,7 +13,8 @@ schedule(
     return run();
   },
   // @ts-expect-error
-  missing.value);
+  missing.value,
+);
 
 ---------- Options ----------
 {"printWidth":40}
@@ -23,7 +24,8 @@ schedule(
     return run();
   },
   // @ts-expect-error
-  missing.value);
+  missing.value,
+);
 
 ---------- Options ----------
 {"printWidth":80}
@@ -33,7 +35,8 @@ schedule(
     return run();
   },
   // @ts-expect-error
-  missing.value);
+  missing.value,
+);
 
 ---------- Options ----------
 {"printWidth":40,"semi":false,"trailingComma":"none"}
@@ -43,7 +46,8 @@ schedule(
     return run()
   },
   // @ts-expect-error
-  missing.value)
+  missing.value
+)
 
 ---------- Options ----------
 {"arrowParens":"avoid","printWidth":40,"useTabs":true}
@@ -53,4 +57,5 @@ schedule(
 		return run();
 	},
 	// @ts-expect-error
-	missing.value);
+	missing.value,
+);
