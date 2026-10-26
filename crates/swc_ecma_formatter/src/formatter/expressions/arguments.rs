@@ -1219,6 +1219,8 @@ pub(super) struct ArgumentHead {
     pub(super) first_mode: ContentMode,
     pub(super) source_opening: Option<SourceArgumentOpening>,
     pub(super) ordinary_group: ArgumentGroup,
+    /// Ordinary and selected layouts consume the same prepared list closer.
+    pub(super) closing: DelimitedClose,
     pub(super) jsx_call: Option<CallExpression>,
     pub(super) independent_callback: Option<ArrowFunctionExpression>,
     pub(super) binary_indent: OperandIndent,
@@ -2314,6 +2316,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })
                 .any(|empty| empty)
                 || allow_composition && self.arguments_are_function_composition(arguments));
+        let closing =
+            if fixed_frame || source_opening.is_some() || callee_mode != ContentMode::Formatted {
+                DelimitedClose::Source
+            } else {
+                DelimitedClose::Terminal(closing)
+            };
         if !fixed_frame
             && !expand
             && let Some(selected) = self.select_argument_layout(arguments, !hugged)
@@ -2325,6 +2333,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     first_mode,
                     source_opening,
                     ordinary_group: group,
+                    closing,
                     jsx_call,
                     independent_callback: frame.independent_callback(),
                     binary_indent,
@@ -2338,12 +2347,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_outside_prefix,
             });
         }
-        let closing =
-            if fixed_frame || source_opening.is_some() || callee_mode != ContentMode::Formatted {
-                DelimitedClose::Source
-            } else {
-                DelimitedClose::Terminal(closing)
-            };
         let tail = group.write(expand, writer, |writer| {
             if let Some(opening) = source_opening {
                 self.format_verbatim(opening.span, writer)?;
