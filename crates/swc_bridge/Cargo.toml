@@ -13,6 +13,7 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 codegen = ["dep:swc_next_ecma_codegen"]
+external-codegen-strings = ["napi/napi10", "dep:simdutf"]
 parser  = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
 
 [dependencies]
@@ -27,6 +28,7 @@ swc_next_ecma_semantic = { workspace = true, optional = true }
 # `#[bridge]` expands to NAPI-RS types and attributes for native targets.
 napi        = { workspace = true }
 napi-derive = { workspace = true }
+simdutf     = { version = "0.7.0", optional = true }
 
 [build-dependencies]
 napi-build = { workspace = true }

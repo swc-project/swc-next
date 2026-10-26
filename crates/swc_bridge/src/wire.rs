@@ -1,6 +1,9 @@
 #[cfg(not(target_family = "wasm"))]
 use napi::bindgen_prelude::{Buffer, FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue};
 
+#[cfg(all(not(target_family = "wasm"), feature = "external-codegen-strings"))]
+mod external_string;
+
 #[doc(hidden)]
 pub mod private {
     pub trait Sealed {}
@@ -150,7 +153,14 @@ impl ToNapiValue for NativeString {
         env: napi::sys::napi_env,
         value: Self,
     ) -> napi::Result<napi::sys::napi_value> {
-        unsafe { String::to_napi_value(env, value.0) }
+        #[cfg(feature = "external-codegen-strings")]
+        unsafe {
+            external_string::to_napi_value(env, value.0)
+        }
+        #[cfg(not(feature = "external-codegen-strings"))]
+        unsafe {
+            String::to_napi_value(env, value.0)
+        }
     }
 }
 

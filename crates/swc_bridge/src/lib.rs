@@ -1,3 +1,9 @@
+//! The optional `external-codegen-strings` feature returns native codegen strings
+//! through SIMD UTF-16 transcoding and napi-rs' `JsStringUtf16::from_data`.
+//! napi-rs owns the backing allocation and releases it through its finalizer.
+//! Native builds with this feature require a C++ toolchain for simdutf and a
+//! runtime supporting Node-API 10. WebAssembly retains its existing string path.
+
 extern crate self as swc_next_bridge;
 
 mod wire;

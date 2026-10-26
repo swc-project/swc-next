@@ -45,6 +45,25 @@ test("printSync accepts surrogate pairs in UTF-8 fields", () => {
   assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
 });
 
+test("printSync owns returned strings across garbage collection", () => {
+  const script = `
+    import assert from "node:assert/strict";
+    import { setImmediate } from "node:timers/promises";
+    import { parseSync, printSync } from ${JSON.stringify(new URL("../src-js/index.js", import.meta.url).href)};
+    const source = 'const text = "' + "abcé中😀".repeat(4096) + '";';
+    const { program, meta } = parseSync(source);
+    const held = printSync(program, {}, meta).code;
+    for (let i = 0; i < 16; i++) printSync(program, {}, meta);
+    global.gc();
+    await setImmediate();
+    assert.equal(held, source + "\\n");
+    assert.equal(printSync(parseSync("").program).code, "");
+  `;
+  execFileSync(process.execPath, ["--expose-gc", "--input-type=module", "-e", script], {
+    env: process.env,
+  });
+});
+
 test("printSync preserves lone surrogates in string values", () => {
   for (const lang of ["js", "ts"]) {
     const { program } = parseSync('const text = "";', { lang });
