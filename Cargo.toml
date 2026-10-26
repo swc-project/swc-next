@@ -39,7 +39,7 @@ unicode-id-start = "1.5.0"
 zmij_ecma        = "1.0.23"
 
 # SWC
-swc_core = { version = "=82.1.1", features = [
+swc_core = { version = "=82.2.0", features = [
     "ecma_ast",
     "ecma_codegen",
     "__ecma",
@@ -48,12 +48,12 @@ swc_core = { version = "=82.1.1", features = [
     "__parser",
     "__ecma_transforms",
 ] }
-swc_ts_fast_strip = "=59.0.1"
+swc_ts_fast_strip = "=59.0.2"
 
 # NAPI-RS
-napi        = "3.14.2"
+napi        = "3.15.0"
 napi-build  = "2.6.0"
-napi-derive = "3.6.12"
+napi-derive = "3.6.13"
 
 # Bridge tooling
 cargo_metadata = "0.23.1"
@@ -93,7 +93,7 @@ libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.155.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.155.0"
-saphyr        = "0.2.2"
+saphyr        = "0.3.1"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 
