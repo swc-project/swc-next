@@ -44,7 +44,10 @@ pub(super) enum StatementSequenceKind<'ast> {
         leading: StatementBodyLeading<'ast>,
     },
     Module,
-    Static(Option<IncomingStatement>),
+    Static {
+        incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
+    },
     Case {
         leading: StatementBodyLeading<'ast>,
         incoming: Option<CaseIncoming>,
@@ -153,6 +156,7 @@ enum BodySource<'ast> {
         body: StaticBlock,
         span: Span,
         incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
     },
 }
 
@@ -452,7 +456,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let incoming = match kind {
             StatementSequenceKind::Block { incoming, .. }
             | StatementSequenceKind::Function { incoming, .. }
-            | StatementSequenceKind::Static(incoming) => incoming,
+            | StatementSequenceKind::Static { incoming, .. } => incoming,
             StatementSequenceKind::Case {
                 incoming: Some(CaseIncoming::Statement(incoming)),
                 ..
@@ -462,6 +466,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut body_leading = match kind {
             StatementSequenceKind::Block { leading, .. }
             | StatementSequenceKind::Function { leading, .. }
+            | StatementSequenceKind::Static { leading, .. }
             | StatementSequenceKind::Case { leading, .. } => leading,
             _ => StatementBodyLeading::empty(),
         };
@@ -905,12 +910,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous = Some(boundary.with_end(end));
             previous_omitted = omitted;
         }
+        let layout = match (previous, kind) {
+            (
+                None,
+                StatementSequenceKind::Block { .. }
+                | StatementSequenceKind::Function { .. }
+                | StatementSequenceKind::Module
+                | StatementSequenceKind::Static { .. },
+            ) => CommentRunLayout::CanonicalDangling,
+            (
+                None,
+                StatementSequenceKind::Case { .. }
+                | StatementSequenceKind::Program {
+                    has_source_items: true,
+                    ..
+                },
+            ) => CommentRunLayout::Lines,
+            _ => CommentRunLayout::Source,
+        };
         let transferred = body_leading.take_dangling();
         if !transferred.is_empty() {
             if previous.is_some() {
                 writer.hard_line();
             }
-            self.format_comment_run(transferred, CommentRunLayout::Lines, writer)?;
+            let transferred_layout = if matches!(kind, StatementSequenceKind::Static { .. }) {
+                layout
+            } else {
+                CommentRunLayout::Lines
+            };
+            self.format_comment_run(transferred, transferred_layout, writer)?;
         }
         let dangling = self.comments.between(Span::new(
             previous.map_or(span.start, StatementBoundary::end),
@@ -931,24 +959,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comment_gap(boundary.end(), first.span.start, writer);
             }
         }
-        let layout = match (previous, kind) {
-            (
-                None,
-                StatementSequenceKind::Block { .. }
-                | StatementSequenceKind::Function { .. }
-                | StatementSequenceKind::Module
-                | StatementSequenceKind::Static(_),
-            ) => CommentRunLayout::CanonicalDangling,
-            (
-                None,
-                StatementSequenceKind::Case { .. }
-                | StatementSequenceKind::Program {
-                    has_source_items: true,
-                    ..
-                },
-            ) => CommentRunLayout::Lines,
-            _ => CommentRunLayout::Source,
-        };
         self.format_comment_run(dangling, layout, writer)?;
         Ok(StatementSequence {
             has_content: !first_statement || !dangling.is_empty() || !transferred.is_empty(),
@@ -1714,6 +1724,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         body: StaticBlock,
         span: Span,
         incoming: Option<IncomingStatement>,
+        leading: StatementBodyLeading<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         self.format_braced_body(
@@ -1721,6 +1732,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 body,
                 span,
                 incoming,
+                leading,
             },
             ContentMode::Formatted,
             writer,
@@ -1739,13 +1751,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 body,
                 span,
                 incoming,
+                leading,
             } => (
                 span,
                 None,
                 body.body(ast),
-                StatementSequenceKind::Static(incoming),
+                StatementSequenceKind::Static { incoming, leading },
                 EmptyBlock::Compact,
-                StatementBodyLeading::empty(),
+                leading,
             ),
             BodySource::Block {
                 node,
