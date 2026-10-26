@@ -195,6 +195,33 @@ pub(super) struct PreparedGeneratedEnclosure {
     pub(super) content: ExpressionContent,
 }
 
+#[derive(Clone, Copy)]
+struct ResolvedSourceCast {
+    pair: ParenthesizedExpression,
+    annotation: Comment,
+}
+
+/// The real cast retains its pair; only a redundant exterior envelope is released.
+struct PreparedExteriorCast<'ast> {
+    owner: ExteriorCastOwner,
+    head: ResolvedExpressionHead<'ast>,
+}
+
+/// One source opening has one certificate, prepared by its topmost wrapper.
+#[derive(Clone, Copy)]
+pub(in crate::formatter) enum PreparedSourceOpening {
+    Transparent(ExternalOpeningOwner),
+    Cast(ExteriorCastOwner),
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::formatter) struct ExteriorCastOwner {
+    cast: ResolvedSourceCast,
+    source: SourceParentheses,
+    binding: CommentBinding,
+    opening: LineConstraint,
+}
+
 /// Numeric selection retains the source decision and a separate pure reference view.
 #[derive(Clone, Copy)]
 pub(super) enum NumericContentView {
@@ -295,9 +322,10 @@ enum DiagnosticHeadFrameKind {
     RetainedScope,
 }
 
-struct PreparedHeadEnclosure<'ast> {
+struct PreparedHeadEnclosure<'ast, 'plan> {
     resolved: ResolvedExpressionHead<'ast>,
     frame: Option<PreparedDiagnosticHeadFrame<'ast>>,
+    exterior: Option<&'plan PreparedExteriorCast<'ast>>,
 }
 
 /// Packet ownership is independent of its placement around a replacement pair.
@@ -579,7 +607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     pub(in crate::formatter) fn prepare_external_opening_owners(
         &self,
-    ) -> Vec<Option<ExternalOpeningOwner>> {
+    ) -> Vec<Option<PreparedSourceOpening>> {
         if self.diagnostic_lines.is_empty() {
             return Vec::new();
         }
@@ -612,7 +640,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let mut inner = Expr::ParenthesizedExpression(pair);
             let mut supported = true;
+            let mut cast = None;
+            let comments = self.ast.comments();
+            let mut comment_start = 0;
+            let mut comment_end =
+                comments.partition_point(|comment| comment.span.end <= outer.start);
             while let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(inner) {
+                if cast.is_none() && self.has_type_casts {
+                    let start = pair.span(self.ast).start;
+                    while comment_end < comments.len() && comments[comment_end].span.end <= start {
+                        comment_end += 1;
+                    }
+                    // The previous opening token fences older comments. Only
+                    // a newly crossed comment can own this inner source pair.
+                    if self.ast.source()[start as usize..].starts_with('(')
+                        && let Some(annotation) = self
+                            .source_type_cast_before(start, &comments[comment_start..comment_end])
+                    {
+                        cast = Some(ResolvedSourceCast { pair, annotation });
+                    }
+                    comment_start = comment_end;
+                }
                 let child = pair.expression(self.ast);
                 supported &= self
                     .expression_needs_parentheses(
@@ -624,11 +672,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 inner = child;
             }
             if supported {
-                owners[line] = self.prepare_external_opening_owner(SourceParentheses {
-                    outer,
-                    inner: inner.span(self.ast),
-                    inner_target: ParenthesisInner::Expression(inner),
-                });
+                owners[line] = self
+                    .prepare_external_opening_owner(SourceParentheses {
+                        outer,
+                        inner: inner.span(self.ast),
+                        inner_target: ParenthesisInner::Expression(inner),
+                    })
+                    .map(PreparedSourceOpening::Transparent)
+                    .or_else(|| {
+                        cast.and_then(|cast| self.prepare_exterior_cast_owner(outer, cast))
+                            .map(PreparedSourceOpening::Cast)
+                    });
             }
         }
         owners
@@ -646,7 +700,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn source_expression_opening_owner(&self, expression: Expr) -> Option<ExternalOpeningOwner> {
         let outer = expression.span(self.ast);
         let (index, _) = self.diagnostic_lines.external_opening_tokens(outer.start)?;
-        let owner = self.external_opening_owners.get(index).copied().flatten()?;
+        let PreparedSourceOpening::Transparent(owner) =
+            self.external_opening_owners.get(index).copied().flatten()?
+        else {
+            return None;
+        };
         (owner.source.outer == outer
             && matches!(
                 self.ast.expr_data(expression),
@@ -663,6 +721,56 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     /// Both expression and recovered target chains provide their actual owner.
+    fn source_exterior_cast_owner(
+        &self,
+        parenthesized: ParenthesizedExpression,
+    ) -> Option<ExteriorCastOwner> {
+        if self.external_opening_owners.is_empty() || !self.has_type_casts {
+            return None;
+        }
+        let outer = parenthesized.span(self.ast);
+        let (index, _) = self.diagnostic_lines.external_opening_tokens(outer.start)?;
+        let PreparedSourceOpening::Cast(owner) =
+            self.external_opening_owners.get(index).copied().flatten()?
+        else {
+            return None;
+        };
+        (owner.source.outer == outer).then_some(owner)
+    }
+
+    fn exterior_cast_owner_for_context(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        context: &ExpressionContext<'ast>,
+        mode: ContentMode,
+    ) -> Option<ExteriorCastOwner> {
+        if mode != ContentMode::Formatted {
+            return None;
+        }
+        let owner = self.source_exterior_cast_owner(parenthesized)?;
+        // Only a genuine source cast needs the adjusted formatting context.
+        let context = (*context).with_content_mode(mode);
+        matches!(
+            self.source_parentheses_choice(owner.cast.pair, context),
+            SourceParenthesesChoice::Retained {
+                kind: RetainedParentheses::Cast,
+                mode: ContentMode::Formatted,
+            }
+        )
+        .then_some(owner)
+    }
+
+    #[cold]
+    pub(super) fn exterior_cast_head_gap(
+        &self,
+        pair: ParenthesizedExpression,
+        context: &ExpressionContext<'ast>,
+        mode: ContentMode,
+    ) -> Option<LineConstraint> {
+        self.exterior_cast_owner_for_context(pair, context, mode)
+            .map(|owner| owner.opening)
+    }
+
     pub(super) fn external_opening_owner(
         &self,
         boundary: SourceParentheses,
@@ -740,6 +848,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         diagnostic_owner: DiagnosticParenthesesOwner,
     ) -> ExpressionContent {
+        if !self.external_opening_owners.is_empty()
+            && self.has_type_casts
+            && let data @ ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression)
+            && self.source_exterior_cast_owner(pair).is_some()
+        {
+            // This complete source envelope has one authentic cast owner.
+            // Do not peel a same-line prefix before that owner releases it.
+            return ExpressionContent {
+                expression,
+                data,
+                parentheses: None,
+            };
+        }
         let mut inner = expression;
         let mut head = SourceParenthesesHead {
             binding: CommentBinding::Unbound,
@@ -1477,9 +1598,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn source_type_cast_before(&self, start: u32, comments: &[Comment]) -> Option<Comment> {
         let mut next_start = start;
         for &comment in comments.iter().rev() {
+            // Prove adjacency from the opening back to its nearest token, so
+            // a distant comment cannot repeatedly rescan a shared blank prefix.
             if !self
                 .source(Span::new(comment.span.end, next_start))
                 .chars()
+                .rev()
                 .all(is_source_whitespace)
             {
                 break;
@@ -2264,7 +2388,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         expression: Expr,
         mut prepared: Option<ExpressionContent>,
         resolved: ResolvedExpressionHead<'ast>,
-        mut context: ExpressionContext<'ast>,
+        context: ExpressionContext<'ast>,
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
@@ -2276,16 +2400,75 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prepared = Some(self.expression_content_for_position(expression, context.position));
         }
         if context.content_mode == ContentMode::Formatted && !self.diagnostic_lines.is_empty() {
-            let content = prepared.get_or_insert_with(|| self.expression_content(expression));
-            context = self.with_head_scope(context, content);
+            return self.format_diagnostic_expression_head_and_content(
+                expression,
+                prepared,
+                resolved,
+                context,
+                array_comments,
+                writer,
+            );
         }
+        // An empty head has no packet or diagnostic enclosure to place.
+        if !resolved.head.comments.is_empty()
+            || matches!(resolved.binding, CommentBinding::SourceBound)
+            || context
+                .protected_head_start
+                .is_some_and(|start| start == expression.span(self.ast).start)
+        {
+            return self.format_expression_head_enclosure(
+                expression,
+                prepared,
+                PreparedHeadEnclosure {
+                    resolved,
+                    frame: None,
+                    exterior: None,
+                },
+                context,
+                array_comments,
+                writer,
+            );
+        }
+        self.expression_layout(expression).write(writer, |writer| {
+            self.format_expression_content_prepared(
+                expression,
+                prepared,
+                context,
+                array_comments,
+                writer,
+            )
+        })
+    }
+
+    /// Diagnostic source ownership prepares its complete head before printing.
+    fn format_diagnostic_expression_head_and_content(
+        &mut self,
+        expression: Expr,
+        mut prepared: Option<ExpressionContent>,
+        resolved: ResolvedExpressionHead<'ast>,
+        mut context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let content = prepared.get_or_insert_with(|| self.expression_content(expression));
+        context = self.with_head_scope(context, content);
         let frame = prepared.as_ref().and_then(|content| {
             let frame = self.prepare_diagnostic_head_frame(content, context)?;
             Some(self.prepare_diagnostic_head_placement(frame, &resolved.head))
         });
+        let exterior = if !self.external_opening_owners.is_empty()
+            && frame.is_none()
+            && self.has_type_casts
+            && let ExprData::ParenthesizedExpression(pair) = self.ast.expr_data(expression)
+        {
+            self.prepare_exterior_cast(pair, context)
+        } else {
+            None
+        };
         // An empty head has no packet to place. Source-bound and inherited
         // protected heads still need the enclosing owner's placement proof.
         if frame.is_some()
+            || exterior.is_some()
             || !resolved.head.comments.is_empty()
             || matches!(resolved.binding, CommentBinding::SourceBound)
             || context
@@ -2295,7 +2478,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_expression_head_enclosure(
                 expression,
                 prepared,
-                PreparedHeadEnclosure { resolved, frame },
+                PreparedHeadEnclosure {
+                    resolved,
+                    frame,
+                    exterior: exterior.as_ref(),
+                },
                 context,
                 array_comments,
                 writer,
@@ -2404,12 +2591,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         expression: Expr,
         mut prepared: Option<ExpressionContent>,
-        plan: PreparedHeadEnclosure<'ast>,
+        plan: PreparedHeadEnclosure<'ast, '_>,
         mut context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let PreparedHeadEnclosure { resolved, frame } = plan;
+        let PreparedHeadEnclosure {
+            resolved,
+            frame,
+            exterior,
+        } = plan;
         let ResolvedExpressionHead { head, binding } = resolved;
         let binding = context.resolve_emitted_head_binding(&head, binding);
         if let Some((frame, mut content)) =
@@ -2745,6 +2936,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && !self.expression_has_generated_head_frame(content, context))
                     .then(|| self.source_parentheses_comments(removed.source).head)
                 })
+                // The retained real cast owns the released annotation lease.
+                // Its exterior head must choose the ASI owner before printing.
+                .or_else(|| exterior.as_ref().map(|plan| plan.head.head.comments))
                 .unwrap_or(&[]);
             context.expression_start = self.format_expression_head_with_released_comments(
                 expression,
@@ -2771,13 +2965,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         self.expression_layout(expression).write(writer, |writer| {
-            self.format_expression_content_prepared(
-                expression,
-                prepared,
-                context,
-                array_comments,
-                writer,
-            )
+            if let Some(exterior) = exterior {
+                self.format_exterior_cast(exterior, context, array_comments, writer)
+            } else {
+                self.format_expression_content_prepared(
+                    expression,
+                    prepared,
+                    context,
+                    array_comments,
+                    writer,
+                )
+            }
         })
     }
 
@@ -3204,6 +3402,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let span = parenthesized.span(self.ast);
+        if let Some(plan) = self.prepare_exterior_cast(parenthesized, context) {
+            return self.format_exterior_cast(&plan, context, array_comments, writer);
+        }
         let ignored_child = match self.source_parentheses_choice(parenthesized, context) {
             SourceParenthesesChoice::Verbatim => {
                 self.format_verbatim_expression(
@@ -3343,6 +3544,167 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             Ok(tail)
         }
+    }
+
+    fn prepare_exterior_cast_owner(
+        &self,
+        outer: Span,
+        cast: ResolvedSourceCast,
+    ) -> Option<ExteriorCastOwner> {
+        let tokens = self.diagnostic_external_opening_tokens(outer.start)?;
+        let pair = cast.pair.span(self.ast);
+        if pair == outer || self.parenthesis_has_jsdoc_enclosure(outer.start) {
+            return None;
+        }
+        let source = SourceParentheses {
+            outer,
+            inner: pair,
+            inner_target: ParenthesisInner::Expression(Expr::ParenthesizedExpression(cast.pair)),
+        };
+        let comments = self.source_parentheses_comments(source);
+        // This lease is exactly the annotation that owns the retained pair.
+        // A mixed or already-leased foreign head requires its existing owner.
+        if comments.head != std::slice::from_ref(&cast.annotation)
+            || !comments.tail.is_empty()
+            || tokens.end > cast.annotation.span.start
+            || !self
+                .source(Span::new(outer.start, cast.annotation.span.start))
+                .char_indices()
+                .all(|(offset, character)| {
+                    is_source_whitespace(character)
+                        || character == '(' && outer.start + (offset as u32) < tokens.end
+                })
+        {
+            return None;
+        }
+        let suffix = Span::new(pair.end, outer.end);
+        if !self
+            .source(suffix)
+            .char_indices()
+            .all(|(offset, character)| {
+                is_source_whitespace(character)
+                    || character == ')'
+                        && !self.diagnostic_line_is_sensitive(suffix.start + offset as u32)
+            })
+        {
+            return None;
+        }
+        let all_comments = self.ast.comments();
+        let count = all_comments.partition_point(|comment| comment.span.end <= outer.start);
+        let packet = *all_comments.get(count.checked_sub(1)?)?;
+        let semantics = self.comment_semantics(packet);
+        if !semantics.diagnostic
+            || semantics.suppression
+            || semantics.optimizer
+            || semantics.type_cast
+            || semantics.file_directive
+            || !self.external_opening_packet_isolated(packet, &all_comments[..count])
+            || !self
+                .source(Span::new(packet.span.end, outer.start))
+                .chars()
+                .all(is_source_whitespace)
+        {
+            return None;
+        }
+        let resolved = self.source_parentheses_head(comments.head, source, &mut None, None, || {
+            Some(cast.annotation)
+        });
+        if !matches!(resolved.lexical_binding, CommentBinding::BoundTo(target) if target == pair) {
+            return None;
+        }
+        let opening = if self
+            .diagnostic_range_is_sensitive(Span::new(cast.annotation.span.start, pair.end))
+        {
+            // Entry is at the original outer opener. Keep a covered annotation,
+            // first code and real cast closer on their original relative lines.
+            self.source_line_constraint(outer.start, cast.annotation.span.start)
+        } else {
+            // Only the removed exterior opener was covered. The complete head
+            // and real cast own their ordinary gap; no source break is required.
+            LineConstraint::Unconstrained
+        };
+        Some(ExteriorCastOwner {
+            cast,
+            source,
+            binding: resolved.binding,
+            opening,
+        })
+    }
+
+    fn prepare_exterior_cast(
+        &self,
+        parenthesized: ParenthesizedExpression,
+        context: ExpressionContext<'ast>,
+    ) -> Option<PreparedExteriorCast<'ast>> {
+        let owner =
+            self.exterior_cast_owner_for_context(parenthesized, &context, context.content_mode)?;
+        let outer = owner.source.outer;
+        let pending = self
+            .comments
+            .between(Span::new(outer.start, owner.source.inner.start))
+            .ok()?;
+        if pending != std::slice::from_ref(&owner.cast.annotation) {
+            return None;
+        }
+        Some(PreparedExteriorCast {
+            owner,
+            head: ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: pending,
+                    content_start: owner.source.inner.start,
+                    layout: CommentRunLayout::Leading(owner.source.inner.start),
+                    gap_end: None,
+                },
+                binding: owner.binding,
+            },
+        })
+    }
+
+    fn format_exterior_cast(
+        &mut self,
+        plan: &PreparedExteriorCast<'ast>,
+        mut context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let PreparedExteriorCast { owner, head } = plan;
+        let ExteriorCastOwner {
+            cast,
+            source,
+            opening,
+            ..
+        } = *owner;
+        // The exterior diagnostic belongs to its caller or previous separator;
+        // only the exact pending cast annotation is claimed here.
+        self.comments.claim(head.head.comments)?;
+        opening.write(writer, FlatSeparator::Empty, |_| {});
+        context.head_gap = None;
+        context.head_destination = None;
+        if context.protected_head_start == Some(source.outer.start) {
+            context.protected_head_start = Some(source.inner.start);
+        }
+        let expression = Expr::ParenthesizedExpression(cast.pair);
+        let tail = self.format_expression_leading_prepared(
+            expression,
+            Some(ExpressionContent {
+                expression,
+                data: ExprData::ParenthesizedExpression(cast.pair),
+                parentheses: None,
+            }),
+            ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: head.head.comments,
+                    content_start: head.head.content_start,
+                    layout: head.head.layout,
+                    gap_end: head.head.gap_end,
+                },
+                binding: head.binding,
+            },
+            context,
+            array_comments,
+            writer,
+        )?;
+        self.capture_expression_tail(Span::new(source.inner.end, source.outer.end), tail)
     }
 
     fn format_retained_parentheses(

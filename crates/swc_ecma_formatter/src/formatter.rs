@@ -30,7 +30,7 @@ pub(crate) struct Formatter<'ast, 'source> {
     options: FormatOptions,
     comments: CommentCursor<'ast>,
     diagnostic_lines: diagnostics::DiagnosticLines,
-    external_opening_owners: Vec<Option<expressions::parentheses::ExternalOpeningOwner>>,
+    external_opening_owners: Vec<Option<expressions::parentheses::PreparedSourceOpening>>,
     has_suppression: bool,
     has_target_annotations: bool,
     has_type_casts: bool,

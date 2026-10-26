@@ -1179,6 +1179,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary.enclosed_head_binding =
                 self.enclosed_expression_head_binding(content, leading);
         }
+        if !leading.is_empty()
+            && self.has_type_casts
+            && !self.external_opening_owners.is_empty()
+            && let ExprData::ParenthesizedExpression(pair) = content.data
+            && matches!(
+                self.exterior_cast_head_gap(pair, &head_context, boundary.mode),
+                Some(LineConstraint::NewLine(_))
+            )
+        {
+            // Layout sees the complete head before its source envelope is
+            // released. The real cast still owns and claims its annotation.
+            boundary.cast_leading = Some(CastLeadingLayout::Break);
+            boundary.own_line = true;
+        }
         if !leading.is_empty() && self.parenthesis_has_type_cast(right_start) {
             let breaks = leading.iter().enumerate().any(|(index, comment)| {
                 let next = leading
@@ -1251,6 +1265,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let next = after.first().map_or(right_start, |first| first.span.start);
             boundary.before_operator = self.line_constraint(previous, operator_start);
             boundary.after_operator = self.line_constraint(boundary.operator_span.end, next);
+        }
+        if let (Some(last), Some(first)) = (boundary.operator_line.last(), boundary.leading.first())
+            && self
+                .source(Span::new(last.span.end, first.span.start))
+                .chars()
+                .all(super::super::source::is_source_whitespace)
+        {
+            // Splitting one source comment run between the operator suffix
+            // and RHS head transfers their gap to the separator's owner.
+            // An intervening source opener still owns its internal gap.
+            boundary.after_operator = self.comment_gap_constraint(last.span.end, first.span.start);
         }
         if let Some((last, previous)) = boundary.before.split_last()
             && last.kind == CommentKind::Line
