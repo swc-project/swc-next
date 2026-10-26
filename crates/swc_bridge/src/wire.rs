@@ -1,8 +1,7 @@
 #[cfg(not(target_family = "wasm"))]
 use napi::bindgen_prelude::{Buffer, FromNapiValue, ToNapiValue, TypeName, ValidateNapiValue};
-
-#[cfg(all(not(target_family = "wasm"), feature = "external-codegen-strings"))]
-mod external_string;
+#[cfg(not(target_family = "wasm"))]
+use napi::{Env, sys};
 
 #[doc(hidden)]
 pub mod private {
@@ -153,14 +152,93 @@ impl ToNapiValue for NativeString {
         env: napi::sys::napi_env,
         value: Self,
     ) -> napi::Result<napi::sys::napi_value> {
-        #[cfg(feature = "external-codegen-strings")]
-        unsafe {
-            external_string::to_napi_value(env, value.0)
+        let value = value.0;
+        if value.is_empty() {
+            return unsafe { String::to_napi_value(env, value) };
         }
-        #[cfg(not(feature = "external-codegen-strings"))]
-        unsafe {
-            String::to_napi_value(env, value.0)
+        let utf16_len = simdutf::utf16_length_from_utf8(value.as_bytes());
+        let napi_env = Env::from(env);
+        let mut result = std::ptr::null_mut();
+        // For valid UTF-8, only ASCII has the same byte and UTF-16 unit counts.
+        if utf16_len == value.len() {
+            let bytes = value.into_bytes();
+            napi_env.adjust_external_memory(bytes.capacity() as i64)?;
+            let (data, len, capacity) = bytes.into_raw_parts();
+            // The hint stores only a capacity, avoiding a separate heap allocation.
+            let hint = capacity as *mut std::ffi::c_void;
+            // SAFETY: Ownership transfers to the finalizer on success, including
+            // when N-API copies and invokes it synchronously. No later buffer access.
+            let status = unsafe {
+                sys::node_api_create_external_string_latin1(
+                    env,
+                    data.cast(),
+                    len as isize,
+                    Some(finalize_string_buffer::<u8>),
+                    hint,
+                    &mut result,
+                    std::ptr::null_mut(),
+                )
+            };
+            if status != sys::Status::napi_ok {
+                // N-API does not invoke the finalizer on failure; we still own it.
+                unsafe { finalize_string_buffer::<u8>(env.cast(), data.cast(), hint) };
+            }
+            napi::check_status!(status, "Failed to create external Latin-1 string")?;
+            return Ok(result);
         }
+        if utf16_len > isize::MAX as usize / size_of::<u16>() {
+            return Err(napi::Error::from_reason("UTF-16 string is too large"));
+        }
+        let mut units = Vec::<u16>::with_capacity(utf16_len);
+        // SAFETY: String is valid UTF-8 and the output has sufficient capacity.
+        // N-API expects native-endian UTF-16 on every target.
+        let written = unsafe {
+            simdutf::convert_valid_utf8_to_utf16(value.as_ptr(), value.len(), units.as_mut_ptr())
+        };
+        debug_assert_eq!(written, utf16_len);
+        unsafe { units.set_len(written) };
+        drop(value);
+        napi_env.adjust_external_memory((units.capacity() * size_of::<u16>()) as i64)?;
+        let (data, len, capacity) = units.into_raw_parts();
+        let hint = capacity as *mut std::ffi::c_void;
+        // SAFETY: The allocation contains native-endian UTF-16. The finalizer
+        // owns it on success and may free it synchronously if N-API copies it.
+        let status = unsafe {
+            sys::node_api_create_external_string_utf16(
+                env,
+                data,
+                len as isize,
+                Some(finalize_string_buffer::<u16>),
+                hint,
+                &mut result,
+                std::ptr::null_mut(),
+            )
+        };
+        if status != sys::Status::napi_ok {
+            unsafe { finalize_string_buffer::<u16>(env.cast(), data.cast(), hint) };
+        }
+        napi::check_status!(status, "Failed to create external UTF-16 string")?;
+        Ok(result)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+unsafe extern "C" fn finalize_string_buffer<T>(
+    env: sys::node_api_basic_env,
+    data: *mut std::ffi::c_void,
+    hint: *mut std::ffi::c_void,
+) {
+    let capacity = hint as usize;
+    let allocated_bytes = (capacity * size_of::<T>()) as i64;
+    // SAFETY: data and capacity came from Vec::into_raw_parts. The only element
+    // types are u8 and u16, so no element destructors require the original length.
+    drop(unsafe { Vec::from_raw_parts(data.cast::<T>(), 0, capacity) });
+    // External strings can be finalized after their environment has shut down.
+    if !env.is_null() {
+        let mut adjusted = 0;
+        let _ = unsafe {
+            sys::napi_adjust_external_memory(env.cast(), -allocated_bytes, &mut adjusted)
+        };
     }
 }
 

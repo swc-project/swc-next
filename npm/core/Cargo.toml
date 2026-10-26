@@ -12,7 +12,6 @@ version               = "0.4.0"
 crate-type = ["cdylib"]
 
 [features]
-external-codegen-strings = ["swc_next_bridge/external-codegen-strings"]
 test-codec = ["dep:swc_next_allocator", "dep:swc_next_ecma_codegen", "dep:swc_next_ecma_parser"]
 
 [dependencies]

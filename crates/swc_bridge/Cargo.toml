@@ -13,7 +13,6 @@ crate-type = ["lib", "cdylib"]
 
 [features]
 codegen = ["dep:swc_next_ecma_codegen"]
-external-codegen-strings = ["napi/napi10", "dep:simdutf"]
 parser  = ["dep:swc_next_ecma_parser", "dep:swc_next_ecma_semantic"]
 
 [dependencies]
@@ -26,9 +25,9 @@ swc_next_ecma_semantic = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 # `#[bridge]` expands to NAPI-RS types and attributes for native targets.
-napi        = { workspace = true }
+napi        = { workspace = true, features = ["napi10"] }
 napi-derive = { workspace = true }
-simdutf     = { version = "0.7.0", optional = true }
+simdutf     = { workspace = true }
 
 [build-dependencies]
 napi-build = { workspace = true }

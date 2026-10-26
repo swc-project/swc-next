@@ -1,8 +1,9 @@
-//! The optional `external-codegen-strings` feature returns native codegen strings
-//! through SIMD UTF-16 transcoding and napi-rs' `JsStringUtf16::from_data`.
-//! napi-rs owns the backing allocation and releases it through its finalizer.
-//! Native builds with this feature require a C++ toolchain for simdutf and a
-//! runtime supporting Node-API 10. WebAssembly retains its existing string path.
+//! Native strings use external Latin-1 storage for ASCII and SIMD UTF-16
+//! transcoding otherwise. The finalizer releases their backing allocation
+//! and external-memory charge.
+//! Native builds require a C++ toolchain for simdutf and a runtime supporting
+//! Node-API 10.
+//! WebAssembly retains its existing string path.
 
 extern crate self as swc_next_bridge;
 
