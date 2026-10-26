@@ -196,8 +196,7 @@ bitflags! {
         /// Nested declarations inherit ambient-context rules such as body-less
         /// functions and initializer-less `const` declarations.
         const AMBIENT = 1 << 0;
-        /// Whether a trailing `?` after a type is forbidden from starting a new
-        /// conditional type.
+        /// Whether `extends` may start another conditional type at this level.
         const DISALLOW_CONDITIONAL_TYPES = 1 << 1;
         /// Whether a speculatively parsed arrow with a return type can commit
         /// without an outer `:`.
@@ -581,6 +580,29 @@ enum TypeTailResult {
     NoTypeModifier,
     ConsumedRename,
     KeepOuterRename,
+}
+
+/// The grammar role of a name, independent of its AST representation.
+/// Invalid reserved words can still be retained as names after diagnosis.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum IdentifierRole {
+    Name,
+    Reference,
+    Binding,
+    Label,
+    /// TypeScript names do not inherit JavaScript's Await/Yield parameters.
+    TypeScript,
+}
+
+impl IdentifierRole {
+    fn description(self) -> &'static str {
+        match self {
+            Self::Name => "an identifier name",
+            Self::Reference | Self::TypeScript => "an identifier",
+            Self::Binding => "a binding identifier",
+            Self::Label => "a label",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -1659,6 +1681,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    /// Recovery diagnostics cannot prove an ambiguous grammar alternative.
+    /// Callers with a decisive delimiter may instead commit the recovered AST.
+    fn speculation_is_clean(&self, checkpoint: &Checkpoint) -> bool {
+        self.diagnostics.len() == checkpoint.diagnostics_len
+    }
+
     fn reject_ts_speculation(&mut self, position: u32) {
         let inserted = self.ts_rejected_speculations.insert(position);
         debug_assert!(inserted, "TypeScript speculation was already rejected");
@@ -1969,7 +1997,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .parse_variable_declaration(VariableKind::Let, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
         }
-        self.parse_expression_statement()
+        self.parse_expression_or_labeled_statement()
     }
 
     fn parse_using_or_expression(&mut self) -> Option<Stmt> {
@@ -1981,7 +2009,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .parse_variable_declaration(VariableKind::Using, false, start)
                 .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)));
         }
-        self.parse_expression_statement()
+        self.parse_expression_or_labeled_statement()
     }
 
     fn parse_await_using_or_expression(&mut self) -> Option<Stmt> {
@@ -4333,7 +4361,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         };
         let name = identifier.name(&self.ast);
-        self.validate_identifier(parts.name_token, "an imported binding");
+        self.validate_identifier(parts.name_token, IdentifierRole::Binding);
         let local = self.ast.binding_identifier(local_span, name);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
@@ -4468,10 +4496,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_external_module_reference();
         }
 
-        let head = self.parse_identifier()?;
-        let NodeKindData::IdentifierReference(head) = self.ast.kind_data(head.node_id()) else {
-            unreachable!()
-        };
+        let head_token = self.consume_identifier(IdentifierRole::TypeScript)?;
+        let name = self.identifier_name(head_token);
+        let head = self.ast.identifier_reference(head_token.span(), name);
         if self.current_token.tag() != TokenTag::Dot {
             return Some(TsModuleReference::TsTypeName(
                 TsTypeName::IdentifierReference(head),
@@ -4482,26 +4509,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = head.span(&self.ast).start;
         loop {
             self.advance()?;
-            let right_token = self.current_token;
-            if !right_token.tag().is_identifier_like() {
-                self.report_expected(
-                    self.current_token.span(),
-                    "Expected an identifier after '.'",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "A qualified name must end with an identifier",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
-                return None;
-            }
-            let right_name = self.identifier_name(right_token);
-            self.advance_without_escape_check()?;
-            let right = self.ast.identifier_name(right_token.span(), right_name);
-            let qualified =
-                self.ast
-                    .ts_qualified_name(Span::new(start, right_token.end()), left, right);
+            let right = self.parse_identifier_name_with_role(IdentifierRole::TypeScript)?;
+            let qualified = self.ast.ts_qualified_name(
+                Span::new(start, right.span(&self.ast).end),
+                left,
+                right,
+            );
             if self.current_token.tag() != TokenTag::Dot {
                 return Some(TsModuleReference::TsTypeName(TsTypeName::TsQualifiedName(
                     qualified,
@@ -4626,7 +4639,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_namespace_export_declaration(&mut self, start: u32) -> Option<Stmt> {
-        let id = self.parse_identifier_name()?;
+        let id = self.parse_identifier_name_with_role(IdentifierRole::TypeScript)?;
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(
             self.ast
@@ -5764,15 +5777,41 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_alias_body(&mut self) -> Option<TsType> {
-        if self.current_token.tag() == TokenTag::Intrinsic && !self.current_token.is_escaped() {
-            let next = self.peek_ahead()?;
-            if !continues_type(next.tag()) {
-                let span = self.current_token.span();
-                self.advance()?;
-                return Some(self.ast.ts_type_ts_intrinsic_keyword(span));
-            }
+        let token = self.current_token;
+        if !token.is_keyword(TokenTag::Intrinsic) || self.peek_ahead()?.tag() == TokenTag::Dot {
+            return self.parse_type();
         }
-        self.parse_type()
+        self.advance()?;
+        let intrinsic = self.ast.ts_type_ts_intrinsic_keyword(token.span());
+        if self.current_token.tag() == TokenTag::Semicolon
+            || self.can_insert_implicit_semicolon(self.current_token)
+        {
+            return Some(intrinsic);
+        }
+
+        self.recover_intrinsic_type_tail(token, intrinsic)
+    }
+
+    fn recover_intrinsic_type_tail(&mut self, token: Token, intrinsic: TsType) -> Option<TsType> {
+        // Intrinsic is the complete alias body. Diagnose a continuation, but
+        // retain type structure when recovery can represent it. A newline
+        // ends the alias above, so `intrinsic\n[]` remains two statements.
+        self.report_expected(
+            self.current_token.span(),
+            "Expected a semicolon after an intrinsic type",
+            ReportOptions::default(),
+        );
+        let primary = if is_angle_open(self.current_token.tag()) {
+            // Only a reference can carry type arguments in the AST.
+            let name = self.identifier_name(token);
+            let name = self
+                .ast
+                .ts_type_name_identifier_reference(token.span(), name);
+            self.parse_type_reference(token.start(), name)?
+        } else {
+            intrinsic
+        };
+        self.parse_type_from_primary(primary)
     }
 
     fn parse_type_annotation(&mut self) -> Option<TsTypeAnnotation> {
@@ -5803,7 +5842,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.is_identifier_predicate_start()? {
             return self.parse_type();
         }
-        let parameter_name = TsTypePredicateName::IdentifierName(self.parse_identifier_name()?);
+        let parameter_name = TsTypePredicateName::IdentifierName(
+            self.parse_identifier_name_with_role(IdentifierRole::TypeScript)?,
+        );
         self.finish_type_predicate(parameter_name.span(&self.ast).start, parameter_name, false)
     }
 
@@ -5836,7 +5877,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(self.ast.ts_type_predicate_name_ts_this_type(token.span()));
         }
         Some(TsTypePredicateName::IdentifierName(
-            self.parse_identifier_name()?,
+            self.parse_identifier_name_with_role(IdentifierRole::TypeScript)?,
         ))
     }
 
@@ -5847,15 +5888,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         asserts: bool,
     ) -> Option<TsType> {
         let mut end = parameter_name.span(&self.ast).end;
-        let type_annotation =
-            if self.current_token.tag() == TokenTag::Is && !self.current_token.is_escaped() {
-                self.advance()?;
-                let inner = self.parse_type()?;
-                end = inner.span(&self.ast).end;
-                Some(self.ast.ts_type_annotation(inner.span(&self.ast), inner))
-            } else {
-                None
-            };
+        let type_annotation = if self.current_token.is_keyword(TokenTag::Is) {
+            self.advance()?;
+            let inner = self.parse_type()?;
+            end = inner.span(&self.ast).end;
+            Some(self.ast.ts_type_annotation(inner.span(&self.ast), inner))
+        } else {
+            None
+        };
         Some(TsType::TsTypePredicate(self.ast.ts_type_predicate(
             Span::new(start, end),
             parameter_name,
@@ -5865,7 +5905,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn is_asserts_predicate_start(&mut self) -> Option<bool> {
-        if self.current_token.tag() != TokenTag::Asserts || self.current_token.is_escaped() {
+        if !self.current_token.is_keyword(TokenTag::Asserts) {
             return Some(false);
         }
         let next = self.peek_ahead()?;
@@ -5884,7 +5924,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(false);
         }
         let next = self.peek_ahead()?;
-        Some(next.tag() == TokenTag::Is && !next.is_escaped() && !next.has_line_terminator_before())
+        Some(next.is_keyword(TokenTag::Is) && !next.has_line_terminator_before())
     }
 
     fn parse_type(&mut self) -> Option<TsType> {
@@ -5893,27 +5933,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.ts_context
                 .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
         }
-        let result = (|| {
-            let tag = self.current_token.tag();
-            let may_start_function_or_constructor_type = matches!(
-                tag,
-                TokenTag::New | TokenTag::Abstract | TokenTag::LeftParen
-            ) || is_angle_open(tag);
-            if may_start_function_or_constructor_type
-                && self.is_start_of_function_or_constructor_type()?
-            {
-                self.parse_function_or_constructor_type()
-            } else {
-                self.parse_conditional_type().or_else(|| {
-                    self.report_expected(
-                        self.current_token.span(),
-                        "Expected a type",
-                        ReportOptions::default(),
-                    );
-                    None
-                })
-            }
-        })();
+        let result = self.parse_type_inner();
         if disallow_conditional_types {
             self.ts_context
                 .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
@@ -5921,7 +5941,35 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    /// Lists and conditional branches require a type start, unlike a bare
+    /// TypeReference. Keep recoverable reserved-word references in the AST.
+    fn parse_type_with_start_check(&mut self) -> Option<TsType> {
+        self.with_type_start_check(Self::parse_type)
+    }
+
+    fn with_type_start_check<T>(
+        &mut self,
+        parse: impl FnOnce(&mut Self) -> Option<T>,
+    ) -> Option<T> {
+        let token = self.current_token;
+        // Non-reserved IdentifierNames already satisfy the type-start predicate.
+        if token.tag().is_unconditionally_reserved() && !is_start_of_type(token.tag()) {
+            self.report_expected(token.span(), "Expected a type", ReportOptions::default());
+        }
+        parse(self)
+    }
+
     fn parse_type_no_conditional(&mut self) -> Option<TsType> {
+        let saved = self.ts_context.disallow_conditional_types();
+        self.ts_context
+            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
+        let result = self.parse_type_inner();
+        self.ts_context
+            .set(TsContext::DISALLOW_CONDITIONAL_TYPES, saved);
+        result
+    }
+
+    fn parse_type_inner(&mut self) -> Option<TsType> {
         let tag = self.current_token.tag();
         let may_start_function_or_constructor_type = matches!(
             tag,
@@ -5932,7 +5980,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         {
             self.parse_function_or_constructor_type()
         } else {
-            self.parse_union_type().or_else(|| {
+            // A leading `|` or `&` has no primary yet. Other entries share the
+            // same tail parser as completed generic references.
+            let result = if matches!(tag, TokenTag::BitwiseOr | TokenTag::BitwiseAnd) {
+                self.parse_conditional_type()
+            } else {
+                self.parse_primary_type()
+                    .and_then(|primary| self.parse_type_from_primary(primary))
+            };
+            result.or_else(|| {
                 self.report_expected(
                     self.current_token.span(),
                     "Expected a type",
@@ -5964,29 +6020,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_conditional_type_tail(&mut self, check_type: TsType) -> Option<TsType> {
         self.advance()?;
-        let saved = self.ts_context.disallow_conditional_types();
-        self.ts_context
-            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
-        let extends_type = self.parse_type_no_conditional();
-        self.ts_context
-            .set(TsContext::DISALLOW_CONDITIONAL_TYPES, saved);
-        let extends_type = extends_type?;
-        if !self.expect(
+        let extends_type = self.parse_type_no_conditional()?;
+        // `extends` has committed this grammar alternative. Missing separators
+        // must not discard branches that can still be represented in the AST.
+        self.expect_recoverable(
             TokenTag::Question,
             "Expected '?' in a conditional type",
             Some("A conditional type is written 'T extends U ? X : Y'"),
-        ) {
-            return None;
-        }
-        let true_type = self.parse_type()?;
-        if !self.expect(
+        )?;
+        let true_type = self.parse_type_with_start_check()?;
+        self.expect_recoverable(
             TokenTag::Colon,
             "Expected ':' in a conditional type",
             Some("A conditional type is written 'T extends U ? X : Y'"),
-        ) {
-            return None;
-        }
-        let false_type = self.parse_type()?;
+        )?;
+        let false_type = self.parse_type_with_start_check()?;
         Some(TsType::TsConditionalType(self.ast.ts_conditional_type(
             Span::new(
                 check_type.span(&self.ast).start,
@@ -6118,7 +6166,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.ast.ts_array_type(Span::new(start, end), object_type),
             ));
         }
-        let index_type = self.parse_type()?;
+        let index_type = self.parse_type_with_start_check()?;
         let end = self.current_token.end();
         if !self.expect(
             TokenTag::RightBracket,
@@ -6207,9 +6255,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             | TokenTag::BigIntLiteral
             | TokenTag::NoSubstitutionTemplate
             | TokenTag::Minus => self.parse_literal_type(),
-            TokenTag::LeftParen if !token.is_escaped() => self.parse_parenthesized_type(),
-            TokenTag::LeftBracket if !token.is_escaped() => self.parse_tuple_type(),
-            TokenTag::LeftBrace if !token.is_escaped() => {
+            TokenTag::LeftParen => self.parse_parenthesized_type(),
+            TokenTag::LeftBracket => self.parse_tuple_type(),
+            TokenTag::LeftBrace => {
                 if self.is_start_of_mapped_type()? {
                     self.parse_mapped_type()
                 } else {
@@ -6312,24 +6360,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.current_token.tag() == TokenTag::Spread {
             let start = self.current_token.start();
             self.advance()?;
-            let inner = self.parse_tuple_element_body()?;
+            let inner = self.parse_tuple_element_body(true)?;
             let span = Span::new(start, inner.span(&self.ast).end);
             return Some(TsTupleElement::TsType(TsType::TsRestType(
                 self.ast.ts_rest_type(span, inner),
             )));
         }
-        self.parse_tuple_element_body()
+        self.parse_tuple_element_body(false)
     }
 
-    fn parse_tuple_element_body(&mut self) -> Option<TsTupleElement> {
+    fn parse_tuple_element_body(&mut self, rest: bool) -> Option<TsTupleElement> {
         if self.is_named_tuple_element()? {
-            return self.parse_named_tuple_member();
+            // Rest labels are IdentifierNames; non-rest labels must start a type.
+            return if rest {
+                self.parse_named_tuple_member()
+            } else {
+                self.with_type_start_check(Self::parse_named_tuple_member)
+            };
         }
         self.parse_tuple_element_type().map(TsTupleElement::TsType)
     }
 
     fn parse_tuple_element_type(&mut self) -> Option<TsType> {
-        let type_annotation = self.parse_type()?;
+        let type_annotation = self.parse_type_with_start_check()?;
         if let Some(nullable) = type_annotation.as_ts_js_doc_nullable_type(&self.ast)
             && nullable.postfix(&self.ast)
         {
@@ -6454,8 +6507,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let checkpoint = self.checkpoint();
         self.advance()?;
-        self.ts_context
-            .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
         let constraint = match self.parse_type_no_conditional() {
             Some(constraint) => constraint,
             None => {
@@ -6463,11 +6514,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return Some(None);
             }
         };
-        self.ts_context.set(
-            TsContext::DISALLOW_CONDITIONAL_TYPES,
-            checkpoint.ts_context.disallow_conditional_types(),
-        );
-
         if conditional_allowed && self.current_token.tag() == TokenTag::Question {
             self.rewind(checkpoint);
             self.reject_ts_speculation(position);
@@ -6502,18 +6548,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 peek.end();
                 return Some(true);
             }
-            TokenTag::This => {
-                let result = peek.next()?.tag() == TokenTag::Colon;
-                peek.end();
-                return Some(result);
-            }
             TokenTag::LeftBrace | TokenTag::LeftBracket => {
                 peek.end();
                 return self.is_function_type_after_pattern();
             }
             _ => {}
         }
-        if !first.tag().is_identifier_like() {
+        if !first.tag().is_identifier_candidate() && first.tag() != TokenTag::This {
             peek.end();
             return Some(false);
         }
@@ -6531,9 +6572,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.checkpoint();
         let result = (|| {
             self.advance()?;
-            if self.parse_binding_pattern().is_none()
-                || self.diagnostics.len() != checkpoint.diagnostics_len
-            {
+            if self.parse_binding_pattern().is_none() || !self.speculation_is_clean(&checkpoint) {
                 return Some(false);
             }
             Some(match self.current_token.tag() {
@@ -7455,16 +7494,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     || self.current_token.tag() == TokenTag::Eof
                 {
                     None
-                } else if self.current_token.tag().is_identifier_like()
-                    && !(matches!(self.current_token.tag(), TokenTag::New | TokenTag::Abstract)
-                        && self.is_start_of_function_or_constructor_type()?)
-                {
-                    let head = self
-                        .parse_primary_type_with(PrimaryTypeHead::Parsed, |_, start, name| {
-                            Some(PrimaryTypeHead::Reference { start, name })
-                        })?;
-                    let primary = match head {
-                        PrimaryTypeHead::Parsed(ty) => ty,
+                } else {
+                    match self.with_type_start_check(Self::parse_type_argument_head)? {
+                        PrimaryTypeHead::Parsed(ty) => Some(ty),
                         PrimaryTypeHead::Reference { start, name } => {
                             if is_angle_open(self.current_token.tag())
                                 && !self.current_token.has_line_terminator_before()
@@ -7473,16 +7505,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 references.push(mem::replace(&mut frame, nested));
                                 continue;
                             }
-                            self.ast.ts_type_ts_type_reference(
+                            let primary = self.ast.ts_type_ts_type_reference(
                                 Span::new(start, self.lexer.state.prev_token_end),
                                 name,
                                 None,
-                            )
+                            );
+                            Some(self.parse_type_from_primary(primary)?)
                         }
-                    };
-                    Some(self.parse_type_from_primary(primary)?)
-                } else {
-                    Some(self.parse_type()?)
+                    }
                 };
                 if let Some(argument) = argument {
                     self.scratch_a.append(argument);
@@ -7531,6 +7561,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
+    /// Parse a complete argument, deferring only reference heads whose nested
+    /// arguments need the iterative work stack.
+    fn parse_type_argument_head(&mut self) -> Option<PrimaryTypeHead> {
+        if !self.current_token.tag().is_identifier_like()
+            || matches!(self.current_token.tag(), TokenTag::New | TokenTag::Abstract)
+                && self.is_start_of_function_or_constructor_type()?
+        {
+            return self.parse_type().map(PrimaryTypeHead::Parsed);
+        }
+        match self.parse_primary_type_with(PrimaryTypeHead::Parsed, |_, start, name| {
+            Some(PrimaryTypeHead::Reference { start, name })
+        })? {
+            PrimaryTypeHead::Parsed(ty) => self
+                .parse_type_from_primary(ty)
+                .map(PrimaryTypeHead::Parsed),
+            reference => Some(reference),
+        }
+    }
+
     fn begin_type_reference_arguments(
         &mut self,
         start: u32,
@@ -7575,23 +7624,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_entity_name(&mut self) -> Option<TsTypeName> {
-        let token = self.current_token;
-        if !token.tag().is_identifier_like() {
-            self.report_expected(
-                token.span(),
-                "Expected an identifier",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "An entity name must start with an identifier",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
+        let token = self.consume_identifier(IdentifierRole::Name)?;
         let name = self.identifier_name(token);
         let identifier = self.ast.identifier_reference(token.span(), name);
-        self.advance_without_escape_check()?;
         if self.current_token.tag() == TokenTag::Dot {
             self.extend_qualified_name(
                 TsQualifiedNameLeft::IdentifierReference(identifier),
@@ -7659,7 +7694,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 && self.current_token.tag() != TokenTag::Eof
             {
                 let node = match kind {
-                    AngleListKind::Arguments => self.parse_type()?.node_id(),
+                    AngleListKind::Arguments => self.parse_type_with_start_check()?.node_id(),
                     AngleListKind::Parameters => self.parse_type_parameter()?.node_id(),
                 };
                 self.scratch_a.items.push(node);
@@ -7880,7 +7915,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     return self.parse_for_with_expression(start, is_for_await);
                 }
 
-                if next.tag() == TokenTag::Of {
+                if next.is_keyword(TokenTag::Of) {
                     let mut peek = self.begin_peek();
                     let after_of = (|| {
                         peek.next()?;
@@ -8667,8 +8702,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftBracket => self.parse_array_expression(in_cover),
             TokenTag::LeftBrace => self.parse_object_expression(in_cover),
             TokenTag::Async => {
-                self.validate_identifier(token, "an identifier");
-                self.advance_without_escape_check()?;
+                self.consume_identifier(IdentifierRole::Reference)?;
                 if self.current_token.tag() == TokenTag::Function
                     && !self.current_token.has_line_terminator_before()
                 {
@@ -8727,14 +8761,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_identifier(&mut self) -> Option<Expr> {
-        let token = self.current_token;
-        self.validate_identifier(token, "an identifier");
-        // Only an identifier token can be decoded as one. Anything else was
-        // reported by validate_identifier and must not reach the decoder.
-        if !token.tag().is_identifier_like() {
-            return None;
-        }
-        self.parse_identifier_from_token(token)
+        let token = self.consume_identifier(IdentifierRole::Reference)?;
+        let name = self.identifier_name(token);
+        Some(self.ast.expr_identifier_reference(token.span(), name))
     }
 
     #[cold]
@@ -8806,9 +8835,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // construction instead of crossing a separate identifier-name helper call.
     #[inline(always)]
     fn parse_identifier_name(&mut self) -> Option<IdentifierName> {
-        debug_assert!(self.current_token.tag().is_identifier_like());
-        let token = self.current_token;
-        self.advance_without_escape_check()?;
+        self.parse_identifier_name_with_role(IdentifierRole::Name)
+    }
+
+    #[inline(always)]
+    fn parse_identifier_name_with_role(&mut self, role: IdentifierRole) -> Option<IdentifierName> {
+        let token = self.consume_identifier(role)?;
         let name = self.identifier_name(token);
         Some(self.ast.identifier_name(token.span(), name))
     }
@@ -9598,7 +9630,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 !self.ts_context.allow_arrow_return_type() && head.return_type.is_some();
             // Only the head resolves the ambiguity with a conditional consequent.
             // Body diagnostics still belong to the selected arrow's recovery.
-            if ambiguous_return_type && self.diagnostics.len() != checkpoint.diagnostics_len {
+            if ambiguous_return_type && !self.speculation_is_clean(&checkpoint) {
                 return None;
             }
             let arrow = self.build_arrow_function(
@@ -10800,7 +10832,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut generator = false;
         let mut kind = PropertyKind::Init;
         let mut key = None;
-        let mut key_identifier_token = None;
+        let key_token = self.current_token;
 
         if self.current_token.tag() == TokenTag::Async {
             let token = self.current_token;
@@ -10843,14 +10875,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let computed = self.current_token.tag() == TokenTag::LeftBracket && key.is_none();
         let key = match key {
             Some(key) => key,
-            None => {
-                if self.current_token.tag().is_identifier_like() {
-                    key_identifier_token = Some(self.current_token);
-                }
-                self.parse_property_key(true)?
-            }
+            None => self.parse_property_key(true)?,
         };
-        let key_span = key.span(&self.ast);
 
         if self.current_token.tag() == TokenTag::LeftParen
             || (self.lang.is_typescript() && is_angle_open(self.current_token.tag()))
@@ -10898,48 +10924,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ));
         }
 
-        if self.current_token.tag() == TokenTag::Assign {
-            if computed {
-                self.report(
-                    key_span,
-                    "Computed property cannot have a default value without ':'",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Use '[key]: value = default' syntax instead.",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
-                return None;
-            }
-
-            let PropertyKeyData::IdentifierName(identifier) = self.ast.property_key_data(key)
-            else {
-                self.report(
-                    key_span,
-                    "Invalid shorthand property initializer",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Only identifier keys can have default values. Use 'key: value = default' syntax.",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
-                return None;
-            };
-
-            self.advance()?;
+        let reference = self.property_key_to_reference(key, key_token)?;
+        let value = if self.eat(TokenTag::Assign)? {
             let default_value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts { in_cover: true },
             )?;
-            let identifier = self
-                .ast
-                .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast));
-            let target = self.expression_to_assignment_target(identifier)?;
+            let target = self.expression_to_assignment_target(reference)?;
             let assignment = self.ast.expr_assignment_expression(
                 Span::new(
-                    identifier.span(&self.ast).start,
+                    reference.span(&self.ast).start,
                     default_value.span(&self.ast).end,
                 ),
                 target,
@@ -10947,51 +10941,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 AssignmentOperator::Assign,
             );
             self.state.insert(ParserState::COVER_HAS_INIT_NAME);
-            return Some(ObjectPropertyKind::ObjectProperty(
-                self.ast.object_property(
-                    Span::new(start, default_value.span(&self.ast).end),
-                    key,
-                    assignment,
-                    PropertyKind::Init,
-                    false,
-                    true,
-                    false,
-                ),
-            ));
-        }
-
-        if computed {
-            self.report(
-                key_span,
-                "Computed property must have a value",
-                ReportOptions {
-                    help: Some(Cow::Borrowed("Add ': value' after the computed key.")),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
-
-        if let Some(key_token) = key_identifier_token {
-            self.validate_identifier(key_token, "an identifier");
-        }
-
-        let PropertyKeyData::IdentifierName(identifier) = self.ast.property_key_data(key) else {
-            self.report(
-                key_span,
-                "Shorthand property must be an identifier",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "String and numeric keys require explicit ': value' syntax.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
+            assignment
+        } else {
+            reference
         };
-        let value = self
-            .ast
-            .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast));
         Some(ObjectPropertyKind::ObjectProperty(
             self.ast.object_property(
                 Span::new(start, value.span(&self.ast).end),
@@ -11003,6 +10956,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 false,
             ),
         ))
+    }
+
+    /// Both shorthand forms change an IdentifierName into an IdentifierReference.
+    /// Validate at that transition, before a default initializer can be attached.
+    fn property_key_to_reference(&mut self, key: PropertyKey, token: Token) -> Option<Expr> {
+        let PropertyKeyData::IdentifierName(identifier) = self.ast.property_key_data(key) else {
+            self.report(
+                key.span(&self.ast),
+                "Shorthand property must be an identifier",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Property keys other than identifiers require an explicit ':' value.",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+            return None;
+        };
+        self.validate_identifier(token, IdentifierRole::Reference);
+        Some(
+            self.ast
+                .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast)),
+        )
     }
 
     fn parse_object_method_property(
@@ -11125,9 +11101,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else if token.tag().is_numeric_literal() {
             PropertyKey::Expr(self.parse_numeric_literal()?)
         } else if token.tag().is_identifier_like() {
-            self.advance_without_escape_check()?;
-            let name = self.identifier_name(token);
-            PropertyKey::IdentifierName(self.ast.identifier_name(token.span(), name))
+            PropertyKey::IdentifierName(self.parse_identifier_name()?)
         } else {
             let found = self.describe_token(token);
             self.report(
@@ -12593,7 +12567,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(None);
         }
         let after = self.peek_ahead()?;
-        if !is_start_of_type(after.tag()) && after.tag() != TokenTag::GreaterThan {
+        // Reserved names are recoverable type arguments. The closing angle
+        // and follow-token checks still decide whether this is a type list.
+        if !can_parse_type_for_recovery(after.tag()) && after.tag() != TokenTag::GreaterThan {
             return Some(None);
         }
 
@@ -13126,39 +13102,45 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // caller, avoiding a helper call and another load of current_token.
     #[inline(always)]
     fn parse_binding_identifier(&mut self) -> Option<BindingIdentifier> {
-        let token = self.current_token;
-        self.validate_identifier(token, "a binding identifier");
-        // Only an identifier token can be decoded as one. A string or template
-        // literal reports `Expected an identifier` above and is left for the
-        // caller's recovery instead of reaching the identifier decoder.
-        if !token.tag().is_identifier_like() {
-            return None;
-        }
-        self.advance_without_escape_check()?;
+        let token = self.consume_identifier(IdentifierRole::Binding)?;
         let name = self.identifier_name(token);
         Some(self.ast.binding_identifier(token.span(), name))
     }
 
     fn parse_label_identifier(&mut self) -> Option<LabelIdentifier> {
-        let token = self.current_token;
-        self.validate_identifier(token, "a label");
-        self.advance()?;
+        let token = self.consume_identifier(IdentifierRole::Label)?;
         let name = self.identifier_name(token);
         Some(self.ast.label_identifier(token.span(), name))
     }
 
+    /// Diagnose the grammar role, but only stop when a token cannot be a name.
+    /// Always consume identifiers without the keyword escape check.
+    #[inline(always)]
+    fn consume_identifier(&mut self, role: IdentifierRole) -> Option<Token> {
+        let token = self.current_token;
+        self.validate_identifier(token, role);
+        if !token.tag().is_identifier_like() {
+            return None;
+        }
+        self.advance_without_escape_check()?;
+        Some(token)
+    }
+
     #[inline]
-    fn validate_identifier(&mut self, token: Token, as_what: &str) {
-        if token.tag() == TokenTag::Identifier {
+    fn validate_identifier(&mut self, token: Token, role: IdentifierRole) {
+        if token.tag() == TokenTag::Identifier
+            || role == IdentifierRole::Name && token.tag().is_identifier_like()
+        {
             return;
         }
 
-        self.validate_identifier_slow(token, as_what);
+        self.validate_identifier_slow(token, role);
     }
 
     #[cold]
     #[inline(never)]
-    fn validate_identifier_slow(&mut self, token: Token, as_what: &str) {
+    fn validate_identifier_slow(&mut self, token: Token, role: IdentifierRole) {
+        let as_what = role.description();
         if !token.tag().is_identifier_like() {
             self.report_expected(
                 token.span(),
@@ -13171,6 +13153,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 },
             );
         }
+        if role == IdentifierRole::Name {
+            return;
+        }
         if token.tag().is_unconditionally_reserved() {
             let found = self.describe_token(token);
             self.report(
@@ -13180,6 +13165,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )),
                 ReportOptions::default(),
             );
+        }
+        if role == IdentifierRole::TypeScript {
+            return;
         }
         if token.tag() == TokenTag::Yield && self.context.contains(Context::YIELD) {
             self.report(
@@ -13362,6 +13350,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         false
     }
 
+    /// Continue a committed grammar alternative after a missing token, while
+    /// still propagating lexical failures when consuming a present token.
+    fn expect_recoverable(
+        &mut self,
+        tag: TokenTag,
+        message: &'static str,
+        help: Option<&'static str>,
+    ) -> Option<()> {
+        if !self.eat(tag)? {
+            self.report_expected(
+                self.current_token.span(),
+                message,
+                ReportOptions {
+                    help: help.map(Cow::Borrowed),
+                    ..ReportOptions::default()
+                },
+            );
+        }
+        Some(())
+    }
+
     /// Implements the ECMAScript
     /// [automatic semicolon insertion rules](https://tc39.es/ecma262/#sec-rules-of-automatic-semicolon-insertion).
     fn can_insert_implicit_semicolon(&self, token: Token) -> bool {
@@ -13521,26 +13530,11 @@ fn is_angle_close(tag: TokenTag) -> bool {
 }
 
 #[inline]
-fn continues_type(tag: TokenTag) -> bool {
-    matches!(
-        tag,
-        TokenTag::Dot
-            | TokenTag::LessThan
-            | TokenTag::LeftShift
-            | TokenTag::LeftBracket
-            | TokenTag::BitwiseOr
-            | TokenTag::BitwiseAnd
-            | TokenTag::Extends
-            | TokenTag::Question
-            | TokenTag::LogicalNot
-    )
-}
-
-#[inline]
 fn is_start_of_type(tag: TokenTag) -> bool {
     matches!(
         tag,
-        TokenTag::Any
+        TokenTag::Function
+            | TokenTag::Any
             | TokenTag::Bigint
             | TokenTag::Boolean
             | TokenTag::Never
@@ -13583,7 +13577,14 @@ fn is_start_of_type(tag: TokenTag) -> bool {
             | TokenTag::Spread
             | TokenTag::BitwiseAnd
             | TokenTag::BitwiseOr
-    ) || tag.is_identifier_like()
+    ) || tag.is_identifier_candidate()
+}
+
+/// A candidate for recovery, never proof that a grammar alternative is valid.
+/// Committed entries still diagnose reserved names through their start check.
+#[inline]
+fn can_parse_type_for_recovery(tag: TokenTag) -> bool {
+    is_start_of_type(tag) || tag.is_identifier_like()
 }
 
 #[inline]
@@ -13602,12 +13603,12 @@ fn can_follow_readonly_modifier(tag: TokenTag) -> bool {
 
 #[inline]
 fn can_start_binding_identifier(tag: TokenTag) -> bool {
-    tag.is_identifier_like() && !tag.is_unconditionally_reserved()
+    tag.is_identifier_candidate()
 }
 
 #[inline]
 fn can_start_binding_pattern(tag: TokenTag) -> bool {
-    matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || can_start_binding_identifier(tag)
+    matches!(tag, TokenTag::LeftBracket | TokenTag::LeftBrace) || tag.is_identifier_candidate()
 }
 
 #[inline]
@@ -13722,7 +13723,16 @@ fn is_binary_operator_like(tag: TokenTag) -> bool {
 fn is_start_of_expression(tag: TokenTag) -> bool {
     matches!(
         tag,
-        TokenTag::Identifier
+        TokenTag::This
+            | TokenTag::Super
+            | TokenTag::True
+            | TokenTag::False
+            | TokenTag::NullLiteral
+            | TokenTag::Function
+            | TokenTag::Class
+            | TokenTag::New
+            | TokenTag::Import
+            | TokenTag::Identifier
             | TokenTag::PrivateIdentifier
             | TokenTag::StringLiteral
             | TokenTag::NoSubstitutionTemplate
@@ -13741,7 +13751,8 @@ fn is_start_of_expression(tag: TokenTag) -> bool {
             | TokenTag::At
             | TokenTag::Slash
             | TokenTag::SlashAssign
-    ) || tag.is_identifier_like()
+    ) || tag.is_identifier_candidate()
+        || tag.is_unary_operator()
         || tag.is_numeric_literal()
 }
 
@@ -13872,6 +13883,476 @@ mod tests {
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
             .collect()
+    }
+
+    #[test]
+    fn type_entry_recovery() {
+        fn alias(ast: &Ast<'_>) -> TsType {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_type_alias_declaration(ast)
+                .unwrap()
+                .type_annotation(ast)
+        }
+
+        fn reference_name<'a>(ast: &'a Ast<'_>, ty: TsType) -> &'a str {
+            let reference = ty.as_ts_type_reference(ast).unwrap();
+            let name = reference
+                .type_name(ast)
+                .as_identifier_reference(ast)
+                .unwrap();
+            ast.get_utf8(name.name(ast))
+        }
+
+        fn nullable(ast: &Ast<'_>, ty: TsType) -> TsType {
+            ty.as_ts_js_doc_nullable_type(ast)
+                .unwrap()
+                .type_annotation(ast)
+        }
+
+        fn return_type(ast: &Ast<'_>, ty: TsType) -> TsType {
+            ty.as_ts_function_type(ast)
+                .unwrap()
+                .return_type(ast)
+                .type_annotation(ast)
+        }
+
+        fn argument(ast: &Ast<'_>) -> TsType {
+            alias(ast)
+                .as_ts_type_reference(ast)
+                .unwrap()
+                .type_arguments(ast)
+                .unwrap()
+                .params(ast)
+                .get_node(ast, 0)
+                .unwrap()
+        }
+
+        fn member(ast: &Ast<'_>) -> TsNamedTupleMember {
+            alias(ast)
+                .as_ts_tuple_type(ast)
+                .unwrap()
+                .element_types(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_ts_named_tuple_member(ast)
+                .unwrap()
+        }
+
+        let allocator = Allocator::new();
+        let parse = |source| {
+            let parsed = parse_tokens(&allocator, source);
+            (parsed.ast, !parsed.diagnostics.is_empty())
+        };
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+
+        let (ast, errors) = parse("type T = A<if>; after;");
+        assert!(errors);
+        assert_eq!(ast.root_program().body(&ast).len(), 2);
+        assert_eq!(reference_name(&ast, argument(&ast)), "if");
+
+        let (ast, errors) = parse("type T = 1 extends 2 ? break : for;");
+        assert!(errors);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "break");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "for");
+
+        let (ast, errors) = parse("type T = A extends () => B ? break : C;");
+        assert!(errors);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        let returned = return_type(&ast, conditional.extends_type(&ast));
+        assert_eq!(reference_name(&ast, nullable(&ast, returned)), "B");
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "break");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "C");
+
+        let (ast, errors) = parse("type T = A extends infer U extends B ? break : C;");
+        assert!(errors);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        let inferred = conditional
+            .extends_type(&ast)
+            .as_ts_infer_type(&ast)
+            .unwrap();
+        let constraint = inferred.type_parameter(&ast).constraint(&ast).unwrap();
+        assert_eq!(reference_name(&ast, nullable(&ast, constraint)), "B");
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "break");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "C");
+
+        let (ast, errors) = parse("type T = A extends () => B? extends C ? D : E ? F : G;");
+        assert!(!errors);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        let returned = return_type(&ast, conditional.extends_type(&ast));
+        let nested = returned.as_ts_conditional_type(&ast).unwrap();
+        assert_eq!(
+            reference_name(&ast, nullable(&ast, nested.check_type(&ast))),
+            "B"
+        );
+        assert_eq!(reference_name(&ast, nested.extends_type(&ast)), "C");
+        assert_eq!(reference_name(&ast, nested.true_type(&ast)), "D");
+        assert_eq!(reference_name(&ast, nested.false_type(&ast)), "E");
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "F");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "G");
+
+        let (ast, errors) = parse("type T = A extends Box<B extends C ? D : E> ? break : F;");
+        assert!(errors);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        let reference = nullable(&ast, conditional.extends_type(&ast))
+            .as_ts_type_reference(&ast)
+            .unwrap();
+        let argument = reference
+            .type_arguments(&ast)
+            .unwrap()
+            .params(&ast)
+            .get_node(&ast, 0)
+            .unwrap();
+        assert!(argument.is_ts_conditional_type(&ast));
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "break");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "F");
+
+        let (ast, errors) = parse("type T = A extends B C : D; after;");
+        assert!(errors);
+        assert_eq!(ast.root_program().body(&ast).len(), 2);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        assert_eq!(reference_name(&ast, conditional.extends_type(&ast)), "B");
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "C");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "D");
+
+        let (ast, errors) = parse("type T = A extends B ? C D; after;");
+        assert!(errors);
+        assert_eq!(ast.root_program().body(&ast).len(), 2);
+        let conditional = alias(&ast).as_ts_conditional_type(&ast).unwrap();
+        assert_eq!(reference_name(&ast, conditional.true_type(&ast)), "C");
+        assert_eq!(reference_name(&ast, conditional.false_type(&ast)), "D");
+
+        let (ast, errors) = parse("type T = [br\\u0065ak?: number];");
+        assert!(errors);
+        let member = member(&ast);
+        assert_eq!(ast.get_utf8(member.label(&ast).name(&ast)), "break");
+        assert!(member.optional(&ast));
+        assert!(member.element_type(&ast).is_ts_number_keyword(&ast));
+
+        assert!(has_errors("type T = [for];", options));
+
+        assert!(has_errors("type T = A[while];", options));
+
+        assert!(!has_errors("type T = [...break: number[]];", options));
+
+        assert!(!has_errors("type T = [null: number];", options));
+
+        assert!(!has_errors("type T = A<function>;", options));
+
+        assert!(!has_errors("type T = for;", options));
+    }
+
+    #[test]
+    fn typescript_identifier_recovery() {
+        fn namespace_name(source: &str) -> (bool, String) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let declaration = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_ts_namespace_export_declaration(ast)
+                .unwrap();
+            (
+                !parsed.diagnostics.is_empty(),
+                ast.get_utf8(declaration.id(ast).name(ast)).to_owned(),
+            )
+        }
+
+        fn import_name(source: &str) -> (bool, String) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let declaration = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_import_equals_declaration(ast)
+                .unwrap();
+            let name = declaration
+                .module_reference(ast)
+                .as_ts_type_name(ast)
+                .unwrap()
+                .as_ts_qualified_name(ast)
+                .unwrap();
+            (
+                !parsed.diagnostics.is_empty(),
+                ast.get_utf8(name.right(ast).name(ast)).to_owned(),
+            )
+        }
+
+        let (errors, name) = namespace_name("export as namespace if;");
+        assert!(errors);
+        assert_eq!(name, "if");
+
+        let (errors, name) = namespace_name("export as namespace a\\u0077ait;");
+        assert!(!errors);
+        assert_eq!(name, "await");
+
+        let (errors, name) = import_name("import X = A.if;");
+        assert!(errors);
+        assert_eq!(name, "if");
+
+        let (errors, name) = import_name("import X = A.await;");
+        assert!(!errors);
+        assert_eq!(name, "await");
+
+        let (errors, name) = import_name("import X = if.A;");
+        assert!(errors);
+        assert_eq!(name, "A");
+
+        let allocator = Allocator::new();
+        let parsed = parse_tokens(&allocator, "export as namespace 1;");
+        assert!(!parsed.diagnostics.is_empty());
+        assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let parsed = parse_tokens(&allocator, "type T = A.if;");
+        assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn shorthand_identifier_recovery() {
+        fn parse(source: &str) -> (bool, String, f64, bool) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let declaration = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_variable_declaration(ast)
+                .unwrap();
+            let pattern = declaration
+                .declarators(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .id(ast)
+                .as_object_pattern(ast)
+                .unwrap();
+            let property = pattern.properties(ast).get_node(ast, 0).unwrap();
+            let value = property.value(ast).as_assignment_pattern(ast).unwrap();
+            let identifier = value.left(ast).as_binding_identifier(ast).unwrap();
+            (
+                !parsed.diagnostics.is_empty(),
+                ast.get_utf8(identifier.name(ast)).to_owned(),
+                value.right(ast).as_numeric_literal(ast).unwrap().value(ast),
+                property.shorthand(ast),
+            )
+        }
+
+        let (errors, name, default, shorthand) = parse("let {if = 1} = x;");
+        assert!(errors);
+        assert_eq!(name, "if");
+        assert_eq!(default, 1.0);
+        assert!(shorthand);
+
+        let (errors, name, default, shorthand) = parse("let {if: value = 1} = x;");
+        assert!(!errors);
+        assert_eq!(name, "value");
+        assert_eq!(default, 1.0);
+        assert!(!shorthand);
+
+        let options = Options::default();
+        assert!(has_errors("({if = 1} = x);", options));
+
+        assert!(has_errors("({\\u0069f = 1}) => 0;", options));
+    }
+
+    #[test]
+    fn contextual_labels() {
+        fn labels(source: &str) -> (String, Option<String>) {
+            let allocator = Allocator::new();
+            let options = Options {
+                source_type: SourceType::Script,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let label = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_labeled_statement(ast)
+                .unwrap();
+            let target = label.body(ast).as_while_statement(ast).map(|statement| {
+                let body = statement
+                    .body(ast)
+                    .as_block_statement(ast)
+                    .unwrap()
+                    .body(ast)
+                    .get_node(ast, 0)
+                    .unwrap();
+                let identifier = if let Some(statement) = body.as_break_statement(ast) {
+                    statement.label(ast).unwrap()
+                } else {
+                    body.as_continue_statement(ast).unwrap().label(ast).unwrap()
+                };
+                ast.get_utf8(identifier.name(ast)).to_owned()
+            });
+            (ast.get_utf8(label.label(ast).name(ast)).to_owned(), target)
+        }
+
+        let (label, target) = labels("async: while (1) { break as\\u0079nc; }");
+        assert_eq!(label, "async");
+        assert_eq!(target.as_deref(), Some("async"));
+
+        let (label, target) = labels("let: while (1) { continue l\\u0065t; }");
+        assert_eq!(label, "let");
+        assert_eq!(target.as_deref(), Some("let"));
+
+        let (label, target) = labels("using: 1;");
+        assert_eq!(label, "using");
+        assert_eq!(target, None);
+    }
+
+    #[test]
+    fn using_binding_keywords() {
+        fn binding(source: &str) -> (VariableKind, String, bool) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let statement = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_for_of_statement(ast)
+                .unwrap();
+            let declaration = statement.left(ast).as_variable_declaration(ast).unwrap();
+            let identifier = declaration
+                .declarators(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .id(ast)
+                .as_binding_identifier(ast)
+                .unwrap();
+            (
+                declaration.kind(ast),
+                ast.get_utf8(identifier.name(ast)).to_owned(),
+                statement.r#await(ast),
+            )
+        }
+
+        let (kind, name, is_await) = binding("for (using o\\u0066 of [x]);");
+        assert_eq!(kind, VariableKind::Using);
+        assert_eq!(name, "of");
+        assert!(!is_await);
+
+        let (kind, name, is_await) = binding("for await (using o\\u0066 of of);");
+        assert_eq!(kind, VariableKind::Using);
+        assert_eq!(name, "of");
+        assert!(is_await);
+
+        let options = Options::default();
+        assert!(has_errors("for (a o\\u0066 x);", options));
+        assert!(!has_errors("for (using of of);", options));
+    }
+
+    #[test]
+    fn intrinsic_type_recovery() {
+        fn parse(source: &str) -> (bool, NodeKind, usize) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            let ast = &parsed.ast;
+            let body = ast.root_program().body(ast);
+            let alias = body
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_type_alias_declaration(ast)
+                .unwrap();
+            (
+                !parsed.diagnostics.is_empty(),
+                ast.node_kind(alias.type_annotation(ast).node_id()),
+                body.len(),
+            )
+        }
+
+        let (errors, kind, statements) = parse("type T = intrinsic | string; after;");
+        assert!(errors);
+        assert_eq!(kind, NodeKind::TsUnionType);
+        assert_eq!(statements, 2);
+
+        let (errors, kind, statements) = parse("type T = intrinsic<A>;");
+        assert!(errors);
+        assert_eq!(kind, NodeKind::TsTypeReference);
+        assert_eq!(statements, 1);
+
+        let (errors, kind, statements) = parse("type T = intrinsic\n[];");
+        assert!(!errors);
+        assert_eq!(kind, NodeKind::TsIntrinsicKeyword);
+        assert_eq!(statements, 2);
+
+        let (errors, kind, statements) = parse("type T = intrinsic.A[];");
+        assert!(!errors);
+        assert_eq!(kind, NodeKind::TsArrayType);
+        assert_eq!(statements, 1);
+
+        let (errors, kind, statements) = parse("type T = intr\\u0069nsic[];");
+        assert!(!errors);
+        assert_eq!(kind, NodeKind::TsArrayType);
+        assert_eq!(statements, 1);
+    }
+
+    #[test]
+    fn decorator_instantiations() {
+        fn decorator(source: &str) -> NodeKind {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let class = if let Some(export) = statement.as_export_named_declaration(ast) {
+                export.declaration(ast).unwrap().as_class(ast).unwrap()
+            } else {
+                statement
+                    .as_export_default_declaration(ast)
+                    .unwrap()
+                    .declaration(ast)
+                    .as_class(ast)
+                    .unwrap()
+            };
+            assert_eq!(class.decorators(ast).len(), 1);
+            let expression = class
+                .decorators(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .expression(ast);
+            ast.node_kind(expression.node_id())
+        }
+
+        let kind = decorator("@dec<T> export class A {}");
+        assert_eq!(kind, NodeKind::TsInstantiationExpression);
+
+        let kind = decorator("@dec<T> export default class A {}");
+        assert_eq!(kind, NodeKind::TsInstantiationExpression);
+
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        assert!(has_errors("@dec<T> class A {}", options));
+        assert!(has_errors("export @dec<T> class A {}", options));
     }
 
     #[test]
@@ -14120,6 +14601,10 @@ mod tests {
 
             let (errors, depth) = parse("f<A<B<C>>>();", options, type_argument_depth);
             assert!(errors.is_empty());
+            assert_eq!(depth, 3);
+
+            let (errors, depth) = parse("f<A<B<if>>>();", options, type_argument_depth);
+            assert!(!errors.is_empty());
             assert_eq!(depth, 3);
 
             let (errors, kind) = parse("a < {[a < {[x]: 1}]: 1};", options, expression_kind);
@@ -14998,14 +15483,13 @@ mod tests {
 
     #[test]
     fn predicate_parameter_names() {
-        fn name(source: &str) -> String {
+        fn parsed_name(source: &str) -> (bool, String) {
             let allocator = Allocator::new();
             let options = Options {
                 lang: Lang::Ts,
                 ..Options::default()
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
             let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
             let alias = statement
@@ -15023,7 +15507,16 @@ mod tests {
                 .parameter_name(ast)
                 .as_identifier_name(ast)
                 .unwrap();
-            ast.get_utf8(name.name(ast)).to_owned()
+            (
+                !parsed.diagnostics.is_empty(),
+                ast.get_utf8(name.name(ast)).to_owned(),
+            )
+        }
+
+        fn name(source: &str) -> String {
+            let (errors, name) = parsed_name(source);
+            assert!(!errors);
+            name
         }
 
         fn has_errors(source: &str) -> bool {
@@ -15052,6 +15545,17 @@ mod tests {
         assert!(has_errors("type F = (x: unknown) => x\nis string;"));
 
         assert!(has_errors("type F = (x: unknown) => \\u0078\nis string;"));
+        let (errors, name) = parsed_name("type F = (x: unknown) => break is string;");
+        assert!(errors);
+        assert_eq!(name, "break");
+
+        let (errors, name) = parsed_name("type F = (x: unknown) => asserts br\\u0065ak is string;");
+        assert!(errors);
+        assert_eq!(name, "break");
+
+        let (errors, name) = parsed_name("type F = (x: unknown) => await is string;");
+        assert!(!errors);
+        assert_eq!(name, "await");
     }
 
     fn serialize_ast(ast: &Ast<'_>) -> Vec<u8> {
@@ -16923,6 +17427,26 @@ mod tests {
 
         let kind = return_type("(a): ({ a: A.B }) => a;");
         assert_eq!(kind, NodeKind::TsTypeLiteral);
+        let kind = return_type("(a): (void) => a;");
+        assert_eq!(kind, NodeKind::TsVoidKeyword);
+
+        let kind = return_type("(a): (null) => a;");
+        assert_eq!(kind, NodeKind::TsNullKeyword);
+
+        let kind = return_type("(a): (true) => a;");
+        assert_eq!(kind, NodeKind::TsLiteralType);
+
+        let allocator = Allocator::new();
+        let (ast, declaration) =
+            parse_typescript_declaration(&allocator, "type F = (this) => void;");
+        let function = declaration
+            .as_ts_type_alias_declaration(&ast)
+            .unwrap()
+            .type_annotation(&ast)
+            .as_ts_function_type(&ast)
+            .unwrap();
+        assert!(function.this_param(&ast).is_some());
+        assert!(function.params(&ast).items(&ast).is_empty());
     }
 
     #[test]

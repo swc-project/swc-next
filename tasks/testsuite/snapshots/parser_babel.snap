@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2275/2278 (99.87%)
-Negative Passed: 1709/1802 (94.84%)
+Negative Passed: 1710/1802 (94.89%)
 Panicked: 0/4080 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
@@ -84,7 +84,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/import-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/import-invalid-type-in-type: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/const-type-parameters-invalid/input.ts - typescript/types/const-type-parameters-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/import-type-declaration-error/input.ts - typescript/types/import-type-declaration-error: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/intrinsic-keyword-error/input.ts - typescript/types/intrinsic-keyword-error: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/invalid-import-type-dynamic-with-jsx-options/input.ts - typescript/types/invalid-import-type-dynamic-with-jsx-options: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/invalid-import-type-options-escaped-with/input.ts - typescript/types/invalid-import-type-options-escaped-with: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/types/invalid-import-type-options-string-with/input.ts - typescript/types/invalid-import-type-options-string-with: expected a parse or early error, but pipeline succeeded

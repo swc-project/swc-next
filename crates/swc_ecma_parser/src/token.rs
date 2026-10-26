@@ -299,9 +299,19 @@ impl TokenTag {
         self.has_flag(TokenFlags::IS_ASSIGNMENT_OP)
     }
 
+    /// Lexical IdentifierName, including reserved words. This is not a
+    /// binding/reference or expression/type-start grammar predicate.
     #[inline]
     pub fn is_identifier_like(self) -> bool {
         self.has_flag(TokenFlags::IS_IDENTIFIER_LIKE)
+    }
+
+    /// Context-free identifier candidate. Await, Yield and strict-mode words
+    /// still need validation in their grammar role. Reserved words excluded
+    /// here may nevertheless be consumed as names during parser recovery.
+    #[inline]
+    pub fn is_identifier_candidate(self) -> bool {
+        self.is_identifier_like() && !self.is_unconditionally_reserved()
     }
 
     #[inline]
@@ -585,6 +595,12 @@ impl Token {
     #[inline]
     pub fn has_line_terminator_before(self) -> bool {
         self.has(TokenFlag::LineTerminatorBefore)
+    }
+
+    /// Match a grammar keyword terminal, rather than an escaped identifier.
+    #[inline]
+    pub fn is_keyword(self, tag: TokenTag) -> bool {
+        self.tag() == tag && !self.is_escaped()
     }
 
     #[inline]
