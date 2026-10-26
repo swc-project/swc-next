@@ -8,7 +8,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 [
-  first /* before */ /* after */, // line
+  first /* before */,
+  /* after */ // line
   ,
   last,
 ];
@@ -17,7 +18,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {"trailingComma":"none"}
 ---------- Output ----------
 [
-  first /* before */ /* after */, // line
+  first /* before */,
+  /* after */ // line
   ,
   last
 ];

@@ -6,14 +6,14 @@ void [call(), /* slot */, call()];
 ---------- Options ----------
 {}
 ---------- Output ----------
-void [call() /* slot */, , call()];
+void [call(), /* slot */, call()];
 
 ---------- Options ----------
 {"printWidth":14}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
 
@@ -21,8 +21,8 @@ void [
 {"printWidth":13}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
 
@@ -30,8 +30,8 @@ void [
 {"printWidth":10}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
 
@@ -39,22 +39,22 @@ void [
 {"printWidth":0}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
-void [call() /* slot */, , call()]
+void [call(), /* slot */, call()]
 
 ---------- Options ----------
 {"printWidth":10,"trailingComma":"none"}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call()
 ];
 
@@ -62,8 +62,8 @@ void [
 {"printWidth":10,"trailingComma":"es5"}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
 
@@ -71,8 +71,8 @@ void [
 {"printWidth":10,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
 void [
-	call() /* slot */,
-	,
+	call(),
+	/* slot */,
 	call(),
 ];
 
@@ -80,7 +80,7 @@ void [
 {"endOfLine":"crlf","printWidth":10}
 ---------- Output ----------
 void [
-  call() /* slot */,
-  ,
+  call(),
+  /* slot */,
   call(),
 ];
