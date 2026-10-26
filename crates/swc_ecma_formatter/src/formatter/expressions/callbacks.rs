@@ -10,7 +10,7 @@ use swc_next_ecma_ast::{
 
 use super::arguments::{
     ArgumentGroup, ArgumentHead, CallArgumentFrame, CallFrameRole, ChainArgumentFacts,
-    DelimitedClose, SourceArguments,
+    SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
@@ -1098,7 +1098,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && !normal.has_intrinsic_lines();
             }
             let (suffix, boundary) = writer.record_with_value(|writer| {
-                self.finish_delimited_item_with_closing(item, tail, DelimitedClose::Source, writer)
+                self.finish_delimited_item_with_closing(item, tail, head.closing, writer)
             })?;
             previous = Some(boundary);
             recorded.push(RecordedArgument {
@@ -1110,7 +1110,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (closing, ()) = writer.record_with_value(|writer| {
             let end = previous.map_or(content.start, |boundary| boundary.end);
             let end = self.format_argument_dangling(Span::new(end, content.end), writer)?;
-            self.line_constraint(end, content.end).write(
+            head.closing.constraint(self, end, content.end).write(
                 writer,
                 FlatSeparator::Empty,
                 Writer::soft_line,
