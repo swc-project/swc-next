@@ -19,7 +19,8 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
-    SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout,
+    ResolvedTypeSuppressionRun, SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext,
+    TypeLayout,
 };
 use crate::{
     FormatError,
@@ -635,7 +636,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let after_head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
-                let selection = self.prepare_type_suppression_run(
+                let ResolvedTypeSuppressionRun {
+                    selection,
+                    preceding_prefix,
+                } = self.resolve_type_suppression_run(
                     &attachment,
                     after_head,
                     run,
@@ -657,8 +661,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     preceding_packet = Some(packet);
                     continue;
                 }
-                source = true;
                 selection.retain_source_head(right, self.ast);
+                if let (Some(owner), Some(prefix)) = (packet_owner, preceding_prefix)
+                    && let Some(packet) = self.prepare_preceding_type_prefix(
+                        comments,
+                        run,
+                        owner,
+                        right,
+                        prefix,
+                        operator_span,
+                    )
+                {
+                    left_mode = ContentMode::Verbatim;
+                    preceding_packet = Some(packet);
+                    continue;
+                }
+                source = true;
                 if selected.preceding() {
                     left_mode = ContentMode::Verbatim;
                 }
