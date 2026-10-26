@@ -194,7 +194,7 @@ pub(in crate::formatter) enum ElisionLayout {
 struct PreparedElision {
     comma: u32,
     separator: u32,
-    trailing: usize,
+    before_separator: usize,
 }
 
 impl PreparedElision {
@@ -740,7 +740,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             );
             return Ok(ItemBoundary {
-                end: content_end,
+                end: elision.as_ref().map_or(content_end, |elision| {
+                    content_end.max(elision.separator + 1)
+                }),
                 separator,
                 following_mode,
                 terminal_close,
@@ -748,15 +750,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 transition: None,
             });
         }
-        let (trailing_count, physical_break, inline_line) = if let Some(elision) = &elision {
-            let trailing = &comments[..elision.trailing];
-            (
-                trailing.len(),
-                false,
-                trailing
-                    .last()
-                    .is_some_and(|comment| comment.kind == CommentKind::Line),
-            )
+        let (trailing_count, physical_break, inline_line) = if elision.is_some() {
+            // The actual separator, not an AST trailing attachment, divides
+            // this packet. Its before side must be printed before punctuation.
+            (0, false, false)
         } else if ordinary_attachment {
             let before_separator = comma.map_or(comments.len(), |comma| {
                 comments.partition_point(|comment| comment.span.end <= comma)
@@ -811,11 +808,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let prepared_run = optimizer_run.map(|run| (&comments[..0], run)).or_else(|| {
             if prepare_run {
                 self.prepare_delimited_trailing_run(
-                    if elision.is_some() {
-                        &comments[..trailing_count]
-                    } else {
-                        comments
-                    },
+                    comments,
                     content_end,
                     trailing_limit,
                     following_span.is_some(),
@@ -827,15 +820,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         });
         let canonical_run = prepared_run.is_some();
-        let boundary_count = match prepared_run.as_ref() {
-            Some((blocks, run)) => {
+        let boundary_count = match (elision.as_ref(), prepared_run.as_ref()) {
+            (Some(elision), _) => elision.before_separator,
+            (None, Some((blocks, run))) => {
                 debug_assert!(
                     blocks.len() + run.len() >= trailing_count,
                     "a canonical trailing run must include the complete legacy inline prefix",
                 );
                 blocks.len() + run.len()
             }
-            None => comma
+            (None, None) => comma
                 .filter(|_| preserve_comma)
                 .map_or(trailing_count, |comma| {
                     comments
@@ -872,7 +866,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut end = boundary_end;
         if required_comma
             && let Some(comma) = comma
-            && (preserve_comma || separator_coverage_released)
+            && (preserve_comma || separator_coverage_released || elision.is_some())
             && comments
                 .get(boundary_count)
                 .is_none_or(|comment| comment.span.start >= comma)
@@ -915,10 +909,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             array_comments.as_deref_mut(),
             writer,
         )?;
-        if !before_comma.is_empty() {
+        if let Some(first) = before_comma.first() {
+            let layout = if elision.is_some() {
+                self.comment_gap(trailing_end, first.span.start, writer);
+                // A pending Line suffix would flush after the comma. This
+                // complete source-side packet must finish before it instead.
+                CommentRunLayout::Source
+            } else {
+                CommentRunLayout::SourceAfter(trailing_end)
+            };
             self.format_comment_run_with_array_comments(
                 before_comma,
-                CommentRunLayout::SourceAfter(trailing_end),
+                layout,
                 array_comments.as_deref_mut(),
                 writer,
             )?;
@@ -1010,10 +1012,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         separator: u32,
     ) -> Option<PreparedElision> {
-        let after_separator = comments.partition_point(|comment| comment.span.end <= separator);
+        let before_separator = comments.partition_point(|comment| comment.span.end <= separator);
         let comma = self.find_comma(
             Span::new(separator + 1, gap.end),
-            &comments[after_separator..],
+            &comments[before_separator..],
         )?;
         let before_hole = comments.partition_point(|comment| comment.span.end <= comma);
         let packet = &comments[..before_hole];
@@ -1023,31 +1025,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        // A hole is not an AST comment owner. An inline source run trails the
-        // real element even when its comma anchors a new physical line.
-        let mut trailing = 0;
-        for comment in packet {
-            if self.source_line_starts_line(comment.span.start) {
-                break;
-            }
-            trailing += 1;
-            if comment.kind == CommentKind::Line {
-                break;
-            }
-        }
-        // Leading comments before the separator and trailing comments after it
-        // can have interleaved owners. Keep their physical comma as the boundary.
-        if trailing < after_separator && after_separator < before_hole
-            || packet
-                .get(trailing.max(after_separator))
-                .is_some_and(|comment| !self.source_line_starts_line(comment.span.start))
-        {
-            return None;
-        }
+        // Both commas are source syntax. The real item consumes only its
+        // before-separator packet; the hole owns the packet after that comma.
         Some(PreparedElision {
             comma,
             separator,
-            trailing,
+            before_separator,
         })
     }
 
@@ -1099,6 +1082,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 comments = &comments[count..];
                 match (leading.first(), has_slot) {
                     (Some(first), _) => {
+                        let ordinary = !constrained
+                            && leading
+                                .iter()
+                                .all(|&comment| self.comment_semantics(comment).is_ordinary());
                         if has_slot {
                             let start = relocated
                                 .map(|(_, separator)| separator)
@@ -1106,13 +1093,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                     end <= separator && separator < first.span.start
                                 })
                                 .map_or(end, |separator| separator + 1);
-                            self.comment_gap(start, first.span.start, writer);
+                            let entry_gap = self.comment_gap_constraint(start, first.span.start);
+                            if ordinary && matches!(entry_gap, LineConstraint::SameLine) {
+                                // A movable horizontal gap belongs to the hole's slot layout.
+                                layout.separator(separator, LineConstraint::Unconstrained, writer);
+                            } else {
+                                entry_gap.write(writer, FlatSeparator::Space, |_| {});
+                            }
                         }
-                        if !constrained
-                            && leading
-                                .iter()
-                                .all(|&comment| self.comment_semantics(comment).is_ordinary())
-                        {
+                        if ordinary {
                             self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                             let last = leading.last().expect("a nonempty elision comment packet");
                             if let Some((_, source_separator)) = relocated
