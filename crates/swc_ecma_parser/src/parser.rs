@@ -435,6 +435,13 @@ struct ParseExpressionOpts {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ArrowHeadResult {
+    parameters: FormalParameters,
+    type_parameters: Option<TsTypeParameterDeclaration>,
+    return_type: Option<TsTypeAnnotation>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct ArrowBodyResult {
     body: ArrowFunctionBody,
     is_expression: bool,
@@ -6524,7 +6531,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.checkpoint();
         let result = (|| {
             self.advance()?;
-            if self.parse_binding_pattern().is_none() {
+            if self.parse_binding_pattern().is_none()
+                || self.diagnostics.len() != checkpoint.diagnostics_len
+            {
                 return Some(false);
             }
             Some(match self.current_token.tag() {
@@ -8571,12 +8580,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.report_if_escaped_keyword(token);
             let ambiguous_script_different_ast =
                 can_classify_as_module && self.is_ambiguous_await_prefix();
+            let diagnostics_len = self.diagnostics.len();
             let expression = self.parse_await_expression(token.start())?;
-            if ambiguous_script_different_ast {
-                self.state
-                    .insert(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST);
-            } else if can_classify_as_module {
-                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
+            if can_classify_as_module {
+                // A recovered operand cannot establish that `await` is a keyword.
+                let state = if ambiguous_script_different_ast
+                    || self.diagnostics.len() != diagnostics_len
+                {
+                    ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST
+                } else {
+                    ParserState::HAS_MODULE_SYNTAX
+                };
+                self.state.insert(state);
             }
             return Some(expression);
         }
@@ -9059,7 +9074,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.lang.is_typescript() && CAN_BE_ARROW {
             match self.classify_arrow_head() {
                 ArrowHead::Yes => {
-                    return self.parse_arrow(false, start, true);
+                    return self.parse_arrow(false, start);
                 }
                 ArrowHead::Maybe => {
                     if let Some(arrow) = self.try_parse_arrow(false, start)? {
@@ -9419,7 +9434,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<Expr> {
         if self.lang.is_typescript() && minimum <= Precedence::Assignment {
             let arrow = match self.classify_arrow_head() {
-                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start, true)?),
+                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start)?),
                 ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
                 ArrowHead::No => None,
             };
@@ -9451,7 +9466,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if escaped_async {
                     self.report_escaped_keyword(async_span);
                 }
-                return self.parse_arrow(true, async_span.start, true);
+                return self.parse_arrow(true, async_span.start);
             }
             if escaped_async {
                 self.report_escaped_keyword(async_span);
@@ -9577,27 +9592,32 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let checkpoint = self.checkpoint();
-        let arrow = match self.parse_arrow(is_async, start, false) {
-            Some(arrow) => arrow,
-            None => {
-                self.rewind(checkpoint);
-                self.reject_ts_speculation(position);
-                return Some(None);
+        let arrow = (|| {
+            let head = self.parse_arrow_head(is_async, false)?;
+            let ambiguous_return_type =
+                !self.ts_context.allow_arrow_return_type() && head.return_type.is_some();
+            // Only the head resolves the ambiguity with a conditional consequent.
+            // Body diagnostics still belong to the selected arrow's recovery.
+            if ambiguous_return_type && self.diagnostics.len() != checkpoint.diagnostics_len {
+                return None;
             }
-        };
-        let return_type = arrow
-            .as_arrow_function_expression(&self.ast)
-            .expect("arrow speculation produces an arrow function")
-            .return_type(&self.ast);
-        if !self.ts_context.allow_arrow_return_type()
-            && return_type.is_some()
-            && self.current_token.tag() != TokenTag::Colon
-        {
+            let arrow = self.build_arrow_function(
+                start,
+                head.parameters,
+                is_async,
+                head.type_parameters,
+                head.return_type,
+            )?;
+            if ambiguous_return_type && self.current_token.tag() != TokenTag::Colon {
+                return None;
+            }
+            Some(arrow)
+        })();
+        if arrow.is_none() {
             self.rewind(checkpoint);
             self.reject_ts_speculation(position);
-            return Some(None);
         }
-        Some(Some(arrow))
+        Some(arrow)
     }
 
     fn try_parse_generic_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
@@ -9609,7 +9629,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.try_parse_arrow(is_async, start)
     }
 
-    fn parse_arrow(&mut self, is_async: bool, start: u32, need_diagnostics: bool) -> Option<Expr> {
+    fn parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Expr> {
+        let head = self.parse_arrow_head(is_async, true)?;
+        self.build_arrow_function(
+            start,
+            head.parameters,
+            is_async,
+            head.type_parameters,
+            head.return_type,
+        )
+    }
+
+    fn parse_arrow_head(
+        &mut self,
+        is_async: bool,
+        need_diagnostics: bool,
+    ) -> Option<ArrowHeadResult> {
         let context = if is_async {
             // AsyncArrowHead reparses its formals with ~Yield, but the enclosing
             // cover grammar has a separate Early Error when it Contains a
@@ -9629,18 +9664,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_inner(is_async, start, need_diagnostics);
+        let result = self.parse_arrow_head_inner(need_diagnostics);
         self.context = context;
         self.boundary_context = boundary_context;
         result
     }
 
-    fn parse_arrow_inner(
-        &mut self,
-        is_async: bool,
-        start: u32,
-        need_diagnostics: bool,
-    ) -> Option<Expr> {
+    fn parse_arrow_head_inner(&mut self, need_diagnostics: bool) -> Option<ArrowHeadResult> {
         let type_parameters = if is_angle_open(self.current_token.tag()) {
             let close = if need_diagnostics {
                 AngleClose::Peel
@@ -9674,7 +9704,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             return None;
         }
-        self.build_arrow_function(start, params, is_async, type_parameters, return_type)
+        Some(ArrowHeadResult {
+            parameters: params,
+            type_parameters,
+            return_type,
+        })
     }
 
     fn build_arrow_function(
@@ -16096,6 +16130,56 @@ mod tests {
     }
 
     #[test]
+    fn unambiguous_await_recovery() {
+        fn parse(source: &str, options: Options) -> (bool, SourceType, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let ast = &parsed.ast;
+            let nodes = ast
+                .root_program()
+                .body(ast)
+                .iter()
+                .map(|id| {
+                    let statement = ast.get_node_in_sub_range(id);
+                    let node = match statement.as_expression_statement(ast) {
+                        Some(statement) => statement.expression(ast).node_id(),
+                        None => statement.node_id(),
+                    };
+                    ast.node_kind(node)
+                })
+                .collect();
+            (!parsed.diagnostics.is_empty(), ast.source_type(), nodes)
+        }
+
+        let unambiguous = Options {
+            source_type: SourceType::Unambiguous,
+            ..Options::default()
+        };
+        let module = Options {
+            source_type: SourceType::Module,
+            ..unambiguous
+        };
+
+        let (errors, source_type, nodes) = parse("for (await in x);", unambiguous);
+        assert!(!errors);
+        assert_eq!(source_type, SourceType::Script);
+        assert_eq!(nodes, [NodeKind::ForInStatement]);
+
+        let (errors, source_type, _) = parse("for (await in x);", module);
+        assert!(errors);
+        assert_eq!(source_type, SourceType::Module);
+
+        let (errors, source_type, _) = parse("for (await in x); export {};", unambiguous);
+        assert!(errors);
+        assert_eq!(source_type, SourceType::Module);
+
+        let (errors, source_type, nodes) = parse("await enum;", unambiguous);
+        assert!(errors);
+        assert_eq!(source_type, SourceType::Module);
+        assert_eq!(nodes, [NodeKind::AwaitExpression]);
+    }
+
+    #[test]
     fn unambiguous_commonjs() {
         use crate::TokenParserConfig;
 
@@ -16810,6 +16894,87 @@ mod tests {
 
         let diagnostics = parse_js_diagnostics("if (a) function* f() {}");
         assert_eq!(diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn function_type_lookahead() {
+        fn return_type(source: &str) -> NodeKind {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                preserve_parens: false,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let expression = statement
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast);
+            let arrow = expression.as_arrow_function_expression(ast).unwrap();
+            let ty = arrow.return_type(ast).unwrap().type_annotation(ast);
+            ast.node_kind(ty.node_id())
+        }
+
+        let kind = return_type("(a): ([A.B]) => a;");
+        assert_eq!(kind, NodeKind::TsTupleType);
+
+        let kind = return_type("(a): ({ a: A.B }) => a;");
+        assert_eq!(kind, NodeKind::TsTypeLiteral);
+    }
+
+    #[test]
+    fn conditional_arrow_recovery() {
+        fn parse(source: &str) -> (bool, Vec<NodeKind>) {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang: Lang::Ts,
+                preserve_parens: false,
+                ..Options::default()
+            };
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let ast = &parsed.ast;
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let mut expression = statement
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast);
+            let mut consequents = Vec::new();
+            loop {
+                consequents.push(ast.node_kind(expression.node_id()));
+                let Some(conditional) = expression.as_conditional_expression(ast) else {
+                    break;
+                };
+                expression = conditional.consequent(ast);
+            }
+            (!parsed.diagnostics.is_empty(), consequents)
+        }
+
+        use NodeKind::{ArrowFunctionExpression, ConditionalExpression, ObjectExpression};
+
+        let (errors, consequents) = parse("a ? b ? ({m(){}}) : c => d : e;");
+        assert!(!errors);
+        assert_eq!(
+            consequents,
+            [
+                ConditionalExpression,
+                ConditionalExpression,
+                ObjectExpression
+            ]
+        );
+
+        let (errors, consequents) = parse("a ? (x): T => ({m(){}} = x) : e;");
+        assert!(errors);
+        assert_eq!(
+            consequents,
+            [ConditionalExpression, ArrowFunctionExpression]
+        );
+
+        let (errors, consequents) = parse("({m(){}}) => 0;");
+        assert!(errors);
+        assert_eq!(consequents, [ArrowFunctionExpression]);
     }
 
     #[test]
