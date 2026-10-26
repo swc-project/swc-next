@@ -82,13 +82,19 @@ struct MappedBound<'ast> {
     boundary: MappedBoundary<'ast>,
 }
 
-enum MappedSuffix<'ast> {
-    Source {
-        closing: Span,
-        remaining: Span,
-    },
+enum MappedClosing<'ast> {
+    Source(Span),
+    Formatted(MappedToken<'ast>),
+}
+
+struct MappedSuffix<'ast> {
+    closing: MappedClosing<'ast>,
+    remaining: MappedSuffixLayout<'ast>,
+}
+
+enum MappedSuffixLayout<'ast> {
+    Source(Span),
     Formatted {
-        closing: MappedToken<'ast>,
         optional: Option<MappedModifier<'ast>>,
         annotation: Option<(MappedToken<'ast>, CommentBoundary<'ast>)>,
     },
@@ -248,16 +254,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             )?;
                             self.format_expression_tail(tail, writer)?;
                         }
-                        if let MappedSuffix::Formatted { closing, .. } = &suffix {
+                        if let MappedClosing::Formatted(closing) = &suffix.closing {
                             self.format_comment_boundary(&closing.leading, writer)?;
                         }
                         Ok::<_, FormatError>(())
                     })?;
-                    match &suffix {
-                        MappedSuffix::Source { closing, .. } => {
-                            self.format_verbatim(*closing, writer)
-                        }
-                        MappedSuffix::Formatted { closing, .. } => {
+                    match &suffix.closing {
+                        MappedClosing::Source(span) => self.format_verbatim(*span, writer),
+                        MappedClosing::Formatted(closing) => {
                             closing.leading.gap().write(
                                 writer,
                                 FlatSeparator::Empty,
@@ -268,15 +272,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                     }
                 })?;
-                let (value_layout, annotation_after) = match suffix {
-                    MappedSuffix::Source { remaining, .. } => {
+                let (value_layout, annotation_after) = match suffix.remaining {
+                    MappedSuffixLayout::Source(remaining) => {
                         self.format_verbatim(remaining, writer)?;
                         (TypeLayout::OpeningProvided, None)
                     }
-                    MappedSuffix::Formatted {
+                    MappedSuffixLayout::Formatted {
                         optional,
                         annotation,
-                        ..
                     } => {
                         if let Some(optional) = optional {
                             self.format_mapped_modifier(optional, false, writer)?;
@@ -610,9 +613,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .prepare_mapped_tail(Span::new(value.node.span(ast).end, content_end), value);
                 self.finalize_type_head(value, &attachment, comments);
                 return Ok((
-                    MappedSuffix::Source {
-                        closing: Span::new(header_end, closing_span.end),
-                        remaining: Span::new(closing_span.end, end),
+                    MappedSuffix {
+                        closing: self.prepare_mapped_source_closing(header_end, closing_span, span),
+                        remaining: MappedSuffixLayout::Source(Span::new(closing_span.end, end)),
                     },
                     Some(tail),
                 ));
@@ -622,9 +625,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if source {
                 header.source_owner = Some(header.node);
                 return Ok((
-                    MappedSuffix::Source {
-                        closing: Span::new(header_end, closing_span.end),
-                        remaining: Span::new(closing_span.end, end),
+                    MappedSuffix {
+                        closing: self.prepare_mapped_source_closing(header_end, closing_span, span),
+                        remaining: MappedSuffixLayout::Source(Span::new(closing_span.end, end)),
                     },
                     None,
                 ));
@@ -718,13 +721,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.prepare_mapped_tail(Span::new(owned_end, content_end), header)
         };
         Ok((
-            MappedSuffix::Formatted {
-                closing,
-                optional,
-                annotation,
+            MappedSuffix {
+                closing: MappedClosing::Formatted(closing),
+                remaining: MappedSuffixLayout::Formatted {
+                    optional,
+                    annotation,
+                },
             },
             Some(tail),
         ))
+    }
+
+    fn prepare_mapped_source_closing(
+        &self,
+        header_end: u32,
+        closing: Span,
+        suffix: Span,
+    ) -> MappedClosing<'ast> {
+        let gap = Span::new(header_end, closing.start);
+        let comments = self.comments.in_range(gap);
+        if !comments.is_empty()
+            || self.diagnostic_range_is_sensitive(suffix)
+            || self.line_breaks(header_end, closing.start) >= 2
+        {
+            return MappedClosing::Source(Span::new(header_end, closing.end));
+        }
+        // A later source packet does not own an unoccupied closing boundary.
+        MappedClosing::Formatted(MappedToken {
+            span: closing,
+            text: "]",
+            leading: self.prepare_comment_boundary(comments, header_end, closing.start),
+        })
     }
 
     fn prepare_mapped_tail(&self, span: Span, owner: &mut PreparedType) -> MappedTail<'ast> {
