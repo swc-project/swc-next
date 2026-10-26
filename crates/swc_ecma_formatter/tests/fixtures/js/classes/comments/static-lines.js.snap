@@ -9,9 +9,9 @@ class C {static // first
 {}
 ---------- Output ----------
 class C {
-  static // first
-  // second
-  {
+  static {
+    // first
+    // second
     call();
   }
 }
@@ -20,9 +20,9 @@ class C {
 {"printWidth":20}
 ---------- Output ----------
 class C {
-  static // first
-  // second
-  {
+  static {
+    // first
+    // second
     call();
   }
 }
@@ -31,9 +31,9 @@ class C {
 {"semi":false}
 ---------- Output ----------
 class C {
-  static // first
-  // second
-  {
+  static {
+    // first
+    // second
     call()
   }
 }
@@ -42,9 +42,9 @@ class C {
 {"printWidth":20,"semi":false}
 ---------- Output ----------
 class C {
-  static // first
-  // second
-  {
+  static {
+    // first
+    // second
     call()
   }
 }
@@ -53,9 +53,9 @@ class C {
 {"printWidth":20,"tabWidth":2,"useTabs":true}
 ---------- Output ----------
 class C {
-	static // first
-	// second
-	{
+	static {
+		// first
+		// second
 		call();
 	}
 }
@@ -64,9 +64,9 @@ class C {
 {"quoteProps":"preserve","semi":false}
 ---------- Output ----------
 class C {
-  static // first
-  // second
-  {
+  static {
+    // first
+    // second
     call()
   }
 }

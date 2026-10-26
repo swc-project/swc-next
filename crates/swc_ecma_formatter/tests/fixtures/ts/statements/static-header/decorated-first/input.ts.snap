@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { static /* header */ { @decorator(/* inner */ value) class D {} } }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class C {
+  static {
+    /* header */ @decorator(/* inner */ value)
+    class D {}
+  }
+}
