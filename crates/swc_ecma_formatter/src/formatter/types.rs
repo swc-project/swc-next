@@ -183,6 +183,18 @@ pub(super) struct TypeSuppressionRun {
     packet_projection: Option<PrecedingTypePacketProjection>,
 }
 
+/// Original run selection plus a candidate partition; neither claims comments.
+pub(super) struct ResolvedTypeSuppressionRun {
+    pub(super) selection: TypeSuppressionRun,
+    pub(super) preceding_prefix: Option<PrecedingTypePrefix>,
+}
+
+/// A source prefix and suffix have one transition from preceding to following.
+/// Attachment and source-window guards still belong to the operator constructor.
+pub(super) struct PrecedingTypePrefix {
+    end: usize,
+}
+
 #[derive(Clone, Copy)]
 enum PrecedingTypePacketProjection {
     /// Every component precedes and the type prefix keeps its ordinary owner.
@@ -2115,6 +2127,67 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some((PreparedPrecedingTypePacket { comments }, empty_after()))
     }
 
+    /// The original after-operator run can have two independently attached sides.
+    /// Keep its raw owner and final RHS source gap distinct from the real operator.
+    pub(super) fn prepare_preceding_type_prefix(
+        &self,
+        comments: &'ast [Comment],
+        run: &[Comment],
+        owner: Span,
+        right: &PreparedType,
+        prefix: PrecedingTypePrefix,
+        operator: Span,
+    ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
+        let right_span = right.node.span(self.ast);
+        if run.len() != comments.len()
+            || !comments.starts_with(run)
+            || owner.end > operator.start
+            || operator.start >= operator.end
+            || operator.end > right_span.start
+            || comments.first()?.span.start < operator.end
+            || comments.last()?.span.end > right_span.start
+            || right.source_owner.is_some()
+            || right.source_head.is_some()
+            || right.suppressed_projection.is_some()
+            || !self.comments.in_range(right_span).is_empty()
+            || self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
+        {
+            return None;
+        }
+        let (preceding, following) = comments.split_at(prefix.end);
+        let last_preceding = preceding.last()?;
+        let first_following = following.first()?;
+        if self.line_breaks(owner.start, last_preceding.span.end) != 0
+            || self.line_breaks(operator.end, first_following.span.start) != 0
+            || preceding
+                .iter()
+                .any(|comment| comment.kind != CommentKind::Block)
+            || !self
+                .comment_binding(
+                    preceding,
+                    Span::new(owner.start, right_span.end),
+                    Some(owner),
+                )
+                .allows_relocation(Some(owner))
+            || !matches!(
+                self.comment_binding(
+                    following,
+                    Span::new(last_preceding.span.end, right_span.start),
+                    Some(right_span),
+                ),
+                CommentBinding::Unbound
+            )
+        {
+            return None;
+        }
+        Some((
+            PreparedPrecedingTypePacket {
+                comments: preceding,
+            },
+            self.prepare_comment_boundary(following, last_preceding.span.end, right_span.start),
+        ))
+    }
+
     pub(super) fn format_preceding_type_packet(
         &mut self,
         packet: &PreparedPrecedingTypePacket<'ast>,
@@ -2572,22 +2645,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: SuppressionPosition,
         context: TypeSuppressionContext,
     ) -> TypeSuppressionRun {
+        self.resolve_type_suppression_run(attachment, head, comments, position, context)
+            .selection
+    }
+
+    pub(super) fn resolve_type_suppression_run(
+        &self,
+        attachment: &TypeAttachmentHead,
+        head: TypeHeadRetention,
+        comments: &[Comment],
+        position: SuppressionPosition,
+        context: TypeSuppressionContext,
+    ) -> ResolvedTypeSuppressionRun {
         match position {
             SuppressionPosition::OwnLine => {
-                return TypeSuppressionRun {
-                    target: TypeSuppressionTarget::Following,
-                    head,
-                    packet_projection: None,
+                return ResolvedTypeSuppressionRun {
+                    selection: TypeSuppressionRun {
+                        target: TypeSuppressionTarget::Following,
+                        head,
+                        packet_projection: None,
+                    },
+                    preceding_prefix: None,
                 };
             }
             SuppressionPosition::EndOfLine => {
-                return TypeSuppressionRun {
-                    target: TypeSuppressionTarget::Preceding,
-                    head,
-                    packet_projection: attachment
-                        .prefix
-                        .preserves_union_owner
-                        .then_some(PrecedingTypePacketProjection::EndOfLine(context)),
+                return ResolvedTypeSuppressionRun {
+                    selection: TypeSuppressionRun {
+                        target: TypeSuppressionTarget::Preceding,
+                        head,
+                        packet_projection: attachment
+                            .prefix
+                            .preserves_union_owner
+                            .then_some(PrecedingTypePacketProjection::EndOfLine(context)),
+                    },
+                    preceding_prefix: None,
                 };
             }
             SuppressionPosition::Inline => {}
@@ -2596,10 +2687,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut preceding = false;
         let mut following = false;
         let mut all_preceding = true;
-        for &comment in comments.iter().rev() {
+        let mut prefix_end = None;
+        let mut preceding_seen = false;
+        let mut contiguous = true;
+        for (index, &comment) in comments.iter().enumerate().rev() {
             let selected_following =
                 self.advance_type_comment_tie(&mut tie, comment, true, context);
             all_preceding &= !selected_following;
+            if selected_following {
+                contiguous &= !preceding_seen;
+                prefix_end = Some(index);
+            } else {
+                preceding_seen = true;
+            }
             if is_suppression_comment(self.ast, comment) {
                 if selected_following {
                     following = true;
@@ -2614,13 +2714,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (false, true) => TypeSuppressionTarget::Following,
             (false, false) => TypeSuppressionTarget::Neither,
         };
-        TypeSuppressionRun {
-            target,
-            head,
-            packet_projection: (all_preceding
-                && matches!(target, TypeSuppressionTarget::Preceding)
-                && attachment.prefix.preserves_union_owner)
-                .then_some(PrecedingTypePacketProjection::Inline),
+        ResolvedTypeSuppressionRun {
+            selection: TypeSuppressionRun {
+                target,
+                head,
+                packet_projection: (all_preceding
+                    && matches!(target, TypeSuppressionTarget::Preceding)
+                    && attachment.prefix.preserves_union_owner)
+                    .then_some(PrecedingTypePacketProjection::Inline),
+            },
+            preceding_prefix: prefix_end
+                .filter(|&end| {
+                    end != 0
+                        && end < comments.len()
+                        && contiguous
+                        && matches!(target, TypeSuppressionTarget::Preceding)
+                        && attachment.prefix.preserves_union_owner
+                        && attachment.prefix.preserves_horizontal_owner
+                })
+                .map(|end| PrecedingTypePrefix { end }),
         }
     }
 
