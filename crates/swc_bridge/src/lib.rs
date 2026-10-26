@@ -1,6 +1,6 @@
-//! Native strings use Latin-1 for ASCII and SIMD UTF-16 transcoding otherwise.
+//! Native strings use Latin-1 for ASCII and UTF-16 transcoding otherwise.
 //! N-API copies the output into the JavaScript heap before the Rust allocation
-//! is released. Native builds require a C++ toolchain for simdutf.
+//! is released.
 //! WebAssembly retains its existing string path.
 
 extern crate self as swc_next_bridge;

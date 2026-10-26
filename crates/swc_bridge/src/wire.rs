@@ -156,10 +156,8 @@ impl ToNapiValue for NativeString {
         if value.is_empty() {
             return unsafe { String::to_napi_value(env, value) };
         }
-        let utf16_len = simdutf::utf16_length_from_utf8(value.as_bytes());
         let mut result = std::ptr::null_mut();
-        // For valid UTF-8, only ASCII has the same byte and UTF-16 unit counts.
-        if utf16_len == value.len() {
+        if value.is_ascii() {
             // SAFETY: ASCII is valid Latin-1, and N-API copies the bytes before
             // returning while the source string is still alive.
             let status = unsafe {
@@ -173,17 +171,10 @@ impl ToNapiValue for NativeString {
             napi::check_status!(status, "Failed to create Latin-1 string")?;
             return Ok(result);
         }
-        if utf16_len > isize::MAX as usize / size_of::<u16>() {
+        if value.len() > isize::MAX as usize / size_of::<u16>() {
             return Err(napi::Error::from_reason("UTF-16 string is too large"));
         }
-        let mut units = Vec::<u16>::with_capacity(utf16_len);
-        // SAFETY: String is valid UTF-8 and the output has sufficient capacity.
-        // N-API expects native-endian UTF-16 on every target.
-        let written = unsafe {
-            simdutf::convert_valid_utf8_to_utf16(value.as_ptr(), value.len(), units.as_mut_ptr())
-        };
-        debug_assert_eq!(written, utf16_len);
-        unsafe { units.set_len(written) };
+        let units = encode_utf16(&value);
         drop(value);
         // SAFETY: N-API copies the native-endian UTF-16 units before returning,
         // while their allocation is still alive.
@@ -193,6 +184,28 @@ impl ToNapiValue for NativeString {
         napi::check_status!(status, "Failed to create UTF-16 string")?;
         Ok(result)
     }
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn encode_utf16(mut value: &str) -> Vec<u16> {
+    // A valid UTF-8 string needs at most one UTF-16 unit per input byte.
+    let mut units = Vec::with_capacity(value.len());
+    let mut scratch = [0; 64];
+    while let Some(chunk) = value.as_bytes().first_chunk::<64>() {
+        if chunk.is_ascii() {
+            // Widening a fixed array lets LLVM vectorize the ASCII copy.
+            units.extend_from_slice(&chunk.map(u16::from));
+            value = &value[64..];
+        } else {
+            let boundary = value.floor_char_boundary(64);
+            let written = encoding_rs::mem::convert_str_to_utf16(&value[..boundary], &mut scratch);
+            units.extend_from_slice(&scratch[..written]);
+            value = &value[boundary..];
+        }
+    }
+    let written = encoding_rs::mem::convert_str_to_utf16(value, &mut scratch);
+    units.extend_from_slice(&scratch[..written]);
+    units
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -218,5 +231,37 @@ impl NativeAbi for Vec<u8> {
 
     fn into_native(self) -> Self::Abi {
         self.into()
+    }
+}
+
+#[cfg(all(test, not(target_family = "wasm")))]
+mod tests {
+    use super::encode_utf16;
+
+    fn assert_utf16(source: &str) {
+        let result = encode_utf16(source);
+        let expected = source.encode_utf16().collect::<Vec<_>>();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn utf16() {
+        assert_utf16("");
+
+        assert_utf16("ASCII\0text");
+
+        assert_utf16("é中文😀𐐀");
+
+        let source = "a".repeat(256);
+        assert_utf16(&source);
+
+        let source = format!("{}中😀{}", "a".repeat(63), "z".repeat(65));
+        assert_utf16(&source);
+
+        let source = format!("{}😀{}é", "a".repeat(62), "z".repeat(64));
+        assert_utf16(&source);
+
+        let source = "中文😀".repeat(64);
+        assert_utf16(&source);
     }
 }
