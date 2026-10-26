@@ -1,7 +1,7 @@
 parser * babel
 ========================
 Positive Passed: 2275/2278 (99.87%)
-Negative Passed: 1710/1802 (94.89%)
+Negative Passed: 1711/1802 (94.95%)
 Panicked: 0/4080 (0.00%)
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
@@ -77,7 +77,6 @@ Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-nam
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/module-identifier-invalid/input.ts - typescript/module-namespace/module-identifier-invalid: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/scope/redeclaration-in-nested-module/input.ts - typescript/scope/redeclaration-in-nested-module: semantic: Ambient modules cannot be nested in other modules or namespaces at 88..99
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-alias/invalid-within-single-statement-context/input.ts - typescript/type-alias/invalid-within-single-statement-context: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-arguments/instantiation-expression-property-access/input.ts - typescript/type-arguments/instantiation-expression-property-access: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/export-invalid-type-in-type/input.ts - typescript/type-only-import-export-specifiers/export-invalid-type-in-type: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only/input.ts - typescript/type-only-import-export-specifiers/expport-invalid-escaped-type-only: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/type-only-import-export-specifiers/import-invalid-escaped-type-only/input.ts - typescript/type-only-import-export-specifiers/import-invalid-escaped-type-only: expected a parse or early error, but pipeline succeeded

@@ -9,31 +9,34 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser}
 #[track_caller]
 fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &str) {
     let allocator = Allocator::new();
-    let parse_options = ParseOptions {
-        lang,
-        ..ParseOptions::default()
-    };
-    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
-    assert!(original.diagnostics.is_empty());
-
-    for minify in [false, true] {
-        let print_options = PrintOptions {
-            minify,
-            ..PrintOptions::default()
+    for preserve_parens in [false, true] {
+        let parse_options = ParseOptions {
+            lang,
+            preserve_parens,
+            ..ParseOptions::default()
         };
-        let printed = print(&original.ast, print_options.clone());
-        assert_eq!(printed.code, if minify { compact } else { pretty });
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
 
-        let reparsed = Parser::init(
-            &allocator,
-            &printed.code,
-            parse_options,
-            NoTokenParserConfig,
-        )
-        .parse();
-        assert!(reparsed.diagnostics.is_empty());
-        let repeated = print(&reparsed.ast, print_options);
-        assert_eq!(repeated.code, printed.code);
+        for minify in [false, true] {
+            let print_options = PrintOptions {
+                minify,
+                ..PrintOptions::default()
+            };
+            let printed = print(&original.ast, print_options.clone());
+            assert_eq!(printed.code, if minify { compact } else { pretty });
+
+            let reparsed = Parser::init(
+                &allocator,
+                &printed.code,
+                parse_options,
+                NoTokenParserConfig,
+            )
+            .parse();
+            assert!(reparsed.diagnostics.is_empty());
+            let repeated = print(&reparsed.ast, print_options);
+            assert_eq!(repeated.code, printed.code);
+        }
     }
 }
 
@@ -125,6 +128,36 @@ fn test_generic_parameter_contexts() {
         "type F = <T>(x: T) => T;\n",
         "type F=<T>(x:T) => T;",
     );
+}
+
+#[test]
+fn test_generic_postfix() {
+    for lang in [Lang::Ts, Lang::Tsx] {
+        expect_generic_parameters("new f<T>`x`", lang, "new f<T>`x`();\n", "new f<T>`x`;");
+
+        expect_generic_parameters(
+            "new f<T>`x`(y)",
+            lang,
+            "new f<T>`x`(y);\n",
+            "new f<T>`x`(y);",
+        );
+
+        expect_generic_parameters(
+            "new f<T>`x`.y",
+            lang,
+            "new f<T>`x`.y();\n",
+            "new f<T>`x`.y;",
+        );
+
+        expect_generic_parameters(
+            "new f<T>`x`<U>(y)",
+            lang,
+            "new f<T>`x`<U>(y);\n",
+            "new f<T>`x`<U>(y);",
+        );
+
+        expect_generic_parameters("(f?.x)<T>`y`", lang, "(f?.x)<T>`y`;\n", "(f?.x)<T>`y`;");
+    }
 }
 
 #[test]

@@ -73,7 +73,9 @@ fn assertions() {
 
 #[test]
 fn type_arguments() {
-    assert_strip("hello<T>.world<U>;", "hello   .world   ;");
+    assert_strip_error_at("hello<T>.world<U>;", "hello   .world   ;", ".");
+
+    assert_strip("(hello<T>).world<U>;", "(hello   ).world   ;");
 
     assert_strip(
         "const value = (fn<A>)! as B;",
@@ -208,9 +210,9 @@ fn type_expression_chains() {
     );
     assert_eq!(diagnostics, 0);
 
-    let source = format!("x = a{};", "<T>.b".repeat(CHAIN_LENGTH));
+    let source = format!("x = a{};", "<T>?.()".repeat(CHAIN_LENGTH));
     let (code, diagnostics) = strip_with_small_stack(source);
-    assert_eq!(code, format!("x = a{};", "   .b".repeat(CHAIN_LENGTH)));
+    assert_eq!(code, format!("x = a{};", "   ?.()".repeat(CHAIN_LENGTH)));
     assert_eq!(diagnostics, 0);
 
     let source = format!("x = a{};", "<T>(b!)[c as C]?.d!".repeat(CHAIN_LENGTH));

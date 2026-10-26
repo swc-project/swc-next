@@ -735,8 +735,24 @@ impl Default for ParameterPropertyModifiers {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum LhsContext {
-    ExtendsClause,
+    Expression,
+    NewCallee,
     Decorator,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PostfixExpression {
+    expression: Expr,
+    type_arguments: Option<TsTypeParameterInstantiation>,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum PostfixStep {
+    Continue(Expr),
+    Finish {
+        expression: Expr,
+        type_arguments: TsTypeParameterInstantiation,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2952,8 +2968,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             };
         let (super_class, super_type_arguments) = if self.eat(TokenTag::Extends)? {
-            let mut super_class =
-                self.parse_left_hand_side_expression(LhsContext::ExtendsClause)?;
+            let mut super_class = self.parse_left_hand_side_expression(LhsContext::Expression)?;
             let type_arguments = if self.lang.is_typescript() {
                 if let ExprData::TsInstantiationExpression(instantiation) =
                     self.ast.expr_data(super_class)
@@ -3689,43 +3704,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_left_hand_side_expression(&mut self, context: LhsContext) -> Option<Expr> {
-        let mut expression = match self.current_token.tag() {
+        let expression = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
-
-        loop {
-            expression = match self.current_token.tag() {
-                TokenTag::Dot => self.parse_static_member_expression(expression, false)?,
-                TokenTag::LeftBracket if context == LhsContext::ExtendsClause => {
-                    self.parse_computed_member_expression(expression, false)?
-                }
-                TokenTag::LeftParen => self.parse_call_expression(expression, false, None)?,
-                TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                    self.parse_tagged_template_expression(expression, None)?
-                }
-                TokenTag::OptionalChaining => self.parse_optional_chain(expression)?,
-                TokenTag::LogicalNot
-                    if self.lang.is_typescript()
-                        && !self.current_token.has_line_terminator_before() =>
-                {
-                    self.parse_non_null_expression(expression)?
-                }
-                TokenTag::LessThan | TokenTag::LeftShift if self.lang.is_typescript() => {
-                    let Some(next) =
-                        self.parse_type_argumented_call_or_instantiation(expression)?
-                    else {
-                        break;
-                    };
-                    next
-                }
-                _ => break,
-            };
-        }
-
-        Some(expression)
+        let expression = self.parse_postfix_expression(expression, context)?;
+        Some(expression.expression)
     }
 
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
@@ -8473,16 +8459,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     #[inline(always)]
     fn parse_expr_from_left(&mut self, mut left: Expr, minimum: Precedence) -> Option<Expr> {
         let is_ts = self.lang.is_typescript();
+        let tag = self.current_token.tag();
+        if (tag.precedence() >= Precedence::Call
+            || is_ts && (is_angle_open(tag) || tag == TokenTag::LogicalNot))
+            && max_left_precedence(left, &self.ast) >= Precedence::Call
+        {
+            left = self
+                .parse_postfix_expression(left, LhsContext::Expression)?
+                .expression;
+        }
+
         loop {
             let token = self.current_token;
-            if is_ts
-                && is_angle_open(token.tag())
-                && max_left_precedence(left, &self.ast) >= Precedence::Call
-                && let Some(expression) = self.parse_type_argumented_call_or_instantiation(left)?
-            {
-                left = expression;
-                continue;
-            }
             let precedence = Self::infix_precedence(token, is_ts);
             if precedence < minimum || precedence == Precedence::Lowest {
                 break;
@@ -8546,7 +8534,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LogicalNot
                 if self.lang.is_typescript() && !token.has_line_terminator_before() =>
             {
-                return self.parse_non_null_expression(left);
+                return Some(
+                    self.parse_postfix_expression(left, LhsContext::Expression)?
+                        .expression,
+                );
             }
             _ => {}
         }
@@ -8561,13 +8552,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             TokenTag::Question => self.parse_conditional_expression(left),
             TokenTag::Comma => self.parse_sequence_expression(precedence, left),
-            TokenTag::Dot => self.parse_static_member_expression(left, false),
-            TokenTag::LeftBracket => self.parse_computed_member_expression(left, false),
-            TokenTag::LeftParen => self.parse_call_expression(left, false, None),
-            TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                self.parse_tagged_template_expression(left, None)
-            }
-            TokenTag::OptionalChaining => self.parse_optional_chain(left),
             _ => {
                 let found = self.describe_token(token);
                 self.report(
@@ -9051,7 +9035,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         tag: Expr,
         type_arguments: Option<TsTypeParameterInstantiation>,
+        in_optional_chain: bool,
     ) -> Option<Expr> {
+        if in_optional_chain {
+            self.report(
+                self.current_token.span(),
+                "Tagged template expressions are not permitted in an optional chain",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Parenthesize the optional chain before the template literal.",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+        }
         let start = tag.span(&self.ast).start;
         let quasi = if self.current_token.tag() == TokenTag::NoSubstitutionTemplate {
             self.parse_no_substitution_template(true)?
@@ -11372,19 +11369,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn parse_optional_chain(&mut self, left: Expr) -> Option<Expr> {
-        let start = left.span(&self.ast).start;
-        self.advance()?;
-        let mut expression = self.parse_optional_chain_element(left, true)?;
-        loop {
+    // Ordinary suffixes only carry the expression and optional-chain state.
+    // Type arguments are resolved separately when their opening token is found.
+    fn parse_postfix_expression(
+        &mut self,
+        mut expression: Expr,
+        context: LhsContext,
+    ) -> Option<PostfixExpression> {
+        let mut in_optional_chain = false;
+        let type_arguments = loop {
             expression = match self.current_token.tag() {
                 TokenTag::Dot => self.parse_static_member_expression(expression, false)?,
-                TokenTag::LeftBracket => {
+                TokenTag::LeftBracket if context != LhsContext::Decorator || in_optional_chain => {
                     self.parse_computed_member_expression(expression, false)?
                 }
-                TokenTag::LeftParen => self.parse_call_expression(expression, false, None)?,
+                TokenTag::LeftParen if context != LhsContext::NewCallee => {
+                    self.parse_call_expression(expression, false, None)?
+                }
+                TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
+                    self.parse_tagged_template_expression(expression, None, in_optional_chain)?
+                }
                 TokenTag::OptionalChaining => {
+                    self.check_new_optional_chain(context);
                     self.advance()?;
+                    in_optional_chain = true;
                     self.parse_optional_chain_element(expression, true)?
                 }
                 TokenTag::LogicalNot
@@ -11394,34 +11402,146 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.parse_non_null_expression(expression)?
                 }
                 TokenTag::LessThan | TokenTag::LeftShift if self.lang.is_typescript() => {
-                    let Some(next) =
-                        self.parse_type_argumented_call_or_instantiation(expression)?
+                    let Some(type_arguments) = self.try_parse_type_arguments_in_expression()?
                     else {
-                        break;
+                        break None;
                     };
-                    next
+                    match self.parse_type_argumented_postfix(
+                        expression,
+                        type_arguments,
+                        context,
+                        &mut in_optional_chain,
+                    )? {
+                        PostfixStep::Continue(expression) => expression,
+                        PostfixStep::Finish {
+                            expression: parsed,
+                            type_arguments,
+                        } => {
+                            expression = parsed;
+                            if context == LhsContext::NewCallee {
+                                break Some(type_arguments);
+                            }
+                            expression =
+                                self.build_instantiation_expression(expression, type_arguments);
+                            break None;
+                        }
+                    }
                 }
-                TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                    self.report(
-                        self.current_token.span(),
-                        "Tagged template expressions are not permitted in an optional chain",
-                        ReportOptions {
-                            help: Some(Cow::Borrowed(
-                                "Remove the optional chaining operator '?.' before the template literal or add parentheses.",
-                            )),
-                            ..ReportOptions::default()
-                        },
-                    );
-                    break;
-                }
-                _ => break,
+                _ => break None,
             };
+        };
+        if in_optional_chain {
+            expression = self
+                .ast
+                .expr_chain_expression(expression.span(&self.ast), expression);
         }
-        Some(
-            self.ast.expr_chain_expression(
-                Span::new(start, expression.span(&self.ast).end),
-                expression,
+        Some(PostfixExpression {
+            expression,
+            type_arguments,
+        })
+    }
+
+    // A call or template owns the arguments immediately. A terminating suffix
+    // returns them to the enclosing context; other suffixes need a bare
+    // instantiation node before ordinary postfix parsing can continue.
+    fn parse_type_argumented_postfix(
+        &mut self,
+        mut expression: Expr,
+        mut type_arguments: TsTypeParameterInstantiation,
+        context: LhsContext,
+        in_optional_chain: &mut bool,
+    ) -> Option<PostfixStep> {
+        loop {
+            let tag = self.current_token.tag();
+            let expression = match tag {
+                TokenTag::LeftParen if context != LhsContext::NewCallee => {
+                    self.parse_call_expression(expression, false, Some(type_arguments))?
+                }
+                TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => self
+                    .parse_tagged_template_expression(
+                        expression,
+                        Some(type_arguments),
+                        *in_optional_chain,
+                    )?,
+                TokenTag::OptionalChaining => {
+                    self.check_new_optional_chain(context);
+                    self.advance()?;
+                    let tag = self.current_token.tag();
+                    if tag.is_identifier_like() || tag == TokenTag::PrivateIdentifier {
+                        self.report_instantiation_property_access();
+                    }
+                    let object = self.build_instantiation_expression(expression, type_arguments);
+                    *in_optional_chain = true;
+                    self.parse_optional_chain_element(object, true)?
+                }
+                TokenTag::LessThan | TokenTag::LeftShift => {
+                    if let Some(next) = self.try_parse_type_arguments_in_expression()? {
+                        expression =
+                            self.build_instantiation_expression(expression, type_arguments);
+                        type_arguments = next;
+                        continue;
+                    }
+                    return Some(PostfixStep::Finish {
+                        expression,
+                        type_arguments,
+                    });
+                }
+                TokenTag::Dot => {
+                    self.report_instantiation_property_access();
+                    self.build_instantiation_expression(expression, type_arguments)
+                }
+                TokenTag::LeftBracket if context != LhsContext::Decorator || *in_optional_chain => {
+                    self.build_instantiation_expression(expression, type_arguments)
+                }
+                TokenTag::LogicalNot if !self.current_token.has_line_terminator_before() => {
+                    self.build_instantiation_expression(expression, type_arguments)
+                }
+                _ => {
+                    return Some(PostfixStep::Finish {
+                        expression,
+                        type_arguments,
+                    });
+                }
+            };
+            return Some(PostfixStep::Continue(expression));
+        }
+    }
+
+    fn check_new_optional_chain(&mut self, context: LhsContext) {
+        if context == LhsContext::NewCallee {
+            self.report(
+                self.current_token.span(),
+                "Optional chaining is not allowed in new expression",
+                ReportOptions::default(),
+            );
+        }
+    }
+
+    fn report_instantiation_property_access(&mut self) {
+        self.report(
+            self.current_token.span(),
+            "An instantiation expression cannot be followed by property access",
+            ReportOptions {
+                help: Some(Cow::Borrowed(
+                    "Parenthesize the instantiation expression before accessing a property.",
+                )),
+                ..ReportOptions::default()
+            },
+        );
+    }
+
+    fn build_instantiation_expression(
+        &mut self,
+        expression: Expr,
+        type_arguments: TsTypeParameterInstantiation,
+    ) -> Expr {
+        self.ast.expr_ts_instantiation_expression(
+            Span::new(
+                expression.span(&self.ast).start,
+                type_arguments.span(&self.ast).end,
             ),
+            expression,
+            type_arguments,
         )
     }
 
@@ -11434,10 +11554,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.lang.is_typescript() && is_angle_open(tag) {
             let checkpoint = self.checkpoint();
             let type_arguments = self.try_parse_type_arguments_in_expression()?;
-            if let Some(type_arguments) = type_arguments
-                && self.current_token.tag() == TokenTag::LeftParen
-            {
-                return self.parse_call_expression(object, optional, Some(type_arguments));
+            if let Some(type_arguments) = type_arguments {
+                match self.current_token.tag() {
+                    TokenTag::LeftParen => {
+                        return self.parse_call_expression(object, optional, Some(type_arguments));
+                    }
+                    TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
+                        return self.parse_tagged_template_expression(
+                            object,
+                            Some(type_arguments),
+                            true,
+                        );
+                    }
+                    _ => {}
+                }
             }
             self.rewind(checkpoint);
             self.lexer.rewrite_last_collected_token(self.current_token);
@@ -11447,17 +11577,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftBracket => self.parse_computed_member_expression(object, optional),
             TokenTag::LeftParen => self.parse_call_expression(object, optional, None),
             TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                self.report(
-                    self.current_token.span(),
-                    "Tagged template expressions are not permitted in an optional chain",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Remove the optional chaining operator '?.' before the template literal.",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
-                None
+                self.parse_tagged_template_expression(object, None, true)
             }
             _ => {
                 self.report_expected(
@@ -11533,38 +11653,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_new_target(meta);
         }
         let callee_starts_with_import = self.current_token.tag() == TokenTag::Import;
-        let mut callee = match self.current_token.tag() {
+        let callee = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
-        loop {
-            callee = match self.current_token.tag() {
-                TokenTag::Dot => self.parse_static_member_expression(callee, false)?,
-                TokenTag::LeftBracket => self.parse_computed_member_expression(callee, false)?,
-                TokenTag::LogicalNot
-                    if self.lang.is_typescript()
-                        && !self.current_token.has_line_terminator_before() =>
-                {
-                    self.parse_non_null_expression(callee)?
-                }
-                TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                    self.parse_tagged_template_expression(callee, None)?
-                }
-                TokenTag::OptionalChaining => {
-                    return {
-                        let span = self.current_token.span();
-                        self.report(
-                            span,
-                            "Optional chaining is not allowed in new expression",
-                            ReportOptions::default(),
-                        );
-                        None
-                    };
-                }
-                _ => break,
-            };
-        }
+        let PostfixExpression {
+            expression: callee,
+            type_arguments,
+        } = self.parse_postfix_expression(callee, LhsContext::NewCallee)?;
         if self.ast.node_kind(callee.node_id()) == NodeKind::Super {
             self.report(
                 callee.span(&self.ast),
@@ -11591,11 +11688,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 },
             );
         }
-        let type_arguments = if self.lang.is_typescript() {
-            self.try_parse_type_arguments_in_expression()?
-        } else {
-            None
-        };
         let arguments = if self.current_token.tag() == TokenTag::LeftParen {
             let open_paren_span = self.current_token.span();
             self.advance()?;
@@ -12518,32 +12610,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             _ => false,
         }
-    }
-
-    fn parse_type_argumented_call_or_instantiation(
-        &mut self,
-        callee: Expr,
-    ) -> Option<Option<Expr>> {
-        let Some(type_arguments) = self.try_parse_type_arguments_in_expression()? else {
-            return Some(None);
-        };
-        let expression = match self.current_token.tag() {
-            TokenTag::LeftParen => {
-                self.parse_call_expression(callee, false, Some(type_arguments))?
-            }
-            TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => {
-                self.parse_tagged_template_expression(callee, Some(type_arguments))?
-            }
-            _ => self.ast.expr_ts_instantiation_expression(
-                Span::new(
-                    callee.span(&self.ast).start,
-                    type_arguments.span(&self.ast).end,
-                ),
-                callee,
-                type_arguments,
-            ),
-        };
-        Some(Some(expression))
     }
 
     fn try_parse_type_arguments_in_expression(
@@ -16050,6 +16116,109 @@ mod tests {
         assert!(function.generator(&ast));
         assert_eq!(function.span(&ast), Span::new(4, 23));
         assert_eq!(expression.arguments(&ast).len(), 1);
+    }
+
+    #[test]
+    fn generic_postfix() {
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            options: Options,
+        ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
+            Parser::init(allocator, source, options, NoTokenParserConfig)
+                .parse_expression_fragment(FragmentContext::TopLevel)
+        }
+
+        let allocator = Allocator::new();
+        let ts_options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let tsx_options = Options {
+            lang: Lang::Tsx,
+            ..ts_options
+        };
+        for options in [ts_options, tsx_options] {
+            for preserve_parens in [false, true] {
+                let options = Options {
+                    preserve_parens,
+                    ..options
+                };
+
+                let ast = parse(&allocator, "new f<T>`x`", options).unwrap();
+                let new = ast.root_expression().as_new_expression(&ast).unwrap();
+                let tag = new
+                    .callee(&ast)
+                    .as_tagged_template_expression(&ast)
+                    .unwrap();
+                assert!(new.type_arguments(&ast).is_none());
+                assert!(new.arguments(&ast).is_empty());
+                assert!(tag.tag(&ast).is_identifier_reference(&ast));
+                assert!(tag.type_arguments(&ast).is_some());
+
+                let ast = parse(&allocator, "new f<T>`x`(y)", options).unwrap();
+                let new = ast.root_expression().as_new_expression(&ast).unwrap();
+                assert!(new.callee(&ast).is_tagged_template_expression(&ast));
+                assert_eq!(new.arguments(&ast).len(), 1);
+
+                let ast = parse(&allocator, "new f<T>`x`.y", options).unwrap();
+                let new = ast.root_expression().as_new_expression(&ast).unwrap();
+                let member = new.callee(&ast).as_member_expression(&ast).unwrap();
+                assert!(member.object(&ast).is_tagged_template_expression(&ast));
+
+                let ast = parse(&allocator, "new f<T>`x`<U>(y)", options).unwrap();
+                let new = ast.root_expression().as_new_expression(&ast).unwrap();
+                let tag = new
+                    .callee(&ast)
+                    .as_tagged_template_expression(&ast)
+                    .unwrap();
+                assert!(new.type_arguments(&ast).is_some());
+                assert!(tag.type_arguments(&ast).is_some());
+                assert_eq!(new.arguments(&ast).len(), 1);
+
+                let ast = parse(&allocator, "new f<T>[0]", options).unwrap();
+                let comparison = ast.root_expression().as_binary_expression(&ast).unwrap();
+                let comparison = comparison.left(&ast).as_binary_expression(&ast).unwrap();
+                assert!(comparison.left(&ast).is_new_expression(&ast));
+
+                let parsed = parse(&allocator, "new f<T>?.x", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "new f<T>?.()", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "new f<T>?.[x]", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "new f<T>.x", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "new f<T>()?.x", options);
+                assert!(parsed.is_ok());
+
+                let parsed = parse(&allocator, "new (f<T>).x()", options);
+                assert!(parsed.is_ok());
+
+                let parsed = parse(&allocator, "f?.x<T>`y`", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "f?.()<T>`y`", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "f?.x!<T>`y`", options);
+                assert!(parsed.is_err());
+
+                let parsed = parse(&allocator, "(f?.x)<T>`y`", options);
+                assert!(parsed.is_ok());
+
+                let ast = parse(&allocator, "f<T>?.()", options).unwrap();
+                let chain = ast.root_expression().as_chain_expression(&ast).unwrap();
+                let call = chain.expression(&ast).as_call_expression(&ast).unwrap();
+                assert!(call.optional(&ast));
+                assert!(call.type_arguments(&ast).is_none());
+                assert!(call.callee(&ast).is_ts_instantiation_expression(&ast));
+            }
+        }
     }
 
     #[test]

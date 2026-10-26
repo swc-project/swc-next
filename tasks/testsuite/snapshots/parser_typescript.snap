@@ -1,7 +1,7 @@
 parser * typescript
 ========================
 Positive Passed: 13601/13728 (99.07%)
-Negative Passed: 1716/3207 (53.51%)
+Negative Passed: 1719/3207 (53.60%)
 Panicked: 0/16935 (0.00%)
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/ClassDeclaration10.ts - ClassDeclaration10.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/ClassDeclaration11.ts - ClassDeclaration11.ts: expected a parse or early error, but pipeline succeeded
@@ -570,7 +570,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/omittedExpressionF
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/operationsAvailableOnPromisedType.ts - operationsAvailableOnPromisedType.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/operatorAddNullUndefined.ts - operatorAddNullUndefined.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/optionalArgsWithDefaultValues.ts - optionalArgsWithDefaultValues.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/optionalChainWithInstantiationExpression1.ts - optionalChainWithInstantiationExpression1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/optionalParamArgsTest.ts - optionalParamArgsTest.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/optionalParamReferencingOtherParams3.ts - optionalParamReferencingOtherParams3.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/compiler/optionalSetterParam.ts - optionalSetterParam.ts: expected a parse or early error, but pipeline succeeded
@@ -1392,8 +1391,6 @@ Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascri
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration4.ts - parserFunctionDeclaration4.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration6.ts - parserFunctionDeclaration6.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/FunctionDeclarations/parserFunctionDeclaration7.ts - parserFunctionDeclaration7.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/Generics/parserMemberAccessExpression1.ts - parserMemberAccessExpression1.ts: expected a parse or early error, but pipeline succeeded
-Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/Generics/parserMemberAccessOffOfGenericType1.ts - parserMemberAccessOffOfGenericType1.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration5.ts - parserIndexMemberDeclaration5.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration7.ts - parserIndexMemberDeclaration7.ts: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/typescript/tsc/testdata/tests/cases/conformance/parser/ecmascript5/IndexMemberDeclarations/parserIndexMemberDeclaration8.ts - parserIndexMemberDeclaration8.ts: expected a parse or early error, but pipeline succeeded
