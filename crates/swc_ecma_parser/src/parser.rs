@@ -6815,7 +6815,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Question);
         let token = self.current_token;
         self.advance()?;
-        if !is_start_of_type(self.current_token.tag()) {
+        if !can_parse_type_for_recovery(self.current_token.tag()) {
             return Some(TsType::TsJsDocUnknownType(
                 self.ast.ts_js_doc_unknown_type(token.span()),
             ));
@@ -13952,6 +13952,13 @@ mod tests {
             lang: Lang::Ts,
             ..Options::default()
         };
+        let parse_type = |source| {
+            let mut parser = Parser::init(&allocator, source, options, NoTokenParserConfig);
+            parser.advance().unwrap();
+            let ty = parser.parse_type().unwrap();
+            let kind = parser.ast.node_kind(ty.node_id());
+            (kind, parser.current_token.tag())
+        };
 
         let (ast, errors) = parse("type T = A<if>; after;");
         assert!(errors);
@@ -14048,6 +14055,10 @@ mod tests {
         assert!(!has_errors("type T = A<function>;", options));
 
         assert!(!has_errors("type T = for;", options));
+
+        let (kind, next) = parse_type("?for");
+        assert_eq!(kind, NodeKind::TsJsDocNullableType);
+        assert_eq!(next, TokenTag::Eof);
     }
 
     #[test]
