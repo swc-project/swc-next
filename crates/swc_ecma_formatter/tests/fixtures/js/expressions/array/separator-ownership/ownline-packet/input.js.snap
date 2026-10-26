@@ -10,7 +10,8 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 ---------- Output ----------
 [
   first
-  /* before */, /* after */ // line
+  /* before */,
+  /* after */ // line
   ,
   last,
 ];

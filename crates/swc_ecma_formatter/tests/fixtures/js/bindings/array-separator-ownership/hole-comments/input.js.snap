@@ -6,13 +6,13 @@ const [first, /* slot */, last] = value;
 ---------- Options ----------
 {}
 ---------- Output ----------
-const [first /* slot */, , last] = value;
+const [first, /* slot */, last] = value;
 
 ---------- Options ----------
 {"printWidth":18}
 ---------- Output ----------
 const [
-  first /* slot */,
-  ,
+  first,
+  /* slot */,
   last,
 ] = value;
