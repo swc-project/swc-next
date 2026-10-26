@@ -6,6 +6,4 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 {}
 ---------- Output ----------
 ! // @ts-ignore
-(
-  /** @type {number} */ (first)
-);
+/** @type {number} */ (first);

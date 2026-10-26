@@ -11,9 +11,7 @@ test ? // @ts-expect-error
 ---------- Output ----------
 test
   ? // @ts-expect-error
-    (
-      /** @type {number} */ (first)
-    )
+    /** @type {number} */ (first)
   : other;
 
 ---------- Options ----------
@@ -21,9 +19,7 @@ test
 ---------- Output ----------
 test
   ? // @ts-expect-error
-    (
-      /** @type {number} */ (
-        first
-      )
+    /** @type {number} */ (
+      first
     )
   : other;
