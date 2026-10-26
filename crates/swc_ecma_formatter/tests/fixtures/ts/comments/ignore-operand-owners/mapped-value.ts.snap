@@ -8,7 +8,8 @@ type M = { [\u004b in "a"|"b"]: // prettier-ignore
 ---------- Output ----------
 type M = {
   [
-    K in "a"|"b"]: // prettier-ignore
+    K in "a"|"b"
+  ]: // prettier-ignore
 [number, number];
 };
 
@@ -17,6 +18,7 @@ type M = {
 ---------- Output ----------
 type M = {
   [
-    K in "a"|"b"]: // prettier-ignore
+    K in "a"|"b"
+  ]: // prettier-ignore
 [number, number]
 }

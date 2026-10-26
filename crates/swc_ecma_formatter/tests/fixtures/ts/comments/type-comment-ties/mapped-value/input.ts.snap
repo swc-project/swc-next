@@ -7,7 +7,8 @@ type M = { [K in \u0043]: /* prettier-ignore */ /* ordinary */ \u0041 | \u0042 }
 ---------- Output ----------
 type M = {
   [
-    K in \u0043]: /* prettier-ignore */ /* ordinary */ | A
+    K in \u0043
+  ]: /* prettier-ignore */ /* ordinary */ | A
     | B;
 };
 
