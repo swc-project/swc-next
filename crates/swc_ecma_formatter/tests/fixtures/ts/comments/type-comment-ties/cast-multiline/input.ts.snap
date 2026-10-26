@@ -6,5 +6,5 @@ source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
 lines */ \u0041 & \u0042;---------- Options ----------
 {"printWidth":18}
 ---------- Output ----------
-\u0078 as /* prettier-ignore */ /* multiple
+\u0078 /* prettier-ignore */ as /* multiple
 lines */ A & B;
