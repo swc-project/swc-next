@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_core_bridge"
 repository.workspace  = true
-version               = "0.3.2"
+version               = "0.4.0"
 
 [lib]
 crate-type = ["cdylib"]

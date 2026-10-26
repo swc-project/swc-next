@@ -2848,7 +2848,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_allocator"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "allocator-api2",
  "bumpalo",
@@ -2859,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ast_macros"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2868,7 +2868,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_bridge"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -2883,7 +2883,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_bridge_macros"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2894,7 +2894,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_codegen_bridge"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
@@ -2902,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_core_bridge"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "napi-build",
  "swc_next_allocator",
@@ -2914,7 +2914,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_ast"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "cow-utils",
  "num-bigint 0.5.1",
@@ -2925,7 +2925,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_codegen"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2943,7 +2943,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_minifier"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "libtest-mimic",
  "serde",
@@ -2958,7 +2958,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_parser"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "clap",
@@ -2973,7 +2973,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_semantic"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "clap",
@@ -2989,7 +2989,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_ecma_transformer"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "clap",
  "rustc-hash",
@@ -3004,7 +3004,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_isolated_declarations"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "rustc-hash",
@@ -3018,7 +3018,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_parser_bridge"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "napi-build",
  "swc_next_bridge",
@@ -3027,7 +3027,7 @@ dependencies = [
 
 [[package]]
 name = "swc_next_regular_expression"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "phf 0.14.0",
@@ -3038,11 +3038,11 @@ dependencies = [
 
 [[package]]
 name = "swc_next_simd"
-version = "0.3.2"
+version = "0.4.0"
 
 [[package]]
 name = "swc_next_type_strip"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "swc_next_allocator",
  "swc_next_ecma_ast",

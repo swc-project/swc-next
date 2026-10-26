@@ -4,7 +4,7 @@ edition              = "2024"
 license.workspace    = true
 name                 = "swc_next_simd"
 repository.workspace = true
-version              = "0.3.2"
+version              = "0.4.0"
 
 [features]
 memchr = []

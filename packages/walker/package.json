@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/walker",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Synchronous ESTree traversal and editing for JavaScript and TypeScript",
   "repository": {
     "type": "git",
