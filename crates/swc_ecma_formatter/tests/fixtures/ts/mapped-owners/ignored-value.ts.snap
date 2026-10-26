@@ -25,6 +25,7 @@ type M = {
 ---------- Output ----------
 type M = {
   [
-    K in "a"]: /* prettier-ignore */
+    K in "a"
+  ]: /* prettier-ignore */
  {x: 1}
 }
