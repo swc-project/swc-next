@@ -25,7 +25,7 @@ swc_next_ecma_semantic = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 # `#[bridge]` expands to NAPI-RS types and attributes for native targets.
-napi        = { workspace = true, features = ["napi10"] }
+napi        = { workspace = true }
 napi-derive = { workspace = true }
 simdutf     = { workspace = true }
 

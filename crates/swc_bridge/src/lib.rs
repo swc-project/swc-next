@@ -1,8 +1,6 @@
-//! Native strings use external Latin-1 storage for ASCII and SIMD UTF-16
-//! transcoding otherwise. The finalizer releases their backing allocation
-//! and external-memory charge.
-//! Native builds require a C++ toolchain for simdutf and a runtime supporting
-//! Node-API 10.
+//! Native strings use Latin-1 for ASCII and SIMD UTF-16 transcoding otherwise.
+//! N-API copies the output into the JavaScript heap before the Rust allocation
+//! is released. Native builds require a C++ toolchain for simdutf.
 //! WebAssembly retains its existing string path.
 
 extern crate self as swc_next_bridge;
