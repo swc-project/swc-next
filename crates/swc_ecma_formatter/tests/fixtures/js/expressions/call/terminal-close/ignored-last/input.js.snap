@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(function () { return run(); },
+// @ts-expect-error
+// prettier-ignore
+missing.value);
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+schedule(
+  function () {
+    return run();
+  },
+  // @ts-expect-error
+  // prettier-ignore
+  missing.value);

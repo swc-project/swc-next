@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(first,
+// @ts-expect-error
+function () { return run(); });
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+schedule(
+  first,
+  // @ts-expect-error
+  function () { return run(); },
+);
