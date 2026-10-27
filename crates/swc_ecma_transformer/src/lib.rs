@@ -72,6 +72,11 @@ impl Transformer {
             x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
         };
 
+        // Traversal only maintains scope bookkeeping for the passes' own rewrites.
+        if !transformer.x0_es2022.needs_traversal(&semantic) {
+            return TransformerReturn { semantic };
+        }
+
         let state = TransformerState::new(semantic);
         let mut ctx = TraverseMutCtx::new(ast, state);
         let _ = program.traverse_mut_with(&mut transformer, &mut ctx);

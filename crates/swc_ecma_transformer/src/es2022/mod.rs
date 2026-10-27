@@ -2,6 +2,8 @@ mod static_blocks;
 
 use swc_next_ecma_ast::{Class, ClassBody, Expr, TraverseAction};
 
+use swc_next_ecma_semantic::{ScopeModel, scope::ScopeKind};
+
 use crate::{context::TransformCtx, proposal::ProposalOptions};
 
 pub struct ES2022 {
@@ -20,6 +22,15 @@ impl ES2022 {
                 .static_blocks
                 .then(|| static_blocks::StaticBlocks::new(proposal.prevent_extensions)),
         }
+    }
+
+    /// Whether any enabled ES2022 transform has syntax to rewrite in `semantic`'s tree.
+    /// Every static block owns a scope, so scanning scopes avoids walking each node.
+    pub(crate) fn needs_traversal(&self, semantic: &ScopeModel<'_>) -> bool {
+        self.static_blocks.is_some()
+            && semantic
+                .iter_scopes()
+                .any(|entry| entry.scope.kind == ScopeKind::StaticBlock)
     }
 
     pub(crate) fn enter_class_body<'a>(&mut self, body: ClassBody, ctx: &mut TransformCtx<'_, 'a>) {
