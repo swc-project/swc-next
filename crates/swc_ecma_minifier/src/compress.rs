@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-
+use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
     Ast, BinaryExpression, BinaryOperator, BindingPatternData, DeclData, Expr, ExprData, GetSpan,
     NodeId, ObjectProperty, Program, Span, Stmt, StmtData, UnaryOperator, VariableDeclarator,
@@ -13,9 +12,9 @@ use crate::CompressOptions;
 
 #[derive(Default)]
 struct Candidates {
-    globals: HashMap<NodeId, Global>,
-    typeofs: HashMap<NodeId, NodeId>,
-    unused: HashSet<NodeId>,
+    globals: FxHashMap<NodeId, Global>,
+    typeofs: FxHashMap<NodeId, NodeId>,
+    unused: FxHashSet<NodeId>,
 }
 
 #[derive(Clone, Copy)]
@@ -42,7 +41,7 @@ impl Candidates {
         {
             return candidates;
         }
-        let mut local_vars = HashMap::new();
+        let mut local_vars = FxHashMap::default();
         for entry in semantic.iter_symbols() {
             let mut declarations = semantic.declarations(entry.id);
             let Some(declaration) = declarations.next() else {
@@ -110,7 +109,7 @@ pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions) {
         options,
         candidates,
         in_delete: false,
-        primitive_bindings: HashSet::new(),
+        primitive_bindings: FxHashSet::default(),
         pending_typeofs: Vec::new(),
     });
 }
@@ -120,7 +119,7 @@ struct Compressor<'visit, 'ast> {
     options: CompressOptions,
     candidates: Candidates,
     in_delete: bool,
-    primitive_bindings: HashSet<NodeId>,
+    primitive_bindings: FxHashSet<NodeId>,
     pending_typeofs: Vec<TypeofRewrite>,
 }
 

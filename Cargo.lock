@@ -2985,6 +2985,7 @@ name = "swc_next_ecma_minifier"
 version = "0.4.0"
 dependencies = [
  "libtest-mimic",
+ "rustc-hash",
  "serde",
  "serde_json",
  "swc_next_allocator",
