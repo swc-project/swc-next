@@ -8,7 +8,8 @@ class C { constructor(@first /* decorator */ @second /* modifier */ private /* p
 ---------- Output ----------
 class C {
   constructor(
-    @first /* decorator */
+    @first
+    /* decorator */
     @second /* modifier */
     private /* private */ readonly /* binding */ value: number = 1,
   ) {}
@@ -19,7 +20,8 @@ class C {
 ---------- Output ----------
 class C {
   constructor(
-    @first /* decorator */
+    @first
+    /* decorator */
     @second /* modifier */
     private /* private */ readonly /* binding */ value: number = 1
   ) {}
@@ -30,7 +32,8 @@ class C {
 ---------- Output ----------
 class C {
   constructor(
-    @first /* decorator */
+    @first
+    /* decorator */
     @second /* modifier */
     private /* private */ readonly /* binding */ value: number = 1,
   ) {}

@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { @a /* prettier-ignore */
+@b m() {} }---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  @a /* prettier-ignore */
+  @b
+  m() {}
+}
