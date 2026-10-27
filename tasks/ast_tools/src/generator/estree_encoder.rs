@@ -1322,29 +1322,30 @@ function encode(program, meta = {}) {
 
   function encStr(value, view, offset, wtf8) {
     const length = value.length;
-    if (length === 0) {
-      view.setUint32(offset, 0, true);
-      view.setUint32(offset + 4, 0, true);
+    let start = 0;
+    let end = 0;
+    encodeString: {
+      if (length === 0) break encodeString;
+      start = poolLength;
+      end = start + length;
+      // Keep the short ASCII path small enough to inline into field encoders.
+      if (length <= 12 && end <= pool.length && end <= 0x7fffffff) {
+        let index = 0;
+        for (; index < length; index++) {
+          const code = value.charCodeAt(index);
+          if (code >= 0x80) break;
+          pool[start + index] = code;
+        }
+        if (index === length) {
+          poolLength = end;
+          break encodeString;
+        }
+      }
+      encStrSlow(value, view, offset, wtf8);
       return;
     }
-    const start = poolLength;
-    const end = start + length;
-    // Keep the short ASCII path small enough to inline into field encoders.
-    if (length <= 12 && end <= pool.length && end <= 0x7fffffff) {
-      let index = 0;
-      for (; index < length; index++) {
-        const code = value.charCodeAt(index);
-        if (code >= 0x80) break;
-        pool[start + index] = code;
-      }
-      if (index === length) {
-        poolLength = end;
-        view.setUint32(offset, start, true);
-        view.setUint32(offset + 4, end, true);
-        return;
-      }
-    }
-    encStrSlow(value, view, offset, wtf8);
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, end, true);
   }
 
   function encStrSlow(value, view, offset, wtf8 = false) {
