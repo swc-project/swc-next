@@ -188,12 +188,16 @@ function encodeJs(program, meta = {}) {
       const length = value.length;
       const start = poolLength;
       const end = start + length;
-      // Keep the short ASCII path small enough to inline into field encoders.
-      if (length > 0 && length <= 12 && end <= pool.length && end <= 0x7fffffff) {
+      // Bound the direct loop: native UTF-8 writers handle longer strings
+      // efficiently. Keep this helper small enough to inline into field encoders.
+      if (length > 0 && length <= 32 && end <= pool.length && end <= 0x7fffffff) {
         let index = 0;
         for (; index < length; index++) {
           const code = value.charCodeAt(index);
-          if (code >= 0x80) break;
+          if (code >= 0x80) {
+            encStrNonAscii(value, view, offset, wtf8, index);
+            return;
+          }
           pool[start + index] = code;
         }
         if (index === length) {
@@ -205,6 +209,17 @@ function encodeJs(program, meta = {}) {
       }
     }
     encStrSlow(value, view, offset, wtf8);
+  }
+
+  function encStrNonAscii(value, view, offset, wtf8, index) {
+    const start = poolLength;
+    // Keep the copied ASCII prefix if the UTF-8 suffix needs a larger pool.
+    poolLength += index;
+    ensurePool((value.length - index) * 3);
+    poolLength = start + writeUnicode(value, start, index, wtf8);
+    if (firstNonAsciiPos === NULL) firstNonAsciiPos = start + index;
+    view.setUint32(offset, start, true);
+    view.setUint32(offset + 4, poolLength, true);
   }
 
   function encStrSlow(value, view, offset, wtf8 = false) {
@@ -219,7 +234,7 @@ function encodeJs(program, meta = {}) {
     ensurePool(length * 3);
     const useWtf8 = wtf8 && !isWellFormed(value);
     const written = useWtf8
-      ? writeWtf8(value, start)
+      ? writeUnicode(value, start, 0, true)
       : writeUtf8.call(pool, value, start, poolCapacity - start, "utf8");
     hasWtf8 ||= useWtf8;
     poolLength += written;
@@ -232,9 +247,9 @@ function encodeJs(program, meta = {}) {
     view.setUint32(offset + 4, poolLength, true);
   }
 
-  function writeWtf8(value, start) {
-    let offset = start;
-    for (let index = 0; index < value.length; index++) {
+  function writeUnicode(value, start, from, wtf8) {
+    let offset = start + from;
+    for (let index = from; index < value.length; index++) {
       let code = value.charCodeAt(index);
       if (code < 0x80) {
         pool[offset++] = code;
@@ -253,6 +268,11 @@ function encodeJs(program, meta = {}) {
             pool[offset++] = 0x80 | (code & 0x3f);
             continue;
           }
+          if (wtf8) hasWtf8 = true;
+          else code = 0xfffd;
+        } else if (code >= 0xdc00 && code <= 0xdfff) {
+          if (wtf8) hasWtf8 = true;
+          else code = 0xfffd;
         }
         pool[offset++] = 0xe0 | (code >> 12);
         pool[offset++] = 0x80 | ((code >> 6) & 0x3f);

@@ -38,11 +38,14 @@ test("encoder preserves array rests", () => {
   assert.equal(print("const [...a, b, ...c] = v;", "ts"), "const [...a, b, ...c] = v;\n");
 });
 
-test("printSync accepts surrogate pairs in UTF-8 fields", () => {
+test("printSync encodes Unicode in UTF-8 fields", () => {
   const { program } = parseSync("const value = 1;");
   program.body[0].declarations[0].id.name = "\u{10400}";
 
   assert.equal(printSync(program).code, "const 𐐀 = 1;\n");
+
+  program.body[0].declarations[0].id.name = "a".repeat(28) + "\uD800";
+  assert.equal(printSync(program).code, `const ${"a".repeat(28)}� = 1;\n`);
 });
 
 test("printSync preserves lone surrogates in string values", () => {
@@ -255,7 +258,7 @@ function encodeWithBufferMode(program, mode) {
 
 test("encoder string fallbacks match Node", () => {
   const { program } = parseSync('"prefix"; "value"; "tail";');
-  program.body[1].expression.value = "ab雪🌍\uD800x\uDFFF";
+  program.body[1].expression.value = "a".repeat(40) + "雪🌍\uD800x\uDFFF";
   program.body[1].expression.raw = null;
   const expected = encodeJs(program);
   for (const mode of ["absent", "missing", "incompatible"]) {
@@ -264,9 +267,49 @@ test("encoder string fallbacks match Node", () => {
     assert.deepEqual(ts, expected);
   }
 
-  program.body[1].expression.value = "ab雪🌍";
+  program.body[1].expression.value = "a".repeat(40) + "雪🌍";
   const utf8 = encodeJs(program);
   const [js, ts] = encodeWithBufferMode(program, "absent");
   assert.deepEqual(js, utf8);
   assert.deepEqual(ts, utf8);
+
+  program.body[1].expression.value = "a".repeat(28) + "雪🌍";
+  const partial = encodeJs(program);
+  const [partialJs, partialTs] = encodeWithBufferMode(program, "absent");
+  assert.deepEqual(partialJs, partial);
+  assert.deepEqual(partialTs, partial);
+});
+
+test("encoder string paths preserve ASCII, Unicode, and pool growth", () => {
+  for (const lang of ["js", "ts"]) {
+    const { program } = parseSync('const name = "value";', { lang });
+    const declaration = program.body[0].declarations[0];
+    declaration.id.name = "a".repeat(32);
+    declaration.init.raw = null;
+    const roundtrip = value => {
+      declaration.init.value = value;
+      return parseSync(printSync(program, {}, { lang }).code, { lang }).program.body[0].declarations[0];
+    };
+
+    const ascii = roundtrip("x".repeat(32));
+    assert.equal(ascii.id.name, declaration.id.name);
+    assert.equal(ascii.init.value, declaration.init.value);
+
+    const unicode = roundtrip("x".repeat(28) + "雪🌍");
+    assert.equal(unicode.init.value, declaration.init.value);
+
+    const surrogate = roundtrip("x".repeat(28) + "\uD800");
+    assert.equal(surrogate.init.value, declaration.init.value);
+
+    const grown = roundtrip("x".repeat(8192) + "雪");
+    assert.equal(grown.init.value, declaration.init.value);
+
+    const values = Array.from({ length: 1000 }, (_, index) => "a".repeat(index % 11) + "雪🌍");
+    declaration.init = {
+      type: "ArrayExpression",
+      elements: values.map(value => ({ type: "Literal", value, raw: null })),
+    };
+    const array = parseSync(printSync(program, {}, { lang }).code, { lang }).program.body[0].declarations[0].init;
+    assert.deepEqual(array.elements.map(element => element.value), values);
+  }
 });
