@@ -73,6 +73,13 @@ export declare function langFromPath(path: string): Lang
  */
 export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options?: ParserOptions | undefined | null): Uint8Array
 
-export declare function printSync(buffer: Uint8Array, options?: CodegenOptions | undefined | null): CodegenOutput
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::print_from_parts`.
+ */
+export declare function printSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: CodegenOptions | undefined | null): CodegenOutput
 
 export declare function sourceTypeFromPath(path: string): SourceType

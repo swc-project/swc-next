@@ -34,6 +34,6 @@ export function parseSync(source, options) {
 }
 
 export function printSync(program, options, meta) {
-  const code = __printSync(encode(program, meta), encodeCodegenOptions(options));
+  const code = __printSync(...encode(program, meta), encodeCodegenOptions(options));
   return { code };
 }

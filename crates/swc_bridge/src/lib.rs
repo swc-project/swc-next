@@ -20,7 +20,7 @@ pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer};
 mod codegen;
 #[cfg(feature = "codegen")]
 pub use {
-    codegen::{CodegenOptions, CodegenOutput, print_from_buffer},
+    codegen::{CodegenOptions, CodegenOutput, print_from_buffer, print_from_parts},
     swc_next_ecma_ast::ffi::ast::DeserializeError,
 };
 

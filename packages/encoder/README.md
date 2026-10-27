@@ -1,13 +1,13 @@
 # `@swc-next/encoder`
 
-Encodes an ESTree-compatible `Program` into the binary format consumed by
+Encodes an ESTree-compatible `Program` into binary sections consumed by
 SWC Next crates. Use the exact package version matching your native binding's
 `swc_next_*` crates.
 
 ```js
 import { encode } from "@swc-next/encoder";
 
-const buffer = encode(program, meta);
+const parts = encode(program, meta);
 ```
 
 Pass the decoder result's `meta: { lang, sourceType }` to preserve source

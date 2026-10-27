@@ -6,7 +6,7 @@ import { encode, encodeJs, encodeTs } from "@swc-next/encoder";
 import { parseSync, printSync } from "../src-js/index.js";
 
 test("encode writes spans in canonical little-endian order", () => {
-  const buffer = encode({
+  const [, spans] = encode({
     type: "Program",
     start: 0x01020304,
     end: 0x05060708,
@@ -15,7 +15,7 @@ test("encode writes spans in canonical little-endian order", () => {
   });
 
   assert.deepEqual(
-    [...buffer.subarray(40, 48)],
+    [...spans.subarray(0, 8)],
     [0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05],
   );
 });
@@ -51,7 +51,7 @@ test("printSync preserves lone surrogates in string values", () => {
     const value = "\uD800é😀\0\uDC00";
     program.body[0].declarations[0].init.value = value;
 
-    const buffer = encode(program, { lang });
+    const [buffer] = encode(program, { lang });
     const header = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     assert.ok(header.getUint32(8, true) > 0);
     assert.equal(header.getUint32(12, true), 0);
@@ -123,7 +123,7 @@ test("encoder preserves method bodies and signatures", () => {
 
   const body = parseSync("abstract class C { abstract m() { return 1; } }", typescript).program;
   assert.equal(printSync(body).code, "abstract class C {\n  abstract m() {\n    return 1;\n  }\n}\n");
-  assert.equal((new DataView(encode(body).buffer).getUint32(32, true) >> 2) & 7, 1);
+  assert.equal((new DataView(encode(body)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
 
   const abstractSignature = parseSync("abstract class C { abstract m(): number; }", typescript).program;
   assert.equal(printSync(abstractSignature).code, "abstract class C {\n  abstract m(): number;\n}\n");
@@ -229,8 +229,8 @@ test("encoder metadata selects compatible JS and TS variants", () => {
   const typed = parseSync("const value: string = 'ok';", { lang: "ts" }).program;
   assert.deepEqual(encode(typed, { lang: "ts" }), encodeTs(typed));
   assert.deepEqual(encode(typed, { lang: "tsx" }), encodeTs(typed, { lang: "tsx" }));
-  assert.equal((new DataView(encodeTs(typed).buffer).getUint32(32, true) >> 2) & 7, 1);
-  assert.equal((new DataView(encode(typed, { lang: "tsx" }).buffer).getUint32(32, true) >> 2) & 7, 3);
+  assert.equal((new DataView(encodeTs(typed)[0].buffer).getUint32(32, true) >> 2) & 7, 1);
+  assert.equal((new DataView(encode(typed, { lang: "tsx" })[0].buffer).getUint32(32, true) >> 2) & 7, 3);
 });
 
 
@@ -244,13 +244,13 @@ function encodeWithBufferMode(program, mode) {
       : mode === "missing" ? { prototype: {} }
       : { prototype: { write() { throw new TypeError("unsupported receiver"); } } };
     const { encodeJs, encodeTs } = await import(${JSON.stringify(new URL("../../../packages/encoder/index.js", import.meta.url).href)});
-    console.log(JSON.stringify([encodeJs(program), encodeTs(program)].map(bytes =>
-      NodeBuffer.from(bytes).toString("base64"))));
+    console.log(JSON.stringify([encodeJs(program), encodeTs(program)].map(parts =>
+      parts.map(bytes => NodeBuffer.from(bytes).toString("base64")))));
   `;
   const output = execFileSync(process.execPath, ["--input-type=module", "-e", script], {
     input: JSON.stringify({ program, mode }), encoding: "utf8", maxBuffer: 4 * 1024 * 1024,
   });
-  return JSON.parse(output).map(value => Uint8Array.from(Buffer.from(value, "base64")));
+  return JSON.parse(output).map(parts => parts.map(value => Uint8Array.from(Buffer.from(value, "base64"))));
 }
 
 test("encoder string fallbacks match Node", () => {

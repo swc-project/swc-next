@@ -2963,16 +2963,8 @@ function encodeTs(program, meta = {}) {
   }
 
   const root = encProgram(program);
-  const kindsLength = (nodeCount + 7) & ~7;
-  const poolPadded = (poolLength + 3) & ~3;
-  const spansOffset = HEADER_SIZE;
-  const kindsOffset = spansOffset + nodeCount * 8;
-  const payloadOffset = kindsOffset + kindsLength;
-  const extraOffset = payloadOffset + nodeCount * 16;
-  const stringsOffset = extraOffset + extraCount * 8;
-  const buffer = new ArrayBuffer(stringsOffset + poolPadded);
-  const bytes = new Uint8Array(buffer);
-  const view = new DataView(buffer);
+  const header = new Uint8Array(HEADER_SIZE);
+  const view = new DataView(header.buffer);
 
   view.setUint32(0, nodeCount, true);
   view.setUint32(4, extraCount, true);
@@ -2989,19 +2981,22 @@ function encodeTs(program, meta = {}) {
   view.setUint32(32, sourceType | (enumValue(0, lang) << 2), true);
   view.setUint32(36, hasWtf8 ? 0 : firstNonAsciiPos === NULL ? poolLength : firstNonAsciiPos, true);
 
-  if (NATIVE_LITTLE_ENDIAN) {
-    bytes.set(new Uint8Array(spans.buffer, 0, nodeCount * 8), spansOffset);
-  } else {
+  let spanBytes = new Uint8Array(spans.buffer, 0, nodeCount * 8);
+  if (!NATIVE_LITTLE_ENDIAN) {
+    spanBytes = new Uint8Array(nodeCount * 8);
+    const spanView = new DataView(spanBytes.buffer);
     for (let index = 0; index < nodeCount * 2; index++) {
-      view.setUint32(spansOffset + index * 4, spans[index], true);
+      spanView.setUint32(index * 4, spans[index], true);
     }
   }
-  bytes.set(kinds.subarray(0, nodeCount), kindsOffset);
-  bytes.set(new Uint8Array(payloadBuffer, 0, nodeCount * 16), payloadOffset);
-  bytes.set(new Uint8Array(extraBuffer, 0, extraCount * 8), extraOffset);
-  bytes.set(pool.subarray(0, poolLength), stringsOffset);
-
-  return new Uint8Array(buffer);
+  return [
+    header,
+    spanBytes,
+    kinds.subarray(0, nodeCount),
+    new Uint8Array(payloadBuffer, 0, nodeCount * 16),
+    new Uint8Array(extraBuffer, 0, extraCount * 8),
+    pool.subarray(0, poolLength),
+  ];
 }
 
 export { encodeTs };

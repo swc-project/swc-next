@@ -284,7 +284,7 @@ impl fmt::Display for DeserializeError {
 
 impl std::error::Error for DeserializeError {}
 
-/// A read-only AST view backed by a transfer buffer.
+/// A read-only AST view backed by immutable transfer sections.
 ///
 /// Mutation is unavailable because its tables may alias immutable buffer bytes.
 ///
@@ -485,9 +485,6 @@ pub unsafe fn deserialize_from<'a>(
         let extra_count = read_u32(buf, 4) as usize;
         let pool_len = read_u32(buf, 8) as usize;
         let source_len = read_u32(buf, 12) as usize;
-        let root = read_u32(buf, 28) as usize;
-        let flags = read_u32(buf, 32);
-
         let spans = HEADER_SIZE;
         let kinds = spans + node_count * SPAN_SIZE;
         let payloads = align_to_eight(kinds + node_count);
@@ -495,27 +492,72 @@ pub unsafe fn deserialize_from<'a>(
         let strings = extra + extra_count * EXTRA_DATA_SIZE;
         let source_end = strings + source_len;
 
-        // SAFETY: The caller guarantees valid encodings, table layouts, and
-        // alignment. BorrowedAst exposes no mutable access to these pointers.
+        // SAFETY: The caller guarantees the transfer layout and alignment.
         unsafe {
-            let source = std::str::from_utf8_unchecked(&buf[strings..source_end]);
-            let mut ast = Ast::new(source, allocator);
-            ast.nodes.span = NonNull::new_unchecked(buf.as_ptr().add(spans).cast_mut().cast());
-            ast.nodes.kind = NonNull::new_unchecked(buf.as_ptr().add(kinds).cast_mut().cast());
-            ast.nodes.data = NonNull::new_unchecked(buf.as_ptr().add(payloads).cast_mut().cast());
-            ast.nodes.len = node_count as u32;
-            ast.nodes.cap = node_count as u32;
-            ast.extra_data = ArenaIndexVec::from_vec(ArenaVec::from_borrowed_slice_in(
-                slice::from_raw_parts(buf.as_ptr().add(extra).cast(), extra_count),
+            deserialize_parts(
+                &buf[..HEADER_SIZE],
+                &buf[spans..kinds],
+                &buf[kinds..kinds + node_count],
+                &buf[payloads..extra],
+                &buf[extra..strings],
+                &buf[strings..source_end + pool_len],
                 allocator,
-            ));
-            ast.strings
-                .borrow_extra(&buf[source_end..source_end + pool_len]);
-            ast.root = Some(NodeId::from_usize(root));
-            ast.source_type = std::mem::transmute::<u8, SourceType>((flags & 3) as u8);
-            ast.lang = std::mem::transmute::<u8, Lang>(((flags >> FLAG_LANG_SHIFT) & 7) as u8);
-            Ok(BorrowedAst { ast })
+            )
         }
+    }
+}
+
+/// Borrow separate sections produced by the JavaScript encoder without joining them.
+///
+/// # Safety
+///
+/// The sections must obey the same version, encoding, node, and metadata contracts
+/// as [`deserialize_from`]. `header` must contain 40 bytes; the other sections must
+/// contain the initialized spans, kinds, payloads, extra data, and strings described
+/// by that header, without padding. Spans must be aligned to four bytes, payloads
+/// and extra data to eight bytes. Every section must remain immutable for the
+/// returned view's lifetime. Comment and diagnostic sections must be empty.
+#[cfg(target_endian = "little")]
+#[inline]
+pub unsafe fn deserialize_parts<'a>(
+    header: &[u8],
+    spans: &'a [u8],
+    kinds: &'a [u8],
+    payloads: &'a [u8],
+    extra: &'a [u8],
+    strings: &'a [u8],
+    allocator: &'a Allocator,
+) -> Result<BorrowedAst<'a>, DeserializeError> {
+    let node_count = read_u32(header, 0) as usize;
+    let extra_count = read_u32(header, 4) as usize;
+    let pool_len = read_u32(header, 8) as usize;
+    let source_len = read_u32(header, 12) as usize;
+    let root = read_u32(header, 28) as usize;
+    let flags = read_u32(header, 32);
+    debug_assert!(spans.as_ptr().addr().is_multiple_of(align_of::<Span>()));
+    debug_assert!(payloads.as_ptr().addr().is_multiple_of(8));
+    debug_assert!(extra.as_ptr().addr().is_multiple_of(8));
+
+    // SAFETY: The caller guarantees valid encodings, initialized tables, and
+    // alignment. BorrowedAst exposes no mutable access to these pointers.
+    unsafe {
+        let source = std::str::from_utf8_unchecked(&strings[..source_len]);
+        let mut ast = Ast::new(source, allocator);
+        ast.nodes.span = NonNull::new_unchecked(spans.as_ptr().cast_mut().cast());
+        ast.nodes.kind = NonNull::new_unchecked(kinds.as_ptr().cast_mut().cast());
+        ast.nodes.data = NonNull::new_unchecked(payloads.as_ptr().cast_mut().cast());
+        ast.nodes.len = node_count as u32;
+        ast.nodes.cap = node_count as u32;
+        ast.extra_data = ArenaIndexVec::from_vec(ArenaVec::from_borrowed_slice_in(
+            slice::from_raw_parts(extra.as_ptr().cast(), extra_count),
+            allocator,
+        ));
+        ast.strings
+            .borrow_extra(&strings[source_len..source_len + pool_len]);
+        ast.root = Some(NodeId::from_usize(root));
+        ast.source_type = std::mem::transmute::<u8, SourceType>((flags & 3) as u8);
+        ast.lang = std::mem::transmute::<u8, Lang>(((flags >> FLAG_LANG_SHIFT) & 7) as u8);
+        Ok(BorrowedAst { ast })
     }
 }
 
