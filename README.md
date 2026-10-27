@@ -63,15 +63,24 @@ Configuration compatibility has not been implemented yet.
 
 ## Powered by
 
-[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSourceSupport)
-
-<a href="https://codspeed.io/?utm_source=oss-sponsorship&utm_medium=swc-project">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://codspeed.io/codspeed-logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://codspeed.io/codspeed-logo-light.svg">
-    <img alt="CodSpeed logo" src="https://codspeed.io/codspeed-logo-light.svg" width="400">
-  </picture>
-</a>
+<table>
+  <tr>
+    <td width="320" height="112" align="center" valign="middle">
+      <a href="https://jb.gg/OpenSourceSupport">
+        <img alt="JetBrains" src="https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg" width="240" height="52">
+      </a>
+    </td>
+    <td width="320" height="112" align="center" valign="middle">
+      <a href="https://codspeed.io/?utm_source=oss-sponsorship&utm_medium=swc-project">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://codspeed.io/codspeed-logo-dark.svg">
+          <source media="(prefers-color-scheme: light)" srcset="https://codspeed.io/codspeed-logo-light.svg">
+          <img alt="CodSpeed" src="https://codspeed.io/codspeed-logo-light.svg" width="240" height="38">
+        </picture>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ## Sponsors
 
