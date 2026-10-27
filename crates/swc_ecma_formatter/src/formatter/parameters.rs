@@ -823,7 +823,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_removed_decorator_head(head, writer)?;
             }
             if let Some(prefix) = entry.decorators {
-                self.format_decorators(prefix, DecoratorLayout::Parameter, core_start, writer)?;
+                let layout = if matches!(entry.node, RuntimeParameter::Property(_)) {
+                    DecoratorLayout::ParameterProperty
+                } else {
+                    DecoratorLayout::Parameter
+                };
+                self.format_decorators(prefix, layout, core_start, writer)?;
             }
             if let Some(prefix) = property_prefix {
                 self.format_parameter_property_prefix(prefix, writer)?;
