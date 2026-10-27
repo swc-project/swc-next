@@ -10,7 +10,6 @@ use crate::{FormatError, document::Writer};
 pub(super) enum PreparedBoundaryComments<'ast> {
     Preserved(CommentGap),
     Head {
-        leading: LineConstraint,
         gap: CommentGap,
     },
     Trailing {
@@ -335,6 +334,11 @@ impl<'ast> CommentBoundary<'ast> {
 
     pub(super) fn comments(&self) -> &'ast [Comment] {
         self.comments
+    }
+
+    /// Source end supplied by the actual preceding syntax owner.
+    pub(super) fn source_end(&self) -> u32 {
+        self.source_end
     }
 
     pub(super) fn end(&self) -> u32 {
@@ -1033,16 +1037,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return PreparedBoundaryComments::Preserved(gap);
         }
         let mut source_run = None;
-        let mut inline_blocks = true;
+        let mut blocks = true;
         for (index, &comment) in boundary.comments.iter().enumerate() {
             let fact = self.prepare_source_comment(comment, &mut source_run);
-            let next_start = boundary
-                .comments
-                .get(index + 1)
-                .map_or(target.start, |next| next.span.start);
-            let standalone = self.source_line_starts_line(comment.span.start)
-                && self.line_breaks(comment.span.end, next_start) != 0;
-            inline_blocks &= comment.kind == CommentKind::Block && !standalone;
+            blocks &= comment.kind == CommentKind::Block;
             if let Some(fact) = fact {
                 if !fact.movable() || fact.attachment(true, true) != LineAttachment::Trailing {
                     return PreparedBoundaryComments::Preserved(gap);
@@ -1060,12 +1058,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return PreparedBoundaryComments::Trailing { run, after, gap };
             }
         }
-        if inline_blocks {
-            let start = boundary.first_comment_start().unwrap_or(target.start);
-            PreparedBoundaryComments::Head {
-                leading: self.line_constraint(boundary.source_end, start),
-                gap,
-            }
+        if blocks {
+            PreparedBoundaryComments::Head { gap }
         } else {
             PreparedBoundaryComments::Preserved(gap)
         }

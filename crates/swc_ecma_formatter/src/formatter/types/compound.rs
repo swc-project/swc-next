@@ -45,6 +45,8 @@ struct CompoundHead<'ast> {
 
 pub(in crate::formatter) struct PreparedUnion<'ast> {
     data: TsTypeData,
+    /// The original target only while its raw content and attachment head allow transfer.
+    inline_head_target: Option<Span>,
     leading: UnionLeading<'ast>,
     links: Vec<UnionLink<'ast>>,
     last: PreparedType,
@@ -1187,6 +1189,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let hug = matches!(hug, UnionHug::Object) && !preserve_lines;
         Ok(PreparedUnion {
             data: node.data,
+            inline_head_target: (node.source_owner != Some(node.node)
+                && node.source_head.is_none())
+            .then_some(span),
             leading,
             links,
             last: current,
@@ -1638,6 +1643,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    /// Both preparation routes keep the same original owner and packet certificate.
+    fn transfer_union_inline_head(
+        &self,
+        union: &mut PreparedUnion<'ast>,
+        pending: &mut PendingTypeHead<'ast>,
+    ) {
+        let Some(target) = union.inline_head_target else {
+            return;
+        };
+        let Some(first) = pending.comments.first() else {
+            return;
+        };
+        if matches!(pending.position, TypeHeadPosition::SourceLines)
+            || !union.accepts_inline_head()
+            || !self.union_head_is_inline(pending.comments, pending.next_start)
+            || !matches!(
+                self.comment_binding(
+                    pending.comments,
+                    Span::new(first.span.start, target.start),
+                    Some(target),
+                ),
+                CommentBinding::Unbound
+            )
+        {
+            return;
+        }
+        let comments = std::mem::take(&mut pending.comments);
+        let boundary =
+            self.prepare_comment_boundary(comments, first.span.start, pending.next_start);
+        union.set_inline_head(boundary, pending.next_start);
+    }
+
     pub(super) fn format_prepared_type_content_head(
         &mut self,
         content: PreparedTypeContent<'ast>,
@@ -1648,6 +1685,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         match content {
             PreparedTypeContent::Type(node) => {
                 self.format_movable_type_head(node, pending, context, writer)
+            }
+            PreparedTypeContent::Union(mut union)
+                if matches!(&union.leading, UnionLeading::Empty) =>
+            {
+                // Only a synthesized bar can receive this eager head. Existing
+                // source-operator packets keep their original emission path.
+                self.transfer_union_inline_head(&mut union, pending);
+                self.format_type_head_packet(pending, pending.next_start, writer)?;
+                Ok(PreparedTypeContent::Union(union))
             }
             PreparedTypeContent::Intersection(intersection) => self
                 .format_intersection_head_with_pending(intersection, pending, writer)
@@ -1870,27 +1916,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 TsTypeData::TsUnionType(union) => {
                     let mut union = self.prepare_union(current, union.types(self.ast))?;
-                    if !matches!(pending.position, TypeHeadPosition::SourceLines)
-                        && let Some(first) = pending.comments.first()
-                        && union.accepts_inline_head()
-                        && self.union_head_is_inline(pending.comments, pending.next_start)
-                        && matches!(
-                            self.comment_binding(
-                                pending.comments,
-                                Span::new(first.span.start, current.node.span(self.ast).start),
-                                Some(current.node.span(self.ast)),
-                            ),
-                            CommentBinding::Unbound
-                        )
-                    {
-                        let comments = std::mem::take(&mut pending.comments);
-                        let boundary = self.prepare_comment_boundary(
-                            comments,
-                            first.span.start,
-                            pending.next_start,
-                        );
-                        union.set_inline_head(boundary, pending.next_start);
-                    }
+                    self.transfer_union_inline_head(&mut union, pending);
                     break PreparedTypeContent::Union(union);
                 }
                 TsTypeData::TsIntersectionType(intersection) => {
