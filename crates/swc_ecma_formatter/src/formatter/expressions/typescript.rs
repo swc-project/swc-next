@@ -17,6 +17,7 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::types::generics::TypeAnglePacket;
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
     SourceTypeOperator, SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout,
@@ -85,8 +86,13 @@ enum TypeExpressionGap<'ast> {
 
 struct TypeAssertionHead<'ast> {
     body: PreparedDelimitedType<'ast>,
-    before: TypeExpressionGap<'ast>,
+    before: TypeAssertionOpening<'ast>,
     closing: TypeExpressionGap<'ast>,
+}
+
+enum TypeAssertionOpening<'ast> {
+    Boundary(TypeExpressionGap<'ast>),
+    Packet(TypeAnglePacket<'ast>),
 }
 
 enum AssertionOperandLayout {
@@ -1140,18 +1146,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 SuppressionPosition::Inline,
             );
         }
-        if let Some(attachment) = attachment {
-            self.finalize_type_head(&mut type_node, &attachment, leading);
+        if let Some(attachment) = &attachment {
+            self.finalize_type_head(&mut type_node, attachment, leading);
         }
-        let before = match self.prepare_type_expression_gap(
-            before,
-            leading,
-            type_node.source_owner.is_some(),
-        ) {
-            TypeExpressionGap::Source(span) => {
-                TypeExpressionGap::Source(self.type_angle_source_head(span, leading))
+        let packet = attachment.as_ref().and_then(|attachment| {
+            self.prepare_type_angle_packet(type_node, attachment, before, leading)
+        });
+        let before = match packet {
+            Some(packet) => TypeAssertionOpening::Packet(packet),
+            None => {
+                let boundary = match self.prepare_type_expression_gap(
+                    before,
+                    leading,
+                    type_node.source_owner.is_some(),
+                ) {
+                    TypeExpressionGap::Source(span) => {
+                        TypeExpressionGap::Source(self.type_angle_source_head(span, leading))
+                    }
+                    boundary => boundary,
+                };
+                TypeAssertionOpening::Boundary(boundary)
             }
-            boundary => boundary,
         };
         let body = self.prepare_delimited_type(type_node)?;
         let after_type = self.prepare_type_expression_gap(
@@ -1500,7 +1515,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.text("<");
         let closing = writer.indent(|writer| {
             let tail = match head.before {
-                TypeExpressionGap::Source(span) => {
+                TypeAssertionOpening::Packet(packet) => {
+                    writer.soft_line();
+                    self.format_type_angle_packet(packet, writer)?;
+                    self.format_prepared_delimited_type(
+                        head.body,
+                        TypeContext::Root,
+                        TypeLayout::CallerIndented,
+                        writer,
+                    )?
+                }
+                TypeAssertionOpening::Boundary(TypeExpressionGap::Source(span)) => {
                     self.format_verbatim(span, writer)?;
                     self.format_prepared_delimited_type(
                         head.body,
@@ -1509,7 +1534,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?
                 }
-                TypeExpressionGap::Formatted(boundary) => {
+                TypeAssertionOpening::Boundary(TypeExpressionGap::Formatted(boundary)) => {
                     if boundary.is_empty() && head.body.starts_with_type_parameters(self.ast) {
                         writer.space();
                     }
