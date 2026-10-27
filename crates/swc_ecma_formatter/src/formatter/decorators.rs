@@ -10,7 +10,7 @@ use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout, NodeHead};
 use super::diagnostics::FlatSeparator;
 use super::expressions::{ExpressionContext, ExpressionPosition};
-use super::source::is_source_whitespace;
+use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
 use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
@@ -90,6 +90,7 @@ pub(super) enum DecoratorLayout {
     Class,
     Member,
     Parameter,
+    ParameterProperty,
 }
 
 pub(super) struct RemovedDecoratorHead<'ast> {
@@ -329,6 +330,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(start + whitespace)
     }
 
+    fn split_decorator_comments(
+        &self,
+        comments: &'ast [Comment],
+        previous: Span,
+        next: Span,
+    ) -> Option<(&'ast [Comment], &'ast [Comment])> {
+        if comments.is_empty()
+            || previous.start >= previous.end
+            || next.start >= next.end
+            || previous.end > next.start
+            || !self.source_starts_decorator(previous)
+            || !self.source_starts_decorator(next)
+        {
+            return None;
+        }
+        let source = self.ast.source();
+        let mut end = previous.end;
+        for comment in comments {
+            if comment.span.start < end
+                || comment.span.end < comment.span.start
+                || comment.span.end > next.start
+                || !source
+                    .get(end as usize..comment.span.start as usize)?
+                    .chars()
+                    .all(is_source_whitespace)
+            {
+                return None;
+            }
+            end = comment.span.end;
+        }
+        if !source
+            .get(end as usize..next.start as usize)?
+            .chars()
+            .all(is_source_whitespace)
+            || !matches!(
+                self.comment_binding(comments, Span::new(previous.end, next.start), None),
+                CommentBinding::Unbound
+            )
+        {
+            return None;
+        }
+        Some(self.split_separator_comments(comments, 0, previous.end, Some(next.start)))
+    }
+
     pub(super) fn format_decorators(
         &mut self,
         prefix: DecoratorPrefix,
@@ -337,12 +382,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let ast = self.ast;
+        let mut previous_end = prefix.first.span(ast).end;
         let source_break = self.line_breaks(prefix.physical.end, core_start) != 0
             || prefix.remaining.iter().any(|id| {
-                let node = ast.get_node_in_sub_range(id);
-                let before =
-                    ast.source()[..node.span(ast).start as usize].trim_end_matches([' ', '\t']);
-                before.ends_with(['\n', '\r'])
+                let span = ast.get_node_in_sub_range(id).span(ast);
+                let gap = ast.source().get(previous_end as usize..span.start as usize);
+                previous_end = span.end;
+                gap.is_some_and(|source| {
+                    source
+                        .trim_start_matches(is_source_horizontal_whitespace)
+                        .starts_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                        || source
+                            .trim_end_matches(is_source_horizontal_whitespace)
+                            .ends_with(['\n', '\r', '\u{2028}', '\u{2029}'])
+                })
             });
         if matches!(layout, DecoratorLayout::Class) {
             // The complete class frame owns the mandatory decorator break.
@@ -408,7 +461,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     self.format_expression_tail(tail, writer)?;
                     let comments = self.comments.between(Span::new(span.end, following))?;
-                    let boundary = self.prepare_comment_boundary(comments, span.end, following);
+                    let (trailing, leading) = next
+                        .and_then(|node| {
+                            self.split_decorator_comments(comments, span, node.span(ast))
+                        })
+                        .unwrap_or((comments, &[]));
+                    let leading_start = leading
+                        .first()
+                        .map_or(following, |comment| comment.span.start);
+                    let boundary = self.prepare_comment_boundary(trailing, span.end, leading_start);
                     self.format_comment_boundary(&boundary, writer)?;
                     boundary
                         .gap()
@@ -419,6 +480,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 writer.line();
                             }
                         });
+                    if !leading.is_empty() {
+                        self.comments.claim(leading)?;
+                        if matches!(
+                            layout,
+                            DecoratorLayout::Member | DecoratorLayout::ParameterProperty
+                        ) {
+                            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
+                            self.prepare_comment_boundary(leading, leading_start, following)
+                                .gap()
+                                .write(writer, FlatSeparator::Space, Writer::line);
+                        } else {
+                            self.format_comment_run(
+                                leading,
+                                CommentRunLayout::Leading(following),
+                                writer,
+                            )?;
+                        }
+                    }
                     let Some(node) = next else { break };
                     current = node;
                     remaining = remaining.split_off(1);
