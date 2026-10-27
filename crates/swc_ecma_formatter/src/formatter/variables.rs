@@ -295,9 +295,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let initializer_context = self
             .variable_initializer_context(right, context)
             .with_decorated_function_call(decorated_function);
+        let rhs = self.assignment_rhs(&content);
         let mut boundary = self.assignment_boundary(
             left_end,
-            &content,
+            &rhs,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
             initializer_context,
@@ -319,7 +320,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let mut rhs_layout = self.ordinary_rhs_layout(content.data, initializer_context, &boundary);
+        let mut rhs_layout = self.ordinary_rhs_layout(&rhs, initializer_context, &boundary);
         let fixed_left_policy = matches!(rhs_layout, RhsLayout::Fluid)
             && boundary.mode == ContentMode::Formatted
             && matches!(

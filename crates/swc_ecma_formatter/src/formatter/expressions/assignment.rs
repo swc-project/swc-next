@@ -33,6 +33,11 @@ struct AssignmentExpressionHead<'ast> {
     context: ExpressionContext<'ast>,
 }
 
+/// Layout borrows the complete RHS, independently of its source-head owner.
+pub(in crate::formatter) struct AssignmentRhs<'content> {
+    content: &'content ExpressionContent,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::formatter) enum AssignmentParent {
     Statement,
@@ -340,15 +345,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_tail_owner(context.tail_owner)
             .with_tail_boundary(context.tail_boundary)
             .with_decorated_function_call(decorated_function);
+        let rhs = self.assignment_rhs(&content);
         let boundary = self.assignment_boundary(
             target.left_end(),
-            &content,
+            &rhs,
             target.operator_span,
             right.span(self.ast).end,
             right_context,
         )?;
         let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
-        let mut layout = self.assignment_layout(data, context.position, right_context, &boundary);
+        let mut layout = self.assignment_layout(&rhs, context.position, right_context, &boundary);
         let binding = target.binding();
         if let Some(pattern) = binding {
             let group = match layout {
@@ -694,6 +700,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .then_some(source)
     }
 
+    pub(in crate::formatter) fn assignment_rhs<'content>(
+        &self,
+        content: &'content ExpressionContent,
+    ) -> AssignmentRhs<'content> {
+        AssignmentRhs { content }
+    }
+
     fn assignment_expression_head(
         &self,
         content: &ExpressionContent,
@@ -938,17 +951,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(in crate::formatter) fn assignment_boundary(
         &self,
         left_end: u32,
-        content: &ExpressionContent,
+        rhs: &AssignmentRhs<'_>,
         operator_span: Span,
         source_right_end: u32,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
+        let content = rhs.content;
         let context = self.with_head_scope(context, content);
         let enclosing = content.expression;
         let source_opening = content
             .parentheses
             .map(|removed| removed.source.outer.start);
-        let projected = self.assignment_expression_head(content, context)?;
+        let source_comments = self.ast.comments();
+        let first = source_comments.partition_point(|comment| comment.span.start < left_end);
+        let remaining = &source_comments[first..];
+        let overlaps_left = first
+            .checked_sub(1)
+            .is_some_and(|index| source_comments[index].span.end > left_end);
+        let has_source_packet = overlaps_left
+            || remaining
+                .first()
+                .is_some_and(|comment| comment.span.start < source_right_end);
+        // A clear complete RHS has no source head to rebind. The advancing
+        // comment cursor and the smaller operator gap cannot establish this.
+        let projected = if has_source_packet
+            || context.content_mode != ContentMode::Formatted
+            || self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end))
+        {
+            self.assignment_expression_head(content, context)?
+        } else {
+            None
+        };
         let content = projected.as_ref().map_or(content, |head| &head.content);
         let right_start = projected
             .as_ref()
@@ -957,9 +990,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .span(self.ast)
             .start;
         let span = Span::new(left_end, right_start);
-        let source_comments = self.ast.comments();
-        let first = source_comments.partition_point(|comment| comment.span.start < span.start);
-        let comments = &source_comments[first..];
+        let comments = remaining;
         let count = comments.partition_point(|comment| comment.span.end <= span.end);
         let comments = &comments[..count];
         let mut boundary = AssignmentBoundary {
@@ -1337,7 +1368,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn assignment_layout(
         &self,
-        data: ExprData,
+        rhs: &AssignmentRhs<'_>,
         position: ExpressionPosition,
         right_context: ExpressionContext<'ast>,
         boundary: &AssignmentBoundary<'ast>,
@@ -1345,7 +1376,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if boundary.head_gap_requires_group() {
             return AssignmentLayout::Ordinary(RhsLayout::BreakAfterOperator);
         }
-        let tail = !matches!(data, ExprData::AssignmentExpression(_));
+        let tail = !matches!(rhs.content.data, ExprData::AssignmentExpression(_));
         if let ExpressionPosition::AssignmentRight(parent) | ExpressionPosition::Initializer(parent) =
             position
             && (!tail || matches!(parent, AssignmentParent::Nested))
@@ -1364,15 +1395,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return AssignmentLayout::OperatorLine;
         }
-        AssignmentLayout::Ordinary(self.ordinary_rhs_layout(data, right_context, boundary))
+        AssignmentLayout::Ordinary(self.ordinary_rhs_layout(rhs, right_context, boundary))
     }
 
     pub(in crate::formatter) fn ordinary_rhs_layout(
         &self,
-        data: ExprData,
+        rhs: &AssignmentRhs<'_>,
         context: ExpressionContext<'ast>,
         boundary: &AssignmentBoundary<'ast>,
     ) -> RhsLayout {
+        let data = rhs.content.data;
         if boundary.head_gap_requires_group()
             || boundary.rhs_starts_on_own_line()
             || !boundary.operator_line.is_empty()
