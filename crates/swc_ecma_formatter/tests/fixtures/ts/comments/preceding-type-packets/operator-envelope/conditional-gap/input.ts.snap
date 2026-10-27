@@ -7,7 +7,7 @@ type T = \u0058 extends /* prettier-ignore */ /* ordinary */
 {"printWidth":18}
 ---------- Output ----------
 type T =
-  \u0058 extends /* prettier-ignore */ /* ordinary */
-A | B
+  \u0058 /* prettier-ignore */ /* ordinary */ extends
+    A | B
     ? Y
     : Z;

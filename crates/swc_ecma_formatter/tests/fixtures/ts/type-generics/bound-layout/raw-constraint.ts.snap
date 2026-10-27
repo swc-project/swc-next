@@ -14,7 +14,8 @@ type Alias<T extends /* head */ 12.00 | 13.00 /* prettier-ignore */ = Default> =
 ---------- Output ----------
 type Alias<
   T extends /* head */
-    12.00 | 13.00 /* prettier-ignore */ = Default,
+    12.00 | 13.00 /* prettier-ignore */ =
+    Default,
 > = T;
 
 ---------- Options ----------
@@ -22,7 +23,8 @@ type Alias<
 ---------- Output ----------
 type Alias<
   T extends /* head */
-    12.00 | 13.00 /* prettier-ignore */ = Default,
+    12.00 | 13.00 /* prettier-ignore */ =
+    Default,
 > = T;
 
 ---------- Options ----------
@@ -30,5 +32,6 @@ type Alias<
 ---------- Output ----------
 type Alias<
 	T extends /* head */
-		12.00 | 13.00 /* prettier-ignore */ = Default
+		12.00 | 13.00 /* prettier-ignore */ =
+		Default
 > = T;
