@@ -9,8 +9,8 @@ use swc_next_ecma_ast::{
 
 use super::compound::PendingTypeHead;
 use super::{
-    Formatter, PreparedType, TypeBoundary, TypeBoundaryTail, TypeBoundaryTarget, TypeContext,
-    TypeLayout,
+    Formatter, PreparedType, TypeAttachmentHead, TypeBoundary, TypeBoundaryTail,
+    TypeBoundaryTarget, TypeContext, TypeLayout,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout, ExpressionTail,
@@ -144,6 +144,13 @@ pub(super) struct PreparedParameter<'ast> {
     name_mode: ContentMode,
     constraint: Option<ParameterBound<'ast>>,
     default: Option<ParameterBound<'ast>>,
+}
+
+/// A complete head whose raw type owner survives both angle layouts.
+#[derive(Clone, Copy)]
+pub(in crate::formatter) struct TypeAnglePacket<'ast> {
+    comments: &'ast [Comment],
+    next_start: u32,
 }
 
 /// Source expansion preferences and literal lines in a comment/diagnostic-clear
@@ -478,6 +485,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// The type selector, rather than comment spelling, proves that changing
+    /// this complete packet's physical runs cannot change the protected child.
+    pub(in crate::formatter) fn prepare_type_angle_packet(
+        &self,
+        node: PreparedType,
+        attachment: &TypeAttachmentHead,
+        gap: Span,
+        comments: &'ast [Comment],
+    ) -> Option<TypeAnglePacket<'ast>> {
+        let owner = node.source_owner?;
+        if comments.is_empty()
+            || self
+                .diagnostic_range_is_sensitive(Span::new(gap.start, node.node.span(self.ast).end))
+            || !self
+                .comment_binding(comments, gap, Some(owner.span(self.ast)))
+                .allows_relocation(Some(owner.span(self.ast)))
+        {
+            return None;
+        }
+        let retention = self.prepare_type_suppression_head(attachment, comments);
+        let candidate = self.prepare_type(node.node, ContentMode::Formatted);
+        for position in [
+            SuppressionPosition::Inline,
+            SuppressionPosition::EndOfLine,
+            SuppressionPosition::OwnLine,
+        ] {
+            let mut moved = candidate;
+            self.select_type_head_with_retention(&mut moved, attachment, retention, position);
+            if moved.source_owner != node.source_owner || moved.source_head != node.source_head {
+                return None;
+            }
+        }
+        Some(TypeAnglePacket {
+            comments,
+            next_start: gap.end,
+        })
+    }
+
+    pub(in crate::formatter) fn format_type_angle_packet(
+        &mut self,
+        packet: TypeAnglePacket<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.comments.claim(packet.comments)?;
+        self.format_comment_run(
+            packet.comments,
+            CommentRunLayout::GroupedLeading(packet.next_start),
+            writer,
+        )
+    }
+
     /// The angle token owns its horizontal opening; the source packet keeps
     /// every gap that can select a different ignored type or physical line.
     pub(in crate::formatter) fn type_angle_source_head(
@@ -517,6 +575,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let mut members = members.peekable();
         let mut first_type = None;
+        let mut first_angle_packet = None;
         let leading_source = if self.has_suppression {
             members.peek().and_then(|member| {
                 let GenericMember::Type(first) = *member else {
@@ -531,6 +590,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let attachment = self.type_attachment_head(node.node);
                 self.resolve_type_head_comments(&mut node, &attachment, comments, gap.end);
                 self.finalize_type_head(&mut node, &attachment, comments);
+                first_type = Some(node);
+                first_angle_packet =
+                    self.prepare_type_angle_packet(node, &attachment, gap, comments);
+                if first_angle_packet.is_some() {
+                    return None;
+                }
                 // Compact and expanded openings must select the same ignored type.
                 let opening = self.opening_line_constraint(content);
                 let mut moved = node;
@@ -566,7 +631,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     false
                 };
-                first_type = Some(node);
                 (changes_own_line || changes_inline)
                     .then(|| self.type_angle_source_head(gap, comments))
             })
@@ -807,6 +871,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     // Keep that delimiter gap before claiming the comments, so a
                     // broken list cannot change its actual type owner next pass.
                     let item_start = if following_mode.is_none()
+                        && let Some(packet) = first_angle_packet.take()
+                    {
+                        self.format_type_angle_packet(packet, writer)?;
+                        member_span.start
+                    } else if following_mode.is_none()
                         && let Some(gap) = leading_source
                     {
                         self.format_verbatim(gap, writer)?;
