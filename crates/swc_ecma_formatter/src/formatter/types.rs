@@ -106,6 +106,39 @@ struct ProjectedSuppressedType<'ast> {
     comments: &'ast [Comment],
 }
 
+/// The actual operator carries its grammar constraint for a preceding packet.
+#[derive(Clone, Copy)]
+pub(super) struct TypeOperatorSlot {
+    span: Span,
+    preceding: LineConstraint,
+}
+
+impl TypeOperatorSlot {
+    pub(super) fn new(span: Span, preceding: LineConstraint) -> Self {
+        Self { span, preceding }
+    }
+}
+
+/// Source punctuation and its RHS keep independent indentation destinations.
+#[derive(Clone, Copy)]
+pub(super) struct SourceTypeOperator {
+    pub(super) prefix: Span,
+    pub(super) after: Span,
+}
+
+impl SourceTypeOperator {
+    pub(super) fn new(gap: Span, operator: Span) -> Self {
+        Self {
+            prefix: Span::new(gap.start, operator.end),
+            after: Span::new(operator.end, gap.end),
+        }
+    }
+
+    fn span(self) -> Span {
+        Span::new(self.prefix.start, self.after.end)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum TypeSuppressionContext {
     TypeBoundary,
@@ -181,6 +214,9 @@ pub(super) struct TypeSuppressionRun {
     target: TypeSuppressionTarget,
     head: TypeHeadRetention,
     packet_projection: Option<PrecedingTypePacketProjection>,
+    head_projection: Option<PrecedingTypeHeadProjection>,
+    // A contiguous source-owner prefix, independent of the RHS frame projection.
+    preceding_count: Option<usize>,
 }
 
 /// Original run selection plus a candidate partition; neither claims comments.
@@ -203,13 +239,17 @@ enum PrecedingTypePacketProjection {
     EndOfLine(TypeSuppressionContext),
 }
 
+/// Every component in the retained head's attachment view precedes the operator.
+/// The source partition must independently cover the same complete packet.
+struct PrecedingTypeHeadProjection;
+
 impl TypeSuppressionRun {
     pub(super) fn target(&self) -> TypeSuppressionTarget {
         self.target
     }
 
     /// Retain an attachment frame independently of the selected content owner.
-    pub(super) fn retain_source_head(self, node: &mut PreparedType, ast: &Ast<'_>) {
+    pub(super) fn retain_source_head(&self, node: &mut PreparedType, ast: &Ast<'_>) {
         self.head.apply(node, ast);
     }
 }
@@ -315,7 +355,7 @@ enum TypeBoundaryLayout<'ast> {
 /// Operator boundaries can separate a proven suppressed head from source geometry.
 /// Other type punctuation still carries an ordinary or source-bound gap.
 enum TypeOperatorLayout<'ast> {
-    Source(Span),
+    Source(SourceTypeOperator),
     Preceding {
         packet: PreparedPrecedingTypePacket<'ast>,
         after: CommentBoundary<'ast>,
@@ -855,6 +895,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedDelimitedType { span, content })
     }
 
+    /// Retaining a lexical head does not change the syntax printer's layout scope.
+    /// Materialize that same syntax once, without releasing its source owner.
+    fn prepare_operator_rhs_type(
+        &self,
+        node: PreparedType,
+        context: TypeContext,
+    ) -> Result<PreparedDelimitedType<'ast>, FormatError> {
+        let mut body = self.prepare_delimited_type(node)?;
+        let PreparedTypeContent::Type(node) = body.content else {
+            return Ok(body);
+        };
+        if node.source_owner.is_some() || node.source_head.is_none() {
+            return Ok(body);
+        }
+        body.content = match node.data {
+            TsTypeData::TsParenthesizedType(parentheses) => PreparedTypeContent::Parentheses(
+                self.prepare_type_parentheses(parentheses, None, node.source_head, context),
+            ),
+            TsTypeData::TsUnionType(union) if union.types(self.ast).len() > 1 => {
+                PreparedTypeContent::Union(self.prepare_union(node, union.types(self.ast))?)
+            }
+            TsTypeData::TsUnionType(_) => {
+                PreparedTypeContent::Compound(self.prepare_single_compound(node)?)
+            }
+            TsTypeData::TsIntersectionType(intersection)
+                if intersection.types(self.ast).len() > 1 =>
+            {
+                PreparedTypeContent::Intersection(
+                    self.prepare_intersection(node, intersection.types(self.ast))?,
+                )
+            }
+            TsTypeData::TsIntersectionType(_) => {
+                PreparedTypeContent::Compound(self.prepare_single_compound(node)?)
+            }
+            _ => PreparedTypeContent::Type(node),
+        };
+        Ok(body)
+    }
+
     fn format_type_boundary_tail(
         &mut self,
         tail: TypeBoundaryTail<'ast>,
@@ -874,8 +953,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => FlatSeparator::Space,
         };
         let (before, after) = match &boundary.layout {
-            TypeOperatorLayout::Source(gap) => {
-                self.format_source_gap(*gap, writer)?;
+            TypeOperatorLayout::Source(source) => {
+                self.format_source_gap(source.span(), writer)?;
                 return Ok(None);
             }
             TypeOperatorLayout::Preceding { packet, after } => {
@@ -1028,8 +1107,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let packet_before;
         let (before, after) = match &boundary.layout {
-            TypeOperatorLayout::Source(gap) => {
-                self.format_source_gap(*gap, writer)?;
+            TypeOperatorLayout::Source(source) => {
+                self.format_source_gap(source.span(), writer)?;
                 return self.format_prepared_type_with_layout(
                     node,
                     TypeContext::Root,
@@ -1562,25 +1641,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.prepare_type_suppression_head(head, before)
                 });
             for (run, position) in self.suppressed_comment_runs(before, operator.start) {
-                if !matches!(position, SuppressionPosition::OwnLine)
-                    && let Some(owner) = packet_owner
-                    && let Some(attachment) = &attachment
+                let selection = attachment.as_ref().map(|attachment| {
+                    self.prepare_type_suppression_run(
+                        attachment,
+                        before_head,
+                        run,
+                        position,
+                        TypeSuppressionContext::TypeBoundary,
+                    )
+                });
+                if let Some(selection) = &selection
                     && let TypeBoundaryTarget::Constraint { node, .. }
                     | TypeBoundaryTarget::InferConstraint { node, .. }
-                    | TypeBoundaryTarget::Default { node, .. } = &target
-                    && let Some((packet, after)) = self.prepare_preceding_type_operator(
+                    | TypeBoundaryTarget::Default { node, .. } = &mut target
+                {
+                    selection.retain_source_head(node, self.ast);
+                }
+                if !matches!(position, SuppressionPosition::OwnLine)
+                    && let Some(owner) = packet_owner
+                    && let Some(selection) = &selection
+                    && let TypeBoundaryTarget::Constraint { node, .. }
+                    | TypeBoundaryTarget::InferConstraint { node, .. }
+                    | TypeBoundaryTarget::Default { node, .. } = &mut target
+                    && let Some((packet, after)) = self.prepare_type_operator_boundary(
                         comments,
                         run,
                         owner,
                         node,
-                        &self.prepare_type_suppression_run(
-                            attachment,
-                            before_head,
-                            run,
-                            position,
-                            TypeSuppressionContext::TypeBoundary,
-                        ),
-                        operator,
+                        selection,
+                        TypeOperatorSlot::new(operator, LineConstraint::Unconstrained),
                     )
                 {
                     left_mode = ContentMode::Verbatim;
@@ -1648,15 +1737,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             TypeSuppressionContext::TypeBoundary,
                         );
                         let selected = selection.target();
+                        selection.retain_source_head(node, self.ast);
                         if let Some(owner) = packet_owner
-                            && let Some((packet, after)) = self.prepare_preceding_type_operator(
-                                comments, run, owner, node, &selection, operator,
+                            && let Some((packet, after)) = self.prepare_type_operator_boundary(
+                                comments,
+                                run,
+                                owner,
+                                node,
+                                &selection,
+                                TypeOperatorSlot::new(operator, LineConstraint::Unconstrained),
                             )
                         {
                             left_mode = ContentMode::Verbatim;
                             break 'layout TypeOperatorLayout::Preceding { packet, after };
                         }
-                        selection.retain_source_head(node, self.ast);
                         selected
                     }
                     (_, TypeBoundaryTarget::Qualified)
@@ -1713,7 +1807,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             // A suppressed packet without a proven canonical placement retains
             // its boundary independently of which operand is copied verbatim.
-            TypeOperatorLayout::Source(gap)
+            TypeOperatorLayout::Source(SourceTypeOperator::new(gap, operator))
         };
         Ok(TypeBoundary {
             role,
@@ -1924,72 +2018,150 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
     }
 
-    /// A packet-only caller keeps the existing inline attachment contract.
-    /// Its independently prepared header does not authorize an EOL operator projection.
-    pub(super) fn prepare_preceding_type_packet(
-        &self,
-        comments: &'ast [Comment],
-        run: &[Comment],
-        owner: Span,
-        right: &PreparedType,
-        selection: &TypeSuppressionRun,
-    ) -> Option<PreparedPrecedingTypePacket<'ast>> {
-        self.prepare_preceding_type_packet_parts(comments, run, owner, right, selection, None)
-            .map(|(packet, _)| packet)
-    }
-
-    /// Prepare the complete packet before claiming either of its operator slots.
+    /// Root expression operators try the complete packet before their prefix constructor.
     pub(super) fn prepare_preceding_type_operator(
         &self,
         comments: &'ast [Comment],
         run: &[Comment],
         owner: Span,
-        right: &PreparedType,
+        right: &mut PreparedType,
         selection: &TypeSuppressionRun,
-        operator: Span,
+        operator: TypeOperatorSlot,
     ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
-        self.prepare_preceding_type_packet_parts(
-            comments,
-            run,
-            owner,
-            right,
-            selection,
-            Some(operator),
-        )
+        if selection.preceding_count != Some(run.len()) {
+            return None;
+        }
+        self.prepare_type_operator_boundary(comments, run, owner, right, selection, operator)
     }
 
-    fn prepare_preceding_type_packet_parts(
+    /// Prepare a type operator with independent preceding and RHS source slots.
+    pub(super) fn prepare_type_operator_boundary(
+        &self,
+        comments: &'ast [Comment],
+        run: &[Comment],
+        owner: Span,
+        right: &mut PreparedType,
+        selection: &TypeSuppressionRun,
+        operator: TypeOperatorSlot,
+    ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
+        let mut projected = *right;
+        selection.head.apply(&mut projected, self.ast);
+        // A complete preceding packet can release its lexical head through
+        // either inline attachment or its physical end-of-line owner proof.
+        // Independent RHS comments still retain their own source head.
+        if let TypeHeadRetention::Source(head) = selection.head
+            && projected.source_head == Some(head)
+            && selection.preceding_count == Some(run.len())
+            && run.len() == comments.len()
+            && (selection.head_projection.is_some()
+                || matches!(
+                    selection.packet_projection,
+                    Some(PrecedingTypePacketProjection::EndOfLine(_))
+                ))
+            && self
+                .comments
+                .in_range(projected.node.span(self.ast))
+                .is_empty()
+        {
+            projected.source_head = None;
+        }
+        let packet = self.prepare_preceding_type_operator_packet(
+            comments, run, owner, &projected, selection, operator,
+        )?;
+        *right = projected;
+        Some(packet)
+    }
+
+    fn prepare_preceding_type_operator_packet(
         &self,
         comments: &'ast [Comment],
         run: &[Comment],
         owner: Span,
         right: &PreparedType,
         selection: &TypeSuppressionRun,
-        operator: Option<Span>,
+        operator: TypeOperatorSlot,
     ) -> Option<(PreparedPrecedingTypePacket<'ast>, CommentBoundary<'ast>)> {
+        let TypeOperatorSlot {
+            span: operator,
+            preceding,
+        } = operator;
         if !matches!(selection.target, TypeSuppressionTarget::Preceding) || comments.is_empty() {
-            return None;
-        }
-        // Packet-only layouts keep the complete packet on the owner's line,
-        // including line terminators inside block comments.
-        if operator.is_none()
-            && self.line_breaks(owner.start, comments[comments.len() - 1].span.end) != 0
-        {
             return None;
         }
         let right_span = right.node.span(self.ast);
         // An operator envelope carries the RHS opening independently of this
-        // preceding packet. Packet-only callers keep their source head contract.
-        if right.source_owner.is_some()
-            || right.source_head.is_some()
-            || !self.comments.in_range(right_span).is_empty()
-                && (operator.is_none() || selection.packet_projection.is_none())
+        // preceding packet.
+        if right.source_owner.is_some() {
+            return None;
+        }
+        let inner = self.comments.in_range(right_span);
+        if !inner.is_empty() && selection.packet_projection.is_none()
             || self.diagnostic_range_is_sensitive(Span::new(owner.start, right_span.end))
         {
             return None;
         }
+        // A partial packet can keep the RHS's actual compound head. Its two
+        // owners are certified below; the head itself is neither moved nor freed.
+        if let Some(head) = right.source_head
+            && (!matches!(selection.head, TypeHeadRetention::Source(selected) if selected == head)
+                || !matches!(
+                    self.ast.ts_type_data(head),
+                    TsTypeData::TsUnionType(_) | TsTypeData::TsIntersectionType(_)
+                )
+                || !inner.is_empty())
+        {
+            return None;
+        }
+        let preceding_count = selection.preceding_count?;
+        let preceding_run = run.get(..preceding_count)?;
+        if preceding == LineConstraint::SameLine
+            && preceding_run.first().is_some_and(|first| {
+                preceding_run
+                    .last()
+                    .is_some_and(|last| self.line_breaks(first.span.start, last.span.end) != 0)
+                    || preceding_run
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+            })
+        {
+            return None;
+        }
+        if preceding_count < run.len() {
+            // A source packet has one preceding prefix and one independent RHS
+            // suffix. Moving the whole run would change an ordinary head's owner.
+            if run.len() != comments.len() || !comments.starts_with(run) {
+                return None;
+            }
+            let (prefix, following) = comments.split_at(preceding_count);
+            let first = prefix.first()?;
+            let last = prefix.last()?;
+            let first_following = following.first()?;
+            if self.line_breaks(owner.start, first.span.start) != 0
+                || prefix
+                    .iter()
+                    .any(|comment| comment.kind != CommentKind::Block)
+                || first_following.span.start < operator.end
+                || last.span.end > first_following.span.start
+                || !self
+                    .comment_binding(prefix, Span::new(owner.start, right_span.end), Some(owner))
+                    .allows_relocation(Some(owner))
+                || !matches!(
+                    self.comment_binding(
+                        following,
+                        Span::new(operator.end, right_span.start),
+                        Some(right_span),
+                    ),
+                    CommentBinding::Unbound
+                )
+            {
+                return None;
+            }
+            return Some((
+                PreparedPrecedingTypePacket { comments: prefix },
+                self.prepare_comment_boundary(following, operator.end, right_span.start),
+            ));
+        }
         if run.len() != comments.len() {
-            let operator = operator?;
             if !matches!(
                 selection.packet_projection,
                 Some(PrecedingTypePacketProjection::Inline)
@@ -2035,10 +2207,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.prepare_comment_boundary(following, operator.end, right_span.start),
             ));
         }
-        let empty_after = || match operator {
-            Some(operator) => self.prepare_comment_boundary(&[], operator.end, right_span.start),
-            None => CommentBoundary::adjacent(right_span.start),
-        };
+        // Only the two-owner paths above can carry a retained RHS head.
+        if right.source_head.is_some() {
+            return None;
+        }
+        let empty_after = || self.prepare_comment_boundary(&[], operator.end, right_span.start);
         if let [comment] = comments
             && comment.kind == CommentKind::Block
             && is_suppression_comment(self.ast, *comment)
@@ -2067,7 +2240,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some((PreparedPrecedingTypePacket { comments }, empty_after()));
             }
         } else {
-            let operator = operator?;
             let Some(PrecedingTypePacketProjection::EndOfLine(context)) =
                 selection.packet_projection
             else {
@@ -2186,6 +2358,87 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             self.prepare_comment_boundary(following, last_preceding.span.end, right_span.start),
         ))
+    }
+
+    pub(super) fn prepare_type_rhs_boundary(
+        &self,
+        source: SourceTypeOperator,
+        node: PreparedType,
+    ) -> Option<CommentBoundary<'ast>> {
+        if self.diagnostic_range_is_sensitive(Span::new(
+            source.prefix.start,
+            node.node.span(self.ast).end,
+        )) {
+            return None;
+        }
+        let comments = self.comments.in_range(source.after);
+        let mut start = source.after.start;
+        for comment in comments {
+            if comment.span.start < start
+                || comment.span.end > source.after.end
+                || !self
+                    .source(Span::new(start, comment.span.start))
+                    .chars()
+                    .all(is_source_whitespace)
+            {
+                return None;
+            }
+            start = comment.span.end;
+        }
+        if !self
+            .source(Span::new(start, source.after.end))
+            .chars()
+            .all(is_source_whitespace)
+        {
+            return None;
+        }
+        let after = self.prepare_comment_boundary(comments, source.after.start, source.after.end);
+        matches!(
+            self.comment_boundary_binding(&after, node.node.span(self.ast)),
+            CommentBinding::Unbound
+        )
+        .then_some(after)
+    }
+
+    /// A source head has its own entry scope, separate from the opaque RHS body.
+    pub(super) fn format_source_type_operator_rhs(
+        &mut self,
+        source: SourceTypeOperator,
+        node: PreparedType,
+        context: TypeContext,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_source_gap(source.prefix, writer)?;
+        let body = self.prepare_operator_rhs_type(node, context)?;
+        let entry = self
+            .comments
+            .in_range(source.after)
+            .first()
+            .map_or(source.after.end, |comment| comment.span.start);
+        let head_entry = self.line_constraint(source.after.start, entry);
+        let (head, ()) =
+            writer.record_with_value(|writer| self.format_source_gap(source.after, writer))?;
+        if matches!(head_entry, LineConstraint::NewLine(_)) {
+            writer.indent(|writer| {
+                writer.write_fragment(head);
+                self.format_prepared_delimited_type(
+                    body,
+                    context,
+                    TypeLayout::CallerIndented,
+                    writer,
+                )
+            })
+        } else {
+            writer.write_fragment(head);
+            writer.indent(|writer| {
+                self.format_prepared_delimited_type(
+                    body,
+                    context,
+                    TypeLayout::CallerIndented,
+                    writer,
+                )
+            })
+        }
     }
 
     pub(super) fn format_preceding_type_packet(
@@ -2552,8 +2805,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let first = run[0];
             let last = run[run.len() - 1];
-            let tied = !self.source_position_starts_line(first.span.start)
-                && !self.comment_run_ends_line(last, following_start);
+            let tied = matches!(
+                self.source_comment_run_position(first, last, following_start),
+                SuppressionPosition::Inline
+            );
             for &comment in run.iter().rev() {
                 self.advance_type_comment_prefix(&mut prefix, comment, tied);
             }
@@ -2657,50 +2912,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: SuppressionPosition,
         context: TypeSuppressionContext,
     ) -> ResolvedTypeSuppressionRun {
-        match position {
-            SuppressionPosition::OwnLine => {
-                return ResolvedTypeSuppressionRun {
-                    selection: TypeSuppressionRun {
-                        target: TypeSuppressionTarget::Following,
-                        head,
-                        packet_projection: None,
-                    },
-                    preceding_prefix: None,
-                };
-            }
-            SuppressionPosition::EndOfLine => {
-                return ResolvedTypeSuppressionRun {
-                    selection: TypeSuppressionRun {
-                        target: TypeSuppressionTarget::Preceding,
-                        head,
-                        packet_projection: attachment
-                            .prefix
-                            .preserves_union_owner
-                            .then_some(PrecedingTypePacketProjection::EndOfLine(context)),
-                    },
-                    preceding_prefix: None,
-                };
-            }
-            SuppressionPosition::Inline => {}
+        if matches!(position, SuppressionPosition::OwnLine) {
+            return ResolvedTypeSuppressionRun {
+                selection: TypeSuppressionRun {
+                    target: TypeSuppressionTarget::Following,
+                    head,
+                    packet_projection: None,
+                    head_projection: None,
+                    preceding_count: None,
+                },
+                preceding_prefix: None,
+            };
         }
-        let mut tie = attachment.prefix.tie;
+        let end_of_line = matches!(position, SuppressionPosition::EndOfLine);
+        let mut selection_tie = attachment.prefix.tie;
+        let mut source_tie = attachment.prefix.tie;
+        let source_tied = matches!(position, SuppressionPosition::Inline);
         let mut preceding = false;
         let mut following = false;
         let mut all_preceding = true;
-        let mut prefix_end = None;
+        let mut prefix_end = comments.len();
         let mut preceding_seen = false;
         let mut contiguous = true;
         for (index, &comment) in comments.iter().enumerate().rev() {
             let selected_following =
-                self.advance_type_comment_tie(&mut tie, comment, true, context);
-            all_preceding &= !selected_following;
-            if selected_following {
+                self.advance_type_comment_tie(&mut selection_tie, comment, true, context);
+            let source_following =
+                self.advance_type_comment_tie(&mut source_tie, comment, source_tied, context);
+            let suppression = is_suppression_comment(self.ast, comment);
+            // The marker keeps its already selected target. Ordinary attachment
+            // observes the original physical run, not a simulated inline packet.
+            let component_following = if suppression {
+                selected_following && !end_of_line
+            } else {
+                source_following
+            };
+            if component_following {
                 contiguous &= !preceding_seen;
-                prefix_end = Some(index);
+                prefix_end = index;
             } else {
                 preceding_seen = true;
             }
-            if is_suppression_comment(self.ast, comment) {
+            all_preceding &= !selected_following;
+            if suppression {
                 if selected_following {
                     following = true;
                 } else {
@@ -2708,28 +2962,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let target = match (preceding, following) {
-            (true, true) => TypeSuppressionTarget::Both,
-            (true, false) => TypeSuppressionTarget::Preceding,
-            (false, true) => TypeSuppressionTarget::Following,
-            (false, false) => TypeSuppressionTarget::Neither,
+        let target = if end_of_line {
+            TypeSuppressionTarget::Preceding
+        } else {
+            match (preceding, following) {
+                (true, true) => TypeSuppressionTarget::Both,
+                (true, false) => TypeSuppressionTarget::Preceding,
+                (false, true) => TypeSuppressionTarget::Following,
+                (false, false) => TypeSuppressionTarget::Neither,
+            }
         };
+        let head_projection = (all_preceding
+            && matches!(target, TypeSuppressionTarget::Preceding)
+            && attachment.prefix.preserves_union_owner)
+            .then_some(PrecedingTypeHeadProjection);
+        let packet_projection = if end_of_line {
+            attachment
+                .prefix
+                .preserves_union_owner
+                .then_some(PrecedingTypePacketProjection::EndOfLine(context))
+        } else {
+            (all_preceding
+                && matches!(target, TypeSuppressionTarget::Preceding)
+                && attachment.prefix.preserves_union_owner)
+                .then_some(PrecedingTypePacketProjection::Inline)
+        };
+        let preceding_count = (contiguous
+            && prefix_end != 0
+            && matches!(target, TypeSuppressionTarget::Preceding)
+            && attachment.prefix.preserves_union_owner)
+            .then_some(prefix_end);
         ResolvedTypeSuppressionRun {
             selection: TypeSuppressionRun {
                 target,
                 head,
-                packet_projection: (all_preceding
-                    && matches!(target, TypeSuppressionTarget::Preceding)
-                    && attachment.prefix.preserves_union_owner)
-                    .then_some(PrecedingTypePacketProjection::Inline),
+                packet_projection,
+                head_projection,
+                preceding_count,
             },
-            preceding_prefix: prefix_end
+            // Root's constructor additionally requires its original inline,
+            // horizontal-owner proof and a nonempty following suffix.
+            preceding_prefix: preceding_count
                 .filter(|&end| {
-                    end != 0
+                    !end_of_line
                         && end < comments.len()
-                        && contiguous
-                        && matches!(target, TypeSuppressionTarget::Preceding)
-                        && attachment.prefix.preserves_union_owner
                         && attachment.prefix.preserves_horizontal_owner
                 })
                 .map(|end| PrecedingTypePrefix { end }),
@@ -3509,8 +3785,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: TypeLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let content = if node.source_head.is_some() {
+            self.prepare_operator_rhs_type(node, context)?.content
+        } else {
+            compound::PreparedTypeContent::Type(node)
+        };
         let recorded = self.record_type_head(
-            compound::PreparedTypeContent::Type(node),
+            content,
             PendingTypeHead::new(
                 after.comments(),
                 node.node.span(self.ast).start,
@@ -3966,6 +4247,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn prepare_binary_type_head(
         &self,
         node: PreparedType,
+        context: TypeContext,
         after: &CommentBoundary<'ast>,
         operator_end: u32,
         tail_owner: TailOwner,
@@ -4003,7 +4285,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return BinaryTypeHead(BinaryTypeHeadLayout::Direct);
         }
         let leading = if compound {
-            self.type_movable_head(node, TypeContext::Root)
+            self.type_movable_head(node, context)
         } else {
             None
         };
@@ -4088,22 +4370,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 });
             }
         }
-        let starts_line = comments.first().is_some_and(|first| {
-            self.source_line_starts_line(first.span.start)
-                || self.line_breaks(first.span.start, first.span.end) != 0
-        });
-        let ends_line = starts_line
-            && comments.iter().enumerate().any(|(index, comment)| {
-                let next = comments
-                    .get(index + 1)
-                    .map_or(next_start, |next| next.span.start);
-                self.line_breaks(comment.span.end, next) != 0
-            });
         let own_line = empty_opening.or_else(|| {
-            comments
-                .first()
-                .filter(|_| ends_line)
-                .map(|first| self.line_constraint(operator_end, first.span.start))
+            let first = comments.first()?;
+            let owns_opening = if after.is_empty() {
+                // This head is borrowed through a removable syntax frame, not
+                // the actual external operator boundary. Keep its proven entry.
+                let starts_line = self.source_line_starts_line(first.span.start)
+                    || self.line_breaks(first.span.start, first.span.end) != 0;
+                starts_line
+                    && comments.iter().enumerate().any(|(index, comment)| {
+                        let next = comments
+                            .get(index + 1)
+                            .map_or(next_start, |next| next.span.start);
+                        self.line_breaks(comment.span.end, next) != 0
+                    })
+            } else {
+                // Entry belongs to the actual operator-to-head boundary. A
+                // generated union bar cannot change that external opening.
+                self.line_breaks(operator_end, first.span.start) != 0
+            };
+            owns_opening.then(|| self.line_constraint(operator_end, first.span.start))
         });
         if own_line.is_none()
             && !compound
@@ -4120,11 +4406,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_binary_type_rhs_head(
         &mut self,
         node: PreparedType,
+        context: TypeContext,
         after: &CommentBoundary<'ast>,
         head: BinaryTypeHead<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let context = TypeContext::Root;
         if matches!(head.0, BinaryTypeHeadLayout::InlineNamed) {
             self.format_comment_boundary_with_layout(
                 after,
@@ -4163,12 +4449,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if own_line.is_none() {
             pending = pending.with_inline_prefix();
         }
-        let recorded = self.record_type_head(
-            compound::PreparedTypeContent::Type(node),
-            pending,
-            context,
-            writer,
-        )?;
+        // The normal head walk keeps its inline union-head optimization. A
+        // retained lexical head stops that walk, but still owns the same actual
+        // syntax scope for its external head and intrinsic opening.
+        let content = if node.source_head.is_some() {
+            self.prepare_operator_rhs_type(node, context)?.content
+        } else {
+            compound::PreparedTypeContent::Type(node)
+        };
+        let recorded = self.record_type_head(content, pending, context, writer)?;
         let opening = match own_line {
             _ if recorded.riding => None,
             Some(opening) => Some(opening),

@@ -104,17 +104,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .peek()
                     .and_then(|next| next.first())
                     .map_or(following_start, |comment| comment.span.start);
-                let position = if self.source_position_starts_line(first.span.start) {
-                    SuppressionPosition::OwnLine
-                } else if self.comment_run_ends_line(*last, following) {
-                    SuppressionPosition::EndOfLine
-                } else {
-                    SuppressionPosition::Inline
-                };
+                let position = self.source_comment_run_position(*first, *last, following);
                 return Some((run, position));
             }
             None
         })
+    }
+
+    /// Physical placement belongs to the original run and its actual next frontier.
+    pub(super) fn source_comment_run_position(
+        &self,
+        first: Comment,
+        last: Comment,
+        following: u32,
+    ) -> SuppressionPosition {
+        if self.source_position_starts_line(first.span.start) {
+            SuppressionPosition::OwnLine
+        } else if self.comment_run_ends_line(last, following) {
+            SuppressionPosition::EndOfLine
+        } else {
+            SuppressionPosition::Inline
+        }
     }
 
     pub(super) fn comment_run_ends_line(&self, last: Comment, following: u32) -> bool {

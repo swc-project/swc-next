@@ -109,7 +109,7 @@ struct ParameterBound<'ast> {
 enum PreparedBoundContent<'ast> {
     Body {
         body: super::PreparedDelimitedType<'ast>,
-        tail: TypeBoundaryTail<'ast>,
+        tail: Option<TypeBoundaryTail<'ast>>,
     },
     Head {
         recorded: super::RecordedTypeHead<'ast>,
@@ -1090,16 +1090,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } if movable && !after.is_empty() => {
                 let comments = self.prepare_bound_comments(&after, node.node.span(self.ast));
                 let (following, before, after, comments) = match comments {
-                    PreparedBoundaryComments::Trailing { run, after, gap } => (
-                        Some(TypeBoundaryTail {
-                            role,
-                            before,
-                            trailing: run,
-                        }),
-                        None,
-                        after,
-                        PreparedBoundaryComments::Preserved(gap),
-                    ),
+                    PreparedBoundaryComments::Trailing { run, after, .. } => {
+                        // The trailing prefix and its remaining head have disjoint
+                        // source windows. Finish the head's preparation here.
+                        let comments =
+                            self.prepare_bound_comments(&after, node.node.span(self.ast));
+                        (
+                            Some(TypeBoundaryTail {
+                                role,
+                                before,
+                                trailing: run,
+                            }),
+                            None,
+                            after,
+                            comments,
+                        )
+                    }
                     comments => (None, Some(before), after, comments),
                 };
                 let tail = self.format_parameter_bound(
@@ -1154,19 +1160,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     after,
                 )
             }
-            source @ TypeBoundary {
-                layout: super::TypeOperatorLayout::Source(_),
+            TypeBoundary {
+                layout: super::TypeOperatorLayout::Source(source),
                 ..
             } => {
-                self.format_type_boundary(&source, writer)?;
-                let pending = writer.indent(|writer| {
-                    self.format_prepared_type_with_layout(
-                        bound.node,
-                        context,
-                        TypeLayout::CallerIndented,
-                        writer,
-                    )
-                })?;
+                if let Some(after) = self.prepare_type_rhs_boundary(source, bound.node) {
+                    self.format_source_gap(source.prefix, writer)?;
+                    let comments =
+                        self.prepare_bound_comments(&after, bound.node.node.span(self.ast));
+                    return self.format_parameter_bound_after_operator(
+                        bound.node, context, &after, comments, tail, writer,
+                    );
+                }
+                let pending =
+                    self.format_source_type_operator_rhs(source, bound.node, context, writer)?;
                 if let Some(tail) = tail {
                     self.format_expression_tail(pending, writer)?;
                     self.format_type_boundary_tail(tail, writer)?;
@@ -1217,6 +1224,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    /// Resolve and emit the final bound head without transporting an ordinary RHS.
     fn format_parameter_bound_after_operator(
         &mut self,
         node: PreparedType,
@@ -1226,65 +1234,85 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if let Some(projection) = node.suppressed_projection()
-            && let Some(head) = self.projected_suppressed_type(projection)
-            && !head.comments.is_empty()
-        {
-            // Record the live source frontier before the separator can claim it.
-            let recorded = self.record_type_head(
-                super::compound::PreparedTypeContent::Type(node),
-                PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, None)
-                    .with_opening(CommentOpening::Provided),
-                context,
-                writer,
-            )?;
-            let group = self.format_parameter_bound_separator(
-                None,
-                CommentGap::Source(LineConstraint::NewLine(1)),
-                writer,
-            )?;
-            return writer.indent_if_break(group, |writer| {
-                self.format_recorded_type_head_with_boundary_tail(
-                    recorded,
+        let (gap, content) = 'prepared: {
+            if let Some(projection) = node.suppressed_projection()
+                && let Some(head) = self.projected_suppressed_type(projection)
+                && !head.comments.is_empty()
+            {
+                // Record the live source frontier before the separator can claim it.
+                let recorded = self.record_type_head(
+                    super::compound::PreparedTypeContent::Type(node),
+                    PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, None)
+                        .with_opening(CommentOpening::Provided),
                     context,
-                    TypeLayout::CallerIndented,
-                    tail,
                     writer,
-                )
-            });
-        }
-        let (gap, inline_head) = match comments {
-            PreparedBoundaryComments::Head { leading, gap } => {
-                if node.source_owner.is_none() {
-                    (CommentGap::Source(leading), true)
-                } else {
-                    (gap, false)
+                )?;
+                break 'prepared (
+                    CommentGap::Source(LineConstraint::NewLine(1)),
+                    PreparedBoundContent::Head { recorded, tail },
+                );
+            }
+            let (gap, record_head) = match comments {
+                PreparedBoundaryComments::Head { .. }
+                    if node.source_owner.is_none()
+                        && !self.diagnostic_range_is_sensitive(Span::new(
+                            after.source_end(),
+                            node.node.span(self.ast).end,
+                        )) =>
+                {
+                    // This complete, unbound head enters the actual RHS syntax.
+                    // Its opening is paid by that prepared head, not by its old slot.
+                    (CommentGap::Source(LineConstraint::Unconstrained), true)
                 }
-            }
-            PreparedBoundaryComments::Preserved(gap)
-            | PreparedBoundaryComments::Trailing { gap, .. } => (gap, false),
-        };
-        if !inline_head && tail.is_none() {
-            let group = self.format_parameter_bound_separator(Some(after), gap, writer)?;
-            return writer.indent_if_break(group, |writer| {
-                self.format_prepared_type_with_layout(node, context, TypeLayout::Root, writer)
-            });
-        }
-        let body = self.prepare_delimited_type(node)?;
-        let (movable, leading) = self.prepared_content_head(&body.content, context);
-        let content = match tail {
-            Some(tail) if !(inline_head || movable && after.is_empty()) => {
+                PreparedBoundaryComments::Head { gap }
+                | PreparedBoundaryComments::Preserved(gap)
+                | PreparedBoundaryComments::Trailing { gap, .. } => (gap, false),
+            };
+            // An empty external packet can still expose a head through removable
+            // frames. Discover that frontier before choosing the ordinary direct path.
+            let leading = if !record_head && tail.is_none() {
+                // A transferable head needs an unclaimed comment inside this type.
+                let leading = if self.comments.in_range(node.node.span(self.ast)).is_empty() {
+                    None
+                } else {
+                    self.type_movable_head(node, context)
+                };
+                if leading.is_none() {
+                    let group = self.format_parameter_bound_separator(Some(after), gap, writer)?;
+                    return writer.indent_if_break(group, |writer| {
+                        self.format_prepared_type_with_layout(
+                            node,
+                            context,
+                            TypeLayout::Root,
+                            writer,
+                        )
+                    });
+                }
+                leading
+            } else {
+                None
+            };
+            let body = self.prepare_operator_rhs_type(node, context)?;
+            let (movable, leading) = match (&body.content, leading) {
+                (super::compound::PreparedTypeContent::Type(_), Some(leading)) => {
+                    (true, Some(leading))
+                }
+                _ => self.prepared_content_head(&body.content, context),
+            };
+            let content = if record_head || movable && after.is_empty() {
+                PreparedBoundContent::Head {
+                    recorded: self.record_type_head(
+                        body.content,
+                        PendingTypeHead::new(after.comments(), body.span.start, leading),
+                        context,
+                        writer,
+                    )?,
+                    tail,
+                }
+            } else {
                 PreparedBoundContent::Body { body, tail }
-            }
-            tail => PreparedBoundContent::Head {
-                recorded: self.record_type_head(
-                    body.content,
-                    PendingTypeHead::new(after.comments(), body.span.start, leading),
-                    context,
-                    writer,
-                )?,
-                tail,
-            },
+            };
+            (gap, content)
         };
         let after = match &content {
             PreparedBoundContent::Head { .. } => None,
@@ -1300,14 +1328,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     tail,
                     writer,
                 ),
-            PreparedBoundContent::Body { body, tail } => self
-                .format_prepared_delimited_type_before_boundary(
-                    body,
-                    context,
-                    TypeLayout::Root,
-                    tail,
-                    writer,
-                ),
+            PreparedBoundContent::Body {
+                body,
+                tail: Some(tail),
+            } => self.format_prepared_delimited_type_before_boundary(
+                body,
+                context,
+                TypeLayout::Root,
+                tail,
+                writer,
+            ),
+            PreparedBoundContent::Body { body, tail: None } => {
+                self.format_prepared_delimited_type(body, context, TypeLayout::Root, writer)
+            }
         })
     }
 
@@ -1322,9 +1355,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             writer.indent(|writer| self.format_comment_boundary(after, writer))?;
         }
-        Ok(writer.named_group(false, |writer| {
+        let group = writer.named_group(false, |writer| {
             writer.indent(|writer| gap.write(writer, FlatSeparator::Space, Writer::line));
-        }))
+        });
+        // A preceding boundary tail cannot remain queued across this RHS head.
+        writer.line_suffix_boundary();
+        Ok(group)
     }
 
     fn format_parameter_prefix(

@@ -4,12 +4,12 @@ use swc_next_ecma_ast::{Comment, GetSpan, Span, TsMappedType, TsMappedTypeModifi
 
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, SuppressedTypeHead,
-    SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout,
+    SuppressedTypeHeadRole, TypeAttachmentHead, TypeContext, TypeLayout, TypeOperatorSlot,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail,
 };
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, Semicolons, document::Writer};
 
@@ -494,21 +494,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut left_mode = ContentMode::Formatted;
         let before_head = self.prepare_type_suppression_head(attachment, before);
         for (run, position) in self.suppressed_comment_runs(before, operator.start) {
+            let selection = self.prepare_type_suppression_run(
+                attachment,
+                before_head,
+                run,
+                position,
+                super::TypeSuppressionContext::TypeBoundary,
+            );
+            selection.retain_source_head(right, self.ast);
             if !matches!(position, SuppressionPosition::OwnLine)
                 && let Some(owner) = key
-                && let Some((packet, after)) = self.prepare_preceding_type_operator(
+                && let Some((packet, after)) = self.prepare_type_operator_boundary(
                     comments,
                     run,
                     owner,
                     right,
-                    &self.prepare_type_suppression_run(
-                        attachment,
-                        before_head,
-                        run,
-                        position,
-                        super::TypeSuppressionContext::TypeBoundary,
-                    ),
-                    operator,
+                    &selection,
+                    TypeOperatorSlot::new(operator, LineConstraint::Unconstrained),
                 )
             {
                 return (
@@ -517,7 +519,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             if matches!(position, SuppressionPosition::OwnLine) {
-                self.select_type_head_with_retention(right, attachment, before_head, position);
+                self.select_type_head_with_attachment(right, attachment, position);
             } else {
                 left_mode = ContentMode::Verbatim;
             }
@@ -534,6 +536,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
             let end_of_line = matches!(position, SuppressionPosition::EndOfLine);
             let selected = selection.target();
+            selection.retain_source_head(right, self.ast);
             // Prettier's mapped EOL ownership differs for real compound types.
             // A leading singleton token alone does not make this a compound.
             let compound_conflict = end_of_line
@@ -544,8 +547,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
             if !compound_conflict
                 && let Some(owner) = key
-                && let Some((packet, after)) = self.prepare_preceding_type_operator(
-                    comments, run, owner, right, &selection, operator,
+                && let Some((packet, after)) = self.prepare_type_operator_boundary(
+                    comments,
+                    run,
+                    owner,
+                    right,
+                    &selection,
+                    TypeOperatorSlot::new(operator, LineConstraint::Unconstrained),
                 )
             {
                 return (
@@ -553,7 +561,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Some(MappedPrecedingBoundary { packet, after }),
                 );
             }
-            selection.retain_source_head(right, self.ast);
             if selected.preceding() {
                 left_mode = ContentMode::Verbatim;
             }

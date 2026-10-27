@@ -19,8 +19,8 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
-    ResolvedTypeSuppressionRun, SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext,
-    TypeLayout,
+    SourceTypeOperator, SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout,
+    TypeOperatorSlot,
 };
 use crate::{
     FormatError,
@@ -188,7 +188,12 @@ struct BinaryTypeBoundary<'ast> {
 }
 
 enum BinaryTypeLayout<'ast> {
-    Source(Span),
+    Source(SourceTypeOperator),
+    SourceRhs {
+        prefix: Span,
+        after: CommentBoundary<'ast>,
+        head: BinaryTypeHead<'ast>,
+    },
     Preceding {
         packet: PreparedPrecedingTypePacket<'ast>,
         after: CommentBoundary<'ast>,
@@ -587,6 +592,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap,
             ));
         };
+        let operator_span = Span::new(start, start + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= start);
         let (before, after) = comments.split_at(split);
         let mut left_mode = ContentMode::Formatted;
@@ -594,7 +600,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut suppressed_head = None;
         let mut preceding_packet = None;
         if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
-            let operator_span = Span::new(start, start + token.len() as u32);
             let const_marker =
                 matches!(operator, TypeBinaryOperator::As) && self.is_const_marker_type(*right);
             let packet_owner = (!const_marker
@@ -606,6 +611,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let attachment = self.type_attachment_head(right.node);
             let before_head = self.prepare_type_suppression_head(&attachment, before);
             for (run, position) in self.suppressed_comment_runs(before, start) {
+                let selection = self.prepare_type_suppression_run(
+                    &attachment,
+                    before_head,
+                    run,
+                    position,
+                    super::super::types::TypeSuppressionContext::ExpressionBoundary,
+                );
+                selection.retain_source_head(right, self.ast);
                 if !matches!(position, SuppressionPosition::OwnLine)
                     && let Some(owner) = packet_owner
                     && let Some(packet) = self.prepare_preceding_type_operator(
@@ -613,14 +626,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         run,
                         owner,
                         right,
-                        &self.prepare_type_suppression_run(
-                            &attachment,
-                            before_head,
-                            run,
-                            position,
-                            super::super::types::TypeSuppressionContext::ExpressionBoundary,
-                        ),
-                        operator_span,
+                        &selection,
+                        TypeOperatorSlot::new(operator_span, LineConstraint::Unconstrained),
                     )
                 {
                     left_mode = ContentMode::Verbatim;
@@ -629,40 +636,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 source = true;
                 if matches!(position, SuppressionPosition::OwnLine) {
-                    self.select_type_head_with_retention(right, &attachment, before_head, position);
+                    self.select_type_head_with_attachment(right, &attachment, position);
                 } else {
                     left_mode = ContentMode::Verbatim;
                 }
             }
             let after_head = self.prepare_type_suppression_head(&attachment, after);
             for (run, position) in self.suppressed_comment_runs(after, gap.end) {
-                let ResolvedTypeSuppressionRun {
-                    selection,
-                    preceding_prefix,
-                } = self.resolve_type_suppression_run(
+                let resolved = self.resolve_type_suppression_run(
                     &attachment,
                     after_head,
                     run,
                     position,
                     super::super::types::TypeSuppressionContext::ExpressionBoundary,
                 );
+                let selection = &resolved.selection;
                 let selected = selection.target();
+                selection.retain_source_head(right, self.ast);
                 if let Some(owner) = packet_owner
                     && let Some(packet) = self.prepare_preceding_type_operator(
                         comments,
                         run,
                         owner,
                         right,
-                        &selection,
-                        operator_span,
+                        selection,
+                        TypeOperatorSlot::new(operator_span, LineConstraint::Unconstrained),
                     )
                 {
                     left_mode = ContentMode::Verbatim;
                     preceding_packet = Some(packet);
                     continue;
                 }
-                selection.retain_source_head(right, self.ast);
-                if let (Some(owner), Some(prefix)) = (packet_owner, preceding_prefix)
+                if let (Some(owner), Some(prefix)) = (packet_owner, resolved.preceding_prefix)
                     && let Some(packet) = self.prepare_preceding_type_prefix(
                         comments,
                         run,
@@ -708,7 +713,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let layout = if let Some((packet, after)) = preceding_packet {
             let operator_end = start + token.len() as u32;
-            let head = self.prepare_binary_type_head(*right, &after, operator_end, tail_owner);
+            let head = self.prepare_binary_type_head(
+                *right,
+                TypeContext::Root,
+                &after,
+                operator_end,
+                tail_owner,
+            );
             BinaryTypeLayout::Preceding {
                 packet,
                 after,
@@ -720,7 +731,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 head,
             }
         } else if source {
-            BinaryTypeLayout::Source(gap)
+            let source = SourceTypeOperator::new(gap, operator_span);
+            if let Some(after) = self.prepare_type_rhs_boundary(source, *right) {
+                let head = self.prepare_binary_type_head(
+                    *right,
+                    TypeContext::Root,
+                    &after,
+                    operator_span.end,
+                    tail_owner,
+                );
+                BinaryTypeLayout::SourceRhs {
+                    prefix: source.prefix,
+                    after,
+                    head,
+                }
+            } else {
+                BinaryTypeLayout::Source(source)
+            }
         } else if let Some((prefix, tail)) = self.prepare_const_marker_comments(
             *right,
             operator,
@@ -736,7 +763,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             let operator_end = start + token.len() as u32;
             let after = self.prepare_comment_boundary(after, operator_end, gap.end);
-            let head = self.prepare_binary_type_head(*right, &after, operator_end, tail_owner);
+            let head = self.prepare_binary_type_head(
+                *right,
+                TypeContext::Root,
+                &after,
+                operator_end,
+                tail_owner,
+            );
             BinaryTypeLayout::Formatted {
                 before: self.prepare_comment_boundary(before, gap.start, start),
                 after,
@@ -898,16 +931,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_binary_type_rhs_head(node, &after, head, writer)
+                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
             }
-            BinaryTypeLayout::Source(gap) => {
-                self.format_source_gap(gap, writer)?;
-                self.format_prepared_type_with_layout(
-                    node,
-                    TypeContext::Root,
-                    TypeLayout::OpeningProvided,
-                    writer,
-                )
+            BinaryTypeLayout::Source(source) => {
+                self.format_source_type_operator_rhs(source, node, TypeContext::Root, writer)
+            }
+            BinaryTypeLayout::SourceRhs {
+                prefix,
+                after,
+                head,
+            } => {
+                self.format_source_gap(prefix, writer)?;
+                writer.space();
+                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
             }
             BinaryTypeLayout::Suppressed { before, head } => {
                 self.format_comment_boundary(&before, writer)?;
@@ -950,7 +986,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.text(" ");
-                self.format_binary_type_rhs_head(node, &after, head, writer)
+                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
             }
         }
     }

@@ -6,10 +6,11 @@ use super::compound::{PendingTypeHead, PreparedTypeContent};
 use super::context::TypeContext;
 use super::{
     Formatter, PreparedPrecedingTypePacket, PreparedType, RhsLayout, SuppressedTypeHead,
-    SuppressedTypeHeadRole, TypeLayout,
+    SuppressedTypeHeadRole, TypeLayout, TypeOperatorSlot,
 };
 use crate::formatter::comments::{CommentBinding, CommentBoundary, ExpressionTail};
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::expressions::TailOwner;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, IndentStyle, document::Writer};
 
@@ -40,7 +41,10 @@ enum ConditionalTypeLayout<'ast> {
         span: Span,
         opening: TypeLayout,
     },
-    Preceding(PreparedPrecedingTypePacket<'ast>),
+    Preceding {
+        packet: PreparedPrecedingTypePacket<'ast>,
+        after: CommentBoundary<'ast>,
+    },
     Suppressed(SuppressedTypeHead<'ast>),
     Formatted {
         before: CommentBoundary<'ast>,
@@ -223,13 +227,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 };
                 self.format_expression_tail(tail, writer)?;
-                let opening = self.format_conditional_type_boundary(head, writer)?;
-                let tail = self.format_prepared_type_with_layout(
-                    extends,
-                    TypeContext::ConditionalExtends,
-                    opening,
-                    writer,
-                )?;
+                let tail = self.format_conditional_type_extends(head, extends, writer)?;
                 self.format_expression_tail(tail, writer)?;
                 Ok::<_, FormatError>(())
             };
@@ -302,6 +300,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 gap,
             ));
         };
+        let operator_span = Span::new(operator, operator + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= operator);
         let (before, after) = comments.split_at(split);
         let mut source = false;
@@ -320,27 +319,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => None,
             };
             let attachment = self.type_attachment_head(right.node);
+            let before_head = self.prepare_type_suppression_head(&attachment, before);
             for (run, position) in self.suppressed_comment_runs(before, operator) {
+                let selection = self.prepare_type_suppression_run(
+                    &attachment,
+                    before_head,
+                    run,
+                    position,
+                    super::TypeSuppressionContext::TypeBoundary,
+                );
+                selection.retain_source_head(right, self.ast);
                 if !matches!(position, SuppressionPosition::OwnLine)
                     && let Some(owner) = packet_owner
-                    && let Some(packet) = self.prepare_preceding_type_packet(
+                    && let Some((packet, after)) = self.prepare_type_operator_boundary(
                         comments,
                         run,
                         owner,
                         right,
-                        &self.prepare_type_suppression_run(
-                            &attachment,
-                            super::TypeHeadRetention::Unchanged,
-                            run,
-                            position,
-                            super::TypeSuppressionContext::TypeBoundary,
-                        ),
+                        &selection,
+                        TypeOperatorSlot::new(operator_span, LineConstraint::SameLine),
                     )
                 {
                     left.source_owner = Some(left.node);
                     return Ok(ConditionalTypeBoundary {
                         separator,
-                        layout: ConditionalTypeLayout::Preceding(packet),
+                        layout: ConditionalTypeLayout::Preceding { packet, after },
                     });
                 }
                 source = true;
@@ -360,18 +363,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     super::TypeSuppressionContext::TypeBoundary,
                 );
                 let selected = selection.target();
+                selection.retain_source_head(right, self.ast);
                 if let Some(owner) = packet_owner
-                    && let Some(packet) =
-                        self.prepare_preceding_type_packet(comments, run, owner, right, &selection)
+                    && let Some((packet, after)) = self.prepare_type_operator_boundary(
+                        comments,
+                        run,
+                        owner,
+                        right,
+                        &selection,
+                        TypeOperatorSlot::new(operator_span, LineConstraint::SameLine),
+                    )
                 {
                     left.source_owner = Some(left.node);
                     return Ok(ConditionalTypeBoundary {
                         separator,
-                        layout: ConditionalTypeLayout::Preceding(packet),
+                        layout: ConditionalTypeLayout::Preceding { packet, after },
                     });
                 }
                 source = true;
-                selection.retain_source_head(right, self.ast);
                 if selected.preceding() {
                     left.source_owner = Some(left.node);
                 }
@@ -449,12 +458,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_suppressed_type_head(&head, writer)?;
                 &[][..]
             }
-            ConditionalTypeLayout::Preceding(packet) => {
+            ConditionalTypeLayout::Preceding { packet, after } => {
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
                 writer.text(boundary.separator.token());
                 writer.space();
-                &[][..]
+                after.comments()
             }
             ConditionalTypeLayout::Source { span: gap, .. } => {
                 self.format_verbatim(gap, writer)?;
@@ -486,47 +495,65 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn format_conditional_type_boundary(
+    fn format_conditional_type_extends(
         &mut self,
         boundary: ConditionalTypeBoundary<'ast>,
+        node: PreparedType,
         writer: &mut Writer<'ast>,
-    ) -> Result<TypeLayout, FormatError> {
-        let (before, after) = match boundary.layout {
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let layout = match boundary.layout {
             ConditionalTypeLayout::Suppressed(head) => {
                 writer.space();
                 writer.text(boundary.separator.token());
                 writer.space();
                 self.format_suppressed_type_head(&head, writer)?;
-                return Ok(TypeLayout::Root);
+                TypeLayout::Root
             }
-            ConditionalTypeLayout::Preceding(packet) => {
+            ConditionalTypeLayout::Preceding { packet, after } => {
+                // Later conditional boundaries can select this operand as a raw
+                // owner. Resolve its complete head from that final selection.
+                let head = self.prepare_binary_type_head(
+                    node,
+                    TypeContext::ConditionalExtends,
+                    &after,
+                    after.source_end(),
+                    TailOwner::ParentOperation,
+                );
                 self.format_preceding_type_packet(&packet, writer)?;
                 writer.space();
                 writer.text(boundary.separator.token());
                 writer.space();
-                return Ok(TypeLayout::Root);
+                return self.format_binary_type_rhs_head(
+                    node,
+                    TypeContext::ConditionalExtends,
+                    &after,
+                    head,
+                    writer,
+                );
             }
             ConditionalTypeLayout::Source { span, opening } => {
                 self.format_source_gap(span, writer)?;
-                return Ok(opening);
+                opening
             }
-            ConditionalTypeLayout::Formatted { before, after } => (before, after),
+            ConditionalTypeLayout::Formatted { before, after } => {
+                self.format_comment_boundary(&before, writer)?;
+                before.gap().write(writer, FlatSeparator::Space, |writer| {
+                    match boundary.separator {
+                        // A conditional check and `extends` must remain on the same line.
+                        ConditionalTypeSeparator::Extends => writer.space(),
+                        ConditionalTypeSeparator::Question | ConditionalTypeSeparator::Colon => {
+                            writer.line();
+                        }
+                    }
+                });
+                writer.text(boundary.separator.token());
+                self.format_comment_boundary(&after, writer)?;
+                after
+                    .gap()
+                    .write(writer, FlatSeparator::Space, Writer::space);
+                TypeLayout::Root
+            }
         };
-        self.format_comment_boundary(&before, writer)?;
-        before.gap().write(writer, FlatSeparator::Space, |writer| {
-            match boundary.separator {
-                // A conditional check and `extends` must remain on the same line.
-                ConditionalTypeSeparator::Extends => writer.space(),
-                ConditionalTypeSeparator::Question | ConditionalTypeSeparator::Colon => {
-                    writer.line();
-                }
-            }
-        });
-        writer.text(boundary.separator.token());
-        self.format_comment_boundary(&after, writer)?;
-        after
-            .gap()
-            .write(writer, FlatSeparator::Space, Writer::space);
-        Ok(TypeLayout::Root)
+        self.format_prepared_type_with_layout(node, TypeContext::ConditionalExtends, layout, writer)
     }
 }
