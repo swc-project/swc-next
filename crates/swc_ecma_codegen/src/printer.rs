@@ -548,11 +548,8 @@ impl<'a> Printer<'a> {
                     }
                 }
                 CommentKind::Block => {
-                    self.print_indented_block_comment(value);
-                    if statement
-                        || self.comment_has_line_terminator(comment)
-                        || comment_at_stmt_start
-                    {
+                    let has_line_terminator = self.print_indented_block_comment(value);
+                    if statement || has_line_terminator || comment_at_stmt_start {
                         self.print_newline();
                     } else {
                         self.print_space();
@@ -562,7 +559,9 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_indented_block_comment(&mut self, value: &[u8]) {
+    /// Prints a block comment and returns whether its value contains a line
+    /// terminator.
+    fn print_indented_block_comment(&mut self, value: &[u8]) -> bool {
         // Re-indent multi-line comments to match the surrounding statement.
         self.print("/*");
         let mut start = 0;
@@ -603,6 +602,8 @@ impl<'a> Printer<'a> {
         }
         self.print_script_text(&value[start..]);
         self.print("*/");
+        // `start` only moves past a line terminator, so it is nonzero iff one was found.
+        start != 0
     }
 
     fn print_script_text(&mut self, text: &[u8]) {
