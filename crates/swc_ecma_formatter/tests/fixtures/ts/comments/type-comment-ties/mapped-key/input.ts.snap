@@ -7,7 +7,8 @@ type M = { [\u004b in /* prettier-ignore */ /* ordinary */ \u0041 | \u0042]: num
 ---------- Output ----------
 type M = {
   [
-    \u004b in /* prettier-ignore */ /* ordinary */ | A
+    \u004b /* prettier-ignore */ in
+      | /* ordinary */ A
       | B
   ]: number;
 };
@@ -15,4 +16,4 @@ type M = {
 ---------- Options ----------
 {}
 ---------- Output ----------
-type M = { [\u004b in /* prettier-ignore */ /* ordinary */ A | B]: number };
+type M = { [\u004b /* prettier-ignore */ in /* ordinary */ A | B]: number };

@@ -6,13 +6,13 @@ type T = X extends /* prettier-ignore */ (/* frame */ \u0041  |  \u0042) ? Y : Z
 ---------- Options ----------
 {}
 ---------- Output ----------
-type T = X extends /* prettier-ignore */ /* frame */ A | B ? Y : Z;
+type T = X /* prettier-ignore */ extends /* frame */ A | B ? Y : Z;
 
 ---------- Options ----------
 {"printWidth":18}
 ---------- Output ----------
 type T =
-  X extends /* prettier-ignore */
+  X /* prettier-ignore */ extends
     | /* frame */ A
     | B
     ? Y

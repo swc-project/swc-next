@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Box<T extends (/* head */ A | B)> = T;
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type Box<
+  T extends
+    | /* head */ A
+    | B,
+> = T;

@@ -6,15 +6,17 @@ type T = X extends infer \u004b extends /* prettier-ignore */ /* ordinary */ \u0
 {"printWidth":18}
 ---------- Output ----------
 type T =
-  X extends infer \u004b extends /* prettier-ignore */ /* ordinary */ | A
-    | B
+  X extends infer \u004b /* prettier-ignore */ extends
+
+      | /* ordinary */ A
+      | B
     ? Y
     : Z;
 
 ---------- Options ----------
 {}
 ---------- Output ----------
-type T = X extends infer \u004b extends /* prettier-ignore */ /* ordinary */ | A
-  | B
+type T = X extends infer \u004b /* prettier-ignore */ extends
+  /* ordinary */ A | B
   ? Y
   : Z;
