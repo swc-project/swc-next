@@ -1531,9 +1531,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let boundary = if modes.left == ContentMode::Formatted
                     && modes.right == ContentMode::Formatted
                 {
+                    let content = self.expression_content(Expr::StringLiteral(value));
+                    let rhs = self.assignment_rhs(&content);
                     Some(self.assignment_boundary(
                         gap.start,
-                        &self.expression_content(Expr::StringLiteral(value)),
+                        &rhs,
                         colon,
                         value.span(ast).end,
                         ExpressionContext::at(ExpressionPosition::Nested),

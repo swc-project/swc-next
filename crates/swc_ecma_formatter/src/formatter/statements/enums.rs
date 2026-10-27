@@ -372,9 +372,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .find_token(gap, comments, "=")
             .ok_or_else(|| self.unsupported("enum initializer boundary", member.node))?;
         let content = self.expression_content(right);
+        let rhs = self.assignment_rhs(&content);
         let mut boundary = self.assignment_boundary(
             key_end,
-            &content,
+            &rhs,
             Span::new(operator, operator + 1),
             right.span(self.ast).end,
             ExpressionContext::at(ExpressionPosition::EnumInitializer),

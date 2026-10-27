@@ -1715,9 +1715,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 InitializerLayout::Bound { gap, right_mode }
             } else {
                 let content = self.expression_content(right);
+                let rhs = self.assignment_rhs(&content);
                 let mut boundary = self.assignment_boundary(
                     left_end,
-                    &content,
+                    &rhs,
                     Span::new(operator, operator + 1),
                     right.span(ast).end,
                     ExpressionContext::variable_initializer()
@@ -1728,7 +1729,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     boundary.mode = right_mode;
                 }
                 let rhs_layout = self.ordinary_rhs_layout(
-                    content.data,
+                    &rhs,
                     ExpressionContext::variable_initializer()
                         .with_tail_owner(TailOwner::ParentOperation),
                     &boundary,

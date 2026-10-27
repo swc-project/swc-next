@@ -4158,9 +4158,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 context = context
                     .with_decorated_function_call(self.decorated_function_call_content(&content));
             }
+            let rhs = self.assignment_rhs(&content);
             let boundary = self.assignment_boundary(
                 left_end,
-                &content,
+                &rhs,
                 Span::new(operator, operator + 1),
                 right.span(self.ast).end,
                 context,
@@ -4174,7 +4175,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 content.data
             };
             let type_argument_owner = annotation_owner(data);
-            let rhs_layout = self.ordinary_rhs_layout(content.data, context, &boundary);
+            let rhs_layout = self.ordinary_rhs_layout(&rhs, context, &boundary);
             let (group, rhs_layout) = self.binding_initializer_layout(
                 pattern,
                 BindingInitializerOwner::Variable { annotation },
