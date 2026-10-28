@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{Ast, TsLiteralData, TsType, TsTypeData, TsTypeNameData};
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum TypeContext {
     Root,
+    TypeExpressionRhs,
     Parenthesized,
     ArrowReturn,
     PostfixOperand,
@@ -87,6 +88,10 @@ impl TypeContext {
     pub(super) fn needs_parentheses(self, data: TsTypeData, ast: &Ast<'_>) -> bool {
         let minimum = match self {
             Self::Root | Self::Parenthesized => return false,
+            Self::TypeExpressionRhs => {
+                return !matches!(data, TsTypeData::TsParenthesizedType(_))
+                    && super::type_data_requires_terminator(data, ast);
+            }
             Self::ArrowReturn => return matches!(data, TsTypeData::TsFunctionType(_)),
             Self::ConditionalCheck => {
                 return matches!(
