@@ -1114,9 +1114,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         let mut line_count = 0;
         if !before_line && !hugs_comments {
+            // A physical head frame owns the comments inside its source opener.
             let operator_tail_end = content
                 .parentheses
-                .filter(|_| jsx_head)
+                .filter(|_| {
+                    jsx_head || sensitive && self.diagnostic_head_has_frame(content, head_context)
+                })
                 .map_or(right_start, |removed| removed.source.outer.start);
             let mut end = boundary.operator_span.end;
             for (index, comment) in after.iter().enumerate() {
