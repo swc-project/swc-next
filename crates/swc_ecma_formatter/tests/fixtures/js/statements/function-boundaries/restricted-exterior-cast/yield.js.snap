@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  );
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function* f() {
+  yield /* @ts-ignore */ (
+    /** @type {number} */ (first)
+  )
+}
