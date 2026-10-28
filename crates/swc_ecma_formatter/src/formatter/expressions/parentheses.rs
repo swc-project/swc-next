@@ -3677,6 +3677,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             opening,
             ..
         } = *owner;
+        if matches!(
+            context.position,
+            ExpressionPosition::RestrictedArgument | ExpressionPosition::YieldArgument
+        ) && context.parentheses_owner == ParenthesesOwner::Expression
+            && matches!(opening, LineConstraint::NewLine(_))
+        {
+            // The source opener keeps the cast on the keyword's argument side.
+            // Releasing it would turn this source break into a restricted break.
+            return self.format_retained_source_parentheses(
+                RetainedSourceParentheses {
+                    boundary: source,
+                    prepared_head: None,
+                    kind: RetainedParentheses::Operand,
+                    hug: false,
+                    leading_mode: None,
+                },
+                context,
+                array_comments,
+                writer,
+                |formatter, context, array_comments, writer| {
+                    formatter.format_expression_with_array_comments(
+                        Expr::ParenthesizedExpression(cast.pair),
+                        context,
+                        array_comments,
+                        writer,
+                    )
+                },
+            );
+        }
         // The exterior diagnostic belongs to its caller or previous separator;
         // only the exact pending cast annotation is claimed here.
         self.comments.claim(head.head.comments)?;
