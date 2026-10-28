@@ -282,6 +282,7 @@ struct PreparedTypeParentheses<'ast> {
     movable: bool,
     leading_comments: &'ast [Comment],
     trailing: CommentBoundary<'ast>,
+    trailing_unbound: bool,
     source: bool,
 }
 
@@ -3516,7 +3517,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         });
         let retained = source_frame || !before.is_empty() || !after.is_empty() || sensitive;
         let mut selected_attachment = None;
-        let (source, movable) = if retained {
+        let (source, movable, trailing_unbound) = if retained {
             if self.has_suppression && self.content_mode(before) == ContentMode::Verbatim {
                 if matches!(context, TypeContext::UnionMember) {
                     child_type.source_owner = Some(child);
@@ -3539,7 +3540,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context,
                     TypeContext::CompoundMember
                         | TypeContext::UnionMember
-                        | TypeContext::IntersectionLineContinuation
+                        | TypeContext::IntersectionMember { .. }
                 ) && member_tail
                     && let TsTypeData::TsUnionType(union) = child_type.data
                 {
@@ -3576,17 +3577,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source = source_frame
                 || source_owner == Some(TsType::TsParenthesizedType(node))
                 || sensitive
-                || !leading_binding.allows_relocation(leading_target)
-                || !self
-                    .comment_binding(after, span, trailing_target)
-                    .allows_relocation(trailing_target);
+                || !leading_binding.allows_relocation(leading_target);
+            let trailing_binding = if source {
+                CommentBinding::SourceBound
+            } else {
+                self.comment_binding(after, span, trailing_target)
+            };
+            let source = source || !trailing_binding.allows_relocation(trailing_target);
             let movable =
                 after.is_empty() && !source && matches!(leading_binding, CommentBinding::Unbound);
-            (source, movable)
+            (
+                source,
+                movable,
+                matches!(trailing_binding, CommentBinding::Unbound),
+            )
         } else {
             (
                 source_owner == Some(TsType::TsParenthesizedType(node)),
                 false,
+                true,
             )
         };
         PreparedTypeParentheses {
@@ -3597,6 +3606,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             movable,
             leading_comments: before,
             trailing: self.prepare_comment_boundary(after, child_span.end, span.end - 1),
+            trailing_unbound,
             source,
         }
     }
@@ -3616,6 +3626,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             movable,
             leading_comments,
             trailing,
+            trailing_unbound,
             source,
         } = parentheses;
         if movable && !context.preserves_union_head(child.node, self.ast) {
@@ -3637,13 +3648,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // A trailing packet keeps its delimiter fence until a compound separator
         // supplies the next owner. Leaf pairs keep their existing compact frame;
         // compound envelopes prepare the member packet and its closing line.
+        let transfers_tail = matches!(
+            context,
+            TypeContext::IntersectionMember {
+                has_separator: true,
+                ..
+            }
+        );
         let fenced_tail = !trailing.is_empty()
-            && !matches!(
+            && (!matches!(
                 context,
                 TypeContext::CompoundMember
                     | TypeContext::UnionMember
-                    | TypeContext::IntersectionLineContinuation
-            );
+                    | TypeContext::IntersectionMember { .. }
+            ) || transfers_tail && !trailing_unbound);
         let compact_tail = fenced_tail
             && !matches!(
                 child.data,
@@ -3671,7 +3689,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let leading =
             self.prepare_comment_boundary(leading_comments, span.start + 1, child_span.start);
-        if matches!(context, TypeContext::IntersectionLineContinuation) && trailing.is_empty() {
+        if matches!(
+            context,
+            TypeContext::IntersectionMember {
+                line_continuation: true,
+                ..
+            }
+        ) && trailing.is_empty()
+        {
             self.format_comment_boundary_with_layout(
                 &leading,
                 CommentRunLayout::GroupedLeading(child_span.start),
@@ -3686,6 +3711,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentRunLayout::GroupedLeading(child_span.start),
                 writer,
             )?;
+            if transfers_tail && !trailing.is_empty() {
+                let pending =
+                    self.format_prepared_type_with_layout(child, context, layout, writer)?;
+                let source_end = pending
+                    .as_ref()
+                    .map_or(trailing.source_end(), |tail| tail.source_end);
+                let comments = if let Some(pending) = pending {
+                    let comments = self
+                        .comments
+                        .in_range(Span::new(source_end, trailing.end()));
+                    debug_assert!(comments.starts_with(pending.comments));
+                    debug_assert!(comments.ends_with(trailing.comments()));
+                    comments
+                } else {
+                    trailing.comments()
+                };
+                return Ok(Some(ExpressionTail {
+                    source_end,
+                    comments,
+                }));
+            }
             return self
                 .format_type_before_trailing_comments(child, context, layout, trailing, writer);
         }

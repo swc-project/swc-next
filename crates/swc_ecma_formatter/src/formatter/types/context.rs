@@ -16,7 +16,10 @@ pub(in crate::formatter) enum TypeContext {
     JsDocEnclosedPostfixOperand,
     CompoundMember,
     UnionMember,
-    IntersectionLineContinuation,
+    IntersectionMember {
+        line_continuation: bool,
+        has_separator: bool,
+    },
     ConditionalCheck,
     ConditionalExtends,
     TypeConstraint,
@@ -156,7 +159,7 @@ impl TypeContext {
                 }
                 TypePrecedence::Query
             }
-            Self::CompoundMember | Self::UnionMember | Self::IntersectionLineContinuation => {
+            Self::CompoundMember | Self::UnionMember | Self::IntersectionMember { .. } => {
                 if matches!(
                     data,
                     TsTypeData::TsJsDocNullableType(_) | TsTypeData::TsJsDocUnknownType(_)
