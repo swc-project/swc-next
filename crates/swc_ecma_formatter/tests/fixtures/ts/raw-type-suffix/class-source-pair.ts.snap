@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a = (y as /* prettier-ignore */ T?)
+b = 1 }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  a = y as /* prettier-ignore */ T?;
+  b = 1
+}
