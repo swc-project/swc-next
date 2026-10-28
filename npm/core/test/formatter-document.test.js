@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { builders as b, printer } from "prettier/doc";
 import { decode } from "../../../packages/prettier-plugin/decode.js";
+import {
+  formatDocBufferSync,
+  printDocBufferSync,
+} from "../../formatter/src-js/index.js";
 
 const word = (value) => [
   value & 255,
@@ -474,4 +478,60 @@ test("suffix boundaries flush complete Docs only when a suffix is pending", () =
     [...t("a"), 14, ...t(" S"), ...end(14), 15, ...t("b")],
   ]);
   assert.equal(printWire(queued), "a S\nb");
+});
+
+test("Rust host prints a language-independent document buffer", () => {
+  const bytes = wire((t) => [
+    [...group(), ...t("λ"), 4, ...line, ...t("世界"), ...end(4), ...end(3)],
+  ]);
+  assert.equal(printDocBufferSync(bytes), "λ 世界");
+  assert.equal(
+    printDocBufferSync(bytes, {
+      printWidth: 2,
+      tabWidth: 4,
+      endOfLine: "crlf",
+    }),
+    "λ\r\n    世界",
+  );
+  assert.equal(
+    printDocBufferSync(bytes, { printWidth: 2, useTabs: true }),
+    "λ\n\t世界",
+  );
+
+  const shared = new Uint8Array(new SharedArrayBuffer(bytes.length));
+  shared.set(bytes);
+  assert.equal(printDocBufferSync(shared), "λ 世界");
+
+  const bom = wire((t) => [t("\uFEFFx")]);
+  assert.equal(printDocBufferSync(bom), "\uFEFFx");
+});
+
+test("Rust host forwards document and option errors", () => {
+  assert.throws(
+    () => printDocBufferSync(Uint8Array.of(1)),
+    /invalid|document/i,
+  );
+  assert.throws(() => printDocBufferSync(wire(() => [[]], 1)), /version/i);
+  assert.throws(
+    () => printDocBufferSync(new Uint8Array(), { printWidth: 65536 }),
+    RangeError,
+  );
+  assert.throws(
+    () => printDocBufferSync(new Uint8Array(), { tabWidth: 65 }),
+    RangeError,
+  );
+  assert.throws(
+    () => printDocBufferSync(new Uint8Array(), { useTabs: 1 }),
+    TypeError,
+  );
+  assert.throws(
+    () => printDocBufferSync(new Uint8Array(), { endOfLine: "auto" }),
+    RangeError,
+  );
+});
+
+test("Rust host prints an SWCD buffer produced by Rust", () => {
+  const options = Uint8Array.of(0, 80, 0, 2, 0, 1, 0, 0, 0, 2, 1, 1, 0, 0, 0);
+  const document = formatDocBufferSync("const x=1;", 0, options);
+  assert.equal(printDocBufferSync(document), "const x = 1;\n");
 });
