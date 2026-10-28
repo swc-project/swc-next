@@ -19,9 +19,9 @@ use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::generics::TypeAnglePacket;
 use crate::formatter::types::{
-    BinaryTypeHead, PreparedDelimitedType, PreparedPrecedingTypePacket, PreparedType,
-    SourceTypeOperator, SuppressedTypeHead, SuppressedTypeHeadRole, TypeContext, TypeLayout,
-    TypeOperatorSlot,
+    BinaryTypeHead, PreparedDelimitedType, PreparedDelimitedTypeHead, PreparedPrecedingTypePacket,
+    PreparedType, RecordedTypeHead, SourceTypeOperator, SuppressedTypeHead, SuppressedTypeHeadRole,
+    TypeContext, TypeLayout, TypeOperatorSlot,
 };
 use crate::{
     FormatError,
@@ -93,6 +93,14 @@ struct TypeAssertionHead<'ast> {
 enum TypeAssertionOpening<'ast> {
     Boundary(TypeExpressionGap<'ast>),
     Packet(TypeAnglePacket<'ast>),
+}
+
+/// The angle owner consumes the selected boundary and type as one opening.
+enum PreparedAssertionOpening<'ast> {
+    Source(Span, PreparedDelimitedType<'ast>),
+    Packet(TypeAnglePacket<'ast>, PreparedDelimitedType<'ast>),
+    Boundary(CommentBoundary<'ast>, PreparedDelimitedType<'ast>),
+    Recorded(RecordedTypeHead<'ast>),
 }
 
 enum AssertionOperandLayout {
@@ -1533,35 +1541,70 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: TypeAssertionHead<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        let opening = match head.before {
+            TypeAssertionOpening::Packet(packet) => {
+                PreparedAssertionOpening::Packet(packet, head.body)
+            }
+            TypeAssertionOpening::Boundary(TypeExpressionGap::Source(span)) => {
+                PreparedAssertionOpening::Source(span, head.body)
+            }
+            TypeAssertionOpening::Boundary(TypeExpressionGap::Formatted(boundary)) => {
+                match self.prepare_delimited_type_head(
+                    head.body,
+                    boundary,
+                    TypeContext::Root,
+                    writer,
+                )? {
+                    PreparedDelimitedTypeHead::Recorded(head) => {
+                        PreparedAssertionOpening::Recorded(head)
+                    }
+                    PreparedDelimitedTypeHead::Boundary(body, boundary) => {
+                        PreparedAssertionOpening::Boundary(boundary, body)
+                    }
+                }
+            }
+        };
         writer.text("<");
         let closing = writer.indent(|writer| {
-            let tail = match head.before {
-                TypeAssertionOpening::Packet(packet) => {
+            let tail = match opening {
+                PreparedAssertionOpening::Packet(packet, body) => {
                     writer.soft_line();
                     self.format_type_angle_packet(packet, writer)?;
                     self.format_prepared_delimited_type(
-                        head.body,
+                        body,
                         TypeContext::Root,
                         TypeLayout::CallerIndented,
                         writer,
                     )?
                 }
-                TypeAssertionOpening::Boundary(TypeExpressionGap::Source(span)) => {
+                PreparedAssertionOpening::Source(span, body) => {
                     self.format_verbatim(span, writer)?;
                     self.format_prepared_delimited_type(
-                        head.body,
+                        body,
                         TypeContext::Root,
                         TypeLayout::CallerIndented,
                         writer,
                     )?
                 }
-                TypeAssertionOpening::Boundary(TypeExpressionGap::Formatted(boundary)) => {
-                    if boundary.is_empty() && head.body.starts_with_type_parameters(self.ast) {
+                PreparedAssertionOpening::Boundary(boundary, body) => {
+                    if boundary.is_empty() && body.starts_with_type_parameters(self.ast) {
                         writer.space();
                     }
-                    self.format_prepared_delimited_type_after_comments(
-                        head.body,
-                        &boundary,
+                    self.format_comment_boundary(&boundary, writer)?;
+                    boundary
+                        .gap()
+                        .write(writer, FlatSeparator::Empty, Writer::soft_line);
+                    self.format_prepared_delimited_type(
+                        body,
+                        TypeContext::Root,
+                        TypeLayout::CallerIndented,
+                        writer,
+                    )?
+                }
+                PreparedAssertionOpening::Recorded(head) => {
+                    writer.soft_line();
+                    self.format_recorded_type_head(
+                        head,
                         TypeContext::Root,
                         TypeLayout::CallerIndented,
                         writer,
