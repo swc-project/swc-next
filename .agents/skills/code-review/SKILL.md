@@ -1,13 +1,32 @@
 ---
 name: code-review
-description: Review changes in this repository for correctness, preserved test coverage, and compliance with AGENTS.md. Use only for pull request.
+description: Review pull requests in this repository for correctness, simplicity, behavior changes, preserved test coverage, and compliance with AGENTS.md, including optional performance and code quality improvements.
 ---
 
 # Code Review
 
-- Read the applicable `AGENTS.md` and review the requested diff with its surrounding
-  code. Check changed tests and documentation against the repository conventions;
-  report actionable violations with the relevant rule and source location.
+Read the applicable `AGENTS.md` and review the requested diff with its surrounding
+code. Check changed tests and documentation against the repository conventions;
+report actionable violations with the relevant rule and source location.
+
+## Design and Simplicity
+
+Treat added complexity as something to justify. For new abstractions, layers,
+branches, and special cases, identify the requirement they serve and consider
+whether removing them or reusing an existing path would still satisfy it.
+Recommend the smallest design that preserves required behavior; support
+simplification suggestions with a concrete alternative and its tradeoffs.
+
+## Behavior Changes
+
+Explain meaningful behavior changes with small, concrete examples: show the
+same input or triggering condition before and after the change, including the
+observable result. Distinguish intended changes from regressions. For refactors
+intended to preserve behavior, state that expectation and the evidence checked
+rather than inventing a behavior difference.
+
+## Test Coverage
+
 - For test refactors, compare inputs, expected results, configuration combinations,
   and assertions with the original. Passing tests or unchanged test counts alone
   do not establish equivalent coverage; preserve checks when reorganizing tests.
@@ -15,3 +34,18 @@ description: Review changes in this repository for correctness, preserved test c
   independent input cases explicit as required by `AGENTS.md`.
 - Do not weaken assertions or expose private APIs merely to change test layout.
   Check that assertions through public APIs preserve the original guarantees.
+
+## Optional Improvements
+
+Include a separate list of optional performance and code quality improvements
+when supported by the diff. For each, identify the relevant code, a concrete
+change, its expected benefit, and material tradeoffs. Distinguish measured gains
+from hypotheses that need profiling or benchmarks. Keep these suggestions
+separate from correctness findings and required fixes; do not pad the review
+with speculative optimizations or style preferences.
+
+## Conclusion
+
+End the review with one sentence stating whether the change is ready to merge
+or needs fixes, naming the main blocker or any material validation gap. Optional
+improvements alone should not prevent a positive conclusion.
