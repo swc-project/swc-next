@@ -6,19 +6,35 @@ call(`a	b`, foo, bar);
 ---------- Options ----------
 {"printWidth":21,"tabWidth":0,"useTabs":true}
 ---------- Output ----------
-call(`a	b`, foo, bar);
+call(
+	`a	b`,
+	foo,
+	bar,
+);
 
 ---------- Options ----------
 {"printWidth":21,"tabWidth":0,"useTabs":false}
 ---------- Output ----------
-call(`a	b`, foo, bar);
+call(
+`a	b`,
+foo,
+bar,
+);
 
 ---------- Options ----------
 {"printWidth":21,"tabWidth":1,"useTabs":true}
 ---------- Output ----------
-call(`a	b`, foo, bar);
+call(
+	`a	b`,
+	foo,
+	bar,
+);
 
 ---------- Options ----------
 {"printWidth":21,"tabWidth":4,"useTabs":true}
 ---------- Output ----------
-call(`a	b`, foo, bar);
+call(
+	`a	b`,
+	foo,
+	bar,
+);

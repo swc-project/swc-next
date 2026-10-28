@@ -132,8 +132,8 @@ fn compact_widths() {
 
     let controls = "界\tend";
     let text = Text::new(controls);
-    assert_eq!(text.clean_width(), Some(5));
-    assert_eq!(text.first_line(17), (22, false));
+    assert_eq!(text.clean_width(), Some(6));
+    assert_eq!(text.first_line(17), (23, false));
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -574,9 +574,9 @@ fn prepared_group_columns() {
 
     assert_eq!(flat_width_text("世界", 6), "a (\n  世界\n);");
 
-    assert_eq!(flat_width_text("a\tb", 5), "a a\tb;");
+    assert_eq!(flat_width_text("a\tb", 6), "a a\tb;");
 
-    assert_eq!(flat_width_text("a\tb", 4), "a (\n  a\tb\n);");
+    assert_eq!(flat_width_text("a\tb", 5), "a (\n  a\tb\n);");
 
     assert_eq!(flat_width_text("a\u{7f}b", 6), "a a\u{7f}b;");
 
@@ -1545,8 +1545,8 @@ fn clean_fragment_width<'a>(writer: &mut Writer<'a>, fragment: Fragment<'a>) -> 
 #[test]
 fn complete_text_measurement() {
     assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
-    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(1));
-    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(2));
+    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(2));
+    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(3));
     assert_eq!(clean_parts_width(&["👩", "\u{200d}", "💻"]), Some(2));
     assert_eq!(clean_parts_width(&["©", "\u{fe0f}"]), Some(2));
     assert_eq!(clean_parts_width(&["🇺", "🇸"]), Some(2));
@@ -1574,11 +1574,11 @@ fn complete_text_measurement() {
 
 #[test]
 fn cached_text_columns() {
-    assert_eq!(pair_document("لا", "a", 8), "[لا, a];");
-    assert_eq!(pair_document("لا", "a", 7), "[\n  لا,\n  a,\n];");
-    assert_eq!(pair_document("a\u{200d}bcd", "a", 11), "[a\u{200d}bcd, a];");
+    assert_eq!(pair_document("لا", "a", 7), "[لا, a];");
+    assert_eq!(pair_document("لا", "a", 6), "[\n  لا,\n  a,\n];");
+    assert_eq!(pair_document("a\u{200d}bcd", "a", 10), "[a\u{200d}bcd, a];");
     assert_eq!(
-        pair_document("a\u{200d}bcd", "a", 10),
+        pair_document("a\u{200d}bcd", "a", 9),
         "[\n  a\u{200d}bcd,\n  a,\n];"
     );
     assert_eq!(pair_document("a\u{7f}b", "a", 9), "[a\u{7f}b, a];");
@@ -1589,9 +1589,9 @@ fn cached_text_columns() {
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
     let tab = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(tab.clean_width(), Some(2));
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(0), (2, false));
+    assert_eq!(tab.clean_width(), Some(4));
+    assert_eq!(tab.first_line(0), (4, false));
+    assert_eq!(tab.last_line(0), (4, false));
 }
 
 fn literal_text_continuation(text: &'static str) -> String {
@@ -1614,11 +1614,11 @@ fn text_line_measurement() {
     assert_eq!(unicode.last_line(3), (7, false));
 
     let controls = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(controls.last_line(3), (5, false));
+    assert_eq!(controls.last_line(3), (7, false));
 
     let tab = super::text::Text::new("a\tb");
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(3), (5, false));
+    assert_eq!(tab.first_line(0), (3, false));
+    assert_eq!(tab.last_line(3), (6, false));
 
     let separators = super::text::Text::new("a\u{2028}b\u{2029}c");
     assert_eq!(separators.last_line(3), (8, false));

@@ -2982,6 +2982,7 @@ dependencies = [
  "memchr",
  "rustc-hash",
  "swc_next_allocator",
+ "unicode-width",
 ]
 
 [[package]]

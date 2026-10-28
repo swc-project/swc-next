@@ -7,8 +7,7 @@ const o = { a‍bcd: veryVeryVeryVeryVeryVeryLongReceiver.longProperty.longPrope
 {"printWidth":35}
 ---------- Output ----------
 const o = {
-  a‍bcd:
-    veryVeryVeryVeryVeryVeryLongReceiver
-      .longProperty.longProperty
-      .longProperty,
+  a‍bcd: veryVeryVeryVeryVeryVeryLongReceiver
+    .longProperty.longProperty
+    .longProperty,
 };
