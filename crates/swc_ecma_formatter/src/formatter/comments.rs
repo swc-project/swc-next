@@ -102,6 +102,8 @@ pub(super) enum CommentRunLayout {
     /// Keep a terminal packet's Blocks in place and its ordinary Line suffix inline.
     SourceDangling,
     SourceAfter(u32),
+    /// Preserve source order when a released expression tail joins a statement suffix.
+    StatementTail(u32),
     SourceLeading {
         next: u32,
         placement: HeadGapPlacement,
@@ -1898,7 +1900,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let prepared = self.prepare_comment(comment)?;
             let line_suffix = match (layout, comment.kind) {
-                (CommentRunLayout::SourceAfter(start), CommentKind::Line) => {
+                (
+                    CommentRunLayout::SourceAfter(start) | CommentRunLayout::StatementTail(start),
+                    CommentKind::Line,
+                ) => {
                     let end = previous
                         .as_ref()
                         .map_or(start, |previous| previous.span.end);
@@ -1915,11 +1920,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let nestled = previous.span.end == prepared.span.start
                     && previous.is_alignable()
                     && prepared.is_alignable();
-                if !nestled && !line_suffix {
+                if matches!(layout, CommentRunLayout::StatementTail(_))
+                    && previous.kind == CommentKind::Line
+                {
+                    // A deferred line suffix must be flushed before the next source comment.
+                    writer.hard_line();
+                } else if !nestled && !line_suffix {
                     match layout {
                         CommentRunLayout::Source
                         | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
+                        | CommentRunLayout::StatementTail(_)
                         | CommentRunLayout::SourceLeading { .. } => self.comment_gap_with_packet(
                             previous.span.end,
                             prepared.span.start,
@@ -1968,7 +1979,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             }),
                     }
                 }
-            } else if let CommentRunLayout::SourceAfter(start) = layout
+            } else if let CommentRunLayout::SourceAfter(start)
+            | CommentRunLayout::StatementTail(start) = layout
                 && !line_suffix
             {
                 self.comment_gap_with_packet_and_opening(
@@ -2069,17 +2081,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         has_following: bool,
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<u32, FormatError> {
+    ) -> Result<(u32, bool), FormatError> {
         if has_following
             && let Some(tail) = pending.as_ref()
             && self.optimizer_only_packet(tail.comments)
         {
             // A released marker follows the same next-head owner as a source
             // post-semicolon packet. That owner also places any required ASI guard.
-            return Ok(tail.source_end);
+            return Ok((tail.source_end, false));
         }
         let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
         let comments = self.comments.between(Span::new(source_end, span.end))?;
+        let available = comments.len();
         let (comments, source_end) = if let Some(tail) = pending {
             // Keep the leased child tail and the parent's suffix in one packet:
             // a later block must not overtake a pending line suffix.
@@ -2108,7 +2121,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(source_end) = source_end {
                 self.format_comment_run(
                     comments,
-                    CommentRunLayout::SourceAfter(source_end),
+                    CommentRunLayout::StatementTail(source_end),
                     writer,
                 )?;
             } else {
@@ -2125,9 +2138,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
-            Ok(span.start.max(last.span.end))
+            let next_line = source_end.is_some()
+                && last.kind == CommentKind::Line
+                && comments.len() < available;
+            Ok((span.start.max(last.span.end), next_line))
         } else {
-            Ok(span.start)
+            Ok((span.start, false))
         }
     }
 

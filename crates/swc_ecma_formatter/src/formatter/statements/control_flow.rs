@@ -756,7 +756,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if printed.pending.is_some() {
                 return Ok(printed);
             }
-            let end = self.format_trailing_comments(
+            let (end, _) = self.format_trailing_comments(
                 Span::new(printed.boundary.end(), trailing_limit),
                 span.end,
                 end.has_following(),
