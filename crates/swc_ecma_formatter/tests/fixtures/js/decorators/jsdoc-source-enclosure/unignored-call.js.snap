@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+@/** @deprecated */ (make(  e)) class A {}
+---------- Options ----------
+{}
+---------- Output ----------
+@/** @deprecated */ (make(e))
+class A {}
