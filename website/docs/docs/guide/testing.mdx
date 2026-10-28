@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: Conformance results for parsing, code generation, transformations, ESTree, and codecs.
+description: Conformance results for parsing, code generation, formatting, transformations, ESTree, and codecs.
 ---
 
 import { ConformanceTable } from "../../theme/Conformance";
@@ -21,6 +21,13 @@ import { ConformanceTable } from "../../theme/Conformance";
 - **Positive passed**: printing and reparsing preserve the AST, and printing again produces identical code.
 
 <ConformanceTable kind="codegen" />
+
+### Formatting
+
+- **Passed**: output matches the pinned Prettier 3.9.9 snapshot, source and AST entry points agree, and formatting is idempotent.
+- Counts cover supported physical JavaScript/JSX and TypeScript/TSX fixtures. The linked reports record parser exclusions and unsupported options.
+
+<ConformanceTable kind="formatter" />
 
 ### Transformations
 
