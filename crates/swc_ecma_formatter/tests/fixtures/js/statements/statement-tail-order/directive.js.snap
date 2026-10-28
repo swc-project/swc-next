@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+"use strict";
+(a // tail
+) /* next */
+b;
+---------- Options ----------
+{}
+---------- Output ----------
+"use strict";
+a; // tail
+/* next */
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+"use strict"
+a // tail
+/* next */
+b

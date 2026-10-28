@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(a // @ts-expect-error
+) /* next */
+b;
+---------- Options ----------
+{}
+---------- Output ----------
+a; // @ts-expect-error
+/* next */
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+a // @ts-expect-error
+/* next */
+b
