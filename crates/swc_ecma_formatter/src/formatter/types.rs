@@ -4629,10 +4629,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 }
 
 /// A trailing JSDoc question mark can consume a type on the following source line.
-pub(super) fn type_requires_terminator(mut node: TsType, ast: &Ast<'_>) -> bool {
+pub(super) fn type_requires_terminator(node: TsType, ast: &Ast<'_>) -> bool {
+    type_data_requires_terminator(ast.ts_type_data(node), ast)
+}
+
+fn type_data_requires_terminator(mut data: TsTypeData, ast: &Ast<'_>) -> bool {
     let mut context = TypeContext::Root;
     loop {
-        let data = ast.ts_type_data(node);
         if context.needs_parentheses(data, ast) {
             return false;
         }
@@ -4680,7 +4683,7 @@ pub(super) fn type_requires_terminator(mut node: TsType, ast: &Ast<'_>) -> bool 
             }
             _ => return false,
         };
-        node = next;
+        data = ast.ts_type_data(next);
         context = next_context;
     }
 }

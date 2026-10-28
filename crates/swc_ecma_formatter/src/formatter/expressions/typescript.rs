@@ -937,11 +937,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
+                self.format_binary_type_rhs_head(
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    &after,
+                    head,
+                    writer,
+                )
             }
-            BinaryTypeLayout::Source(source) => {
-                self.format_source_type_operator_rhs(source, node, TypeContext::Root, writer)
-            }
+            BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs(
+                source,
+                node,
+                TypeContext::TypeExpressionRhs,
+                writer,
+            ),
             BinaryTypeLayout::SourceRhs {
                 prefix,
                 after,
@@ -949,7 +958,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => {
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
-                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
+                self.format_binary_type_rhs_head(
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    &after,
+                    head,
+                    writer,
+                )
             }
             BinaryTypeLayout::Suppressed { before, head } => {
                 self.format_comment_boundary(&before, writer)?;
@@ -959,7 +974,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_suppressed_type_content(
                     node,
                     &head,
-                    TypeContext::Root,
+                    TypeContext::TypeExpressionRhs,
                     TypeLayout::OpeningProvided,
                     writer,
                 )
@@ -992,7 +1007,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.text(" ");
-                self.format_binary_type_rhs_head(node, TypeContext::Root, &after, head, writer)
+                self.format_binary_type_rhs_head(
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    &after,
+                    head,
+                    writer,
+                )
             }
         }
     }
