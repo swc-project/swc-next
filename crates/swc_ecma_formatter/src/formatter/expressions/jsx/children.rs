@@ -37,6 +37,7 @@ enum JsxLeadingSpace {
     Separator {
         spaces: usize,
         following: LineConstraint,
+        literal_line: bool,
     },
     Literal,
 }
@@ -63,13 +64,22 @@ impl JsxChildrenLayout {
             return;
         }
         let write = |writer: &mut Writer<'ast>| {
-            if let Some(JsxLeadingSpace::Separator { spaces, following }) = self.leading_space {
+            if let Some(JsxLeadingSpace::Separator {
+                spaces,
+                following,
+                literal_line,
+            }) = self.leading_space
+            {
                 write_jsx_space(
                     self.single_quote,
                     spaces,
                     JsxSpacePlacement::Leading,
                     following,
-                    self.space_layout(),
+                    if literal_line {
+                        JsxSpaceLayout::Explicit
+                    } else {
+                        self.space_layout()
+                    },
                     writer,
                 );
             }
@@ -95,7 +105,7 @@ enum JsxSeparator {
 enum JsxContentEdge {
     Word { single_character: bool },
     NonText { self_closing: bool },
-    Literal,
+    Literal { leading_line: bool },
     WhitespaceLiteral,
 }
 
@@ -192,6 +202,7 @@ impl JsxChildrenStream {
                 self.layout.leading_space = Some(JsxLeadingSpace::Separator {
                     spaces,
                     following: formatter.line_constraint(space.end, source.start),
+                    literal_line: matches!(next, JsxContentEdge::Literal { leading_line: true }),
                 });
                 space.start
             } else {
@@ -201,8 +212,8 @@ impl JsxChildrenStream {
                 source.start
             };
             self.layout.source = Some(Span::new(start, source.end));
-            self.layout.leading_inline =
-                matches!(next, JsxContentEdge::Literal) && self.layout.leading_space.is_none();
+            self.layout.leading_inline = matches!(next, JsxContentEdge::Literal { .. })
+                && self.layout.leading_space.is_none();
             return;
         };
         let previous = *previous;
@@ -223,7 +234,11 @@ impl JsxChildrenStream {
                     spaces,
                     JsxSpacePlacement::Between,
                     following,
-                    self.layout.space_layout(),
+                    if matches!(next, JsxContentEdge::Literal { leading_line: true }) {
+                        JsxSpaceLayout::Explicit
+                    } else {
+                        self.layout.space_layout()
+                    },
                     writer,
                 );
             }
@@ -273,7 +288,8 @@ impl JsxChildrenStream {
                 let constraint = formatter.line_constraint(previous_end, source.start);
                 constraint.write(writer, FlatSeparator::Empty, |writer| {
                     match (previous, next) {
-                        (JsxContentEdge::Literal, _) | (_, JsxContentEdge::Literal) => {}
+                        (JsxContentEdge::Literal { .. }, _)
+                        | (_, JsxContentEdge::Literal { .. }) => {}
                         (JsxContentEdge::WhitespaceLiteral, JsxContentEdge::NonText { .. }) => {
                             writer.hard_line()
                         }
@@ -307,7 +323,7 @@ impl JsxChildrenStream {
         self.previous = Some((edge, source, entry));
         self.layout.has_content = true;
         self.layout.source.get_or_insert(source).end = source.end;
-        self.layout.trailing_inline = matches!(edge, JsxContentEdge::Literal);
+        self.layout.trailing_inline = matches!(edge, JsxContentEdge::Literal { .. });
         self.layout.trailing_space = matches!(edge, JsxContentEdge::WhitespaceLiteral);
     }
 
@@ -367,6 +383,7 @@ enum JsxSpacePlacement {
 
 #[derive(Clone, Copy)]
 enum JsxSpaceLayout {
+    Explicit,
     Fixed,
     Conditional(ConditionTarget),
 }
@@ -398,6 +415,7 @@ fn write_jsx_space<'ast>(
         writer.text(space);
     } else {
         match layout {
+            JsxSpaceLayout::Explicit => writer.text(space),
             JsxSpaceLayout::Fixed => writer.text(" "),
             JsxSpaceLayout::Conditional(target) => {
                 writer.if_break_for(target, space);
@@ -409,7 +427,12 @@ fn write_jsx_space<'ast>(
         placement,
         JsxSpacePlacement::Between | JsxSpacePlacement::Leading
     ) {
-        following.write(writer, FlatSeparator::Empty, Writer::soft_line);
+        following.write(writer, FlatSeparator::Empty, |writer| {
+            // The literal already supplies this line break.
+            if !matches!(layout, JsxSpaceLayout::Explicit) {
+                writer.soft_line();
+            }
+        });
     }
 }
 
@@ -527,10 +550,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         // Opaque text contains a non-formatting character.
                         previous_ignore = false;
                         let source = text.span(ast);
-                        stream.before(JsxContentEdge::Literal, source, self, writer);
+                        // An opaque run owns its physical lines, so the space
+                        // before its first line must survive outside that run.
+                        let edge = JsxContentEdge::Literal {
+                            leading_line: raw
+                                .bytes()
+                                .find(|byte| !matches!(byte, b' ' | b'\t'))
+                                .is_some_and(|byte| matches!(byte, b'\r' | b'\n')),
+                        };
+                        stream.before(edge, source, self, writer);
                         let (entry, ()) =
                             writer.fill_entry_with_handle(|writer| writer.literal_text(raw));
-                        stream.after(JsxContentEdge::Literal, source, entry);
+                        stream.after(edge, source, entry);
                         stream.contains_text = true;
                         continue;
                     }
