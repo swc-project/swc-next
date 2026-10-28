@@ -20,8 +20,13 @@ pub(super) enum DelimitedFollowing {
 
 #[derive(Clone, Copy)]
 pub(super) struct DelimitedSourceGap {
+    pub(super) source: Span,
     pub(super) end: u32,
     pub(super) following: LineConstraint,
+    pub(super) ends_in_line_comment: bool,
+    pub(super) leading_line: bool,
+    pub(super) contains_line: bool,
+    break_parent: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -216,42 +221,73 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Preserve an effective trailing ignore's complete delimiter relationship.
     /// Node and slot ownership are resolved before this claims the borrowed run.
-    pub(super) fn format_delimited_source_gap(
-        &mut self,
+    pub(super) fn prepare_delimited_source_gap(
+        &self,
         gap: Span,
         following: DelimitedFollowing,
-        writer: &mut Writer<'ast>,
-    ) -> Result<DelimitedSourceGap, FormatError> {
+    ) -> DelimitedSourceGap {
         let comments = self.comments.in_range(gap);
-        let source_end = gap.start
-            + self
-                .source(gap)
-                .trim_end_matches(is_source_whitespace)
-                .len() as u32;
+        let mut source_end = gap.start;
+        let mut leading = true;
+        let mut leading_line = false;
+        let mut saw_line = false;
+        let mut contains_line = false;
+        for (index, character) in self.source(gap).char_indices() {
+            if matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}') {
+                saw_line = true;
+                leading_line |= leading;
+            }
+            if !is_source_whitespace(character) {
+                leading = false;
+                source_end = gap.start + index as u32 + character.len_utf8() as u32;
+                contains_line = saw_line;
+            }
+        }
+        leading_line &= source_end != gap.start;
         let last = comments
             .last()
             .filter(|comment| comment.span.end == source_end);
-        let following = match following {
+        let constraint = match following {
             DelimitedFollowing::Node | DelimitedFollowing::ModuleSpecifier if last.is_some() => {
                 self.source_line_constraint(source_end, gap.end)
             }
             DelimitedFollowing::Node | DelimitedFollowing::ModuleSpecifier => {
                 self.line_constraint(source_end, gap.end)
             }
-            DelimitedFollowing::End => {
-                // The closing delimiter owns its indentation and newline. Literal
-                // source text has no pending suffix to force that closing break.
-                if last.is_some_and(|comment| comment.kind == CommentKind::Line) {
-                    writer.break_parent();
-                }
-                LineConstraint::Unconstrained
-            }
+            DelimitedFollowing::End => LineConstraint::Unconstrained,
         };
-        self.format_verbatim(Span::new(gap.start, source_end), writer)?;
-        Ok(DelimitedSourceGap {
+        DelimitedSourceGap {
+            source: Span::new(gap.start, source_end),
             end: source_end,
-            following,
-        })
+            following: constraint,
+            ends_in_line_comment: last.is_some_and(|comment| comment.kind == CommentKind::Line),
+            leading_line,
+            contains_line,
+            break_parent: matches!(following, DelimitedFollowing::End)
+                && last.is_some_and(|comment| comment.kind == CommentKind::Line),
+        }
+    }
+
+    pub(super) fn format_prepared_delimited_source_gap(
+        &mut self,
+        gap: DelimitedSourceGap,
+        writer: &mut Writer<'ast>,
+    ) -> Result<DelimitedSourceGap, FormatError> {
+        if gap.break_parent {
+            writer.break_parent();
+        }
+        self.format_verbatim(gap.source, writer)?;
+        Ok(gap)
+    }
+
+    pub(super) fn format_delimited_source_gap(
+        &mut self,
+        gap: Span,
+        following: DelimitedFollowing,
+        writer: &mut Writer<'ast>,
+    ) -> Result<DelimitedSourceGap, FormatError> {
+        let gap = self.prepare_delimited_source_gap(gap, following);
+        self.format_prepared_delimited_source_gap(gap, writer)
     }
 
     pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
