@@ -25,11 +25,20 @@ pub(super) struct JsxChildrenLayout {
     pub(super) source: Option<Span>,
     pub(super) group: Option<GroupId>,
     grouped_text: bool,
-    leading_space: Option<(usize, LineConstraint)>,
+    leading_space: Option<JsxLeadingSpace>,
     trailing_space: bool,
     only_space: Option<usize>,
     single_quote: bool,
     fixed_line: bool,
+}
+
+#[derive(Clone, Copy)]
+enum JsxLeadingSpace {
+    Separator {
+        spaces: usize,
+        following: LineConstraint,
+    },
+    Literal,
 }
 
 impl JsxChildrenLayout {
@@ -54,7 +63,7 @@ impl JsxChildrenLayout {
             return;
         }
         let write = |writer: &mut Writer<'ast>| {
-            if let Some((spaces, following)) = self.leading_space {
+            if let Some(JsxLeadingSpace::Separator { spaces, following }) = self.leading_space {
                 write_jsx_space(
                     self.single_quote,
                     spaces,
@@ -87,6 +96,7 @@ enum JsxContentEdge {
     Word { single_character: bool },
     NonText { self_closing: bool },
     Literal,
+    WhitespaceLiteral,
 }
 
 #[derive(Default)]
@@ -101,6 +111,11 @@ struct JsxChildrenStream {
 
 impl JsxChildrenStream {
     fn separator(&mut self, separator: JsxSeparator, source: Span) {
+        // A lone physical line break between children has no JSX value. Keep
+        // the boundary selected by those children, including after a space literal.
+        if matches!(separator, JsxSeparator::Newline { empty_line: false }) {
+            return;
+        }
         match (&mut self.pending, separator) {
             (Some((JsxSeparator::Space { spaces }, _)), next) => {
                 if let JsxSeparator::Space { spaces: additional } = next {
@@ -121,13 +136,68 @@ impl JsxChildrenStream {
         formatter: &Formatter<'_, '_>,
         writer: &mut Writer<'_>,
     ) {
+        self.flush_space_literal(formatter, writer);
+        self.boundary(next, source, formatter, writer);
+    }
+
+    fn flush_space_literal(&mut self, formatter: &Formatter<'_, '_>, writer: &mut Writer<'_>) {
+        if let Some((
+            JsxSeparator::Space {
+                spaces: spaces @ 2..,
+            }
+            | JsxSeparator::Words {
+                spaces: spaces @ 2..,
+            },
+            source,
+        )) = self.pending
+        {
+            self.pending = None;
+            self.space_literal(spaces, source, formatter, writer);
+        }
+    }
+
+    fn space_literal(
+        &mut self,
+        spaces: usize,
+        source: Span,
+        formatter: &Formatter<'_, '_>,
+        writer: &mut Writer<'_>,
+    ) {
+        let edge = JsxContentEdge::WhitespaceLiteral;
+        self.boundary(edge, source, formatter, writer);
+        let (entry, ()) = writer.fill_entry_with_handle(|writer| {
+            write_jsx_space(
+                self.layout.single_quote,
+                spaces,
+                JsxSpacePlacement::Lone,
+                LineConstraint::Unconstrained,
+                self.layout.space_layout(),
+                writer,
+            );
+        });
+        self.after(edge, source, entry);
+        self.contains_text = true;
+    }
+
+    fn boundary(
+        &mut self,
+        next: JsxContentEdge,
+        source: Span,
+        formatter: &Formatter<'_, '_>,
+        writer: &mut Writer<'_>,
+    ) {
         let pending = self.pending.take();
         let Some((previous, previous_source, _)) = self.previous.as_ref() else {
             let start = if let Some((JsxSeparator::Space { spaces }, space)) = pending {
-                self.layout.leading_space =
-                    Some((spaces, formatter.line_constraint(space.end, source.start)));
+                self.layout.leading_space = Some(JsxLeadingSpace::Separator {
+                    spaces,
+                    following: formatter.line_constraint(space.end, source.start),
+                });
                 space.start
             } else {
+                if matches!(next, JsxContentEdge::WhitespaceLiteral) {
+                    self.layout.leading_space = Some(JsxLeadingSpace::Literal);
+                }
                 source.start
             };
             self.layout.source = Some(Span::new(start, source.end));
@@ -204,6 +274,11 @@ impl JsxChildrenStream {
                 constraint.write(writer, FlatSeparator::Empty, |writer| {
                     match (previous, next) {
                         (JsxContentEdge::Literal, _) | (_, JsxContentEdge::Literal) => {}
+                        (JsxContentEdge::WhitespaceLiteral, JsxContentEdge::NonText { .. }) => {
+                            writer.hard_line()
+                        }
+                        (JsxContentEdge::WhitespaceLiteral, _) => writer.soft_line(),
+                        (_, JsxContentEdge::WhitespaceLiteral) => {}
                         (JsxContentEdge::NonText { .. }, JsxContentEdge::NonText { .. }) => {
                             writer.hard_line()
                         }
@@ -233,6 +308,7 @@ impl JsxChildrenStream {
         self.layout.has_content = true;
         self.layout.source.get_or_insert(source).end = source.end;
         self.layout.trailing_inline = matches!(edge, JsxContentEdge::Literal);
+        self.layout.trailing_space = matches!(edge, JsxContentEdge::WhitespaceLiteral);
     }
 
     fn finish(
@@ -240,6 +316,7 @@ impl JsxChildrenStream {
         formatter: &Formatter<'_, '_>,
         writer: &mut Writer<'_>,
     ) -> JsxChildrenLayout {
+        self.flush_space_literal(formatter, writer);
         if let Some((JsxSeparator::Space { spaces }, source)) = self.pending {
             self.layout.source.get_or_insert(source).end = source.end;
             if let Some((_, previous, entry)) = self.previous {
@@ -393,8 +470,14 @@ fn is_jsx_whitespace(byte: u8) -> bool {
 struct JsxChildExpression {
     original: Expr,
     content: Option<ExpressionContent>,
-    spaces: Option<usize>,
-    template: bool,
+    kind: JsxChildExpressionKind,
+}
+
+#[derive(Clone, Copy)]
+enum JsxChildExpressionKind {
+    Expression,
+    Whitespace(usize),
+    Template,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -421,12 +504,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 // A sole template owns wrapping through its interpolations.
                 stream.layout.template_only = children.len() == 1
-                    && expression
-                        .as_ref()
-                        .is_some_and(|expression| expression.template);
-                if let Some(spaces) = expression.as_ref().and_then(|expression| expression.spaces) {
+                    && expression.as_ref().is_some_and(|expression| {
+                        matches!(expression.kind, JsxChildExpressionKind::Template)
+                    });
+                if let Some(JsxChildExpression {
+                    kind: JsxChildExpressionKind::Whitespace(spaces),
+                    ..
+                }) = expression.as_ref()
+                {
                     previous_ignore = false;
-                    stream.separator(JsxSeparator::Space { spaces }, child.span(ast));
+                    if *spaces == 1 {
+                        stream.separator(JsxSeparator::Space { spaces: 1 }, child.span(ast));
+                    } else {
+                        stream.flush_space_literal(self, writer);
+                        stream.space_literal(*spaces, child.span(ast), self, writer);
+                    }
                     continue;
                 }
                 if let JsxChildData::JsxText(text) = data {
@@ -590,31 +682,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = matches!(data, ExprData::ParenthesizedExpression(_))
             .then(|| self.expression_content(original));
         let printed = content.as_ref().map_or(data, |content| content.data);
-        let spaces = if self.comments.in_range(container.span(self.ast)).is_empty()
-            && !matches!(
-                self.line_constraint(container.span(self.ast).start, container.span(self.ast).end),
-                LineConstraint::NewLine(_)
-            )
-            && let ExprData::StringLiteral(literal) = printed
-        {
-            self.ast
-                .get_wtf8(literal.value(self.ast))
-                .as_str()
-                .and_then(|text| {
-                    (!text.is_empty() && text.bytes().all(|byte| byte == b' '))
-                        .then_some(text.len())
-                })
-        } else {
-            None
+        let kind = match printed {
+            ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_) => {
+                JsxChildExpressionKind::Template
+            }
+            ExprData::StringLiteral(literal)
+                if self.comments.in_range(container.span(self.ast)).is_empty()
+                    && !matches!(
+                        self.line_constraint(
+                            container.span(self.ast).start,
+                            container.span(self.ast).end,
+                        ),
+                        LineConstraint::NewLine(_)
+                    ) =>
+            {
+                self.ast
+                    .get_wtf8(literal.value(self.ast))
+                    .as_str()
+                    .filter(|text| !text.is_empty() && text.bytes().all(|byte| byte == b' '))
+                    .map_or(JsxChildExpressionKind::Expression, |text| {
+                        JsxChildExpressionKind::Whitespace(text.len())
+                    })
+            }
+            _ => JsxChildExpressionKind::Expression,
         };
         Some(JsxChildExpression {
             original,
             content,
-            spaces,
-            template: matches!(
-                printed,
-                ExprData::TemplateLiteral(_) | ExprData::TaggedTemplateExpression(_)
-            ),
+            kind,
         })
     }
 }
