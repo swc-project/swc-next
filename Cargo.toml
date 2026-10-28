@@ -79,6 +79,7 @@ swc_next_ecma_minifier         = { version = "0.4.0", path = "crates/swc_ecma_mi
 swc_next_ecma_parser           = { version = "0.4.0", path = "crates/swc_ecma_parser" }
 swc_next_ecma_semantic         = { version = "0.4.0", path = "crates/swc_ecma_semantic" }
 swc_next_ecma_transformer      = { version = "0.4.0", path = "crates/swc_ecma_transformer" }
+swc_next_formatter_core        = { version = "0.1.0", path = "crates/swc_formatter_core" }
 swc_next_regular_expression    = { version = "0.4.0", path = "crates/swc_regular_expression" }
 swc_next_simd                  = { version = "0.4.0", path = "crates/swc_simd" }
 swc_next_type_strip            = { version = "0.4.0", path = "crates/swc_type_strip" }

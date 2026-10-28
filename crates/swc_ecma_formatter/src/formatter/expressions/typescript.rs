@@ -28,7 +28,7 @@ use crate::formatter::types::{
 };
 use crate::{
     FormatError,
-    document::{GroupRequest, Writer},
+    document::{GroupRequest, Writer, WriterExt},
 };
 
 #[derive(Clone, Copy)]

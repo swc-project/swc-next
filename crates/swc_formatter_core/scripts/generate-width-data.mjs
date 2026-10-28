@@ -1,6 +1,6 @@
 // Reproduce the formatter's private display-width data from the pinned Prettier
 // checkout and its already installed modules. No install or network is needed.
-// node crates/swc_ecma_formatter/scripts/generate-width-data.mjs <prettier> [--check] [--evidence <directory>]
+// node crates/swc_formatter_core/scripts/generate-width-data.mjs <prettier> [--check] [--evidence <directory>]
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";

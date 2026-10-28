@@ -27,7 +27,7 @@ pub(crate) fn ascii_width(source: &str) -> Option<usize> {
         .then_some(source.len())
 }
 
-pub(crate) fn width(source: &str) -> usize {
+pub fn width(source: &str) -> usize {
     if let Some(width) = ascii_width(source) {
         return width;
     }
