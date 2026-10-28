@@ -22,7 +22,10 @@ use super::Formatter;
 use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::{ExpressionContext, ExpressionPosition, ExpressionStart, TailBoundary};
+use super::expressions::{
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
+    TailBoundary,
+};
 use super::literals::StringContext;
 use super::source::is_source_whitespace;
 use super::suppression::ContentMode;
@@ -52,6 +55,7 @@ pub(super) enum StatementSequenceKind<'ast> {
         leading: StatementBodyLeading<'ast>,
         incoming: Option<CaseIncoming>,
         terminator: Option<StatementSourceTerminator>,
+        has_following: bool,
     },
 }
 
@@ -122,10 +126,67 @@ enum DirectivePrologue {
     Closed,
 }
 
+#[derive(Clone, Copy)]
+enum FollowingSyntax {
+    Statement,
+    Keyword,
+}
+
+#[derive(Clone, Copy)]
+enum ContinuationBoundary {
+    End,
+    Following {
+        kind: FollowingSyntax,
+        source: Option<StatementSourceTerminator>,
+    },
+}
+
+impl ContinuationBoundary {
+    fn source(self) -> Option<StatementSourceTerminator> {
+        match self {
+            Self::End => None,
+            Self::Following { source, .. } => source,
+        }
+    }
+
+    fn is_following(self) -> bool {
+        matches!(self, Self::Following { .. })
+    }
+
+    fn for_child(self, span: Span) -> Self {
+        match self {
+            Self::End => Self::End,
+            Self::Following { kind, source } => Self::Following {
+                kind,
+                source: source.filter(|candidate| {
+                    span.start <= candidate.start()
+                        && candidate.start().checked_add(1) == Some(span.end)
+                }),
+            },
+        }
+    }
+
+    fn needs_generated(self, terminal: super::types::RawTypeTerminal) -> bool {
+        use super::types::RawTypeTerminal;
+        match (self, terminal) {
+            (_, RawTypeTerminal::Closed) | (Self::End, _) => false,
+            (
+                Self::Following {
+                    kind: FollowingSyntax::Keyword,
+                    ..
+                },
+                RawTypeTerminal::PostfixQuestion,
+            ) => false,
+            (Self::Following { .. }, _) => true,
+        }
+    }
+}
+
 /// Layout supplied by the real parent without bypassing statement ownership.
 struct StatementLayout {
     start: ExpressionStart,
     empty_block: EmptyBlock,
+    source_candidate: ContinuationBoundary,
 }
 
 pub(super) struct StatementSequence {
@@ -273,6 +334,72 @@ impl StatementItem {
             _ => None,
         };
         annotation.is_some_and(|node| super::types::type_requires_terminator(node, ast))
+    }
+
+    /// The terminal grammar of the selected raw statement or declaration.
+    fn raw_type_terminal(mut self, ast: &Ast<'_>) -> super::types::RawTypeTerminal {
+        // Follow only the terminal body of the statement that was copied.
+        while let Self::Statement(statement) = self {
+            let next = match ast.stmt_data(statement) {
+                StmtData::IfStatement(node) => {
+                    Some(node.alternate(ast).unwrap_or_else(|| node.consequent(ast)))
+                }
+                StmtData::WhileStatement(node) => Some(node.body(ast)),
+                StmtData::ForStatement(node) => Some(node.body(ast)),
+                StmtData::ForInStatement(node) => Some(node.body(ast)),
+                StmtData::ForOfStatement(node) => Some(node.body(ast)),
+                StmtData::WithStatement(node) => Some(node.body(ast)),
+                StmtData::LabeledStatement(node) => Some(node.body(ast)),
+                _ => None,
+            };
+            let Some(next) = next else {
+                break;
+            };
+            self = Self::Statement(next);
+        }
+        if let Self::Statement(statement) = self {
+            let expression = match ast.stmt_data(statement) {
+                StmtData::ExpressionStatement(node) => Some(node.expression(ast)),
+                StmtData::ReturnStatement(node) => node.argument(ast),
+                StmtData::ThrowStatement(node) => Some(node.argument(ast)),
+                StmtData::TsExportAssignment(node) => Some(node.expression(ast)),
+                StmtData::ExportDefaultDeclaration(node) => {
+                    match ast.export_default_declaration_kind_data(node.declaration(ast)) {
+                        ExportDefaultDeclarationKindData::Expr(expression) => Some(expression),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
+            if let Some(expression) = expression {
+                return super::expressions::raw_tail::raw_expression_terminal(expression, ast);
+            }
+        }
+        let Some(declaration) = self.declaration(ast) else {
+            return super::types::RawTypeTerminal::Closed;
+        };
+        let annotation = match ast.decl_data(declaration) {
+            DeclData::TsTypeAliasDeclaration(node) => Some(node.type_annotation(ast)),
+            DeclData::VariableDeclaration(node) => {
+                let Some(last) = node.declarators(ast).last() else {
+                    return super::types::RawTypeTerminal::Closed;
+                };
+                let declarator = ast.get_node_in_sub_range(last);
+                if let Some(initializer) = declarator.init(ast) {
+                    return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
+                }
+                declarator
+                    .type_annotation(ast)
+                    .map(|annotation| annotation.type_annotation(ast))
+            }
+            DeclData::TsFunction(node) => node
+                .return_type(ast)
+                .map(|annotation| annotation.type_annotation(ast)),
+            _ => None,
+        };
+        annotation.map_or(super::types::RawTypeTerminal::Closed, |node| {
+            super::types::raw_type_terminal(node, ast)
+        })
     }
 
     fn span(self, ast: &Ast<'_>) -> Span {
@@ -575,11 +702,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 next.mode = ContentMode::Verbatim;
                 next.source_gap = tail.following_gap;
             }
+            let mode = if source_mode == ContentMode::Verbatim
+                || leading_mode == ContentMode::Verbatim
+                || annotation_tail
+                    .as_ref()
+                    .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
+            {
+                ContentMode::Verbatim
+            } else if !self.has_suppression {
+                ContentMode::Formatted
+            } else {
+                suppression_tail
+                    .as_ref()
+                    .map_or(ContentMode::Formatted, |tail| tail.modes.current)
+            };
             let source_terminator = if annotation_tail.is_some() {
                 self.statement_source_terminator(statement_span)
             } else {
                 suppression_tail.as_ref().and_then(|tail| tail.terminator)
             };
+            let source_terminator = source_terminator.or_else(|| {
+                if self.options.semicolons == Semicolons::AsNeeded
+                    && mode == ContentMode::Verbatim
+                    && pending.is_some()
+                    && let Some(terminator) = self.statement_source_terminator(statement_span)
+                    && statement.raw_type_terminal(ast) != super::types::RawTypeTerminal::Closed
+                {
+                    Some(terminator)
+                } else {
+                    None
+                }
+            });
             let source_packet = suppression_tail
                 .as_ref()
                 .and_then(|tail| tail.source_packet);
@@ -618,19 +771,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None => StatementPunctuation::Canonical(self.options.semicolons),
                 }
             };
-            let mode = if source_mode == ContentMode::Verbatim
-                || leading_mode == ContentMode::Verbatim
-                || annotation_tail
-                    .as_ref()
-                    .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
-            {
-                ContentMode::Verbatim
-            } else if !self.has_suppression {
-                ContentMode::Formatted
+            let following_syntax = if pending.is_some() {
+                Some(FollowingSyntax::Statement)
+            } else if matches!(
+                kind,
+                StatementSequenceKind::Case {
+                    has_following: true,
+                    ..
+                }
+            ) {
+                Some(FollowingSyntax::Keyword)
             } else {
-                suppression_tail
-                    .as_ref()
-                    .map_or(ContentMode::Formatted, |tail| tail.modes.current)
+                None
+            };
+            let source_candidate = if let Some(kind) = following_syntax
+                && matches!(
+                    punctuation,
+                    StatementPunctuation::Canonical(Semicolons::AsNeeded)
+                ) {
+                ContinuationBoundary::Following {
+                    kind,
+                    source: if mode == ContentMode::Formatted
+                        && (self.has_suppression
+                            || statement.declaration(ast).is_some_and(|decl| {
+                                matches!(ast.decl_data(decl), DeclData::VariableDeclaration(_))
+                            })) {
+                        self.statement_source_terminator(statement_span)
+                    } else {
+                        None
+                    },
+                }
+            } else {
+                ContinuationBoundary::End
             };
             if statement.empty(ast).is_some()
                 && mode == ContentMode::Verbatim
@@ -849,6 +1021,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             StatementLayout {
                                 start: expression_start,
                                 empty_block: EmptyBlock::Expanded,
+                                source_candidate,
                             },
                             content,
                             head,
@@ -1312,7 +1485,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
-            let mut tail = self.format_expression_with_leading_comments(
+            let output = self.format_expression_with_leading_comments_and_raw_end(
                 expression,
                 head,
                 ExpressionContext::at(ExpressionPosition::Statement)
@@ -1322,6 +1495,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None,
                 writer,
             )?;
+            let punctuation = self.punctuation_for_expression_output(
+                punctuation,
+                layout.source_candidate,
+                span,
+                &output,
+            );
+            let mut tail = output.pending;
             let mut content_end = expression.span(self.ast).end;
             if let Some(suffix) = const_tail {
                 content_end = suffix
@@ -1385,36 +1565,63 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.text("return");
                     return self.finish_statement(keyword_end, None, punctuation, writer);
                 };
-                let tail = self.format_restricted_argument(
+                let output = self.format_restricted_argument(
                     keyword_end,
                     argument,
                     |writer| writer.text("return"),
                     writer,
                 )?;
-                self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
+                let punctuation = self.punctuation_for_expression_output(
+                    punctuation,
+                    layout.source_candidate,
+                    span,
+                    &output,
+                );
+                self.finish_statement(
+                    argument.span(self.ast).end,
+                    output.pending,
+                    punctuation,
+                    writer,
+                )
             }
             StmtData::ThrowStatement(node) if mode == ContentMode::Formatted => {
                 let span = node.span(self.ast);
                 let argument = node.argument(self.ast);
-                let tail = self.format_restricted_argument(
+                let output = self.format_restricted_argument(
                     span.start + "throw".len() as u32,
                     argument,
                     |writer| writer.text("throw"),
                     writer,
                 )?;
-                self.finish_statement(argument.span(self.ast).end, tail, punctuation, writer)
+                let punctuation = self.punctuation_for_expression_output(
+                    punctuation,
+                    layout.source_candidate,
+                    span,
+                    &output,
+                );
+                self.finish_statement(
+                    argument.span(self.ast).end,
+                    output.pending,
+                    punctuation,
+                    writer,
+                )
             }
-            StmtData::Declaration(declaration) if mode == ContentMode::Formatted => {
-                self.format_declaration(declaration, mode, punctuation, writer)
-            }
+            StmtData::Declaration(declaration) if mode == ContentMode::Formatted => self
+                .format_declaration(
+                    declaration,
+                    mode,
+                    punctuation,
+                    layout.source_candidate,
+                    writer,
+                ),
             StmtData::ImportDeclaration(node) if mode == ContentMode::Formatted => {
                 self.format_import_declaration(node, punctuation, writer)
             }
             StmtData::ExportNamedDeclaration(node) if mode == ContentMode::Formatted => {
-                self.format_export_named(node, punctuation, writer)
+                self.format_export_named(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::TsExportAssignment(node) if mode == ContentMode::Formatted => {
-                self.format_ts_export_assignment(node, punctuation, writer)
+                self.format_ts_export_assignment(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::TsNamespaceExportDeclaration(node) if mode == ContentMode::Formatted => {
                 self.format_ts_namespace_export(node, punctuation, writer)
@@ -1423,7 +1630,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_export_all(node, punctuation, writer)
             }
             StmtData::ExportDefaultDeclaration(node) if mode == ContentMode::Formatted => {
-                self.format_export_default(node, punctuation, writer)
+                self.format_export_default(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::BreakStatement(node) if mode == ContentMode::Formatted => self
                 .format_jump_statement(
@@ -1438,34 +1645,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 ),
             StmtData::LabeledStatement(node) if mode == ContentMode::Formatted => {
-                self.format_labeled_statement(node, punctuation, writer)
+                self.format_labeled_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::WhileStatement(node) if mode == ContentMode::Formatted => {
-                self.format_while_statement(node, punctuation, writer)
+                self.format_while_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::DoWhileStatement(node) if mode == ContentMode::Formatted => {
                 self.format_do_while_statement(node, punctuation, writer)
             }
             StmtData::ForStatement(node) if mode == ContentMode::Formatted => {
-                self.format_for_statement(node, punctuation, writer)
+                self.format_for_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::ForInStatement(node) if mode == ContentMode::Formatted => self
                 .format_iteration_statement(
                     control_flow::IterationStatement::In(node),
                     punctuation,
+                    layout.source_candidate,
                     writer,
                 ),
             StmtData::ForOfStatement(node) if mode == ContentMode::Formatted => self
                 .format_iteration_statement(
                     control_flow::IterationStatement::Of(node),
                     punctuation,
+                    layout.source_candidate,
                     writer,
                 ),
             StmtData::IfStatement(node) if mode == ContentMode::Formatted => {
-                self.format_if_statement(node, punctuation, writer)
+                self.format_if_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::WithStatement(node) if mode == ContentMode::Formatted => {
-                self.format_with_statement(node, punctuation, writer)
+                self.format_with_statement(node, punctuation, layout.source_candidate, writer)
             }
             StmtData::SwitchStatement(node) if mode == ContentMode::Formatted => {
                 Ok(self.format_switch_statement(node, writer)?.into())
@@ -1515,8 +1724,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ) {
                     return Err(self.unsupported("statement", statement));
                 }
-                let mut printed =
-                    self.format_verbatim_statement(span, content, punctuation, writer)?;
+                let source_fence =
+                    Some((StatementItem::Statement(statement), layout.source_candidate));
+                let mut printed = self.format_verbatim_statement_with_source_fence(
+                    span,
+                    content,
+                    punctuation,
+                    source_fence,
+                    writer,
+                )?;
                 let declaration = match data {
                     StmtData::Declaration(declaration) => Some(declaration),
                     StmtData::ExportNamedDeclaration(node) => node.declaration(self.ast),
@@ -1562,6 +1778,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         punctuation: StatementPunctuation,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
+        self.format_verbatim_statement_with_source_fence(span, content, punctuation, None, writer)
+    }
+
+    fn format_verbatim_statement_with_source_fence(
+        &mut self,
+        span: Span,
+        content: VerbatimContent,
+        punctuation: StatementPunctuation,
+        source_fence: Option<(StatementItem, ContinuationBoundary)>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<PrintedStatement<'ast>, FormatError> {
         match content {
             VerbatimContent::FormattedTerminator(end) => {
                 let punctuation = if self.has_suppression
@@ -1575,6 +1802,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     punctuation
                 };
                 self.format_verbatim(Span::new(span.start, end), writer)?;
+                let punctuation = match (punctuation, source_fence) {
+                    (
+                        StatementPunctuation::Canonical(Semicolons::AsNeeded),
+                        Some((item, boundary)),
+                    ) if boundary.is_following() => {
+                        let terminal = item.raw_type_terminal(self.ast);
+                        if terminal == super::types::RawTypeTerminal::Closed {
+                            punctuation
+                        } else if let Some(source) = boundary.source().filter(|source| {
+                            span.start <= source.start()
+                                && source.start().checked_add(1) == Some(span.end)
+                                && end <= source.start()
+                        }) {
+                            StatementPunctuation::Source(source)
+                        } else if boundary.needs_generated(terminal) {
+                            StatementPunctuation::Canonical(Semicolons::Always)
+                        } else {
+                            punctuation
+                        }
+                    }
+                    (punctuation, _) => punctuation,
+                };
                 self.finish_statement(end, None, punctuation, writer)
             }
             VerbatimContent::SourceNode => {
@@ -1585,6 +1834,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 .into())
             }
+        }
+    }
+
+    fn punctuation_for_expression_output(
+        &self,
+        punctuation: StatementPunctuation,
+        boundary: ContinuationBoundary,
+        statement: Span,
+        output: &ExpressionOutput<'ast>,
+    ) -> StatementPunctuation {
+        if !matches!(
+            punctuation,
+            StatementPunctuation::Canonical(Semicolons::AsNeeded)
+        ) || !boundary.is_following()
+        {
+            return punctuation;
+        }
+        let ExpressionRightEdge::SourceFenceCandidate(raw) = &output.right_edge else {
+            return punctuation;
+        };
+        let span = raw.span(self.ast);
+        if statement.start > span.start || span.end > statement.end {
+            return punctuation;
+        }
+        let terminal = raw.terminal(self.ast);
+        if terminal == super::types::RawTypeTerminal::Closed {
+            punctuation
+        } else if let Some(source) = boundary
+            .source()
+            .filter(|source| span.end <= source.start())
+        {
+            StatementPunctuation::Source(source)
+        } else if boundary.needs_generated(terminal) {
+            StatementPunctuation::Canonical(Semicolons::Always)
+        } else {
+            punctuation
         }
     }
 

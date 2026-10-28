@@ -9,6 +9,7 @@ use swc_next_ecma_ast::{
 };
 
 use super::{Formatter, PrintedStatement, StatementBoundary, StatementPunctuation};
+use crate::Semicolons;
 use crate::formatter::bindings::InitializerLayout;
 use crate::formatter::comments::{CommentRunLayout, NodeHead};
 use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
@@ -154,6 +155,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declaration: Decl,
         mode: ContentMode,
         punctuation: StatementPunctuation,
+        declaration_source: super::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let data = self.ast.decl_data(declaration);
@@ -226,13 +228,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .into())
             }
             DeclData::VariableDeclaration(variable) => {
-                let (end, tail) = self.format_variable_declaration(
+                let output = self.format_variable_declaration(
                     variable,
                     keyword,
                     punctuation.tail_boundary(),
+                    declaration_source.is_following(),
                     writer,
                 )?;
-                self.finish_statement(end, tail, punctuation, writer)
+                let punctuation = if matches!(
+                    punctuation,
+                    StatementPunctuation::Canonical(Semicolons::AsNeeded)
+                ) {
+                    if let Some(request) = output.fence_request {
+                        if let Some(source) = declaration_source
+                            .source()
+                            .filter(|source| request.span.end <= source.start())
+                        {
+                            StatementPunctuation::Source(source)
+                        } else if declaration_source.needs_generated(request.terminal) {
+                            StatementPunctuation::Canonical(Semicolons::Always)
+                        } else {
+                            punctuation
+                        }
+                    } else {
+                        punctuation
+                    }
+                } else {
+                    punctuation
+                };
+                self.finish_statement(output.end, output.tail, punctuation, writer)
             }
             DeclData::TsInterfaceDeclaration(interface) => {
                 self.format_interface(interface, keyword, writer)?;
@@ -468,6 +492,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: ExportNamedDeclaration,
         punctuation: StatementPunctuation,
+        declaration_source: super::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -480,7 +505,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
             writer.text("export");
             self.format_module_gap(keyword_end, declaration.span(ast).start, true, writer)?;
-            return self.format_declaration(declaration, mode, punctuation, writer);
+            return self.format_declaration(
+                declaration,
+                mode,
+                punctuation,
+                declaration_source,
+                writer,
+            );
         }
         let specifiers = node.specifiers(ast);
         let first = specifiers.first().map(|id| ast.get_node_in_sub_range(id));
@@ -657,6 +688,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: ExportDefaultDeclaration,
         punctuation: StatementPunctuation,
+        source_terminator: super::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -691,7 +723,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || comments
                         .iter()
                         .any(|comment| comment.kind == CommentKind::Line);
-                let tail = self.format_expression_with_leading_comments(
+                let output = self.format_expression_with_leading_comments_and_raw_end(
                     expression,
                     NodeHead {
                         comments,
@@ -711,7 +743,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None,
                     writer,
                 )?;
-                self.finish_statement(span.end, tail, punctuation, writer)
+                let punctuation = self.punctuation_for_expression_output(
+                    punctuation,
+                    source_terminator,
+                    node.span(ast),
+                    &output,
+                );
+                self.finish_statement(span.end, output.pending, punctuation, writer)
             }
             kind => {
                 let declaration = match kind {
@@ -739,7 +777,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     self.format_module_gap(operator.end, span.start, true, writer)?;
                 }
-                self.format_declaration(declaration, mode, punctuation, writer)
+                self.format_declaration(
+                    declaration,
+                    mode,
+                    punctuation,
+                    super::ContinuationBoundary::End,
+                    writer,
+                )
             }
         }
     }

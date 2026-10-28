@@ -6,7 +6,7 @@ use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem
 use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
-use super::expressions::{ExpressionContext, ExpressionPosition};
+use super::expressions::{ExpressionContext, ExpressionOutput, ExpressionPosition};
 use super::suppression::{ContentMode, SuppressionPosition};
 use super::types::PreparedBindingAnnotation;
 use super::types::generics::TypeArgumentOwner;
@@ -820,6 +820,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         initializer: PreparedInitializer<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_initializer_with_raw_end(initializer, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_initializer_with_raw_end(
+        &mut self,
+        initializer: PreparedInitializer<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let PreparedInitializer {
             left,
             right,
@@ -847,7 +856,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     pattern.span(self.ast).end
                 }
             };
-            self.format_initializer_right(left_end, right, layout, context, writer)
+            self.format_initializer_right_with_raw_end(left_end, right, layout, context, writer)
         })
     }
 
@@ -859,7 +868,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_operator_right(
+        self.format_initializer_right_with_raw_end(left_end, right, layout, context, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_initializer_right_with_raw_end(
+        &mut self,
+        left_end: u32,
+        right: Expr,
+        layout: InitializerLayout<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_operator_right_with_raw_end(
             left_end,
             right,
             layout,
@@ -878,12 +899,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         before_operator: FlatSeparator,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_operator_right_with_raw_end(
+            left_end,
+            right,
+            layout,
+            context,
+            before_operator,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    fn format_operator_right_with_raw_end(
+        &mut self,
+        left_end: u32,
+        right: Expr,
+        layout: InitializerLayout<'ast>,
+        context: ExpressionContext<'ast>,
+        before_operator: FlatSeparator,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let (boundary, rhs_layout) = match layout {
             InitializerLayout::Bound { gap, right_mode } => {
                 self.format_verbatim(gap, writer)?;
-                return self.format_expression(
+                let span = right.span(self.ast);
+                return self.format_expression_with_leading_comments_and_raw_end(
                     right,
+                    NodeHead {
+                        comments: &[],
+                        content_start: span.start,
+                        layout: CommentRunLayout::Leading(span.start),
+                        gap_end: None,
+                    },
                     context.with_content_mode(right_mode),
+                    None,
                     writer,
                 );
             }
@@ -970,10 +1019,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.comments.claim(boundary.trailing)?;
             match content {
                 Some(content) => match boundary.resolved_right_head() {
-                    Some(head) => self.format_prepared_expression_with_resolved_head(
+                    Some(head) => self.format_prepared_expression_with_resolved_head_and_raw_end(
                         right, content, head, context, writer,
                     ),
-                    None => self.format_prepared_expression_with_leading_comments(
+                    None => self.format_prepared_expression_with_leading_comments_and_raw_end(
                         right,
                         content,
                         boundary.right_head(),
@@ -981,7 +1030,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     ),
                 },
-                None => self.format_expression_with_leading_comments(
+                None => self.format_expression_with_leading_comments_and_raw_end(
                     right,
                     boundary.right_head(),
                     context,

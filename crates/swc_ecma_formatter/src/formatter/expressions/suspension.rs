@@ -4,19 +4,21 @@ use swc_next_ecma_ast::{
     AwaitExpression, Expr, ExprData, GetSpan, MetaProperty, Span, YieldExpression,
 };
 
-use super::{ExpressionContext, ExpressionPosition, Formatter, ParenthesesOwner, TailOwner};
-use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use super::{
+    ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, ParenthesesOwner, TailOwner,
+};
+use crate::formatter::comments::{CommentRunLayout, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_await(
+    pub(super) fn format_await_output(
         &mut self,
         expression: AwaitExpression,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let receiver = context.is_call_or_member_receiver()
             && context.parentheses_owner == ParenthesesOwner::Expression;
         let shares_group = receiver
@@ -100,15 +102,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn format_yield(
+    pub(super) fn format_yield_output(
         &mut self,
         expression: YieldExpression,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let keyword_end = expression.span(self.ast).start + 5;
         let Some(argument) = expression.argument(self.ast) else {
             writer.text("yield");
-            return Ok(None);
+            return Ok(ExpressionOutput::closed(None));
         };
         if expression.delegate(self.ast) {
             let gap = Span::new(keyword_end, argument.span(self.ast).start);
@@ -136,7 +138,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         argument: Expr,
         position: ExpressionPosition,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let span = argument.span(self.ast);
         let leading = self.comments.between(Span::new(keyword_end, span.start))?;
         let mode = self.content_mode(leading);
@@ -146,7 +148,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.line_constraint(keyword_end, first)
             .write(writer, FlatSeparator::Space, Writer::space);
         self.comments.claim(leading)?;
-        self.format_expression_with_leading_comments(
+        self.format_expression_with_leading_comments_and_raw_end(
             argument,
             NodeHead {
                 comments: leading,

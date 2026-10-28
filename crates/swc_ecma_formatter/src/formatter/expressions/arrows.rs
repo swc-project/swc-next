@@ -9,8 +9,8 @@ use swc_next_ecma_ast::{
 use super::arguments::TrailingCommaPolicy;
 use super::parentheses::{ExpressionContent, SourceParentheses};
 use super::{
-    ExpressionContext, ExpressionLayout, ExpressionPosition, Formatter, JsxCallbackContext,
-    SourceTailOwner, TailOwner,
+    CopiedRawExpression, ExpressionContext, ExpressionLayout, ExpressionOutput, ExpressionPosition,
+    Formatter, JsxCallbackContext, SourceTailOwner, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -98,7 +98,7 @@ struct RecordedArrowChain<'a> {
     first: ArrowLink<'a>,
     rest: Vec<ArrowLink<'a>>,
     body: RecordedGroup<'a>,
-    tail: Option<ExpressionTail<'a>>,
+    output: ExpressionOutput<'a>,
     should_break: bool,
     body_layout: ArrowBodyLayout,
 }
@@ -666,23 +666,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn format_arrow(
+    pub(super) fn format_arrow_with_raw_end(
         &mut self,
         arrow: ArrowFunctionExpression,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let mut source = match self.source_arrow(arrow)? {
             SourceArrow::Verbatim(source) => {
                 self.format_verbatim_arrow(source, context, writer)?;
-                return Ok(None);
+                return Ok(ExpressionOutput::copied(
+                    None,
+                    Some(CopiedRawExpression {
+                        owner: Expr::ArrowFunctionExpression(arrow),
+                    }),
+                ));
             }
             SourceArrow::Formatted(head) => self.source_formatted_arrow(head, None)?,
         };
         if let Some(child) = source.next.take() {
             let chain = self.record_arrow_chain(source, child, context, writer)?;
             chain.write(context.arrow_layout, writer);
-            return Ok(chain.tail);
+            return Ok(chain.output);
         }
         writer.group(false, |writer| {
             let body = self.format_arrow_head(source, context, writer)?;
@@ -815,7 +820,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 body,
                 body_layout,
                 normal,
-                tail,
+                tail: tail.pending,
             }));
         };
         let chain = self.record_arrow_chain(source, first_child, context, writer)?;
@@ -839,7 +844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body: chain.body,
             body_layout: chain.body_layout,
             normal,
-            tail: chain.tail,
+            tail: chain.output.pending,
         }))
     }
 
@@ -927,13 +932,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .is_none_or(|tail| tail.owner == ArrowLinkTailOwner::Body)
                     });
                 let (body, tail) = writer.record_group_with_value(|writer| {
-                    let mut tail = self.format_arrow_body_content(source_body, writer)?;
+                    let mut output = self.format_arrow_body_content(source_body, writer)?;
                     for link in links.iter().rev().chain(std::iter::once(&first)) {
                         if let Some(trailing) = &link.trailing {
                             if inline_tails {
                                 // Removed delimiters do not join the source gaps
                                 // of independently owned inline tail packets.
-                                self.format_expression_tail(tail.take(), writer)?;
+                                self.format_expression_tail(output.pending.take(), writer)?;
                                 self.comments.claim(trailing.comments)?;
                                 self.format_comment_run(
                                     trailing.comments,
@@ -941,11 +946,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                     writer,
                                 )?;
                             } else {
-                                tail = self.capture_expression_tail(trailing.span, tail)?;
+                                output.pending =
+                                    self.capture_expression_tail(trailing.span, output.pending)?;
                             }
                         }
                     }
-                    Ok(tail)
+                    Ok(output)
                 })?;
                 break (body, tail, body_layout);
             }
@@ -954,7 +960,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             first,
             rest: links,
             body,
-            tail,
+            output: tail,
             should_break,
             body_layout,
         })
@@ -1173,7 +1179,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: SourceArrowBody<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if source.hug_body {
             self.format_arrow_body_content(source, writer)
         } else {
@@ -1238,7 +1244,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         source: SourceArrowBody<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let SourceArrowBody {
             body,
             parent_layout,
@@ -1273,10 +1279,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .with_jsx_callback(jsx_callback)
                     .with_tail_owner(TailOwner::ParentOperation);
                 if let Some(comments) = jsx_comments {
-                    return self.format_arrow_jsx_comments(content, comments, context, writer);
+                    return self
+                        .format_arrow_jsx_comments(content, comments, context, writer)
+                        .map(ExpressionOutput::unreported);
                 }
                 self.comments.claim(leading)?;
-                self.format_prepared_expression_with_leading_comments(
+                self.format_prepared_expression_with_leading_comments_and_raw_end(
                     expression,
                     content,
                     NodeHead {
@@ -1302,7 +1310,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_comment_run(leading, leading_layout, writer)?;
                 }
                 self.format_function_body(body, mode, first_statement, body_leading, writer)?;
-                Ok(None)
+                Ok(ExpressionOutput::closed(None))
             }
         };
         let tail = if flat_conditional_pair {

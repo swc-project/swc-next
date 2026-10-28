@@ -16,6 +16,7 @@ mod jsx;
 mod members;
 pub(super) mod objects;
 pub(super) mod parentheses;
+pub(super) mod raw_tail;
 mod sequence;
 mod suspension;
 pub(super) mod targets;
@@ -25,8 +26,8 @@ mod unary;
 
 use self::chains::FluentChainEligibility;
 use swc_next_ecma_ast::{
-    Argument, ArgumentData, ArrayExpression, ArrowFunctionExpression, CallExpression, Expr,
-    ExprData, GetSpan, IdentifierReference, ObjectExpression, SequenceExpression, Span,
+    Argument, ArgumentData, ArrayExpression, ArrowFunctionExpression, Ast, CallExpression, Expr,
+    ExprData, GetSpan, IdentifierReference, ObjectExpression, SequenceExpression, Span, TsType,
     UnaryOperator, UpdateOperator,
 };
 
@@ -586,6 +587,96 @@ impl<'ast> ExpressionContext<'ast> {
     }
 }
 
+/// An expression selected and copied by the current raw emission plan.
+#[derive(Clone, Copy)]
+pub(super) struct CopiedRawExpression {
+    owner: Expr,
+}
+
+impl CopiedRawExpression {
+    pub(super) fn owner(self) -> Expr {
+        self.owner
+    }
+}
+
+/// The actual owner selected by a raw expression or type emission plan.
+#[derive(Clone, Copy)]
+pub(super) enum CopiedRawOwner {
+    Expression(CopiedRawExpression),
+    Type(TsType),
+}
+
+impl CopiedRawOwner {
+    pub(super) fn span(self, ast: &Ast<'_>) -> Span {
+        match self {
+            Self::Expression(raw) => raw.owner().span(ast),
+            Self::Type(raw) => raw.span(ast),
+        }
+    }
+
+    pub(super) fn terminal(self, ast: &Ast<'_>) -> super::types::RawTypeTerminal {
+        match self {
+            Self::Expression(raw) => raw_tail::raw_expression_terminal(raw.owner(), ast),
+            Self::Type(raw) => super::types::raw_type_terminal(raw, ast),
+        }
+    }
+
+    pub(super) fn has_open_type_end(self, ast: &Ast<'_>) -> bool {
+        self.terminal(ast) != super::types::RawTypeTerminal::Closed
+    }
+}
+
+/// A closed edge, a common source-fence candidate, or an unmigrated legacy path.
+pub(super) enum ExpressionRightEdge {
+    Closed,
+    SourceFenceCandidate(CopiedRawOwner),
+    Unreported,
+}
+
+/// Comment ownership and the independently reported expression right edge.
+pub(super) struct ExpressionOutput<'ast> {
+    pub(super) pending: Option<ExpressionTail<'ast>>,
+    pub(super) right_edge: ExpressionRightEdge,
+}
+
+impl<'ast> ExpressionOutput<'ast> {
+    pub(super) fn unreported(pending: Option<ExpressionTail<'ast>>) -> Self {
+        Self {
+            pending,
+            right_edge: ExpressionRightEdge::Unreported,
+        }
+    }
+
+    pub(super) fn copied(
+        pending: Option<ExpressionTail<'ast>>,
+        raw: Option<CopiedRawExpression>,
+    ) -> Self {
+        Self {
+            pending,
+            right_edge: raw.map_or(ExpressionRightEdge::Closed, |raw| {
+                ExpressionRightEdge::SourceFenceCandidate(CopiedRawOwner::Expression(raw))
+            }),
+        }
+    }
+
+    pub(super) fn closed(pending: Option<ExpressionTail<'ast>>) -> Self {
+        Self {
+            pending,
+            right_edge: ExpressionRightEdge::Closed,
+        }
+    }
+}
+
+/// The raw span and frame decisions selected once before emission.
+struct PreparedVerbatimExpression {
+    expression: Expr,
+    span: Span,
+    parenthesize: bool,
+    grammar_barrier: bool,
+    statement_guard: bool,
+    expression_start: ExpressionStart,
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_expression(
         &mut self,
@@ -594,6 +685,57 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_expression_with_array_comments(expression, context, None, writer)
+    }
+
+    fn format_expression_output(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_with_leading_comments_and_raw_end(
+            expression,
+            NodeHead {
+                comments: &[],
+                content_start: expression.span(self.ast).start,
+                layout: CommentRunLayout::Leading(expression.span(self.ast).start),
+                gap_end: None,
+            },
+            context,
+            None,
+            writer,
+        )
+    }
+
+    fn format_expression_prepared_output(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let binding = prepared
+            .as_ref()
+            .and_then(|content| content.parentheses)
+            .map_or(super::comments::CommentBinding::Unbound, |removed| {
+                removed.head.binding
+            });
+        self.format_expression_leading_prepared_with_raw_end(
+            expression,
+            prepared,
+            ResolvedExpressionHead {
+                head: NodeHead {
+                    comments: &[],
+                    content_start: expression.span(self.ast).start,
+                    layout: CommentRunLayout::Source,
+                    gap_end: None,
+                },
+                binding,
+            },
+            context,
+            None,
+            writer,
+        )
     }
 
     pub(super) fn format_expression_with_array_comments(
@@ -1427,12 +1569,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn format_verbatim_expression(
-        &mut self,
+    fn prepare_verbatim_expression(
+        &self,
         expression: Expr,
         context: ExpressionContext<'ast>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<PreparedVerbatimExpression, FormatError> {
         let data = self.ast.expr_data(expression);
         let span = expression.span(self.ast);
         let source = self.source(span);
@@ -1448,7 +1589,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let starts_update = matches!(data, ExprData::UpdateExpression(update) if update.prefix(self.ast))
             && (source.starts_with("++") || source.starts_with("--"));
-        if matches!(
+        let statement_guard = matches!(
             context.expression_start,
             ExpressionStart::StatementBarrier { .. }
         ) || self.options.semicolons == Semicolons::AsNeeded
@@ -1461,43 +1602,77 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | ExprData::JsxElement(_)
                         | ExprData::JsxFragment(_)
                 )
-                || !starts_update && source.starts_with(['(', '[', '/', '+', '-', '`']))
-        {
-            context.expression_start.write_statement_guard(writer);
+                || !starts_update && source.starts_with(['(', '[', '/', '+', '-', '`']));
+        Ok(PreparedVerbatimExpression {
+            expression,
+            span,
+            parenthesize,
+            grammar_barrier,
+            statement_guard,
+            expression_start: context.expression_start,
+        })
+    }
+
+    fn format_verbatim_expression_with_raw_end(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<CopiedRawExpression>, FormatError> {
+        let plan = self.prepare_verbatim_expression(expression, context)?;
+        if plan.statement_guard {
+            plan.expression_start.write_statement_guard(writer);
         }
-        if parenthesize {
+        if plan.parenthesize {
             writer.text("(");
         }
-        if grammar_barrier {
+        if plan.grammar_barrier {
             writer.text("(");
         }
-        self.format_verbatim(span, writer)?;
-        if grammar_barrier {
+        self.format_verbatim(plan.span, writer)?;
+        if plan.grammar_barrier {
             writer.text(")");
         }
-        if parenthesize {
+        if plan.parenthesize {
             writer.text(")");
         }
-        Ok(())
+        Ok(
+            (!plan.parenthesize && !plan.grammar_barrier).then_some(CopiedRawExpression {
+                owner: plan.expression,
+            }),
+        )
+    }
+
+    fn format_verbatim_expression(
+        &mut self,
+        expression: Expr,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        self.format_verbatim_expression_with_raw_end(expression, context, writer)
+            .map(|_| ())
     }
 
     fn format_expression_data(
         &mut self,
         expression: Expr,
+        data: ExprData,
         context: ExpressionContext<'ast>,
         has_expression_parentheses: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        match self.ast.expr_data(expression) {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        match data {
             ExprData::JsxElement(node) => {
-                return self.format_jsx_expression(
-                    node.span(self.ast),
-                    context,
-                    writer,
-                    |formatter, writer| {
-                        formatter.format_jsx_element(node, TailOwner::ParentOperation, writer)
-                    },
-                );
+                return self
+                    .format_jsx_expression(
+                        node.span(self.ast),
+                        context,
+                        writer,
+                        |formatter, writer| {
+                            formatter.format_jsx_element(node, TailOwner::ParentOperation, writer)
+                        },
+                    )
+                    .map(ExpressionOutput::closed);
             }
             ExprData::JsxFragment(node) => {
                 self.format_jsx_expression(
@@ -1512,10 +1687,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_template_literal(template, writer)?
             }
             ExprData::TaggedTemplateExpression(template) => {
-                return self.format_tagged_template(template, context, writer);
+                return self
+                    .format_tagged_template(template, context, writer)
+                    .map(ExpressionOutput::closed);
             }
             ExprData::TsAsExpression(node) => {
-                return self.format_binary_type_expression(
+                return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
                     typescript::TypeBinaryOperator::As,
@@ -1524,7 +1701,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsSatisfiesExpression(node) => {
-                return self.format_binary_type_expression(
+                return self.format_binary_type_expression_output(
                     node.expression(self.ast),
                     node.type_annotation(self.ast),
                     typescript::TypeBinaryOperator::Satisfies,
@@ -1533,14 +1710,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::TsTypeAssertion(node) => {
-                return self.format_type_assertion(node, context, writer);
+                return self.format_type_assertion_output(node, context, writer);
             }
             ExprData::TsNonNullExpression(node) => {
-                return self.format_non_null(node, context, writer);
+                return self
+                    .format_non_null(node, context, writer)
+                    .map(ExpressionOutput::closed);
             }
 
             ExprData::TsInstantiationExpression(node) => {
-                return self.format_instantiation(node, context, writer);
+                return self
+                    .format_instantiation(node, context, writer)
+                    .map(ExpressionOutput::closed);
             }
             ExprData::IdentifierReference(node) => {
                 writer.text(self.ast.get_utf8(node.name(self.ast)))
@@ -1574,12 +1755,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     context
                 };
-                return self.format_expression(chain.expression(self.ast), child_context, writer);
+                return self.format_expression_output(
+                    chain.expression(self.ast),
+                    child_context,
+                    writer,
+                );
             }
-            ExprData::AwaitExpression(node) => return self.format_await(node, context, writer),
-            ExprData::YieldExpression(node) => return self.format_yield(node, writer),
+            ExprData::AwaitExpression(node) => {
+                return self.format_await_output(node, context, writer);
+            }
+            ExprData::YieldExpression(node) => return self.format_yield_output(node, writer),
             ExprData::ImportExpression(import) => {
-                return self.format_import_expression(import, writer);
+                return self
+                    .format_import_expression(import, writer)
+                    .map(ExpressionOutput::closed);
             }
             ExprData::MetaProperty(node) => {
                 self.format_meta_property(node, writer)?;
@@ -1588,40 +1777,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_function(function, writer)?;
             }
             ExprData::ArrowFunctionExpression(arrow) => {
-                return self.format_arrow(arrow, context, writer);
+                return self.format_arrow_with_raw_end(arrow, context, writer);
             }
             ExprData::ArrayExpression(array) => self.format_array(array, writer)?,
             ExprData::ObjectExpression(object) => self.format_object(object, writer)?,
             ExprData::NewExpression(constructor) => {
-                return self.format_new(constructor, context, writer);
+                return self
+                    .format_new(constructor, context, writer)
+                    .map(ExpressionOutput::closed);
             }
             ExprData::MemberExpression(member) => {
                 let eligibility = if context.member_chain_layout == MemberChainLayout::Local {
                     FluentChainEligibility::Unqualified
                 } else {
-                    self.fluent_chain_eligibility(
-                        self.ast.expr_data(expression),
-                        context,
-                        self.expression_layout(expression),
-                    )
+                    self.fluent_chain_eligibility(data, context, self.expression_layout(expression))
                 };
                 match eligibility {
                     FluentChainEligibility::Fluent => {
-                        return self.format_fluent_chain(expression, context, writer);
+                        return self
+                            .format_fluent_chain(expression, context, writer)
+                            .map(ExpressionOutput::closed);
                     }
                     FluentChainEligibility::MemberOnly => {
-                        return self.format_member(
-                            member,
-                            {
-                                let mut local = context;
-                                local.member_chain_layout = MemberChainLayout::Local;
-                                local
-                            },
-                            writer,
-                        );
+                        return self
+                            .format_member(
+                                member,
+                                {
+                                    let mut local = context;
+                                    local.member_chain_layout = MemberChainLayout::Local;
+                                    local
+                                },
+                                writer,
+                            )
+                            .map(ExpressionOutput::closed);
                     }
                     FluentChainEligibility::Unqualified => {
-                        return self.format_member(member, context, writer);
+                        return self
+                            .format_member(member, context, writer)
+                            .map(ExpressionOutput::closed);
                     }
                 }
             }
@@ -1631,20 +1824,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && !chains::atomic_chain_head(self.ast.expr_data(call.callee(self.ast)))
                     && matches!(
                         self.fluent_chain_eligibility(
-                            self.ast.expr_data(expression),
+                            data,
                             context,
                             self.expression_layout(expression)
                         ),
                         FluentChainEligibility::Fluent
                     )
                 {
-                    return self.format_fluent_chain(expression, context, writer);
+                    return self
+                        .format_fluent_chain(expression, context, writer)
+                        .map(ExpressionOutput::closed);
                 } else {
-                    return self.format_call(call, context, writer);
+                    return self
+                        .format_call(call, context, writer)
+                        .map(ExpressionOutput::closed);
                 }
             }
             ExprData::BinaryExpression(node) => {
-                return self.format_binary(
+                return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
                         right: node.right(self.ast),
@@ -1655,7 +1852,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::LogicalExpression(node) => {
-                return self.format_binary(
+                return self.format_binary_output(
                     BinaryLike {
                         left: node.left(self.ast),
                         right: node.right(self.ast),
@@ -1666,18 +1863,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AssignmentExpression(assignment) => {
-                return self.format_assignment(assignment, context, writer);
+                return self.format_assignment_with_raw_end(assignment, context, writer);
             }
             ExprData::ConditionalExpression(conditional) => {
-                return self.format_conditional(conditional, context, writer);
+                return self.format_conditional_with_raw_end(conditional, context, writer);
             }
-            ExprData::UnaryExpression(unary) => return self.format_unary(unary, writer),
+            ExprData::UnaryExpression(unary) => return self.format_unary_output(unary, writer),
             ExprData::UpdateExpression(update) => {
-                return self.format_update(update, context, writer);
+                return self
+                    .format_update(update, context, writer)
+                    .map(ExpressionOutput::closed);
             }
             _ => return Err(self.unsupported("expression", expression)),
         }
-        Ok(None)
+        Ok(ExpressionOutput::closed(None))
     }
     fn record_object_argument(
         &mut self,

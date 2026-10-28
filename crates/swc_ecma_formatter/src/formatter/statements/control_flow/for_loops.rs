@@ -153,10 +153,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: ForStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         self.with_for_initializer(None, |formatter| {
-            formatter.format_classic_for(node, punctuation, writer)
+            formatter.format_classic_for(node, punctuation, source_candidate, writer)
         })
     }
 
@@ -164,6 +165,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: ForStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -250,17 +252,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let nodes = [init, test, update];
         let mut header = self.prepare_for_header(&syntax, &nodes, body);
         header.final_tail = self.prepare_classic_final_tail(&header)?;
-        self.format_for_with_body(&header, body, node.span(ast).end, punctuation, writer)
+        self.format_for_with_body(
+            &header,
+            body,
+            node.span(ast).end,
+            punctuation,
+            source_candidate,
+            writer,
+        )
     }
 
     pub(in crate::formatter::statements) fn format_iteration_statement(
         &mut self,
         statement: IterationStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         self.with_for_initializer(None, |formatter| {
-            formatter.format_iteration_for(statement, punctuation, writer)
+            formatter.format_iteration_for(statement, punctuation, source_candidate, writer)
         })
     }
 
@@ -268,6 +278,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         statement: IterationStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -408,7 +419,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             header.iteration = Some(iteration);
         }
-        self.format_for_with_body(&header, body, span.end, punctuation, writer)
+        self.format_for_with_body(
+            &header,
+            body,
+            span.end,
+            punctuation,
+            source_candidate,
+            writer,
+        )
     }
 
     fn prepare_classic_final_tail(
@@ -772,6 +790,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         statement: Stmt,
         end: u32,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let body = self
@@ -787,7 +806,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 EmptyBlock::Expanded
             })
-            .with_enclosing_punctuation(punctuation);
+            .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| {
             if header.classic {
                 writer.group(false, |writer| self.format_for_header(header, writer))?;

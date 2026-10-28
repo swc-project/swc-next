@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::{
     BreakStatement, Comment, ContinueStatement, DeclData, Expr, ExprData, GetSpan, LabelIdentifier,
-    LabeledStatement, Span, StmtData,
+    LabeledStatement, Span, Stmt, StmtData,
 };
 
 use super::super::{
@@ -81,6 +81,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: LabeledStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -110,7 +111,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if enclosing_mode == ContentMode::Verbatim {
             let span = node.span(ast);
             let content = self.statement_content(StatementItem::Statement(statement));
-            return self.format_verbatim_statement(span, content.into(), punctuation, writer);
+            let source_fence = Some((
+                StatementItem::Statement(Stmt::LabeledStatement(node)),
+                source_candidate,
+            ));
+            return self.format_verbatim_statement_with_source_fence(
+                span,
+                content.into(),
+                punctuation,
+                source_fence,
+                writer,
+            );
         }
         let mut body = self
             .prepare_controlled_body(
@@ -120,7 +131,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ControlledBodyRole::Label,
                 body_mode,
             )
-            .with_enclosing_punctuation(punctuation);
+            .with_enclosing_boundary(punctuation, source_candidate);
         let split = comments.partition_point(|comment| comment.span.end <= colon);
         let (before, after) = comments.split_at(split);
         let (expression, declaration) = match ast.stmt_data(statement) {

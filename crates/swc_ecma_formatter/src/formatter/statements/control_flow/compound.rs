@@ -58,6 +58,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: WithStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let span = node.span(self.ast);
@@ -76,7 +77,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ControlledBodyRole::Body,
                 ContentMode::Formatted,
             )
-            .with_enclosing_punctuation(punctuation);
+            .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| {
             writer.text("with");
             self.format_condition(condition, writer)?;

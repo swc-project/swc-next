@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use swc_next_ecma_ast::{
-    BindingPatternData, Expr, ExprData, GetSpan, Span, VariableDeclaration, VariableDeclarator,
-    VariableKind,
+    Ast, BindingPatternData, Expr, ExprData, GetSpan, Span, VariableDeclaration,
+    VariableDeclarator, VariableKind,
 };
 
 use super::Formatter;
@@ -16,7 +16,8 @@ use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::RhsLayout;
 use super::expressions::{
-    ExpressionContext, ExpressionPosition, ForInitializerGrammar, TailBoundary,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge,
+    ForInitializerGrammar, TailBoundary,
 };
 use super::statements::DeclarationKeyword;
 use super::suppression::{ContentMode, SuppressionPosition};
@@ -28,6 +29,55 @@ pub(super) enum VariableContext {
     ForInitializer,
     ForIn,
     Iteration,
+}
+
+pub(super) struct RawFenceRequest {
+    pub(super) span: Span,
+    pub(super) terminal: super::types::RawTypeTerminal,
+}
+
+pub(super) struct VariableDeclarationOutput<'ast> {
+    pub(super) end: u32,
+    pub(super) tail: Option<ExpressionTail<'ast>>,
+    pub(super) fence_request: Option<RawFenceRequest>,
+}
+
+pub(super) struct VariableDeclaratorOutput<'ast> {
+    tail: Option<ExpressionTail<'ast>>,
+    fence_request: Option<RawFenceRequest>,
+    expression_edge: Option<ExpressionRightEdge>,
+}
+
+impl<'ast> VariableDeclaratorOutput<'ast> {
+    pub(super) fn formatted(tail: Option<ExpressionTail<'ast>>) -> Self {
+        Self {
+            tail,
+            fence_request: None,
+            expression_edge: None,
+        }
+    }
+
+    pub(super) fn initializer(output: ExpressionOutput<'ast>) -> Self {
+        Self {
+            tail: output.pending,
+            fence_request: None,
+            expression_edge: Some(output.right_edge),
+        }
+    }
+}
+
+fn copied_declarator_terminal(
+    declarator: VariableDeclarator,
+    ast: &Ast<'_>,
+) -> super::types::RawTypeTerminal {
+    if let Some(initializer) = declarator.init(ast) {
+        return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
+    }
+    declarator
+        .type_annotation(ast)
+        .map_or(super::types::RawTypeTerminal::Closed, |annotation| {
+            super::types::raw_type_terminal(annotation.type_annotation(ast), ast)
+        })
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -54,12 +104,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declaration: VariableDeclaration,
         keyword: Option<DeclarationKeyword>,
         tail_boundary: TailBoundary,
+        source_candidate: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
+    ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
         self.format_variable_declaration_parts(
             declaration,
             VariableContext::Statement(tail_boundary),
             keyword,
+            source_candidate,
             writer,
         )
     }
@@ -70,7 +122,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: VariableContext,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
-        self.format_variable_declaration_parts(declaration, context, None, writer)
+        self.format_variable_declaration_parts(declaration, context, None, false, writer)
+            .map(|output| (output.end, output.tail))
     }
 
     fn format_variable_declaration_parts(
@@ -78,8 +131,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declaration: VariableDeclaration,
         context: VariableContext,
         keyword: Option<DeclarationKeyword>,
+        source_candidate: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<(u32, Option<ExpressionTail<'ast>>), FormatError> {
+    ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
         let ast = self.ast;
         if declaration.declare(ast) && keyword.is_none() {
             return Err(self.unsupported("ambient variable declaration", declaration));
@@ -219,17 +273,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if keyword.is_some_and(|keyword| keyword.suppresses_variable(declarator)) {
                         item.set_leading_mode(ContentMode::Verbatim);
                     }
-                    let tail = self.format_variable_declarator(
+                    let output = self.format_variable_declarator(
                         declarator,
                         item.mode,
                         context,
                         definition_owner,
+                        source_candidate && matches!(following, FollowingItem::End),
                         writer,
                     )?;
                     if matches!(following, FollowingItem::End) {
-                        Ok(ControlFlow::Break(tail))
+                        Ok(ControlFlow::Break(output))
                     } else {
-                        self.finish_delimited_item(item, tail, writer)
+                        self.finish_delimited_item(item, output.tail, writer)
                             .map(ControlFlow::Continue)
                     }
                 };
@@ -239,7 +294,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     write(writer)?
                 };
                 let boundary = match boundary {
-                    ControlFlow::Break(tail) => return Ok((end, tail)),
+                    ControlFlow::Break(output) => {
+                        let fence_request = output.fence_request.or_else(|| {
+                            if !source_candidate {
+                                return None;
+                            }
+                            output.expression_edge.and_then(|edge| {
+                                let ExpressionRightEdge::SourceFenceCandidate(raw) = edge else {
+                                    return None;
+                                };
+                                let raw_span = raw.span(ast);
+                                if span.start > raw_span.start || raw_span.end > span.end {
+                                    return None;
+                                }
+                                let terminal = raw.terminal(ast);
+                                (terminal != super::types::RawTypeTerminal::Closed).then_some(
+                                    RawFenceRequest {
+                                        span: raw_span,
+                                        terminal,
+                                    },
+                                )
+                            })
+                        });
+                        return Ok(VariableDeclarationOutput {
+                            end,
+                            tail: output.tail,
+                            fence_request,
+                        });
+                    }
                     ControlFlow::Continue(boundary) => boundary,
                 };
                 previous_end = boundary.end;
@@ -248,7 +330,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 following_mode = Some(boundary.following_mode);
                 first_item = false;
             }
-            Ok((end, None))
+            Ok(VariableDeclarationOutput {
+                end,
+                tail: None,
+                fence_request: None,
+            })
         })
     }
 
@@ -258,12 +344,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         context: VariableContext,
         definition_owner: Option<VariableDeclarator>,
+        source_candidate: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<VariableDeclaratorOutput<'ast>, FormatError> {
         let ast = self.ast;
         if mode == ContentMode::Verbatim {
-            self.format_verbatim(declarator.span(ast), writer)?;
-            return Ok(None);
+            let span = declarator.span(ast);
+            self.format_verbatim(span, writer)?;
+            let fence_request = if source_candidate {
+                let terminal = copied_declarator_terminal(declarator, ast);
+                (terminal != super::types::RawTypeTerminal::Closed)
+                    .then_some(RawFenceRequest { span, terminal })
+            } else {
+                None
+            };
+            return Ok(VariableDeclaratorOutput {
+                tail: None,
+                fence_request,
+                expression_edge: None,
+            });
         }
         let annotation = declarator.type_annotation(ast);
         if annotation.is_some() || declarator.definite(ast) {
@@ -277,7 +376,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let left = declarator.id(ast);
         let Some(right) = declarator.init(ast) else {
-            return self.format_declaration_binding(left, ContentMode::Formatted, writer);
+            return self
+                .format_declaration_binding(left, ContentMode::Formatted, writer)
+                .map(VariableDeclaratorOutput::formatted);
         };
         let left_end = left.span(ast).end;
         let right_start = right.span(ast).start;
@@ -350,7 +451,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             (BindingGroup::Auto, rhs_layout)
         };
-        self.format_initializer(
+        self.format_initializer_with_raw_end(
             PreparedInitializer {
                 left: InitializerLeft::Binding {
                     pattern: left,
@@ -366,5 +467,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             writer,
         )
+        .map(VariableDeclaratorOutput::initializer)
     }
 }
