@@ -750,14 +750,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 transition: None,
             });
         }
+        // Partition by the real separator once, before either owner selects a run.
+        let before_separator = elision.as_ref().map_or_else(
+            || {
+                comma.map_or(comments.len(), |comma| {
+                    comments.partition_point(|comment| comment.span.end <= comma)
+                })
+            },
+            |elision| elision.before_separator,
+        );
         let (trailing_count, physical_break, inline_line) = if elision.is_some() {
             // The actual separator, not an AST trailing attachment, divides
             // this packet. Its before side must be printed before punctuation.
             (0, false, false)
         } else if ordinary_attachment {
-            let before_separator = comma.map_or(comments.len(), |comma| {
-                comments.partition_point(|comment| comment.span.end <= comma)
-            });
             let (trailing, leading) = self.split_separator_comments(
                 comments,
                 before_separator,
@@ -780,7 +786,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut physical_break = false;
             let mut inline_line = false;
             for (index, comment) in comments.iter().enumerate() {
-                if comment.span.start >= trailing_limit {
+                if comment.span.start >= trailing_limit
+                    || following_span.is_some()
+                        && self.separator_comment_starts_following(
+                            *comment,
+                            index,
+                            before_separator,
+                        )
+                {
                     break;
                 }
                 if self.line_breaks(inline_end, comment.span.start) != 0 {
@@ -831,11 +844,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             (None, None) => comma
                 .filter(|_| preserve_comma)
-                .map_or(trailing_count, |comma| {
-                    comments
-                        .partition_point(|comment| comment.span.end <= comma)
-                        .max(trailing_count)
-                }),
+                .map_or(trailing_count, |_| before_separator.max(trailing_count)),
         };
         let boundary_end = comments[..boundary_count]
             .last()
