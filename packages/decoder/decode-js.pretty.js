@@ -247,6 +247,8 @@ export function decodeJs(buffer, source, sourceBuffer) {
     return result;
   };
 
+  // Each reference is decoded into a fresh value, so parents can finish their
+  // owned children in place before exposing the result.
   function node(index) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
@@ -380,15 +382,15 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 18: {
         const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
         const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
-        const elements = f_rest === null ? f_elements : [...f_elements, f_rest];
-        result = { type: "ArrayPattern", start, end, elements };
+        if (f_rest !== null) f_elements.push(f_rest);
+        result = { type: "ArrayPattern", start, end, elements: f_elements };
         break;
       }
       case 19: {
         const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
         const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
-        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];
-        result = { type: "ObjectPattern", start, end, properties };
+        if (f_rest !== null) f_properties.push(f_rest);
+        result = { type: "ObjectPattern", start, end, properties: f_properties };
         break;
       }
       case 20: {
@@ -710,14 +712,15 @@ export function decodeJs(buffer, source, sourceBuffer) {
       case 58: {
         const f_items = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
         const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
-        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };
+        if (f_rest !== null) f_items.push(f_rest);
+        result = { params: f_items };
         break;
       }
       case 59: {
         const extraId = _i32[(payload + 12) >> 2];
         const f_pattern = node(_i32[(payload + 0) >> 2]);
         const f_initializer = optionalNode(_i32[(extra + (extraId + 1) * 8) >> 2]);
-        const left = { ...f_pattern };
+        const left = f_pattern;
         if (f_initializer === null) {
           result = left;
           result.end = end;

@@ -378,17 +378,16 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             if is_ts {
                 output.push_str(
                     r#"        if (f_initializer === null) {
-          result = {
-            ...f_pattern, optional: f_optional,
-            typeAnnotation: f_typeAnnotation, end,
-            decorators: f_decorators,
-          };
+          f_pattern.optional = f_optional;
+          f_pattern.typeAnnotation = f_typeAnnotation;
+          f_pattern.end = end;
+          f_pattern.decorators = f_decorators;
+          result = f_pattern;
         } else {
-          const left = {
-            ...f_pattern, optional: f_optional,
-            typeAnnotation: f_typeAnnotation,
-            end: f_typeAnnotation?.end ?? (f_optional ? f_pattern.end + 1 : f_pattern.end),
-          };
+          const left = f_pattern;
+          left.optional = f_optional;
+          left.typeAnnotation = f_typeAnnotation;
+          left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);
           result = {
             type: "AssignmentPattern", start: left.start, end,
             left, right: f_initializer,
@@ -398,7 +397,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
 "#,
                 );
             } else {
-                output.push_str("        const left = { ...f_pattern };\n");
+                output.push_str("        const left = f_pattern;\n");
                 output.push_str("        if (f_initializer === null) {\n          result = left;\n          result.end = end;\n");
                 output.push_str("        } else {\n          result = { type: \"AssignmentPattern\", start: left.start, end, left, right: f_initializer };\n");
                 output.push_str("        }\n");
@@ -413,26 +412,32 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         }
         "VariableDeclarator" => {
             output.push_str(if is_ts {
-                "        result = { type: \"VariableDeclarator\", start, end, id: { ...f_id, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_id.end }, init: f_init, definite: f_definite };\n"
+                "        f_id.typeAnnotation = f_typeAnnotation;\n        f_id.end = f_typeAnnotation?.end ?? f_id.end;\n        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init, definite: f_definite };\n"
             } else {
                 "        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init };\n"
             });
         }
         "CatchClause" => {
             output.push_str(if is_ts {
-                "        result = { type: \"CatchClause\", start, end, param: f_param === null ? null : { ...f_param, typeAnnotation: f_typeAnnotation, end: f_typeAnnotation?.end ?? f_param.end }, body: f_body };\n"
+                "        if (f_param !== null) {\n          f_param.typeAnnotation = f_typeAnnotation;\n          f_param.end = f_typeAnnotation?.end ?? f_param.end;\n        }\n        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
             } else {
                 "        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
             });
         }
         "TsIndexSignatureParameter" => output.push_str(
-            r#"        result = { ...f_name, start, end, typeAnnotation: f_typeAnnotation };
+            r#"        f_name.start = start;
+        f_name.end = end;
+        f_name.typeAnnotation = f_typeAnnotation;
+        result = f_name;
 "#,
         ),
         "FormalParameters" => output.push_str(
-            "        result = { params: f_rest === null ? f_items : [...f_items, f_rest] };\n",
+            "        if (f_rest !== null) f_items.push(f_rest);\n        result = { params: f_items };\n",
         ),
         "Function" => {
+            if is_ts {
+                output.push_str("        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);\n");
+            }
             output.push_str(
                 r#"        result = {
           type: f_functionType, start, end,
@@ -441,11 +446,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
           async: f_async,
 "#,
             );
-            output.push_str(if is_ts {
-                "          params: f_thisParam === null ? f_params.params : [f_thisParam, ...f_params.params],\n"
-            } else {
-                "          params: f_params.params,\n"
-            });
+            output.push_str("          params: f_params.params,\n");
             output.push_str(
                 r#"          body: f_body,
           expression: false,
@@ -457,13 +458,14 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             output.push_str("        };\n");
         }
         "TsFunction" => output.push_str(
-            r#"        result = {
+            r#"        if (f_thisParam !== null) f_params.params.unshift(f_thisParam);
+        result = {
           type: typeOverride ?? "TSDeclareFunction",
           start, end,
           id: f_id,
           generator: f_generator,
           async: f_async,
-          params: f_thisParam === null ? f_params.params : [f_thisParam, ...f_params.params],
+          params: f_params.params,
           body: null,
           expression: false,
           typeParameters: f_typeParameters,
@@ -621,21 +623,21 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         }
         "ArrayPattern" => {
             output.push_str(
-                r#"        const elements = f_rest === null ? f_elements : [...f_elements, f_rest];
+                r#"        if (f_rest !== null) f_elements.push(f_rest);
 "#,
             );
             output.push_str(if is_ts {
-                "        result = { type: \"ArrayPattern\", start, end, elements, decorators: [], optional: false, typeAnnotation: null };\n"
+                "        result = { type: \"ArrayPattern\", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: null };\n"
             } else {
-                "        result = { type: \"ArrayPattern\", start, end, elements };\n"
+                "        result = { type: \"ArrayPattern\", start, end, elements: f_elements };\n"
             });
         }
         "ObjectPattern" => {
-            output.push_str("        const properties = f_rest === null ? f_properties : [...f_properties, f_rest];\n");
+            output.push_str("        if (f_rest !== null) f_properties.push(f_rest);\n");
             output.push_str(if is_ts {
-                "        result = { type: \"ObjectPattern\", start, end, properties, decorators: [], optional: false, typeAnnotation: null };\n"
+                "        result = { type: \"ObjectPattern\", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: null };\n"
             } else {
-                "        result = { type: \"ObjectPattern\", start, end, properties };\n"
+                "        result = { type: \"ObjectPattern\", start, end, properties: f_properties };\n"
             });
         }
         "JsxText" => output.push_str(
@@ -1000,6 +1002,8 @@ const DECODE_PREAMBLE: &str = r#"
     return result;
   };
 
+  // Each reference is decoded into a fresh value, so parents can finish their
+  // owned children in place before exposing the result.
   function node(index) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
