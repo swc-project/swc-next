@@ -8,6 +8,7 @@ const x=<div>{a}  {b}</div>;
 ---------- Output ----------
 const x = (
   <div>
-    {a}{"  "}{b}
+    {a}{"  "}
+    {b}
   </div>
 );

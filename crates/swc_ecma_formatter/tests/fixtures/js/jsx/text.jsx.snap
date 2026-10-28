@@ -71,7 +71,8 @@ const guarded_text=<Box>{/* prettier-ignore */}
 ---------- Output ----------
 const a1 = (
   <div>
-    alpha <b>beta</b> gamma{"  "}<i>delta</i> &amp; &nbsp; &lt; a\b
+    alpha <b>beta</b> gamma{"  "}
+    <i>delta</i> &amp; &nbsp; &lt; a\b
   </div>
 );
 const a2 = (
@@ -101,7 +102,8 @@ const a7 = <Box>{"  "}</Box>;
 const a8 = <Box>foo bar</Box>;
 const a9 = (
   <Box>
-    {""}{"   "}<b />{"   "}
+    {""}{"   "}
+    <b />{"   "}
   </Box>
 );
 const a10 = <Box> </Box>;
@@ -180,7 +182,9 @@ const a1 = (
     alpha{" "}
     <b>beta</b>{" "}
     gamma{"  "}
-    <i>delta</i>{" "}
+    <i>
+      delta
+    </i>{" "}
     &amp; &nbsp;
     &lt; a\b
   </div>
@@ -213,8 +217,7 @@ const a6 = (
     second="two"
   >
     {"   "}
-    <b />{"   "}
-    tail{"   "}
+    <b />{"   "}tail{"   "}
   </div>
 );
 const a7 = (

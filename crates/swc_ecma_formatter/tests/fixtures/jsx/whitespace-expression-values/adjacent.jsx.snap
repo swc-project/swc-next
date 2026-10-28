@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div>{"  "}{" "}</div>;
+---------- Options ----------
+{}
+---------- Output ----------
+<div>{"  "} </div>;
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+<div>{'  '} </div>;
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+<div>
+  {"  "}{" "}
+</div>;
+
+---------- Options ----------
+{"printWidth":12,"singleQuote":true}
+---------- Output ----------
+<div>
+  {'  '}{' '}
+</div>;

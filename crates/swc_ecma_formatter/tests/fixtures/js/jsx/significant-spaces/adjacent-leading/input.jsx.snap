@@ -7,7 +7,12 @@ const x=<div>{" "}
 ---------- Options ----------
 {}
 ---------- Output ----------
-const x = <div>{"  "}{v}</div>;
+const x = (
+  <div>
+    {"  "}
+    {v}
+  </div>
+);
 
 ---------- Options ----------
 {"printWidth":12}
