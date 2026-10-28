@@ -126,6 +126,7 @@ enum GroupedSignature<'a> {
 
 enum GroupedValue<'a> {
     Ordinary(FlatFragment<'a>),
+    Retained(Fragment<'a>),
     FinalObject(RecordedObject<'a>),
     FinalArray(RecordedArray<'a>),
     Callback {
@@ -151,7 +152,18 @@ impl<'a> RecordedArgument<'a> {
                 if value.preferred_breaks() {
                     return None;
                 }
-                GroupedValue::Ordinary(grouping_view(value, policy)?)
+                match grouping_view(value, policy) {
+                    Some(value) => GroupedValue::Ordinary(value),
+                    // A callback candidate may retain a neighbor's independent
+                    // groups, including named groups that cannot be projected.
+                    // Its first line must still fit with the callback signature.
+                    None if matches!(policy, GroupingPolicy::Callback)
+                        && !value.has_intrinsic_lines() =>
+                    {
+                        GroupedValue::Retained(value)
+                    }
+                    None => return None,
+                }
             }
             RecordedValue::FinalObject(value) => GroupedValue::FinalObject(value),
             RecordedValue::FinalArray(value) => GroupedValue::FinalArray(value),
@@ -1251,6 +1263,7 @@ fn write_grouped_arguments<'a>(
         writer.write_flat_fragment(item.prefix);
         match item.value {
             GroupedValue::Ordinary(value) => writer.write_flat_fragment(value),
+            GroupedValue::Retained(value) => writer.write_fragment(value),
             GroupedValue::FinalObject(object) => {
                 let value = if expand_body {
                     object.forced.unwrap_or(object.normal)
