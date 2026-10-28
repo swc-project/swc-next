@@ -16,10 +16,7 @@ pub(in crate::formatter) enum TypeContext {
     JsDocEnclosedPostfixOperand,
     CompoundMember,
     UnionMember,
-    IntersectionMember {
-        line_continuation: bool,
-        has_separator: bool,
-    },
+    IntersectionMember { line_continuation: bool },
     ConditionalCheck,
     ConditionalExtends,
     TypeConstraint,

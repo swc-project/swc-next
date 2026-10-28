@@ -24,7 +24,7 @@ pub(super) use self::generics::TypeArgumentOwner;
 use super::Formatter;
 use super::bindings::{BindingGroup, BindingInitializerOwner, DefiniteMarker, InitializerLayout};
 use super::comments::{
-    CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail,
+    CommentBinding, CommentBoundary, CommentGap, CommentOpening, CommentRunLayout, ExpressionTail,
     PreparedTrailingRun,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
@@ -3241,15 +3241,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
             );
             if !block {
+                if matches!(data, TsTypeData::TsIntersectionType(node)
+                    if !self.comments.in_range(node.span(self.ast)).is_empty())
+                {
+                    let (content, tail) = writer.record_with_value(|writer| {
+                        print(self, TypeLayout::Root, TypeEnclosure::Parentheses, writer)
+                    })?;
+                    let own_line = tail.as_ref().is_some_and(|tail| {
+                        self.comment_run_has_own_line_tail(tail.comments, tail.source_end)
+                    });
+                    if own_line {
+                        return writer.group(false, |writer| {
+                            writer.text("(");
+                            let gap = writer.indent(|writer| {
+                                writer.soft_line();
+                                writer.write_fragment(content);
+                                let gap = self.type_tail_closing_gap(tail.as_ref());
+                                self.format_expression_tail(tail, writer)?;
+                                Ok::<_, FormatError>(gap)
+                            })?;
+                            if let Some(gap) = gap {
+                                gap.write(writer, FlatSeparator::Empty, |_| {});
+                            } else {
+                                writer.soft_line();
+                            }
+                            writer.text(")");
+                            Ok(None)
+                        });
+                    }
+                    writer.text("(");
+                    writer.write_fragment(content);
+                    self.format_type_tail_before_closer(tail, writer)?;
+                    writer.text(")");
+                    return Ok(None);
+                }
                 writer.text("(");
                 let tail = print(self, TypeLayout::Root, TypeEnclosure::Parentheses, writer)?;
-                self.format_expression_tail(tail, writer)?;
+                self.format_type_tail_before_closer(tail, writer)?;
                 writer.text(")");
                 return Ok(None);
             }
             return writer.group(false, |writer| {
                 writer.text("(");
-                writer.indent(|writer| {
+                let gap = writer.indent(|writer| {
                     writer.soft_line();
                     let tail = print(
                         self,
@@ -3257,14 +3291,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         TypeEnclosure::Parentheses,
                         writer,
                     )?;
-                    self.format_expression_tail(tail, writer)
+                    let gap = self.type_tail_closing_gap(tail.as_ref());
+                    self.format_expression_tail(tail, writer)?;
+                    Ok::<_, FormatError>(gap)
                 })?;
-                writer.soft_line();
+                if let Some(gap) = gap {
+                    gap.write(writer, FlatSeparator::Empty, |_| {});
+                } else {
+                    writer.soft_line();
+                }
                 writer.text(")");
                 Ok(None)
             });
         }
         print(self, layout, context.enclosure(), writer)
+    }
+
+    fn type_tail_closing_gap(&self, tail: Option<&ExpressionTail<'ast>>) -> Option<CommentGap> {
+        tail.and_then(|tail| {
+            self.comment_run_has_own_line_tail(tail.comments, tail.source_end)
+                .then(|| {
+                    let end = tail
+                        .comments
+                        .last()
+                        .map_or(tail.source_end, |comment| comment.span.end);
+                    self.prepare_comment_boundary(tail.comments, tail.source_end, end)
+                        .gap()
+                })
+        })
+    }
+
+    /// Finish a directly emitted line before a following type delimiter. An
+    /// inline line suffix stays queued so its punctuation owner can precede it.
+    fn format_type_tail_before_closer(
+        &mut self,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let gap = self.type_tail_closing_gap(tail.as_ref());
+        self.format_expression_tail(tail, writer)?;
+        if let Some(gap) = gap {
+            gap.write(writer, FlatSeparator::Empty, |_| {});
+        }
+        Ok(())
     }
 
     fn format_type_data(
@@ -3648,13 +3717,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // A trailing packet keeps its delimiter fence until a compound separator
         // supplies the next owner. Leaf pairs keep their existing compact frame;
         // compound envelopes prepare the member packet and its closing line.
-        let transfers_tail = matches!(
-            context,
-            TypeContext::IntersectionMember {
-                has_separator: true,
-                ..
-            }
-        );
+        let transfers_tail = matches!(context, TypeContext::IntersectionMember { .. });
         let fenced_tail = !trailing.is_empty()
             && (!matches!(
                 context,

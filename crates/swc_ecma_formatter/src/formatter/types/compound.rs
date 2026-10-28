@@ -910,7 +910,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.group(false, |writer| {
             let mut prefix = intersection.leading;
             for link in intersection.links {
-                let tail = self.format_intersection_member(link.left, prefix, true, writer)?;
+                let tail = self.format_intersection_member(
+                    link.left,
+                    prefix,
+                    writer,
+                    |formatter, tail, writer| {
+                        if let Some(pending) = tail.as_ref()
+                            && let Some(cut) = formatter.intersection_tail_inline_prefix(pending)
+                        {
+                            return Ok(tail.map(|tail| (tail, cut)));
+                        }
+                        formatter.format_expression_tail(tail, writer)?;
+                        Ok(None)
+                    },
+                )?;
                 prefix = self.format_intersection_separator(
                     link.boundary,
                     link.continuation,
@@ -918,19 +931,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
             }
-            self.format_intersection_member(intersection.last, prefix, false, writer)?;
-            Ok(None)
+            self.format_intersection_member(intersection.last, prefix, writer, |_, tail, _| {
+                Ok(tail)
+            })
         })
     }
 
-    fn format_intersection_member(
+    fn format_intersection_member<T>(
         &mut self,
         node: IntersectionMember<'ast>,
         prefix: IntersectionPrefix<'ast>,
-        has_separator: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<(crate::formatter::comments::ExpressionTail<'ast>, usize)>, FormatError>
-    {
+        finish: impl FnOnce(
+            &mut Self,
+            Option<crate::formatter::comments::ExpressionTail<'ast>>,
+            &mut Writer<'ast>,
+        ) -> Result<T, FormatError>,
+    ) -> Result<T, FormatError> {
         let receives_head_line = match &prefix {
             IntersectionPrefix::Member {
                 continuation,
@@ -953,7 +970,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let context = TypeContext::IntersectionMember {
             line_continuation: receives_head_line,
-            has_separator,
         };
         let indent = matches!(
             &prefix,
@@ -1024,14 +1040,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_prepared_type_content(*content, context, TypeLayout::Root, writer)?
                 }
             };
-            if has_separator
-                && let Some(pending) = tail.as_ref()
-                && let Some(cut) = self.intersection_tail_inline_prefix(pending)
-            {
-                return Ok(tail.map(|tail| (tail, cut)));
-            }
-            self.format_expression_tail(tail, writer)?;
-            Ok(None)
+            finish(self, tail, writer)
         };
         if indent {
             writer.indent(content)
