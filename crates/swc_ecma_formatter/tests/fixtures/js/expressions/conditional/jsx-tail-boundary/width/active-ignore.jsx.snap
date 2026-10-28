@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? <Item /> : /* prettier-ignore */ effect(  x,y);
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? <Item /> : /* prettier-ignore */ effect(  x,y);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+condition ? (
+  <Item />
+) : /* prettier-ignore */ effect(  x,y);
