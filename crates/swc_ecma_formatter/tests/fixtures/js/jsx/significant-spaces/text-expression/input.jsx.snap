@@ -8,7 +8,8 @@ const x=<div>gamma {" "}<i/></div>;
 ---------- Output ----------
 const x = (
   <div>
-    gamma{"  "}<i />
+    gamma{"  "}
+    <i />
   </div>
 );
 

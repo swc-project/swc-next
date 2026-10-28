@@ -14,9 +14,7 @@ const x = <div>{v}{"  "}</div>;
 ---------- Output ----------
 const x = (
   <div>
-    {
-      v
-    }{"  "}
+    {v}{"  "}
   </div>
 );
 
@@ -25,8 +23,6 @@ const x = (
 ---------- Output ----------
 const x = (
   <div>
-    {
-      v
-    }{'  '}
+    {v}{'  '}
   </div>
 );
