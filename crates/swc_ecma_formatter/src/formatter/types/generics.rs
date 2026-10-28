@@ -1369,13 +1369,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => self.prepared_content_head(&body.content, context),
             };
             let content = if record_head || movable && after.is_empty() {
+                let mut pending = PendingTypeHead::new(after.comments(), body.span.start, leading);
+                if record_head {
+                    // The operator and separator supply the relocated packet's opening.
+                    // Its first comment therefore uses the emitted, not source, position.
+                    pending = pending.with_emitted_prefix();
+                }
                 PreparedBoundContent::Head {
-                    recorded: self.record_type_head(
-                        body.content,
-                        PendingTypeHead::new(after.comments(), body.span.start, leading),
-                        context,
-                        writer,
-                    )?,
+                    recorded: self.record_type_head(body.content, pending, context, writer)?,
                     tail,
                 }
             } else {
