@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A & (B
+// comment
+))[];
+// prettier-ignore
+const x = { a:1,b:2 };
+---------- Options ----------
+{}
+---------- Output ----------
+type T = (
+  A & B
+  // comment
+)[];
+// prettier-ignore
+const x = { a:1,b:2 };
