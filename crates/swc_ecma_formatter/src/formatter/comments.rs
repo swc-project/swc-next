@@ -1097,6 +1097,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
+    pub(super) fn separator_comment_starts_following(
+        &self,
+        comment: Comment,
+        index: usize,
+        before_separator: usize,
+    ) -> bool {
+        index >= before_separator
+            && self.has_target_annotations
+            && self.comment_has_target_annotation(comment)
+    }
+
     pub(super) fn split_separator_comments(
         &self,
         comments: &'ast [Comment],
@@ -1107,10 +1118,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut trailing_count = 0;
         let mut previous_end = source_end;
         for (index, comment) in comments.iter().enumerate() {
-            if index >= before_separator
-                && self.has_target_annotations
-                && self.comment_has_target_annotation(*comment)
-            {
+            if self.separator_comment_starts_following(*comment, index, before_separator) {
                 break;
             }
             if self.line_breaks(previous_end, comment.span.start) != 0 {
