@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a = x; get [b]() {} }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  a = x
+  get [b]() {}
+}
