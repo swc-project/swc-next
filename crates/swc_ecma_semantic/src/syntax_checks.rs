@@ -41,10 +41,6 @@ bitflags::bitflags! {
         const AWAIT_EXPRESSIONS = 1 << 15;
         /// Yield expressions in invalid contexts.
         const YIELD_EXPRESSIONS = 1 << 16;
-        /// `import.meta` outside module code.
-        const IMPORT_META = 1 << 17;
-        /// `new.target` outside an environment that provides it.
-        const NEW_TARGET = 1 << 18;
         /// Resource declarations in invalid script, static-block, or ambient contexts.
         const USING_DECLARATIONS = 1 << 19;
         /// Multiple default clauses in a switch statement.
@@ -241,18 +237,6 @@ impl SyntaxChecks {
     #[inline]
     pub const fn yield_expressions(&self) -> bool {
         self.contains(Self::YIELD_EXPRESSIONS)
-    }
-
-    /// Whether [`Self::IMPORT_META`] is enabled.
-    #[inline]
-    pub const fn import_meta(&self) -> bool {
-        self.contains(Self::IMPORT_META)
-    }
-
-    /// Whether [`Self::NEW_TARGET`] is enabled.
-    #[inline]
-    pub const fn new_target(&self) -> bool {
-        self.contains(Self::NEW_TARGET)
     }
 
     /// Whether [`Self::USING_DECLARATIONS`] is enabled.

@@ -1,3 +1,3 @@
-Cases         : 14919
-Codec Passed  : 14918/14919
+Cases         : 14917
+Codec Passed  : 14916/14917
 Codec output differs from native output: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/regularExpressionScanning.ts (regularExpressionScanning.ts)

@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
     AwaitExpression, BinaryExpression, BreakStatement, ContinueStatement, LabelIdentifier,
-    LabeledStatement, MetaProperty, NumericLiteral, ObjectExpression, RegExpLiteral, StringLiteral,
+    LabeledStatement, NumericLiteral, ObjectExpression, RegExpLiteral, StringLiteral,
     YieldExpression,
 };
 
@@ -474,37 +474,6 @@ pub(super) fn check_yield_expression(
         builder.report(
             builder.ast.span(expression.node_id()),
             message,
-            ReportOptions::default(),
-        );
-    }
-}
-
-pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, property: MetaProperty) {
-    let meta_name = builder
-        .ast
-        .get_utf8(property.meta(builder.ast).name(builder.ast));
-    let property_name = builder
-        .ast
-        .get_utf8(property.property(builder.ast).name(builder.ast));
-    if builder.check_syntax.import_meta()
-        && meta_name == "import"
-        && property_name == "meta"
-        && !builder.ast.is_module()
-    {
-        builder.report(
-            builder.ast.span(property.node_id()),
-            "'import.meta' is only valid in module code",
-            ReportOptions::default(),
-        );
-    }
-    if builder.check_syntax.new_target()
-        && meta_name == "new"
-        && property_name == "target"
-        && !is_new_target_available(builder)
-    {
-        builder.report(
-            builder.ast.span(property.node_id()),
-            "'new.target' is only valid inside functions, class field initializers, or static blocks",
             ReportOptions::default(),
         );
     }
@@ -1349,20 +1318,6 @@ fn is_super_property_valid(builder: &SemanticBuilder<'_, '_>) -> bool {
         }
     }
     false
-}
-
-fn is_new_target_available(builder: &SemanticBuilder<'_, '_>) -> bool {
-    for ancestor in builder.ancestors() {
-        match builder.ast.node_kind(ancestor) {
-            NodeKind::Function | NodeKind::StaticBlock | NodeKind::PropertyDefinition => {
-                return true;
-            }
-            NodeKind::ArrowFunctionExpression => {}
-            _ => {}
-        }
-    }
-    // CommonJS top level is a function body.
-    builder.ast.source_type() == swc_next_ecma_ast::SourceType::CommonJs
 }
 
 // True when the nearest enclosing boundary is a static block.

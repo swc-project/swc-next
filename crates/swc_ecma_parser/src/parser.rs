@@ -163,28 +163,43 @@ impl Context {
 }
 
 bitflags! {
-    /// Parser state inherited across syntactic boundaries.
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+    /// Checks and permissions active at the current syntactic boundary.
+    /// `ModuleDetection` enables source-type detection at program entry.
+    /// Boundaries retain or disable these checks; results accumulate separately.
+    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
     struct BoundaryContext: u8 {
-        /// Whether module-only syntax at the current position can classify an
-        /// unambiguous Program as a Module.
-        const CAN_BE_MODULE = 1 << 0;
-        /// Whether CommonJS-wrapper syntax at the current position can classify
-        /// an unambiguous Program as CommonJS.
-        const CAN_BE_COMMONJS = 1 << 1;
-        /// An `await` identifier would be invalid if the current cover becomes
-        /// async arrow parameters. Functions and field initializers reset this.
-        const ASYNC_ARROW_HEAD = 1 << 2;
+        /// Feed `await` syntax here into Module/Script detection.
+        const DETECT_MODULE_AWAIT = 1 << 0;
+        /// Feed wrapper-level `return` and `new.target` into CommonJS detection.
+        /// Arrows retain this check; functions and class initializers disable it.
+        const DETECT_COMMONJS_SYNTAX = 1 << 1;
+        /// The current environment permits `new.target`.
+        const ALLOW_NEW_TARGET = 1 << 2;
+        /// An await identifier may still become part of an async arrow's parameters.
+        const ASYNC_ARROW_HEAD = 1 << 3;
     }
 }
 
 impl BoundaryContext {
-    fn can_be_module(self) -> bool {
-        self.contains(Self::CAN_BE_MODULE)
+    fn local() -> Self {
+        Self::ALLOW_NEW_TARGET
     }
 
-    fn can_be_commonjs(self) -> bool {
-        self.contains(Self::CAN_BE_COMMONJS)
+    fn arrow_head(mut self, is_async: bool) -> Self {
+        self.remove(Self::ASYNC_ARROW_HEAD);
+        // Non-async arrow parameters inherit the enclosing [Await].
+        if is_async {
+            self.remove(Self::DETECT_MODULE_AWAIT);
+        }
+        self
+    }
+
+    fn arrow_body(self) -> Self {
+        self & (Self::DETECT_COMMONJS_SYNTAX | Self::ALLOW_NEW_TARGET)
+    }
+
+    fn ts_container(self) -> Self {
+        self & Self::ALLOW_NEW_TARGET
     }
 }
 
@@ -246,20 +261,155 @@ struct ParsedBody {
     body: SubRange<Stmt>,
 }
 
-bitflags! {
-    #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-    struct ParserState: u8 {
-        /// Whether the current cover grammar parsed a
-        /// `CoverInitializedName` (`{ a = 1 }`).
-        const COVER_HAS_INIT_NAME = 1 << 0;
-        /// Whether the source contains syntax which is only valid in a module.
-        const HAS_MODULE_SYNTAX = 1 << 1;
-        /// Whether a module-sensitive `await` may have a different Script
-        /// interpretation.
-        const AMBIGUOUS_SCRIPT_DIFFERENT_AST = 1 << 2;
-        /// Whether the source contains wrapper-level `return` or a `new.target`
-        /// expression which depends on a CommonJS wrapper.
-        const HAS_COMMONJS_SYNTAX = 1 << 3;
+/// Module detection and the compatibility of the current Module AST with Script.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct ModuleDetection {
+    state: ModuleDetectionState,
+    /// A module-sensitive `await` may have a different Script interpretation.
+    ambiguous_script_different_ast: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum ModuleDetectionState {
+    #[default]
+    Disabled,
+    Ambiguous,
+    Esm,
+    /// Only the first wrapper-dependent use is retained before ESM is established.
+    Cjs(CommonJsUse),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CommonJsUse {
+    Return(Span),
+    NewTarget(Span),
+}
+
+impl CommonJsUse {
+    #[cold]
+    fn diagnostic(self) -> Diagnostic<'static> {
+        match self {
+            Self::Return(span) => Diagnostic {
+                severity: Severity::Error,
+                message: Cow::Borrowed("'return' statement is only valid inside a function"),
+                span,
+                help: Some(Cow::Borrowed(
+                    "Remove the 'return' statement or wrap the code in a function.",
+                )),
+                labels: Vec::new(),
+            },
+            Self::NewTarget(span) => Diagnostic::error(
+                "'new.target' is only valid inside functions, class field initializers, or static blocks",
+                span,
+            ),
+        }
+    }
+}
+
+impl ModuleDetection {
+    fn new(source_type: SourceType) -> Self {
+        Self {
+            state: if source_type == SourceType::Unambiguous {
+                ModuleDetectionState::Ambiguous
+            } else {
+                ModuleDetectionState::Disabled
+            },
+            ambiguous_script_different_ast: false,
+        }
+    }
+
+    fn is_enabled(&self) -> bool {
+        self.state != ModuleDetectionState::Disabled
+    }
+
+    fn program_scope(&self, source_type: SourceType, lang: Lang) -> BoundaryContext {
+        let mut context = BoundaryContext::empty();
+        context.set(
+            BoundaryContext::ALLOW_NEW_TARGET,
+            source_type == SourceType::CommonJs,
+        );
+        if self.is_enabled() {
+            context.set(
+                BoundaryContext::DETECT_MODULE_AWAIT,
+                source_type == SourceType::Module,
+            );
+            context.set(BoundaryContext::DETECT_COMMONJS_SYNTAX, lang != Lang::Dts);
+        }
+        context
+    }
+
+    fn is_esm(&self) -> bool {
+        matches!(self.state, ModuleDetectionState::Esm)
+    }
+
+    fn is_commonjs(&self) -> bool {
+        matches!(self.state, ModuleDetectionState::Cjs(_))
+    }
+
+    fn pending_commonjs_use(&self) -> Option<CommonJsUse> {
+        match self.state {
+            ModuleDetectionState::Cjs(first) => Some(first),
+            _ => None,
+        }
+    }
+
+    fn parse_action(&self, diagnostics: &ParserDiagnostics) -> UnambiguousParseAction {
+        if self.is_esm() {
+            return UnambiguousParseAction::KeepModule;
+        }
+        if self.ambiguous_script_different_ast || diagnostics.has_errors() {
+            return UnambiguousParseAction::RetryAsScript;
+        }
+        if self.is_commonjs() {
+            UnambiguousParseAction::RelabelAsCommonJs
+        } else {
+            UnambiguousParseAction::RelabelAsScript
+        }
+    }
+
+    fn record_esm(&mut self) -> Option<CommonJsUse> {
+        match self.state {
+            ModuleDetectionState::Disabled | ModuleDetectionState::Esm => None,
+            ModuleDetectionState::Ambiguous => {
+                self.state = ModuleDetectionState::Esm;
+                None
+            }
+            ModuleDetectionState::Cjs(first) => {
+                self.state = ModuleDetectionState::Esm;
+                Some(first)
+            }
+        }
+    }
+
+    fn record_commonjs(&mut self, syntax: CommonJsUse) -> Option<CommonJsUse> {
+        match self.state {
+            ModuleDetectionState::Ambiguous => {
+                self.state = ModuleDetectionState::Cjs(syntax);
+                None
+            }
+            ModuleDetectionState::Cjs(_) => None,
+            ModuleDetectionState::Disabled | ModuleDetectionState::Esm => Some(syntax),
+        }
+    }
+
+    fn record_await(&mut self, ambiguous: bool) -> Option<CommonJsUse> {
+        if ambiguous {
+            self.ambiguous_script_different_ast = true;
+            None
+        } else {
+            self.record_esm()
+        }
+    }
+
+    fn speculation_key(&self) -> u8 {
+        // Diagnostic positions cannot affect which grammar alternative succeeds.
+        let module_detection = match self.state {
+            ModuleDetectionState::Disabled => 0,
+            ModuleDetectionState::Ambiguous => 1,
+            ModuleDetectionState::Cjs(_) => 2,
+            ModuleDetectionState::Esm => 3,
+        };
+        module_detection | u8::from(self.ambiguous_script_different_ast) << 2
     }
 }
 
@@ -277,6 +427,61 @@ impl Default for ReportOptions {
             help: None,
             labels: Vec::new(),
         }
+    }
+}
+
+/// Reported and deferred diagnostics share one checkpoint truncation boundary.
+/// Deferred early errors do not disqualify a speculative grammar interpretation.
+#[derive(Default)]
+struct ParserDiagnostics {
+    entries: Vec<DiagnosticEntry>,
+}
+
+enum DiagnosticEntry {
+    Reported(Diagnostic<'static>),
+    Deferred(Diagnostic<'static>),
+}
+
+impl ParserDiagnostics {
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    fn truncate(&mut self, checkpoint: usize) {
+        self.entries.truncate(checkpoint);
+    }
+
+    fn push(&mut self, diagnostic: Diagnostic<'static>) {
+        self.entries.push(DiagnosticEntry::Reported(diagnostic));
+    }
+
+    fn defer(&mut self, diagnostic: Diagnostic<'static>) {
+        self.entries.push(DiagnosticEntry::Deferred(diagnostic));
+    }
+
+    fn is_clean_since(&self, checkpoint: usize) -> bool {
+        self.entries[checkpoint..].iter().all(|entry| match entry {
+            DiagnosticEntry::Reported(_) => false,
+            DiagnosticEntry::Deferred(_) => true,
+        })
+    }
+
+    fn has_errors(&self) -> bool {
+        !self.is_clean_since(0)
+    }
+
+    fn finish(self) -> Vec<Diagnostic<'static>> {
+        let mut diagnostics = Vec::new();
+        for entry in self.entries {
+            let diagnostic = match entry {
+                DiagnosticEntry::Reported(diagnostic) | DiagnosticEntry::Deferred(diagnostic) => {
+                    diagnostic
+                }
+            };
+            diagnostics.push(diagnostic);
+        }
+        diagnostics.sort_by_key(|diagnostic| diagnostic.span.start);
+        diagnostics
     }
 }
 
@@ -440,7 +645,8 @@ impl FragmentContext {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 struct ParseExpressionOpts {
-    in_cover: bool,
+    /// Permit `await`/`yield` identifiers while parsing a TypeScript signature binding.
+    allow_type_binding_identifiers: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -454,6 +660,153 @@ struct ArrowHeadResult {
 struct ArrowBodyResult {
     body: ArrowFunctionBody,
     is_expression: bool,
+}
+
+/// Sparse evidence retained until expression syntax is resolved as a value or pattern.
+/// An ordered table owns both candidate spans and their scope boundaries; a consumed
+/// candidate stays in place until its scope ends. One journal restores metadata mutations.
+/// Node scratch storage is reset at each conversion boundary.
+#[derive(Default)]
+struct CoverState {
+    initialized_names: IndexMap<NodeId, Option<Span>, FxBuildHasher>,
+    /// Commas which become errors only if their spread nodes become rest elements.
+    trailing_commas: FxHashMap<NodeId, Span>,
+    /// Targets whose parentheses were stripped during cover conversion.
+    /// The same targets must be rejected if later resolved as bindings.
+    parenthesized_targets: FxHashSet<NodeId>,
+    changes: Vec<CoverChange>,
+    scratch: ScratchBuffer,
+}
+
+#[derive(Clone, Copy)]
+enum CoverChange {
+    InitializedNameInserted(NodeId),
+    InitializedNameConsumed(NodeId, Span),
+    InitializedNamePopped(NodeId, Option<Span>),
+    TrailingComma(NodeId, Option<Span>),
+    ParenthesizedTarget(NodeId),
+}
+
+impl CoverState {
+    fn start_expression(&self) -> usize {
+        self.initialized_names.len()
+    }
+
+    #[inline]
+    fn commit_expression(&mut self, start: usize, diagnostics: &mut ParserDiagnostics) {
+        debug_assert!(start <= self.initialized_names.len());
+        if start != self.initialized_names.len() {
+            self.commit_initialized_names(start, diagnostics);
+        }
+    }
+
+    fn commit_initialized_names(&mut self, start: usize, diagnostics: &mut ParserDiagnostics) {
+        while self.initialized_names.len() > start {
+            let (property, span) = self
+                .initialized_names
+                .pop()
+                .expect("the cover-name scope is nonempty");
+            if let Some(span) = span {
+                diagnostics.defer(Diagnostic {
+                    severity: Severity::Error,
+                    message: Cow::Borrowed(
+                        "Shorthand property cannot have a default value in object expression",
+                    ),
+                    span,
+                    help: Some(Cow::Borrowed(
+                        "Use '{ a: a = 1 }' syntax or this is only valid in destructuring patterns.",
+                    )),
+                    labels: Vec::new(),
+                });
+            }
+            self.changes
+                .push(CoverChange::InitializedNamePopped(property, span));
+        }
+    }
+
+    /// Only the program driver retires evidence, after committing a whole statement.
+    fn commit_program_statement(&mut self, diagnostics: &mut ParserDiagnostics) {
+        self.commit_expression(0, diagnostics);
+        self.changes.clear();
+        self.trailing_commas.clear();
+        self.parenthesized_targets.clear();
+    }
+
+    fn record_initialized_name(&mut self, property: NodeId, span: Span) {
+        let previous = self.initialized_names.insert(property, Some(span));
+        debug_assert!(
+            previous.is_none(),
+            "a property has only one initialized name"
+        );
+        self.changes
+            .push(CoverChange::InitializedNameInserted(property));
+    }
+
+    fn consume_initialized_name(&mut self, property: NodeId) {
+        if let Some(span) = self
+            .initialized_names
+            .get_mut(&property)
+            .and_then(Option::take)
+        {
+            self.changes
+                .push(CoverChange::InitializedNameConsumed(property, span));
+        }
+    }
+
+    fn record_trailing_comma(&mut self, spread: NodeId, comma: Span) {
+        let previous = self.trailing_commas.insert(spread, comma);
+        debug_assert!(previous.is_none(), "a spread has only one trailing comma");
+        self.changes
+            .push(CoverChange::TrailingComma(spread, previous));
+    }
+
+    fn consume_trailing_comma(&mut self, spread: NodeId) -> Option<Span> {
+        let comma = self.trailing_commas.remove(&spread)?;
+        self.changes
+            .push(CoverChange::TrailingComma(spread, Some(comma)));
+        Some(comma)
+    }
+
+    fn record_parenthesized_target(&mut self, target: NodeId) {
+        if self.parenthesized_targets.insert(target) {
+            self.changes.push(CoverChange::ParenthesizedTarget(target));
+        }
+    }
+
+    fn rewind(&mut self, checkpoint: usize) {
+        debug_assert!(checkpoint <= self.changes.len());
+        while self.changes.len() > checkpoint {
+            match self.changes.pop().expect("the cover journal is nonempty") {
+                CoverChange::InitializedNameInserted(property) => {
+                    let removed = self.initialized_names.pop();
+                    debug_assert_eq!(removed.map(|(key, _)| key), Some(property));
+                }
+                CoverChange::InitializedNameConsumed(property, span) => {
+                    let candidate = self
+                        .initialized_names
+                        .get_mut(&property)
+                        .expect("the consumed candidate belongs to the checkpoint");
+                    debug_assert!(candidate.is_none());
+                    *candidate = Some(span);
+                }
+                CoverChange::InitializedNamePopped(property, span) => {
+                    let previous = self.initialized_names.insert(property, span);
+                    debug_assert!(previous.is_none());
+                }
+                CoverChange::TrailingComma(spread, previous) => {
+                    if let Some(comma) = previous {
+                        self.trailing_commas.insert(spread, comma);
+                    } else {
+                        self.trailing_commas.remove(&spread);
+                    }
+                }
+                CoverChange::ParenthesizedTarget(target) => {
+                    let removed = self.parenthesized_targets.remove(&target);
+                    debug_assert!(removed, "parenthesis evidence belongs to the rewound parse");
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -602,6 +955,8 @@ enum IdentifierRole {
     Label,
     /// TypeScript names do not inherit JavaScript's Await/Yield parameters.
     TypeScript,
+    /// Type-only bindings retain module-name checks without Await/Yield grammar.
+    TypeBinding,
 }
 
 impl IdentifierRole {
@@ -609,7 +964,7 @@ impl IdentifierRole {
         match self {
             Self::Name => "an identifier name",
             Self::Reference | Self::TypeScript => "an identifier",
-            Self::Binding => "a binding identifier",
+            Self::Binding | Self::TypeBinding => "a binding identifier",
             Self::Label => "a label",
         }
     }
@@ -657,11 +1012,10 @@ struct SpeculationKey {
     position: u32,
     context: u8,
     ts_context: u8,
-    boundary_context: u8,
+    boundary_context: BoundaryContext,
     statement_context: u8,
-    state: u8,
+    module_detection: u8,
     lexer_mode: u8,
-    stripped_paren: Option<NodeId>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -820,13 +1174,9 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     comment_mode: CommentMode,
     boundary_context: BoundaryContext,
     lexer: Lexer<'a, C>,
-    diagnostics: Vec<Diagnostic<'static>>,
-    /// Indices into `diagnostics` for errors which only apply when the final
-    /// source type is not CommonJS.
-    commonjs_conditional_diagnostic_indices: Vec<usize>,
+    diagnostics: ParserDiagnostics,
     current_token: Token,
     scratch_statements: ScratchBuffer,
-    scratch_cover: ScratchBuffer,
     scratch_decorators: ScratchBuffer,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
@@ -837,14 +1187,8 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     context: Context,
     statement_context: StatementContext,
     ts_context: TsContext,
-    state: ParserState,
-    /// Commas which become errors only if their spread nodes become rest elements.
-    /// Insertion order allows speculation to rewind by truncating the map.
-    cover_trailing_commas: IndexMap<NodeId, Span, FxBuildHasher>,
-    /// Target node whose parentheses were stripped while converting an
-    /// assignment target. The same target must be rejected if cover grammar
-    /// later establishes that it is a binding pattern.
-    stripped_paren: Option<NodeId>,
+    module_detection: ModuleDetection,
+    cover: CoverState,
     /// TypeScript grammar alternatives rejected in a particular parse context.
     ///
     /// Failures survive [`Checkpoint`] rollback so enclosing speculation can
@@ -881,14 +1225,12 @@ struct Checkpoint {
     nodes_len: usize,
     extra_len: usize,
     diagnostics_len: usize,
-    commonjs_conditional_diagnostic_indices_len: usize,
     // Parser flags, copied by value.
     context: Context,
     statement_context: StatementContext,
     ts_context: TsContext,
-    state: ParserState,
-    cover_trailing_commas_len: usize,
-    stripped_paren: Option<NodeId>,
+    module_detection: ModuleDetection,
+    cover_checkpoint: usize,
     boundary_context: BoundaryContext,
     await_identifier_in_async_head: Option<Span>,
 }
@@ -1111,19 +1453,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         );
         let initial_token = Token::eof(lexer.state.prev_token_end);
         Self {
+            lexer,
             ast,
             source,
             source_type: options.source_type,
             lang: options.lang,
             preserve_parens: options.preserve_parens,
             comment_mode: options.comments,
-            boundary_context: BoundaryContext::default(),
-            lexer,
-            diagnostics: Vec::new(),
-            commonjs_conditional_diagnostic_indices: Vec::new(),
+            boundary_context: BoundaryContext::empty(),
+            diagnostics: ParserDiagnostics::default(),
             current_token: initial_token,
             scratch_statements: ScratchBuffer::default(),
-            scratch_cover: ScratchBuffer::default(),
             scratch_decorators: ScratchBuffer::default(),
             scratch_a: ScratchBuffer::default(),
             scratch_b: ScratchBuffer::default(),
@@ -1136,9 +1476,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 context.set(TsContext::AMBIENT, options.lang == Lang::Dts);
                 context
             },
-            state: ParserState::default(),
-            cover_trailing_commas: IndexMap::default(),
-            stripped_paren: None,
+            module_detection: ModuleDetection::new(options.source_type),
+            cover: CoverState::default(),
             ts_rejected_speculations: FxHashSet::default(),
             await_identifier_in_async_head: None,
             failed_type_arguments: FxHashMap::default(),
@@ -1155,18 +1494,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_program(),
             source_type => {
-                self.enter_program_context(source_type, false, false);
-                let body = self.parse_body(None, self.source_type.into());
+                self.enter_program_context(source_type);
+                let body = self.parse_program_body();
                 self.finish_program(body)
             }
         }
     }
 
     fn parse_unambiguous_program(mut self) -> ParseReturn<'a> {
-        let can_be_commonjs = self.lang != Lang::Dts;
-        self.enter_program_context(SourceType::Module, true, can_be_commonjs);
-        let body = self.parse_body(None, self.source_type.into());
-        match self.unambiguous_parse_action() {
+        self.enter_program_context(SourceType::Module);
+        let body = self.parse_program_body();
+        match self.module_detection.parse_action(&self.diagnostics) {
             UnambiguousParseAction::KeepModule => {}
             UnambiguousParseAction::RelabelAsCommonJs => {
                 self.set_source_type(SourceType::CommonJs);
@@ -1174,28 +1512,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
-                let mut parser = {
-                    let allocator = self.ast.allocator();
-                    let source = self.source;
-                    let config = self.lexer.config.clone();
-                    let options = Options {
-                        source_type: SourceType::Script,
-                        lang: self.lang,
-                        preserve_parens: self.preserve_parens,
-                        comments: self.comment_mode,
-                    };
-                    Parser::init(allocator, source, options, config)
-                };
-                let body = {
-                    parser.ensure_capacity();
-                    if parser.advance().is_none() {
-                        parser.current_token = Token::eof(0);
-                    }
-                    parser.enter_program_context(SourceType::Script, false, can_be_commonjs);
-                    parser.parse_body(None, SourceType::Script.into())
-                };
-                if !parser.has_unconditional_diagnostics()
-                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
+                let (mut parser, body) = self.reparse_unambiguous_program_as(SourceType::Script);
+                if body.is_some()
+                    && !parser.diagnostics.has_errors()
+                    && !parser.module_detection.is_esm()
                 {
                     parser.relabel_as_script_or_commonjs();
                     return parser.finish_program(body);
@@ -1205,35 +1525,60 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.finish_program(body)
     }
 
-    fn enter_program_context(
-        &mut self,
+    /// Keep Unambiguous's lexical recovery while selecting a definite grammar.
+    fn reparse_unambiguous_program_as(
+        &self,
         source_type: SourceType,
-        can_be_module: bool,
-        can_be_commonjs: bool,
-    ) {
+    ) -> (Self, Option<ParsedBody>) {
+        let mut parser = self.restart_unambiguous();
+        parser.enter_program_context(source_type);
+        let body = parser.parse_program_body();
+        (parser, body)
+    }
+
+    /// Preserve lexical recovery for both program and expression-fragment retries.
+    fn restart_unambiguous(&self) -> Self {
+        let options = Options {
+            source_type: SourceType::Unambiguous,
+            lang: self.lang,
+            preserve_parens: self.preserve_parens,
+            comments: self.comment_mode,
+        };
+        let mut parser = Self::init(
+            self.ast.allocator(),
+            self.source,
+            options,
+            self.lexer.config.clone(),
+        );
+        parser.ensure_capacity();
+        if parser.advance().is_none() {
+            parser.current_token = Token::eof(0);
+        }
+        parser
+    }
+
+    fn enter_program_context(&mut self, source_type: SourceType) {
         self.set_source_type(source_type);
         self.context = Context::from(source_type);
-        self.boundary_context
-            .set(BoundaryContext::CAN_BE_MODULE, can_be_module);
-        self.boundary_context
-            .set(BoundaryContext::CAN_BE_COMMONJS, can_be_commonjs);
+        self.boundary_context = self.module_detection.program_scope(source_type, self.lang);
         self.statement_context = source_type.into();
     }
 
     fn finish_program(mut self, parsed_body: Option<ParsedBody>) -> ParseReturn<'a> {
-        if parsed_body.is_none() && !self.has_unconditional_diagnostics() {
-            self.report(
-                self.current_token.span(),
+        debug_assert!(self.cover.initialized_names.is_empty());
+        self.report_module_mode_errors();
+        let mut diagnostics = self.diagnostics.finish();
+        if parsed_body.is_none() && diagnostics.is_empty() {
+            diagnostics.push(Diagnostic::error(
                 "Invalid statement",
-                ReportOptions::default(),
-            );
+                self.current_token.span(),
+            ));
         }
         // A failed body still needs a program root for callers inspecting diagnostics.
         let ParsedBody { directives, body } = parsed_body.unwrap_or(ParsedBody {
             directives: SubRange::empty(),
             body: SubRange::empty(),
         });
-        self.discard_commonjs_conditional_diagnostics();
 
         // Create the root node and set it as the AST's root.
         let end = self.current_token.end();
@@ -1246,7 +1591,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         });
         let program = self.ast.program(root_span, directives, body, hashbang);
         self.ast.set_root_program(program);
-        self.report_module_mode_errors();
 
         if !self.preserve_parens {
             strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
@@ -1257,7 +1601,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         // Collect tokens
-        let diagnostics = self.diagnostics;
         let mut tokens = self.lexer.tokens;
         if self.lexer.config.tokens()
             && tokens
@@ -1286,7 +1629,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "Hashbang comments are only valid at the start of a program",
                 ReportOptions::default(),
             );
-            return Err(self.diagnostics);
+            return Err(self.diagnostics.finish());
         }
 
         self.ensure_capacity();
@@ -1296,8 +1639,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         match self.source_type {
             SourceType::Unambiguous => self.parse_unambiguous_expression_fragment(fragment_context),
             source_type => {
-                self.enter_fragment_context(source_type, fragment_context, false, false);
-                let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
+                self.enter_fragment_context(source_type, fragment_context);
+                let expr = self.parse_value_expression(Precedence::Lowest);
                 self.finish_expression_fragment(expr)
             }
         }
@@ -1307,11 +1650,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        let can_be_commonjs =
-            self.lang != Lang::Dts && fragment_context == FragmentContext::TopLevel;
-        self.enter_fragment_context(SourceType::Module, fragment_context, true, can_be_commonjs);
-        let expr = self.parse_expr(Precedence::Lowest, ParseExpressionOpts::default());
-        match self.unambiguous_parse_action() {
+        self.enter_fragment_context(SourceType::Module, fragment_context);
+        let expr = self.parse_value_expression(Precedence::Lowest);
+        match self.module_detection.parse_action(&self.diagnostics) {
             UnambiguousParseAction::KeepModule => {}
             UnambiguousParseAction::RelabelAsCommonJs => {
                 self.set_source_type(SourceType::CommonJs);
@@ -1319,39 +1660,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             UnambiguousParseAction::RelabelAsScript => self.set_source_type(SourceType::Script),
             UnambiguousParseAction::RetryAsScript => {
                 cold_path();
-                let mut parser = {
-                    let allocator = self.ast.allocator();
-                    let source = self.source;
-                    let config = self.lexer.config.clone();
-                    let options = Options {
-                        source_type: SourceType::Script,
-                        lang: self.lang,
-                        preserve_parens: self.preserve_parens,
-                        comments: self.comment_mode,
-                    };
-                    Parser::init(allocator, source, options, config)
-                };
+                let mut parser = self.restart_unambiguous();
                 let expr = {
-                    parser.ensure_capacity();
-                    if parser.advance().is_none() {
-                        parser.current_token = Token::eof(0);
-                    }
-                    parser.enter_fragment_context(
-                        SourceType::Script,
-                        fragment_context,
-                        false,
-                        can_be_commonjs,
-                    );
-                    parser.parse_expr(Precedence::Lowest, ParseExpressionOpts::default())
+                    parser.enter_fragment_context(SourceType::Script, fragment_context);
+                    parser.parse_value_expression(Precedence::Lowest)
                 };
-                if !parser.has_unconditional_diagnostics()
-                    && !parser.state.contains(ParserState::HAS_MODULE_SYNTAX)
+                if expr.is_some()
+                    && parser.current_token.tag() == TokenTag::Eof
+                    && !parser.diagnostics.has_errors()
+                    && !parser.module_detection.is_esm()
                 {
                     parser.relabel_as_script_or_commonjs();
-                    let result = parser.finish_expression_fragment(expr);
-                    if result.is_ok() {
-                        return result;
-                    }
+                    return parser.finish_expression_fragment(expr);
                 }
             }
         };
@@ -1362,20 +1682,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         source_type: SourceType,
         fragment_context: FragmentContext,
-        can_be_module: bool,
-        can_be_commonjs: bool,
     ) -> StatementContext {
         let statement_context = fragment_context.statement_context(source_type);
         self.set_source_type(source_type);
         self.context = Context::for_fragment(source_type, fragment_context, statement_context);
-        self.boundary_context.set(
-            BoundaryContext::CAN_BE_MODULE,
-            can_be_module && statement_context == StatementContext::ModuleItem,
-        );
-        self.boundary_context.set(
-            BoundaryContext::CAN_BE_COMMONJS,
-            can_be_commonjs && !fragment_context.is_function(),
-        );
+        self.boundary_context = if fragment_context.is_function() {
+            BoundaryContext::local()
+        } else {
+            self.module_detection.program_scope(source_type, self.lang)
+        };
         self.statement_context = statement_context;
         statement_context
     }
@@ -1384,7 +1699,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         expr: Option<Expr>,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        self.discard_commonjs_conditional_diagnostics();
+        debug_assert!(self.cover.initialized_names.is_empty());
         if self.current_token.tag() != TokenTag::Eof {
             self.report_expected(
                 self.current_token.span(),
@@ -1394,8 +1709,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         self.report_module_mode_errors();
+        let diagnostics = self.diagnostics.finish();
         match expr {
-            Some(expr) if self.diagnostics.is_empty() => {
+            Some(expr) if diagnostics.is_empty() => {
                 if !self.preserve_parens {
                     strip_parenthesized_nodes(&mut self.ast, &mut self.lexer.comments);
                 }
@@ -1405,13 +1721,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 }
                 Ok(self.ast)
             }
-            _ => Err(self.diagnostics),
+            _ => Err(diagnostics),
         }
     }
 
     fn report_module_mode_errors(&mut self) {
         if self.source_type != SourceType::Module {
             return;
+        }
+        // Both grammar attempts may fail before ESM is established. The retained
+        // Module recovery still rejects the first CommonJS-only use.
+        if let Some(first) = self.module_detection.pending_commonjs_use() {
+            self.diagnostics.defer(first.diagnostic());
         }
         for index in 0..self.lexer.module_mode_errors.len() {
             self.diagnostics.push(Diagnostic {
@@ -1424,35 +1745,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn unambiguous_parse_action(&self) -> UnambiguousParseAction {
-        if self.state.contains(ParserState::HAS_MODULE_SYNTAX) {
-            return UnambiguousParseAction::KeepModule;
-        }
-
-        if self
-            .state
-            .contains(ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST)
-        {
-            return UnambiguousParseAction::RetryAsScript;
-        }
-
-        if self.has_unconditional_diagnostics() {
-            return UnambiguousParseAction::RetryAsScript;
-        }
-
-        if self.state.contains(ParserState::HAS_COMMONJS_SYNTAX) {
-            UnambiguousParseAction::RelabelAsCommonJs
-        } else {
-            UnambiguousParseAction::RelabelAsScript
-        }
-    }
-
-    fn has_unconditional_diagnostics(&self) -> bool {
-        self.diagnostics.len() != self.commonjs_conditional_diagnostic_indices.len()
-    }
-
     fn relabel_as_script_or_commonjs(&mut self) {
-        let source_type = if self.state.contains(ParserState::HAS_COMMONJS_SYNTAX) {
+        let source_type = if self.module_detection.is_commonjs() {
             SourceType::CommonJs
         } else {
             SourceType::Script
@@ -1460,40 +1754,58 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.set_source_type(source_type);
     }
 
-    fn discard_commonjs_conditional_diagnostics(&mut self) {
-        if self.source_type != SourceType::CommonJs
-            || self.commonjs_conditional_diagnostic_indices.is_empty()
-        {
-            return;
-        }
-
-        let conditional_diagnostic_indices = &self.commonjs_conditional_diagnostic_indices;
-        let mut conditional_index = 0;
-        let mut diagnostic_index = 0;
-        self.diagnostics.retain(|_| {
-            let discard =
-                conditional_diagnostic_indices.get(conditional_index) == Some(&diagnostic_index);
-            if discard {
-                conditional_index += 1;
-            }
-            diagnostic_index += 1;
-            !discard
-        });
-        debug_assert_eq!(conditional_index, conditional_diagnostic_indices.len());
-        self.commonjs_conditional_diagnostic_indices.clear();
-    }
-
     fn set_source_type(&mut self, source_type: SourceType) {
         self.source_type = source_type;
         self.ast.set_source_metadata(source_type, self.lang);
     }
 
-    fn enter_module_context(&mut self) {
-        if self.statement_context == StatementContext::ModuleItem
-            && self.boundary_context.can_be_module()
-        {
-            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
+    fn record_module_syntax(&mut self) {
+        if let Some(first) = self.module_detection.record_esm() {
+            self.diagnostics.defer(first.diagnostic());
         }
+    }
+
+    fn check_commonjs_syntax(&mut self, syntax: CommonJsUse) {
+        if self
+            .boundary_context
+            .contains(BoundaryContext::DETECT_COMMONJS_SYNTAX)
+        {
+            if let Some(syntax) = self.module_detection.record_commonjs(syntax) {
+                self.diagnostics.defer(syntax.diagnostic());
+            }
+            return;
+        }
+        // `return` changes grammar success; `new.target` is an early error on
+        // an otherwise complete expression, including during speculation.
+        let diagnostic = syntax.diagnostic();
+        match syntax {
+            CommonJsUse::Return(_) => self.diagnostics.push(diagnostic),
+            CommonJsUse::NewTarget(_) => self.diagnostics.defer(diagnostic),
+        }
+    }
+
+    fn record_module_declaration(&mut self) {
+        if self.statement_context == StatementContext::ModuleItem
+            && !self.ts_context.in_ts_container_body()
+        {
+            self.record_module_syntax();
+        }
+    }
+
+    /// Restore the scoped grammar and environment even if parsing returns early.
+    fn with_scope<T>(
+        &mut self,
+        boundary_context: BoundaryContext,
+        parse: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let context = self.context;
+        let ts_context = self.ts_context;
+        let previous = mem::replace(&mut self.boundary_context, boundary_context);
+        let result = parse(self);
+        self.context = context;
+        self.ts_context = ts_context;
+        self.boundary_context = previous;
+        result
     }
 
     /// Returns the resolved name for an identifier-like token.
@@ -1640,15 +1952,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     where
         N: AstNode,
     {
-        debug_assert!(scratch_checkpoint <= self.scratch_cover.items.len());
+        debug_assert!(scratch_checkpoint <= self.cover.scratch.items.len());
         let range = self.ast.add_sub_range(
-            self.scratch_cover.items[scratch_checkpoint..]
+            self.cover.scratch.items[scratch_checkpoint..]
                 .iter()
                 .map(|node| unsafe { N::from_node_id_unchecked(*node) }),
         );
         debug_assert_eq!(
             range.len(),
-            self.scratch_cover.items.len() - scratch_checkpoint
+            self.cover.scratch.items.len() - scratch_checkpoint
         );
         range
     }
@@ -1710,15 +2022,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             nodes_len: self.ast.node_count(),
             extra_len: self.ast.extra_data_count(),
             diagnostics_len: self.diagnostics.len(),
-            commonjs_conditional_diagnostic_indices_len: self
-                .commonjs_conditional_diagnostic_indices
-                .len(),
             context: self.context,
             statement_context: self.statement_context,
             ts_context: self.ts_context,
-            state: self.state,
-            cover_trailing_commas_len: self.cover_trailing_commas.len(),
-            stripped_paren: self.stripped_paren,
+            module_detection: self.module_detection,
+            cover_checkpoint: self.cover.changes.len(),
             boundary_context: self.boundary_context,
             await_identifier_in_async_head: self.await_identifier_in_async_head,
         }
@@ -1727,7 +2035,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// Recovery diagnostics cannot prove an ambiguous grammar alternative.
     /// Callers with a decisive delimiter may instead commit the recovered AST.
     fn speculation_is_clean(&self, checkpoint: &Checkpoint) -> bool {
-        self.diagnostics.len() == checkpoint.diagnostics_len
+        self.diagnostics.is_clean_since(checkpoint.diagnostics_len)
     }
 
     fn reject_ts_speculation(&mut self, key: TsSpeculationKey) {
@@ -1749,15 +2057,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.ast
             .truncate(checkpoint.nodes_len, checkpoint.extra_len);
         self.diagnostics.truncate(checkpoint.diagnostics_len);
-        self.commonjs_conditional_diagnostic_indices
-            .truncate(checkpoint.commonjs_conditional_diagnostic_indices_len);
         self.context = checkpoint.context;
         self.statement_context = checkpoint.statement_context;
         self.ts_context = checkpoint.ts_context;
-        self.state = checkpoint.state;
-        self.cover_trailing_commas
-            .truncate(checkpoint.cover_trailing_commas_len);
-        self.stripped_paren = checkpoint.stripped_paren;
+        self.module_detection = checkpoint.module_detection;
+        self.cover.rewind(checkpoint.cover_checkpoint);
         self.boundary_context = checkpoint.boundary_context;
         self.await_identifier_in_async_head = checkpoint.await_identifier_in_async_head;
     }
@@ -1818,10 +2122,35 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //
     // ExpressionStatement[Yield, Await] :
     //   [lookahead ∉ { `{`, `function`, `async` [no LineTerminator here] `function`, `class`, `let` `[` }] Expression[+In, ?Yield, ?Await] `;`
+    /// The program driver owns statement commits; nested body parsing never
+    /// retires cover evidence that can belong to an enclosing speculation.
+    fn parse_program_body(&mut self) -> Option<ParsedBody> {
+        let body = self.parse_body_with(None, self.source_type.into(), |parser, statement| {
+            parser.record_statement_module_syntax(statement);
+            if !parser.cover.changes.is_empty() {
+                parser
+                    .cover
+                    .commit_program_statement(&mut parser.diagnostics);
+            }
+        });
+        // Resolve the failed statement as well before source-type classification.
+        self.cover.commit_program_statement(&mut self.diagnostics);
+        body
+    }
+
     fn parse_body(
         &mut self,
         terminator: Option<TokenTag>,
         statement_context: StatementContext,
+    ) -> Option<ParsedBody> {
+        self.parse_body_with(terminator, statement_context, |_, _| {})
+    }
+
+    fn parse_body_with(
+        &mut self,
+        terminator: Option<TokenTag>,
+        statement_context: StatementContext,
+        mut on_statement: impl FnMut(&mut Self, Stmt),
     ) -> Option<ParsedBody> {
         debug_assert!(statement_context.permits_declaration());
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
@@ -1850,13 +2179,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         let start = expression.span(&self.ast).start;
                         let statement =
                             self.parse_expression_statement_with_expression(start, expression)?;
+                        on_statement(self, statement);
                         self.scratch_statements.append(statement);
                         return Some(false);
                     }
                     let statement = self.parse_statement(self.statement_context)?;
-                    if terminator.is_none() {
-                        self.record_statement_module_syntax(statement);
-                    }
+                    on_statement(self, statement);
                     self.scratch_statements.append(statement);
                     Some(false)
                 })()?;
@@ -1878,7 +2206,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn record_statement_module_syntax(&mut self, statement: Stmt) {
         if statement.is_module_indicator(&self.ast) {
-            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
+            self.record_module_syntax();
         }
     }
 
@@ -1953,7 +2281,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_export_decorated(&mut self, decorators: SubRange<Decorator>) -> Option<Stmt> {
-        self.enter_module_context();
+        self.record_module_declaration();
         let export_start = self.current_token.start();
         self.advance()?;
         let is_default = self.eat(TokenTag::Default)?;
@@ -2076,11 +2404,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn report_await_using_if_disallowed(&mut self, span: Span) {
-        if self.boundary_context.can_be_module() {
-            self.state.insert(ParserState::HAS_MODULE_SYNTAX);
-            return;
-        }
         if self.context.contains(Context::AWAIT) {
+            if self
+                .boundary_context
+                .contains(BoundaryContext::DETECT_MODULE_AWAIT)
+            {
+                self.record_module_syntax();
+            }
             return;
         }
         self.report(
@@ -2177,7 +2507,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_await_using_declaration_ahead(&mut self) -> Option<bool> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Await);
-        if !self.context.contains(Context::AWAIT) && !self.boundary_context.can_be_module() {
+        if !self.context.contains(Context::AWAIT) {
             return Some(false);
         }
 
@@ -2339,22 +2669,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.start();
         self.advance()?;
         if !self.context.contains(Context::RETURN) {
-            let diagnostic_index = self.diagnostics.len();
-            self.report(
-                Span::new(start, self.lexer.state.prev_token_end),
-                "'return' statement is only valid inside a function",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Remove the 'return' statement or wrap the code in a function.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            if self.boundary_context.can_be_commonjs() {
-                self.state.insert(ParserState::HAS_COMMONJS_SYNTAX);
-                self.commonjs_conditional_diagnostic_indices
-                    .push(diagnostic_index);
-            }
+            let syntax = CommonJsUse::Return(Span::new(start, self.lexer.state.prev_token_end));
+            self.check_commonjs_syntax(syntax);
         }
         let argument = if self.current_token.has_line_terminator_before()
             || matches!(
@@ -2767,15 +3083,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_array_pattern(&mut self) -> Option<ArrayPattern> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
-        let cover = self.parse_array_cover()?;
-        self.array_cover_to_pattern(cover, PatternContext::Binding)
+        self.with_resolved_cover(|parser| {
+            let cover = parser.parse_array_cover()?;
+            parser.array_cover_to_pattern(cover, PatternContext::Binding)
+        })
     }
 
     fn parse_object_pattern(&mut self) -> Option<ObjectPattern> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
-        let cover = self.parse_object_cover()?;
-        self.object_cover_to_pattern(cover, PatternContext::Binding)
+        self.with_resolved_cover(|parser| {
+            let cover = parser.parse_object_cover()?;
+            parser.object_cover_to_pattern(cover, PatternContext::Binding)
+        })
     }
 
     fn parse_function(
@@ -2790,79 +3108,82 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         let generator = self.eat(TokenTag::Star)?;
         let is_function_expression = opts.is_expression && !opts.is_default_export;
-        let boundary_context = self.boundary_context;
-        if is_function_expression {
-            self.boundary_context
-                .remove(BoundaryContext::ASYNC_ARROW_HEAD);
-        }
-        let context = if is_function_expression {
-            enter_function_grammar_context(&mut self.context, generator, opts.is_async)
-        } else {
-            enter_grammar_context![&mut self.context, ?Yield, ?Await]
-        };
-        let id = if self.current_token.tag().is_identifier_like() {
-            self.parse_binding_identifier().map(Some)
-        } else {
-            if !opts.is_expression && !opts.is_default_export {
-                self.report(
-                    self.current_token.span(),
-                    "Function declaration requires a name",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Add a name after 'function', e.g. 'function myFunc() {}'.",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
+        let tail = self.with_scope(self.boundary_context, |parser| {
+            if is_function_expression {
+                parser
+                    .boundary_context
+                    .remove(BoundaryContext::ASYNC_ARROW_HEAD);
             }
-            Some(None)
-        };
-        self.context = context;
-        let tail = (|| {
+            let context = if is_function_expression {
+                enter_function_grammar_context(&mut parser.context, generator, opts.is_async)
+            } else {
+                enter_grammar_context![&mut parser.context, ?Yield, ?Await]
+            };
+            let id = if parser.current_token.tag().is_identifier_like() {
+                parser.parse_binding_identifier().map(Some)
+            } else {
+                if !opts.is_expression && !opts.is_default_export {
+                    parser.report(
+                        parser.current_token.span(),
+                        "Function declaration requires a name",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Add a name after 'function', e.g. 'function myFunc() {}'.",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    );
+                }
+                Some(None)
+            };
+            parser.context = context;
             let id = id?;
-            self.boundary_context = BoundaryContext::empty();
-            let type_parameters =
-                if self.lang.is_typescript() && self.current_token.tag() == TokenTag::LessThan {
-                    Some(self.parse_type_parameters(
+            parser.boundary_context = BoundaryContext::local();
+            let type_parameters = if parser.lang.is_typescript()
+                && parser.current_token.tag() == TokenTag::LessThan
+            {
+                Some(
+                    parser.parse_type_parameters(
                         TypeParameterContext::Declaration,
                         AngleClose::Peel,
-                    )?)
-                } else {
-                    None
-                };
-            enter_function_grammar_context(&mut self.context, generator, opts.is_async);
+                    )?,
+                )
+            } else {
+                None
+            };
+            enter_function_grammar_context(&mut parser.context, generator, opts.is_async);
             let (this_param, params) =
-                self.parse_formal_parameters(FormalParameterKind::FormalParameters, false)?;
+                parser.parse_formal_parameters(FormalParameterKind::FormalParameters, false)?;
             let return_type =
-                if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                    Some(self.parse_return_type_annotation()?)
+                if parser.lang.is_typescript() && parser.current_token.tag() == TokenTag::Colon {
+                    Some(parser.parse_return_type_annotation()?)
                 } else {
                     None
                 };
-            let params_end = params.span(&self.ast).end;
+            let params_end = params.span(&parser.ast).end;
             let return_type_end =
-                return_type.map_or(params_end, |return_type| return_type.span(&self.ast).end);
+                return_type.map_or(params_end, |return_type| return_type.span(&parser.ast).end);
             let ambient_declaration =
-                (opts.is_declare || self.ts_context.ambient()) && !is_function_expression;
-            if ambient_declaration && self.current_token.tag() == TokenTag::LeftBrace {
-                self.report(
-                    self.current_token.span(),
+                (opts.is_declare || parser.ts_context.ambient()) && !is_function_expression;
+            if ambient_declaration && parser.current_token.tag() == TokenTag::LeftBrace {
+                parser.report(
+                    parser.current_token.span(),
                     "An implementation cannot be declared in ambient contexts",
                     ReportOptions::default(),
                 );
             }
-            let has_body = !self.lang.is_typescript()
+            let has_body = !parser.lang.is_typescript()
                 || is_function_expression
-                || self.current_token.tag() == TokenTag::LeftBrace;
+                || parser.current_token.tag() == TokenTag::LeftBrace;
             let body = if has_body {
-                Some(self.parse_function_body()?)
+                Some(parser.parse_function_body()?)
             } else {
                 None
             };
             let end = if let Some(body) = body {
-                body.span(&self.ast).end
+                body.span(&parser.ast).end
             } else {
-                self.eat_semicolon(return_type_end)?
+                parser.eat_semicolon(return_type_end)?
             };
             // Consume an invalid ambient body before dropping it, so its closing
             // brace cannot be mistaken for the surrounding namespace/module's.
@@ -2877,9 +3198,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 params_end,
                 end,
             ))
-        })();
-        self.context = context;
-        self.boundary_context = boundary_context;
+        });
         let (id, this_param, params, body, type_parameters, return_type, params_end, end) = tail?;
         // Only declarations are restricted here. A function expression is a valid
         // operand in any expression position, for example:
@@ -3400,21 +3719,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let context = enter_grammar_context![&mut self.context, +In, ~Yield, +Await, ~Return];
-        let boundary_context = mem::take(&mut self.boundary_context);
         let checkpoint = self.scratch_statements.begin();
-        let body = (|| {
+        let body = self.with_scope(BoundaryContext::local(), |parser| {
+            enter_grammar_context![&mut parser.context, +In, ~Yield, +Await, ~Return];
             while !matches!(
-                self.current_token.tag(),
+                parser.current_token.tag(),
                 TokenTag::RightBrace | TokenTag::Eof
             ) {
-                let statement = self.parse_statement(StatementContext::StatementListItem)?;
-                self.scratch_statements.append(statement);
+                let statement = parser.parse_statement(StatementContext::StatementListItem)?;
+                parser.scratch_statements.append(statement);
             }
-            Some(self.add_extra_from_scratch_statements(checkpoint))
-        })();
-        self.context = context;
-        self.boundary_context = boundary_context;
+            Some(parser.add_extra_from_scratch_statements(checkpoint))
+        });
         self.scratch_statements.reset(checkpoint);
         let body = body?;
         let end = self.current_token.end();
@@ -3519,12 +3835,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.validate_method_modifiers(key, modifiers);
 
         let function_start = self.current_token.start();
-        let context = self.context;
-        let boundary_context = mem::take(&mut self.boundary_context);
-        let result = (|| {
+        let result = self.with_scope(BoundaryContext::local(), |parser| {
             let type_parameters =
-                if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters(
+                if parser.lang.is_typescript() && is_angle_open(parser.current_token.tag()) {
+                    Some(parser.parse_type_parameters(
                         TypeParameterContext::Declaration,
                         AngleClose::Peel,
                     )?)
@@ -3532,24 +3846,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     None
                 };
             enter_function_grammar_context(
-                &mut self.context,
+                &mut parser.context,
                 modifiers.is_generator,
                 modifiers.is_async,
             );
-            let (this_param, params) = self.parse_formal_parameters(
+            let (this_param, params) = parser.parse_formal_parameters(
                 FormalParameterKind::UniqueFormalParameters,
                 modifiers.kind == MethodDefinitionKind::Constructor,
             )?;
-            self.check_accessor_arity(modifiers.kind, params);
+            parser.check_accessor_arity(modifiers.kind, params);
             let return_type =
-                if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                    Some(self.parse_return_type_annotation()?)
+                if parser.lang.is_typescript() && parser.current_token.tag() == TokenTag::Colon {
+                    Some(parser.parse_return_type_annotation()?)
                 } else {
                     None
                 };
-            if self.current_token.tag() == TokenTag::LeftBrace {
-                let body = self.parse_function_body()?;
-                let end = body.span(&self.ast).end;
+            if parser.current_token.tag() == TokenTag::LeftBrace {
+                let body = parser.parse_function_body()?;
+                let end = body.span(&parser.ast).end;
                 Some((
                     this_param,
                     params,
@@ -3558,20 +3872,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     Some(body),
                     end,
                 ))
-            } else if self.lang.is_typescript() {
-                let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
+            } else if parser.lang.is_typescript() {
+                let end = parser.eat_semicolon(parser.lexer.state.prev_token_end)?;
                 Some((this_param, params, type_parameters, return_type, None, end))
             } else {
-                self.report_expected(
-                    self.current_token.span(),
+                parser.report_expected(
+                    parser.current_token.span(),
                     "Expected '{' to start method body",
                     ReportOptions::default(),
                 );
                 None
             }
-        })();
-        self.context = context;
-        self.boundary_context = boundary_context;
+        });
         let (this_param, params, type_parameters, return_type, body, end) = result?;
         let function_span = Span::new(function_start, end);
         let method_span = Span::new(start, end);
@@ -3660,16 +3972,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             };
 
         let value = if self.eat(TokenTag::Assign)? {
-            let context = enter_grammar_context![&mut self.context, +In, ~Yield, ~Await];
-            let boundary_context = self.boundary_context;
-            self.boundary_context.remove(
-                BoundaryContext::CAN_BE_MODULE
-                    | BoundaryContext::CAN_BE_COMMONJS
-                    | BoundaryContext::ASYNC_ARROW_HEAD,
-            );
-            let value = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
-            self.context = context;
-            self.boundary_context = boundary_context;
+            let value = self.with_scope(BoundaryContext::local(), |parser| {
+                enter_grammar_context![&mut parser.context, +In, ~Yield, ~Await];
+                parser.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())
+            });
             Some(value?)
         } else {
             None
@@ -3750,7 +4056,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
-            _ => self.parse_primary_expression(false, Precedence::Primary)?,
+            _ => self.parse_primary_expression(Precedence::Primary)?,
         };
         let expression = self.parse_postfix_expression(expression, context)?;
         Some(expression.expression)
@@ -3926,10 +4232,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ParameterPropertyModifiers::default()
         };
         let parameter_start = self.current_token.start();
-        let pattern = if kind == FormalParameterKind::Signature {
-            self.with_type_binding_context(Self::parse_formal_parameter_pattern)
+        let (pattern, cover_initializer) = if kind == FormalParameterKind::Signature {
+            self.parse_signature_parameter_parts()
         } else {
-            self.parse_formal_parameter_pattern()
+            self.parse_formal_parameter_parts()
         }?;
         let optional = IS_TYPESCRIPT && self.eat(TokenTag::Question)?;
         let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
@@ -3939,21 +4245,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let initializer = if self.eat(TokenTag::Assign)? {
             let context = enter_grammar_context![&mut self.context, +In];
-            let initializer =
-                self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
+            let initializer = self.parse_value_expression(Precedence::Assignment);
             self.context = context;
             let initializer = initializer?;
-            if self.ts_context.ambient() {
-                self.report(
-                    initializer.span(&self.ast),
-                    "A parameter initializer is only allowed in a function or constructor implementation",
-                    ReportOptions::default(),
-                );
-            }
             Some(initializer)
         } else {
-            None
+            cover_initializer
         };
+        if self.ts_context.ambient()
+            && let Some(initializer) = initializer
+        {
+            self.report(
+                initializer.span(&self.ast),
+                "A parameter initializer is only allowed in a function or constructor implementation",
+                ReportOptions::default(),
+            );
+        }
         let end = self.lexer.state.prev_token_end;
         let parameter_decorators = if modifiers.present {
             SubRange::empty()
@@ -3986,6 +4293,44 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             Some(FormalParameterItem::FormalParameter(parameter))
         }
+    }
+
+    // Keep ordinary bindings direct while sharing parenthesized recovery.
+    #[inline(always)]
+    fn parse_formal_parameter_parts(&mut self) -> Option<(FormalParameterPattern, Option<Expr>)> {
+        let tag = self.current_token.tag();
+        if tag.is_identifier_like() {
+            let pattern = self.parse_binding_identifier()?;
+            return Some((FormalParameterPattern::BindingIdentifier(pattern), None));
+        }
+        if tag == TokenTag::LeftParen {
+            return self.parse_parenthesized_parameter_parts();
+        }
+        Some((self.parse_formal_parameter_pattern()?, None))
+    }
+
+    #[inline(always)]
+    fn parse_signature_parameter_parts(
+        &mut self,
+    ) -> Option<(FormalParameterPattern, Option<Expr>)> {
+        if self.current_token.tag().is_identifier_like() {
+            let pattern = self.parse_type_binding_identifier()?;
+            return Some((FormalParameterPattern::BindingIdentifier(pattern), None));
+        }
+        self.with_type_binding_context(Self::parse_formal_parameter_parts)
+    }
+
+    fn parse_parenthesized_parameter_parts(
+        &mut self,
+    ) -> Option<(FormalParameterPattern, Option<Expr>)> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftParen);
+        let context = enter_grammar_context![&mut self.context, +In];
+        let result = self.with_resolved_cover(|parser| {
+            let expression = parser.parse_expression_in_cover(Precedence::Assignment)?;
+            parser.expression_to_parameter_parts(expression)
+        });
+        self.context = context;
+        result
     }
 
     fn formal_parameter_pattern(
@@ -4593,7 +4938,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_export_declaration(&mut self) -> Option<Stmt> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Export);
-        self.enter_module_context();
+        self.record_module_declaration();
         let start = self.current_token.start();
         self.advance()?;
         let mut declaration_start = None;
@@ -5599,35 +5944,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.advance()?;
         let checkpoint = self.scratch_a.begin();
-        let context = enter_grammar_context![&mut self.context, ~Yield, ~Await];
-        let in_ts_container_body = self.ts_context.in_ts_container_body();
-        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
-        let boundary_context = mem::take(&mut self.boundary_context);
-        let result = (|| {
-            while self.current_token.tag() != TokenTag::RightBrace
-                && self.current_token.tag() != TokenTag::Eof
+        let result = self.with_scope(self.boundary_context.ts_container(), |parser| {
+            enter_grammar_context![&mut parser.context, ~Yield, ~Await];
+            parser.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
+            while parser.current_token.tag() != TokenTag::RightBrace
+                && parser.current_token.tag() != TokenTag::Eof
             {
-                let member = self.parse_enum_member()?;
-                self.scratch_a.append(member);
-                if !self.eat(TokenTag::Comma)? {
+                let member = parser.parse_enum_member()?;
+                parser.scratch_a.append(member);
+                if !parser.eat(TokenTag::Comma)? {
                     break;
                 }
             }
-            let end = self.current_token.end();
-            if !self.expect(
+            let end = parser.current_token.end();
+            if !parser.expect(
                 TokenTag::RightBrace,
                 "Expected '}' to close an enum body",
                 Some("Each '{' in an enum must be matched by a '}'"),
             ) {
                 return None;
             }
-            let members = self.add_extra_from_scratch_a(checkpoint);
-            Some(self.ast.ts_enum_body(Span::new(start, end), members))
-        })();
-        self.ts_context
-            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
-        self.context = context;
-        self.boundary_context = boundary_context;
+            let members = parser.add_extra_from_scratch_a(checkpoint);
+            Some(parser.ast.ts_enum_body(Span::new(start, end), members))
+        });
         self.scratch_a.reset(checkpoint);
         result
     }
@@ -5792,15 +6131,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         // A TypeScript module block is a declaration container, not a function
         // body, so it does not inherit an enclosing function's [Return].
-        let context = enter_grammar_context![&mut self.context, ~Await, ~Return];
-        let in_ts_container_body = self.ts_context.in_ts_container_body();
-        self.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
-        let boundary_context = mem::take(&mut self.boundary_context);
-        let body = self.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem);
-        self.boundary_context = boundary_context;
-        self.ts_context
-            .set(TsContext::IN_TS_CONTAINER_BODY, in_ts_container_body);
-        self.context = context;
+        let body = self.with_scope(self.boundary_context.ts_container(), |parser| {
+            enter_grammar_context![&mut parser.context, ~Await, ~Return];
+            parser.ts_context.insert(TsContext::IN_TS_CONTAINER_BODY);
+            parser.parse_body(Some(TokenTag::RightBrace), StatementContext::ModuleItem)
+        });
         let ParsedBody { directives, body } = body?;
         let end = self.current_token.end();
         if !self.expect(
@@ -6517,7 +6852,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.start();
         self.advance()?;
         let name_start = self.current_token.start();
-        let name = self.with_type_binding_context(Self::parse_binding_identifier)?;
+        let name = self.parse_type_binding_identifier()?;
         let constraint = self.parse_infer_constraint()?;
         let end = constraint.map_or(name.span(&self.ast).end, |ty| ty.span(&self.ast).end);
         let parameter = self.ast.ts_type_parameter(
@@ -7066,7 +7401,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let key = self.with_type_binding_context(Self::parse_binding_identifier)?;
+        let key = self.parse_type_binding_identifier()?;
         if !self.expect(
             TokenTag::In,
             "Expected 'in' after the mapped type parameter name",
@@ -7390,7 +7725,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_index_signature_parameter(&mut self) -> Option<TsIndexSignatureParameter> {
-        let name = self.with_type_binding_context(Self::parse_binding_identifier)?;
+        let name = self.parse_type_binding_identifier()?;
         if self.current_token.tag() != TokenTag::Colon {
             self.report_expected(
                 self.current_token.span(),
@@ -7852,9 +8187,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let name = match context {
             TypeParameterContext::Declaration => self.parse_binding_identifier(),
-            TypeParameterContext::Signature => {
-                self.with_type_binding_context(Self::parse_binding_identifier)
-            }
+            TypeParameterContext::Signature => self.parse_type_binding_identifier(),
         }?;
         let constraint = if self.eat(TokenTag::Extends)? {
             Some(self.parse_type()?)
@@ -7949,8 +8282,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ReportOptions::default(),
                 );
             }
-            if self.boundary_context.can_be_module() {
-                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
+            if self
+                .boundary_context
+                .contains(BoundaryContext::DETECT_MODULE_AWAIT)
+            {
+                self.record_module_syntax();
             }
             self.advance()?;
             if !self.expect(TokenTag::LeftParen, "Expected '(' after 'for await'", None) {
@@ -8097,51 +8433,53 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // ForStatement[Yield, Await, Return] :
     //   `for` `(` [lookahead != `let` `[`] Expression[~In, ?Yield, ?Await]? `;` Expression[+In, ?Yield, ?Await]? `;` Expression[+In, ?Yield, ?Await]? `)` Statement[?Yield, ?Await, ?Return]
     fn parse_for_with_expression(&mut self, start: u32, is_for_await: bool) -> Option<Stmt> {
-        let head = self.current_token;
-        let head_is_let = head.tag() == TokenTag::Let && !head.is_escaped();
-        let context = enter_grammar_context![&mut self.context, ~In];
-        let expression = self.parse_expr(Precedence::Comma, ParseExpressionOpts::default());
-        self.context = context;
-        let expression = expression?;
+        self.with_resolved_cover(|parser| {
+            let head = parser.current_token;
+            let head_is_let = head.tag() == TokenTag::Let && !head.is_escaped();
+            let context = enter_grammar_context![&mut parser.context, ~In];
+            let expression = parser.parse_expression_in_cover(Precedence::Comma);
+            parser.context = context;
+            let expression = expression?;
 
-        if self.current_token.tag() == TokenTag::In {
-            let left = ForStatementLeft::AssignmentTarget(
-                self.expression_to_assignment_target(expression)?,
-            );
-            return self.parse_for_in_statement_rest(start, left, is_for_await);
-        }
-
-        if self.current_token.tag() == TokenTag::Of {
-            if head_is_let {
-                self.report(
-                    head.span(),
-                    "The left-hand side of a for-of statement may not start with 'let'",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Rename the variable or wrap it in parentheses: 'for ((let).x of ...)'",
-                        )),
-                        ..ReportOptions::default()
-                    },
+            if parser.current_token.tag() == TokenTag::In {
+                let left = ForStatementLeft::AssignmentTarget(
+                    parser.expression_to_assignment_target(expression)?,
                 );
+                return parser.parse_for_in_statement_rest(start, left, is_for_await);
             }
-            if !is_for_await && self.is_async_identifier(expression) {
-                self.report(
-                    expression.span(&self.ast),
-                    "'for (async of ...)' is not allowed, it is ambiguous with 'for await'",
-                    ReportOptions::default(),
-                );
-            }
-            let left = ForStatementLeft::AssignmentTarget(
-                self.expression_to_assignment_target(expression)?,
-            );
-            return self.parse_for_of_statement_rest(start, left, is_for_await);
-        }
 
-        self.parse_for_statement_rest(
-            start,
-            Some(ForStatementInit::Expr(expression)),
-            is_for_await,
-        )
+            if parser.current_token.tag() == TokenTag::Of {
+                if head_is_let {
+                    parser.report(
+                        head.span(),
+                        "The left-hand side of a for-of statement may not start with 'let'",
+                        ReportOptions {
+                            help: Some(Cow::Borrowed(
+                                "Rename the variable or wrap it in parentheses: 'for ((let).x of ...)'",
+                            )),
+                            ..ReportOptions::default()
+                        },
+                    );
+                }
+                if !is_for_await && parser.is_async_identifier(expression) {
+                    parser.report(
+                        expression.span(&parser.ast),
+                        "'for (async of ...)' is not allowed, it is ambiguous with 'for await'",
+                        ReportOptions::default(),
+                    );
+                }
+                let left = ForStatementLeft::AssignmentTarget(
+                    parser.expression_to_assignment_target(expression)?,
+                );
+                return parser.parse_for_of_statement_rest(start, left, is_for_await);
+            }
+
+            parser.parse_for_statement_rest(
+                start,
+                Some(ForStatementInit::Expr(expression)),
+                is_for_await,
+            )
+        })
     }
 
     // ForStatement[Yield, Await, Return] :
@@ -8516,29 +8854,44 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   Expression[?In, ?Yield, ?Await] `,` AssignmentExpression[?In, ?Yield, ?Await]
     //
     // INLINE: This is a small and hot function.
-    // Propagate the caller's minimum/in_cover constants into expression parsing.
+    // Propagate the caller's precedence and TypeScript binding role into expression parsing.
     // Keep this wrapper inline when the larger Pratt loop below is forced inline.
     #[inline(always)]
     fn parse_expr(&mut self, minimum: Precedence, opts: ParseExpressionOpts) -> Option<Expr> {
+        self.parse_expr_inner(minimum, opts.allow_type_binding_identifiers)
+    }
+
+    #[inline(always)]
+    fn parse_expr_inner(
+        &mut self,
+        minimum: Precedence,
+        allow_type_binding_identifiers: bool,
+    ) -> Option<Expr> {
         let left = if self.current_token.tag() == TokenTag::Identifier {
             self.parse_plain_identifier()?
         } else {
-            self.parse_prefix(opts.in_cover, minimum)?
+            self.parse_prefix(allow_type_binding_identifiers, minimum)?
         };
         self.parse_expr_from_left(left, minimum)
     }
 
-    // Keep the stripped_paren save/restore around the inlined expression parser
-    // without a separate wrapper call; restoration is still required on None.
+    /// Pair candidate lifetime with role resolution, including failed recovery.
+    #[inline]
+    fn with_resolved_cover<T>(&mut self, parse: impl FnOnce(&mut Self) -> Option<T>) -> Option<T> {
+        let start = self.cover.start_expression();
+        let result = parse(self);
+        self.cover.commit_expression(start, &mut self.diagnostics);
+        result
+    }
+
     #[inline(always)]
-    fn parse_expr_preserving_stripped_paren(
-        &mut self,
-        minimum: Precedence,
-        opts: ParseExpressionOpts,
-    ) -> Option<Expr> {
-        let stripped_paren = self.stripped_paren;
-        let expression = self.parse_expr(minimum, opts);
-        self.stripped_paren = stripped_paren;
+    fn parse_value_expression(&mut self, minimum: Precedence) -> Option<Expr> {
+        let ts_context = self.ts_context;
+        self.ts_context.remove(TsContext::IN_TYPE_BINDING);
+        let expression = self.with_resolved_cover(|parser| {
+            parser.parse_expr(minimum, ParseExpressionOpts::default())
+        });
+        self.ts_context = ts_context;
         expression
     }
 
@@ -8579,7 +8932,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else if token.tag().is_logical_operator() {
                 self.parse_logical_expression(left, token.tag())?
             } else if token.tag().is_assignment_operator() {
-                self.parse_assignment_expression(precedence, left, token.tag())?
+                self.parse_assignment_expression(left, token.tag())?
             } else {
                 self.parse_infix(precedence, left)?
             };
@@ -8590,8 +8943,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // Expression[In, Yield, Await] :
     //   AssignmentExpression[?In, ?Yield, ?Await]
     //   Expression[?In, ?Yield, ?Await] `,` AssignmentExpression[?In, ?Yield, ?Await]
+    // Cover callers know their grammar precedence just like ordinary expressions.
+    #[inline(always)]
     fn parse_expression_in_cover(&mut self, precedence: Precedence) -> Option<Expr> {
-        self.parse_expr(precedence, ParseExpressionOpts { in_cover: true })
+        self.parse_expr(
+            precedence,
+            ParseExpressionOpts {
+                allow_type_binding_identifiers: true,
+            },
+        )
     }
 
     fn parse_assignment_expression_in_cover(&mut self) -> Option<Expr> {
@@ -8665,7 +9025,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_prefix(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
+    fn parse_prefix(
+        &mut self,
+        allow_type_binding_identifiers: bool,
+        minimum: Precedence,
+    ) -> Option<Expr> {
         let tag = self.current_token.tag();
 
         if matches!(tag, TokenTag::Increment | TokenTag::Decrement) {
@@ -8686,11 +9050,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
-            if in_cover && self.ts_context.in_type_binding() {
+            if allow_type_binding_identifiers && self.ts_context.in_type_binding() {
                 return self.parse_identifier();
             }
             let token = self.current_token;
-            let can_classify_as_module = self.boundary_context.can_be_module();
+            let can_classify_as_module = self
+                .boundary_context
+                .contains(BoundaryContext::DETECT_MODULE_AWAIT);
             self.advance_without_escape_check()?;
             self.report_if_escaped_keyword(token);
             let ambiguous_script_different_ast =
@@ -8699,14 +9065,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let expression = self.parse_await_expression(token.start())?;
             if can_classify_as_module {
                 // A recovered operand cannot establish that `await` is a keyword.
-                let state = if ambiguous_script_different_ast
-                    || self.diagnostics.len() != diagnostics_len
-                {
-                    ParserState::AMBIGUOUS_SCRIPT_DIFFERENT_AST
-                } else {
-                    ParserState::HAS_MODULE_SYNTAX
-                };
-                self.state.insert(state);
+                let ambiguous = ambiguous_script_different_ast
+                    || !self.diagnostics.is_clean_since(diagnostics_len);
+                if let Some(first) = self.module_detection.record_await(ambiguous) {
+                    self.diagnostics.defer(first.diagnostic());
+                }
             }
             return Some(expression);
         }
@@ -8715,7 +9078,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && self.context.contains(Context::YIELD)
             && minimum < Precedence::Add
         {
-            if in_cover && self.ts_context.in_type_binding() {
+            if allow_type_binding_identifiers && self.ts_context.in_type_binding() {
                 return self.parse_identifier();
             }
             return self.parse_yield_expression();
@@ -8744,10 +9107,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_jsx_expression();
         }
 
-        self.parse_primary_expression(in_cover, minimum)
+        self.parse_primary_expression(minimum)
     }
 
-    fn parse_primary_expression(&mut self, in_cover: bool, minimum: Precedence) -> Option<Expr> {
+    fn parse_primary_expression(&mut self, minimum: Precedence) -> Option<Expr> {
         let token = self.current_token;
 
         if token.tag().is_numeric_literal() {
@@ -8778,8 +9141,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 Some(Expr::TemplateLiteral(self.parse_template_literal(false)?))
             }
             TokenTag::Slash | TokenTag::SlashAssign => self.parse_regexp_literal(),
-            TokenTag::LeftBracket => self.parse_array_expression(in_cover),
-            TokenTag::LeftBrace => self.parse_object_expression(in_cover),
+            TokenTag::LeftBracket => self.parse_array_expression(),
+            TokenTag::LeftBrace => self.parse_object_expression(),
             TokenTag::LessThan if self.lang.is_jsx() => {
                 let expression = self.parse_jsx_expression()?;
                 if self.lang.is_typescript() {
@@ -9219,12 +9582,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ArrowHead::No => {}
             }
         }
-        let cover = self.parse_parenthesized_cover()?;
-        let is_arrow = self.current_token.tag() == TokenTag::Arrow && CAN_BE_ARROW;
-        if is_arrow {
-            return self.cover_to_arrow_function(cover, false, start);
-        }
-        self.cover_to_parenthesized_expression(cover)
+        self.with_resolved_cover(|parser| {
+            let cover = parser.parse_parenthesized_cover()?;
+            let is_arrow = parser.current_token.tag() == TokenTag::Arrow && CAN_BE_ARROW;
+            if is_arrow {
+                return parser.cover_to_arrow_function(cover, false, start);
+            }
+            parser.cover_to_parenthesized_expression(cover)
+        })
     }
 
     // CoverParenthesizedExpressionAndArrowParameterList[Yield, Await] :
@@ -9238,7 +9603,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftParen);
         let start = self.current_token.start();
         self.advance()?;
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In, ?Yield, ?Await];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
@@ -9252,7 +9617,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let spread_start = self.lexer.state.prev_token_end - 3;
                     let argument = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            allow_type_binding_identifiers: true,
+                        },
                     )?;
                     Argument::SpreadElement(self.ast.spread_element(
                         Span::new(spread_start, argument.span(&self.ast).end),
@@ -9261,12 +9628,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 } else {
                     let expression = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            allow_type_binding_identifiers: true,
+                        },
                     )?;
                     Argument::Expr(expression)
                 };
                 end = element.span(&self.ast).end;
-                self.scratch_cover.append(element);
+                self.cover.scratch.append(element);
                 if self.eat(TokenTag::Comma)? {
                     has_trailing_comma = self.current_token.tag() == TokenTag::RightParen;
                 } else if self.current_token.tag() != TokenTag::RightParen {
@@ -9309,7 +9678,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.ts_context = ts_context;
         self.context = grammar_context;
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
@@ -9329,14 +9698,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let expression_result = (|| {
             for id in cover.elements.iter() {
                 let argument = self.ast.get_node_in_sub_range(id);
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
-                        self.validate_no_cover_initialized_syntax(expression)?;
-                        self.scratch_cover.append(expression);
+                        self.cover.scratch.append(expression);
                     }
                     ArgumentData::SpreadElement(spread) => {
                         self.report(
@@ -9348,15 +9716,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     }
                 }
             }
-            Some(if self.scratch_cover.items.len() - checkpoint == 1 {
-                unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) }
+            Some(if self.cover.scratch.items.len() - checkpoint == 1 {
+                unsafe { Expr::from_node_id_unchecked(self.cover.scratch.items[checkpoint]) }
             } else {
                 let first =
-                    unsafe { Expr::from_node_id_unchecked(self.scratch_cover.items[checkpoint]) };
+                    unsafe { Expr::from_node_id_unchecked(self.cover.scratch.items[checkpoint]) };
                 let last = unsafe {
                     Expr::from_node_id_unchecked(
                         *self
-                            .scratch_cover
+                            .cover
+                            .scratch
                             .items
                             .last()
                             .expect("a sequence expression contains its last expression"),
@@ -9369,7 +9738,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )
             })
         })();
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         let expression = expression_result?;
         Some(
             self.ast
@@ -9378,8 +9747,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_parenthesized_expression(&mut self) -> Option<Expr> {
-        let cover = self.parse_parenthesized_cover()?;
-        self.cover_to_parenthesized_expression(cover)
+        self.with_resolved_cover(|parser| {
+            let cover = parser.parse_parenthesized_cover()?;
+            parser.cover_to_parenthesized_expression(cover)
+        })
     }
 
     fn cover_to_arrow_function(
@@ -9396,7 +9767,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         cover: ParenthesizedCover,
     ) -> Option<FormalParameters> {
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let result = (|| {
             let mut rest = None;
             for (index, id) in cover.elements.iter().enumerate() {
@@ -9417,7 +9788,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             return None;
                         }
                         let parameter = self.convert_to_formal_parameter(expression)?;
-                        self.scratch_cover.append(parameter);
+                        self.cover.scratch.append(parameter);
                     }
                     ArgumentData::SpreadElement(spread) => {
                         if index + 1 != cover.elements.len() {
@@ -9466,9 +9837,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             argument,
                             None,
                         );
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `spread` is retired in favor of the returned handle.
-                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
+                        rest = Some(temporary);
                     }
                 }
             }
@@ -9480,7 +9849,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 FormalParameterKind::ArrowFormalParameters,
             ))
         })();
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
@@ -9567,41 +9936,45 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
 
-        let checkpoint = self.lang.is_typescript().then(|| self.checkpoint());
-        let outer_await = self.await_identifier_in_async_head.take();
-        let boundary_context = self.boundary_context;
-        if !self.lang.is_typescript() {
-            self.boundary_context
-                .insert(BoundaryContext::ASYNC_ARROW_HEAD);
-        }
-        let cover = self.parse_parenthesized_cover();
-        let await_identifier = mem::replace(&mut self.await_identifier_in_async_head, outer_await);
-        self.boundary_context = boundary_context;
-        let cover = cover?;
+        self.with_resolved_cover(|parser| {
+            let checkpoint = parser.lang.is_typescript().then(|| parser.checkpoint());
+            let outer_await = parser.await_identifier_in_async_head.take();
+            let boundary_context = parser.boundary_context;
+            let mut head_context = boundary_context;
+            if !parser.lang.is_typescript() {
+                head_context.insert(BoundaryContext::ASYNC_ARROW_HEAD);
+            }
+            let cover =
+                parser.with_scope(head_context, |parser| parser.parse_parenthesized_cover());
+            let await_identifier =
+                mem::replace(&mut parser.await_identifier_in_async_head, outer_await);
+            let cover = cover?;
 
-        let is_arrow =
-            self.current_token.tag() == TokenTag::Arrow && minimum <= Precedence::Assignment;
-        if is_arrow {
-            if let Some(checkpoint) = checkpoint {
-                self.rewind(checkpoint);
-                if escaped_async {
-                    self.report_escaped_keyword(async_span);
+            let is_arrow =
+                parser.current_token.tag() == TokenTag::Arrow && minimum <= Precedence::Assignment;
+            if is_arrow {
+                if let Some(checkpoint) = checkpoint {
+                    parser.rewind(checkpoint);
+                    if escaped_async {
+                        parser.report_escaped_keyword(async_span);
+                    }
+                    return parser.parse_arrow(true, async_span.start);
                 }
-                return self.parse_arrow(true, async_span.start);
+                if escaped_async {
+                    parser.report_escaped_keyword(async_span);
+                }
+                if let Some(span) = await_identifier {
+                    parser.report_reserved_await(span, "an identifier");
+                }
+                // Reusing the cover parses nested defaults once per arrow level.
+                return parser.cover_to_arrow_function(cover, true, async_span.start);
             }
-            if escaped_async {
-                self.report_escaped_keyword(async_span);
+            if boundary_context.contains(BoundaryContext::ASYNC_ARROW_HEAD) && outer_await.is_none()
+            {
+                parser.await_identifier_in_async_head = await_identifier;
             }
-            if let Some(span) = await_identifier {
-                self.report_reserved_await(span, "an identifier");
-            }
-            // Reusing the cover parses nested defaults once per arrow level.
-            return self.cover_to_arrow_function(cover, true, async_span.start);
-        }
-        if boundary_context.contains(BoundaryContext::ASYNC_ARROW_HEAD) && outer_await.is_none() {
-            self.await_identifier_in_async_head = await_identifier;
-        }
-        self.cover_to_call_expression(cover, async_identifier)
+            parser.cover_to_call_expression(cover, async_identifier)
+        })
     }
 
     fn identifier_to_arrow_function(
@@ -9769,21 +10142,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         is_async: bool,
         need_diagnostics: bool,
     ) -> Option<ArrowHeadResult> {
-        let context = self.context;
-        // Non-async arrow parameters inherit [Await] from the surrounding grammar.
-        let module_sensitive_await = !is_async && self.boundary_context.can_be_module();
-        let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
-        let mut arrow_boundary_context = BoundaryContext::default();
-        arrow_boundary_context.set(BoundaryContext::CAN_BE_MODULE, module_sensitive_await);
-        arrow_boundary_context.set(
-            BoundaryContext::CAN_BE_COMMONJS,
-            commonjs_sensitive_new_target,
-        );
-        let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_head_inner(is_async, need_diagnostics);
-        self.context = context;
-        self.boundary_context = boundary_context;
-        result
+        self.with_scope(self.boundary_context.arrow_head(is_async), |parser| {
+            parser.parse_arrow_head_inner(is_async, need_diagnostics)
+        })
     }
 
     fn parse_arrow_head_inner(
@@ -9853,17 +10214,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
         }
         self.advance()?;
-        let context = enter_function_grammar_context(&mut self.context, false, async_function);
-        let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
-        let mut arrow_boundary_context = BoundaryContext::default();
-        arrow_boundary_context.set(
-            BoundaryContext::CAN_BE_COMMONJS,
-            commonjs_sensitive_new_target,
-        );
-        let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let body = self.parse_arrow_body();
-        self.context = context;
-        self.boundary_context = boundary_context;
+        let body = self.with_scope(self.boundary_context.arrow_body(), |parser| {
+            enter_function_grammar_context(&mut parser.context, false, async_function);
+            parser.parse_arrow_body()
+        });
         let ArrowBodyResult {
             body,
             is_expression,
@@ -9905,35 +10259,56 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })
     }
 
-    fn expression_to_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
-        let span = expression.span(&self.ast);
-        if let ExprData::AssignmentExpression(assignment) = self.ast.expr_data(expression)
+    fn normalize_binding_expression(&mut self, expression: Expr) -> Expr {
+        if !matches!(
+            self.ast.expr_data(expression),
+            ExprData::ParenthesizedExpression(_)
+        ) {
+            return expression;
+        }
+        let inner = self.unwrap_parens(expression);
+        self.report_parenthesized_binding(inner.span(&self.ast));
+        inner
+    }
+
+    fn report_parenthesized_binding(&mut self, span: Span) {
+        self.report(
+            span,
+            "Parentheses are not allowed in this binding pattern",
+            ReportOptions {
+                help: Some(Cow::Borrowed("Remove the extra parentheses. Binding patterns can only be identifiers, destructuring patterns, or assignment patterns, not parenthesized expressions.")),
+                ..ReportOptions::default()
+            },
+        );
+    }
+
+    fn expression_to_parameter_parts(
+        &mut self,
+        expression: Expr,
+    ) -> Option<(FormalParameterPattern, Option<Expr>)> {
+        let expression = self.normalize_binding_expression(expression);
+        let (binding, initializer) = if let ExprData::AssignmentExpression(assignment) =
+            self.ast.expr_data(expression)
             && assignment.operator(&self.ast) == AssignmentOperator::Assign
         {
             let binding = self.assignment_target_to_pattern(
                 assignment.left(&self.ast),
                 PatternContext::Binding,
             )?;
-            let pattern = self.formal_parameter_pattern(binding)?;
-            let initializer = assignment.right(&self.ast);
-            let parameter = self.ast.formal_parameter(
-                span,
-                SubRange::empty(),
-                pattern,
-                None,
-                Some(initializer),
-                false,
-            );
-            // SAFETY: `parameter` is the unattached last node; the cover assignment is retired.
-            let parameter = unsafe { self.ast.replace_data(assignment, parameter) };
-            return Some(FormalParameterItem::FormalParameter(parameter));
-        }
-        let binding = self.expression_to_binding_pattern(expression)?;
-        let pattern = self.formal_parameter_pattern(binding)?;
-        let parameter =
+            (binding, Some(assignment.right(&self.ast)))
+        } else {
+            (self.expression_to_binding_pattern(expression)?, None)
+        };
+        Some((self.formal_parameter_pattern(binding)?, initializer))
+    }
+
+    fn expression_to_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
+        let span = expression.span(&self.ast);
+        let (pattern, initializer) = self.expression_to_parameter_parts(expression)?;
+        Some(FormalParameterItem::FormalParameter(
             self.ast
-                .formal_parameter(span, SubRange::empty(), pattern, None, None, false);
-        Some(FormalParameterItem::FormalParameter(parameter))
+                .formal_parameter(span, SubRange::empty(), pattern, None, initializer, false),
+        ))
     }
 
     fn expression_to_binding_pattern(&mut self, expression: Expr) -> Option<BindingPattern> {
@@ -9949,6 +10324,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         expression: Expr,
         context: PatternContext,
     ) -> Option<BindingPattern> {
+        let expression = if context == PatternContext::Binding {
+            self.normalize_binding_expression(expression)
+        } else {
+            expression
+        };
         match self.ast.expr_data(expression) {
             ExprData::IdentifierReference(identifier) if context == PatternContext::Assignment => {
                 Some(BindingPattern::SimpleAssignmentTarget(
@@ -9959,9 +10339,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let binding = self
                     .ast
                     .binding_identifier(identifier.span(&self.ast), identifier.name(&self.ast));
-                // SAFETY: `binding` is the unattached last node, and
-                // `identifier` is retired in favor of the returned handle.
-                let binding = unsafe { self.ast.replace_data(identifier, binding) };
+
                 Some(BindingPattern::BindingIdentifier(binding))
             }
             ExprData::AssignmentExpression(assignment)
@@ -10059,26 +10437,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let pattern = self
                     .ast
                     .assignment_pattern(assignment.span(&self.ast), left, right);
-                // SAFETY: `pattern` is the unattached last node, and
-                // `assignment` is retired in favor of the returned handle.
-                let pattern = unsafe { self.ast.replace_data(assignment, pattern) };
+
                 Some(BindingPattern::AssignmentPattern(pattern))
             }
             ExprData::ArrayExpression(array) => self.convert_array_pattern(array, context),
             ExprData::ObjectExpression(object) => self.convert_object_pattern(object, context),
-            ExprData::ParenthesizedExpression(_) if context == PatternContext::Binding => {
-                self.report(
-                    expression.span(&self.ast),
-                    "Parentheses are not allowed in this binding pattern",
-                    ReportOptions {
-                        help: Some(Cow::Borrowed(
-                            "Remove the extra parentheses. Binding patterns can only be identifiers, destructuring patterns, or assignment patterns, not parenthesized expressions.",
-                        )),
-                        ..ReportOptions::default()
-                    },
-                );
-                None
-            }
             ExprData::ParenthesizedExpression(parenthesized) => {
                 let inner = parenthesized.expression(&self.ast);
                 if !self.is_simple_assignment_target(inner) {
@@ -10095,7 +10458,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     return None;
                 }
                 let pattern = self.expression_to_pattern(inner, context)?;
-                self.stripped_paren = Some(pattern.node_id());
+                self.cover.record_parenthesized_target(pattern.node_id());
                 Some(pattern)
             }
             ExprData::ChainExpression(_) => {
@@ -10152,13 +10515,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         array: ArrayExpression,
         context: PatternContext,
     ) -> Option<BindingPattern> {
-        self.convert_array_pattern_impl(
-            Some(array),
-            array.elements(&self.ast),
-            array.span(&self.ast),
-            context,
-        )
-        .map(BindingPattern::ArrayPattern)
+        self.convert_array_pattern_impl(array.elements(&self.ast), array.span(&self.ast), context)
+            .map(BindingPattern::ArrayPattern)
     }
 
     fn array_cover_to_pattern(
@@ -10166,22 +10524,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         cover: ArrayCover,
         context: PatternContext,
     ) -> Option<ArrayPattern> {
-        self.convert_array_pattern_impl(
-            None,
-            cover.elements,
-            Span::new(cover.start, cover.end),
-            context,
-        )
+        self.convert_array_pattern_impl(cover.elements, Span::new(cover.start, cover.end), context)
     }
 
     fn convert_array_pattern_impl(
         &mut self,
-        mutate_node: Option<ArrayExpression>,
         elements_range: SubRange<Option<Argument>>,
         span: Span,
         context: PatternContext,
     ) -> Option<ArrayPattern> {
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let result = (|| {
             let source_elements_len = elements_range.len();
             let none = NodeId::from_raw_unchecked(u32::MAX);
@@ -10189,16 +10541,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             for index in 0..source_elements_len {
                 let argument = elements_range.get_node(&self.ast, index).unwrap();
                 let Some(argument) = argument else {
-                    self.scratch_cover.items.push(none);
+                    self.cover.scratch.items.push(none);
                     continue;
                 };
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
                         let pattern = self.expression_to_pattern(expression, context)?;
-                        self.scratch_cover.append(pattern);
+                        self.cover.scratch.append(pattern);
                     }
                     ArgumentData::SpreadElement(spread) => {
-                        if let Some(&comma) = self.cover_trailing_commas.get(&spread.node_id()) {
+                        if let Some(comma) = self.cover.consume_trailing_comma(spread.node_id()) {
                             self.report(
                                 comma,
                                 "Rest element cannot have a trailing comma in array destructuring.",
@@ -10236,37 +10588,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary = self
+                        let rest_element = self
                             .ast
                             .binding_rest_element(spread.span(&self.ast), argument);
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `spread` is retired in favor of the returned handle.
-                        let rest_element = unsafe { self.ast.replace_data(spread, temporary) };
+
                         if index + 1 == source_elements_len {
                             rest = Some(rest_element);
                         } else {
-                            self.scratch_cover.append(rest_element);
+                            self.cover.scratch.append(rest_element);
                         }
                     }
                 }
             }
             let elements =
                 self.ast
-                    .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
+                    .add_sub_range(self.cover.scratch.items[checkpoint..].iter().map(|node| {
                         (*node != none)
                             .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
                     }));
-            let temporary = self.ast.array_pattern(span, elements, rest);
-            let pattern = if let Some(array) = mutate_node {
-                // SAFETY: `temporary` is the unattached last node, and `array`
-                // is retired in favor of the returned handle.
-                unsafe { self.ast.replace_data(array, temporary) }
-            } else {
-                temporary
-            };
-            Some(pattern)
+            Some(self.ast.array_pattern(span, elements, rest))
         })();
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
@@ -10276,7 +10618,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         context: PatternContext,
     ) -> Option<BindingPattern> {
         self.convert_object_pattern_impl(
-            Some(object),
             object.properties(&self.ast),
             object.span(&self.ast),
             context,
@@ -10290,7 +10631,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         context: PatternContext,
     ) -> Option<ObjectPattern> {
         self.convert_object_pattern_impl(
-            None,
             cover.properties,
             Span::new(cover.start, cover.end),
             context,
@@ -10299,12 +10639,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn convert_object_pattern_impl(
         &mut self,
-        mutate_node: Option<ObjectExpression>,
         properties_range: SubRange<ObjectPropertyKind>,
         span: Span,
         context: PatternContext,
     ) -> Option<ObjectPattern> {
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let result = (|| {
             let source_properties_len = properties_range.len();
             let mut rest = None;
@@ -10340,20 +10679,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         let value =
                             self.expression_to_pattern(property.value(&self.ast), context)?;
-                        let temporary = self.ast.binding_property(
+                        self.cover.consume_initialized_name(property.node_id());
+                        let property = self.ast.binding_property(
                             property.span(&self.ast),
                             property.key(&self.ast),
                             value,
                             property.shorthand(&self.ast),
                             property.computed(&self.ast),
                         );
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `property` is retired in favor of the returned handle.
-                        let property = unsafe { self.ast.replace_data(property, temporary) };
-                        self.scratch_cover.append(property);
+
+                        self.cover.scratch.append(property);
                     }
                     ObjectPropertyKindData::SpreadElement(spread) => {
-                        if let Some(&comma) = self.cover_trailing_commas.get(&spread.node_id()) {
+                        if let Some(comma) = self.cover.consume_trailing_comma(spread.node_id()) {
                             self.report(
                                 comma,
                                 "Rest element cannot have a trailing comma in object destructuring.",
@@ -10409,25 +10747,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         let temporary = self
                             .ast
                             .binding_rest_element(spread.span(&self.ast), argument);
-                        // SAFETY: `temporary` is the unattached last node, and
-                        // `spread` is retired in favor of the returned handle.
-                        rest = Some(unsafe { self.ast.replace_data(spread, temporary) });
+                        rest = Some(temporary);
                         break;
                     }
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            let temporary = self.ast.object_pattern(span, properties, rest);
-            let pattern = if let Some(object) = mutate_node {
-                // SAFETY: `temporary` is the unattached last node, and `object`
-                // is retired in favor of the returned handle.
-                unsafe { self.ast.replace_data(object, temporary) }
-            } else {
-                temporary
-            };
-            Some(pattern)
+            Some(self.ast.object_pattern(span, properties, rest))
         })();
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
@@ -10441,18 +10769,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if context == PatternContext::Assignment {
                     return Some(BindingPattern::SimpleAssignmentTarget(target));
                 }
-                if self.report_stripped_paren_in_binding(target.node_id()) {
-                    return Some(BindingPattern::SimpleAssignmentTarget(target));
-                }
+                self.report_parenthesized_target_in_binding(target.node_id());
                 match self.ast.simple_assignment_target_data(target) {
                     SimpleAssignmentTargetData::IdentifierReference(identifier) => {
                         let binding = self.ast.binding_identifier(
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
                         );
-                        // SAFETY: `binding` is the unattached last node, and
-                        // `identifier` is retired in favor of the returned handle.
-                        let binding = unsafe { self.ast.replace_data(identifier, binding) };
+
                         Some(BindingPattern::BindingIdentifier(binding))
                     }
                     SimpleAssignmentTargetData::MemberExpression(_) => {
@@ -10505,69 +10829,123 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    /// Revisit a pattern that was already converted under assignment-target
-    /// rules before cover grammar established that it is a binding pattern.
+    /// Rebuild an assignment target as a binding after an arrow head chooses
+    /// its role. Every changed child is carried into a newly constructed parent.
     fn assignment_pattern_to_binding_pattern(
         &mut self,
         pattern: BindingPattern,
     ) -> Option<BindingPattern> {
-        if self.report_stripped_paren_in_binding(pattern.node_id()) {
-            return Some(pattern);
-        }
         match self.ast.binding_pattern_data(pattern) {
-            BindingPatternData::BindingIdentifier(_) => {}
-            BindingPatternData::SimpleAssignmentTarget(target) => {
-                return self.assignment_target_to_pattern(
+            BindingPatternData::BindingIdentifier(_) => Some(pattern),
+            BindingPatternData::SimpleAssignmentTarget(target) => self
+                .assignment_target_to_pattern(
                     AssignmentTarget::SimpleAssignmentTarget(target),
                     PatternContext::Binding,
-                );
-            }
+                ),
             BindingPatternData::AssignmentPattern(assignment) => {
-                self.assignment_pattern_to_binding_pattern(assignment.left(&self.ast))?;
+                let left =
+                    self.assignment_pattern_to_binding_pattern(assignment.left(&self.ast))?;
+                Some(BindingPattern::AssignmentPattern(
+                    self.ast.assignment_pattern(
+                        assignment.span(&self.ast),
+                        left,
+                        assignment.right(&self.ast),
+                    ),
+                ))
             }
             BindingPatternData::BindingRestElement(rest) => {
-                self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                let argument =
+                    self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                Some(BindingPattern::BindingRestElement(
+                    self.ast
+                        .binding_rest_element(rest.span(&self.ast), argument),
+                ))
             }
             BindingPatternData::ArrayPattern(array) => {
-                let elements = array.elements(&self.ast);
-                for index in 0..elements.len() {
-                    if let Some(element) = elements.get_node(&self.ast, index).unwrap() {
-                        self.assignment_pattern_to_binding_pattern(element)?;
+                let checkpoint = self.cover.scratch.begin();
+                let result = (|| {
+                    let elements = array.elements(&self.ast);
+                    let none = NodeId::from_raw_unchecked(u32::MAX);
+                    for index in 0..elements.len() {
+                        if let Some(element) = elements.get_node(&self.ast, index).unwrap() {
+                            let element = self.assignment_pattern_to_binding_pattern(element)?;
+                            self.cover.scratch.append(element);
+                        } else {
+                            self.cover.scratch.items.push(none);
+                        }
                     }
-                }
-                if let Some(rest) = array.rest(&self.ast) {
-                    self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                }
+                    let rest = if let Some(rest) = array.rest(&self.ast) {
+                        let argument =
+                            self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                        Some(
+                            self.ast
+                                .binding_rest_element(rest.span(&self.ast), argument),
+                        )
+                    } else {
+                        None
+                    };
+                    let elements =
+                        self.ast
+                            .add_sub_range(self.cover.scratch.items[checkpoint..].iter().map(
+                                |node| {
+                                    (*node != none).then(|| unsafe {
+                                        BindingPattern::from_node_id_unchecked(*node)
+                                    })
+                                },
+                            ));
+                    Some(BindingPattern::ArrayPattern(self.ast.array_pattern(
+                        array.span(&self.ast),
+                        elements,
+                        rest,
+                    )))
+                })();
+                self.cover.scratch.reset(checkpoint);
+                result
             }
             BindingPatternData::ObjectPattern(object) => {
-                let properties = object.properties(&self.ast);
-                for index in 0..properties.len() {
-                    let property = properties.get_node(&self.ast, index).unwrap();
-                    self.assignment_pattern_to_binding_pattern(property.value(&self.ast))?;
-                }
-                if let Some(rest) = object.rest(&self.ast) {
-                    self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                }
+                let checkpoint = self.cover.scratch.begin();
+                let result = (|| {
+                    let properties = object.properties(&self.ast);
+                    for index in 0..properties.len() {
+                        let property = properties.get_node(&self.ast, index).unwrap();
+                        let value =
+                            self.assignment_pattern_to_binding_pattern(property.value(&self.ast))?;
+                        let property = self.ast.binding_property(
+                            property.span(&self.ast),
+                            property.key(&self.ast),
+                            value,
+                            property.shorthand(&self.ast),
+                            property.computed(&self.ast),
+                        );
+                        self.cover.scratch.append(property);
+                    }
+                    let rest = if let Some(rest) = object.rest(&self.ast) {
+                        let argument =
+                            self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
+                        Some(
+                            self.ast
+                                .binding_rest_element(rest.span(&self.ast), argument),
+                        )
+                    } else {
+                        None
+                    };
+                    let properties = self.add_extra_from_scratch_cover(checkpoint);
+                    Some(BindingPattern::ObjectPattern(self.ast.object_pattern(
+                        object.span(&self.ast),
+                        properties,
+                        rest,
+                    )))
+                })();
+                self.cover.scratch.reset(checkpoint);
+                result
             }
         }
-        Some(pattern)
     }
 
-    fn report_stripped_paren_in_binding(&mut self, node: NodeId) -> bool {
-        if self.stripped_paren != Some(node) {
-            return false;
+    fn report_parenthesized_target_in_binding(&mut self, node: NodeId) {
+        if self.cover.parenthesized_targets.contains(&node) {
+            self.report_parenthesized_binding(self.ast.span(node));
         }
-        self.report(
-            self.ast.span(node),
-            "Parentheses are not allowed in this binding pattern",
-            ReportOptions {
-                help: Some(Cow::Borrowed(
-                    "Remove the extra parentheses. Binding patterns can only be identifiers, destructuring patterns, or assignment patterns, not parenthesized expressions.",
-                )),
-                ..ReportOptions::default()
-            },
-        );
-        true
     }
 
     fn is_destructuring_pattern(&self, pattern: BindingPattern) -> bool {
@@ -10580,116 +10958,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn is_part_of_pattern(&self) -> bool {
-        matches!(
-            self.current_token.tag(),
-            TokenTag::Assign | TokenTag::In | TokenTag::Of
-        )
-    }
-
-    fn validate_no_cover_initialized_syntax(&mut self, expression: Expr) -> Option<()> {
-        match self.ast.expr_data(expression) {
-            ExprData::ObjectExpression(object) => {
-                for id in object.properties(&self.ast).iter() {
-                    let property = self.ast.get_node_in_sub_range(id);
-                    match self.ast.object_property_kind_data(property) {
-                        ObjectPropertyKindData::ObjectProperty(property) => {
-                            let value = property.value(&self.ast);
-                            if property.shorthand(&self.ast)
-                                && self.is_cover_initialized_name(value)
-                            {
-                                self.report_cover_initialized_name_error(property.span(&self.ast));
-                            }
-                            self.validate_no_cover_initialized_syntax(value)?;
-                        }
-                        ObjectPropertyKindData::SpreadElement(spread) => {
-                            self.validate_no_cover_initialized_syntax(spread.argument(&self.ast))?;
-                        }
-                    }
-                }
-            }
-            ExprData::ArrayExpression(array) => {
-                for index in 0..array.elements(&self.ast).len() {
-                    let Some(argument) = array
-                        .elements(&self.ast)
-                        .get_node(&self.ast, index)
-                        .unwrap()
-                    else {
-                        continue;
-                    };
-                    let expression = match self.ast.argument_data(argument) {
-                        ArgumentData::Expr(expression) => expression,
-                        ArgumentData::SpreadElement(spread) => spread.argument(&self.ast),
-                    };
-                    self.validate_no_cover_initialized_syntax(expression)?;
-                }
-            }
-            ExprData::ParenthesizedExpression(_) => {
-                // The contents were checked by cover_to_parenthesized_expression before
-                // this node was created, even when parentheses will later be stripped.
-            }
-            ExprData::SequenceExpression(sequence) => {
-                for index in 0..sequence.expressions(&self.ast).len() {
-                    let expression = sequence
-                        .expressions(&self.ast)
-                        .get_node(&self.ast, index)
-                        .unwrap();
-                    self.validate_no_cover_initialized_syntax(expression)?;
-                }
-            }
-            _ => {}
-        }
-        Some(())
-    }
-
-    fn is_cover_initialized_name(&self, expression: Expr) -> bool {
-        matches!(
-            self.ast.expr_data(expression),
-            ExprData::AssignmentExpression(assignment)
-                if assignment.operator(&self.ast) == AssignmentOperator::Assign
-        )
-    }
-
-    fn report_cover_initialized_name_error(&mut self, span: Span) {
-        self.report(
-            span,
-            "Shorthand property cannot have a default value in object expression",
-            ReportOptions {
-                help: Some(Cow::Borrowed(
-                    "Use '{ a: a = 1 }' syntax or this is only valid in destructuring patterns.",
-                )),
-                ..ReportOptions::default()
-            },
-        );
-    }
-
     fn record_cover_trailing_comma(&mut self, spread: SpreadElement, comma: Span) {
-        let previous = self.cover_trailing_commas.insert(spread.node_id(), comma);
-        debug_assert!(previous.is_none(), "a spread has only one trailing comma");
+        self.cover.record_trailing_comma(spread.node_id(), comma);
     }
 
-    fn parse_array_expression(&mut self, in_cover: bool) -> Option<Expr> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
+    fn parse_array_expression(&mut self) -> Option<Expr> {
         let cover = self.parse_array_cover()?;
-        let needs_validation = !in_cover
-            && self.state.contains(ParserState::COVER_HAS_INIT_NAME)
-            && !self.is_part_of_pattern();
-        if !in_cover {
-            self.state.remove(ParserState::COVER_HAS_INIT_NAME);
-        }
-        self.array_cover_to_expression(cover, needs_validation)
+        self.array_cover_to_expression(cover)
     }
 
-    fn parse_object_expression(&mut self, in_cover: bool) -> Option<Expr> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
+    fn parse_object_expression(&mut self) -> Option<Expr> {
         let cover = self.parse_object_cover()?;
-        let needs_validation = !in_cover
-            && self.state.contains(ParserState::COVER_HAS_INIT_NAME)
-            && !self.is_part_of_pattern();
-        if !in_cover {
-            self.state.remove(ParserState::COVER_HAS_INIT_NAME);
-        }
-        self.object_cover_to_expression(cover, needs_validation)
+        self.object_cover_to_expression(cover)
     }
 
     // ArrayLiteral[Yield, Await] :
@@ -10716,7 +10996,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBracket);
         let start = self.current_token.start();
         self.advance()?;
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
@@ -10726,7 +11006,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 && self.current_token.tag() != TokenTag::Eof
             {
                 if self.eat(TokenTag::Comma)? {
-                    self.scratch_cover
+                    self.cover
+                        .scratch
                         .items
                         .push(NodeId::from_raw_unchecked(u32::MAX));
                     continue;
@@ -10740,7 +11021,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     Argument::Expr(self.parse_assignment_expression_in_cover()?)
                 };
                 end = argument.span(&self.ast).end;
-                self.scratch_cover.append(argument);
+                self.cover.scratch.append(argument);
                 let comma = self.current_token.span();
                 if self.eat(TokenTag::Comma)? {
                     if self.current_token.tag() == TokenTag::RightBracket
@@ -10779,7 +11060,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             let none = NodeId::from_raw_unchecked(u32::MAX);
             let elements =
                 self.ast
-                    .add_sub_range(self.scratch_cover.items[checkpoint..].iter().map(|node| {
+                    .add_sub_range(self.cover.scratch.items[checkpoint..].iter().map(|node| {
                         (*node != none).then(|| unsafe { Argument::from_node_id_unchecked(*node) })
                     }));
             Some(ArrayCover {
@@ -10790,7 +11071,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.ts_context = ts_context;
         self.context = grammar_context;
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
@@ -10818,7 +11099,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         let start = self.current_token.start();
         self.advance()?;
-        let checkpoint = self.scratch_cover.begin();
+        let checkpoint = self.cover.scratch.begin();
         let grammar_context = enter_grammar_context![&mut self.context, +In];
         let ts_context = self.ts_context;
         self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
@@ -10831,7 +11112,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let spread_start = self.lexer.state.prev_token_end - 3;
                     let expression = self.parse_expr(
                         Precedence::Assignment,
-                        ParseExpressionOpts { in_cover: true },
+                        ParseExpressionOpts {
+                            allow_type_binding_identifiers: true,
+                        },
                     )?;
                     let spread = self.ast.spread_element(
                         Span::new(spread_start, expression.span(&self.ast).end),
@@ -10842,7 +11125,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.parse_cover_property()?
                 };
                 end = property.span(&self.ast).end;
-                self.scratch_cover.append(property);
+                self.cover.scratch.append(property);
                 let comma = self.current_token.span();
                 if self.eat(TokenTag::Comma)? {
                     if self.current_token.tag() == TokenTag::RightBrace
@@ -10887,28 +11170,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.ts_context = ts_context;
         self.context = grammar_context;
-        self.scratch_cover.reset(checkpoint);
+        self.cover.scratch.reset(checkpoint);
         result
     }
 
-    fn array_cover_to_expression(&mut self, cover: ArrayCover, validate: bool) -> Option<Expr> {
-        let expression = self
-            .ast
-            .expr_array_expression(Span::new(cover.start, cover.end), cover.elements);
-        if validate {
-            self.validate_no_cover_initialized_syntax(expression)?;
-        }
-        Some(expression)
+    fn array_cover_to_expression(&mut self, cover: ArrayCover) -> Option<Expr> {
+        Some(
+            self.ast
+                .expr_array_expression(Span::new(cover.start, cover.end), cover.elements),
+        )
     }
 
-    fn object_cover_to_expression(&mut self, cover: ObjectCover, validate: bool) -> Option<Expr> {
-        let expression = self
-            .ast
-            .expr_object_expression(Span::new(cover.start, cover.end), cover.properties);
-        if validate {
-            self.validate_no_cover_initialized_syntax(expression)?;
-        }
-        Some(expression)
+    fn object_cover_to_expression(&mut self, cover: ObjectCover) -> Option<Expr> {
+        Some(
+            self.ast
+                .expr_object_expression(Span::new(cover.start, cover.end), cover.properties),
+        )
     }
 
     // PropertyDefinition[Yield, Await] :
@@ -11002,7 +11279,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
             let value = self.parse_expr(
                 Precedence::Assignment,
-                ParseExpressionOpts { in_cover: true },
+                ParseExpressionOpts {
+                    allow_type_binding_identifiers: true,
+                },
             )?;
             return Some(ObjectPropertyKind::ObjectProperty(
                 self.ast.object_property(
@@ -11018,17 +11297,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         let reference = self.property_key_to_reference(key, key_token)?;
-        let value = if self.eat(TokenTag::Assign)? {
-            let ts_context = self.ts_context;
-            self.ts_context.remove(TsContext::IN_TYPE_BINDING);
-            let default_value = self.parse_expr(
-                Precedence::Assignment,
-                ParseExpressionOpts { in_cover: true },
-            );
-            self.ts_context = ts_context;
-            let default_value = default_value?;
+        let initialized_name = self.eat(TokenTag::Assign)?;
+        let value = if initialized_name {
+            let default_value = self.parse_value_expression(Precedence::Assignment)?;
             let target = self.expression_to_assignment_target(reference)?;
-            let assignment = self.ast.expr_assignment_expression(
+            self.ast.expr_assignment_expression(
                 Span::new(
                     reference.span(&self.ast).start,
                     default_value.span(&self.ast).end,
@@ -11036,23 +11309,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 target,
                 default_value,
                 AssignmentOperator::Assign,
-            );
-            self.state.insert(ParserState::COVER_HAS_INIT_NAME);
-            assignment
+            )
         } else {
             reference
         };
-        Some(ObjectPropertyKind::ObjectProperty(
-            self.ast.object_property(
-                Span::new(start, value.span(&self.ast).end),
-                key,
-                value,
-                PropertyKind::Init,
-                false,
-                true,
-                false,
-            ),
-        ))
+        let property = self.ast.object_property(
+            Span::new(start, value.span(&self.ast).end),
+            key,
+            value,
+            PropertyKind::Init,
+            false,
+            true,
+            false,
+        );
+        if initialized_name {
+            self.cover
+                .record_initialized_name(property.node_id(), property.span(&self.ast));
+        }
+        Some(ObjectPropertyKind::ObjectProperty(property))
     }
 
     /// Both shorthand forms change an IdentifierName into an IdentifierReference.
@@ -11111,33 +11385,29 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         let function_start = self.current_token.start();
-        let context = self.context;
-        let boundary_context = mem::take(&mut self.boundary_context);
-        let result = (|| {
+        let result = self.with_scope(BoundaryContext::local(), |parser| {
             let type_parameters =
-                if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters(
+                if parser.lang.is_typescript() && is_angle_open(parser.current_token.tag()) {
+                    Some(parser.parse_type_parameters(
                         TypeParameterContext::Declaration,
                         AngleClose::Peel,
                     )?)
                 } else {
                     None
                 };
-            enter_function_grammar_context(&mut self.context, generator, async_function);
-            let (this_param, params) =
-                self.parse_formal_parameters(FormalParameterKind::UniqueFormalParameters, false)?;
-            self.check_accessor_arity(kind, params);
+            enter_function_grammar_context(&mut parser.context, generator, async_function);
+            let (this_param, params) = parser
+                .parse_formal_parameters(FormalParameterKind::UniqueFormalParameters, false)?;
+            parser.check_accessor_arity(kind, params);
             let return_type =
-                if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                    Some(self.parse_return_type_annotation()?)
+                if parser.lang.is_typescript() && parser.current_token.tag() == TokenTag::Colon {
+                    Some(parser.parse_return_type_annotation()?)
                 } else {
                     None
                 };
-            let body = self.parse_function_body()?;
+            let body = parser.parse_function_body()?;
             Some((this_param, params, type_parameters, return_type, body))
-        })();
-        self.context = context;
-        self.boundary_context = boundary_context;
+        });
         let (this_param, params, type_parameters, return_type, body) = result?;
         let span = Span::new(start, body.span(&self.ast).end);
         let function = self.ast.function(
@@ -11252,10 +11522,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
                 self.ts_context.remove(TsContext::IN_TYPE_BINDING);
                 let expression = (|| {
-                    let expression = self.parse_expr_preserving_stripped_paren(
-                        Precedence::Assignment,
-                        ParseExpressionOpts { in_cover },
-                    )?;
+                    let expression = self.parse_value_expression(Precedence::Assignment)?;
                     if self.current_token.tag() == TokenTag::Comma {
                         self.report(
                             self.current_token.span(),
@@ -11453,14 +11720,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         cover: ParenthesizedCover,
         callee: Expr,
     ) -> Option<Expr> {
-        for id in cover.elements.iter() {
-            let argument = self.ast.get_node_in_sub_range(id);
-            let expression = match self.ast.argument_data(argument) {
-                ArgumentData::Expr(expression) => expression,
-                ArgumentData::SpreadElement(spread) => spread.argument(&self.ast),
-            };
-            self.validate_no_cover_initialized_syntax(expression)?;
-        }
         Some(self.ast.expr_call_expression(
             Span::new(callee.span(&self.ast).start, cover.end),
             callee,
@@ -11757,7 +12016,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let callee = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
-            _ => self.parse_primary_expression(false, Precedence::Primary)?,
+            _ => self.parse_primary_expression(Precedence::Primary)?,
         };
         let PostfixExpression {
             expression: callee,
@@ -11848,7 +12107,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Defer => (Some(ImportPhase::Defer), false),
             TokenTag::Identifier if property.text(self.source) == "sync" => (None, true),
             TokenTag::Identifier if property.text(self.source) == "meta" => {
-                self.state.insert(ParserState::HAS_MODULE_SYNTAX);
+                self.record_module_syntax();
+                if self.source_type != SourceType::Module {
+                    self.diagnostics.defer(Diagnostic::error(
+                        "'import.meta' is only valid in module code",
+                        Span::new(import_name.span(&self.ast).start, property.end()),
+                    ));
+                }
                 return self.parse_meta_property(import_name);
             }
             _ => {
@@ -11940,8 +12205,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 "The only valid meta property for 'new' is 'new.target'",
                 ReportOptions::default(),
             );
-        } else if self.boundary_context.can_be_commonjs() {
-            self.state.insert(ParserState::HAS_COMMONJS_SYNTAX);
+        } else if !self
+            .boundary_context
+            .contains(BoundaryContext::ALLOW_NEW_TARGET)
+        {
+            let syntax =
+                CommonJsUse::NewTarget(Span::new(meta.span(&self.ast).start, property_token.end()));
+            self.check_commonjs_syntax(syntax);
         }
         self.parse_meta_property(meta)
     }
@@ -12784,11 +13054,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             position: self.current_token.start(),
             context: self.context.bits(),
             ts_context: self.ts_context.bits(),
-            boundary_context: self.boundary_context.bits(),
+            boundary_context: self.boundary_context,
             statement_context: self.statement_context as u8,
-            state: self.state.bits(),
+            module_detection: self.module_detection.speculation_key(),
             lexer_mode: self.lexer.mode as u8,
-            stripped_paren: self.stripped_paren,
         }
     }
 
@@ -13047,12 +13316,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   LeftHandSideExpression[?Yield, ?Await] `&&=` AssignmentExpression[?In, ?Yield, ?Await]
     //   LeftHandSideExpression[?Yield, ?Await] `||=` AssignmentExpression[?In, ?Yield, ?Await]
     //   LeftHandSideExpression[?Yield, ?Await] `??=` AssignmentExpression[?In, ?Yield, ?Await]
-    fn parse_assignment_expression(
-        &mut self,
-        precedence: Precedence,
-        left: Expr,
-        tag: TokenTag,
-    ) -> Option<Expr> {
+    fn parse_assignment_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
         let start = left.span(&self.ast).start;
         let target = if tag == TokenTag::Assign {
             self.expression_to_assignment_target(left)?
@@ -13072,14 +13336,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         };
         self.advance()?;
-        // A stripped parenthesis in the right-hand side is in expression
-        // position and must not overwrite evidence from the arrow-head target.
-        let ts_context = self.ts_context;
-        self.ts_context.remove(TsContext::IN_TYPE_BINDING);
-        let right =
-            self.parse_expr_preserving_stripped_paren(precedence, ParseExpressionOpts::default());
-        self.ts_context = ts_context;
-        let right = right?;
+        let right = self.parse_value_expression(Precedence::Assignment)?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
@@ -13212,13 +13469,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn unwrap_parens(&self, expression: Expr) -> Expr {
-        match self.ast.expr_data(expression) {
-            ExprData::ParenthesizedExpression(parenthesized) => {
-                self.unwrap_parens(parenthesized.expression(&self.ast))
-            }
-            _ => expression,
+    fn unwrap_parens(&self, mut expression: Expr) -> Expr {
+        while let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression)
+        {
+            expression = parenthesized.expression(&self.ast);
         }
+        expression
     }
 
     fn expression_to_assignment_target(&mut self, expression: Expr) -> Option<AssignmentTarget> {
@@ -13254,7 +13510,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     return None;
                 }
                 let target = self.expression_to_assignment_target(inner)?;
-                self.stripped_paren = Some(target.node_id());
+                self.cover.record_parenthesized_target(target.node_id());
                 Some(target)
             }
             _ => Some(AssignmentTarget::SimpleAssignmentTarget(
@@ -13280,7 +13536,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     // caller, avoiding a helper call and another load of current_token.
     #[inline(always)]
     fn parse_binding_identifier(&mut self) -> Option<BindingIdentifier> {
-        let token = self.consume_identifier(IdentifierRole::Binding)?;
+        self.parse_binding_identifier_with_role(IdentifierRole::Binding)
+    }
+
+    #[inline(always)]
+    fn parse_type_binding_identifier(&mut self) -> Option<BindingIdentifier> {
+        self.parse_binding_identifier_with_role(IdentifierRole::TypeBinding)
+    }
+
+    #[inline(always)]
+    fn parse_binding_identifier_with_role(
+        &mut self,
+        role: IdentifierRole,
+    ) -> Option<BindingIdentifier> {
+        let token = self.consume_identifier(role)?;
         let name = self.identifier_name(token);
         Some(self.ast.binding_identifier(token.span(), name))
     }
@@ -13347,7 +13616,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if role == IdentifierRole::TypeScript {
             return;
         }
-        let in_type_binding = self.ts_context.in_type_binding();
+        let in_type_binding =
+            role == IdentifierRole::TypeBinding || self.ts_context.in_type_binding();
         if token.tag() == TokenTag::Yield
             && !in_type_binding
             && self.context.contains(Context::YIELD)
@@ -13360,20 +13630,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let await_is_reserved = !in_type_binding && self.context.contains(Context::AWAIT)
-            || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
-        if token.tag() == TokenTag::Await
-            && !in_type_binding
-            && !await_is_reserved
-            && self
-                .boundary_context
-                .contains(BoundaryContext::ASYNC_ARROW_HEAD)
-        {
-            self.await_identifier_in_async_head
-                .get_or_insert(token.span());
-        }
-        if token.tag() == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
-            self.report_reserved_await(token.span(), as_what);
+        if token.tag() == TokenTag::Await {
+            let await_is_reserved = !in_type_binding && self.context.contains(Context::AWAIT)
+                || self.source_type == SourceType::Module
+                    && !self.ts_context.in_ts_container_body();
+            if !in_type_binding
+                && !await_is_reserved
+                && self
+                    .boundary_context
+                    .contains(BoundaryContext::ASYNC_ARROW_HEAD)
+            {
+                self.await_identifier_in_async_head
+                    .get_or_insert(token.span());
+            }
+            if !self.ts_context.ambient() && await_is_reserved {
+                self.report_reserved_await(token.span(), as_what);
+            }
         }
     }
 
@@ -14065,6 +14337,16 @@ mod tests {
         tokens
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
+            .collect()
+    }
+
+    fn error_spans(source: &str, options: Options) -> Vec<&str> {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+        parsed
+            .diagnostics
+            .iter()
+            .map(|error| &source[error.span.start as usize..error.span.end as usize])
             .collect()
     }
 
@@ -15028,21 +15310,70 @@ mod tests {
 
     #[test]
     fn cover_initialized_names() {
-        let allocator = Allocator::new();
         for preserve_parens in [false, true] {
-            let options = Options {
+            let javascript = Options {
                 preserve_parens,
                 ..Options::default()
             };
-            let parse =
-                |source| Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let typescript = Options {
+                lang: Lang::Ts,
+                ..javascript
+            };
+            for options in [javascript, typescript] {
+                let errors = error_spans("(({a = 0}));", options);
+                assert_eq!(errors, ["a = 0"]);
 
-            let parsed = parse("(({a = 0}));");
-            assert_eq!(parsed.diagnostics.len(), 1);
-            assert_eq!(parsed.diagnostics[0].span, Span::new(3, 8));
+                let errors = error_spans("(({a: ({b = 0}), c = 0}));", options);
+                assert_eq!(errors, ["b = 0", "c = 0"]);
 
-            let parsed = parse("(({a: ({b = 0}), c = 0}));");
-            assert_eq!(parsed.diagnostics.len(), 2);
+                let errors = error_spans("[{a = 1}, x = {}];", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("[{a = 1}, 1 + {}];", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("[{a = 1}, x = []];", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("[{a = 1}, f({})];", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("[{a = 1}, x = {b = 2}];", options);
+                assert_eq!(errors, ["a = 1", "b = 2"]);
+
+                let errors = error_spans("[{a: 1}, x = {}];", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("[{a = 1}] in x;", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("({[{x = 1}]: b} = c);", options);
+                assert_eq!(errors, ["x = 1"]);
+
+                let errors = error_spans("({a: {b = 1}}.c);", options);
+                assert_eq!(errors, ["b = 1"]);
+
+                let errors = error_spans("[{a = 1}.b] = c;", options);
+                assert_eq!(errors, ["a = 1"]);
+
+                let errors = error_spans("[{a = 1}, x = {}] = xs;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("[{a = 1}]; x = 1 +;", options);
+                assert_eq!(errors, ["a = 1", ";"]);
+
+                let errors = error_spans("function f() { [{a = 1}]; x = 1 +; }", options);
+                assert_eq!(errors, ["a = 1", ";"]);
+
+                let errors = error_spans("[{a = 1}, x = () => { return; }] = xs;", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("[{a = 1}, x = () => { [{b = 2}]; }] = xs;", options);
+                assert_eq!(errors, ["b = 2"]);
+            }
+
+            let errors = error_spans("[{a = 1}, <T>(x = {})];", typescript);
+            assert_eq!(errors, ["a = 1"]);
         }
     }
 
@@ -15938,6 +16269,83 @@ mod tests {
     }
 
     #[test]
+    fn parenthesized_bindings() {
+        fn recovery(
+            source: &str,
+            options: Options,
+        ) -> (Vec<Span>, usize, usize, String, String, String) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, TokenParserConfig).parse();
+            let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
+            let ast = &parsed.ast;
+            let body = ast.root_program().body(ast);
+            let arrow = body
+                .get_node(ast, 0)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+                .as_arrow_function_expression(ast)
+                .unwrap();
+            let parameters = arrow.params(ast).items(ast);
+            let first = parameters
+                .get_node(ast, 0)
+                .unwrap()
+                .as_formal_parameter(ast)
+                .unwrap();
+            let binding = first.pattern(ast).as_binding_identifier(ast).unwrap();
+            let name = ast.get_utf8(binding.name(ast)).to_owned();
+            let last = body.get_node(ast, 1).unwrap().span(ast);
+            let after = source[last.start as usize..last.end as usize].to_owned();
+            let tokens = token_texts(source, &parsed.tokens).join(" ");
+            (errors, body.len(), parameters.len(), name, after, tokens)
+        }
+        for preserve_parens in [false, true] {
+            let javascript = Options {
+                preserve_parens,
+                ..Options::default()
+            };
+            let typescript = Options {
+                lang: Lang::Ts,
+                ..javascript
+            };
+            for options in [javascript, typescript] {
+                let errors = error_spans("([(a)] = [], {b = (c) = 1}) => {};", options);
+                assert_eq!(errors, ["a"]);
+
+                let errors = error_spans("([(a), (b)] = []) => {};", options);
+                assert_eq!(errors, ["a", "b"]);
+
+                let errors = error_spans("([(a)] = [], [(b)] = []) => {};", options);
+                assert_eq!(errors, ["a", "b"]);
+
+                let errors = error_spans("([a] = [], {b = (c) = 1}) => {};", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("[(a)] = [];", options);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("([(a)] = () => { return; }) => {};", options);
+                assert_eq!(errors, ["a"]);
+
+                let source = "((a) = 1, {b = (c) = 1}) => {};\nafter;";
+                let (errors, statements, parameters, name, after, tokens) =
+                    recovery(source, options);
+                assert_eq!(errors, [Span::new(2, 3)]);
+                assert_eq!(statements, 2);
+                assert_eq!(parameters, 2);
+                assert_eq!(name, "a");
+                assert_eq!(after, "after;");
+                assert_eq!(tokens, "( ( a ) = 1 , { b = ( c ) = 1 } ) => { } ; after ;");
+            }
+
+            // A rejected generic arrow must roll back its cover candidates too.
+            let errors = error_spans("<T>(x, a = (b) = ([(c)] = []) => c);", typescript);
+            assert_eq!(errors, ["c"]);
+        }
+    }
+
+    #[test]
     fn formal_parameters() {
         fn class_members(ast: &Ast<'_>) -> SubRange<ClassElement> {
             let class = ast
@@ -16345,6 +16753,100 @@ mod tests {
     }
 
     #[test]
+    fn meta_property_contexts() {
+        for preserve_parens in [false, true] {
+            for lang in [Lang::Js, Lang::Ts] {
+                let module = Options {
+                    lang,
+                    preserve_parens,
+                    ..Options::default()
+                };
+                let script = Options {
+                    source_type: SourceType::Script,
+                    ..module
+                };
+                let commonjs = Options {
+                    source_type: SourceType::CommonJs,
+                    ..module
+                };
+
+                let errors = error_spans("import.meta;", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("import.meta;", script);
+                assert_eq!(errors, ["import.meta"]);
+
+                let errors = error_spans("import.meta;", commonjs);
+                assert_eq!(errors, ["import.meta"]);
+
+                let errors = error_spans("function f() { return import.meta; }", script);
+                assert_eq!(errors, ["import.meta"]);
+
+                let errors = error_spans("() => import.meta;", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("new.target;", module);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("new.target;", script);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("new.target;", commonjs);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("() => new.target;", module);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("(value = new.target) => value;", module);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("function f(value = new.target) {}", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("function f() { return () => new.target; }", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("({ method(value = new.target) {} });", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("class C { field = () => new.target; }", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("class C { static { new.target; } }", module);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("class C { [new.target]; }", module);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("class C extends new.target {}", module);
+                assert_eq!(errors, ["new.target"]);
+            }
+
+            for lang in [Lang::Ts, Lang::Dts] {
+                let commonjs = Options {
+                    source_type: SourceType::CommonJs,
+                    lang,
+                    preserve_parens,
+                    ..Options::default()
+                };
+                let unambiguous = Options {
+                    source_type: SourceType::Unambiguous,
+                    ..commonjs
+                };
+
+                let errors = error_spans("namespace N { new.target; }", commonjs);
+                assert!(errors.is_empty());
+
+                let errors = error_spans("namespace N { new.target; }", unambiguous);
+                assert_eq!(errors, ["new.target"]);
+
+                let errors = error_spans("namespace N { return; }", commonjs);
+                assert_eq!(errors, ["return"]);
+            }
+        }
+    }
+
+    #[test]
     fn generic_postfix() {
         fn parse<'a>(
             allocator: &'a Allocator,
@@ -16738,12 +17240,15 @@ mod tests {
             SourceType::Script,
         );
 
-        assert_resolves_as(
-            "new.target",
-            Lang::Dts,
-            FragmentContext::TopLevel,
-            SourceType::Script,
-        );
+        let allocator = Allocator::new();
+        let options = Options {
+            lang: Lang::Dts,
+            source_type: SourceType::Unambiguous,
+            ..Options::default()
+        };
+        let result = Parser::init(&allocator, "new.target", options, NoTokenParserConfig)
+            .parse_expression_fragment(FragmentContext::TopLevel);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -17040,8 +17545,8 @@ mod tests {
     }
 
     #[test]
-    fn unambiguous_await_recovery() {
-        fn parse(source: &str, options: Options) -> (bool, SourceType, Vec<NodeKind>) {
+    fn unambiguous_recovery() {
+        fn parse(source: &str, options: Options) -> (Vec<Span>, SourceType, Vec<NodeKind>) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let ast = &parsed.ast;
@@ -17058,7 +17563,8 @@ mod tests {
                     ast.node_kind(node)
                 })
                 .collect();
-            (!parsed.diagnostics.is_empty(), ast.source_type(), nodes)
+            let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
+            (errors, ast.source_type(), nodes)
         }
 
         let unambiguous = Options {
@@ -17071,22 +17577,69 @@ mod tests {
         };
 
         let (errors, source_type, nodes) = parse("for (await in x);", unambiguous);
-        assert!(!errors);
+        assert!(errors.is_empty());
         assert_eq!(source_type, SourceType::Script);
         assert_eq!(nodes, [NodeKind::ForInStatement]);
 
         let (errors, source_type, _) = parse("for (await in x);", module);
-        assert!(errors);
+        assert!(!errors.is_empty());
         assert_eq!(source_type, SourceType::Module);
 
         let (errors, source_type, _) = parse("for (await in x); export {};", unambiguous);
-        assert!(errors);
+        assert!(!errors.is_empty());
         assert_eq!(source_type, SourceType::Module);
 
         let (errors, source_type, nodes) = parse("await enum;", unambiguous);
-        assert!(errors);
+        assert!(!errors.is_empty());
         assert_eq!(source_type, SourceType::Module);
         assert_eq!(nodes, [NodeKind::AwaitExpression]);
+
+        for preserve_parens in [false, true] {
+            let javascript = Options {
+                preserve_parens,
+                ..unambiguous
+            };
+            let typescript = Options {
+                lang: Lang::Ts,
+                ..javascript
+            };
+            for options in [javascript, typescript] {
+                let (errors, source_type, _) = parse("await; ({a = 1});", options);
+                assert_eq!(errors, [Span::new(9, 14)]);
+                assert_eq!(source_type, SourceType::Script);
+
+                let (errors, source_type, _) = parse("await; [{a = 1}];", options);
+                assert_eq!(errors, [Span::new(9, 14)]);
+                assert_eq!(source_type, SourceType::Script);
+
+                let (errors, source_type, nodes) = parse("return; [{a = 1}];", options);
+                assert_eq!(errors, [Span::new(10, 15)]);
+                assert_eq!(source_type, SourceType::CommonJs);
+                assert_eq!(
+                    nodes,
+                    [NodeKind::ReturnStatement, NodeKind::ArrayExpression]
+                );
+
+                let (errors, source_type, _) = parse("return; ({a = 1});", options);
+                assert_eq!(errors, [Span::new(10, 15)]);
+                assert_eq!(source_type, SourceType::CommonJs);
+
+                let (errors, source_type, _) = parse("[{a = 1}];", options);
+                assert_eq!(errors, [Span::new(2, 7)]);
+                assert_eq!(source_type, SourceType::Script);
+
+                let (errors, source_type, _) = parse("return; [{a = 1}]; export {};", options);
+                assert_eq!(errors, [Span::new(0, 6), Span::new(10, 15)]);
+                assert_eq!(source_type, SourceType::Module);
+
+                let (errors, source_type, _) = parse("return; [{a = 1}]; x = 1 +;", options);
+                assert_eq!(
+                    errors,
+                    [Span::new(0, 6), Span::new(10, 15), Span::new(26, 27)]
+                );
+                assert_eq!(source_type, SourceType::Module);
+            }
+        }
     }
 
     #[test]
@@ -17140,10 +17693,10 @@ mod tests {
             assert_eq!(unambiguous_ast, explicit_ast, "{source}");
         }
 
-        fn assert_rejects_as_module(source: &str, lang: Lang) {
+        fn assert_rejects_as(source: &str, lang: Lang, expected: SourceType) {
             let allocator = Allocator::new();
             let result = parse(&allocator, source, lang, SourceType::Unambiguous);
-            assert_eq!(result.ast.source_type(), SourceType::Module, "{source}");
+            assert_eq!(result.ast.source_type(), expected, "{source}");
             assert!(!result.diagnostics.is_empty(), "{source}");
         }
 
@@ -17224,6 +17777,8 @@ mod tests {
 
         assert_tokens_and_comments_match("/* leading */ return; await + 0; // trailing");
 
+        assert_tokens_and_comments_match("/* leading */ new.target; await + 0; // trailing");
+
         assert_resolves_as("function f() { return; }", Lang::Js, SourceType::Script);
 
         assert_resolves_as("() => { return; }", Lang::Js, SourceType::Script);
@@ -17248,19 +17803,19 @@ mod tests {
             SourceType::Script,
         );
 
-        assert_resolves_as("namespace N { new.target; }", Lang::Ts, SourceType::Script);
+        assert_rejects_as("namespace N { new.target; }", Lang::Ts, SourceType::Script);
 
-        assert_rejects_as_module("return;", Lang::Dts);
+        assert_rejects_as("return;", Lang::Dts, SourceType::Module);
 
-        assert_resolves_as("new.target;", Lang::Dts, SourceType::Script);
+        assert_rejects_as("new.target;", Lang::Dts, SourceType::Script);
 
-        assert_rejects_as_module("export {}; return;", Lang::Js);
+        assert_rejects_as("export {}; return;", Lang::Js, SourceType::Module);
 
-        assert_rejects_as_module("return; export {};", Lang::Js);
+        assert_rejects_as("return; export {};", Lang::Js, SourceType::Module);
 
-        assert_rejects_as_module("return; import.meta;", Lang::Js);
+        assert_rejects_as("return; import.meta;", Lang::Js, SourceType::Module);
 
-        assert_rejects_as_module("return await value;", Lang::Js);
+        assert_rejects_as("return await value;", Lang::Js, SourceType::Module);
 
         let allocator = Allocator::new();
         let result = parse(
@@ -17272,15 +17827,144 @@ mod tests {
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 2);
 
-        assert_resolves_as("export {}; new.target;", Lang::Js, SourceType::Module);
+        assert_rejects_as("export {}; new.target;", Lang::Js, SourceType::Module);
 
-        assert_resolves_as("new.target; import.meta;", Lang::Js, SourceType::Module);
+        assert_rejects_as("new.target; export {};", Lang::Js, SourceType::Module);
 
-        assert_resolves_as("new.target; await value;", Lang::Js, SourceType::Module);
+        assert_rejects_as("new.target; import.meta;", Lang::Js, SourceType::Module);
 
-        assert_rejects_as_module("class C { static { return; } }", Lang::Js);
+        assert_rejects_as("new.target; await value;", Lang::Js, SourceType::Module);
 
-        assert_rejects_as_module("namespace N { return; }", Lang::Ts);
+        assert_rejects_as(
+            "class C { static { return; } }",
+            Lang::Js,
+            SourceType::Module,
+        );
+
+        assert_rejects_as("namespace N { return; }", Lang::Ts, SourceType::Module);
+    }
+
+    #[test]
+    fn unambiguous_module_detection() {
+        fn parse(source: &str, options: Options) -> (SourceType, Vec<Span>) {
+            let allocator = Allocator::new();
+            let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            (
+                result.ast.source_type(),
+                result.diagnostics.iter().map(|error| error.span).collect(),
+            )
+        }
+
+        for preserve_parens in [false, true] {
+            let javascript = Options {
+                source_type: SourceType::Unambiguous,
+                preserve_parens,
+                ..Options::default()
+            };
+            let typescript = Options {
+                lang: Lang::Ts,
+                ..javascript
+            };
+            for options in [javascript, typescript] {
+                let (kind, errors) = parse("return; new.target; export {}; new.target;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 6), Span::new(31, 41)]);
+
+                let (kind, errors) = parse("new.target; return; import.meta; return;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 10), Span::new(33, 39)]);
+
+                let (kind, errors) = parse("export {}; return; new.target; return;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(
+                    errors,
+                    [Span::new(11, 17), Span::new(19, 29), Span::new(31, 37)]
+                );
+
+                let (kind, errors) = parse("return; return; export {}; return;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 6), Span::new(27, 33)]);
+
+                let (kind, errors) = parse("return; new.target; +;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 6), Span::new(21, 22)]);
+
+                let (kind, errors) = parse("new.target; return; +;", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 10), Span::new(21, 22)]);
+
+                let (kind, errors) = parse("return; new.target; await + 0;", options);
+                assert_eq!(kind, SourceType::CommonJs);
+                assert!(errors.is_empty());
+
+                let (kind, errors) = parse("return; new.target; await + 0; export {};", options);
+                assert_eq!(kind, SourceType::Module);
+                assert_eq!(errors, [Span::new(0, 6)]);
+            }
+        }
+    }
+
+    #[test]
+    fn unambiguous_lexical_recovery() {
+        fn parse<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+            options: Options,
+        ) -> ParseReturn<'a> {
+            Parser::init(allocator, source, options, TokenParserConfig).parse()
+        }
+
+        for preserve_parens in [false, true] {
+            let flat_comments = Options {
+                source_type: SourceType::Unambiguous,
+                preserve_parens,
+                comments: CommentMode::Flat,
+                ..Options::default()
+            };
+            let no_comments = Options {
+                comments: CommentMode::None,
+                ..flat_comments
+            };
+            for options in [flat_comments, no_comments] {
+                let allocator = Allocator::new();
+                let source = "return;\n<!-- comment\nexport {};";
+                let parsed = parse(&allocator, source, options);
+                assert_eq!(parsed.ast.source_type(), SourceType::Module);
+                assert_eq!(
+                    parsed
+                        .diagnostics
+                        .iter()
+                        .map(|error| error.span)
+                        .collect::<Vec<_>>(),
+                    [Span::new(0, 6), Span::new(8, 20)]
+                );
+                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 2);
+                assert_eq!(
+                    token_texts(source, &parsed.tokens),
+                    ["return", ";", "export", "{", "}", ";"]
+                );
+                if options.comments == CommentMode::Flat {
+                    let comments = parsed.ast.comments();
+                    assert_eq!(comments.len(), 1);
+                    assert_eq!(comments[0].span, Span::new(8, 20));
+                    assert_eq!(comments[0].position, CommentPosition::Leading);
+                    assert_eq!(comments[0].attached_to, 21);
+                } else {
+                    assert!(parsed.ast.comments().is_empty());
+                }
+
+                let source = "#!/bin/node\nreturn; export {};";
+                let parsed = parse(&allocator, source, options);
+                assert_eq!(parsed.ast.source_type(), SourceType::Module);
+                assert_eq!(parsed.diagnostics.len(), 1);
+                assert_eq!(parsed.diagnostics[0].span, Span::new(12, 18));
+                assert!(parsed.ast.root_program().hashbang(&parsed.ast).is_some());
+                assert_eq!(
+                    token_texts(source, &parsed.tokens),
+                    ["return", ";", "export", "{", "}", ";"]
+                );
+            }
+        }
     }
 
     #[test]
@@ -17808,6 +18492,27 @@ mod tests {
 
     #[test]
     fn function_type_lookahead() {
+        fn alias(source: &str, options: Options) -> (Vec<&str>, NodeKind) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let ast = &parsed.ast;
+            let alias = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap()
+                .as_ts_type_alias_declaration(ast)
+                .unwrap();
+            let errors = parsed
+                .diagnostics
+                .iter()
+                .map(|error| &source[error.span.start as usize..error.span.end as usize])
+                .collect();
+            (errors, ast.node_kind(alias.type_annotation(ast).node_id()))
+        }
+
         fn return_type(source: &str) -> NodeKind {
             let allocator = Allocator::new();
             let options = Options {
@@ -17853,6 +18558,27 @@ mod tests {
             .unwrap();
         assert!(function.this_param(&ast).is_some());
         assert!(function.params(&ast).items(&ast).is_empty());
+
+        for preserve_parens in [false, true] {
+            let typescript = Options {
+                lang: Lang::Ts,
+                preserve_parens,
+                ..Options::default()
+            };
+            let tsx = Options {
+                lang: Lang::Tsx,
+                ..typescript
+            };
+            for options in [typescript, tsx] {
+                let (errors, kind) = alias("type T = ({a = {b = 1}}) => void;", options);
+                assert_eq!(errors, ["b = 1"]);
+                assert_eq!(kind, NodeKind::TsFunctionType);
+
+                let (errors, kind) = alias("type T = ([a = {b = 1}]) => void;", options);
+                assert_eq!(errors, ["b = 1"]);
+                assert_eq!(kind, NodeKind::TsFunctionType);
+            }
+        }
     }
 
     #[test]

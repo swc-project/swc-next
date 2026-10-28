@@ -398,7 +398,6 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             NodeKindData::AwaitExpression(node) => js::check_await_expression(self, node),
             NodeKindData::YieldExpression(node) => js::check_yield_expression(self, node),
             NodeKindData::TsParameterProperty(node) => ts::check_parameter_property(self, node),
-            NodeKindData::MetaProperty(node) => js::check_meta_property(self, node),
             NodeKindData::ImportDeclaration(node) => js::check_import_declaration(self, node),
             NodeKindData::ExportNamedDeclaration(node) => {
                 js::check_export_named_declaration(self, node)
