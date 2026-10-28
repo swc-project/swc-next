@@ -53,7 +53,14 @@ The binary document format and `formatDocBufferSync` are internal, version-match
 interfaces. Consumers should use the Prettier plugin API.
 
 Tests compare every local formatter fixture and option set directly with the
-native Rust printer on the same host-normalized input. A test-only N-API addon
-calls `format()` and returns strings directly, preserving CR, LF, and EOF
-whitespace. The test commands build this addon with the `test-native` Cargo
-feature and use it as the native oracle for both native and Wasm plugin bindings.
+native Rust printer on the same host-normalized input. Native Rust measures text
+with `unicode-width`; Prettier lays out Docs with its JavaScript string-width
+behavior. A few exact Unicode- or tab-sensitive options can therefore choose
+different line breaks while preserving the same syntax. The test-only
+[`width-only-parity.json`](test/width-only-parity.json) records those exact input,
+option, and output hashes. Those cases still pass the core parser/codegen AST
+comparison and the plugin fixed-point check; every other fixture and option set
+remains byte-for-byte compared. A test-only N-API addon calls `format()` and
+returns strings directly, preserving CR, LF, and EOF whitespace. The test
+commands build this addon with the `test-native` Cargo feature and use it as the
+native oracle for both native and Wasm plugin bindings.
