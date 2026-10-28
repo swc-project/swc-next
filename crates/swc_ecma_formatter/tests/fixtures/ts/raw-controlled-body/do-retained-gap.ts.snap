@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do x = /* prettier-ignore */ y as ?;
+/* prettier-ignore */
+while(c);
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+do x = /* prettier-ignore */ y as ?;
+/* prettier-ignore */
+while(c)
+b

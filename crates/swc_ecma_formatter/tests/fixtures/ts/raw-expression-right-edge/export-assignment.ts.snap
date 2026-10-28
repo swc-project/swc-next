@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export = /* prettier-ignore */ y as ?;
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+export = /* prettier-ignore */ y as ?;
+b

@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch(c){case 0: const x = (y as /* prettier-ignore */ T?)
+case 1: b();}
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+switch (c) {
+  case 0:
+    const x = y as /* prettier-ignore */ T?
+  case 1:
+    b()
+}
