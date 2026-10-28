@@ -191,6 +191,7 @@ pub(super) struct TypeAttachmentHead {
     prefix: TypeCommentPrefix,
     first_owner: std::cell::Cell<Option<TsType>>,
     prefix_carrier: Option<TsType>,
+    parentheses_only: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -1932,6 +1933,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut source_barrier = None;
         let mut interior_frame = None;
         let mut prefix_carrier = None;
+        let mut parentheses_only = true;
         let data = loop {
             let data = self.ast.ts_type_data(node);
             let (types, token) = match data {
@@ -1962,8 +1964,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node = child;
                     continue;
                 }
-                TsTypeData::TsUnionType(union) => (union.types(self.ast), "|"),
-                TsTypeData::TsIntersectionType(intersection) => (intersection.types(self.ast), "&"),
+                TsTypeData::TsUnionType(union) => {
+                    parentheses_only = false;
+                    (union.types(self.ast), "|")
+                }
+                TsTypeData::TsIntersectionType(intersection) => {
+                    parentheses_only = false;
+                    (intersection.types(self.ast), "&")
+                }
                 _ => break data,
             };
             let Some(first) = types.first() else {
@@ -1991,6 +1999,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             interior_union_frame: interior_frame.filter(|_| union),
             first_owner: std::cell::Cell::new(None),
             prefix_carrier,
+            parentheses_only: parentheses_only && source != node,
             prefix: self.prepare_type_comment_tie(
                 node,
                 union,
@@ -2658,8 +2667,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         if !existing_marker_head {
             let attachment_start = attachment.node.span(self.ast).start;
+            let source_breaks = self.line_breaks(first.span.start, attachment_start);
             if !all_following
-                || self.line_breaks(first.span.start, attachment_start) != 0
+                || source_breaks != 0
+                    && !(matches!(
+                        role,
+                        SuppressedTypeHeadRole::ConditionalExtends
+                            | SuppressedTypeHeadRole::MappedBoundary
+                    ) && attachment.parentheses_only
+                        && node.source_head.is_none())
                 || attachment.union
                     && !(matches!(role, SuppressedTypeHeadRole::ConditionalExtends)
                         && marker_only
@@ -2667,12 +2683,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 return None;
             }
+            let inner = self.comments.in_range(source_span);
+            // The attachment walk identified every frame. Empty parentheses
+            // without a retained head disappear before the raw child.
+            if source_breaks != 0 && !inner.is_empty() {
+                return None;
+            }
             // Removing transparent pairs can expose ordinary prefix comments as
             // part of this packet. Admit that same layout on the first pass;
             // the existing body emitter still consumes the internal prefix.
             // For a nonunion, same-line block comments have no independent
             // attachment, so the shared leading chain proves their whole owner.
-            let inner = self.comments.in_range(source_span);
             if !inner.is_empty()
                 && (attachment.union
                     || inner.iter().any(|&comment| {
