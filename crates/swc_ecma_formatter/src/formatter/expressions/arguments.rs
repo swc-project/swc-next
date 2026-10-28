@@ -1192,6 +1192,7 @@ pub(super) struct SourceArguments<'ast> {
     type_arguments: Option<ExpressionTypeArguments<'ast>>,
     source_opening: Option<SourceArgumentOpening>,
     prefix: SourceArgumentPrefix<'ast>,
+    prefix_mode: ContentMode,
     pub(super) callee_mode: ContentMode,
     /// An ignore inside an empty list owns the complete call, not an argument.
     pub(super) call_mode: ContentMode,
@@ -1631,12 +1632,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let before_mode = self.trailing_content_mode(before_span, false);
                 let after_span = Span::new(operator.end, opening);
                 let (after, after_mode) = self.argument_prefix(first.as_mut(), after_span, after);
-                if !after.belongs_to_arguments()
-                    && self.content_mode(after.comments()) == ContentMode::Verbatim
-                    && (first.is_some() || after_mode != ContentMode::Verbatim)
-                {
-                    return None;
-                }
                 let mode = if before_mode == ContentMode::Verbatim
                     || after_mode == ContentMode::Verbatim
                 {
@@ -1670,6 +1665,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 prefix
             };
+        // The packet after the angle list can protect that list independently
+        // of the mode selected for its callee.
+        let prefix_mode = callee_mode;
         let mut source_opening = None;
         if let Some(types) = &mut type_arguments {
             let empty_prefix_mode = if first.is_none() && self.has_suppression {
@@ -1732,6 +1730,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             type_arguments,
             source_opening,
             prefix,
+            prefix_mode,
             callee_mode,
             call_mode: if first.is_none() {
                 self.content_mode(&boundary_comments[prefix_count..])
@@ -2167,6 +2166,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             closing,
             callee_span,
             callee_mode,
+            prefix_mode,
             type_arguments,
             source_opening,
             prefix,
@@ -2234,7 +2234,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_outside_prefix |= !outside.is_empty();
                 let boundary = self.prepare_comment_boundary(outside, source_end, opening);
                 self.format_comment_boundary(&boundary, writer)?;
-                if callee_mode == ContentMode::Verbatim
+                if prefix_mode == ContentMode::Verbatim
                     && self.content_mode(outside) == ContentMode::Verbatim
                 {
                     // A same-line opening would reattach this marker to the first
@@ -2274,7 +2274,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     has_outside_prefix |= !after.is_empty();
                     let boundary = self.prepare_comment_boundary(after, operator.end, opening);
                     self.format_comment_boundary(&boundary, writer)?;
-                    boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    if first.is_some()
+                        && prefix_mode == ContentMode::Verbatim
+                        && self.content_mode(after) == ContentMode::Verbatim
+                    {
+                        writer.hard_line();
+                    } else {
+                        boundary.gap().write(writer, FlatSeparator::Empty, |_| {});
+                    }
                     opening + 1
                 }
             }
