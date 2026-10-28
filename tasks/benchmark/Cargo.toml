@@ -7,19 +7,15 @@ version = "0.1.0"
 [features]
 tracy = []
 
-[dependencies]
-swc_next_allocator             = { workspace = true }
-swc_next_ecma_ast              = { workspace = true }
-swc_next_ecma_codegen          = { workspace = true }
-swc_next_ecma_parser           = { workspace = true }
-swc_next_ecma_semantic         = { workspace = true }
-swc_next_type_strip            = { workspace = true }
-
 [dev-dependencies]
 oxc                       = { workspace = true }
 oxc_allocator             = { workspace = true }
+swc_next_allocator        = { workspace = true }
+swc_next_ecma_ast         = { workspace = true }
+swc_next_ecma_codegen     = { workspace = true }
 swc_next_ecma_minifier    = { workspace = true }
 swc_next_ecma_parser      = { workspace = true, features = ["unstable"] }
+swc_next_ecma_semantic    = { workspace = true }
 swc_next_ecma_transformer = { workspace = true }
 swc_next_type_strip       = { workspace = true, features = ["benchmarking"] }
 tracy-client              = { workspace = true }
