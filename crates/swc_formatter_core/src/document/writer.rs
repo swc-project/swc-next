@@ -10,7 +10,7 @@ use super::{
     text::Text, thin::ThinSlice,
 };
 
-pub(crate) struct Writer<'a> {
+pub struct Writer<'a> {
     allocator: &'a Allocator,
     elements: ArenaVec<'a, FormatElement<'a>>,
     effect: BreakEffect,
@@ -21,9 +21,16 @@ pub(crate) struct Writer<'a> {
 }
 
 /// A completed entry can retain a suffix while it is still the final scope.
-pub(crate) struct FillEntry {
+pub struct FillEntry {
     start: usize,
     end: usize,
+}
+
+/// Treatment of empty separator lines after a complete Fill has been built.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum FillSeparatorPolicy {
+    Preserve,
+    CollapseEmptyLines,
 }
 
 fn instruction_offset(value: usize) -> u32 {
@@ -35,7 +42,7 @@ fn indentation_width(value: usize) -> u32 {
 }
 
 impl<'a> Writer<'a> {
-    pub(crate) fn new(allocator: &'a Allocator) -> Self {
+    pub fn new(allocator: &'a Allocator) -> Self {
         Self {
             allocator,
             elements: ArenaVec::new_in(allocator),
@@ -47,7 +54,10 @@ impl<'a> Writer<'a> {
         }
     }
 
-    pub(crate) fn text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
+    /// Appends text using the native printer's whitespace handling.
+    /// For portable version-0 encoding, text must not contain physical line breaks;
+    /// use [`Self::literal_text`] when preserving multiline source text.
+    pub fn text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
     {
@@ -67,7 +77,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Copies transient text into storage owned by this formatting call.
-    pub(crate) fn text_copied(&mut self, text: &str) {
+    pub fn text_copied(&mut self, text: &str) {
         if text.is_empty() {
             return;
         }
@@ -80,7 +90,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Literal source lines retain their contents without structural indentation.
-    pub(crate) fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
+    pub fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
     {
@@ -98,13 +108,13 @@ impl<'a> Writer<'a> {
         self.text(text);
     }
 
-    pub(crate) fn hard_line(&mut self) {
+    pub fn hard_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::HardLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    pub(crate) fn literal_line(&mut self) {
+    pub fn literal_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
@@ -112,39 +122,39 @@ impl<'a> Writer<'a> {
 
     /// Preserves source whitespace while returning to the current indentation.
     /// This is the standard Doc composition `markAsRoot(literalline)`.
-    pub(crate) fn literal_line_with_indent(&mut self) {
+    pub fn literal_line_with_indent(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::LiteralLineWithIndent);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
     /// Writes one literal separator; the syntax owner decides whether it is needed.
-    pub(crate) fn space(&mut self) {
+    pub fn space(&mut self) {
         self.elements.push(FormatElement::text(Text::new(" ")));
     }
 
-    pub(crate) fn soft_line(&mut self) {
+    pub fn soft_line(&mut self) {
         self.elements.push(FormatElement::SoftLine);
     }
 
-    pub(crate) fn soft_line_if_break(&mut self, group: GroupId) {
+    pub fn soft_line_if_break(&mut self, group: GroupId) {
         self.conditional_lines = true;
         self.elements.push(FormatElement::SoftLineIfBreak(group));
     }
 
-    pub(crate) fn line(&mut self) {
+    pub fn line(&mut self) {
         self.elements.push(FormatElement::Line);
     }
 
-    pub(crate) fn if_break(&mut self, text: &'a str) {
+    pub fn if_break(&mut self, text: &'a str) {
         self.if_break_for(ConditionTarget::Current, text);
     }
 
-    pub(crate) fn if_flat(&mut self, text: &'a str) {
+    pub fn if_flat(&mut self, text: &'a str) {
         self.if_flat_for(ConditionTarget::Current, text);
     }
 
-    pub(crate) fn if_break_for(&mut self, target: ConditionTarget, text: &'a str) {
+    pub fn if_break_for(&mut self, target: ConditionTarget, text: &'a str) {
         if !text.is_empty() {
             match target {
                 ConditionTarget::Current => {
@@ -161,7 +171,7 @@ impl<'a> Writer<'a> {
         }
     }
 
-    pub(crate) fn if_flat_for(&mut self, target: ConditionTarget, text: &'a str) {
+    pub fn if_flat_for(&mut self, target: ConditionTarget, text: &'a str) {
         if !text.is_empty() {
             match target {
                 ConditionTarget::Current => {
@@ -195,7 +205,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Both branches contribute break effects, including the unselected branch.
-    pub(crate) fn if_break_doc(
+    pub fn if_break_doc(
         &mut self,
         target: ConditionTarget,
         broken: Fragment<'a>,
@@ -212,7 +222,7 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::Conditional(conditional));
     }
 
-    pub(crate) fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn line_suffix<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.intrinsic_lines = true;
         let start = self.elements.len();
         self.elements
@@ -224,20 +234,20 @@ impl<'a> Writer<'a> {
         result
     }
 
-    pub(crate) fn line_suffix_boundary(&mut self) {
+    pub fn line_suffix_boundary(&mut self) {
         self.elements.push(FormatElement::LineSuffixBoundary);
     }
 
-    pub(crate) fn break_parent(&mut self) {
+    pub fn break_parent(&mut self) {
         self.elements.push(FormatElement::BreakParent);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
-    pub(crate) fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn group<T>(&mut self, expand: bool, write: impl FnOnce(&mut Self) -> T) -> T {
         self.group_with_request(GroupRequest::from(expand), write)
     }
 
-    pub(crate) fn group_with_request<T>(
+    pub fn group_with_request<T>(
         &mut self,
         request: GroupRequest,
         write: impl FnOnce(&mut Self) -> T,
@@ -247,7 +257,7 @@ impl<'a> Writer<'a> {
 
     /// Retains exact flat measurements and the boundary of a complete group.
     /// Unsupported instructions keep the ordinary Auto group unchanged.
-    pub(crate) fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn group_with_flat_width<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
         let result = self.group(false, write);
         let FormatElement::StartGroup { effect, .. } = self.elements[start] else {
@@ -266,11 +276,11 @@ impl<'a> Writer<'a> {
     }
 
     /// The returned handle refers to a group already written in this document.
-    pub(crate) fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
+    pub fn named_group(&mut self, expand: bool, write: impl FnOnce(&mut Self)) -> GroupId {
         self.named_group_with_request(GroupRequest::from(expand), write)
     }
 
-    pub(crate) fn named_group_with_request(
+    pub fn named_group_with_request(
         &mut self,
         request: GroupRequest,
         write: impl FnOnce(&mut Self),
@@ -281,7 +291,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Reserves an identity before recording contents shared by layout alternatives.
-    pub(crate) fn next_group_id(&mut self) -> GroupId {
+    pub fn next_group_id(&mut self) -> GroupId {
         self.group_count = self
             .group_count
             .checked_add(1)
@@ -289,7 +299,7 @@ impl<'a> Writer<'a> {
         GroupId(super::NonZeroU32::new(self.group_count).expect("group identity is nonzero"))
     }
 
-    pub(crate) fn group_with_id<T>(
+    pub fn group_with_id<T>(
         &mut self,
         request: GroupRequest,
         id: Option<GroupId>,
@@ -319,7 +329,7 @@ impl<'a> Writer<'a> {
 
     /// Removes optional layout breaks in one complete scope. Required source
     /// breaks and line suffixes keep the original document unchanged.
-    pub(crate) fn flat<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn flat<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         if self.flattening {
             return write(self);
         }
@@ -337,7 +347,7 @@ impl<'a> Writer<'a> {
         result
     }
 
-    pub(crate) fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn indent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.elements.push(FormatElement::StartIndent);
         let result = write(self);
         self.elements.push(FormatElement::EndIndent);
@@ -345,11 +355,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Gives a complete scope its own root-relative indentation.
-    pub(crate) fn absolute_indent<T>(
-        &mut self,
-        width: usize,
-        write: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn absolute_indent<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
         let width = indentation_width(width);
         self.elements
             .push(FormatElement::StartAbsoluteIndent { width });
@@ -358,11 +364,7 @@ impl<'a> Writer<'a> {
         result
     }
 
-    pub(crate) fn indent_if_break<T>(
-        &mut self,
-        group: GroupId,
-        write: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn indent_if_break<T>(&mut self, group: GroupId, write: impl FnOnce(&mut Self) -> T) -> T {
         let start = self.elements.len();
         self.elements.push(FormatElement::StartIndentIfBreak {
             id: group,
@@ -378,7 +380,7 @@ impl<'a> Writer<'a> {
         result
     }
 
-    pub(crate) fn align<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn align<T>(&mut self, width: usize, write: impl FnOnce(&mut Self) -> T) -> T {
         if width == 0 {
             return write(self);
         }
@@ -389,52 +391,58 @@ impl<'a> Writer<'a> {
         result
     }
 
-    pub(crate) fn fill<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn fill<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.fill_with_separator_policy(|writer| (write(writer), FillSeparatorPolicy::Preserve))
+    }
+
+    /// Builds a Fill and applies the caller's separator policy to that same scope.
+    /// Content and separator entries alternate; only separators containing exactly
+    /// two hard lines are collapsed. Required parent breaks are retained.
+    pub fn fill_with_separator_policy<T>(
+        &mut self,
+        write: impl FnOnce(&mut Self) -> (T, FillSeparatorPolicy),
+    ) -> T {
+        let start = self.elements.len();
         self.elements.push(FormatElement::StartFill);
-        let result = write(self);
+        let (result, policy) = write(self);
+        let end = self.elements.len();
         self.elements.push(FormatElement::EndFill);
+        if policy == FillSeparatorPolicy::CollapseEmptyLines {
+            self.collapse_empty_fill_separators(start + 1, end);
+        }
         result
     }
 
-    /// The completed syntax scope decides whether its empty separator lines collapse.
-    pub(crate) fn fill_with_empty_line_policy<T, E>(
-        &mut self,
-        write: impl FnOnce(&mut Self) -> Result<(T, bool), E>,
-    ) -> Result<T, E> {
-        let start = self.elements.len();
-        self.elements.push(FormatElement::StartFill);
-        let result = write(self);
-        if matches!(result.as_ref(), Ok((_, true))) {
-            let mut index = start + 1;
-            let mut separator = false;
-            while index < self.elements.len() {
-                let FormatElement::StartEntry { end_offset } = self.elements[index] else {
-                    unreachable!("fill cleanup visits complete owned entries");
-                };
-                let end = index + end_offset as usize;
-                if separator
-                    && matches!(
-                        self.elements[index + 1..end],
-                        [FormatElement::HardLine, FormatElement::HardLine]
-                    )
-                {
-                    // Keep entry distances and the required parent break stable.
-                    self.elements[end - 1] = FormatElement::BreakParent;
-                }
-                separator = !separator;
-                index = end + 1;
+    fn collapse_empty_fill_separators(&mut self, mut index: usize, scope_end: usize) {
+        let mut separator = false;
+        while index < scope_end {
+            let FormatElement::StartEntry { end_offset } = self.elements[index] else {
+                unreachable!("fill cleanup visits complete owned entries");
+            };
+            let end = index + end_offset as usize;
+            debug_assert!(
+                end < scope_end,
+                "fill entry stays inside its completed scope"
+            );
+            if separator
+                && matches!(
+                    self.elements[index + 1..end],
+                    [FormatElement::HardLine, FormatElement::HardLine]
+                )
+            {
+                self.elements[end - 1] = FormatElement::BreakParent;
             }
+            separator = !separator;
+            index = end + 1;
         }
-        self.elements.push(FormatElement::EndFill);
-        result.map(|(value, _)| value)
     }
 
     /// Fill entries alternate between content and its following separator.
-    pub(crate) fn fill_entry<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn fill_entry<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.fill_entry_with_handle(write).1
     }
 
-    pub(crate) fn fill_entry_with_handle<T>(
+    pub fn fill_entry_with_handle<T>(
         &mut self,
         write: impl FnOnce(&mut Self) -> T,
     ) -> (FillEntry, T) {
@@ -449,7 +457,7 @@ impl<'a> Writer<'a> {
         (FillEntry { start, end }, result)
     }
 
-    pub(crate) fn extend_fill_entry(&mut self, entry: FillEntry, write: impl FnOnce(&mut Self)) {
+    pub fn extend_fill_entry(&mut self, entry: FillEntry, write: impl FnOnce(&mut Self)) {
         assert_eq!(
             self.elements.len(),
             entry.end,
@@ -463,7 +471,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Writes once and measures only appended instructions; the slice never escapes.
-    pub(crate) fn write_with_clean_text_width<E>(
+    pub fn write_with_clean_text_width<E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<(), E>,
     ) -> Result<Option<usize>, E> {
@@ -473,7 +481,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Observes this construction scope without scanning its instruction stream.
-    pub(crate) fn write_with_intrinsic_lines<T, E>(
+    pub fn write_with_intrinsic_lines<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
     ) -> Result<(T, bool), E> {
@@ -486,7 +494,7 @@ impl<'a> Writer<'a> {
     }
 
     /// Syntax is consumed once; only completed documents are retained.
-    pub(crate) fn record_with_value<T, E>(
+    pub fn record_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
     ) -> Result<(Fragment<'a>, T), E> {
@@ -511,7 +519,7 @@ impl<'a> Writer<'a> {
         Ok((fragment, value))
     }
 
-    pub(crate) fn record_group_with_value<T, E>(
+    pub fn record_group_with_value<T, E>(
         &mut self,
         write: impl FnOnce(&mut Self) -> Result<T, E>,
     ) -> Result<(RecordedGroup<'a>, T), E> {
@@ -529,11 +537,11 @@ impl<'a> Writer<'a> {
     }
 
     /// Wraps a completed scope without recording its syntax or allocating a named group.
-    pub(crate) fn group_fragment(&self, expand: bool, fragment: Fragment<'a>) -> Fragment<'a> {
+    pub fn group_fragment(&self, expand: bool, fragment: Fragment<'a>) -> Fragment<'a> {
         self.group_fragment_with_request(GroupRequest::from(expand), fragment)
     }
 
-    pub(crate) fn group_fragment_with_request(
+    pub fn group_fragment_with_request(
         &self,
         request: GroupRequest,
         fragment: Fragment<'a>,
@@ -541,7 +549,7 @@ impl<'a> Writer<'a> {
         self.group_fragment_with_id(request, None, fragment)
     }
 
-    pub(crate) fn group_fragment_with_id(
+    pub fn group_fragment_with_id(
         &self,
         request: GroupRequest,
         id: Option<GroupId>,
@@ -569,195 +577,18 @@ impl<'a> Writer<'a> {
         )
     }
 
-    /// Joins complete scopes with an optional literal separator.
-    pub(crate) fn join_fragments(
-        &self,
-        left: Fragment<'a>,
-        separate: bool,
-        right: Fragment<'a>,
-    ) -> Fragment<'a> {
-        let effect = left.effect().join(right.effect());
-        let conditional_lines = left.conditional_lines() || right.conditional_lines();
-        let capabilities = match (left.capabilities(), right.capabilities()) {
-            (FragmentCapabilities::General, _) | (_, FragmentCapabilities::General) => {
-                FragmentCapabilities::General
-            }
-            (FragmentCapabilities::Neutral, FragmentCapabilities::Neutral)
-                if !effect.preferred_breaks() && !conditional_lines =>
-            {
-                FragmentCapabilities::Neutral
-            }
-            _ => FragmentCapabilities::FlatEligible,
-        };
-        let elements: &'a [FormatElement<'a>] = if separate {
-            self.allocator.alloc([
-                FormatElement::fragment(left),
-                FormatElement::text(Text::new(" ")),
-                FormatElement::fragment(right),
-            ])
-        } else {
-            self.allocator.alloc([
-                FormatElement::fragment(left),
-                FormatElement::fragment(right),
-            ])
-        };
-        Fragment::new(
-            elements,
-            effect,
-            capabilities,
-            conditional_lines,
-            left.has_intrinsic_lines() || right.has_intrinsic_lines(),
-        )
-    }
-
-    /// Delimiters observe one complete group; the prefix keeps its own outer scope.
-    pub(crate) fn conditional_group_fragment(
-        &self,
-        prefix: Fragment<'a>,
-        request: GroupRequest,
-        open: &'a str,
-        body: Fragment<'a>,
-        close: &'a str,
-    ) -> Fragment<'a> {
-        let open = Text::new(open);
-        let close = Text::new(close);
-        let group_effect = BreakEffect::from_request(request).join(body.effect());
-        let effect = prefix.effect().join(group_effect);
-        let conditional_lines = prefix.conditional_lines() || body.conditional_lines();
-        // Conditional delimiters disappear in a flat projection, and both
-        // complete backing scopes retain their own projection eligibility.
-        let capabilities = FragmentCapabilities::from_flat(
-            prefix.capabilities().permits_flat() && body.capabilities().permits_flat(),
-        );
-        let elements = self.allocator.alloc([
-            FormatElement::fragment(prefix),
-            FormatElement::StartGroup {
-                effect: group_effect,
-                id: None,
-            },
-            FormatElement::if_break(open),
-            FormatElement::StartIndent,
-            FormatElement::SoftLine,
-            FormatElement::fragment(body),
-            FormatElement::EndIndent,
-            FormatElement::SoftLine,
-            FormatElement::if_break(close),
-            FormatElement::EndGroup,
-        ]);
-        Fragment::new(
-            elements,
-            effect,
-            capabilities,
-            conditional_lines,
-            prefix.has_intrinsic_lines()
-                || body.has_intrinsic_lines()
-                || !open.is_single_line()
-                || !close.is_single_line(),
-        )
-    }
-
-    /// Flat views project their backing scopes without propagating backing break flags.
-    pub(crate) fn flat_delimited_fragment(
-        &self,
-        open: &'a str,
-        prefix: FlatFragment<'a>,
-        body: Fragment<'a>,
-        suffix: FlatFragment<'a>,
-        close: &'a str,
-    ) -> Fragment<'a> {
-        let open = Text::new(open);
-        let close = Text::new(close);
-        let capabilities = if !body.capabilities().permits_flat()
-            || !open.is_single_line()
-            || !close.is_single_line()
-        {
-            FragmentCapabilities::General
-        } else if !body.effect().preferred_breaks()
-            && !body.conditional_lines()
-            && matches!(prefix.0.capabilities(), FragmentCapabilities::Neutral)
-            && matches!(body.capabilities(), FragmentCapabilities::Neutral)
-            && matches!(suffix.0.capabilities(), FragmentCapabilities::Neutral)
-        {
-            FragmentCapabilities::Neutral
-        } else {
-            FragmentCapabilities::FlatEligible
-        };
-        let elements = self.allocator.alloc([
-            FormatElement::text(open),
-            FormatElement::flat_fragment(prefix),
-            FormatElement::fragment(body),
-            FormatElement::flat_fragment(suffix),
-            FormatElement::text(close),
-        ]);
-        Fragment::new(
-            elements,
-            body.effect(),
-            capabilities,
-            body.conditional_lines(),
-            body.has_intrinsic_lines() || !open.is_single_line() || !close.is_single_line(),
-        )
-    }
-
-    /// Only prefix and body gain the outer indent; suffix retains its own complete scopes.
-    pub(crate) fn indented_delimited_fragment(
-        &self,
-        open: &'a str,
-        prefix: Fragment<'a>,
-        body: Fragment<'a>,
-        suffix: Fragment<'a>,
-        close: &'a str,
-    ) -> Fragment<'a> {
-        let open = Text::new(open);
-        let close = Text::new(close);
-        let effect = prefix.effect().join(body.effect()).join(suffix.effect());
-        let conditional_lines =
-            prefix.conditional_lines() || body.conditional_lines() || suffix.conditional_lines();
-        let capabilities = FragmentCapabilities::from_flat(
-            prefix.capabilities().permits_flat()
-                && body.capabilities().permits_flat()
-                && suffix.capabilities().permits_flat()
-                && open.is_single_line()
-                && close.is_single_line(),
-        );
-        let elements = self.allocator.alloc([
-            FormatElement::StartGroup { effect, id: None },
-            FormatElement::text(open),
-            FormatElement::StartIndent,
-            FormatElement::fragment(prefix),
-            FormatElement::fragment(body),
-            FormatElement::EndIndent,
-            FormatElement::fragment(suffix),
-            FormatElement::text(close),
-            FormatElement::EndGroup,
-        ]);
-        Fragment::new(
-            elements,
-            effect,
-            capabilities,
-            conditional_lines,
-            prefix.has_intrinsic_lines()
-                || body.has_intrinsic_lines()
-                || suffix.has_intrinsic_lines()
-                || !open.is_single_line()
-                || !close.is_single_line(),
-        )
-    }
-
-    pub(crate) fn write_fragment(&mut self, fragment: Fragment<'a>) {
+    pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
         self.elements.push(FormatElement::fragment(fragment));
     }
 
-    pub(crate) fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
+    pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
-    pub(crate) fn write_neutral_fragment(
-        &mut self,
-        NeutralFragment(fragment): NeutralFragment<'a>,
-    ) {
+    pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
@@ -766,11 +597,7 @@ impl<'a> Writer<'a> {
 
     /// Writes a standard conditional group. Branch-local break requests do not
     /// force an enclosing group; the selected branch still retains its own groups.
-    pub(crate) fn write_alternatives(
-        &mut self,
-        preferred: &[Fragment<'a>],
-        fallback: Fragment<'a>,
-    ) {
+    pub fn write_alternatives(&mut self, preferred: &[Fragment<'a>], fallback: Fragment<'a>) {
         let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
             choices.push(fallback);
@@ -785,14 +612,14 @@ impl<'a> Writer<'a> {
             preferred: choices.into_bump_slice(),
             fallback,
         });
-        // Only the first candidate participates in the language summary. Later
+        // Only the first candidate participates in the intrinsic-line summary. Later
         // choices can introduce layout lines without making them intrinsic.
         self.intrinsic_lines |= alternatives.first().has_intrinsic_lines();
         self.elements
             .push(FormatElement::Alternatives(alternatives));
     }
 
-    pub(crate) fn finish(self) -> Doc<'a> {
+    pub fn finish(self) -> Doc<'a> {
         Doc {
             allocator: self.allocator,
             elements: ThinSlice::new(self.elements.into_bump_slice()).get(),

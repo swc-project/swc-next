@@ -14,7 +14,7 @@ use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError,
-    document::{FlatFragment, Fragment, Writer},
+    document::{FlatFragment, Fragment, Writer, WriterExt},
 };
 
 pub(in crate::formatter) struct ImportArguments {

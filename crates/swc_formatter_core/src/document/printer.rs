@@ -4,7 +4,7 @@ use super::{
     ConditionTarget, FlatSummary, FormatElement,
     text::{Text, Width},
 };
-use crate::{FormatOptions, IndentStyle};
+use crate::{IndentStyle, PrintOptions};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -200,7 +200,7 @@ impl FillStack {
         entry: FillEntry<'a>,
         parents: &[GroupState],
         output: &Output,
-        options: FormatOptions,
+        options: PrintOptions,
         committed_groups: &[Option<Mode>],
     ) -> Mode {
         let FillEntry {
@@ -460,7 +460,7 @@ struct Indentation {
 }
 
 impl Indentation {
-    fn absolute(width: usize, options: FormatOptions) -> Self {
+    fn absolute(width: usize, options: PrintOptions) -> Self {
         let unit = usize::from(options.indent_width.value());
         let (levels, alignment) = match width.checked_div(unit) {
             Some(levels) => (levels, width % unit),
@@ -479,11 +479,11 @@ impl Indentation {
         indent
     }
 
-    fn width(self, options: FormatOptions) -> usize {
+    fn width(self, options: PrintOptions) -> usize {
         self.levels * usize::from(options.indent_width.value()) + self.alignment
     }
 
-    fn indented(mut self, options: FormatOptions) -> Self {
+    fn indented(mut self, options: PrintOptions) -> Self {
         if options.indent_style == IndentStyle::Tab {
             self.levels += self.alignments;
             self.alignment = 0;
@@ -500,7 +500,7 @@ pub(super) fn print<'a>(
     elements: &'a [FormatElement<'a>],
     allocator: &'a Allocator,
     group_count: u32,
-    options: FormatOptions,
+    options: PrintOptions,
 ) -> String {
     let mut output = Output {
         text: String::new(),
@@ -848,7 +848,7 @@ impl Output {
     }
 
     #[inline]
-    fn write_indent(&mut self, options: FormatOptions) {
+    fn write_indent(&mut self, options: PrintOptions) {
         if self.pending_indent.levels != 0 || self.pending_indent.alignment != 0 {
             self.write_pending_indent(options);
         }
@@ -856,7 +856,7 @@ impl Output {
 
     // Keep indentation materialization outside the ordinary text path.
     #[inline(never)]
-    fn write_pending_indent(&mut self, options: FormatOptions) {
+    fn write_pending_indent(&mut self, options: PrintOptions) {
         let indent = std::mem::take(&mut self.pending_indent);
         match options.indent_style {
             IndentStyle::Space => self.text.extend(std::iter::repeat_n(
@@ -871,11 +871,11 @@ impl Output {
     }
 
     #[inline]
-    fn write(&mut self, text: Text<'_>, options: FormatOptions, mode: Mode) {
+    fn write(&mut self, text: Text<'_>, options: PrintOptions, mode: Mode) {
         self.write_parts(text.source(), text.width(), options, mode);
     }
 
-    fn write_parts(&mut self, source: &str, width: Width, options: FormatOptions, mode: Mode) {
+    fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions, mode: Mode) {
         self.write_indent(options);
         self.text.push_str(source);
         let (column, multiline) = Text::from_source_parts(source, width).last_line(self.column);
@@ -885,14 +885,14 @@ impl Output {
         }
     }
 
-    fn line(&mut self, indent: Indentation, options: FormatOptions, mode: Mode) {
+    fn line(&mut self, indent: Indentation, options: PrintOptions, mode: Mode) {
         self.pending_indent = Indentation::default();
         self.text
             .truncate(self.text.trim_end_matches([' ', '\t']).len());
         self.literal_line(indent, options, mode);
     }
 
-    fn literal_line(&mut self, indent: Indentation, options: FormatOptions, mode: Mode) {
+    fn literal_line(&mut self, indent: Indentation, options: PrintOptions, mode: Mode) {
         self.write_indent(options);
         self.invalidate_line(mode);
         self.text.push_str(options.line_ending.as_str());
@@ -969,7 +969,7 @@ impl<'a> Probe<'a> {
         request: ProbeRequest<'a, '_, K>,
         parents: &[GroupState],
         output: &Output,
-        options: FormatOptions,
+        options: PrintOptions,
         incoming_mode: Mode,
         committed_groups: &[Option<Mode>],
     ) -> bool {

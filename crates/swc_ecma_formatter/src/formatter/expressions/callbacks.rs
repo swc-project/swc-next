@@ -712,7 +712,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 | ExprData::NullLiteral(_)
                 | ExprData::BigIntLiteral(_) => return true,
                 ExprData::RegExpLiteral(literal) => {
-                    return crate::text_width::width(ast.get_utf8(literal.pattern(ast))) <= 5;
+                    return swc_next_formatter_core::measure_text_width(
+                        ast.get_utf8(literal.pattern(ast)),
+                    ) <= 5;
                 }
                 ExprData::TemplateLiteral(template) => {
                     if template.quasis(ast).iter().any(|id| {

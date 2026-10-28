@@ -11,7 +11,7 @@ use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
 use crate::{
     FormatError, QuoteStyle,
-    document::{ConditionTarget, FillEntry, Fragment, GroupId, Writer},
+    document::{ConditionTarget, FillEntry, Fragment, GroupId, Writer, WriterExt},
 };
 
 #[derive(Default)]

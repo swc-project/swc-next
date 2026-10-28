@@ -10,7 +10,6 @@
 mod document;
 mod formatter;
 mod options;
-mod text_width;
 
 use std::{error::Error, fmt};
 
@@ -112,7 +111,7 @@ pub fn format_ast(ast: &Ast<'_>, options: FormatOptions) -> Result<String, Forma
     let allocator = Allocator::new();
     let mut writer = document::Writer::new(&allocator);
     formatter::Formatter::new(ast, options, &allocator).format_program(&mut writer)?;
-    let mut output = writer.finish().print(options);
+    let mut output = writer.finish().print(options.into());
     if ast.source().starts_with('\u{feff}') {
         output.insert(0, '\u{feff}');
     }
