@@ -28,7 +28,7 @@ use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePref
 use super::source::is_source_whitespace;
 use super::statements::{IncomingStatement, StatementBodyLeading};
 use super::suppression::{
-    ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
+    ContentMode, DelimitedFollowing, DelimitedSourceGap, DelimitedSuppression, SuppressionPosition,
     is_suppression_comment,
 };
 use super::types::generics::{TypeListKind, TypeListPrefix};
@@ -199,6 +199,41 @@ struct FieldSuffix<'ast> {
 enum ClassMemberTerminal {
     Canonical { span: Span, semicolon: bool },
     Source(Span),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ClassMemberEnd {
+    Token,
+    LineComment,
+}
+
+struct ClassMemberBoundary<'ast> {
+    following: bool,
+    layout: ClassMemberBoundaryLayout<'ast>,
+}
+
+enum ClassMemberBoundaryLayout<'ast> {
+    Formatted(ClassMemberGap<'ast>),
+    Source(DelimitedSourceGap),
+}
+
+impl ClassMemberBoundary<'_> {
+    fn requires_terminator(&self, terminal: ClassMemberEnd) -> bool {
+        if !self.following || terminal == ClassMemberEnd::LineComment {
+            return false;
+        }
+        match &self.layout {
+            ClassMemberBoundaryLayout::Formatted(gap) => {
+                matches!(
+                    gap.trailing.gap(),
+                    CommentGap::Source(LineConstraint::SameLine)
+                ) && !gap.blank_before
+            }
+            ClassMemberBoundaryLayout::Source(gap) => {
+                !gap.contains_line && gap.following == LineConstraint::SameLine
+            }
+        }
+    }
 }
 
 struct ClassMemberGap<'ast> {
@@ -1090,10 +1125,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node_span.end,
                     next_span.map_or(content.end, |span| span.start),
                 );
-                let member_gap = current
-                    .sibling
-                    .is_none()
-                    .then(|| self.prepare_class_member_gap(gap, next_span));
+                let layout = if current.sibling.is_none() {
+                    ClassMemberBoundaryLayout::Formatted(
+                        self.prepare_class_member_gap(gap, next_span),
+                    )
+                } else {
+                    let gap = self.prepare_delimited_source_gap(
+                        gap,
+                        if next.is_some() {
+                            DelimitedFollowing::Node
+                        } else {
+                            DelimitedFollowing::End
+                        },
+                    );
+                    ClassMemberBoundaryLayout::Source(gap)
+                };
+                let boundary = ClassMemberBoundary {
+                    following: next.is_some(),
+                    layout,
+                };
                 if !matches!(current.content, ClassMemberContent::Verbatim) {
                     if let Some(head) = current.removed {
                         self.format_removed_decorator_head(head, writer)?;
@@ -1107,37 +1157,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )?;
                     }
                 }
-                self.format_class_member(current.content, node_span, next.as_ref(), writer)?;
-                let end = if let Some(member_gap) = member_gap {
-                    self.format_class_member_gap(member_gap, writer)?
-                } else {
-                    let source = self.format_delimited_source_gap(
-                        gap,
-                        if next.is_some() {
-                            DelimitedFollowing::Node
-                        } else {
-                            DelimitedFollowing::End
-                        },
-                        writer,
-                    )?;
-                    if next.is_some() {
-                        source
-                            .following
-                            .write(writer, FlatSeparator::Space, Writer::hard_line);
-                    }
-                    source.end
-                };
+                let terminal = self.format_class_member(
+                    current.content,
+                    node_span,
+                    next.as_ref(),
+                    &boundary,
+                    writer,
+                )?;
+                let end = self.format_class_member_boundary(boundary, terminal, writer)?;
                 let Some(next) = next else {
                     return Ok::<_, FormatError>(end);
                 };
                 current = next;
             }
         })?;
-        self.line_constraint(end, content.end).write(
-            writer,
-            FlatSeparator::Space,
-            Writer::hard_line,
-        );
+        if end.1 == ClassMemberEnd::LineComment {
+            writer.hard_line();
+        } else {
+            self.line_constraint(end.0, content.end).write(
+                writer,
+                FlatSeparator::Space,
+                Writer::hard_line,
+            );
+        }
         writer.text("}");
         Ok(())
     }
@@ -1182,28 +1224,72 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn format_class_member_gap(
+    fn format_class_member_boundary(
         &mut self,
-        gap: ClassMemberGap<'ast>,
+        boundary: ClassMemberBoundary<'ast>,
+        terminal: ClassMemberEnd,
         writer: &mut Writer<'ast>,
-    ) -> Result<u32, FormatError> {
-        self.format_comment_boundary(&gap.trailing, writer)?;
-        let Some(head) = gap.leading else {
-            return Ok(gap.trailing.end());
-        };
-        gap.trailing
-            .gap()
-            .write(writer, FlatSeparator::Space, Writer::hard_line);
-        if gap.blank_before {
-            writer.hard_line();
+    ) -> Result<(u32, ClassMemberEnd), FormatError> {
+        let following = boundary.following;
+        match boundary.layout {
+            ClassMemberBoundaryLayout::Formatted(gap) => {
+                if terminal == ClassMemberEnd::LineComment
+                    && (following || !gap.trailing.is_empty())
+                {
+                    writer.hard_line();
+                    self.format_comment_boundary_after_separator(&gap.trailing, writer)?;
+                } else {
+                    self.format_comment_boundary(&gap.trailing, writer)?;
+                }
+                let Some(head) = gap.leading else {
+                    let end = match gap.trailing.comments().last() {
+                        Some(comment) if comment.kind == CommentKind::Line => {
+                            ClassMemberEnd::LineComment
+                        }
+                        Some(_) => ClassMemberEnd::Token,
+                        None => terminal,
+                    };
+                    return Ok((gap.trailing.end(), end));
+                };
+                if terminal != ClassMemberEnd::LineComment || !gap.trailing.is_empty() {
+                    gap.trailing
+                        .gap()
+                        .write(writer, FlatSeparator::Space, Writer::hard_line);
+                }
+                if gap.blank_before {
+                    writer.hard_line();
+                }
+                let end = head
+                    .comments
+                    .last()
+                    .map_or(gap.trailing.end(), |comment| comment.span.end);
+                self.comments.claim(head.comments)?;
+                self.format_node_head(head, ExpressionStart::None, None, writer)?;
+                Ok((end, ClassMemberEnd::Token))
+            }
+            ClassMemberBoundaryLayout::Source(gap) => {
+                let has_content = gap.source.start != gap.source.end;
+                let supplied = terminal == ClassMemberEnd::LineComment
+                    && (following || has_content)
+                    && !gap.leading_line;
+                if supplied {
+                    writer.hard_line();
+                }
+                let gap = self.format_prepared_delimited_source_gap(gap, writer)?;
+                if following && (!supplied || has_content) {
+                    gap.following
+                        .write(writer, FlatSeparator::Space, Writer::hard_line);
+                }
+                let end = if gap.ends_in_line_comment {
+                    ClassMemberEnd::LineComment
+                } else if has_content {
+                    ClassMemberEnd::Token
+                } else {
+                    terminal
+                };
+                Ok((gap.end, end))
+            }
         }
-        let end = head
-            .comments
-            .last()
-            .map_or(gap.trailing.end(), |comment| comment.span.end);
-        self.comments.claim(head.comments)?;
-        self.format_node_head(head, ExpressionStart::None, None, writer)?;
-        Ok(end)
     }
 
     fn prepare_class_member(
@@ -1323,27 +1409,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: ClassMemberContent<'ast>,
         span: Span,
         following: Option<&PreparedClassMember<'ast>>,
+        boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<ClassMemberEnd, FormatError> {
         match content {
-            ClassMemberContent::Verbatim => self.format_verbatim(span, writer),
-            ClassMemberContent::Method(header) => self.format_method_header(header, writer),
+            ClassMemberContent::Verbatim => return self.format_class_member_source(span, writer),
+            ClassMemberContent::Method(header) => self.format_method_header(header, writer)?,
             ClassMemberContent::Bodyless(method) => {
-                self.format_bodyless_class_method(method, writer)
+                return self.format_bodyless_class_method(method, boundary, writer);
             }
             ClassMemberContent::BodylessValue { prefix, value } => {
                 let end = prefix.end(self.ast);
                 self.format_method_key_prefix(prefix, writer)?;
                 self.format_source_token_gap(end, value.span(self.ast).start, false, writer)?;
-                self.format_verbatim(value.span(self.ast), writer)
+                return self.format_class_member_source(value.span(self.ast), writer);
             }
-            ClassMemberContent::Field(field) => self.format_class_field(field, following, writer),
-            ClassMemberContent::Static(block) => self.format_static_block(block, writer),
+            ClassMemberContent::Field(field) => {
+                return self.format_class_field(field, following, boundary, writer);
+            }
+            ClassMemberContent::Static(block) => self.format_static_block(block, writer)?,
             ClassMemberContent::Index(index) => {
                 let tail = self.format_index_signature(index.signature, writer)?;
-                self.format_class_member_terminal(index.terminal, tail, false, writer)
+                return self.format_class_member_terminal(
+                    index.terminal,
+                    tail,
+                    false,
+                    boundary,
+                    writer,
+                );
             }
         }
+        Ok(ClassMemberEnd::Token)
     }
 
     fn source_bodyless_class_method(
@@ -1409,13 +1505,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_bodyless_class_method(
         &mut self,
         method: SourceBodylessClassMethod<'ast>,
+        boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<ClassMemberEnd, FormatError> {
         let tail = writer.group(false, |writer| {
             self.format_method_key_prefix(method.prefix, writer)?;
             self.format_bodyless_signature_suffix(method.signature, writer)
         })?;
-        self.format_class_member_terminal(method.terminal, tail, false, writer)
+        self.format_class_member_terminal(method.terminal, tail, false, boundary, writer)
     }
 
     fn source_class_index_signature(
@@ -1468,15 +1565,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         terminal: ClassMemberTerminal,
         tail: Option<ExpressionTail<'ast>>,
         following_requires_separator: bool,
+        boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<ClassMemberEnd, FormatError> {
         match terminal {
             ClassMemberTerminal::Canonical { span, semicolon } => {
                 let tail = self.capture_expression_tail(span, tail)?;
-                if semicolon || following_requires_separator {
+                let end = if tail.as_ref().is_some_and(|tail| {
+                    tail.comments
+                        .last()
+                        .is_some_and(|comment| comment.kind == CommentKind::Line)
+                }) {
+                    ClassMemberEnd::LineComment
+                } else {
+                    ClassMemberEnd::Token
+                };
+                if semicolon || following_requires_separator || boundary.requires_terminator(end) {
                     writer.text(";");
                 }
-                self.format_expression_tail(tail, writer)
+                self.format_expression_tail(tail, writer)?;
+                Ok(end)
             }
             ClassMemberTerminal::Source(span) => {
                 self.format_source_class_member_terminal(span, tail, writer)
@@ -1489,7 +1597,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         span: Span,
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<ClassMemberEnd, FormatError> {
         // A child can leave pending trivia before this actual terminal.
         // Comments inside the terminal stay with its source punctuation.
         let before = tail.and_then(|tail| {
@@ -1513,7 +1621,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.hard_line();
             }
         }
-        self.format_verbatim(span, writer)
+        self.format_class_member_source(span, writer)
+    }
+
+    fn format_class_member_source(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ClassMemberEnd, FormatError> {
+        let comments = self.comments.between(span)?;
+        let end = if comments.last().is_some_and(|comment| {
+            comment.kind == CommentKind::Line
+                && self
+                    .source(Span::new(comment.span.end, span.end))
+                    .chars()
+                    .all(super::source::is_source_horizontal_whitespace)
+        }) {
+            ClassMemberEnd::LineComment
+        } else {
+            ClassMemberEnd::Token
+        };
+        self.comments.claim(comments)?;
+        writer.literal_text(self.source(span));
+        Ok(end)
     }
 
     fn source_class_field(
@@ -1858,8 +1988,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         field: SourceClassField<'ast>,
         following: Option<&PreparedClassMember<'ast>>,
+        boundary: &ClassMemberBoundary<'_>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<ClassMemberEnd, FormatError> {
         let SourceClassField {
             key,
             computed,
@@ -1920,7 +2051,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let following_requires_separator =
             following.is_some_and(|member| self.class_member_needs_field_separator(member));
-        self.format_class_member_terminal(terminal, tail, following_requires_separator, writer)
+        self.format_class_member_terminal(
+            terminal,
+            tail,
+            following_requires_separator,
+            boundary,
+            writer,
+        )
     }
 
     fn class_member_needs_field_separator(&self, member: &PreparedClassMember<'ast>) -> bool {
