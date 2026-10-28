@@ -310,7 +310,7 @@ struct RetainedSourceParentheses<'ast> {
 
 /// The head and delimiter owners share this decision before either prints.
 #[derive(Clone, Copy)]
-struct DiagnosticHeadFrame {
+pub(super) struct DiagnosticHeadFrame {
     boundary: SourceParentheses,
     frontier: DiagnosticHeadFrontier,
     kind: DiagnosticHeadFrameKind,
@@ -329,7 +329,7 @@ struct PreparedHeadEnclosure<'ast, 'plan> {
 }
 
 /// Packet ownership is independent of its placement around a replacement pair.
-enum PreparedDiagnosticHeadFrame<'ast> {
+pub(super) enum PreparedDiagnosticHeadFrame<'ast> {
     Inside(DiagnosticHeadFrame),
     BeforeGenerated {
         prefix: &'ast [Comment],
@@ -337,8 +337,23 @@ enum PreparedDiagnosticHeadFrame<'ast> {
     },
 }
 
+impl PreparedDiagnosticHeadFrame<'_> {
+    pub(super) fn has_leading_line_comment(&self) -> bool {
+        match self {
+            Self::BeforeGenerated { packet, .. } => match packet {
+                DiagnosticHeadLease::Claimed(comments) | DiagnosticHeadLease::Pending(comments) => {
+                    comments
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+                }
+            },
+            Self::Inside(_) => false,
+        }
+    }
+}
+
 /// A caller head has already been claimed; an interior source head is pending.
-enum DiagnosticHeadLease<'ast> {
+pub(super) enum DiagnosticHeadLease<'ast> {
     Claimed(&'ast [Comment]),
     Pending(&'ast [Comment]),
 }
@@ -4325,6 +4340,44 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression,
             annotation: annotation.comment,
         })
+    }
+
+    pub(super) fn prepare_property_diagnostic_head(
+        &self,
+        content: &ExpressionContent,
+        context: ExpressionContext<'ast>,
+        head: &NodeHead<'ast>,
+    ) -> Option<PreparedDiagnosticHeadFrame<'ast>> {
+        if self.diagnostic_lines.is_empty() {
+            return None;
+        }
+        let context = self.with_head_scope(context, content);
+        let frame = self.prepare_diagnostic_head_frame(content, context)?;
+        Some(self.prepare_diagnostic_head_placement(frame, head))
+    }
+
+    pub(super) fn format_property_diagnostic_head(
+        &mut self,
+        expression: Expr,
+        content: ExpressionContent,
+        resolved: ResolvedExpressionHead<'ast>,
+        frame: PreparedDiagnosticHeadFrame<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let context = self.with_head_scope(context, &content);
+        self.format_expression_head_enclosure(
+            expression,
+            Some(content),
+            PreparedHeadEnclosure {
+                resolved,
+                frame: Some(frame),
+                exterior: None,
+            },
+            context,
+            None,
+            writer,
+        )
     }
 
     pub(in crate::formatter) fn format_prepared_expression_with_resolved_head(

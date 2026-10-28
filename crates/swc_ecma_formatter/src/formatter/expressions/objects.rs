@@ -671,11 +671,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(property.span(ast), writer)?;
             return Ok(None);
         }
-        // Record the key before claiming its later source packet. Emission order
-        // belongs to the property header, while comment leases remain in source order.
-        let key = if boundary.header.is_empty() {
-            None
-        } else {
+        let value = property.value(ast);
+        let content = self.expression_content(value);
+        // Prepare the physical prefix before the RHS when its diagnostic frame
+        // needs a pending comment lease. Unaffected properties stay on the direct path.
+        let prepare_key = !boundary.header.is_empty()
+            || (!self.diagnostic_lines.is_empty()
+                && content.parentheses.is_some()
+                && boundary.suppression.value == ContentMode::Formatted);
+        let key = if prepare_key {
             let (key, ()) = writer.record_with_value(|writer| {
                 self.format_object_key(
                     property,
@@ -686,11 +690,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             })?;
             self.comments.claim(boundary.comments)?;
-            self.format_property_header(&boundary.header, writer)?;
             Some(key)
+        } else {
+            None
         };
-        let value = property.value(ast);
-        let content = self.expression_content(value);
         let context = ExpressionContext::at(ExpressionPosition::PropertyValue)
             .with_content_mode(boundary.suppression.value);
         let binding = self.expression_head_binding(boundary.value.leading, value);
@@ -710,6 +713,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             boundary.value.layout
         };
+        let diagnostic_head =
+            if !head_frame && boundary.opening.is_none() && boundary.annotation.is_none() {
+                self.prepare_property_diagnostic_head(
+                    &content,
+                    context,
+                    &NodeHead {
+                        comments: boundary.value.leading,
+                        content_start: boundary.value_start,
+                        layout: CommentRunLayout::GroupedLeading(boundary.value_start),
+                        gap_end: None,
+                    },
+                )
+            } else {
+                None
+            };
+        let diagnostic_head_breaks = diagnostic_head
+            .as_ref()
+            .is_some_and(|frame| frame.has_leading_line_comment());
+        if !boundary.header.is_empty() {
+            self.format_property_header(&boundary.header, writer)?;
+        }
         let before_colon = boundary
             .before
             .key()
@@ -758,7 +782,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // A break is useful only when the key overlaps its indented value by three columns.
             let overlap = usize::from(self.options.indent_width.value()) + 3;
             let has_short_key = clean_width.is_some_and(|width| width < overlap);
-            let layout = if head_layout != PropertyHeadLayout::Inline {
+            let layout = if diagnostic_head_breaks || head_layout != PropertyHeadLayout::Inline {
                 RhsLayout::BreakAfterOperator
             } else {
                 let data = self.property_rhs_content(&content, boundary.suppression.value);
@@ -840,6 +864,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         None,
                         writer,
                         prefix,
+                    );
+                }
+                if let Some(frame) = diagnostic_head {
+                    return self.format_property_diagnostic_head(
+                        value,
+                        content,
+                        ResolvedExpressionHead { head, binding },
+                        frame,
+                        context,
+                        writer,
                     );
                 }
                 let enclosure = boundary.annotation.and_then(|annotation| {
@@ -952,18 +986,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary.value.separator = self.line_constraint(colon.end, value_start);
             return Ok(boundary);
         }
+        // Both packet paths must preserve the covered key's preceding directive.
+        let key_covered =
+            self.diagnostic_range_is_sensitive(Span::new(property.span(self.ast).start, key_end));
         if self
             .comment_binding(comments, gap, None)
             .allows_relocation(None)
         {
-            self.prepare_ordinary_property_packets(&mut boundary, before, after);
-            return Ok(boundary);
+            let before_packet = self.property_packet(before, key_end, colon.start);
+            let after_packet = self.property_packet(after, colon.end, value_start);
+            if !key_covered || before_packet.header.is_empty() && after_packet.header.is_empty() {
+                self.prepare_ordinary_property_packets(&mut boundary, before_packet, after_packet);
+                return Ok(boundary);
+            }
         }
         // An ordinary end-of-line packet leads the complete data property.
         // Own-line packets and semantic/source-bound roles keep their existing owner.
-        let header = before
-            .last()
-            .is_some_and(|last| last.kind == CommentKind::Line)
+        // A preceding diagnostic must remain adjacent to the key it covers.
+        let header = !key_covered
+            && before
+                .last()
+                .is_some_and(|last| last.kind == CommentKind::Line)
             && {
                 let mut previous = key_end;
                 before.iter().all(|&comment| {
@@ -1153,11 +1196,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_ordinary_property_packets(
         &self,
         boundary: &mut ObjectPropertyBoundary<'ast>,
-        before: &'ast [Comment],
-        after: &'ast [Comment],
+        before: PropertyPacket<'ast>,
+        after: PropertyPacket<'ast>,
     ) {
-        let before = self.property_packet(before, boundary.key_end, boundary.colon.start);
-        let after = self.property_packet(after, boundary.colon.end, boundary.value_start);
         let moved = !before.retained.is_empty() && before.leading_breaks != 0;
         // A now precedes B, so its exit at the old colon replaces B's
         // operator-leading edge. A removed header supplies neither edge.
