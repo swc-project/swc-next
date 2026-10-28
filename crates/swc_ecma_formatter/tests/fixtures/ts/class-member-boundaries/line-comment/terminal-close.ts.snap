@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C { a = 1
+// @ts-ignore
+; }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  a = 1
+  // @ts-ignore
+}
