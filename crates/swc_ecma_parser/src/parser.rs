@@ -8634,19 +8634,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_async_function_or_arrow(minimum);
         }
 
-        if tag == TokenTag::LessThan {
-            if self.lang.is_typescript() {
-                let start = self.current_token.start();
-                if let Some(arrow) = self.try_parse_generic_arrow(false, start)? {
-                    return Some(arrow);
-                }
-                if !self.lang.is_jsx() {
-                    return self.parse_type_assertion();
-                }
+        if tag == TokenTag::LessThan && self.lang.is_typescript() {
+            let start = self.current_token.start();
+            if let Some(arrow) = self.try_parse_generic_arrow(false, start)? {
+                return Some(arrow);
             }
-            if self.lang.is_jsx() {
-                return self.parse_jsx_expression();
+            if !self.lang.is_jsx() {
+                return self.parse_type_assertion();
             }
+            return self.parse_jsx_expression();
         }
 
         self.parse_primary_expression(in_cover, minimum)
@@ -8685,6 +8681,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Slash | TokenTag::SlashAssign => self.parse_regexp_literal(),
             TokenTag::LeftBracket => self.parse_array_expression(in_cover),
             TokenTag::LeftBrace => self.parse_object_expression(in_cover),
+            TokenTag::LessThan if self.lang.is_jsx() => {
+                let expression = self.parse_jsx_expression()?;
+                if self.lang.is_typescript() {
+                    self.report(
+                        expression.span(&self.ast),
+                        "JSX expressions must be parenthesized in this position in TypeScript",
+                        ReportOptions::default(),
+                    );
+                }
+                Some(expression)
+            }
             TokenTag::Async => {
                 self.consume_identifier(IdentifierRole::Reference)?;
                 if self.current_token.tag() == TokenTag::Function
@@ -12036,7 +12043,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ..ReportOptions::default()
                 },
             );
-            return None;
         }
         Some(
             self.ast
@@ -15910,6 +15916,37 @@ mod tests {
         let parsed = parse_tokens(&allocator, source);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+    }
+
+    #[test]
+    fn jsx_primary_expressions() {
+        fn parse(source: &str, options: Options) -> (bool, usize) {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            let statements = parsed.ast.root_program().body(&parsed.ast).len();
+            (!parsed.diagnostics.is_empty(), statements)
+        }
+
+        let jsx = Options {
+            lang: Lang::Jsx,
+            ..Options::default()
+        };
+        let tsx = Options {
+            lang: Lang::Tsx,
+            ..jsx
+        };
+
+        assert!(!has_errors("new <a/>();", jsx));
+
+        assert!(!has_errors("class A extends <a/> {}", jsx));
+
+        let (errors, statements) = parse("new <a/>();", tsx);
+        assert!(errors);
+        assert_eq!(statements, 1);
+
+        let (errors, statements) = parse("class A extends <a/> {}", tsx);
+        assert!(errors);
+        assert_eq!(statements, 1);
     }
 
     #[test]
