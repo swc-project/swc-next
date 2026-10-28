@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ b /* a */ // l
+: 1, k: (/* head */ first = second) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  /* a */ // l
+  b: 1,
+  k: /* head */ (first = second),
+});
