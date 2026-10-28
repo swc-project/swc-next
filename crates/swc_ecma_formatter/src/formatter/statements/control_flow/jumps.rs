@@ -205,6 +205,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             let mut context = ExpressionContext::at(ExpressionPosition::Statement);
             loop {
+                if context.is_verbatim() {
+                    return Ok(self.comment_binding(comments, span, None));
+                }
                 let data = self.ast.expr_data(expression);
                 match data {
                     ExprData::CallExpression(_) | ExprData::NewExpression(_) => {
