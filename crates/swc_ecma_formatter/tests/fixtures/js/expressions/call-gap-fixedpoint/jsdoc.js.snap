@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {string} */
+let value = 1;
+f(value,
+
+second);
+---------- Options ----------
+{}
+---------- Output ----------
+/** @type {string} */
+let value = 1;
+f(
+  value,
+
+  second,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/** @type {string} */
+let value = 1
+f(
+  value,
+
+  second,
+)

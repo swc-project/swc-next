@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first
+
+, /* ordinary */ second /* z */);
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  first,
+
+  /* ordinary */ second /* z */,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+f(
+  first,
+
+  /* ordinary */ second /* z */,
+)

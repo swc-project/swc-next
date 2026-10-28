@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/*#__PURE__*/ f(first,
+
+second());
+---------- Options ----------
+{}
+---------- Output ----------
+/*#__PURE__*/ f(
+  first,
+
+  second(),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/*#__PURE__*/ f(
+  first,
+
+  second(),
+)
