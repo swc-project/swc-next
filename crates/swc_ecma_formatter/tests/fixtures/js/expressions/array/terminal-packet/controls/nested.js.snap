@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f([x // @ts-ignore
+, /* c */ ]);
+---------- Options ----------
+{}
+---------- Output ----------
+f([
+  x // @ts-ignore
+  /* c */]);

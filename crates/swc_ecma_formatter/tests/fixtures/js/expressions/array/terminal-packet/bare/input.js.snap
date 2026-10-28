@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+z = [x];
+---------- Options ----------
+{}
+---------- Output ----------
+z = [x];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+z = [x]
