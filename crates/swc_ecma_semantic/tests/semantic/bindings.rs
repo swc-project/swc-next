@@ -1,4 +1,225 @@
 use super::*;
+use swc_next_ecma_semantic::ScopeModel;
+
+#[test]
+fn catch_linked_symbols() {
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        ..script
+    };
+    for options in [script, ts_script] {
+        assert_linked_symbols(
+            "var e; try {} catch (e) { var e = 1; e; } e;",
+            options,
+            b"e",
+            &[2],
+        );
+
+        assert_linked_symbols("try {} catch (e) { var e; } var e; e;", options, b"e", &[2]);
+
+        assert_linked_symbols(
+            "var e; try {} catch (e) { var e; var e; }",
+            options,
+            b"e",
+            &[2],
+        );
+
+        assert_linked_symbols(
+            "var e; try {} catch (e) { try {} catch (e) { var e; } }",
+            options,
+            b"e",
+            &[3],
+        );
+
+        assert_linked_symbols(
+            "try {} catch (e) { var e; } try {} catch (e) { var e; }",
+            options,
+            b"e",
+            &[3],
+        );
+
+        assert_linked_symbols(
+            "try {} catch (e) { for (var e of values) e; } e;",
+            options,
+            b"e",
+            &[2],
+        );
+
+        assert_linked_symbols(
+            "try {} catch (e) { var [e] = values; } e;",
+            options,
+            b"e",
+            &[2],
+        );
+
+        assert_linked_symbols("var e; try {} catch (e) { e; }", options, b"e", &[1, 1]);
+
+        assert_linked_symbols(
+            "var e; try {} catch (e) { function f() { var e; } }",
+            options,
+            b"e",
+            &[1, 1, 1],
+        );
+    }
+}
+
+#[test]
+fn parameter_linked_symbols() {
+    let module = Options::default();
+    let ts_module = ts_module_options();
+    for options in [module, ts_module] {
+        assert_linked_symbols(
+            "function f(a = 1) { var a; return a; }",
+            options,
+            b"a",
+            &[2],
+        );
+
+        assert_linked_symbols(
+            "function f(a = 1, read = () => a) { var a; a = 2; return read(); }",
+            options,
+            b"a",
+            &[2],
+        );
+
+        assert_linked_symbols(
+            "function f(a = 1) { try {} catch (a) { var a; } return a; }",
+            options,
+            b"a",
+            &[3],
+        );
+
+        assert_linked_symbols("function f(a) { var a; return a; }", options, b"a", &[1]);
+
+        assert_linked_symbols(
+            "function f(a = 1) { function g() { var a; } }",
+            options,
+            b"a",
+            &[1, 1],
+        );
+    }
+
+    assert_linked_symbols(
+        "function f(a = 1) { type a = number; var a; }",
+        ts_module,
+        b"a",
+        &[2],
+    );
+
+    assert_linked_symbols(
+        "function f(a = 1) { var a; function a() {} return a; }",
+        module,
+        b"a",
+        &[1, 1],
+    );
+
+    assert_linked_symbols(
+        "function f(a = 1) { function a() {} var a; return a; }",
+        module,
+        b"a",
+        &[1, 1],
+    );
+}
+
+#[test]
+fn annex_b_linked_symbols() {
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let ts_script = Options {
+        lang: Lang::Ts,
+        ..script
+    };
+    for options in [script, ts_script] {
+        assert_linked_symbols(
+            "var f; { function f() { return f; } } f;",
+            options,
+            b"f",
+            &[2],
+        );
+
+        assert_linked_symbols("{ function f() { return f; } } f;", options, b"f", &[2]);
+
+        assert_linked_symbols(
+            "var f; { function f() {} } { function f() {} } f;",
+            options,
+            b"f",
+            &[3],
+        );
+
+        assert_linked_symbols(
+            "if (condition) function f() { return f; } f;",
+            options,
+            b"f",
+            &[2],
+        );
+
+        assert_linked_symbols(
+            "try {} catch (f) { var f; } { function f() {} } f;",
+            options,
+            b"f",
+            &[3],
+        );
+
+        assert_linked_symbols(
+            "'use strict'; var f; { function f() {} } f;",
+            options,
+            b"f",
+            &[1, 1],
+        );
+
+        assert_linked_symbols("let f; { function f() {} } f;", options, b"f", &[1, 1]);
+
+        assert_linked_symbols(
+            "function outer(f = 1) { { function f() {} } return f; }",
+            options,
+            b"f",
+            &[1, 1],
+        );
+    }
+}
+
+#[track_caller]
+fn assert_linked_symbols(source: &str, options: Options, name: &[u8], group_sizes: &[usize]) {
+    let allocator = Allocator::new();
+    for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
+        let (ast, semantic) =
+            analyze_with_options(&allocator, source, options, AnalyzeOptions { check_syntax });
+        let symbols = semantic
+            .iter_symbols()
+            .filter(|entry| ast.get_wtf8(entry.symbol.name).as_bytes() == name)
+            .map(|entry| entry.id)
+            .collect::<Vec<_>>();
+        assert_eq!(symbols.len(), group_sizes.iter().sum::<usize>());
+        let mut groups = Vec::new();
+        for &symbol in &symbols {
+            let mut group = semantic.linked_symbols(symbol).collect::<Vec<_>>();
+            group.sort_unstable();
+            assert!(group.contains(&symbol));
+            assert!(group.windows(2).all(|pair| pair[0] != pair[1]));
+            assert!(group.iter().all(|member| symbols.contains(member)));
+            groups.push(group);
+        }
+        let mut unique = groups.clone();
+        unique.sort_unstable();
+        unique.dedup();
+        assert_eq!(unique.iter().map(Vec::len).sum::<usize>(), symbols.len());
+        let mut sizes = unique.iter().map(Vec::len).collect::<Vec<_>>();
+        sizes.sort_unstable();
+        assert_eq!(sizes, group_sizes);
+        let model = ScopeModel::new(semantic);
+        for (symbol, expected) in symbols.into_iter().zip(groups) {
+            let mut group = model.linked_symbols(symbol).collect::<Vec<_>>();
+            group.sort_unstable();
+            assert_eq!(group, expected);
+        }
+    }
+}
 
 #[test]
 fn hoisting_variables_keep_lexical_bindings() {

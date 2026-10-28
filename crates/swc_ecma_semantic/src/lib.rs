@@ -27,7 +27,7 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{Ast, AstWtf8, Diagnostic, NodeId, ScopeId, SymbolId, VisitWith};
 
 use crate::{
-    binder::{Range, TsMemberIndex},
+    binder::{Range, SymbolLinks, TsMemberIndex},
     builder::SemanticBuilder,
     scope::ScopeTree,
 };
@@ -89,6 +89,7 @@ pub struct Semantic<'a> {
     jsx_usages: ArenaVec<'a, JsxUsage>,
     /// Every symbol, in declaration order, indexed by [`SymbolId`].
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
+    symbol_links: SymbolLinks<'a>,
     /// Every reference, in source order, indexed by [`ReferenceId`].
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
     reference_candidates: binder::ReferenceCandidates<'a>,
@@ -153,6 +154,20 @@ impl<'a> Semantic<'a> {
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id]
+    }
+
+    /// Symbols linked by JavaScript binding rules.
+    ///
+    /// Includes `id` exactly once, along with every transitively linked symbol,
+    /// in unspecified order. Ordinary symbols yield only themselves. Catch vars,
+    /// split parameter/body vars, and Annex B function bindings can couple names
+    /// without sharing a binding identity, scope, or declaration flags.
+    /// Their declaration names and references must be renamed together.
+    ///
+    /// This describes name coupling only. The chosen name must still avoid
+    /// capture and preserve dynamic names and external interfaces.
+    pub fn linked_symbols(&self, id: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
+        self.symbol_links.symbols(id)
     }
 
     /// The reference with the given id.

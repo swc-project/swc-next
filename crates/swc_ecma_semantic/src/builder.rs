@@ -1002,6 +1002,10 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         }
         self.enter_node(node.node_id());
         node.visit_children_with(self);
+        if self.scope.get(self.current_scope).kind == ScopeKind::FunctionBody {
+            self.symbols
+                .link_parameter_vars(&self.scope, self.current_scope);
+        }
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::FunctionBody(node));
     }

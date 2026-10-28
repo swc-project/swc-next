@@ -178,6 +178,10 @@ impl<'a> SymbolTracker<'a> {
         // The syntax node continues to identify the lexical function. The
         // companion declaration only contributes to the outer var symbol.
         let (symbol, _) = self.declare_symbol(tree, declaration, existing, false);
+        let lexical = self
+            .symbol_of_node(name.node_id())
+            .expect("function name is bound");
+        self.symbol_links.link(lexical, symbol);
         if existing.is_none() {
             self.insert_scope_binding(tree, target, declaration.name, symbol);
         }

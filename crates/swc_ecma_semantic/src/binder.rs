@@ -1,4 +1,4 @@
-use std::hash::BuildHasher;
+use std::{hash::BuildHasher, iter::successors, mem::swap};
 
 use hashbrown::HashMap;
 use rustc_hash::FxBuildHasher;
@@ -1789,12 +1789,94 @@ impl TsSourceExports<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct SymbolLink {
+    parent: SymbolId,
+    next: SymbolId,
+    size: usize,
+}
+
+impl SymbolLink {
+    fn singleton(symbol: SymbolId) -> Self {
+        Self {
+            parent: symbol,
+            next: symbol,
+            size: 1,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct SymbolLinks<'a> {
+    links: ArenaHashMap<'a, SymbolId, SymbolLink>,
+}
+
+impl<'a> SymbolLinks<'a> {
+    pub(crate) fn new_in(allocator: &'a Allocator) -> Self {
+        Self {
+            links: ArenaHashMap::new_in(allocator),
+        }
+    }
+
+    pub(crate) fn symbols(&self, symbol: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
+        successors(Some(symbol), move |current| {
+            self.links
+                .get(current)
+                .map(|link| link.next)
+                .filter(|&next| next != symbol)
+        })
+    }
+
+    pub(crate) fn link(&mut self, left: SymbolId, right: SymbolId) {
+        if left == right {
+            return;
+        }
+        let mut left_root = self.root(left);
+        let mut right_root = self.root(right);
+        if left_root == right_root {
+            return;
+        }
+
+        // Splice the two circular member lists without visiting their members.
+        let left_next = self.links.get(&left).map_or(left, |link| link.next);
+        let right_next = self.links.get(&right).map_or(right, |link| link.next);
+        self.links
+            .entry(left)
+            .or_insert_with(|| SymbolLink::singleton(left))
+            .next = right_next;
+        self.links
+            .entry(right)
+            .or_insert_with(|| SymbolLink::singleton(right))
+            .next = left_next;
+
+        // Union by size bounds future root lookups; ordinary singleton symbols
+        // have no entry and allocate no constraint storage.
+        if self.links[&left_root].size < self.links[&right_root].size {
+            swap(&mut left_root, &mut right_root);
+        }
+        let right_size = self.links[&right_root].size;
+        self.links.get_mut(&left_root).unwrap().size += right_size;
+        self.links.get_mut(&right_root).unwrap().parent = left_root;
+    }
+
+    fn root(&self, mut symbol: SymbolId) -> SymbolId {
+        while let Some(link) = self.links.get(&symbol) {
+            if link.parent == symbol {
+                break;
+            }
+            symbol = link.parent;
+        }
+        symbol
+    }
+}
+
 /// Collects symbols and references during the AST walk and finalizes
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
     internal_names: crate::InternalNames<'a>,
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
+    symbol_links: SymbolLinks<'a>,
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
     jsx_usages: ArenaVec<'a, crate::JsxUsage>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
@@ -1998,6 +2080,7 @@ impl<'a> SymbolTracker<'a> {
             allocator,
             internal_names: crate::InternalNames::new_in(allocator),
             symbols: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
+            symbol_links: SymbolLinks::new_in(allocator),
             references: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 4), allocator),
             jsx_usages: ArenaVec::new_in(allocator),
             declarations: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
@@ -3353,6 +3436,34 @@ impl<'a> SymbolTracker<'a> {
                     })
                     .entry(name)
                     .or_insert(declaration_id);
+                if tree.node_kind(scope.get(scope_id).node) == NodeKind::CatchClause
+                    && let Some(catch) = self.own_binding(scope_id, name)
+                    && self.symbols[catch].flags.contains(SymbolFlags::CATCH_VAR)
+                {
+                    self.symbol_links.link(declaration.symbol, catch);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn link_parameter_vars(&mut self, scopes: &ScopeTree<'a>, body: ScopeId) {
+        self.sync_scope_maps_from(scopes);
+        let parameters = scopes.get(body).parent.expect("function body has a parent");
+        // Inspect the completed body so a function implementation suppresses
+        // parameter-to-var initialization independently of declaration order.
+        for (&name, &parameter) in &self.scope_maps[parameters] {
+            if self.symbols[parameter]
+                .flags
+                .contains(SymbolFlags::PARAMETER)
+                && let Some(var) = self.own_binding(body, name)
+                && self.symbols[var]
+                    .flags
+                    .contains(SymbolFlags::FUNCTION_SCOPED_VAR)
+                && !self.symbols[var]
+                    .flags
+                    .contains(SymbolFlags::FUNCTION_IMPLEMENTATION)
+            {
+                self.symbol_links.link(parameter, var);
             }
         }
     }
@@ -4305,6 +4416,7 @@ impl<'a> SymbolTracker<'a> {
         Semantic {
             scopes,
             symbols: self.symbols,
+            symbol_links: self.symbol_links,
             references: self.references,
             jsx_usages: self.jsx_usages,
             reference_candidates,

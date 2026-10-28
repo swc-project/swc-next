@@ -12,6 +12,7 @@ use crate::{
     BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
     NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
     Semantic, Symbol, SymbolFlags, SymbolIterator,
+    binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
 
@@ -24,6 +25,7 @@ use crate::{
 pub struct ScopeModel<'a> {
     scopes: ScopeTree<'a>,
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
+    symbol_links: SymbolLinks<'a>,
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
@@ -54,6 +56,7 @@ impl<'a> ScopeModel<'a> {
         Self {
             scopes: semantic.scopes,
             symbols: semantic.symbols,
+            symbol_links: semantic.symbol_links,
             references: semantic.references,
             declarations: semantic.declarations,
             redeclarations: semantic.redeclarations,
@@ -71,6 +74,11 @@ impl<'a> ScopeModel<'a> {
     /// The symbol with the given id.
     pub fn symbol(&self, id: SymbolId) -> Symbol {
         self.symbols[id]
+    }
+
+    /// Retained name-coupling constraints; see [`Semantic::linked_symbols`].
+    pub fn linked_symbols(&self, id: SymbolId) -> impl Iterator<Item = SymbolId> + '_ {
+        self.symbol_links.symbols(id)
     }
 
     /// The reference with the given id.
