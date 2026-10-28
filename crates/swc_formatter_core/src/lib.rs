@@ -9,14 +9,21 @@
 
 mod document;
 mod options;
-mod text_width;
 
 pub use document::{
     ConditionTarget, Doc, FillEntry, FillSeparatorPolicy, FlatFragment, Fragment, GroupId,
     GroupRequest, NeutralFragment, RecordedGroup, Writer,
 };
 pub use options::{IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding, PrintOptions};
-pub use text_width::width as measure_text_width;
+
+/// Measures displayed columns using Unicode string width in a non-CJK context.
+///
+/// Physical lines are handled by document line instructions. Cached text widths
+/// and layout probes measure each text instruction; this function measures the
+/// complete supplied string, including any Unicode sequences it contains.
+pub fn measure_text_width(source: &str) -> usize {
+    unicode_width::UnicodeWidthStr::width(source)
+}
 
 /// Version of the serialized document buffer.
 pub const DOCUMENT_FORMAT_VERSION: u32 = 0;

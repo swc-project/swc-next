@@ -7,8 +7,7 @@ const o = { لالالا: veryVeryVeryVeryVeryVeryLongReceiver.longProperty.long
 {"printWidth":35}
 ---------- Output ----------
 const o = {
-  لالالا:
-    veryVeryVeryVeryVeryVeryLongReceiver
-      .longProperty.longProperty
-      .longProperty,
+  لالالا: veryVeryVeryVeryVeryVeryLongReceiver
+    .longProperty.longProperty
+    .longProperty,
 };

@@ -1,6 +1,6 @@
 //! Cached display widths for single-line borrowed text.
 
-use crate::text_width;
+use crate::measure_text_width;
 
 use super::thin::ThinStr;
 
@@ -28,12 +28,12 @@ pub(super) struct Width {
 impl<'a> Text<'a> {
     #[inline]
     pub(super) fn new(source: &'a str) -> Self {
-        let width = if text_width::ascii_width(source).is_some() {
+        let width = if source.bytes().all(|byte| (0x20..=0x7f).contains(&byte)) {
             Width {
                 kind: WidthKind::Ascii,
                 value: 0,
             }
-        } else if source.chars().any(char::is_control) {
+        } else if memchr::memchr2(b'\r', b'\n', source.as_bytes()).is_some() {
             debug_assert!(
                 !source.contains(['\r', '\n']),
                 "physical lines must use literal_text or a line instruction"
@@ -45,7 +45,7 @@ impl<'a> Text<'a> {
         } else {
             Width {
                 kind: WidthKind::Unicode,
-                value: u16::try_from(text_width::unicode_width(source)).unwrap_or(u16::MAX),
+                value: u16::try_from(measure_text_width(source)).unwrap_or(u16::MAX),
             }
         };
         Self { source, width }
@@ -90,7 +90,7 @@ impl<'a> Text<'a> {
                 if self.source().contains(['\r', '\n']) {
                     return None;
                 }
-                text_width::width(self.source())
+                measure_text_width(self.source())
             }
         })
     }
@@ -127,16 +127,10 @@ impl<'a> Text<'a> {
     }
 }
 
-fn advance(mut source: &str, mut column: usize) -> (usize, bool) {
-    while let Some((index, character)) = source
-        .char_indices()
-        .find(|(_, character)| character.is_control())
-    {
-        column += text_width::unicode_width(&source[..index]);
-        if matches!(character, '\r' | '\n') {
-            return (column, true);
-        }
-        source = &source[index + character.len_utf8()..];
+fn advance(source: &str, column: usize) -> (usize, bool) {
+    if let Some(index) = source.find(['\r', '\n']) {
+        (column + measure_text_width(&source[..index]), true)
+    } else {
+        (column + measure_text_width(source), false)
     }
-    (column + text_width::unicode_width(source), false)
 }

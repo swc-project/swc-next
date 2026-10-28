@@ -248,17 +248,17 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     };
     add_clean_text_width(elements, &mut text)?;
     if let Some(width) = text.ascii_width {
-        // This shortcut applies to the complete joined text, including DEL.
+        // ASCII string widths are additive, including control characters.
         return Some(width);
     }
     let Some(CleanUnicodeText::Joined(bytes)) = text.unicode else {
         return Some(text.width);
     };
-    // Clean, non-ASCII text can compose emoji across instruction boundaries.
+    // Unicode sequences can compose across clean instruction boundaries.
     // The synthesized spelling belongs to this measurement, not to the Doc.
     let mut joined = String::with_capacity(bytes);
     append_clean_text(elements, &mut joined)?;
-    Some(crate::text_width::width(&joined))
+    Some(crate::measure_text_width(&joined))
 }
 
 fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {

@@ -6,7 +6,4 @@ const pair = ["لالالا", value];
 ---------- Options ----------
 {"printWidth":30}
 ---------- Output ----------
-const pair = [
-  "لالالا",
-  value,
-];
+const pair = ["لالالا", value];
