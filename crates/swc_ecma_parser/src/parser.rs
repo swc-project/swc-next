@@ -207,6 +207,9 @@ bitflags! {
         /// Whether parsing is inside a TypeScript declaration body that is
         /// outside ECMAScript module grammar.
         const IN_TS_CONTAINER_BODY = 1 << 3;
+        /// Type-only binding names ignore Await/Yield; embedded value
+        /// expressions still inherit the enclosing grammatical parameters.
+        const IN_TYPE_BINDING = 1 << 4;
     }
 }
 
@@ -231,6 +234,10 @@ impl TsContext {
 
     fn in_ts_container_body(self) -> bool {
         self.contains(Self::IN_TS_CONTAINER_BODY)
+    }
+
+    fn in_type_binding(self) -> bool {
+        self.contains(Self::IN_TYPE_BINDING)
     }
 }
 
@@ -612,9 +619,15 @@ enum BinaryTypeKind {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TypeParameterContext {
+    Declaration,
+    Signature,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum AngleListKind {
     Arguments,
-    Parameters,
+    Parameters(TypeParameterContext),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2709,11 +2722,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_formal_parameter_pattern().map(Into::into)
     }
 
+    #[inline(always)]
     fn parse_formal_parameter_pattern(&mut self) -> Option<FormalParameterPattern> {
-        match self.current_token.tag() {
-            tag if tag.is_identifier_like() => self
+        if self.current_token.tag().is_identifier_like() {
+            return self
                 .parse_binding_identifier()
-                .map(FormalParameterPattern::BindingIdentifier),
+                .map(FormalParameterPattern::BindingIdentifier);
+        }
+        self.parse_destructuring_parameter_pattern()
+    }
+
+    fn parse_destructuring_parameter_pattern(&mut self) -> Option<FormalParameterPattern> {
+        match self.current_token.tag() {
             TokenTag::LeftBracket => self
                 .parse_array_pattern()
                 .map(FormalParameterPattern::ArrayPattern),
@@ -2794,14 +2814,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.context = context;
         let tail = (|| {
             let id = id?;
-            enter_function_grammar_context(&mut self.context, generator, opts.is_async);
             self.boundary_context = BoundaryContext::empty();
             let type_parameters =
                 if self.lang.is_typescript() && self.current_token.tag() == TokenTag::LessThan {
-                    Some(self.parse_type_parameters(AngleClose::Peel)?)
+                    Some(self.parse_type_parameters(
+                        TypeParameterContext::Declaration,
+                        AngleClose::Peel,
+                    )?)
                 } else {
                     None
                 };
+            enter_function_grammar_context(&mut self.context, generator, opts.is_async);
             let (this_param, params) =
                 self.parse_formal_parameters(FormalParameterKind::FormalParameters, false)?;
             let return_type =
@@ -2969,12 +2992,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             None
         };
-        let type_parameters =
-            if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                Some(self.parse_type_parameters(AngleClose::Peel)?)
-            } else {
-                None
-            };
+        let type_parameters = if self.lang.is_typescript()
+            && is_angle_open(self.current_token.tag())
+        {
+            Some(self.parse_type_parameters(TypeParameterContext::Declaration, AngleClose::Peel)?)
+        } else {
+            None
+        };
         let (super_class, super_type_arguments) = if self.eat(TokenTag::Extends)? {
             let mut super_class = self.parse_left_hand_side_expression(LhsContext::Expression)?;
             let type_arguments = if self.lang.is_typescript() {
@@ -3489,19 +3513,23 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.validate_method_modifiers(key, modifiers);
 
         let function_start = self.current_token.start();
-        let context = enter_function_grammar_context(
-            &mut self.context,
-            modifiers.is_generator,
-            modifiers.is_async,
-        );
+        let context = self.context;
         let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters(AngleClose::Peel)?)
+                    Some(self.parse_type_parameters(
+                        TypeParameterContext::Declaration,
+                        AngleClose::Peel,
+                    )?)
                 } else {
                     None
                 };
+            enter_function_grammar_context(
+                &mut self.context,
+                modifiers.is_generator,
+                modifiers.is_async,
+            );
             let (this_param, params) = self.parse_formal_parameters(
                 FormalParameterKind::UniqueFormalParameters,
                 modifiers.kind == MethodDefinitionKind::Constructor,
@@ -3818,7 +3846,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
 
                 if self.current_token.tag() == TokenTag::Spread {
-                    rest = Some(self.parse_formal_parameter_rest(decorators)?);
+                    rest = Some(self.parse_formal_parameter_rest(kind, decorators)?);
                     if self.eat(TokenTag::Comma)?
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
@@ -3830,12 +3858,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
                 let parameter = if self.lang.is_typescript() {
                     self.parse_formal_parameter::<true>(
+                        kind,
                         allow_parameter_properties,
                         decorators,
                         parameter_start,
                     )
                 } else {
                     self.parse_formal_parameter::<false>(
+                        kind,
                         allow_parameter_properties,
                         decorators,
                         parameter_start,
@@ -3879,6 +3909,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_formal_parameter<const IS_TYPESCRIPT: bool>(
         &mut self,
+        kind: FormalParameterKind,
         allow_parameter_properties: bool,
         decorators: SubRange<Decorator>,
         start: u32,
@@ -3889,7 +3920,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ParameterPropertyModifiers::default()
         };
         let parameter_start = self.current_token.start();
-        let pattern = self.parse_formal_parameter_pattern()?;
+        let pattern = if kind == FormalParameterKind::Signature {
+            self.with_type_binding_context(Self::parse_formal_parameter_pattern)
+        } else {
+            self.parse_formal_parameter_pattern()
+        }?;
         let optional = IS_TYPESCRIPT && self.eat(TokenTag::Question)?;
         let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
             Some(self.parse_type_annotation()?)
@@ -3992,12 +4027,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_formal_parameter_rest(
         &mut self,
+        kind: FormalParameterKind,
         decorators: SubRange<Decorator>,
     ) -> Option<FormalParameterRest> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Spread);
         let start = self.current_token.start();
         self.advance()?;
-        let argument = self.parse_formal_parameter_pattern()?;
+        let argument = if kind == FormalParameterKind::Signature {
+            self.with_type_binding_context(Self::parse_formal_parameter_pattern)
+        } else {
+            self.parse_formal_parameter_pattern()
+        }?;
         let type_annotation =
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
                 Some(self.parse_type_annotation()?)
@@ -5384,7 +5424,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters(AngleClose::Peel)?)
+            Some(self.parse_type_parameters(TypeParameterContext::Declaration, AngleClose::Peel)?)
         } else {
             None
         };
@@ -5412,7 +5452,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         let id = self.parse_binding_identifier()?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters(AngleClose::Peel)?)
+            Some(self.parse_type_parameters(TypeParameterContext::Declaration, AngleClose::Peel)?)
         } else {
             None
         };
@@ -5517,7 +5557,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let start = self.current_token.start();
-        let (body, end) = self.parse_object_type_members()?;
+        let (body, end) = self.parse_object_type_members(TypeParameterContext::Declaration)?;
         Some(self.ast.ts_interface_body(Span::new(start, end), body))
     }
 
@@ -6471,7 +6511,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let start = self.current_token.start();
         self.advance()?;
         let name_start = self.current_token.start();
-        let name = self.parse_binding_identifier()?;
+        let name = self.with_type_binding_context(Self::parse_binding_identifier)?;
         let constraint = self.parse_infer_constraint()?;
         let end = constraint.map_or(name.span(&self.ast).end, |ty| ty.span(&self.ast).end);
         let parameter = self.ast.ts_type_parameter(
@@ -6566,7 +6606,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.checkpoint();
         let result = (|| {
             self.advance()?;
-            if self.parse_binding_pattern().is_none() || !self.speculation_is_clean(&checkpoint) {
+            if self
+                .with_type_binding_context(Self::parse_binding_pattern)
+                .is_none()
+                || !self.speculation_is_clean(&checkpoint)
+            {
                 return Some(false);
             }
             Some(match self.current_token.tag() {
@@ -6587,7 +6631,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let is_abstract = self.eat(TokenTag::Abstract)?;
         let is_constructor = self.eat(TokenTag::New)?;
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters(AngleClose::Peel)?)
+            Some(self.parse_type_parameters(TypeParameterContext::Signature, AngleClose::Peel)?)
         } else {
             None
         };
@@ -7016,7 +7060,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ) {
             return None;
         }
-        let key = self.parse_binding_identifier()?;
+        let key = self.with_type_binding_context(Self::parse_binding_identifier)?;
         if !self.expect(
             TokenTag::In,
             "Expected 'in' after the mapped type parameter name",
@@ -7097,13 +7141,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_type_literal(&mut self) -> Option<TsType> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         let start = self.current_token.start();
-        let (members, end) = self.parse_object_type_members()?;
+        let (members, end) = self.parse_object_type_members(TypeParameterContext::Signature)?;
         Some(TsType::TsTypeLiteral(
             self.ast.ts_type_literal(Span::new(start, end), members),
         ))
     }
 
-    fn parse_object_type_members(&mut self) -> Option<(SubRange<TsTypeElement>, u32)> {
+    fn parse_object_type_members(
+        &mut self,
+        context: TypeParameterContext,
+    ) -> Option<(SubRange<TsTypeElement>, u32)> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
         self.advance()?;
         let checkpoint = self.scratch_a.begin();
@@ -7111,7 +7158,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             while self.current_token.tag() != TokenTag::RightBrace
                 && self.current_token.tag() != TokenTag::Eof
             {
-                let member = self.parse_type_member()?;
+                let member = self.parse_type_member(context)?;
                 self.scratch_a.append(member);
                 if !self.consume_type_member_separator(member)? {
                     return None;
@@ -7164,10 +7211,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_type_member(&mut self) -> Option<TsTypeElement> {
+    fn parse_type_member(&mut self, context: TypeParameterContext) -> Option<TsTypeElement> {
         let tag = self.current_token.tag();
         if matches!(tag, TokenTag::LeftParen | TokenTag::LessThan) {
-            return self.parse_call_or_construct_signature(false);
+            return self.parse_call_or_construct_signature(context, false);
         }
         if tag == TokenTag::New
             && matches!(
@@ -7175,7 +7222,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 TokenTag::LeftParen | TokenTag::LessThan
             )
         {
-            return self.parse_call_or_construct_signature(true);
+            return self.parse_call_or_construct_signature(context, true);
         }
 
         let mut readonly = false;
@@ -7190,16 +7237,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.current_token.tag() == TokenTag::LeftBracket && self.is_index_signature_start()? {
             return self.parse_index_signature(start, readonly, false);
         }
-        self.parse_property_or_method_signature(start, readonly)
+        self.parse_property_or_method_signature(context, start, readonly)
     }
 
-    fn parse_call_or_construct_signature(&mut self, is_construct: bool) -> Option<TsTypeElement> {
+    fn parse_call_or_construct_signature(
+        &mut self,
+        context: TypeParameterContext,
+        is_construct: bool,
+    ) -> Option<TsTypeElement> {
         let start = self.current_token.start();
         if is_construct {
             self.advance()?;
         }
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters(AngleClose::Peel)?)
+            Some(self.parse_type_parameters(context, AngleClose::Peel)?)
         } else {
             None
         };
@@ -7333,7 +7384,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_index_signature_parameter(&mut self) -> Option<TsIndexSignatureParameter> {
-        let name = self.parse_binding_identifier()?;
+        let name = self.with_type_binding_context(Self::parse_binding_identifier)?;
         if self.current_token.tag() != TokenTag::Colon {
             self.report_expected(
                 self.current_token.span(),
@@ -7357,6 +7408,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_property_or_method_signature(
         &mut self,
+        context: TypeParameterContext,
         start: u32,
         readonly: bool,
     ) -> Option<TsTypeElement> {
@@ -7388,7 +7440,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 TokenTag::LeftParen | TokenTag::LessThan
             )
         {
-            return self.parse_method_signature_body(start, key, kind, computed, optional);
+            return self.parse_method_signature_body(context, start, key, kind, computed, optional);
         }
         let type_annotation = if self.current_token.tag() == TokenTag::Colon {
             let annotation = self.parse_type_annotation()?;
@@ -7409,6 +7461,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_method_signature_body(
         &mut self,
+        context: TypeParameterContext,
         start: u32,
         key: PropertyKey,
         kind: TsMethodSignatureKind,
@@ -7416,7 +7469,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         optional: bool,
     ) -> Option<TsTypeElement> {
         let type_parameters = if is_angle_open(self.current_token.tag()) {
-            Some(self.parse_type_parameters(AngleClose::Peel)?)
+            Some(self.parse_type_parameters(context, AngleClose::Peel)?)
         } else {
             None
         };
@@ -7631,8 +7684,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_type_parameters(&mut self, close: AngleClose) -> Option<TsTypeParameterDeclaration> {
-        match self.parse_angle_list(AngleListKind::Parameters, close)? {
+    fn parse_type_parameters(
+        &mut self,
+        context: TypeParameterContext,
+        close: AngleClose,
+    ) -> Option<TsTypeParameterDeclaration> {
+        match self.parse_angle_list(AngleListKind::Parameters(context), close)? {
             AngleList::Parameters(parameters) => Some(parameters),
             AngleList::Arguments(_) => unreachable!(),
         }
@@ -7680,6 +7737,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_angle_list(&mut self, kind: AngleListKind, close: AngleClose) -> Option<AngleList> {
+        match kind {
+            AngleListKind::Arguments => self.parse_angle_list_with(kind, close, |parser| {
+                Some(parser.parse_type_with_start_check()?.node_id())
+            }),
+            AngleListKind::Parameters(context) => {
+                self.parse_angle_list_with(kind, close, move |parser| {
+                    Some(parser.parse_type_parameter(context)?.node_id())
+                })
+            }
+        }
+    }
+
+    fn parse_angle_list_with(
+        &mut self,
+        kind: AngleListKind,
+        close: AngleClose,
+        mut parse: impl FnMut(&mut Self) -> Option<NodeId>,
+    ) -> Option<AngleList> {
         let start = self.consume_angle_open()?;
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
@@ -7687,10 +7762,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             while !is_angle_close(self.current_token.tag())
                 && self.current_token.tag() != TokenTag::Eof
             {
-                let node = match kind {
-                    AngleListKind::Arguments => self.parse_type_with_start_check()?.node_id(),
-                    AngleListKind::Parameters => self.parse_type_parameter()?.node_id(),
-                };
+                let node = parse(self)?;
                 self.scratch_a.items.push(node);
                 parsed_any = true;
                 if !self.eat(TokenTag::Comma)? {
@@ -7702,7 +7774,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.current_token.span(),
                     match kind {
                         AngleListKind::Arguments => "A type argument list cannot be empty",
-                        AngleListKind::Parameters => "A type parameter list cannot be empty",
+                        AngleListKind::Parameters(_) => "A type parameter list cannot be empty",
                     },
                     ReportOptions::default(),
                 );
@@ -7716,7 +7788,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             .ts_type_parameter_instantiation(Span::new(start, end), parameters),
                     )
                 }
-                AngleListKind::Parameters => {
+                AngleListKind::Parameters(_) => {
                     let parameters = self.add_extra_from_scratch_a(checkpoint);
                     AngleList::Parameters(
                         self.ast
@@ -7729,7 +7801,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    fn parse_type_parameter(&mut self) -> Option<TsTypeParameter> {
+    fn parse_type_parameter(&mut self, context: TypeParameterContext) -> Option<TsTypeParameter> {
         let mut is_const = false;
         let mut is_in = false;
         let mut is_out = false;
@@ -7772,7 +7844,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
         }
 
-        let name = self.parse_binding_identifier()?;
+        let name = match context {
+            TypeParameterContext::Declaration => self.parse_binding_identifier(),
+            TypeParameterContext::Signature => {
+                self.with_type_binding_context(Self::parse_binding_identifier)
+            }
+        }?;
         let constraint = if self.eat(TokenTag::Extends)? {
             Some(self.parse_type()?)
         } else {
@@ -7840,7 +7917,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     self.current_token.span(),
                     match kind {
                         AngleListKind::Arguments => "Expected '>' to close a type argument list",
-                        AngleListKind::Parameters => "Expected '>' to close a type parameter list",
+                        AngleListKind::Parameters(_) => {
+                            "Expected '>' to close a type parameter list"
+                        }
                     },
                     ReportOptions {
                         help: Some(Cow::Borrowed("Each '<' in a type must be matched by a '>'")),
@@ -8601,6 +8680,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
+            if in_cover && self.ts_context.in_type_binding() {
+                return self.parse_identifier();
+            }
             let token = self.current_token;
             let can_classify_as_module = self.boundary_context.can_be_module();
             self.advance_without_escape_check()?;
@@ -8627,6 +8709,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && self.context.contains(Context::YIELD)
             && minimum < Precedence::Add
         {
+            if in_cover && self.ts_context.in_type_binding() {
+                return self.parse_identifier();
+            }
             return self.parse_yield_expression();
         }
 
@@ -9692,15 +9777,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         is_async: bool,
         need_diagnostics: bool,
     ) -> Option<ArrowHeadResult> {
-        let context = if is_async {
-            // AsyncArrowHead reparses its formals with ~Yield, but the enclosing
-            // cover grammar has a separate Early Error when it Contains a
-            // YieldExpression. Preserve the outer [Yield] context so the AST
-            // retains that expression for the semantic check.
-            enter_grammar_context![&mut self.context, ?Yield, +Await]
-        } else {
-            enter_grammar_context![&mut self.context, ?Yield, ?Await]
-        };
+        let context = self.context;
         // Non-async arrow parameters inherit [Await] from the surrounding grammar.
         let module_sensitive_await = !is_async && self.boundary_context.can_be_module();
         let commonjs_sensitive_new_target = self.boundary_context.can_be_commonjs();
@@ -9711,23 +9788,32 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             commonjs_sensitive_new_target,
         );
         let boundary_context = mem::replace(&mut self.boundary_context, arrow_boundary_context);
-        let result = self.parse_arrow_head_inner(need_diagnostics);
+        let result = self.parse_arrow_head_inner(is_async, need_diagnostics);
         self.context = context;
         self.boundary_context = boundary_context;
         result
     }
 
-    fn parse_arrow_head_inner(&mut self, need_diagnostics: bool) -> Option<ArrowHeadResult> {
+    fn parse_arrow_head_inner(
+        &mut self,
+        is_async: bool,
+        need_diagnostics: bool,
+    ) -> Option<ArrowHeadResult> {
         let type_parameters = if is_angle_open(self.current_token.tag()) {
             let close = if need_diagnostics {
                 AngleClose::Peel
             } else {
                 AngleClose::SpeculativePeel
             };
-            Some(self.parse_type_parameters(close)?)
+            Some(self.parse_type_parameters(TypeParameterContext::Declaration, close)?)
         } else {
             None
         };
+        if is_async {
+            // Preserve outer [Yield] so the async-arrow cover retains yield
+            // expressions for the semantic Contains check.
+            self.context.insert(Context::AWAIT);
+        }
         if self.current_token.tag() != TokenTag::LeftParen {
             return None;
         }
@@ -10941,10 +11027,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let reference = self.property_key_to_reference(key, key_token)?;
         let value = if self.eat(TokenTag::Assign)? {
+            let ts_context = self.ts_context;
+            self.ts_context.remove(TsContext::IN_TYPE_BINDING);
             let default_value = self.parse_expr(
                 Precedence::Assignment,
                 ParseExpressionOpts { in_cover: true },
-            )?;
+            );
+            self.ts_context = ts_context;
+            let default_value = default_value?;
             let target = self.expression_to_assignment_target(reference)?;
             let assignment = self.ast.expr_assignment_expression(
                 Span::new(
@@ -11029,15 +11119,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
         }
         let function_start = self.current_token.start();
-        let context = enter_function_grammar_context(&mut self.context, generator, async_function);
+        let context = self.context;
         let boundary_context = mem::take(&mut self.boundary_context);
         let result = (|| {
             let type_parameters =
                 if self.lang.is_typescript() && is_angle_open(self.current_token.tag()) {
-                    Some(self.parse_type_parameters(AngleClose::Peel)?)
+                    Some(self.parse_type_parameters(
+                        TypeParameterContext::Declaration,
+                        AngleClose::Peel,
+                    )?)
                 } else {
                     None
                 };
+            enter_function_grammar_context(&mut self.context, generator, async_function);
             let (this_param, params) =
                 self.parse_formal_parameters(FormalParameterKind::UniqueFormalParameters, false)?;
             self.check_accessor_arity(kind, params);
@@ -11164,6 +11258,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let context = enter_grammar_context![&mut self.context, +In];
                 let ts_context = self.ts_context;
                 self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+                self.ts_context.remove(TsContext::IN_TYPE_BINDING);
                 let expression = (|| {
                     let expression = self.parse_expr_preserving_stripped_paren(
                         Precedence::Assignment,
@@ -12994,8 +13089,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         // A stripped parenthesis in the right-hand side is in expression
         // position and must not overwrite evidence from the arrow-head target.
+        let ts_context = self.ts_context;
+        self.ts_context.remove(TsContext::IN_TYPE_BINDING);
         let right =
-            self.parse_expr_preserving_stripped_paren(precedence, ParseExpressionOpts::default())?;
+            self.parse_expr_preserving_stripped_paren(precedence, ParseExpressionOpts::default());
+        self.ts_context = ts_context;
+        let right = right?;
         Some(self.ast.expr_assignment_expression(
             Span::new(start, right.span(&self.ast).end),
             target,
@@ -13179,6 +13278,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    /// Relax binding-name checks without changing embedded expression grammar.
+    fn with_type_binding_context<T>(
+        &mut self,
+        parse: impl FnOnce(&mut Self) -> Option<T>,
+    ) -> Option<T> {
+        let ts_context = self.ts_context;
+        self.ts_context.insert(TsContext::IN_TYPE_BINDING);
+        let result = parse(self);
+        self.ts_context = ts_context;
+        result
+    }
+
     // INLINE: This is a small and hot function.
     // Combine validation, token advancement and binding construction in the
     // caller, avoiding a helper call and another load of current_token.
@@ -13251,7 +13362,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if role == IdentifierRole::TypeScript {
             return;
         }
-        if token.tag() == TokenTag::Yield && self.context.contains(Context::YIELD) {
+        let in_type_binding = self.ts_context.in_type_binding();
+        if token.tag() == TokenTag::Yield
+            && !in_type_binding
+            && self.context.contains(Context::YIELD)
+        {
             self.report(
                 token.span(),
                 Cow::Owned(format!(
@@ -13260,9 +13375,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let await_is_reserved = self.context.contains(Context::AWAIT)
+        let await_is_reserved = !in_type_binding && self.context.contains(Context::AWAIT)
             || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
         if token.tag() == TokenTag::Await
+            && !in_type_binding
             && !await_is_reserved
             && self
                 .boundary_context
@@ -14214,6 +14330,84 @@ mod tests {
 
         let parsed = parse_tokens(&allocator, "type T = A.if;");
         assert!(parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn type_binding_contexts() {
+        let script = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let module = Options {
+            source_type: SourceType::Module,
+            ..script
+        };
+        let rejects = |source| has_errors(source, script);
+
+        let errors = rejects("async function f() { type T = 0 extends infer await ? 0 : 0; }");
+        assert!(!errors);
+
+        let errors = rejects("function* f() { type T = 0 extends infer yield ? 0 : 0; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T = (await: number) => void; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T = ({[await x]: await}: any) => void; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T = { [await in K]: 0 }; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T = { [await: string]: number }; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T = { m<await>(): void }; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { interface I { m<await>(): void } }");
+        assert!(errors);
+
+        let errors = rejects("async function f() { type T = { [await x]: number }; }");
+        assert!(!errors);
+
+        let errors = rejects("async function f() { type T<await> = 0; }");
+        assert!(errors);
+
+        let errors = has_errors("type T = 0 extends infer await ? 0 : 0;", module);
+        assert!(errors);
+    }
+
+    #[test]
+    fn function_head_contexts() {
+        let script = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Script,
+            ..Options::default()
+        };
+        let rejects = |source| has_errors(source, script);
+
+        let errors = rejects("async function f<await>() {}");
+        assert!(!errors);
+
+        let errors = rejects("function* f<yield>() {}");
+        assert!(!errors);
+
+        let errors = rejects("class C { async m<await>() {} }");
+        assert!(!errors);
+
+        let errors = rejects("({ async m<await>() {} });");
+        assert!(!errors);
+
+        let errors = rejects("async <await>() => {};");
+        assert!(!errors);
+
+        let errors = rejects("async function f(await) {}");
+        assert!(errors);
+
+        let errors = rejects("async function f() { function g<await>() {} }");
+        assert!(errors);
     }
 
     #[test]
