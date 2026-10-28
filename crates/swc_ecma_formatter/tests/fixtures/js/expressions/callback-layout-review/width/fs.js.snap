@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+fs.readdir(i, { withFileTypes: !0 }, callback);
+---------- Options ----------
+{}
+---------- Output ----------
+fs.readdir(i, { withFileTypes: !0 }, callback);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+fs.readdir(
+  i,
+  {
+    withFileTypes:
+      !0,
+  },
+  callback,
+);
