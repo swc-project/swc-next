@@ -168,3 +168,33 @@ fn decode_options(bytes: &[u8]) -> Option<FormatOptions> {
         line_ending: layout.line_ending,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{decode_print_options, print_doc};
+    use swc_next_formatter_core::{IndentStyle, LineEnding};
+
+    #[test]
+    fn print_options() {
+        let options = decode_print_options(&[0, 0, 0, 0, 100, 0, 1, 4, 1]).unwrap();
+        assert_eq!(options.line_width, 100);
+        assert_eq!(options.indent_style, IndentStyle::Tab);
+        assert_eq!(options.indent_width.value(), 4);
+        assert_eq!(options.line_ending, LineEnding::CrLf);
+
+        assert!(decode_print_options(&[1, 0, 0, 0, 80, 0, 0, 2, 0]).is_none());
+        assert!(decode_print_options(&[0, 0, 0, 0, 80, 0, 2, 2, 0]).is_none());
+        assert!(decode_print_options(&[0, 0, 0, 0, 80, 0, 0, 65, 0]).is_none());
+        assert!(decode_print_options(&[0, 0, 0, 0, 80, 0, 0, 2, 3]).is_none());
+        assert!(decode_print_options(&[0]).is_none());
+    }
+
+    #[test]
+    fn print_buffer() {
+        let options = [0, 0, 0, 0, 80, 0, 0, 2, 0];
+        let doc = b"SWCD\0\0\0\0\x01\0\0\0\x01\0\0\0\x09\0\0\0\0\0\0\0\0\x01\0\0\0x";
+        assert_eq!(print_doc(doc, &options).unwrap(), "x");
+        assert!(print_doc(b"invalid", &options).is_err());
+        assert!(print_doc(doc, &[0]).is_err());
+    }
+}
