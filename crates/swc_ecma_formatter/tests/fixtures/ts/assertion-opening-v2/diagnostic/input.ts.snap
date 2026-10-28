@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = string;
+type B = boolean;
+const x =
+// @ts-expect-error
+</* a */ /* b */A | B>123;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type A = string;
+type B = boolean;
+const x =
+  // @ts-expect-error
+  < /* a */ /* b */A | B>123;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type A = string;
+type B = boolean;
+const x =
+  // @ts-expect-error
+  < /* a */ /* b */A | B>123;
