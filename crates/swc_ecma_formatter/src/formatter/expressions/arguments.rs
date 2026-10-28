@@ -1307,6 +1307,13 @@ impl CallArgumentFrame {
     fn separator(self, separator: Separator, constraint: LineConstraint, writer: &mut Writer<'_>) {
         match self {
             Self::Ordinary | Self::DecoratedFunction(_) => {
+                // The resolved boundary, rather than the source gap alone,
+                // decides whether an empty separator actually reaches the group.
+                if matches!(separator, Separator::EmptyLine)
+                    && matches!(constraint, LineConstraint::Unconstrained)
+                {
+                    writer.break_parent();
+                }
                 ArgumentLayout::Lines.separator(separator, constraint, writer)
             }
             Self::Fixed { .. } => match separator {
@@ -2317,20 +2324,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ArgumentData::Expr(expression) => self.call_argument_is_collection(expression),
                     ArgumentData::SpreadElement(_) => false,
                 });
-        let expand = !fixed_frame
-            && (arguments
-                .iter()
-                .map(|id| ast.get_node_in_sub_range(id))
-                .scan(None, |previous, argument| {
-                    let span = argument.span(ast);
-                    let empty = previous.is_some_and(|previous| {
-                        self.call_argument_has_empty_line_after(Span::new(previous, span.start))
-                    });
-                    *previous = Some(span.end);
-                    Some(empty)
-                })
-                .any(|empty| empty)
-                || allow_composition && self.arguments_are_function_composition(arguments));
+        // An emitted empty separator expands the actual call group below.
+        let expand =
+            !fixed_frame && allow_composition && self.arguments_are_function_composition(arguments);
         let closing =
             if fixed_frame || source_opening.is_some() || callee_mode != ContentMode::Formatted {
                 DelimitedClose::Source
