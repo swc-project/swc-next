@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+void [first, /* ordinary */ // comment
+g()];
+---------- Options ----------
+{}
+---------- Output ----------
+void [
+  first /* ordinary */, // comment
+  g(),
+];
