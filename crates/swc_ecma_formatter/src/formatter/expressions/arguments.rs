@@ -912,6 +912,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let trailing_end = trailing
             .last()
             .map_or(content_end, |comment| comment.span.end);
+        // A trailing run ends at its first Line; a following source packet
+        // consumes the intervening boundary before the comma.
+        let mut trailing_suffix_pending = before_comma.is_empty()
+            && trailing
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line);
         self.format_inline_trailing_comments_with_array_comments(
             trailing,
             array_comments.as_deref_mut(),
@@ -947,18 +953,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && let Some(last) = boundary.last()
                 && last.span.end <= comma
             {
-                self.line_constraint(last.span.end, comma).write(
-                    writer,
-                    FlatSeparator::Empty,
-                    |writer| {
-                        if before_comma
-                            .last()
-                            .is_some_and(|comment| comment.kind == CommentKind::Line)
-                        {
-                            writer.hard_line();
-                        }
-                    },
-                );
+                let comma_gap = self.line_constraint(last.span.end, comma);
+                // A constrained source break flushes the suffix before the comma.
+                if matches!(comma_gap, LineConstraint::NewLine(_)) {
+                    trailing_suffix_pending = false;
+                }
+                comma_gap.write(writer, FlatSeparator::Empty, |writer| {
+                    if before_comma
+                        .last()
+                        .is_some_and(|comment| comment.kind == CommentKind::Line)
+                    {
+                        writer.hard_line();
+                    }
+                });
             }
             writer.text(",");
             if pre_packet_empty {
@@ -970,9 +977,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some((_, run)) = prepared_run {
             // The next real separator owns its mandatory suffix termination.
             self.format_prepared_trailing_run(run, array_comments.as_deref_mut(), writer)?;
-            if !matches!(separator, Separator::EmptyLine) {
-                separator = Separator::TrailingLine;
-            }
+            trailing_suffix_pending = true;
+        }
+        if trailing_suffix_pending && !matches!(separator, Separator::EmptyLine) {
+            separator = Separator::TrailingLine;
         }
         if !has_more
             || !preserve_comma
