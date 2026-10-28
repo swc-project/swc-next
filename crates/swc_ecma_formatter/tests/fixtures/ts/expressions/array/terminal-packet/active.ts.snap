@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const x: number;
+const z = [x // @ts-ignore
+, /* c */ ] satisfies Missing;
+---------- Options ----------
+{}
+---------- Output ----------
+declare const x: number;
+const z = [
+  x // @ts-ignore
+  /* c */] satisfies Missing;
