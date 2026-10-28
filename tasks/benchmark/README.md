@@ -17,18 +17,6 @@ only when they have the `Codspeed` label, including when the label is added.
 CodSpeed must be enabled for the repository, and the organization's runner group
 must allow this public repository to use Macro Runners.
 
-## Parser comparisons
-
-Compare native operations with SWC and JavaScript parsing and traversal with
-SWC and Babel. Requires Hyperfine 2, Rust, and the workspace dependencies.
-On Linux, install `taskset` and choose an available CPU with `BENCH_CPU`.
-
-```sh
-BENCH_CPU=0 node website/docs/scripts/benchmark.js
-```
-
-Results: [Benchmark page](../../website/docs/docs/guide/benchmark.mdx).
-
 ## Instructions and profiles
 
 On Linux with Valgrind and the `gungraun-runner` version matching the workspace's

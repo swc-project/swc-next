@@ -23,11 +23,6 @@ pnpm build:docs
 Preview the production build with `pnpm --filter docs preview`.
 Static output is written to `website/docs/doc_build`.
 
-## Performance results
-
-See the [Benchmark page](docs/guide/benchmark.mdx) for results and the
-[benchmark README](../../tasks/benchmark/README.md#parser-comparisons) for usage.
-
 ## Existing documents
 
 The Testing page reads the headers of `tasks/testsuite/snapshots/*.snap` during

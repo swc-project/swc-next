@@ -38,10 +38,6 @@ const guide = [
     ]
   },
   {
-    "text": "Benchmark",
-    "link": "/guide/benchmark"
-  },
-  {
     "text": "Testing",
     "link": "/guide/testing"
   }

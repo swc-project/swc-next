@@ -1,5 +1,4 @@
 import { defineConfig } from "@rspress/core";
-import { loadBenchmarkReport } from "./benchmark-report";
 import { loadConformanceReport } from "./conformance-report";
 import { sidebar } from "./navigation";
 
@@ -8,7 +7,6 @@ export default defineConfig({
   builderConfig: {
     source: {
       define: {
-        BENCHMARK_REPORT: JSON.stringify(loadBenchmarkReport()),
         CONFORMANCE_REPORT: JSON.stringify(loadConformanceReport()),
       },
     },

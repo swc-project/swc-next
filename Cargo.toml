@@ -49,7 +49,6 @@ swc_core = { version = "=82.2.0", features = [
     "__parser",
     "__ecma_transforms",
 ] }
-swc_ts_fast_strip = "=59.0.2"
 
 # NAPI-RS
 napi        = "3.15.0"

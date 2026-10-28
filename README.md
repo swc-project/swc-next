@@ -15,7 +15,7 @@
 
 SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc) from the ground up, built around a flat, ESTree-based AST for performance and extensibility.
 
-- **Performance:** **2–4.5× faster than SWC** in [native parser benchmarks](website/docs/docs/guide/benchmark.mdx#rust-parse) and **5–8×** in [JavaScript API benchmarks](website/docs/docs/guide/benchmark.mdx#js-parser).
+- **Performance:** **Up to 3× faster than SWC** in [native parser benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-native) and **up to 10× faster** in [JavaScript API benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-js).
 - **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript enable writing plugins in JavaScript.
 - **Correctness:** Tested against Test262, TypeScript, and Babel, supplemented by additional unit tests.
 

@@ -5,15 +5,13 @@ title: Overview
 description: A JavaScript and TypeScript toolchain focused on performance, JavaScript extensibility, and correctness.
 ---
 
-import { BenchmarkGroup } from "../theme/Benchmarks";
-
 # SWC Next
 
 SWC Next is a fast JavaScript and TypeScript toolchain written in Rust, focused on performance and JavaScript extensibility.
 
 ## Features
 
-- **Fast.** **2–4.5× faster than SWC** in [native parser benchmarks](/guide/benchmark#rust-parse) and **5–8×** in [JavaScript API benchmarks](/guide/benchmark#js-parser).
+- **Fast.** **Up to 3× faster than SWC** in [native parser benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-native) and **up to 10× faster** in [JavaScript API benchmarks](https://github.com/SoonIter/ecmascript-parser-benchmark-js).
 - **JavaScript plugins.** Inspect and transform [ESTree](https://github.com/estree/estree)-compatible ASTs using JavaScript.
 - **Correct.** Passes **100% of the Test262 parser conformance suite**. See [results](/guide/testing#parser).
 - **Node.js and browsers.** Native bindings for Node.js and WebAssembly for the browser.
@@ -36,21 +34,3 @@ console.log(printSync(program).code); // const answer = 42;
 See [Install](/guide/install) for browser setup, or explore the [JavaScript API](/api/javascript/core).
 
 SWC Next is under development. See [Project status](/guide/status) for available features and the [Roadmap](https://github.com/swc-project/swc-next/issues/181) for planned work.
-
-## Performance
-
-Parser comparisons on JavaScript and TypeScript inputs. Time and native peak memory are relative to **SWC Next = 1×**; lower is better.
-
-### Native parser
-
-Native results show process means.
-
-<BenchmarkGroup title="Rust parse" />
-
-### JS parser
-
-JavaScript results show the median of the best per-operation times from three warmed-up processes, excluding startup and file reading.
-
-<BenchmarkGroup title="JS parser" />
-
-See [Benchmark](/guide/benchmark) for all results, including isolated declarations, type stripping, and AST traversal.

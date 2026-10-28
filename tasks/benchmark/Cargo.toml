@@ -8,34 +8,12 @@ version = "0.1.0"
 tracy = []
 
 [dependencies]
-clap = { workspace = true }
-swc_core = { workspace = true, features = [
-  "common",
-  "ecma_ast",
-  "ecma_parser",
-  "ecma_parser_typescript",
-  "ecma_codegen",
-  "ecma_transforms",
-  "ecma_visit",
-  "typescript",
-] }
-swc_ts_fast_strip = { workspace = true }
-
 swc_next_allocator             = { workspace = true }
 swc_next_ecma_ast              = { workspace = true }
 swc_next_ecma_codegen          = { workspace = true }
 swc_next_ecma_parser           = { workspace = true }
 swc_next_ecma_semantic         = { workspace = true }
-swc_next_isolated_declarations = { workspace = true }
 swc_next_type_strip            = { workspace = true }
-
-[[bin]]
-name = "swc-next"
-path = "bin/swc_next.rs"
-
-[[bin]]
-name = "swc"
-path = "bin/swc.rs"
 
 [dev-dependencies]
 oxc                       = { workspace = true }
