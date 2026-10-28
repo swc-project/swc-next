@@ -41,4 +41,4 @@ compile_error!("only wasm32-unknown-unknown is supported by the WebAssembly brid
 #[cfg(feature = "formatter")]
 mod formatter;
 #[cfg(feature = "formatter")]
-pub use formatter::format_doc;
+pub use formatter::{format_doc, print_doc};

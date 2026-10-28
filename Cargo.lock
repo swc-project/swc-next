@@ -2843,6 +2843,7 @@ dependencies = [
  "swc_next_ecma_formatter",
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
+ "swc_next_formatter_core",
 ]
 
 [[package]]
