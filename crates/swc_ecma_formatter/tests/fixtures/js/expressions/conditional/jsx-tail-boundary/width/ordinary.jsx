@@ -1,0 +1,2 @@
+condition ? <Item />
+/* comment */ : next();

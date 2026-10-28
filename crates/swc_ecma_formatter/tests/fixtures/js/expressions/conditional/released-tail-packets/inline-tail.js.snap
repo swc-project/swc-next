@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+v = a ? (b // c
+) /* @ts-ignore */ : /* prettier-ignore */ c;
+---------- Options ----------
+{}
+---------- Output ----------
+v = a
+  ? b // c
+    /* @ts-ignore */ : /* prettier-ignore */ c;
