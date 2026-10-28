@@ -47,7 +47,7 @@ See the [project roadmap](https://github.com/swc-project/swc-next/issues/181) fo
 
 ## Design & Architecture
 
-See the [Flattening AST design](website/docs/docs/architecture/flat-ast.md) and other documents.
+See the [Flattening AST design](https://next.swc.rs/architecture/flat-ast) and other documents.
 
 ## Rust API Soundness
 
