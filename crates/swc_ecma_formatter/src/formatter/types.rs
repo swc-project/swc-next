@@ -306,7 +306,7 @@ enum BinaryTypeHeadLayout<'ast> {
     },
 }
 
-struct RecordedTypeHead<'ast> {
+pub(super) struct RecordedTypeHead<'ast> {
     head: Fragment<'ast>,
     content: PreparedTypeContent<'ast>,
     riding: bool,
@@ -389,6 +389,12 @@ pub(super) struct PreparedAnnotation<'ast> {
 pub(super) struct PreparedDelimitedType<'ast> {
     span: Span,
     content: PreparedTypeContent<'ast>,
+}
+
+/// A delimited type either owns its prepared head or keeps the caller's boundary.
+pub(super) enum PreparedDelimitedTypeHead<'ast> {
+    Recorded(RecordedTypeHead<'ast>),
+    Boundary(PreparedDelimitedType<'ast>, CommentBoundary<'ast>),
 }
 impl PreparedDelimitedType<'_> {
     pub(super) fn starts_with_type_parameters(&self, ast: &Ast<'_>) -> bool {
@@ -3868,7 +3874,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    fn format_recorded_type_head(
+    pub(super) fn format_recorded_type_head(
         &mut self,
         recorded: RecordedTypeHead<'ast>,
         context: TypeContext,
@@ -4323,19 +4329,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn format_prepared_delimited_type_after_comments(
+    /// Resolve and claim a movable head before the delimiter chooses its opening.
+    pub(super) fn prepare_delimited_type_head(
         &mut self,
         body: PreparedDelimitedType<'ast>,
-        after: &CommentBoundary<'ast>,
+        after: CommentBoundary<'ast>,
         context: TypeContext,
-        layout: TypeLayout,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<PreparedDelimitedTypeHead<'ast>, FormatError> {
         let (movable_head, leading) = self.prepared_content_head(&body.content, context);
         if ((!after.is_empty() && self.prepared_content_accepts_caller_head(&body.content))
             || movable_head)
             && matches!(
-                self.comment_boundary_binding(after, body.span),
+                self.comment_boundary_binding(&after, body.span),
                 CommentBinding::Unbound
             )
         {
@@ -4345,13 +4351,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 context,
                 writer,
             )?;
-            return self.format_recorded_type_head(recorded, context, layout, writer);
+            return Ok(PreparedDelimitedTypeHead::Recorded(recorded));
         }
-        self.format_comment_boundary(after, writer)?;
-        after
-            .gap()
-            .write(writer, FlatSeparator::Empty, Writer::soft_line);
-        self.format_prepared_delimited_type(body, context, layout, writer)
+        Ok(PreparedDelimitedTypeHead::Boundary(body, after))
     }
 
     pub(super) fn prepare_binary_type_head(
