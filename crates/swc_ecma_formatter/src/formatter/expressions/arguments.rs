@@ -704,7 +704,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let constrained =
             source_constrained && !separator_coverage_released && terminal_close.is_none();
         let elision = if matches!(following, FollowingItem::Elision { .. })
-            && mode == ContentMode::Formatted
             && suppression.is_none()
             && !constrained
         {
@@ -1027,7 +1026,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &comments[before_separator..],
         )?;
         let before_hole = comments.partition_point(|comment| comment.span.end <= comma);
-        let packet = &comments[..before_hole];
+        let packet = &comments[before_separator..before_hole];
         if !packet
             .iter()
             .all(|&comment| self.comment_semantics(comment).is_ordinary())
