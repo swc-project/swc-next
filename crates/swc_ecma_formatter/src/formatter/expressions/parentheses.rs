@@ -1539,6 +1539,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(false);
         }
         loop {
+            if context.is_verbatim() {
+                return Ok(false);
+            }
             let data = self.ast.expr_data(expression);
             if let ExprData::ParenthesizedExpression(node) = data {
                 if self.parenthesis_has_jsdoc_enclosure(node.span(self.ast).start) {
