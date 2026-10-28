@@ -808,7 +808,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let Some((trailing_count, leading_own_line)) =
-            self.intersection_comment_attachments(comments, operator, gap.end)
+            self.intersection_comment_attachments(comments, gap.start, operator, gap.end)
         else {
             // Relocating interleaved owners would change comment identity order.
             return Ok(IntersectionBoundary::Source(gap));
@@ -826,6 +826,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn intersection_comment_attachments(
         &self,
         comments: &[Comment],
+        preceding_end: u32,
         operator: u32,
         member_start: u32,
     ) -> Option<(usize, bool)> {
@@ -855,8 +856,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 following
             };
             let ends_line = self.line_breaks(last.span.end, following) != 0;
-            let run_leading =
-                self.source_line_starts_line(first.span.start) || !before_operator && !ends_line;
+            let run_leading = self.source_line_starts_line(first.span.start)
+                || !before_operator
+                    && (!ends_line
+                        || last.kind == CommentKind::Line
+                            && self.line_breaks(preceding_end, first.span.start) != 0);
             if run_leading {
                 leading = true;
                 leading_own_line |= ends_line;
@@ -906,11 +910,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer.group(false, |writer| {
             let mut prefix = intersection.leading;
             for link in intersection.links {
-                self.format_intersection_member(link.left, prefix, writer)?;
-                prefix =
-                    self.format_intersection_separator(link.boundary, link.continuation, writer)?;
+                let tail = self.format_intersection_member(link.left, prefix, true, writer)?;
+                prefix = self.format_intersection_separator(
+                    link.boundary,
+                    link.continuation,
+                    tail,
+                    writer,
+                )?;
             }
-            self.format_intersection_member(intersection.last, prefix, writer)?;
+            self.format_intersection_member(intersection.last, prefix, false, writer)?;
             Ok(None)
         })
     }
@@ -919,8 +927,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: IntersectionMember<'ast>,
         prefix: IntersectionPrefix<'ast>,
+        has_separator: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<(crate::formatter::comments::ExpressionTail<'ast>, usize)>, FormatError>
+    {
         let receives_head_line = match &prefix {
             IntersectionPrefix::Member {
                 continuation,
@@ -941,10 +951,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             | IntersectionPrefix::Source(_)
             | IntersectionPrefix::Leading { .. } => false,
         };
-        let context = if receives_head_line {
-            TypeContext::IntersectionLineContinuation
-        } else {
-            TypeContext::CompoundMember
+        let context = TypeContext::IntersectionMember {
+            line_continuation: receives_head_line,
+            has_separator,
         };
         let indent = matches!(
             &prefix,
@@ -1015,7 +1024,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_prepared_type_content(*content, context, TypeLayout::Root, writer)?
                 }
             };
-            self.format_expression_tail(tail, writer)
+            if has_separator
+                && let Some(pending) = tail.as_ref()
+                && let Some(cut) = self.intersection_tail_inline_prefix(pending)
+            {
+                return Ok(tail.map(|tail| (tail, cut)));
+            }
+            self.format_expression_tail(tail, writer)?;
+            Ok(None)
         };
         if indent {
             writer.indent(content)
@@ -1028,12 +1044,73 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: IntersectionBoundary<'ast>,
         continuation: IntersectionContinuation,
+        tail: Option<(crate::formatter::comments::ExpressionTail<'ast>, usize)>,
         writer: &mut Writer<'ast>,
     ) -> Result<IntersectionPrefix<'ast>, FormatError> {
+        if let (
+            Some((pending, cut)),
+            IntersectionBoundary::Formatted {
+                before,
+                after,
+                member_start,
+                ..
+            },
+        ) = (tail.as_ref(), &boundary)
+            && matches!(
+                self.comment_binding(
+                    pending.comments,
+                    Span::new(
+                        pending.source_end,
+                        pending
+                            .comments
+                            .last()
+                            .map_or(pending.source_end, |comment| comment.span.end)
+                    ),
+                    None,
+                ),
+                CommentBinding::Unbound,
+            )
+        {
+            let cut = *cut;
+            let source_end = pending.comments[..cut]
+                .last()
+                .map_or(pending.source_end, |comment| comment.span.end);
+            let remaining = pending.comments.len() - cut;
+            if cut != 0 {
+                let prefix = crate::formatter::comments::ExpressionTail {
+                    source_end: pending.source_end,
+                    comments: &pending.comments[..cut],
+                };
+                self.format_expression_tail(Some(prefix), writer)?;
+            }
+            let comments = self.comments.in_range(Span::new(source_end, *member_start));
+            debug_assert_eq!(
+                comments.len(),
+                remaining + before.comments().len() + after.comments().len()
+            );
+            let after = self.prepare_comment_boundary(comments, source_end, *member_start);
+            writer.space();
+            writer.text("&");
+            return Ok(IntersectionPrefix::Member {
+                boundary: after,
+                member_start: *member_start,
+                leading_own_line: true,
+                continuation,
+            });
+        }
+        let tail_has_line = tail.as_ref().is_some_and(|(tail, _)| {
+            tail.comments
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        });
+        self.format_expression_tail(tail.map(|(tail, _)| tail), writer)?;
+        if tail_has_line {
+            writer.hard_line();
+        }
         let (before, after, member_start, leading_own_line) = match boundary {
             IntersectionBoundary::Source(span) => return Ok(IntersectionPrefix::Source(span)),
             IntersectionBoundary::Bound { before, after, .. } => {
-                self.format_comment_boundary(&before, writer)?;
+                self.format_intersection_before(&before, tail_has_line, writer)?;
                 before
                     .gap()
                     .write(writer, FlatSeparator::Space, Writer::space);
@@ -1050,9 +1127,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading_own_line,
             } => (before, after, member_start, leading_own_line),
         };
-        self.format_comment_boundary(&before, writer)?;
-        // A trailing Line remains a suffix of the left member until its next break.
-        writer.space();
+        self.format_intersection_before(&before, tail_has_line, writer)?;
+        if self.comment_run_has_own_line_tail(before.comments(), before.source_end()) {
+            before
+                .gap()
+                .write(writer, FlatSeparator::Space, Writer::space);
+        } else {
+            writer.space();
+        }
         writer.text("&");
         Ok(IntersectionPrefix::Member {
             boundary: after,
@@ -1060,6 +1142,49 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             leading_own_line,
             continuation,
         })
+    }
+
+    fn format_intersection_before(
+        &mut self,
+        before: &CommentBoundary<'ast>,
+        line_finished: bool,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if line_finished && !before.is_empty() {
+            if before
+                .first_comment_start()
+                .is_some_and(|start| self.next_line_is_empty(before.source_end(), start))
+            {
+                writer.hard_line();
+            }
+            self.format_comment_boundary_with_layout(before, CommentRunLayout::Source, writer)
+        } else {
+            self.format_comment_boundary(before, writer)
+        }
+    }
+
+    /// The inline prefix remains with the left member; a following physical
+    /// run is prepared with the next member after the separator.
+    fn intersection_tail_inline_prefix(
+        &self,
+        tail: &crate::formatter::comments::ExpressionTail<'ast>,
+    ) -> Option<usize> {
+        let mut inline_end = tail.source_end;
+        let mut inline_count = 0;
+        let mut separated = false;
+        for (index, comment) in tail.comments.iter().enumerate() {
+            if !separated {
+                separated = self.line_breaks(inline_end, comment.span.start) != 0;
+                if !separated {
+                    inline_count = index + 1;
+                    inline_end = comment.span.end;
+                }
+            }
+            if comment.kind == CommentKind::Line {
+                return Some(inline_count);
+            }
+        }
+        None
     }
 
     pub(super) fn prepare_union(
