@@ -637,7 +637,7 @@ bitflags! {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-struct TypeArgumentKey {
+struct SpeculationKey {
     position: u32,
     context: u8,
     ts_context: u8,
@@ -648,12 +648,21 @@ struct TypeArgumentKey {
     stripped_paren: Option<NodeId>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+enum TsSpeculationKey {
+    Arrow {
+        context: SpeculationKey,
+        is_async: bool,
+    },
+    InferConstraint(SpeculationKey),
+}
+
 struct TypeReferenceFrame {
     start: u32,
     name: TsTypeName,
     argument_start: u32,
     scratch_start: usize,
-    key: TypeArgumentKey,
+    key: SpeculationKey,
 }
 
 enum PrimaryTypeHead {
@@ -823,18 +832,17 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// assignment target. The same target must be rejected if cover grammar
     /// later establishes that it is a binding pattern.
     stripped_paren: Option<NodeId>,
-    /// Token start offsets whose TypeScript speculation was rejected.
+    /// TypeScript grammar alternatives rejected in a particular parse context.
     ///
-    /// This cache is intentionally not part of [`Checkpoint`]: a failed
-    /// speculation remains impossible after rewinding and must not be retried
-    /// by an enclosing speculative parse.
-    ts_rejected_speculations: FxHashSet<u32>,
+    /// Failures survive [`Checkpoint`] rollback so enclosing speculation can
+    /// skip equivalent retries, but a different context may still succeed.
+    ts_rejected_speculations: FxHashSet<TsSpeculationKey>,
     /// Span of the first identifier whose validity depends on a pending async arrow head.
     /// Nested covers restore this value when they become separate functions.
     await_identifier_in_async_head: Option<Span>,
     /// Rule failures survive rollback, but are only reused in speculation so
     /// committed type parses still produce their diagnostics and recovery.
-    failed_type_arguments: FxHashMap<TypeArgumentKey, TypeArgumentFailures>,
+    failed_type_arguments: FxHashMap<SpeculationKey, TypeArgumentFailures>,
     type_argument_speculation_depth: u32,
     type_argument_lookahead: TypeArgumentLookahead,
 }
@@ -1703,8 +1711,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.diagnostics.len() == checkpoint.diagnostics_len
     }
 
-    fn reject_ts_speculation(&mut self, position: u32) {
-        let inserted = self.ts_rejected_speculations.insert(position);
+    fn reject_ts_speculation(&mut self, key: TsSpeculationKey) {
+        let inserted = self.ts_rejected_speculations.insert(key);
         debug_assert!(inserted, "TypeScript speculation was already rejected");
     }
 
@@ -6485,9 +6493,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return Some(None);
         }
 
-        let position = self.current_token.start();
+        let key = TsSpeculationKey::InferConstraint(self.speculation_key());
         let conditional_allowed = !self.ts_context.disallow_conditional_types();
-        if conditional_allowed && self.ts_rejected_speculations.contains(&position) {
+        if conditional_allowed && self.ts_rejected_speculations.contains(&key) {
             return Some(None);
         }
 
@@ -6502,7 +6510,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         if conditional_allowed && self.current_token.tag() == TokenTag::Question {
             self.rewind(checkpoint);
-            self.reject_ts_speculation(position);
+            self.reject_ts_speculation(key);
             return Some(None);
         }
         Some(Some(constraint))
@@ -7571,7 +7579,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         start: u32,
         name: TsTypeName,
     ) -> Option<TypeReferenceFrame> {
-        let key = self.type_argument_key();
+        let key = self.speculation_key();
         if self.has_failed_type_arguments(&key, TypeArgumentFailures::PEEL) {
             return None;
         }
@@ -7654,7 +7662,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_speculative_type_arguments(&mut self) -> Option<TsTypeParameterInstantiation> {
         debug_assert_ne!(self.type_argument_speculation_depth, 0);
-        let key = self.type_argument_key();
+        let key = self.speculation_key();
         if self.has_failed_type_arguments(&key, TypeArgumentFailures::PEEL) {
             return None;
         }
@@ -9622,8 +9630,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
-        let position = self.current_token.start();
-        if self.ts_rejected_speculations.contains(&position) {
+        let key = TsSpeculationKey::Arrow {
+            context: self.speculation_key(),
+            is_async,
+        };
+        if self.ts_rejected_speculations.contains(&key) {
             return Some(None);
         }
 
@@ -9651,7 +9662,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         if arrow.is_none() {
             self.rewind(checkpoint);
-            self.reject_ts_speculation(position);
+            self.reject_ts_speculation(key);
         }
         Some(arrow)
     }
@@ -11151,6 +11162,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 // Computed keys stay expressions when an object cover becomes a
                 // binding pattern, so they must not replace binding evidence.
                 let context = enter_grammar_context![&mut self.context, +In];
+                let ts_context = self.ts_context;
+                self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
                 let expression = (|| {
                     let expression = self.parse_expr_preserving_stripped_paren(
                         Precedence::Assignment,
@@ -11167,6 +11180,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         Some(expression)
                     }
                 })();
+                self.ts_context = ts_context;
                 self.context = context;
                 let expression = expression?;
                 let (message, help) = if in_cover {
@@ -12628,7 +12642,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // them out, so one lookup covers both the grammar and follow check.
         if !self.failed_type_arguments.is_empty()
             && self.has_failed_type_arguments(
-                &self.type_argument_key(),
+                &self.speculation_key(),
                 TypeArgumentFailures::EXPRESSION | TypeArgumentFailures::PEEL,
             )
             || self.lexer.mode == LexerMode::Normal
@@ -12647,7 +12661,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         if self.type_argument_speculation_depth != 0 && !self.type_arguments_can_close() {
             self.cache_type_argument_failure(
-                self.type_argument_key(),
+                self.speculation_key(),
                 TypeArgumentFailures::EXPRESSION,
             );
             return Some(None);
@@ -12666,7 +12680,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.lexer.rewrite_last_collected_token(self.current_token);
                 // Rewinding restores the opening token and its cache context.
                 self.cache_type_argument_failure(
-                    self.type_argument_key(),
+                    self.speculation_key(),
                     TypeArgumentFailures::EXPRESSION,
                 );
                 return Some(None);
@@ -12675,22 +12689,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(Some(type_arguments))
     }
 
-    fn has_failed_type_arguments(
-        &self,
-        key: &TypeArgumentKey,
-        rules: TypeArgumentFailures,
-    ) -> bool {
+    fn has_failed_type_arguments(&self, key: &SpeculationKey, rules: TypeArgumentFailures) -> bool {
         self.failed_type_arguments
             .get(key)
             .is_some_and(|failed| failed.intersects(rules))
     }
 
-    fn cache_type_argument_failure(&mut self, key: TypeArgumentKey, rule: TypeArgumentFailures) {
+    fn cache_type_argument_failure(&mut self, key: SpeculationKey, rule: TypeArgumentFailures) {
         *self.failed_type_arguments.entry(key).or_default() |= rule;
     }
 
-    fn type_argument_key(&self) -> TypeArgumentKey {
-        TypeArgumentKey {
+    fn speculation_key(&self) -> SpeculationKey {
+        SpeculationKey {
             position: self.current_token.start(),
             context: self.context.bits(),
             ts_context: self.ts_context.bits(),
@@ -17854,6 +17864,12 @@ mod tests {
 
         let types = parse_boundary("items[(item): Item => item]", ts);
         assert_eq!(types, ["Item"]);
+
+        let errors = has_errors("c ? f < { [(x): T => x]: 0 } > y : z;", ts);
+        assert!(!errors);
+
+        let errors = has_errors("c ? f<{ [(x): T => x]: 0 }>() : z;", ts);
+        assert!(!errors);
 
         let types = parse_boundary("consume(...(item): Item => item)", ts);
         assert_eq!(types, ["Item"]);
