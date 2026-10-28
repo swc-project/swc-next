@@ -6,6 +6,7 @@
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
+mod decode;
 mod encode;
 mod printer;
 #[cfg(test)]
@@ -14,6 +15,7 @@ mod text;
 mod thin;
 mod writer;
 
+pub use decode::DocumentBufferError;
 pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
 
 use std::num::NonZeroU32;
@@ -673,7 +675,24 @@ pub struct Doc<'a> {
     group_count: u32,
 }
 
-impl Doc<'_> {
+impl<'a> Doc<'a> {
+    /// Decodes a versioned document, borrowing its text from the input buffer.
+    ///
+    /// Supports version 0's complete balanced fragment scopes, including
+    /// shared fragments. Line suffixes must not depend on a fill outside the
+    /// suffix. This is not a decoder for arbitrary Prettier documents.
+    ///
+    /// Returns an error for unsupported versions or malformed documents.
+    /// Distinct text ranges may consume at most eight times the buffer length
+    /// in decoding work; exceeding this limit returns a resource error. The
+    /// returned document's later printing work is not bounded by this limit.
+    pub fn decode(
+        allocator: &'a swc_next_allocator::Allocator,
+        buffer: &'a [u8],
+    ) -> Result<Self, DocumentBufferError> {
+        decode::decode(allocator, buffer)
+    }
+
     /// Encodes the logical document into an owned version-0 buffer.
     ///
     /// Text instructions retain their complete strings, including source newlines.
