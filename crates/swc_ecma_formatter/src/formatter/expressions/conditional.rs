@@ -8,7 +8,9 @@ use super::parentheses::{
 use super::{
     ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent, TailOwner,
 };
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{
+    CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
@@ -135,6 +137,39 @@ struct ResolvedConditionalBoundary<'ast> {
     next_mode: ContentMode,
     before_operator: LineConstraint,
     after_operator: LineConstraint,
+    deferred_tail: DeferredConditionalTail<'ast>,
+}
+
+/// Only the exterior packet can outlive a generated JSX pair.
+enum DeferredConditionalTail<'ast> {
+    Empty,
+    Whole {
+        outer: &'ast [Comment],
+        boundary_start: u32,
+    },
+    Split {
+        outer: &'ast [Comment],
+        previous_count: usize,
+        boundary_start: u32,
+    },
+}
+
+/// The source packet is partitioned before any of its comments are emitted.
+enum ConditionalTail<'ast> {
+    Empty,
+    Whole {
+        comments: &'ast [Comment],
+        source_end: u32,
+    },
+    Released {
+        inner: &'ast [Comment],
+        previous: &'ast [Comment],
+        following: &'ast [Comment],
+        source_end: u32,
+        boundary_start: u32,
+        gap: Option<CommentGap>,
+        split_following: bool,
+    },
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -377,6 +412,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &consequent,
             tail,
             default_before_operator,
+            false,
             writer,
         )?;
         let options = self.options;
@@ -391,16 +427,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 chain,
                 writer,
-                |formatter, tail, _, writer| {
+                |formatter, tail, enclosed, writer| {
                     formatter.resolve_conditional_boundary(
                         colon,
                         &alternate,
                         tail,
                         default_before_operator,
+                        enclosed,
                         writer,
                     )
                 },
             )?;
+            self.format_deferred_conditional_tail(&colon.deferred_tail, writer)?;
             self.format_conditional_branch(
                 ConditionalBranch {
                     operand: alternate,
@@ -641,7 +679,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_range: Span,
         source_end: u32,
         before_operator: usize,
-    ) -> (&'ast [Comment], &'ast [Comment]) {
+    ) -> ((&'ast [Comment], &'ast [Comment]), usize) {
         let inner_count =
             comments.partition_point(|comment| comment.span.end <= source_range.start);
         let inner = &comments[..inner_count];
@@ -651,11 +689,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .iter()
                 .any(|&comment| !self.comment_semantics(comment).is_ordinary())
         {
-            let end = suppression
-                .previous
-                .last()
-                .map_or(source_range.start, |comment| comment.span.end);
-            return comments.split_at(comments.partition_point(|comment| comment.span.end <= end));
+            let end = suppression.previous.last().map_or(inner_count, |last| {
+                comments.partition_point(|comment| comment.span.end <= last.span.end)
+            });
+            return (comments.split_at(end), inner_count);
         }
         // Classify the complete emitted run, while the source packet keeps its
         // prepared following-operand target regardless of ordinary placement.
@@ -672,7 +709,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .iter()
             .position(|&comment| !self.comment_semantics(comment).is_ordinary())
             .map_or(comments.len(), |offset| inner_count + offset);
-        comments.split_at(trailing.len().min(protected))
+        (
+            comments.split_at(trailing.len().min(protected)),
+            inner_count,
+        )
     }
 
     fn resolve_conditional_boundary(
@@ -681,6 +721,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         next: &ConditionalOperand,
         tail: Option<ExpressionTail<'ast>>,
         default_before_operator: LineConstraint,
+        enclosed: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<ResolvedConditionalBoundary<'ast>, FormatError> {
         let source_end = tail
@@ -713,77 +754,86 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .is_some_and(|comment| comment.span.start < source.operator_start)
                 })
         });
-        let (trailing, leading, next_mode, before_operator, after_operator) = match boundary
-            .source
-            .as_ref()
-        {
-            Some(source) => {
-                let before_count =
-                    comments.partition_point(|comment| comment.span.end <= source.operator_start);
-                let (trailing, leading) = if source.binding.allows_relocation(None) {
-                    if let Some(suppression) = &source.suppression {
-                        self.split_conditional_suppression_comments(
-                            suppression,
-                            comments,
-                            boundary.source_range,
-                            source_end,
-                            before_count,
-                        )
-                    } else {
-                        self.split_separator_comments(
-                            comments,
-                            before_count,
-                            source_end,
-                            Some(boundary.source_range.end),
-                        )
-                    }
-                } else {
-                    comments.split_at(before_count)
-                };
-                (
-                    trailing,
-                    leading,
-                    source.next_mode,
-                    source.before_operator,
-                    source.after_operator,
-                )
-            }
-            None if comments.is_empty() => (
-                &[][..],
-                &[][..],
-                ContentMode::Formatted,
-                LineConstraint::Unconstrained,
-                LineConstraint::Unconstrained,
-            ),
-            None => {
-                // An ordinary source-envelope tail can arrive on the direct
-                // path. Locate only this original inter-operand operator.
-                let Some(operator_start) =
-                    self.find_token(boundary.source_range, boundary.comments, boundary.operator)
-                else {
-                    return Err(FormatError::unsupported(
-                        "conditional operator boundary",
-                        None,
-                        boundary.source_range,
-                    ));
-                };
-                let before_count =
-                    comments.partition_point(|comment| comment.span.end <= operator_start);
-                let (trailing, leading) = self.split_separator_comments(
-                    comments,
-                    before_count,
-                    source_end,
-                    Some(boundary.source_range.end),
-                );
-                (
-                    trailing,
-                    leading,
+        let (trailing, leading, next_mode, before_operator, after_operator, inner_count) =
+            match boundary.source.as_ref() {
+                Some(source) => {
+                    let before_count = comments
+                        .partition_point(|comment| comment.span.end <= source.operator_start);
+                    let ((trailing, leading), inner_count) =
+                        if source.binding.allows_relocation(None) {
+                            if let Some(suppression) = &source.suppression {
+                                let (split, inner_count) = self
+                                    .split_conditional_suppression_comments(
+                                        suppression,
+                                        comments,
+                                        boundary.source_range,
+                                        source_end,
+                                        before_count,
+                                    );
+                                (split, Some(inner_count))
+                            } else {
+                                (
+                                    self.split_separator_comments(
+                                        comments,
+                                        before_count,
+                                        source_end,
+                                        Some(boundary.source_range.end),
+                                    ),
+                                    None,
+                                )
+                            }
+                        } else {
+                            (comments.split_at(before_count), None)
+                        };
+                    (
+                        trailing,
+                        leading,
+                        source.next_mode,
+                        source.before_operator,
+                        source.after_operator,
+                        inner_count,
+                    )
+                }
+                None if comments.is_empty() => (
+                    &[][..],
+                    &[][..],
                     ContentMode::Formatted,
                     LineConstraint::Unconstrained,
                     LineConstraint::Unconstrained,
-                )
-            }
-        };
+                    None,
+                ),
+                None => {
+                    // An ordinary source-envelope tail can arrive on the direct
+                    // path. Locate only this original inter-operand operator.
+                    let Some(operator_start) = self.find_token(
+                        boundary.source_range,
+                        boundary.comments,
+                        boundary.operator,
+                    ) else {
+                        return Err(FormatError::unsupported(
+                            "conditional operator boundary",
+                            None,
+                            boundary.source_range,
+                        ));
+                    };
+                    let before_count =
+                        comments.partition_point(|comment| comment.span.end <= operator_start);
+                    let (trailing, leading) = self.split_separator_comments(
+                        comments,
+                        before_count,
+                        source_end,
+                        Some(boundary.source_range.end),
+                    );
+                    (
+                        trailing,
+                        leading,
+                        ContentMode::Formatted,
+                        LineConstraint::Unconstrained,
+                        LineConstraint::Unconstrained,
+                        None,
+                    )
+                }
+            };
         // Prepare the child only after its complete emitted head is known.
         // Source coverage stays immutable while the remaining packet determines
         // which foreign comments still belong to this operand's opening scope.
@@ -833,39 +883,114 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             after_operator
         };
-        self.comments.claim(comments)?;
-        if let Some(suppression) = suppression {
+        let (tail, deferred_tail) = if trailing.is_empty() {
+            (ConditionalTail::Empty, DeferredConditionalTail::Empty)
+        } else if let Some(suppression) = suppression {
+            let prefix = inner_count.map_or_else(
+                || {
+                    trailing
+                        .partition_point(|comment| comment.span.end <= boundary.source_range.start)
+                },
+                |inner_count| inner_count.min(trailing.len()),
+            );
+            let (inner, outer) = trailing.split_at(prefix);
+            let split_following = leading_before_operator && !outer.is_empty();
+            let previous_count = if split_following {
+                suppression.previous.last().map_or(0, |last| {
+                    outer.partition_point(|comment| comment.span.end <= last.span.end)
+                })
+            } else {
+                outer.len()
+            };
+            let defer_outer = enclosed
+                && outer.first().is_some_and(|first| {
+                    self.line_breaks(boundary.source_range.start, first.span.start) != 0
+                });
+            if defer_outer {
+                let inside = if inner.is_empty() {
+                    ConditionalTail::Empty
+                } else {
+                    ConditionalTail::Whole {
+                        comments: inner,
+                        source_end,
+                    }
+                };
+                let outside = if split_following {
+                    DeferredConditionalTail::Split {
+                        outer,
+                        previous_count,
+                        boundary_start: boundary.source_range.start,
+                    }
+                } else {
+                    DeferredConditionalTail::Whole {
+                        outer,
+                        boundary_start: boundary.source_range.start,
+                    }
+                };
+                (inside, outside)
+            } else {
+                let (previous, following) = outer.split_at(previous_count);
+                let gap = (!outer.is_empty()
+                    && (!split_following || !previous.is_empty())
+                    && inner.last().is_some_and(|comment| {
+                        comment.kind == swc_next_ecma_ast::CommentKind::Line
+                    }))
+                .then(|| {
+                    self.prepare_comment_boundary(inner, source_end, boundary.source_range.start)
+                        .gap()
+                });
+                let inside = ConditionalTail::Released {
+                    inner,
+                    previous,
+                    following,
+                    source_end,
+                    boundary_start: boundary.source_range.start,
+                    gap,
+                    split_following,
+                };
+                (inside, DeferredConditionalTail::Empty)
+            }
+        } else if enclosed {
             let prefix =
                 trailing.partition_point(|comment| comment.span.end <= boundary.source_range.start);
             let (inner, outer) = trailing.split_at(prefix);
-            self.format_comment_run(inner, CommentRunLayout::SourceAfter(source_end), writer)?;
-            // The removed closing delimiter owned the old inter-packet gap.
-            // The exterior packet keeps its own source relationship to that
-            // delimiter instead of inheriting the inner tail's old line break.
-            if leading_before_operator && !outer.is_empty() {
-                let previous = suppression.previous.last().map_or(0, |last| {
-                    outer.partition_point(|comment| comment.span.end <= last.span.end)
-                });
-                let (previous, following) = outer.split_at(previous);
-                self.format_comment_run(
-                    previous,
-                    CommentRunLayout::SourceAfter(boundary.source_range.start),
-                    writer,
-                )?;
-                // Bound annotations cannot cross the operator. Keep a following
-                // ignore's packet off the preceding operand's emitted line.
-                writer.hard_line();
-                self.format_comment_run(following, CommentRunLayout::Source, writer)?;
-            } else {
-                self.format_comment_run(
+            let defer_outer = outer.first().is_some_and(|first| {
+                self.line_breaks(boundary.source_range.start, first.span.start) != 0
+            });
+            if defer_outer {
+                let inside = if inner.is_empty() {
+                    ConditionalTail::Empty
+                } else {
+                    ConditionalTail::Whole {
+                        comments: inner,
+                        source_end,
+                    }
+                };
+                let outside = DeferredConditionalTail::Whole {
                     outer,
-                    CommentRunLayout::SourceAfter(boundary.source_range.start),
-                    writer,
-                )?;
+                    boundary_start: boundary.source_range.start,
+                };
+                (inside, outside)
+            } else {
+                (
+                    ConditionalTail::Whole {
+                        comments: trailing,
+                        source_end,
+                    },
+                    DeferredConditionalTail::Empty,
+                )
             }
         } else {
-            self.format_comment_run(trailing, CommentRunLayout::SourceAfter(source_end), writer)?;
-        }
+            (
+                ConditionalTail::Whole {
+                    comments: trailing,
+                    source_end,
+                },
+                DeferredConditionalTail::Empty,
+            )
+        };
+        self.comments.claim(comments)?;
+        self.format_conditional_tail(&tail, writer)?;
         Ok(ResolvedConditionalBoundary {
             operator: boundary.operator,
             leading,
@@ -875,7 +1000,86 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             next_mode,
             before_operator,
             after_operator,
+            deferred_tail,
         })
+    }
+
+    fn format_conditional_tail(
+        &self,
+        tail: &ConditionalTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match tail {
+            ConditionalTail::Empty => {}
+            ConditionalTail::Whole {
+                comments,
+                source_end,
+            } => {
+                self.format_comment_run(
+                    comments,
+                    CommentRunLayout::SourceAfter(*source_end),
+                    writer,
+                )?;
+            }
+            ConditionalTail::Released {
+                inner,
+                previous,
+                following,
+                source_end,
+                boundary_start,
+                gap,
+                split_following,
+            } => {
+                self.format_comment_run(inner, CommentRunLayout::SourceAfter(*source_end), writer)?;
+                let layout = if let Some(gap) = gap {
+                    gap.write(writer, FlatSeparator::Empty, |_| {});
+                    CommentRunLayout::Source
+                } else {
+                    CommentRunLayout::SourceAfter(*boundary_start)
+                };
+                self.format_comment_run(previous, layout, writer)?;
+                if *split_following {
+                    writer.hard_line();
+                    self.format_comment_run(following, CommentRunLayout::Source, writer)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn format_deferred_conditional_tail(
+        &self,
+        tail: &DeferredConditionalTail<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match tail {
+            DeferredConditionalTail::Empty => {}
+            DeferredConditionalTail::Whole {
+                outer,
+                boundary_start,
+            } => {
+                self.format_comment_run(
+                    outer,
+                    CommentRunLayout::SourceAfter(*boundary_start),
+                    writer,
+                )?;
+            }
+            DeferredConditionalTail::Split {
+                outer,
+                previous_count,
+                boundary_start,
+            } => {
+                let (previous, following) = outer.split_at(*previous_count);
+                self.format_comment_run(
+                    previous,
+                    CommentRunLayout::SourceAfter(*boundary_start),
+                    writer,
+                )?;
+                writer.hard_line();
+                self.format_comment_run(following, CommentRunLayout::Source, writer)?;
+            }
+        }
+        Ok(())
     }
 
     fn format_conditional_branch<T>(
