@@ -2983,6 +2983,7 @@ name = "swc_next_formatter_core"
 version = "0.1.0"
 dependencies = [
  "memchr",
+ "rustc-hash",
  "swc_next_allocator",
 ]
 
