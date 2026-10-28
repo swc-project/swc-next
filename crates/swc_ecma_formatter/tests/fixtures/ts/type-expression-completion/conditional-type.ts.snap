@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x as (A extends B ? C : ?);
+b;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+x as (A extends B ? C : ?)
+b
