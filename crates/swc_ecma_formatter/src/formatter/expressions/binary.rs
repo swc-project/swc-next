@@ -9,8 +9,8 @@ use super::parentheses::{
     ExpressionContent, GeneratedEnclosureOwner, PreparedGeneratedEnclosure, SourceParentheses,
 };
 use super::{
-    ExpressionContext, ExpressionHead, ExpressionPosition, ExpressionStart, Formatter,
-    HeadComments, TailOwner,
+    ExpressionContext, ExpressionHead, ExpressionOutput, ExpressionPosition, ExpressionStart,
+    Formatter, HeadComments, TailOwner,
 };
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
@@ -604,12 +604,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(BinaryHead::from_context(&context))
     }
 
-    pub(super) fn format_binary(
+    pub(super) fn format_binary_output(
         &mut self,
         binary: BinaryLike,
         mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if matches!(context.position, ExpressionPosition::ControlCondition) {
             return self.format_binary_enclosed_with_context(binary, context, writer);
         }
@@ -707,7 +707,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         owner: &mut OperandOwner,
         jsx_tail: PreparedLogicalTail,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let head = BinaryHead::from_context(&context);
         writer.group(false, |writer| {
             let PreparedLogicalTail {
@@ -743,17 +743,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let mut tail = self.format_binary_head(entry, head, owner, writer)?;
                     writer.indent(|writer| {
                         for next in chain.ancestors.into_iter().rev() {
-                            tail = self.format_binary_right(
-                                entry,
-                                BinaryRightContext {
-                                    parent: Some(next.binary.operator),
-                                    layout: BinaryContinuationLayout::Expression,
-                                    tail_owner: TailOwner::ParentOperation,
-                                },
-                                tail,
-                                None,
-                                writer,
-                            )?;
+                            tail = self
+                                .format_binary_right(
+                                    entry,
+                                    BinaryRightContext {
+                                        parent: Some(next.binary.operator),
+                                        layout: BinaryContinuationLayout::Expression,
+                                        tail_owner: TailOwner::ParentOperation,
+                                    },
+                                    tail,
+                                    None,
+                                    writer,
+                                )?
+                                .pending;
                             entry = next;
                         }
                         let operand = self.format_binary_right_prefix(
@@ -778,7 +780,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
             let (boundary, closing_end) =
                 prepared.expect("named binary prefix executes its operand preparation")?;
-            let tail = writer.indent_if_break(prefix, |writer| {
+            let mut output = writer.indent_if_break(prefix, |writer| {
                 self.format_binary_right_operand(
                     &mut right_owner,
                     entry.binary.operator,
@@ -788,13 +790,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             })?;
             if let Some(end) = closing_end {
-                self.capture_expression_tail(
+                output.pending = self.capture_expression_tail(
                     Span::new(right_owner.expression.span(self.ast).end, end),
-                    tail,
-                )
-            } else {
-                Ok(tail)
+                    output.pending,
+                )?;
             }
+            Ok(output)
         })
     }
 
@@ -808,6 +809,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ExpressionContext::at(ExpressionPosition::Nested),
             writer,
         )
+        .map(|output| output.pending)
     }
 
     fn format_binary_enclosed_with_context(
@@ -815,7 +817,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         binary: BinaryLike,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let chain = self.binary_chain(binary)?;
         self.format_prepared_binary_enclosed(chain, context, None, writer)
     }
@@ -826,7 +828,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let mut owner = OperandOwner::new(chain.first.binary.left);
         let head = self.format_binary_head_comments(
             chain.head,
@@ -871,6 +873,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.protected_head_start = head.protected_head_start;
             context.head_scope = head.head_scope;
             self.format_binary_owned_operand(owner, context, writer)
+                .map(|output| output.pending)
         })
     }
 
@@ -879,28 +882,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         owner: &mut OperandOwner,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if context.content_mode == ContentMode::Verbatim {
             // Formatted source preparation does not replace the actual ignored owner.
-            return self.format_expression(owner.expression, context, writer);
+            return self.format_expression_output(owner.expression, context, writer);
         }
         match owner.prepared.take() {
             Some(PreparedOperandContent {
                 content,
                 enclosure: Some(enclosure),
-            }) => self.format_prepared_generated_enclosure(
-                PreparedGeneratedEnclosure {
-                    owner: enclosure,
-                    content,
-                },
-                context,
-                writer,
-            ),
+            }) => self
+                .format_prepared_generated_enclosure(
+                    PreparedGeneratedEnclosure {
+                        owner: enclosure,
+                        content,
+                    },
+                    context,
+                    writer,
+                )
+                .map(ExpressionOutput::closed),
             Some(PreparedOperandContent {
                 content,
                 enclosure: None,
-            }) => self.format_expression_prepared(owner.expression, Some(content), context, writer),
-            None => self.format_expression(owner.expression, context, writer),
+            }) => self.format_expression_prepared_output(
+                owner.expression,
+                Some(content),
+                context,
+                writer,
+            ),
+            None => self.format_expression_output(owner.expression, context, writer),
         }
     }
 
@@ -908,10 +918,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         chain: BinaryChain,
         context: ExpressionContext<'ast>,
-        mut tail: Option<ExpressionTail<'ast>>,
+        tail: Option<ExpressionTail<'ast>>,
         mut logical_tail: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let parent = match context.position {
             ExpressionPosition::BinaryOperand { operator, .. } => Some(operator),
             _ => None,
@@ -924,6 +934,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut nodes = std::iter::once(first)
             .chain(chain.ancestors.into_iter().rev())
             .peekable();
+        let mut output = ExpressionOutput::unreported(tail);
         while let Some(entry) = nodes.next() {
             let (parent, tail_owner) = match nodes.peek() {
                 Some(next) => (Some(next.binary.operator), TailOwner::ParentOperation),
@@ -934,19 +945,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
-            tail = self.format_binary_right(
+            output = self.format_binary_right(
                 entry,
                 BinaryRightContext {
                     parent,
                     layout,
                     tail_owner,
                 },
-                tail,
+                output.pending,
                 prepared,
                 writer,
             )?;
         }
-        Ok(tail)
+        Ok(output)
     }
 
     pub(super) fn inline_logical_operand(
@@ -999,7 +1010,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         prepared: Option<PreparedLogicalTail>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let BinaryRightContext {
             parent,
             layout,
@@ -1080,22 +1091,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 chain.first.left_scope = head_owner.scope;
                 let head =
                     self.format_binary_head(chain.first, head_context, &mut head_owner, writer)?;
-                tail = self.format_binary_continuation(
-                    chain,
-                    ExpressionContext::at(match layout {
-                        BinaryContinuationLayout::ControlCondition => {
-                            ExpressionPosition::ControlCondition
-                        }
-                        BinaryContinuationLayout::Expression => ExpressionPosition::BinaryOperand {
-                            operator: entry.binary.operator,
-                            side: OperandSide::Right,
-                        },
-                    })
-                    .with_tail_owner(TailOwner::ParentOperation),
-                    head,
-                    None,
-                    writer,
-                )?;
+                tail = self
+                    .format_binary_continuation(
+                        chain,
+                        ExpressionContext::at(match layout {
+                            BinaryContinuationLayout::ControlCondition => {
+                                ExpressionPosition::ControlCondition
+                            }
+                            BinaryContinuationLayout::Expression => {
+                                ExpressionPosition::BinaryOperand {
+                                    operator: entry.binary.operator,
+                                    side: OperandSide::Right,
+                                }
+                            }
+                        })
+                        .with_tail_owner(TailOwner::ParentOperation),
+                        head,
+                        None,
+                        writer,
+                    )?
+                    .pending;
                 next.left_content_end = boundary.map_or_else(
                     || right.left.span(self.ast).end,
                     |boundary| boundary.inner.end,
@@ -1112,7 +1127,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })
                 .with_content_mode(mode)
                 .with_tail_owner(TailOwner::ParentOperation);
-                tail = self.format_binary_owned_operand(&mut owner, context, writer)?;
+                tail = self
+                    .format_binary_owned_operand(&mut owner, context, writer)?
+                    .pending;
             }
             parent = Some(entry.binary.operator);
             entry = next;
@@ -1132,7 +1149,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail_owner: TailOwner,
         prepared: Option<PreparedLogicalOperand>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let BinaryRightOperand {
             entry,
             parent,
@@ -1179,16 +1196,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         };
-        let tail = if group_right {
+        let mut output = if group_right {
             writer.group(false, write)?
         } else {
             write(writer)?
         };
         if let Some(end) = closing_end {
-            self.capture_expression_tail(Span::new(binary.right.span(self.ast).end, end), tail)
-        } else {
-            Ok(tail)
+            output.pending = self.capture_expression_tail(
+                Span::new(binary.right.span(self.ast).end, end),
+                output.pending,
+            )?;
         }
+        Ok(output)
     }
 
     fn format_binary_right_operand(
@@ -1198,7 +1217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: OperandBoundary<'ast>,
         tail_owner: TailOwner,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let indents = boundary.indents();
         let jsx = !matches!(boundary, OperandBoundary::Constrained { .. })
             && boundary.mode() == ContentMode::Formatted
@@ -1224,12 +1243,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.if_break("(");
                     writer.indent(|writer| {
                         writer.soft_line();
-                        let tail = write(self, writer)?;
-                        self.format_expression_tail(tail, writer)
+                        let output = write(self, writer)?;
+                        self.format_expression_tail(output.pending, writer)
                     })?;
                     writer.soft_line();
                     writer.if_break(")");
-                    Ok(None)
+                    Ok(ExpressionOutput::closed(None))
                 });
             }
             write(self, writer)

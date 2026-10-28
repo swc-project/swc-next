@@ -12,8 +12,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::{
-    EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementItem, StatementLayout,
-    StatementPunctuation, StatementTailRelation,
+    ContinuationBoundary, EmptyBlock, FollowingSyntax, Formatter, PrintedStatement,
+    StatementBoundary, StatementItem, StatementLayout, StatementPunctuation, StatementTailRelation,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -72,6 +72,7 @@ struct ControlledBody<'ast> {
     empty_block: EmptyBlock,
     mode: ContentMode,
     punctuation: StatementPunctuation,
+    source_candidate: ContinuationBoundary,
     end: ControlledBodyEnd,
     annotation_tail: Option<ControlledBodyTail<'ast>>,
 }
@@ -88,7 +89,12 @@ impl ControlledBody<'_> {
         self
     }
 
-    fn with_enclosing_punctuation(mut self, punctuation: StatementPunctuation) -> Self {
+    fn with_enclosing_boundary(
+        mut self,
+        punctuation: StatementPunctuation,
+        source: ContinuationBoundary,
+    ) -> Self {
+        self.source_candidate = source.for_child(self.span);
         if matches!(
             punctuation,
             StatementPunctuation::Canonical(Semicolons::Always)
@@ -149,6 +155,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: IfStatement,
         punctuation: StatementPunctuation,
+        source_candidate: ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -187,10 +194,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .as_ref()
                 .map_or(ContentMode::Formatted, |boundary| boundary.preceding_mode),
         );
-        let body = if boundary.is_none() {
-            body.with_enclosing_punctuation(punctuation)
+        let body = if let Some(boundary) = &boundary {
+            self.with_controlled_body_keyword_fence(body, boundary.keyword)
         } else {
-            body
+            body.with_enclosing_boundary(punctuation, source_candidate)
         };
         let keyword = boundary
             .as_ref()
@@ -213,7 +220,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ControlledBodyRole::Alternate,
                 ContentMode::Formatted,
             )
-            .with_enclosing_punctuation(punctuation);
+            .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| self.format_controlled_body(body, writer))
     }
 
@@ -515,9 +522,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             empty_block: EmptyBlock::Expanded,
             mode,
             punctuation,
+            source_candidate: ContinuationBoundary::End,
             end,
             annotation_tail,
         }
+    }
+
+    fn with_controlled_body_keyword_fence(
+        &self,
+        mut body: ControlledBody<'ast>,
+        keyword: Span,
+    ) -> ControlledBody<'ast> {
+        if body.span.end <= keyword.start {
+            body.source_candidate = ContinuationBoundary::Following {
+                kind: FollowingSyntax::Keyword,
+                source: self.statement_source_terminator(body.span),
+            };
+        }
+        body
     }
 
     /// A trailing source run keeps the same owner across a moved semicolon.
@@ -634,6 +656,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             empty_block,
             mode,
             punctuation,
+            source_candidate,
             end,
             annotation_tail,
         } = body;
@@ -701,6 +724,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementLayout {
                     start: ExpressionStart::StatementBody,
                     empty_block,
+                    source_candidate: if matches!(
+                        punctuation,
+                        StatementPunctuation::Canonical(Semicolons::AsNeeded)
+                    ) {
+                        source_candidate
+                    } else {
+                        ContinuationBoundary::End
+                    },
                 },
                 mode,
                 NodeHead {

@@ -5,11 +5,11 @@ use super::chains::RhsCallChainOwnership;
 use super::parentheses::{
     EmittedHeadAnnotation, ExpressionContent, ResolvedExpressionHead, SourceOpeningPacket,
 };
-use super::{ExpressionContext, ExpressionPosition, Formatter, SourceTailOwner};
+use super::{ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, SourceTailOwner};
 use crate::formatter::bindings::BindingInitializerOwner;
 use crate::formatter::comments::{
-    CommentBinding, CommentOpening, CommentRunLayout, ExpressionTail, HeadGapPlacement, NodeHead,
-    PreparedHeadGap, PreparedHeadGaps,
+    CommentBinding, CommentOpening, CommentRunLayout, HeadGapPlacement, NodeHead, PreparedHeadGap,
+    PreparedHeadGaps,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::literals::StringContext;
@@ -264,12 +264,12 @@ impl<'ast> AssignmentBoundary<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(super) fn format_assignment(
+    pub(super) fn format_assignment_with_raw_end(
         &mut self,
         assignment: AssignmentExpression,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let mut target = self.assignment_source_target(assignment)?;
         let right = assignment.right(self.ast);
         let decorated_function = self
@@ -326,10 +326,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .with_tail_boundary(context.tail_boundary)
                         .with_decorated_function_call(decorated_function);
                 match source.opening {
-                    Some(opening) => {
-                        self.format_source_opening_packet(opening, right_context, writer)
-                    }
-                    None => self.format_expression(right, right_context, writer),
+                    Some(opening) => self
+                        .format_source_opening_packet(opening, right_context, writer)
+                        .map(ExpressionOutput::closed),
+                    None => self.format_expression_with_leading_comments_and_raw_end(
+                        right,
+                        NodeHead {
+                            comments: &[],
+                            content_start: right.span(self.ast).start,
+                            layout: CommentRunLayout::Leading(right.span(self.ast).start),
+                            gap_end: None,
+                        },
+                        right_context,
+                        None,
+                        writer,
+                    ),
                 }
             });
         }
@@ -477,7 +488,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.comments.claim(boundary.leading)?;
                 self.comments.claim(boundary.trailing)?;
                 if let Some(head) = boundary.resolved_right_head() {
-                    return self.format_prepared_expression_with_resolved_head(
+                    return self.format_prepared_expression_with_resolved_head_and_raw_end(
                         right,
                         content,
                         head,
@@ -485,7 +496,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     );
                 }
-                self.format_prepared_expression_with_leading_comments(
+                self.format_prepared_expression_with_leading_comments_and_raw_end(
                     right,
                     content,
                     boundary.right_head(),

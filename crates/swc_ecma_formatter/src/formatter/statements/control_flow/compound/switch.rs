@@ -761,6 +761,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     leading: node.body_leading,
                     incoming: node.incoming,
                     terminator,
+                    has_following: node.has_following,
                 },
                 writer,
             )?;

@@ -5,7 +5,10 @@ use swc_next_ecma_ast::{
 };
 
 use super::binary::BinaryLike;
-use super::{ExpressionContext, ExpressionPosition, Formatter, OperandIndent, ParenthesesOwner};
+use super::{
+    ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, OperandIndent,
+    ParenthesesOwner,
+};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::ContentMode;
@@ -17,11 +20,11 @@ struct UnaryOperandTail<'ast> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    pub(in crate::formatter) fn format_unary(
+    pub(super) fn format_unary_output(
         &mut self,
         unary: UnaryExpression,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let operator = unary.operator(self.ast);
         writer.text(operator.as_str());
         let word_operator = matches!(
@@ -51,7 +54,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && let Some(enclosure) =
                 self.prepare_unary_enclosure(unary, &content, leading, argument_context)
         {
-            return self.format_prepared_unary_enclosure(content, enclosure, writer);
+            return self
+                .format_prepared_unary_enclosure(content, enclosure, writer)
+                .map(ExpressionOutput::closed);
         }
         let source_pair = if diagnostic_sensitive {
             self.protected_grammar_parentheses(&content, argument_context)
@@ -105,15 +110,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 _ => OperandIndent::Expression,
             };
             let context = argument_context.with_operand_indent(operand_indent);
-            let tail = match source_pair {
-                Some(boundary) => self.format_protected_grammar_parentheses(
-                    boundary, content, context, None, writer,
+            let mut output = match source_pair {
+                Some(boundary) => self
+                    .format_protected_grammar_parentheses(boundary, content, context, None, writer)
+                    .map(ExpressionOutput::closed)?,
+                None => self.format_expression_prepared_output(
+                    argument,
+                    Some(content),
+                    context,
+                    writer,
                 )?,
-                None => {
-                    self.format_expression_prepared(argument, Some(content), context, writer)?
-                }
             };
-            return self.capture_expression_tail(Span::new(argument_span.end, span.end), tail);
+            output.pending = self
+                .capture_expression_tail(Span::new(argument_span.end, span.end), output.pending)?;
+            return Ok(output);
         }
         let exposed_head = if leading.is_empty() && trailing.is_empty() {
             self.exposed_expression_head(argument, argument_context)?
@@ -121,7 +131,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             None
         };
         if leading.is_empty() && trailing.is_empty() && exposed_head.is_none() {
-            return self.format_expression_prepared(
+            return self.format_expression_prepared_output(
                 argument,
                 Some(content),
                 argument_context,
@@ -190,7 +200,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.soft_line();
             }
             writer.text(")");
-            Ok(None)
+            Ok(ExpressionOutput::closed(None))
         })
     }
 

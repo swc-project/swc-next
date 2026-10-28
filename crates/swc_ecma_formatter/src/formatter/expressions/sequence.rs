@@ -3,7 +3,9 @@
 use swc_next_ecma_ast::{Comment, CommentKind, Expr, ExprData, GetSpan, SequenceExpression, Span};
 
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead, SourceParentheses};
-use super::{ExpressionContext, ExpressionPosition, Formatter, HeadComments, TailOwner};
+use super::{
+    ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, HeadComments, TailOwner,
+};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
@@ -142,24 +144,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    pub(super) fn format_sequence(
+    pub(super) fn format_sequence_output(
         &mut self,
         sequence: SequenceExpression,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_sequence_with_leading_comments(sequence, &[], context, writer)
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_sequence_with_leading_comments_output(sequence, &[], context, writer)
     }
 
-    /// An enclosing pair can lease its claimed head to the first real member.
-    /// That member owns any additional grammar pair before printing the packet.
-    pub(super) fn format_sequence_with_leading_comments(
+    pub(super) fn format_sequence_with_leading_comments_output(
         &mut self,
         sequence: SequenceExpression,
         inherited: &'ast [Comment],
         mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let ast = self.ast;
         let mut expressions = sequence
             .expressions(ast)
@@ -217,7 +217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .parentheses
                 .map_or(binding, |removed| binding.combine(removed.head.binding));
             if !matches!(binding, CommentBinding::Unbound) {
-                return self.format_prepared_expression_with_resolved_head(
+                return self.format_prepared_expression_with_resolved_head_and_raw_end(
                     Expr::SequenceExpression(sequence),
                     ExpressionContent {
                         expression: Expr::SequenceExpression(sequence),
@@ -250,7 +250,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(enclosure) = generated {
             context.expression_start =
                 self.format_node_head(head, context.expression_start, None, writer)?;
-            return self.format_prepared_generated_enclosure(enclosure, context, writer);
+            return self
+                .format_prepared_generated_enclosure(enclosure, context, writer)
+                .map(ExpressionOutput::closed);
         }
         let start = if enclosed_head {
             context.expression_start
@@ -318,7 +320,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let Some(mut boundary) = boundary else {
                     return Ok(tail);
                 };
-                self.format_sequence_trailing(&mut boundary, tail, writer)?;
+                self.format_sequence_trailing(&mut boundary, tail.pending, writer)?;
                 let mut write_rest = |writer: &mut Writer<'ast>| loop {
                     boundary
                         .separator
@@ -350,7 +352,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let Some(mut following) = following else {
                         break Ok(tail);
                     };
-                    self.format_sequence_trailing(&mut following, tail, writer)?;
+                    self.format_sequence_trailing(&mut following, tail.pending, writer)?;
                     boundary = following;
                 };
                 if matches!(
@@ -373,7 +375,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 write_items(writer)?
             };
             let tail = if parenthesize {
-                self.format_parentheses_tail(context.source_parentheses_tail, tail, None, writer)?
+                ExpressionOutput::closed(self.format_parentheses_tail(
+                    context.source_parentheses_tail,
+                    tail.pending,
+                    None,
+                    writer,
+                )?)
             } else {
                 tail
             };
@@ -394,7 +401,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: Option<&SequenceBoundary<'ast>>,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let SequenceItem {
             expression,
             prepared,
@@ -427,7 +434,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .as_ref()
             .and_then(|content| content.parentheses)
             .map_or(binding, |removed| binding.combine(removed.head.binding));
-        self.format_expression_leading_prepared(
+        self.format_expression_leading_prepared_with_raw_end(
             expression,
             prepared,
             ResolvedExpressionHead { head, binding },

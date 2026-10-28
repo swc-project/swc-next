@@ -9,7 +9,10 @@ use swc_next_ecma_ast::{
 use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
-use super::{AccessKind, ExpressionContext, ExpressionPosition, ParenthesesOwner, TailOwner};
+use super::{
+    AccessKind, ExpressionContext, ExpressionOutput, ExpressionPosition, ParenthesesOwner,
+    TailOwner,
+};
 use crate::formatter::Formatter;
 use crate::formatter::comments::{
     CommentBinding, CommentBoundary, CommentOpening, CommentRunLayout, ExpressionTail, NodeHead,
@@ -540,14 +543,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn format_binary_type_expression(
+    pub(super) fn format_binary_type_expression_output(
         &mut self,
         expression: Expr,
         annotation: TsType,
         operator: TypeBinaryOperator,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let mut type_node = self.prepare_type(annotation, ContentMode::Formatted);
         let boundary = self.prepare_binary_type_boundary(
             expression,
@@ -569,7 +572,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;
-                self.format_binary_type_right(boundary, type_node, writer)
+                self.format_binary_type_right_output(boundary, type_node, writer)
             };
             let receiver = context.is_call_or_member_receiver()
                 || matches!(context.position, ExpressionPosition::NewCallee);
@@ -929,12 +932,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.ast.get_utf8(name.name(self.ast)) == "const"
     }
 
-    fn format_binary_type_right(
+    fn format_binary_type_right_output(
         &mut self,
         boundary: BinaryTypeBoundary<'ast>,
         node: PreparedType,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match boundary.layout {
             BinaryTypeLayout::Preceding {
                 packet,
@@ -945,7 +948,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_binary_type_rhs_head(
+                self.format_binary_type_rhs_head_output(
                     node,
                     TypeContext::TypeExpressionRhs,
                     &after,
@@ -953,7 +956,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )
             }
-            BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs(
+            BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs_output(
                 source,
                 node,
                 TypeContext::TypeExpressionRhs,
@@ -966,7 +969,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => {
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
-                self.format_binary_type_rhs_head(
+                self.format_binary_type_rhs_head_output(
                     node,
                     TypeContext::TypeExpressionRhs,
                     &after,
@@ -979,7 +982,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_suppressed_type_content(
+                self.format_suppressed_type_content_output(
                     node,
                     &head,
                     TypeContext::TypeExpressionRhs,
@@ -1004,7 +1007,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.text(" ");
                 }
                 writer.text("as const");
-                Ok(tail)
+                Ok(ExpressionOutput::closed(tail))
             }
             BinaryTypeLayout::Formatted {
                 before,
@@ -1015,7 +1018,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.text(" ");
-                self.format_binary_type_rhs_head(
+                self.format_binary_type_rhs_head_output(
                     node,
                     TypeContext::TypeExpressionRhs,
                     &after,
@@ -1078,12 +1081,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(None)
     }
 
-    pub(super) fn format_type_assertion(
+    pub(super) fn format_type_assertion_output(
         &mut self,
         node: TsTypeAssertion,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let PreparedTypeAssertion {
             head,
             operand,
@@ -1096,8 +1099,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let tail = self.format_prepared_type_assertion(head, operand, writer)?;
             if grammar_barrier {
                 writer.text(")");
+                Ok(ExpressionOutput::closed(tail.pending))
+            } else {
+                Ok(tail)
             }
-            Ok(tail)
         })
     }
 
@@ -1106,7 +1111,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: TypeAssertionHead<'ast>,
         operand: TypeAssertionOperand<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if matches!(operand.layout, AssertionOperandLayout::Direct) {
             writer.group(false, |writer| {
                 self.format_type_assertion_head(head, writer)
@@ -1634,13 +1639,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         operand: TypeAssertionOperand<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match operand.head {
             TypeAssertionOperandHead::Prepared { head, content } => {
                 self.comments.claim(head.head.comments)?;
                 match content {
                     TypeAssertionContent::Expression(content) => self
-                        .format_prepared_expression_with_resolved_head(
+                        .format_prepared_expression_with_resolved_head_and_raw_end(
                             operand.expression,
                             content,
                             head,
@@ -1656,16 +1661,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )?;
                         chain.set_expression_start(start);
                         self.format_prepared_chain(*chain, writer)
+                            .map(ExpressionOutput::unreported)
                     }
                 }
             }
             TypeAssertionOperandHead::Boundary { before, content } => {
                 self.format_type_expression_gap(before, FlatSeparator::Empty, writer)?;
-                self.format_expression_prepared_with_array_comments(
+                self.format_expression_prepared_output(
                     operand.expression,
                     content,
                     operand.context,
-                    None,
                     writer,
                 )
             }

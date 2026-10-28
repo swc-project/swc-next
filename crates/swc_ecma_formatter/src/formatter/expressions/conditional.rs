@@ -6,7 +6,8 @@ use super::parentheses::{
     EmittedHeadAnnotation, ExpressionContent, PreparedGeneratedEnclosure, ResolvedExpressionHead,
 };
 use super::{
-    ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent, TailOwner,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionStart, Formatter,
+    OperandIndent, TailOwner,
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
@@ -195,8 +196,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } else {
                     context
                 };
-                let tail = self.format_prepared_conditional(prepared, context, writer)?;
-                self.format_expression_tail(tail, writer)
+                let output = self.format_prepared_conditional(prepared, context, writer)?;
+                self.format_expression_tail(output.pending, writer)
             };
             if continuation {
                 writer.indent(|writer| {
@@ -220,6 +221,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_conditional_with_raw_end(conditional, context, writer)
+            .map(|output| output.pending)
+    }
+
+    pub(super) fn format_conditional_with_raw_end(
+        &mut self,
+        conditional: ConditionalExpression,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let prepared = self.prepare_conditional(conditional)?;
         self.format_prepared_conditional(prepared, context, writer)
     }
@@ -229,7 +240,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: PreparedConditional<'ast>,
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let layout = match context.position {
             ExpressionPosition::ConditionalTest => ConditionalLayout::Test,
             ExpressionPosition::ConditionalConsequent => ConditionalLayout::Consequent,
@@ -357,7 +368,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         layout: ConditionalLayout,
         chain: ConditionalChain,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let PreparedConditional {
             test,
             consequent,
@@ -431,7 +442,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     formatter.resolve_conditional_boundary(
                         colon,
                         &alternate,
-                        tail,
+                        tail.pending,
                         default_before_operator,
                         enclosed,
                         writer,
@@ -451,8 +462,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
                 |formatter, tail, enclosed, writer| {
                     if enclosed {
-                        formatter.format_expression_tail(tail, writer)?;
-                        Ok(None)
+                        formatter.format_expression_tail(tail.pending, writer)?;
+                        Ok(ExpressionOutput {
+                            pending: None,
+                            right_edge: tail.right_edge,
+                        })
                     } else {
                         Ok(tail)
                     }
@@ -1089,7 +1103,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         finish: impl FnOnce(
             &mut Self,
-            Option<ExpressionTail<'ast>>,
+            ExpressionOutput<'ast>,
             bool,
             &mut Writer<'ast>,
         ) -> Result<T, FormatError>,
@@ -1195,13 +1209,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             });
             let tail = match generated {
-                Some(owner) => self.format_prepared_generated_enclosure_with_head(
-                    PreparedGeneratedEnclosure { owner, content },
-                    head,
-                    context,
-                    writer,
-                ),
-                None => self.format_prepared_expression_with_resolved_head(
+                Some(owner) => self
+                    .format_prepared_generated_enclosure_with_head(
+                        PreparedGeneratedEnclosure { owner, content },
+                        head,
+                        context,
+                        writer,
+                    )
+                    .map(ExpressionOutput::closed),
+                None => self.format_prepared_expression_with_resolved_head_and_raw_end(
                     original,
                     content,
                     ResolvedExpressionHead {

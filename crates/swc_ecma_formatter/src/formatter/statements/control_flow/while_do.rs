@@ -23,6 +23,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: WhileStatement,
         punctuation: StatementPunctuation,
+        source_candidate: crate::formatter::statements::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let span = node.span(self.ast);
@@ -41,7 +42,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ContentMode::Formatted,
             )
             .with_empty_block(EmptyBlock::Compact)
-            .with_enclosing_punctuation(punctuation);
+            .with_enclosing_boundary(punctuation, source_candidate);
         writer.group(false, |writer| {
             writer.text("while");
             self.format_condition(condition, writer)?;
@@ -106,9 +107,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.source_line_constraint(body_span.end, keyword.start) == LineConstraint::SameLine
         {
             // The retained gap cannot add an ASI newline before its `while`.
-            body = body
-                .with_enclosing_punctuation(StatementPunctuation::Canonical(Semicolons::Always));
+            body = body.with_enclosing_boundary(
+                StatementPunctuation::Canonical(Semicolons::Always),
+                super::super::ContinuationBoundary::End,
+            );
         }
+        body = self.with_controlled_body_keyword_fence(body, keyword);
         let keyword_boundary = self.prepare_body_keyword(&body, keyword);
         let printed = writer.group(false, |writer| {
             writer.text("do");

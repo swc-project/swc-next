@@ -129,6 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         node: TsExportAssignment,
         punctuation: StatementPunctuation,
+        source: super::ContinuationBoundary,
         writer: &mut Writer<'ast>,
     ) -> Result<PrintedStatement<'ast>, FormatError> {
         let ast = self.ast;
@@ -157,16 +158,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_content_mode(mode)
             .with_decorated_function_call(self.decorated_function_call(expression));
         writer.text("export");
-        let tail = if prefix_mode == ContentMode::Verbatim {
+        let output = if prefix_mode == ContentMode::Verbatim {
             self.format_verbatim(prefix, writer)?;
-            self.format_expression(expression, context, writer)?
+            self.format_expression_with_leading_comments_and_raw_end(
+                expression,
+                NodeHead {
+                    comments: &[],
+                    content_start: span.start,
+                    layout: CommentRunLayout::Leading(span.start),
+                    gap_end: None,
+                },
+                context,
+                None,
+                writer,
+            )?
         } else {
             self.format_module_gap(keyword_end, operator.start, true, writer)?;
             writer.text("=");
             let comments = self.comments.between(Span::new(operator.end, span.start))?;
             let comments = self.comments.take(comments.len());
             writer.space();
-            self.format_expression_with_leading_comments(
+            self.format_expression_with_leading_comments_and_raw_end(
                 expression,
                 NodeHead {
                     comments,
@@ -179,7 +191,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?
         };
-        self.finish_statement(span.end, tail, punctuation, writer)
+        let punctuation =
+            self.punctuation_for_expression_output(punctuation, source, node.span(ast), &output);
+        self.finish_statement(span.end, output.pending, punctuation, writer)
     }
 
     pub(super) fn format_ts_namespace_export(

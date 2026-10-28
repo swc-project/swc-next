@@ -6,8 +6,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::{
-    ExpressionContext, ExpressionPosition, ExpressionStart, Formatter, OperandIndent,
-    ParenthesesOwner, SourceTailOwner, TailBoundary, TailOwner,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionStart, Formatter,
+    OperandIndent, ParenthesesOwner, SourceTailOwner, TailBoundary, TailOwner,
 };
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
@@ -2313,8 +2313,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ignored_child =
             self.ignored_parentheses_child_with_comments(child, context.content_mode, comments);
         if let Some(ignored) = ignored_child
-            && (!trailing_binding.allows_relocation(None)
-                && context.tail_owner == TailOwner::ParentOperation
+            && (super::raw_tail::raw_expression_has_open_type_end(ignored, self.ast)
+                || !trailing_binding.allows_relocation(None)
+                    && context.tail_owner == TailOwner::ParentOperation
                 || self.ignored_operand_owns_operation_head(ignored, context.position)
                 || matches!(
                     context.position,
@@ -2361,6 +2362,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_expression_with_leading_comments_and_raw_end(
+            expression,
+            head,
+            context,
+            array_comments,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(in crate::formatter) fn format_expression_with_leading_comments_and_raw_end(
+        &mut self,
+        expression: Expr,
+        head: NodeHead<'ast>,
+        context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let span = expression.span(self.ast);
         let binding = self.source_parentheses_head_binding(
             head.comments,
@@ -2372,7 +2391,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut None,
             || self.source_type_cast(span.start),
         );
-        self.format_expression_leading_prepared(
+        self.format_expression_leading_prepared_with_raw_end(
             expression,
             None,
             ResolvedExpressionHead { head, binding },
@@ -2391,7 +2410,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_expression_head_and_content(
+        self.format_expression_leading_prepared_with_raw_end(
+            expression,
+            prepared,
+            resolved,
+            context,
+            array_comments,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(super) fn format_expression_leading_prepared_with_raw_end(
+        &mut self,
+        expression: Expr,
+        prepared: Option<ExpressionContent>,
+        resolved: ResolvedExpressionHead<'ast>,
+        context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_head_and_content_with_raw_end(
             expression,
             prepared,
             resolved,
@@ -2401,7 +2440,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn format_expression_head_and_content(
+    fn format_expression_head_and_content_with_raw_end(
         &mut self,
         expression: Expr,
         mut prepared: Option<ExpressionContent>,
@@ -2409,7 +2448,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if prepared.is_none()
             && matches!(context.position, ExpressionPosition::Statement)
             && context.content_mode == ContentMode::Formatted
@@ -2434,7 +2473,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .protected_head_start
                 .is_some_and(|start| start == expression.span(self.ast).start)
         {
-            return self.format_expression_head_enclosure(
+            return self.format_expression_head_enclosure_with_raw_end(
                 expression,
                 prepared,
                 PreparedHeadEnclosure {
@@ -2448,7 +2487,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         self.expression_layout(expression).write(writer, |writer| {
-            self.format_expression_content_prepared(
+            self.format_expression_content_with_raw_end(
                 expression,
                 prepared,
                 context,
@@ -2467,7 +2506,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut context: ExpressionContext<'ast>,
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let content = prepared.get_or_insert_with(|| self.expression_content(expression));
         context = self.with_head_scope(context, content);
         let frame = prepared.as_ref().and_then(|content| {
@@ -2493,7 +2532,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .protected_head_start
                 .is_some_and(|start| start == expression.span(self.ast).start)
         {
-            return self.format_expression_head_enclosure(
+            return self.format_expression_head_enclosure_with_raw_end(
                 expression,
                 prepared,
                 PreparedHeadEnclosure {
@@ -2507,7 +2546,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             );
         }
         self.expression_layout(expression).write(writer, |writer| {
-            self.format_expression_content_prepared(
+            self.format_expression_content_with_raw_end(
                 expression,
                 prepared,
                 context,
@@ -2608,12 +2647,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_expression_head_enclosure(
         &mut self,
         expression: Expr,
+        prepared: Option<ExpressionContent>,
+        plan: PreparedHeadEnclosure<'ast, '_>,
+        context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_expression_head_enclosure_with_raw_end(
+            expression,
+            prepared,
+            plan,
+            context,
+            array_comments,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    fn format_expression_head_enclosure_with_raw_end(
+        &mut self,
+        expression: Expr,
         mut prepared: Option<ExpressionContent>,
         plan: PreparedHeadEnclosure<'ast, '_>,
         mut context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let PreparedHeadEnclosure {
             resolved,
             frame,
@@ -2671,7 +2730,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     // coverage, even though its unbound packet prints outside.
                     content.parentheses = None;
                     context.protected_head_start = Some(start);
-                    return self.format_parenthesized_expression(
+                    return self.format_parenthesized_expression_output(
                         inner,
                         Some(content),
                         PreparedPairHead::Grammar(NodeHead {
@@ -2722,7 +2781,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && let Some((_, packet)) = lease
             {
                 context.protected_head_start = Some(head.content_start);
-                return self.format_parenthesized_expression(
+                return self.format_parenthesized_expression_output(
                     inner,
                     Some(content),
                     PreparedPairHead::Grammar(NodeHead {
@@ -2734,27 +2793,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 );
             }
-            return self.format_retained_source_parentheses(
-                RetainedSourceParentheses {
-                    boundary: frame.boundary,
-                    prepared_head: Some(lease.map_or(source_head, |(_, packet)| packet)),
-                    kind: RetainedParentheses::Annotation,
-                    hug: false,
-                    leading_mode: None,
-                },
-                context,
-                array_comments,
-                writer,
-                |formatter, context, array_comments, writer| {
-                    formatter.format_expression_prepared_with_array_comments(
-                        inner,
-                        Some(content),
-                        context,
-                        array_comments,
-                        writer,
-                    )
-                },
-            );
+            return self
+                .format_retained_source_parentheses(
+                    RetainedSourceParentheses {
+                        boundary: frame.boundary,
+                        prepared_head: Some(lease.map_or(source_head, |(_, packet)| packet)),
+                        kind: RetainedParentheses::Annotation,
+                        hug: false,
+                        leading_mode: None,
+                    },
+                    context,
+                    array_comments,
+                    writer,
+                    |formatter, context, array_comments, writer| {
+                        formatter.format_expression_prepared_with_array_comments(
+                            inner,
+                            Some(content),
+                            context,
+                            array_comments,
+                            writer,
+                        )
+                    },
+                )
+                .map(ExpressionOutput::closed);
         }
         if !head.comments.is_empty() {
             context.arrow_layout = context.arrow_layout.with_leading_comments();
@@ -2769,7 +2830,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && self.sequence_head_has_source_cast(sequence)
                 && self.expression_is_parenthesized(content.data, context)
             {
-                return self.format_parenthesized_expression(
+                return self.format_parenthesized_expression_output(
                     expression,
                     prepared,
                     PreparedPairHead::Grammar(head),
@@ -2789,18 +2850,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             binding,
             context,
         ) {
-            return self.format_optional_jsx_head_frame(
-                OptionalJsxHeadFrame {
-                    span: Span::new(head.comments[0].span.start, expression.span(self.ast).end),
-                    expression,
-                    content: prepared,
-                    head: ResolvedExpressionHead { head, binding },
-                },
-                context,
-                array_comments,
-                writer,
-                |_, _| Ok(()),
-            );
+            return self
+                .format_optional_jsx_head_frame(
+                    OptionalJsxHeadFrame {
+                        span: Span::new(head.comments[0].span.start, expression.span(self.ast).end),
+                        expression,
+                        content: prepared,
+                        head: ResolvedExpressionHead { head, binding },
+                    },
+                    context,
+                    array_comments,
+                    writer,
+                    |_, _| Ok(()),
+                )
+                .map(ExpressionOutput::closed);
         }
         // Added readability pairs have their own placement proof; the source
         // binding still owns ASI and diagnostic line constraints.
@@ -2925,7 +2988,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 head
             };
-            return self.format_parenthesized_expression(
+            return self.format_parenthesized_expression_output(
                 expression,
                 prepared,
                 if grammar_body {
@@ -2974,19 +3037,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(ExprData::SequenceExpression(_))
             )
         {
-            return self.format_generated_enclosure(
-                owner,
-                prepared,
-                context,
-                array_comments,
-                writer,
-            );
+            return self
+                .format_generated_enclosure(owner, prepared, context, array_comments, writer)
+                .map(ExpressionOutput::closed);
         }
         self.expression_layout(expression).write(writer, |writer| {
             if let Some(exterior) = exterior {
                 self.format_exterior_cast(exterior, context, array_comments, writer)
             } else {
-                self.format_expression_content_prepared(
+                self.format_expression_content_with_raw_end(
                     expression,
                     prepared,
                     context,
@@ -2997,28 +3056,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
-    fn format_expression_content_prepared(
+    fn format_expression_content_with_raw_end(
         &mut self,
         expression: Expr,
         prepared: Option<ExpressionContent>,
         mut context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if context.content_mode == ContentMode::Verbatim
-            && matches!(context.position, ExpressionPosition::ForInInitializer)
-        {
-            self.format_verbatim(expression.span(self.ast), writer)?;
-            return Ok(None);
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        if context.content_mode == ContentMode::Verbatim {
+            if matches!(context.position, ExpressionPosition::ForInInitializer) {
+                self.format_verbatim(expression.span(self.ast), writer)?;
+                return Ok(ExpressionOutput::unreported(None));
+            }
+            if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression)
+                && self.verbatim_parentheses_are_removable(parenthesized, context.position)
+            {
+                return self.format_source_parentheses_with_raw_end(
+                    parenthesized,
+                    prepared,
+                    context,
+                    array_comments,
+                    writer,
+                );
+            }
+            let copied_raw_end =
+                self.format_verbatim_expression_with_raw_end(expression, context, writer)?;
+            return Ok(ExpressionOutput::copied(None, copied_raw_end));
         }
         if let ExprData::ParenthesizedExpression(parenthesized) = self.ast.expr_data(expression) {
-            if context.content_mode == ContentMode::Verbatim
-                && !self.verbatim_parentheses_are_removable(parenthesized, context.position)
-            {
-                self.format_verbatim_expression(expression, context, writer)?;
-                return Ok(None);
-            }
-            return self.format_source_parentheses(
+            return self.format_source_parentheses_with_raw_end(
                 parenthesized,
                 prepared,
                 context,
@@ -3026,16 +3093,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             );
         }
-        if context.content_mode == ContentMode::Verbatim {
-            self.format_verbatim_expression(expression, context, writer)?;
-            return Ok(None);
-        }
         let expression = prepared
             .as_ref()
             .map_or(expression, |content| content.expression);
         let data = self.ast.expr_data(expression);
         if let ExprData::SequenceExpression(sequence) = data {
-            return self.format_sequence(sequence, context, writer);
+            return self.format_sequence_output(sequence, context, writer);
         }
         let parenthesize = self.expression_is_parenthesized(data, context);
         if parenthesize
@@ -3043,7 +3106,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 || matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
                     && Self::jsx_grammar_pair_is_enclosed(context.position))
         {
-            return self.format_parenthesized_expression(
+            return self.format_parenthesized_expression_output(
                 expression,
                 prepared,
                 PreparedPairHead::Grammar(NodeHead {
@@ -3109,24 +3172,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     })?;
                     writer.soft_line();
                     writer.text(")");
-                    Ok(None)
+                    Ok(ExpressionOutput::closed(None))
                 });
             }
             if parenthesize {
                 writer.text("(");
                 context.expression_start = ExpressionStart::None;
             }
-            let tail = self.format_binary(binary, context, writer)?;
+            let output = self.format_binary_output(binary, context, writer)?;
             if parenthesize {
                 writer.text(")");
+                return Ok(ExpressionOutput::closed(output.pending));
             }
-            return Ok(tail);
+            return Ok(output);
         }
         if let ExprData::ConditionalExpression(conditional) = data
             && parenthesize
             && Self::conditional_grammar_pair_is_enclosed(context)
         {
-            return self.format_conditional_enclosed(conditional, context, writer);
+            return self
+                .format_conditional_enclosed(conditional, context, writer)
+                .map(ExpressionOutput::closed);
         }
         if let ExprData::ConditionalExpression(conditional) = data
             && Self::conditional_test_pair_is_enclosed(context.position)
@@ -3146,28 +3212,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 })?;
                 writer.soft_line();
                 writer.text(")");
-                Ok(None)
+                Ok(ExpressionOutput::closed(None))
             });
         }
         if parenthesize {
             writer.text("(");
             context.expression_start = ExpressionStart::None;
         }
-        let tail = self.format_expression_data(expression, context, parenthesize, writer)?;
+        let output =
+            self.format_expression_data(expression, data, context, parenthesize, writer)?;
         let tail = if parenthesize {
             self.format_parentheses_tail(
                 context.source_parentheses_tail,
-                tail,
+                output.pending,
                 array_comments,
                 writer,
             )?
         } else {
-            tail
+            output.pending
         };
         if parenthesize {
             writer.text(")");
+            Ok(ExpressionOutput::closed(tail))
+        } else {
+            Ok(ExpressionOutput {
+                pending: tail,
+                right_edge: output.right_edge,
+            })
         }
-        Ok(tail)
     }
 
     pub(super) fn format_expression_head(
@@ -3411,35 +3483,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(start)
     }
 
-    fn format_source_parentheses(
+    fn format_source_parentheses_with_raw_end(
         &mut self,
         parenthesized: ParenthesizedExpression,
         prepared: Option<ExpressionContent>,
         mut context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let span = parenthesized.span(self.ast);
         if let Some(plan) = self.prepare_exterior_cast(parenthesized, context) {
             return self.format_exterior_cast(&plan, context, array_comments, writer);
         }
         let ignored_child = match self.source_parentheses_choice(parenthesized, context) {
             SourceParenthesesChoice::Verbatim => {
-                self.format_verbatim_expression(
+                let copied_raw_end = self.format_verbatim_expression_with_raw_end(
                     Expr::ParenthesizedExpression(parenthesized),
                     context,
                     writer,
                 )?;
-                return Ok(None);
+                return Ok(ExpressionOutput::copied(None, copied_raw_end));
             }
             SourceParenthesesChoice::Retained { kind, mode } => {
-                return self.format_retained_parentheses(
-                    parenthesized,
-                    context.with_content_mode(mode),
-                    kind,
-                    array_comments.as_deref_mut(),
-                    writer,
-                );
+                return self
+                    .format_retained_parentheses(
+                        parenthesized,
+                        context.with_content_mode(mode),
+                        kind,
+                        array_comments.as_deref_mut(),
+                        writer,
+                    )
+                    .map(ExpressionOutput::closed);
             }
             SourceParenthesesChoice::Content {
                 mode,
@@ -3458,22 +3532,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .or_else(|| self.protected_grammar_parentheses(&content, context))
                 .or_else(|| self.sequence_member_parentheses(&content, context))
         {
-            return self.format_protected_grammar_parentheses(
-                boundary,
-                content,
-                context,
-                array_comments.as_deref_mut(),
-                writer,
-            );
+            return self
+                .format_protected_grammar_parentheses(
+                    boundary,
+                    content,
+                    context,
+                    array_comments.as_deref_mut(),
+                    writer,
+                )
+                .map(ExpressionOutput::closed);
         }
         if ignored_child.is_none() && content.parentheses.is_none() {
-            return self.format_retained_parentheses(
-                parenthesized,
-                context,
-                RetainedParentheses::Annotation,
-                array_comments.as_deref_mut(),
-                writer,
-            );
+            return self
+                .format_retained_parentheses(
+                    parenthesized,
+                    context,
+                    RetainedParentheses::Annotation,
+                    array_comments.as_deref_mut(),
+                    writer,
+                )
+                .map(ExpressionOutput::closed);
         }
         if context.protected_head_start == Some(span.start) {
             context.protected_head_start = ignored_child
@@ -3535,8 +3613,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             context.source_parentheses_tail = content.parentheses.and_then(|removed| removed.tail);
         }
-        let tail = self.with_terminal_close_owner(terminal_owner, |formatter| {
-            formatter.format_expression_leading_prepared(
+        let mut output = self.with_terminal_close_owner(terminal_owner, |formatter| {
+            formatter.format_expression_leading_prepared_with_raw_end(
                 inner,
                 None,
                 ResolvedExpressionHead {
@@ -3556,12 +3634,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })?;
         let source_tail = content.parentheses.and_then(|removed| removed.tail);
         if ignored_child.is_some() {
-            self.capture_expression_tail(Span::new(inner_span.end, span.end), tail)
+            output.pending =
+                self.capture_expression_tail(Span::new(inner_span.end, span.end), output.pending)?;
         } else if let Some(source_tail) = source_tail {
-            self.capture_expression_tail(source_tail.span, tail)
-        } else {
-            Ok(tail)
+            output.pending = self.capture_expression_tail(source_tail.span, output.pending)?;
         }
+        Ok(output)
     }
 
     fn prepare_exterior_cast_owner(
@@ -3684,7 +3762,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut context: ExpressionContext<'ast>,
         array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let PreparedExteriorCast { owner, head } = plan;
         let ExteriorCastOwner {
             cast,
@@ -3700,26 +3778,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             // The source opener keeps the cast on the keyword's argument side.
             // Releasing it would turn this source break into a restricted break.
-            return self.format_retained_source_parentheses(
-                RetainedSourceParentheses {
-                    boundary: source,
-                    prepared_head: None,
-                    kind: RetainedParentheses::Operand,
-                    hug: false,
-                    leading_mode: None,
-                },
-                context,
-                array_comments,
-                writer,
-                |formatter, context, array_comments, writer| {
-                    formatter.format_expression_with_array_comments(
-                        Expr::ParenthesizedExpression(cast.pair),
-                        context,
-                        array_comments,
-                        writer,
-                    )
-                },
-            );
+            return self
+                .format_retained_source_parentheses(
+                    RetainedSourceParentheses {
+                        boundary: source,
+                        prepared_head: None,
+                        kind: RetainedParentheses::Operand,
+                        hug: false,
+                        leading_mode: None,
+                    },
+                    context,
+                    array_comments,
+                    writer,
+                    |formatter, context, array_comments, writer| {
+                        formatter.format_expression_with_array_comments(
+                            Expr::ParenthesizedExpression(cast.pair),
+                            context,
+                            array_comments,
+                            writer,
+                        )
+                    },
+                )
+                .map(ExpressionOutput::closed);
         }
         // The exterior diagnostic belongs to its caller or previous separator;
         // only the exact pending cast annotation is claimed here.
@@ -3731,7 +3811,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.protected_head_start = Some(source.inner.start);
         }
         let expression = Expr::ParenthesizedExpression(cast.pair);
-        let tail = self.format_expression_leading_prepared(
+        let mut output = self.format_expression_leading_prepared_with_raw_end(
             expression,
             Some(ExpressionContent {
                 expression,
@@ -3751,7 +3831,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             array_comments,
             writer,
         )?;
-        self.capture_expression_tail(Span::new(source.inner.end, source.outer.end), tail)
+        output.pending = self.capture_expression_tail(
+            Span::new(source.inner.end, source.outer.end),
+            output.pending,
+        )?;
+        Ok(output)
     }
 
     fn format_retained_parentheses(
@@ -4388,7 +4472,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_expression_leading_prepared(
+        self.format_prepared_expression_with_resolved_head_and_raw_end(
+            expression, content, resolved, context, writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(in crate::formatter) fn format_prepared_expression_with_resolved_head_and_raw_end(
+        &mut self,
+        expression: Expr,
+        content: ExpressionContent,
+        resolved: ResolvedExpressionHead<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_expression_leading_prepared_with_raw_end(
             expression,
             Some(content),
             resolved,
@@ -4406,11 +4504,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_prepared_expression_with_leading_comments_and_raw_end(
+            expression, content, head, context, writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    pub(in crate::formatter) fn format_prepared_expression_with_leading_comments_and_raw_end(
+        &mut self,
+        expression: Expr,
+        content: ExpressionContent,
+        head: NodeHead<'ast>,
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let binding = self.expression_head_binding(head.comments, expression);
         let binding = content
             .parentheses
             .map_or(binding, |removed| binding.combine(removed.head.binding));
-        self.format_prepared_expression_with_resolved_head(
+        self.format_prepared_expression_with_resolved_head_and_raw_end(
             expression,
             content,
             ResolvedExpressionHead { head, binding },
@@ -4489,12 +4601,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_parenthesized_expression(
         &mut self,
         expression: Expr,
+        prepared: Option<ExpressionContent>,
+        pair: PreparedPairHead<'ast>,
+        context: ExpressionContext<'ast>,
+        array_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_parenthesized_expression_output(
+            expression,
+            prepared,
+            pair,
+            context,
+            array_comments,
+            writer,
+        )
+        .map(|output| output.pending)
+    }
+
+    fn format_parenthesized_expression_output(
+        &mut self,
+        expression: Expr,
         mut prepared: Option<ExpressionContent>,
         pair: PreparedPairHead<'ast>,
         context: ExpressionContext<'ast>,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let (head, grammar_body) = match pair {
             PreparedPairHead::Grammar(head) => (head, true),
             PreparedPairHead::Lexical(head) => (head, false),
@@ -4511,16 +4643,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     context.source_parentheses_tail =
                         source_tail.or(context.source_parentheses_tail);
                 }
-                let tail = self.format_sequence_with_leading_comments(
+                let mut output = self.format_sequence_with_leading_comments_output(
                     sequence,
                     head.comments,
                     context,
                     writer,
                 )?;
-                return match source_tail {
-                    Some(source) => self.capture_expression_tail(source.span, tail),
-                    None => Ok(tail),
-                };
+                if let Some(source) = source_tail {
+                    output.pending = self.capture_expression_tail(source.span, output.pending)?;
+                }
+                return Ok(output);
             }
         }
         if context.expression_start.needs_asi_guard()
@@ -4600,7 +4732,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             })?;
             closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
             writer.text(")");
-            Ok(tail)
+            Ok(ExpressionOutput::closed(tail))
         })
     }
 

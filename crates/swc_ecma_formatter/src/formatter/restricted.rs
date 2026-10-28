@@ -5,14 +5,15 @@ use swc_next_ecma_ast::{
 };
 
 use super::Formatter;
-use super::comments::{CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{CommentRunLayout, NodeHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::chains::PreparedChain;
 use super::expressions::parentheses::{
     ExpressionContent, ResolvedExpressionHead, SourceParentheses,
 };
 use super::expressions::{
-    ExpressionContext, ExpressionPosition, OperandIndent, SourceTailOwner, TailOwner,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, OperandIndent, SourceTailOwner,
+    TailOwner,
 };
 use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
@@ -137,7 +138,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         argument: Expr,
         write_keyword: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.format_restricted_operand(
             keyword_end,
             argument,
@@ -152,7 +153,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         argument: Expr,
         write_keyword: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.format_restricted_operand(
             keyword_end,
             argument,
@@ -168,7 +169,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         grammar: RestrictedGrammar,
         write_keyword: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let span = argument.span(self.ast);
         let leading = self.comments.between(Span::new(keyword_end, span.start))?;
         let mode = self.content_mode(leading);
@@ -240,7 +241,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: &ExpressionContent,
         write_keyword: impl FnOnce(&mut Writer<'ast>),
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let start = prepared.head.expression.span(self.ast).start;
         let chain: Option<PreparedChain<'ast>> = self.prepare_restricted_fluent_chain(
             prepared.argument,
@@ -282,7 +283,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         write_keyword(writer);
         self.format_restricted_envelope(
             &prepared,
-            |formatter, _, writer| formatter.format_prepared_chain(chain, writer),
+            |formatter, _, writer| {
+                formatter
+                    .format_prepared_chain(chain, writer)
+                    .map(ExpressionOutput::unreported)
+            },
             writer,
         )
     }
@@ -291,7 +296,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         prepared: RestrictedArgument<'ast>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         self.format_restricted_envelope(
             &prepared,
             |formatter, content_start, writer| {
@@ -299,7 +304,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let context = prepared
                     .grammar
                     .argument_context(prepared.envelope, prepared.mode);
-                formatter.format_expression_with_leading_comments(
+                formatter.format_expression_with_leading_comments_and_raw_end(
                     prepared.argument,
                     NodeHead {
                         comments: prepared.head.comments,
@@ -327,9 +332,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut Self,
             u32,
             &mut Writer<'ast>,
-        ) -> Result<Option<ExpressionTail<'ast>>, FormatError>,
+        ) -> Result<ExpressionOutput<'ast>, FormatError>,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         let RestrictedArgument {
             argument,
             head,
@@ -372,8 +377,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         }
                         let tail = write_argument(self, content_start, writer)?;
                         if matches!(envelope, ArgumentEnvelope::Required) {
-                            self.format_expression_tail(tail, writer)?;
-                            Ok(None)
+                            self.format_expression_tail(tail.pending, writer)?;
+                            Ok(ExpressionOutput::closed(None))
                         } else {
                             Ok(tail)
                         }

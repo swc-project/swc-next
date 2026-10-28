@@ -19,8 +19,8 @@ use super::decorators::{DecoratorLayout, DecoratorPrefix, RemovedDecoratorHead};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
-    AccessKind, ExpressionContext, ExpressionPosition, ExpressionStart, ExpressionTypeArguments,
-    TailOwner,
+    AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
+    ExpressionTypeArguments, TailOwner,
 };
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
@@ -170,6 +170,7 @@ struct SourceClassField<'ast> {
     suffix: Option<FieldSuffix<'ast>>,
     initializer: Option<FieldInitializer<'ast>>,
     terminal: ClassMemberTerminal,
+    source_terminal: Option<Span>,
 }
 
 #[derive(Clone, Copy)]
@@ -1908,6 +1909,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             suffix,
             initializer,
             terminal,
+            source_terminal: semicolon.map(|_| internal),
         }))
     }
 
@@ -2002,7 +2004,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             quoting,
             suffix,
             initializer,
-            terminal,
+            mut terminal,
+            source_terminal,
         } = field;
         self.format_class_member_prefix(&prefix, writer)?;
         let prefix_end = if let Some(ClassFieldAccessor::Token(accessor)) = accessor {
@@ -2038,14 +2041,38 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 InitializerLayout::Bound { gap, .. } => gap.start,
                 InitializerLayout::Formatted { boundary, .. } => boundary.left_end,
             };
-            self.format_initializer_right(
+            let output = self.format_initializer_right_with_raw_end(
                 left_end,
                 right,
                 layout,
                 ExpressionContext::variable_initializer()
                     .with_tail_owner(TailOwner::ParentOperation),
                 writer,
-            )?
+            )?;
+            if boundary.following
+                && let (
+                    ClassMemberTerminal::Canonical {
+                        span,
+                        semicolon: false,
+                    },
+                    ExpressionRightEdge::SourceFenceCandidate(raw),
+                ) = (&terminal, output.right_edge)
+                && right.span(self.ast).start <= raw.span(self.ast).start
+                && raw.span(self.ast).end <= right.span(self.ast).end
+                && raw.has_open_type_end(self.ast)
+            {
+                terminal = if let Some(source) =
+                    source_terminal.filter(|source| raw.span(self.ast).end <= source.start)
+                {
+                    ClassMemberTerminal::Source(source)
+                } else {
+                    ClassMemberTerminal::Canonical {
+                        span: *span,
+                        semicolon: true,
+                    }
+                };
+            }
+            output.pending
         } else {
             tail
         };
