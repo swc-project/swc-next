@@ -3978,6 +3978,84 @@ fn fill_measurement_invalidation() {
 }
 
 #[test]
+fn decode_document() {
+    let allocator = Allocator::new();
+    let expected = independent_document(&allocator).print(PrintOptions::default());
+    let bytes = independent_document(&allocator).encode();
+    let actual = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(actual, expected);
+
+    let mut writer = Writer::new(&allocator);
+    let (shared, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("世界");
+            writer.line();
+            writer.text("other");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.group(false, |writer| {
+        writer.write_fragment(shared);
+        writer.line();
+        writer.write_fragment(shared);
+    });
+    let doc = writer.finish();
+    let bytes = Doc {
+        allocator: doc.allocator,
+        elements: doc.elements,
+        group_count: doc.group_count,
+    }
+    .encode();
+    let actual = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    let expected = doc.print(PrintOptions::default());
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn decode_invalid_document() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("hello");
+    let bytes = writer.finish().encode();
+
+    for end in 0..bytes.len() {
+        assert!(Doc::decode(&allocator, &bytes[..end]).is_err());
+    }
+
+    let mut unsupported = bytes.clone();
+    unsupported[4] = 1;
+    assert!(matches!(
+        Doc::decode(&allocator, &unsupported),
+        Err(super::DocumentBufferError::UnsupportedVersion(1))
+    ));
+
+    let mut invalid = bytes.clone();
+    invalid[20] = 255;
+    assert!(Doc::decode(&allocator, &invalid).is_err());
+
+    let cycle = [
+        b'S', b'W', b'C', b'D', 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 9, 0, 0, 0, 0,
+    ];
+    assert!(Doc::decode(&allocator, &cycle).is_err());
+}
+
+fn assert_decoded_prints(doc: Doc<'_>, options: PrintOptions) {
+    let allocator = doc.allocator;
+    let encoded = Doc {
+        allocator,
+        elements: doc.elements,
+        group_count: doc.group_count,
+    }
+    .encode();
+    let decoded = Doc::decode(allocator, &encoded).unwrap().print(options);
+    assert_eq!(decoded, doc.print(options));
+}
+
+#[test]
 fn group_request_codec() {
     let allocator = Allocator::new();
     let mut writer = Writer::new(&allocator);
@@ -3988,6 +4066,9 @@ fn group_request_codec() {
     let doc = writer.finish();
     let bytes = Doc { ..doc }.encode();
     assert_eq!(&bytes[20..], &[3, 0, 0, 0, 0, 0, 16, 2, 0, 17, 3]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
     assert_eq!(doc.print(PrintOptions::default()), "\n");
 
     let mut writer = Writer::new(&allocator);
@@ -3995,6 +4076,9 @@ fn group_request_codec() {
     let doc = writer.finish();
     let bytes = Doc { ..doc }.encode();
     assert_eq!(&bytes[20..], &[3, 1, 0, 0, 0, 0, 2, 0, 17, 3]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
     assert_eq!(doc.print(PrintOptions::default()), "\n");
 
     let mut writer = Writer::new(&allocator);
@@ -4010,5 +4094,262 @@ fn group_request_codec() {
     let root_len = u32::from_le_bytes(bytes[16..20].try_into().unwrap()) as usize;
     let group_start = 20 + root_len + 4;
     assert_eq!(&bytes[group_start..group_start + 6], &[3, 0, 0, 0, 0, 0]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
     assert_eq!(doc.print(PrintOptions::default()), "\n");
+}
+
+#[test]
+fn decode_line_requests() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 0,
+        ..wide
+    };
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..wide
+    };
+    for options in [wide, narrow, crlf] {
+        let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = indented_line_doc(&allocator, Writer::hard_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = indented_line_doc(&allocator, Writer::literal_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+    }
+}
+
+#[test]
+fn decode_multiline_text() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..narrow
+    };
+    let cr = PrintOptions {
+        line_ending: LineEnding::Cr,
+        ..narrow
+    };
+    for options in [wide, narrow, crlf, cr] {
+        let doc = text_layout_document(&allocator, |writer| writer.text("a\r\nb\rc"));
+        assert_decoded_prints(doc, options);
+
+        let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+        assert_decoded_prints(doc, options);
+
+        let mut writer = Writer::new(&allocator);
+        let shared = record(&mut writer, |writer| writer.text_copied("界\nλ"));
+        writer.write_fragment(shared);
+        writer.group(false, |writer| {
+            writer.if_flat("x\ny");
+            writer.if_break("b\rc");
+            writer.write_fragment(shared);
+        });
+        assert_decoded_prints(writer.finish(), options);
+    }
+}
+
+#[test]
+fn decode_layout_scopes() {
+    let allocator = Allocator::new();
+    let options = PrintOptions {
+        line_width: 5,
+        ..PrintOptions::default()
+    };
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.indent(|writer| {
+            writer.line();
+            writer.text("bcde");
+        });
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    let id = writer.named_group(false, |writer| {
+        writer.text("abc");
+        writer.line();
+        writer.text("def");
+    });
+    writer.indent_if_break(id, |writer| {
+        writer.line();
+        writer.text("x");
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| writer.text("abc"));
+        writer.fill_entry(|writer| writer.line());
+        writer.fill_entry(|writer| writer.text("def"));
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("abc");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.line_suffix_boundary();
+    writer.text("def");
+    assert_decoded_prints(writer.finish(), options);
+}
+
+#[test]
+fn decode_branch_documents() {
+    let allocator = Allocator::new();
+    let options = PrintOptions {
+        line_width: 3,
+        ..PrintOptions::default()
+    };
+
+    let mut writer = Writer::new(&allocator);
+    let (broken, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("broken");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let (flat, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("flat");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.group(false, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, broken, flat)
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    let (first, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("long");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let (fallback, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("a");
+            writer.hard_line();
+            writer.text("b");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.write_alternatives(&[first], fallback);
+    assert_decoded_prints(writer.finish(), options);
+}
+
+fn document_buffer(fragments: &[&[u8]], pool: &[u8]) -> Vec<u8> {
+    let mut bytes = b"SWCD".to_vec();
+    bytes.extend(0u32.to_le_bytes());
+    bytes.extend((fragments.len() as u32).to_le_bytes());
+    bytes.extend((pool.len() as u32).to_le_bytes());
+    for fragment in fragments {
+        bytes.extend((fragment.len() as u32).to_le_bytes());
+        bytes.extend(*fragment);
+    }
+    bytes.extend(pool);
+    bytes
+}
+
+#[test]
+fn decode_invalid_wire_scopes() {
+    let allocator = Allocator::new();
+
+    let bytes = document_buffer(&[&[3, 2, 0, 0, 0, 0, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[2, 7]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[4, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[], &[9, 1, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[0, 0, 0, 0, 0, 1, 0, 0, 0]], &[0xff]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[12, 17, 12]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[11, 14, 12, 17, 12, 17, 14, 17, 11]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+}
+
+#[test]
+fn decode_shared_fill_entries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (entry, ()) = writer
+        .record_with_value(|writer| {
+            writer.fill_entry(|writer| writer.text("item"));
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.fill(|writer| writer.write_fragment(entry));
+    assert_decoded_prints(writer.finish(), PrintOptions::default());
+}
+
+#[test]
+fn decode_sparse_group_ids() {
+    let allocator = Allocator::new();
+    let bytes = document_buffer(
+        &[&[7, 255, 255, 255, 255, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4]],
+        b"x",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "");
+}
+
+#[test]
+fn decode_text_work_limit() {
+    let allocator = Allocator::new();
+
+    let bytes = document_buffer(
+        &[&[0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]],
+        b"abc",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "abbc");
+
+    let mut fragment = Vec::new();
+    for start in 0u32..40 {
+        fragment.push(0);
+        fragment.extend(start.to_le_bytes());
+        fragment.extend(200u32.to_le_bytes());
+    }
+    let bytes = document_buffer(&[&fragment], &vec![b'a'; 240]);
+    assert!(matches!(
+        Doc::decode(&allocator, &bytes),
+        Err(super::DocumentBufferError::LimitExceeded)
+    ));
+
+    let bytes = document_buffer(
+        &[&[0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]],
+        b"ab",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "abab");
 }
