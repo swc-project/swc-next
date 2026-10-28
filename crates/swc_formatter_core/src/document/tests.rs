@@ -2042,6 +2042,64 @@ fn named_indent_projection(printed: bool, retained: bool) -> String {
     })
 }
 
+fn named_indent_suffix_projection(binding: Option<bool>, retained: bool, nested: bool) -> String {
+    flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        if let Some(expand) = binding {
+            writer.group_with_id(expand.into(), Some(group), |writer| writer.text("g"));
+            writer.literal_line();
+        }
+        writer.text("a");
+        writer.line_suffix(|writer| writer.text("S"));
+        let write = |writer: &mut Writer<'_>| {
+            writer.indent_if_break(group, |writer| {
+                let body = |writer: &mut Writer<'_>| {
+                    writer.line_suffix_boundary();
+                    writer.text("x");
+                };
+                if nested {
+                    writer.indent_if_break(group, body);
+                } else {
+                    body(writer);
+                }
+            });
+        };
+        if retained {
+            let fragment = record(writer, write);
+            writer.write_flat_fragment(fragment.try_flat().unwrap());
+        } else {
+            writer.flat(write);
+        }
+        writer.hard_line();
+        writer.text("z");
+    })
+}
+
+#[test]
+fn named_indent_suffix_bindings() {
+    for retained in [false, true] {
+        assert_eq!(
+            named_indent_suffix_projection(None, retained, false),
+            "aS\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(false), retained, false),
+            "g\naS\nx\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(true), retained, false),
+            "g\naS\n  x\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(true), retained, true),
+            "g\naS\n    x\nz"
+        );
+    }
+}
+
 #[test]
 fn named_condition_bindings() {
     let unprinted = flat_width_document(80, |writer| {
