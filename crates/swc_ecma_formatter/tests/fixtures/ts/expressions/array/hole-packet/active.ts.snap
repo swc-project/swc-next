@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const a: number;
+const z = [a /* #__PURE__ */ // @ts-ignore
+, , missing];
+---------- Options ----------
+{}
+---------- Output ----------
+declare const a: number;
+const z = [
+  a /* #__PURE__ */ // @ts-ignore
+  , , missing,
+];
