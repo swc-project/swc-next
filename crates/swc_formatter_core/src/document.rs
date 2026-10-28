@@ -6,6 +6,7 @@
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
+mod encode;
 mod printer;
 #[cfg(test)]
 mod tests;
@@ -660,6 +661,16 @@ pub struct Doc<'a> {
 }
 
 impl Doc<'_> {
+    /// Encodes the logical document into an owned version-0 buffer.
+    ///
+    /// The current JavaScript decoder requires text instructions to be single-line.
+    /// Use [`Writer::literal_text`] for source text containing physical line breaks.
+    /// This transport is still evolving and does not yet cover every document that
+    /// the native printer can render.
+    pub fn encode(self) -> Vec<u8> {
+        encode::encode(self)
+    }
+
     pub fn print(self, options: PrintOptions) -> String {
         printer::print(self.elements, self.allocator, self.group_count, options)
     }
