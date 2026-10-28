@@ -15,6 +15,7 @@ pub(super) struct Text<'a> {
 enum WidthKind {
     Ascii,
     Unicode,
+    UnicodeWithLines,
     Dynamic,
 }
 
@@ -25,6 +26,31 @@ pub(super) struct Width {
     value: u16,
 }
 
+impl Width {
+    #[cold]
+    fn measure_slow(source: &str) -> Self {
+        if memchr::memchr2(b'\r', b'\n', source.as_bytes()).is_some() {
+            debug_assert!(
+                !source.contains(['\r', '\n']),
+                "physical lines must use literal_text or a line instruction"
+            );
+            Self {
+                kind: WidthKind::Dynamic,
+                value: 0,
+            }
+        } else {
+            Self {
+                kind: if source.contains(['\u{2028}', '\u{2029}']) {
+                    WidthKind::UnicodeWithLines
+                } else {
+                    WidthKind::Unicode
+                },
+                value: u16::try_from(measure_text_width(source)).unwrap_or(u16::MAX),
+            }
+        }
+    }
+}
+
 impl<'a> Text<'a> {
     #[inline]
     pub(super) fn new(source: &'a str) -> Self {
@@ -33,20 +59,8 @@ impl<'a> Text<'a> {
                 kind: WidthKind::Ascii,
                 value: 0,
             }
-        } else if memchr::memchr2(b'\r', b'\n', source.as_bytes()).is_some() {
-            debug_assert!(
-                !source.contains(['\r', '\n']),
-                "physical lines must use literal_text or a line instruction"
-            );
-            Width {
-                kind: WidthKind::Dynamic,
-                value: 0,
-            }
         } else {
-            Width {
-                kind: WidthKind::Unicode,
-                value: u16::try_from(measure_text_width(source)).unwrap_or(u16::MAX),
-            }
+            Width::measure_slow(source)
         };
         Self { source, width }
     }
@@ -75,17 +89,14 @@ impl<'a> Text<'a> {
     }
 
     pub(super) fn is_single_line(self) -> bool {
-        match self.width.kind {
-            WidthKind::Ascii => true,
-            _ => !self.source().contains(['\n', '\r', '\u{2028}', '\u{2029}']),
-        }
+        matches!(self.width.kind, WidthKind::Ascii | WidthKind::Unicode)
     }
 
     /// Textual width has no column context and does not prove a flat render view.
     pub(super) fn clean_width(self) -> Option<usize> {
         Some(match self.width.kind {
             WidthKind::Ascii => self.source().len(),
-            WidthKind::Unicode => usize::from(self.width.value),
+            WidthKind::Unicode | WidthKind::UnicodeWithLines => usize::from(self.width.value),
             WidthKind::Dynamic => {
                 if self.source().contains(['\r', '\n']) {
                     return None;
@@ -105,7 +116,9 @@ impl<'a> Text<'a> {
     pub(super) fn first_line(self, column: usize) -> (usize, bool) {
         match self.width.kind {
             WidthKind::Ascii => (column + self.source().len(), false),
-            WidthKind::Unicode => (column + usize::from(self.width.value), false),
+            WidthKind::Unicode | WidthKind::UnicodeWithLines => {
+                (column + usize::from(self.width.value), false)
+            }
             WidthKind::Dynamic => advance(self.source(), column),
         }
     }
