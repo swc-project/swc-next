@@ -759,7 +759,14 @@ pub(super) fn print<'a>(
                         cursor.current.remaining.split_at(end_offset as usize);
                     cursor.current.remaining = remaining;
                     if binding.is_some() {
-                        cursor.enter(&contents[..contents.len() - 1], true, None);
+                        let (body, end) = contents.split_at(contents.len() - 1);
+                        if binding == Some(Mode::Break) {
+                            indents.push(indent);
+                            indent = indent.indented(options);
+                            // Restore indentation after the projected body completes.
+                            cursor.enter(end, false, None);
+                        }
+                        cursor.enter(body, true, None);
                     }
                 } else {
                     indents.push(indent);
