@@ -631,15 +631,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.find_comma(gap, comments)
         };
-        let terminal_close = terminal_closing
-            .zip(comma)
-            .filter(|&(_, comma)| self.diagnostic_line_is_sensitive(comma))
-            .map(|(closing, comma)| {
-                let end = comments
-                    .last()
-                    .map_or(content_end, |comment| comment.span.end);
-                self.terminal_comma_close_constraint(closing, end, comma)
-            });
+        let terminal_close = terminal_closing.and_then(|closing| {
+            let end = comments
+                .last()
+                .map_or(content_end, |comment| comment.span.end);
+            match comma {
+                Some(comma) if self.diagnostic_line_is_sensitive(comma) => {
+                    Some(self.terminal_comma_close_constraint(closing, end, comma))
+                }
+                None => Some(self.terminal_close_constraint(closing, end)),
+                Some(_) => None,
+            }
+        });
         let trailing_comma = if !has_more
             && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
             && terminal_close
