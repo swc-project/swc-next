@@ -946,7 +946,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: Span,
         head: ArgumentHead,
         mut selected: SelectedArgument,
-        mut chain_facts: Option<&mut ChainArgumentFacts>,
+        chain_facts: Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -982,6 +982,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             Ok::<_, FormatError>(())
         })?;
+        let mut observed_facts = ChainArgumentFacts::default();
+        let mut argument_facts = chain_facts.as_ref().map(|_| &mut observed_facts);
         let mut recorded = Vec::with_capacity(arguments.len());
         let sole_argument = arguments.len() == 1;
         let mut arguments = arguments
@@ -1013,7 +1015,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && (selected.role != CallbackRole::Last
                             || !self.argument_has_boundary_comments(&item)) =>
                 {
-                    if let Some(facts) = chain_facts.as_deref_mut() {
+                    if let Some(facts) = argument_facts.as_deref_mut() {
                         facts.has_function = true;
                     }
                     let (mut value, tail) = self.record_callback(
@@ -1078,14 +1080,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             item.mode,
                             head.binary_indent,
                             head.jsx_call,
-                            &mut chain_facts,
+                            &mut argument_facts,
                             writer,
                         )
                     })?;
                     (RecordedValue::Ordinary(value), tail)
                 }
             };
-            if let Some(facts) = chain_facts.as_deref_mut() {
+            if let Some(facts) = argument_facts.as_deref_mut() {
                 let normal = match &value {
                     RecordedValue::Ordinary(normal) | RecordedValue::Callback { normal, .. } => {
                         *normal
@@ -1134,6 +1136,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } => true,
                 _ => false,
             });
+        if let Some(facts) = chain_facts {
+            facts.has_function |= observed_facts.has_function;
+            // A locally expanded fallback owns its argument breaks. Only source
+            // preferences that escape that frame can expand the enclosing chain.
+            facts.source_expanded_object |=
+                observed_facts.source_expanded_object && !expand_fallback;
+        }
         let (fallback, ()) = writer.record_with_value(|writer| {
             fallback_group.write(expand_fallback, writer, |writer| {
                 if let Some(opening) = source_opening {
