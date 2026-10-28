@@ -59,3 +59,5 @@ export declare const enum SourceType {
   Unambiguous = 'unambiguous'
 }
 export declare function formatDocBufferSync(source: string, parser: ParserOptions | undefined | null, options: Buffer): Buffer
+
+export declare function printDocBufferSync(buffer: Buffer, options: Buffer): string

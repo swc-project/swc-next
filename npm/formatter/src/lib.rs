@@ -11,3 +11,8 @@ pub fn format_doc_buffer_sync(
 ) -> Result<Vec<u8>, String> {
     swc_next_bridge::format_doc(source, parser, options)
 }
+
+#[bridge]
+pub fn print_doc_buffer_sync(buffer: &[u8], options: &[u8]) -> Result<String, String> {
+    swc_next_bridge::print_doc(buffer, options)
+}

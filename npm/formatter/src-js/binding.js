@@ -11,6 +11,7 @@ const __dirname = new URL('.', import.meta.url).pathname
 
 const { readFileSync } = require('fs')
 let nativeBinding = null
+let wasmBinding = false
 const loadErrors = []
 
 const isMusl = () => {
@@ -529,6 +530,7 @@ if (!nativeBinding || forceWasi) {
   try {
     wasiBinding = require('./swc-next-formatter.node.mjs')
     nativeBinding = wasiBinding
+    wasmBinding = true
   } catch (err) {
     if (forceWasi) {
       wasiBindingError = err
@@ -538,6 +540,7 @@ if (!nativeBinding || forceWasi) {
     try {
       wasiBinding = require('@swc-next/formatter-binding-wasm')
       nativeBinding = wasiBinding
+      wasmBinding = true
     } catch (err) {
       if (forceWasi) {
         if (!wasiBindingError) {
@@ -574,5 +577,5 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { formatDocBufferSync } = nativeBinding
-export { formatDocBufferSync }
+const { formatDocBufferSync, printDocBufferSync } = nativeBinding
+export { formatDocBufferSync, printDocBufferSync, wasmBinding }

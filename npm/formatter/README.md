@@ -8,6 +8,13 @@ it does not depend on `@swc-next/core`.
 formatting diagnostic. Its option records and document protocol are private ABI,
 not a public source-formatting API. Use the Prettier plugin for formatting.
 
+`printDocBufferSync(buffer, options)` prints an SWCD document using the same
+language-independent Rust printer. Options are `printWidth` (default 80),
+`tabWidth` (2), `useTabs` (false), and `endOfLine` (`"lf"`, `"crlf"`,
+or `"cr"`; default `"lf"`). The version-0 API and wire format may change.
+It accepts supported SWCD documents, not arbitrary Prettier Doc objects.
+Document printing uses the native printer's existing resource behavior.
+
 Build native: `pnpm --filter @swc-next/formatter build`.
 Build Wasm: `pnpm --filter @swc-next/formatter build:wasm`.
 

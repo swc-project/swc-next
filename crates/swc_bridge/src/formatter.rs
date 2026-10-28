@@ -1,10 +1,64 @@
 use swc_next_ecma_ast::Severity;
 use swc_next_ecma_formatter::{
-    ArrowParentheses, DOCUMENT_FORMAT_VERSION, FormatError, FormatOptions, IndentStyle, LineEnding,
-    QuoteProperties, QuoteStyle, Semicolons, TrailingCommas,
+    ArrowParentheses, DOCUMENT_FORMAT_VERSION, FormatError, FormatOptions, QuoteProperties,
+    QuoteStyle, Semicolons, TrailingCommas,
 };
 
+use swc_next_allocator::Allocator;
+use swc_next_formatter_core::{Doc, IndentStyle, LineEnding, PrintOptions};
+
 use crate::ParserOptions;
+
+/// Print a versioned document using language-independent layout options.
+pub fn print_doc(bytes: &[u8], options: &[u8]) -> Result<String, String> {
+    let options = decode_print_options(options).ok_or("invalid print options")?;
+    let allocator = Allocator::new();
+    let document = Doc::decode(&allocator, bytes).map_err(|error| error.to_string())?;
+    Ok(document.print(options))
+}
+
+/// Version 0: u32 version, u16 width, u8 indent style, width and line ending.
+fn decode_print_options(bytes: &[u8]) -> Option<PrintOptions> {
+    let &[
+        0,
+        0,
+        0,
+        0,
+        width_low,
+        width_high,
+        use_tabs,
+        indent_width,
+        line_ending,
+    ] = bytes
+    else {
+        return None;
+    };
+    layout_options(width_low, width_high, indent_width, use_tabs, line_ending)
+}
+
+fn layout_options(
+    width_low: u8,
+    width_high: u8,
+    indent_width: u8,
+    use_tabs: u8,
+    line_ending: u8,
+) -> Option<PrintOptions> {
+    Some(PrintOptions {
+        line_width: u16::from_le_bytes([width_low, width_high]),
+        indent_width: indent_width.try_into().ok()?,
+        indent_style: match use_tabs {
+            0 => IndentStyle::Space,
+            1 => IndentStyle::Tab,
+            _ => return None,
+        },
+        line_ending: match line_ending {
+            0 => LineEnding::Lf,
+            1 => LineEnding::CrLf,
+            2 => LineEnding::Cr,
+            _ => return None,
+        },
+    })
+}
 
 /// Format options use a small fixed record, independent of the AST option bits.
 pub fn format_doc(
@@ -79,14 +133,11 @@ fn decode_options(bytes: &[u8]) -> Option<FormatOptions> {
             }
         })
     };
+    let layout = layout_options(width_low, width_high, indent_width, use_tabs, line_ending)?;
     Some(FormatOptions {
-        line_width: u16::from_le_bytes([width_low, width_high]),
-        indent_width: indent_width.try_into().ok()?,
-        indent_style: if boolean(use_tabs)? {
-            IndentStyle::Tab
-        } else {
-            IndentStyle::Space
-        },
+        line_width: layout.line_width,
+        indent_width: layout.indent_width,
+        indent_style: layout.indent_style,
         semicolons: if boolean(semi)? {
             Semicolons::Always
         } else {
@@ -114,11 +165,6 @@ fn decode_options(bytes: &[u8]) -> Option<FormatOptions> {
         bracket_spacing: boolean(bracket_spacing)?,
         bracket_same_line: boolean(bracket_same_line)?,
         single_attribute_per_line: boolean(single_attribute_per_line)?,
-        line_ending: match line_ending {
-            0 => LineEnding::Lf,
-            1 => LineEnding::CrLf,
-            2 => LineEnding::Cr,
-            _ => return None,
-        },
+        line_ending: layout.line_ending,
     })
 }
