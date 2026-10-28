@@ -135,7 +135,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let array = self.prepare_array_type(node)?;
         let tail = self.format_prepared_type(array.element, TypeContext::PostfixOperand, writer)?;
-        self.format_expression_tail(tail, writer)?;
+        self.format_type_tail_before_closer(tail, writer)?;
         self.format_array_suffix(array.suffix, writer)?;
         Ok(None)
     }
@@ -215,7 +215,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let index = self.prepare_indexed_type(node)?;
         let tail = self.format_prepared_type(index.object, TypeContext::PostfixOperand, writer)?;
-        self.format_expression_tail(tail, writer)?;
+        self.format_type_tail_before_closer(tail, writer)?;
         self.format_indexed_suffix(index.index, index.prefix, index.suffix, writer)?;
         Ok(None)
     }
@@ -248,7 +248,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let tail = self.format_prepared_type(index, TypeContext::Root, writer)?;
-        self.format_expression_tail(tail, writer)?;
+        self.format_type_tail_before_closer(tail, writer)?;
         self.format_type_prefix(suffix, FlatSeparator::Empty, writer)?;
         writer.text("]");
         Ok(())
@@ -319,7 +319,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?,
                 };
-                formatter.format_expression_tail(tail, writer)?;
+                formatter.format_type_tail_before_closer(tail, writer)?;
                 match postfix.suffix {
                     PostfixSuffix::Array(suffix) => {
                         formatter.format_array_suffix(suffix, writer)?
