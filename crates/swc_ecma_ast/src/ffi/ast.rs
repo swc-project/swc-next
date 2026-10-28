@@ -375,7 +375,8 @@ impl<'a> BorrowedAst<'a> {
             );
             ast.nodes.len = node_count as u32;
         }
-        ast.extra_data.extend_from_slice_copy(&self.extra_data);
+        ast.extra_data
+            .extend_from_slice_copy(self.extra_data.as_raw_slice());
         ast.strings
             .initialize_extra(self.source().as_bytes(), self.strings.extra_bytes());
         ast.root = self.root;

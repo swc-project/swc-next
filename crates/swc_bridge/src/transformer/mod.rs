@@ -37,6 +37,50 @@ pub unsafe fn transform_from_buffer(
     Ok(serialize_ast(&ast, &diagnostics, 0))
 }
 
+/// Transform separate, trusted JavaScript encoder sections.
+///
+/// Native little-endian targets copy the borrowed sections into mutable AST
+/// storage. WebAssembly and big-endian targets first join the sections into an
+/// aligned transfer buffer. Validation matches [`transform_from_buffer`].
+///
+/// # Safety
+///
+/// Sections must contain the initialized header, spans, kinds, payloads, extra
+/// data, and strings described by the [AST transfer protocol](swc_next_ecma_ast::ffi::ast),
+/// without section padding. They must come from the matching JavaScript encoder
+/// and remain immutable throughout this call. On native little-endian targets,
+/// spans must be aligned to four bytes, payloads and extra data to eight bytes.
+pub unsafe fn transform_from_parts(
+    header: &[u8],
+    spans: &[u8],
+    kinds: &[u8],
+    payloads: &[u8],
+    extra: &[u8],
+    strings: &[u8],
+    options: Option<TransformPassOptions>,
+) -> Result<Vec<u8>, DeserializeError> {
+    #[cfg(all(not(target_family = "wasm"), target_endian = "little"))]
+    {
+        let allocator = Allocator::default();
+        // SAFETY: The caller guarantees the section layout, alignment, and immutability.
+        let ast = unsafe {
+            swc_next_ecma_ast::ffi::ast::deserialize_parts(
+                header, spans, kinds, payloads, extra, strings, &allocator,
+            )
+        }?
+        .into_owned();
+        let (ast, diagnostics) = transform_ast(ast, options);
+        Ok(serialize_ast(&ast, &diagnostics, 0))
+    }
+    #[cfg(any(target_family = "wasm", target_endian = "big"))]
+    {
+        with_joined_parts([header, spans, kinds, payloads, extra, strings], |buffer| {
+            // SAFETY: The trusted sections now form an aligned transfer buffer.
+            unsafe { transform_from_buffer(buffer, options) }
+        })
+    }
+}
+
 /// Parse and transform before transferring the AST to JavaScript.
 ///
 /// The returned AST buffer refers to the original source for its strings and
@@ -85,6 +129,75 @@ pub unsafe fn transform_print_from_buffer(
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
     let (ast, diagnostics) = unsafe { transform_buffer(&allocator, buffer, options) }?;
     Ok(print_to_buffer(&ast, &diagnostics, codegen_options, 0))
+}
+
+/// Transform and print separate, trusted JavaScript encoder sections.
+///
+/// The result format matches [`transform_print_from_buffer`].
+///
+/// # Safety
+///
+/// Sections must satisfy the validity, alignment, and immutability contracts
+/// of [`transform_from_parts`].
+#[cfg(feature = "codegen")]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "AST transfers contain six separate sections"
+)]
+pub unsafe fn transform_print_from_parts(
+    header: &[u8],
+    spans: &[u8],
+    kinds: &[u8],
+    payloads: &[u8],
+    extra: &[u8],
+    strings: &[u8],
+    options: Option<TransformPassOptions>,
+    codegen_options: Option<crate::CodegenOptions>,
+) -> Result<Vec<u8>, DeserializeError> {
+    #[cfg(all(not(target_family = "wasm"), target_endian = "little"))]
+    {
+        let allocator = Allocator::default();
+        // SAFETY: The caller guarantees the section layout, alignment, and immutability.
+        let ast = unsafe {
+            swc_next_ecma_ast::ffi::ast::deserialize_parts(
+                header, spans, kinds, payloads, extra, strings, &allocator,
+            )
+        }?
+        .into_owned();
+        let (ast, diagnostics) = transform_ast(ast, options);
+        Ok(print_to_buffer(&ast, &diagnostics, codegen_options, 0))
+    }
+    #[cfg(any(target_family = "wasm", target_endian = "big"))]
+    {
+        with_joined_parts([header, spans, kinds, payloads, extra, strings], |buffer| {
+            // SAFETY: The trusted sections now form an aligned transfer buffer.
+            unsafe { transform_print_from_buffer(buffer, options, codegen_options) }
+        })
+    }
+}
+
+#[cfg(any(target_family = "wasm", target_endian = "big"))]
+fn with_joined_parts<T>(parts: [&[u8]; 6], f: impl FnOnce(&[u8]) -> T) -> T {
+    let [header, spans, kinds, payloads, extra, strings] = parts;
+    let payload_offset = (header.len() + spans.len() + kinds.len() + 7) & !7;
+    let extra_offset = payload_offset + payloads.len();
+    let strings_offset = extra_offset + extra.len();
+    let length = (strings_offset + strings.len() + 3) & !3;
+    // u64 storage preserves the alignment required by the borrowed AST reader.
+    let mut words = vec![0_u64; length.div_ceil(8)];
+    // SAFETY: Every bit pattern is valid for u64 and the view stays in words.
+    let buffer = unsafe { std::slice::from_raw_parts_mut(words.as_mut_ptr().cast::<u8>(), length) };
+    let mut offset = 0;
+    for part in [header, spans, kinds] {
+        buffer[offset..offset + part.len()].copy_from_slice(part);
+        offset += part.len();
+    }
+    offset = payload_offset;
+    for part in [payloads, extra, strings] {
+        buffer[offset..offset + part.len()].copy_from_slice(part);
+        offset += part.len();
+    }
+    f(buffer)
 }
 
 /// Parse, transform, and print without transferring the AST to JavaScript.
@@ -144,7 +257,14 @@ unsafe fn transform_buffer<'a>(
     options: Option<TransformPassOptions>,
 ) -> Result<(Ast<'a>, Vec<Diagnostic<'a>>), DeserializeError> {
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
-    let mut ast = unsafe { deserialize_from(buffer, allocator) }?.into_owned();
+    let ast = unsafe { deserialize_from(buffer, allocator) }?.into_owned();
+    Ok(transform_ast(ast, options))
+}
+
+fn transform_ast(
+    mut ast: Ast<'_>,
+    options: Option<TransformPassOptions>,
+) -> (Ast<'_>, Vec<Diagnostic<'_>>) {
     // Literal raw spellings were checked before crossing the JS boundary. The
     // transfer retains UTF-16 spans but no source text to inspect at those spans.
     let checks =
@@ -153,7 +273,7 @@ unsafe fn transform_buffer<'a>(
     if !has_errors(&diagnostics) {
         run_passes(&mut ast, options.unwrap_or_default());
     }
-    Ok((ast, diagnostics))
+    (ast, diagnostics)
 }
 
 fn serialize_ast(ast: &Ast<'_>, diagnostics: &[Diagnostic<'_>], source_utf16_len: u32) -> Vec<u8> {
@@ -173,12 +293,11 @@ fn print_to_buffer(
     use swc_next_ecma_codegen::print;
 
     let code = if has_errors(diagnostics) {
-        &[][..]
+        String::new()
     } else {
-        print(ast.allocator(), ast, options.unwrap_or_default().into())
-            .code
-            .as_bytes()
+        print(ast, options.unwrap_or_default().into()).code
     };
+    let code = code.as_bytes();
 
     let code_len = u32::try_from(code.len()).expect("generated code length exceeds u32");
     let diagnostic_count = u32::try_from(diagnostics.len()).expect("diagnostic count exceeds u32");

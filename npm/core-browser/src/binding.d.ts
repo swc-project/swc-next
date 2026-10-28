@@ -97,6 +97,14 @@ export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, op
 /**
  * # Safety
  *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function parseTransformSync(source: Uint8Array, sourceUtf16Len: number, parserOptions?: ParserOptions | undefined | null, transformOptions?: TransformPassOptions | undefined | null): Uint8Array
+
+/**
+ * # Safety
+ *
  * Sections must be produced by the matching JavaScript encoder and satisfy
  * the validity, alignment, and immutability contracts of
  * `swc_next_bridge::print_from_parts`.
@@ -108,11 +116,20 @@ export declare function sourceTypeFromPath(path: string): SourceType
 /**
  * # Safety
  *
- * `buffer` must be produced by `@swc-next/encoder` matching the version of this
- * binding and follow the [AST transfer protocol](https://github.com/swc-project/swc-next/blob/main/crates/swc_ecma_ast/src/ffi/ast.rs).
- * It must be aligned to eight bytes and remain immutable throughout the call.
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_from_parts`.
  */
-export declare function transformAstSync(buffer: Uint8Array, options?: TransformPassOptions | undefined | null): Uint8Array
+export declare function transformAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: TransformPassOptions | undefined | null): Uint8Array
+
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_print_from_parts`.
+ */
+export declare function transformPrintSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: TransformPassOptions | undefined | null, codegenOptions?: CodegenOptions | undefined | null): Uint8Array
 
 /**
  * # Safety

@@ -93,11 +93,11 @@ export function transformSync(source, options) {
     throwOnDiagnostics(parsed.diagnostics, filename);
     const program = parsed.program;
     for (const plugin of plugins.before) plugin.walk(program);
-    const buffer = encode(program, parsed.meta);
+    const parts = encode(program, parsed.meta);
 
     if (plugins.after.length === 0) {
       const result = decodeTransformOutput(
-        __transformPrintSync(buffer, transformOptions, codegenOptions),
+        __transformPrintSync(...parts, transformOptions, codegenOptions),
       );
       const diagnostics = [...parsed.diagnostics, ...result.diagnostics];
       throwOnDiagnostics(diagnostics, filename);
@@ -107,7 +107,7 @@ export function transformSync(source, options) {
     // A transferred AST has an empty source and strings in the extra pool.
     // Its spans are already UTF-16 offsets in the original input.
     transformed = decode(
-      __transformAstSync(buffer, transformOptions),
+      __transformAstSync(...parts, transformOptions),
       "",
       emptySourceBytes,
     );
@@ -118,7 +118,7 @@ export function transformSync(source, options) {
   for (const plugin of plugins.after) plugin.walk(transformedProgram);
 
   const code = __printSync(
-    encode(transformedProgram, transformed.meta),
+    ...encode(transformedProgram, transformed.meta),
     codegenOptions,
   );
   return { code, diagnostics };

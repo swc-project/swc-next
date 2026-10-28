@@ -25,12 +25,12 @@ pub use codegen::{CodegenOptions, CodegenOutput, print_from_buffer, print_from_p
 mod transformer;
 #[cfg(all(feature = "transformer", feature = "parser"))]
 pub use transformer::parse_transform_to_buffer;
-#[cfg(all(feature = "transformer", feature = "codegen"))]
-pub use transformer::transform_print_from_buffer;
 #[cfg(all(feature = "transformer", feature = "parser", feature = "codegen"))]
 pub use transformer::transform_source_to_buffer;
 #[cfg(feature = "transformer")]
-pub use transformer::{TransformPassOptions, transform_from_buffer};
+pub use transformer::{TransformPassOptions, transform_from_buffer, transform_from_parts};
+#[cfg(all(feature = "transformer", feature = "codegen"))]
+pub use transformer::{transform_print_from_buffer, transform_print_from_parts};
 
 #[cfg(any(feature = "codegen", feature = "transformer"))]
 pub use swc_next_ecma_ast::ffi::ast::DeserializeError;
