@@ -1068,7 +1068,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(true);
         }
         if matches!(position, ExpressionPosition::Decorator) {
-            return Some(!self.decorator_expression_is_unparenthesized(data));
+            // An ignored source pair already satisfies decorator grammar.
+            return Some(
+                !(mode == ContentMode::Verbatim
+                    && matches!(data, ExprData::ParenthesizedExpression(_)))
+                    && !self.decorator_expression_is_unparenthesized(data),
+            );
         }
         if matches!(
             position,
