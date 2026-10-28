@@ -172,6 +172,7 @@ struct OmittedStatementTail<'ast> {
     comments: &'ast [Comment],
     binding: CommentBinding,
     source_gap: Span,
+    has_following_comments: bool,
 }
 
 struct PreparedStatement<'ast> {
@@ -893,7 +894,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 boundary.end()
             };
-            let end = if let Some(tail) = omitted
+            let (end, next_line) = if let Some(tail) = omitted
                 && source_packet.is_none()
             {
                 self.format_omitted_statement_tail(tail, trailing_start, pending_tail, writer)?
@@ -906,6 +907,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?
             };
+            if next_line
+                && let Some(next) = pending.as_mut()
+                && !matches!(next.source_gap, Some(LineConstraint::NewLine(_)))
+            {
+                // A deferred released line comment precedes the next head packet.
+                next.source_gap = Some(LineConstraint::NewLine(1));
+            }
             previous_span_end = statement_span.end;
             previous = Some(boundary.with_end(end));
             previous_omitted = omitted;
@@ -1011,12 +1019,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             previous = comment.span.end;
             count += 1;
         }
+        let has_following_comments = count < comments.len();
         let comments = &comments[..count];
         let end = comments.last().map_or(start, |comment| comment.span.end);
         OmittedStatementTail {
             comments,
             binding: self.comment_binding(comments, Span::new(start, end), None),
             source_gap: Span::new(gap_start, limit),
+            has_following_comments,
         }
     }
 
@@ -1026,7 +1036,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         start: u32,
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<u32, FormatError> {
+    ) -> Result<(u32, bool), FormatError> {
         let source_end = pending.as_ref().map_or(start, |pending| pending.source_end);
         let end = tail
             .comments
@@ -1038,18 +1048,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(end, |comment| end.max(comment.span.end));
         let comments = self.comments.between(Span::new(source_end, end))?;
         self.comments.claim(comments)?;
+        let next_line = pending.is_some()
+            && tail.has_following_comments
+            && comments
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line);
         let binding =
             tail.binding
                 .combine(self.comment_binding(comments, Span::new(source_end, end), None));
-        if !binding.allows_relocation(None) {
+        if pending.is_some() {
+            self.format_comment_run(
+                comments,
+                CommentRunLayout::StatementTail(source_end),
+                writer,
+            )?;
+        } else if !binding.allows_relocation(None) {
             self.format_comment_run(comments, CommentRunLayout::SourceAfter(source_end), writer)?;
-            return Ok(end);
+        } else {
+            self.format_trailing_comment_run(comments, None, None, writer)?;
         }
-        let inherited = pending.as_ref().map_or(0, |pending| pending.comments.len());
-        let (inherited, comments) = comments.split_at(inherited);
-        self.format_comment_run(inherited, CommentRunLayout::SourceAfter(source_end), writer)?;
-        self.format_trailing_comment_run(comments, inherited.last().copied(), None, writer)?;
-        Ok(end)
+        Ok((end, next_line))
     }
 
     fn prepare_sequence_statement(
