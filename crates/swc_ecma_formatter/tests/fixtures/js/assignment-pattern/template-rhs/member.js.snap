@@ -1,0 +1,10 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+document.querySelector("p").textContent = `Shader program did not link successfully. Error log: ${linkErrLog}`;
+---------- Options ----------
+{}
+---------- Output ----------
+document.querySelector("p").textContent =
+  `Shader program did not link successfully. Error log: ${linkErrLog}`;
