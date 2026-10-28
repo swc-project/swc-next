@@ -46,6 +46,7 @@ const ENUMS = Object.freeze([
   [null, true, "+", "-"], // TsMappedTypeModifier
 
 ]);
+const DEEP_AST = {};
 
 function decodePool(bytes) {
   const length = bytes.length;
@@ -255,7 +256,228 @@ export function decodeTs(buffer, source, sourceBuffer) {
 
   // Each reference is decoded into a fresh value, so parents can finish their
   // owned children in place before exposing the result.
-  function node(index, typeOverride) {
+  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;
+  let coldDepth = 0;
+  function nodeHot(index, typeOverride) {
+    const span = spans + index * 8;
+    const start = _i32[span >> 2];
+    const end = _i32[(span >> 2) + 1];
+    const payload = payloads + index * 16;
+    let result;
+    switch (bytes[kinds + index]) {
+      case 2: {
+        result = { type: "ThisExpression", start, end,
+        };
+        break;
+      }
+      case 3: {
+        const f_value = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = source.slice(start, end);
+        result = { type: "Literal", start, end, value: f_value, raw: f_raw };
+        break;
+      }
+      case 4: {
+        const f_value = _dv.getFloat64(payload + 0, true);
+        const f_raw = _i32[(payload + 8) >> 2] === NULL && _i32[(payload + 8 + 4) >> 2] === 0 ? null : source.slice(start, end);
+        const value = f_value;
+        const raw = f_raw ?? String(value);
+        result = { type: "Literal", start, end, value, raw };
+        break;
+      }
+      case 11: {
+        result = { type: "Identifier", start, end,
+          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 13: {
+        result = { type: "Identifier", start, end,
+          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 14: {
+        result = { type: "Identifier", start, end,
+          name: str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          decorators: [],
+          optional: false,
+          typeAnnotation: null,
+        };
+        break;
+      }
+      case 21: {
+        result = { type: "BinaryExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(4, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 22: {
+        result = { type: "LogicalExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(5, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 24: {
+        const f_argument = node(_i32[(payload + 0) >> 2]);
+        const f_operator = enumValue(6, _dv.getUint8(payload + 4));
+        result = {
+          type: "UnaryExpression", start, end,
+          operator: f_operator, prefix: true, argument: f_argument,
+        };
+        break;
+      }
+      case 26: {
+        result = { type: "AssignmentExpression", start, end,
+          left: node(_i32[(payload + 0) >> 2]),
+          right: node(_i32[(payload + 4) >> 2]),
+          operator: enumValue(8, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 27: {
+        result = { type: "VariableDeclaration", start, end,
+          kind: enumValue(9, _dv.getUint8(payload + 8)),
+          declarations: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+          declare: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 28: {
+        const f_id = node(_i32[(payload + 0) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_definite = _dv.getUint8(payload + 12) !== 0;
+        f_id.typeAnnotation = f_typeAnnotation;
+        f_id.end = f_typeAnnotation?.end ?? f_id.end;
+        result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init, definite: f_definite };
+        break;
+      }
+      case 29: {
+        result = { type: "IfStatement", start, end,
+          test: node(_i32[(payload + 0) >> 2]),
+          consequent: node(_i32[(payload + 4) >> 2]),
+          alternate: optionalNode(_i32[(payload + 8) >> 2]),
+        };
+        break;
+      }
+      case 40: {
+        result = { type: "ExpressionStatement", start, end,
+          expression: node(_i32[(payload + 0) >> 2]),
+          directive: null,
+        };
+        break;
+      }
+      case 41: {
+        result = { type: "ReturnStatement", start, end,
+          argument: optionalNode(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 53: {
+        result = { type: "BlockStatement", start, end, body: nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]) };
+        break;
+      }
+      case 54: {
+        result = { type: "BlockStatement", start, end,
+          body: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 58: {
+        const f_items = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        if (f_rest !== null) f_items.push(f_rest);
+        result = { params: f_items };
+        break;
+      }
+      case 61: {
+        result = { type: "ArrayExpression", start, end,
+          elements: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true),
+        };
+        break;
+      }
+      case 62: {
+        result = { type: "ObjectExpression", start, end,
+          properties: nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false),
+        };
+        break;
+      }
+      case 64: {
+        result = { type: "Property", start, end,
+          key: node(_i32[(payload + 0) >> 2]),
+          value: node(_i32[(payload + 4) >> 2]),
+          kind: enumValue(12, _dv.getUint8(payload + 8)),
+          method: _dv.getUint8(payload + 9) !== 0,
+          shorthand: _dv.getUint8(payload + 10) !== 0,
+          computed: _dv.getUint8(payload + 11) !== 0,
+          optional: false,
+        };
+        break;
+      }
+      case 68: {
+        result = { type: "MemberExpression", start, end,
+          object: node(_i32[(payload + 0) >> 2]),
+          property: node(_i32[(payload + 4) >> 2]),
+          computed: _dv.getUint8(payload + 8) !== 0,
+          optional: _dv.getUint8(payload + 9) !== 0,
+        };
+        break;
+      }
+      case 69: {
+        const extraId = _i32[(payload + 12) >> 2];
+        result = { type: "CallExpression", start, end,
+          callee: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+          arguments: nodeArray(_i32[(extra + (extraId + 0) * 8) >> 2], _i32[(extra + (extraId + 0) * 8 + 4) >> 2], false),
+          optional: _dv.getUint8(payload + 8) !== 0,
+        };
+        break;
+      }
+      case 78: {
+        result = { type: "ImportSpecifier", start, end,
+          imported: node(_i32[(payload + 0) >> 2]),
+          local: node(_i32[(payload + 4) >> 2]),
+          importKind: enumValue(15, _dv.getUint8(payload + 8)),
+        };
+        break;
+      }
+      case 89: {
+        result = { type: "TSTypeAnnotation", start, end,
+          typeAnnotation: node(_i32[(payload + 0) >> 2]),
+        };
+        break;
+      }
+      case 104: {
+        result = { type: "TSTypeReference", start, end,
+          typeName: node(_i32[(payload + 0) >> 2]),
+          typeArguments: optionalNode(_i32[(payload + 4) >> 2]),
+        };
+        break;
+      }
+      default:
+        // Retry deep trees without the extra hot-dispatch frames.
+        if (coldDepth === 64) throw DEEP_AST;
+        coldDepth++;
+        try {
+          return /*#__NOINLINE__*/ nodeAll(index, typeOverride);
+        } finally {
+          coldDepth--;
+        }
+    }
+    return result;
+  }
+
+  function nodeAll(index, typeOverride) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
     const end = _i32[(span >> 2) + 1];
@@ -1749,9 +1971,14 @@ export function decodeTs(buffer, source, sourceBuffer) {
   return {
     meta: { lang: enumValue(0, (flags >> 2) & 7), sourceType },
     get program() {
-      return _program !== undefined
-        ? _program
-        : (_program = node(programIndex));
+      if (_program !== undefined) return _program;
+      try {
+        return (_program = nodeAll(programIndex));
+      } catch (error) {
+        if (error !== DEEP_AST) throw error;
+        node = nodeAll;
+        return (_program = nodeAll(programIndex));
+      }
     },
     get comments() {
       return _comments !== undefined

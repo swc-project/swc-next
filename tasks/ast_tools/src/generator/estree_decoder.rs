@@ -12,6 +12,39 @@ use super::{
 
 const OUTPUT_DIR: &str = "packages/decoder";
 
+// TypeScript keeps common small node bodies in a hot dispatcher. TSX and empty
+// programs use the complete dispatcher to avoid unnecessary calls or closures.
+// Both dispatchers recurse through the grammar-selected node function.
+// FormalParameter and Function stay out of the hot switch to limit frame size.
+const HOT_TS_NODE_KINDS: &[&str] = &[
+    "IdentifierReference",
+    "IdentifierName",
+    "MemberExpression",
+    "BindingIdentifier",
+    "ExpressionStatement",
+    "CallExpression",
+    "ThisExpression",
+    "AssignmentExpression",
+    "BinaryExpression",
+    "VariableDeclarator",
+    "StringLiteral",
+    "NumericLiteral",
+    "IfStatement",
+    "BlockStatement",
+    "VariableDeclaration",
+    "FormalParameters",
+    "FunctionBody",
+    "ReturnStatement",
+    "LogicalExpression",
+    "ObjectProperty",
+    "ArrayExpression",
+    "ObjectExpression",
+    "UnaryExpression",
+    "TsTypeReference",
+    "TsTypeAnnotation",
+    "ImportSpecifier",
+];
+
 pub fn estree_decoder(schema: &Schema) -> Vec<RawOutput> {
     let mut outputs = Vec::new();
     for (is_ts, suffix, name) in [(false, "js", "decodeJs"), (true, "ts", "decodeTs")] {
@@ -49,20 +82,29 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     }
     enums.push_str("\n]);");
     output.push_str(&PREAMBLE.replace("__ENUMS__", &enums));
+    if is_ts {
+        output.push_str("const DEEP_AST = {};\n");
+    }
     output.push_str(DECODE_HELPERS);
     writeln!(
         output,
         "export function {name}(buffer, source, sourceBuffer) {{"
     )
     .unwrap();
+    output.push_str(DECODE_PREAMBLE);
     if is_ts {
         output.push_str(
-            &DECODE_PREAMBLE.replace("function node(index)", "function node(index, typeOverride)"),
+            "  let node = nodeCount === 1 || ((flags >> 2) & 7) === 3 ? nodeAll : nodeHot;\n  let coldDepth = 0;\n",
         );
+        output.push_str(&NODE_PREAMBLE.replace(
+            "function node(index)",
+            "function nodeHot(index, typeOverride)",
+        ));
     } else {
-        output.push_str(DECODE_PREAMBLE);
+        output.push_str(NODE_PREAMBLE);
     }
 
+    let mut all_cases = String::new();
     for (kind, ty) in schema
         .types
         .iter()
@@ -75,10 +117,32 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         if !is_ts && ty.name.starts_with("Ts") {
             continue;
         }
-        write_node_case(&mut output, kind, ty, schema, is_ts);
+        if is_ts {
+            write_node_case(&mut all_cases, kind, ty, schema, true);
+            if HOT_TS_NODE_KINDS.contains(&ty.name.as_str()) {
+                write_node_case(&mut output, kind, ty, schema, true);
+            }
+        } else {
+            write_node_case(&mut output, kind, ty, schema, false);
+        }
     }
 
-    output.push_str(POSTAMBLE);
+    if is_ts {
+        output.push_str(HOT_POSTAMBLE);
+        output.push_str(&NODE_PREAMBLE.replace(
+            "function node(index)",
+            "function nodeAll(index, typeOverride)",
+        ));
+        output.push_str(&all_cases);
+    }
+    if is_ts {
+        output.push_str(&POSTAMBLE.replace(
+            "      return _program !== undefined\n        ? _program\n        : (_program = node(programIndex));",
+            TS_PROGRAM_GETTER,
+        ));
+    } else {
+        output.push_str(POSTAMBLE);
+    }
     // Assign indices from the same filtered table used to emit the enum arrays.
     for (index, (name, _)) in decoder_enums.iter().enumerate() {
         for helper in ["enumValue", "optionalEnum"] {
@@ -1004,7 +1068,9 @@ const DECODE_PREAMBLE: &str = r#"
 
   // Each reference is decoded into a fresh value, so parents can finish their
   // owned children in place before exposing the result.
-  function node(index) {
+"#;
+
+const NODE_PREAMBLE: &str = r#"  function node(index) {
     const span = spans + index * 8;
     const start = _i32[span >> 2];
     const end = _i32[(span >> 2) + 1];
@@ -1012,6 +1078,30 @@ const DECODE_PREAMBLE: &str = r#"
     let result;
     switch (bytes[kinds + index]) {
 "#;
+
+const HOT_POSTAMBLE: &str = r#"      default:
+        // Retry deep trees without the extra hot-dispatch frames.
+        if (coldDepth === 64) throw DEEP_AST;
+        coldDepth++;
+        try {
+          return /*#__NOINLINE__*/ nodeAll(index, typeOverride);
+        } finally {
+          coldDepth--;
+        }
+    }
+    return result;
+  }
+
+"#;
+
+const TS_PROGRAM_GETTER: &str = r#"      if (_program !== undefined) return _program;
+      try {
+        return (_program = nodeAll(programIndex));
+      } catch (error) {
+        if (error !== DEEP_AST) throw error;
+        node = nodeAll;
+        return (_program = nodeAll(programIndex));
+      }"#;
 
 const POSTAMBLE: &str = r#"      default:
         throw new RangeError(`Unknown AST node kind ${bytes[kinds + index]}`);

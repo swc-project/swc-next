@@ -1,5 +1,7 @@
 use swc_core::{
-    common::{FileName, GLOBALS, Globals, Mark, SourceMap, sync::Lrc},
+    common::{
+        FileName, GLOBALS, Globals, Mark, SourceMap, comments::SingleThreadedComments, sync::Lrc,
+    },
     ecma::{
         ast::{EsVersion, Program},
         codegen::{Config, Emitter, text_writer::JsWriter},
@@ -53,11 +55,12 @@ fn minify_with_options(
         let source_map = Lrc::new(SourceMap::default());
         let source_file =
             source_map.new_source_file(FileName::Custom(filename.into()).into(), source.to_owned());
+        let comments = SingleThreadedComments::default();
         let lexer = Lexer::new(
             Syntax::Es(EsSyntax::default()),
             EsVersion::EsNext,
             StringInput::from(&*source_file),
-            None,
+            Some(&comments),
         );
         let mut parser = Parser::new_from(lexer);
         let module = parser
@@ -76,7 +79,7 @@ fn minify_with_options(
         let mut program = optimize(
             program,
             source_map.clone(),
-            None,
+            Some(&comments),
             None,
             &MinifyOptions {
                 compress: Some(compress),

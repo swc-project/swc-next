@@ -44,6 +44,23 @@ test("decoder reads little-endian words from unaligned buffers", () => {
   assert.deepEqual(result.comments, []);
 });
 
+test("decoder preserves nested types through the lazy program getter", () => {
+  const depth = 600;
+  const source = `type Value = string${"[]".repeat(depth)};`;
+  const result = parseSync(source, { lang: "ts" });
+  const program = result.program;
+  let type = program.body[0].typeAnnotation;
+  for (let index = 0; index < depth; index++) {
+    assert.equal(type.type, "TSArrayType");
+    type = type.elementType;
+  }
+  assert.equal(type.type, "TSStringKeyword");
+  assert.equal(result.program, program);
+
+  const tsx = parseSync(source, { lang: "tsx" });
+  assert.deepEqual(tsx.program, program);
+});
+
 test("decoder rejects unknown diagnostic severities", () => {
   const buffer = new Uint8Array(73);
   const view = new DataView(buffer.buffer);
