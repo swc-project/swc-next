@@ -70,6 +70,7 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
           ops.push([op, byte()]);
           break;
         case 3:
+        case 7:
         case 8:
           ops.push([op, byte(), integer()]);
           break;
@@ -85,7 +86,6 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
           ops.push([op]);
           break;
         case 6:
-        case 7:
         case 19:
           ops.push([op, integer()]);
           break;
@@ -222,8 +222,7 @@ function build(ops, docs, text, group, options) {
       case 24:
       case 25:
       case 26:
-        if ((op === 3 || op === 8) && first > 1) throw invalid();
-        if (op === 7 && first === 0) throw invalid();
+        if ((op === 3 || op === 7 || op === 8) && first > 1) throw invalid();
         if (op === 12 && stack.at(-1).op !== 11) throw invalid();
         stack.push({ op, first, second, parts: [] });
         break;
@@ -274,7 +273,12 @@ function build(ops, docs, text, group, options) {
             append(b.align(frame.first, doc));
             break;
           case 7:
-            append(b.indentIfBreak(doc, { groupId: group(frame.first) }));
+            append(
+              b.indentIfBreak(doc, {
+                groupId: group(frame.second),
+                negate: Boolean(frame.first),
+              }),
+            );
             break;
           case 8:
             append(
