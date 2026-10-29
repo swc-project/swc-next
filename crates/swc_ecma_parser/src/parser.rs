@@ -1892,7 +1892,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
         self.scratch_string.clear();
-        self.scratch_string.reserve((end - start) as usize);
+        self.scratch_string
+            .reserve(((end - start) as usize).max(64));
         decode_string_escapes(
             &self.source[start as usize..end as usize],
             &mut self.scratch_string,
