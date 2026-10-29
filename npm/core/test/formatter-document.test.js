@@ -296,6 +296,58 @@ test("named indent scopes retain unknown and broken behavior", () => {
   assert.equal(printWire(known), "a\n  x");
 });
 
+test("conditional indentation forwards current and named modes", () => {
+  for (const negate of [false, true]) {
+    for (const broken of [false, true]) {
+      const current = wire((t) => [
+        [
+          ...group(0, broken),
+          7,
+          Number(negate),
+          ...word(0),
+          ...rawHard,
+          ...t("x"),
+          ...end(4),
+          ...end(3),
+        ],
+      ]);
+      const named = wire((t) => [
+        [
+          ...group(1, broken),
+          ...t("a"),
+          ...end(3),
+          7,
+          Number(negate),
+          ...word(1),
+          ...rawHard,
+          ...t("x"),
+          ...end(4),
+        ],
+      ]);
+      assert.equal(printDocBufferSync(current), printWire(current));
+      assert.equal(printDocBufferSync(named), printWire(named));
+      assert.equal(printWire(current), broken !== negate ? "\n  x" : "\nx");
+      assert.equal(printWire(named), broken !== negate ? "a\n  x" : "a\nx");
+    }
+    const unknown = wire((t) => [
+      [7, Number(negate), ...word(1), ...rawHard, ...t("x"), ...end(4)],
+    ]);
+    assert.equal(printWire(unknown), "");
+    assert.equal(printDocBufferSync(unknown), "");
+  }
+});
+
+test("conditional indentation rejects unknown flags and truncated records", () => {
+  const invalid = [
+    wire(() => [[7, 2, ...word(0), ...end(4)]]),
+    wire(() => [[7, 1, 0, 0]]),
+  ];
+  for (const bytes of invalid) {
+    assert.throws(() => decode(bytes, ""));
+    assert.throws(() => printDocBufferSync(bytes));
+  }
+});
+
 test("deep fragment DAGs remain shared and build iteratively", () => {
   const bytes = wire((t) => {
     const fragments = [];
