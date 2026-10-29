@@ -288,7 +288,7 @@ test("v0 rejects removed extensions and malformed scopes or references", () => {
   );
   assert.throws(() =>
     decode(
-      wire(() => [[2, 6]]),
+      wire(() => [[2, 7]]),
       "",
     ),
   );
