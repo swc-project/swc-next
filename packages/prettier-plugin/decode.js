@@ -62,6 +62,7 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
       const op = byte();
       switch (op) {
         case 0:
+        case 23:
           ops.push([op, integer(), integer()]);
           break;
         case 2:
@@ -78,6 +79,9 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
         case 14:
         case 15:
         case 16:
+        case 24:
+        case 25:
+        case 26:
           ops.push([op]);
           break;
         case 6:
@@ -214,6 +218,10 @@ function build(ops, docs, text, group, options) {
       case 12:
       case 14:
       case 19:
+      case 23:
+      case 24:
+      case 25:
+      case 26:
         if ((op === 3 || op === 8) && first > 1) throw invalid();
         if (op === 7 && first === 0) throw invalid();
         if (op === 12 && stack.at(-1).op !== 11) throw invalid();
@@ -286,12 +294,22 @@ function build(ops, docs, text, group, options) {
             break;
           case 19:
             append(
-              b.dedentToRoot(
-                options.tabWidth > 0
-                  ? b.addAlignmentToDoc(doc, frame.first, options.tabWidth)
-                  : b.align(frame.first, doc),
-              ),
+              frame.first > 0 && options.tabWidth > 0
+                ? b.addAlignmentToDoc(doc, frame.first, options.tabWidth)
+                : b.dedentToRoot(b.align(frame.first, doc)),
             );
+            break;
+          case 23:
+            append(b.align(text(frame.first, frame.second), doc));
+            break;
+          case 24:
+            append(b.dedent(doc));
+            break;
+          case 25:
+            append(b.markAsRoot(doc));
+            break;
+          case 26:
+            append(b.dedentToRoot(doc));
             break;
           default:
             throw invalid();
