@@ -680,7 +680,7 @@ pub(super) fn print<'a>(
                     cursor.enter(HARD_LINE, false, None);
                 }
             }
-            FormatElement::StartGroup { effect, id } => {
+            FormatElement::StartGroup { effect, id, .. } => {
                 let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
                 let flat = !effect.preferred_breaks()
                     && (inherit_flat
@@ -1097,7 +1097,7 @@ impl<'a> Probe<'a> {
                 | FormatElement::HardLine
                 | FormatElement::LiteralLine
                 | FormatElement::LiteralLineWithIndent => return true,
-                FormatElement::StartGroup { effect, id } => {
+                FormatElement::StartGroup { effect, id, .. } => {
                     if id.is_some() && kind.layout_dependency() {
                         return true;
                     }

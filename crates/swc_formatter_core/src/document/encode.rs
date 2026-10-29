@@ -140,8 +140,11 @@ impl<'a> Encoder<'a> {
                 FormatElement::LineSuffixBoundary => output.push(15),
                 FormatElement::StartLineSuffix { .. } => output.push(14),
                 FormatElement::EndLineSuffix => output.extend([17, 14]),
-                FormatElement::StartGroup { effect, id } => {
-                    output.extend([3, u8::from(effect.preferred_breaks())]);
+                FormatElement::StartGroup { request, id, .. } => {
+                    output.extend([
+                        3,
+                        u8::from(matches!(request, super::GroupRequest::Expanded)),
+                    ]);
                     group(&mut output, id);
                 }
                 FormatElement::StartGroupWithFlatWidth { .. } => {

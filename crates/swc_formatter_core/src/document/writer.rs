@@ -307,13 +307,14 @@ impl<'a> Writer<'a> {
     ) -> T {
         let start = self.elements.len();
         let outer_effect = self.effect;
-        self.effect = BreakEffect::from_request(request);
+        self.effect = BreakEffect::default();
         self.elements.push(FormatElement::StartGroup {
+            request,
             effect: self.effect,
             id,
         });
         let result = write(self);
-        let effect = self.effect;
+        let effect = BreakEffect::from_request(request).join(self.effect);
         self.effect = outer_effect.join(effect);
         let FormatElement::StartGroup {
             effect: group_effect,
@@ -564,7 +565,11 @@ impl<'a> Writer<'a> {
             fragment.capabilities()
         };
         let elements = self.allocator.alloc([
-            FormatElement::StartGroup { effect, id },
+            FormatElement::StartGroup {
+                request,
+                effect,
+                id,
+            },
             FormatElement::fragment(fragment),
             FormatElement::EndGroup,
         ]);
