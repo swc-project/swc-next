@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div>{veryLongExpressionName} text	b{x}</div>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+<div>
+  {
+    veryLongExpressionName
+  }{" "}
+  text	b{x}
+</div>;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+<div>
+  {veryLongExpressionName} text	b{x}
+</div>;

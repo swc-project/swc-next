@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<div>{x} 	text	b{y}</div>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+<div>
+  {x} 	text	b{y}
+</div>;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+<div>
+  {x} 	text	b{y}
+</div>;
