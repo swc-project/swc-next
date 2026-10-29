@@ -713,7 +713,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             boundary.value.layout
         };
-        let diagnostic_head =
+        let (diagnostic_head, diagnostic_head_breaks) =
             if !head_frame && boundary.opening.is_none() && boundary.annotation.is_none() {
                 self.prepare_property_diagnostic_head(
                     &content,
@@ -726,11 +726,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     },
                 )
             } else {
-                None
+                (None, false)
             };
-        let diagnostic_head_breaks = diagnostic_head
-            .as_ref()
-            .is_some_and(|frame| frame.has_leading_line_comment());
         if !boundary.header.is_empty() {
             self.format_property_header(&boundary.header, writer)?;
         }
