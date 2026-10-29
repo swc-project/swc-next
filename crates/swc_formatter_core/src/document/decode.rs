@@ -4,7 +4,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
     Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FormatElement, Fragment,
-    FragmentCapabilities, GroupId, GroupRequest, text::Text,
+    FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, text::Text,
 };
 
 /// An invalid, unsupported, or resource-limited document buffer.
@@ -42,6 +42,12 @@ enum Op {
     End(u8),
     Ref(usize),
     Choices(Vec<usize>),
+    Group {
+        expanded: bool,
+        id: u32,
+        contents: usize,
+        states: Option<Vec<usize>>,
+    },
     Conditional(u32, usize, usize),
     Simple(u8),
 }
@@ -182,6 +188,33 @@ fn parse_fragment(bytes: &[u8], count: usize) -> Result<Vec<Op>> {
                 }
                 Op::Choices(ids)
             }
+            22 => {
+                let flags = r.byte()?;
+                if flags & !3 != 0 {
+                    return Err(DocumentBufferError::InvalidDocument);
+                }
+                let id = r.word()?;
+                let contents = reference(&mut r, count)?;
+                let states = if flags & 2 != 0 {
+                    let n = r.word()? as usize;
+                    if n == 0 || n > (bytes.len() - r.at) / 4 {
+                        return Err(DocumentBufferError::InvalidDocument);
+                    }
+                    let mut states = Vec::with_capacity(n);
+                    for _ in 0..n {
+                        states.push(reference(&mut r, count)?);
+                    }
+                    Some(states)
+                } else {
+                    None
+                };
+                Op::Group {
+                    expanded: flags & 1 != 0,
+                    id,
+                    contents,
+                    states,
+                }
+            }
             15 | 16 => Op::Simple(tag),
             17 => {
                 let end = r.byte()?;
@@ -215,6 +248,14 @@ fn order(fragments: &[Vec<Op>]) -> Result<Vec<usize>> {
                 Op::Ref(id) => children.push(*id),
                 Op::Choices(ids) => children.extend_from_slice(ids),
                 Op::Conditional(_, first, second) => children.extend([*first, *second]),
+                Op::Group {
+                    contents, states, ..
+                } => {
+                    children.push(*contents);
+                    if let Some(states) = states {
+                        children.extend_from_slice(states);
+                    }
+                }
                 _ => {}
             }
         }
@@ -255,6 +296,7 @@ struct Context<'a> {
     effect: BreakEffect,
     conditional_lines: bool,
     intrinsic_lines: bool,
+    group_states: bool,
     requires_fill: bool,
     fill_depth: usize,
 }
@@ -266,12 +308,14 @@ impl<'a> Context<'a> {
             effect: BreakEffect::default(),
             conditional_lines: false,
             intrinsic_lines: false,
+            group_states: false,
             requires_fill: false,
             fill_depth: 0,
         }
     }
 
     fn append_fragment(&mut self, fragment: Fragment<'a>, requires_fill: bool) {
+        self.group_states |= fragment.group_states();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -294,6 +338,7 @@ impl<'a> Context<'a> {
                 capabilities,
                 self.conditional_lines,
                 self.intrinsic_lines,
+                self.group_states,
             ),
             self.requires_fill,
         )
@@ -381,6 +426,7 @@ fn make_conditional<'a>(
     broken: (Fragment<'a>, bool),
     flat: (Fragment<'a>, bool),
 ) {
+    context.group_states |= broken.0.group_states() || flat.0.group_states();
     context.effect = context.effect.join(broken.0.effect()).join(flat.0.effect());
     context.conditional_lines |= broken.0.conditional_lines() || flat.0.conditional_lines();
     context.intrinsic_lines |= broken.0.has_intrinsic_lines() || flat.0.has_intrinsic_lines();
@@ -464,6 +510,7 @@ fn build<'a>(
                             request: GroupRequest::from(expanded),
                             effect: context.effect,
                             id: group(ids, id)?,
+                            end_offset: 0,
                         });
                         ScopeFrame::Group {
                             start,
@@ -536,9 +583,11 @@ fn build<'a>(
                         start,
                         outer_effect,
                     } => {
+                        let distance = offset(context.elements.len() - start)?;
                         let FormatElement::StartGroup {
                             request,
                             effect: stored,
+                            end_offset,
                             ..
                         } = &mut context.elements[start]
                         else {
@@ -546,6 +595,7 @@ fn build<'a>(
                         };
                         let effect = BreakEffect::from_request(*request).join(context.effect);
                         *stored = effect;
+                        *end_offset = distance;
                         context.effect = outer_effect.join(effect);
                         context.elements.push(FormatElement::EndGroup);
                     }
@@ -626,6 +676,7 @@ fn build<'a>(
                 for id in &ids[..ids.len() - 1] {
                     let (fragment, requires_fill) =
                         built[*id].ok_or(DocumentBufferError::InvalidDocument)?;
+                    context.group_states |= fragment.group_states();
                     context.conditional_lines |= fragment.conditional_lines();
                     context.requires_fill |= requires_fill && context.fill_depth == 0;
                     preferred.push(fragment);
@@ -633,6 +684,7 @@ fn build<'a>(
                 let (fallback, requires_fill) = built
                     [*ids.last().ok_or(DocumentBufferError::InvalidDocument)?]
                 .ok_or(DocumentBufferError::InvalidDocument)?;
+                context.group_states |= fallback.group_states();
                 context.conditional_lines |= fallback.conditional_lines();
                 context.requires_fill |= requires_fill && context.fill_depth == 0;
                 if preferred.is_empty() {
@@ -646,6 +698,51 @@ fn build<'a>(
                 context
                     .elements
                     .push(FormatElement::Alternatives(alternatives));
+            }
+            Op::Group {
+                expanded,
+                id,
+                contents,
+                states,
+            } => {
+                let (contents, requires_fill) =
+                    built[*contents].ok_or(DocumentBufferError::InvalidDocument)?;
+                let request = GroupRequest::from(*expanded);
+                let id = group(ids, *id)?;
+                context.requires_fill |= requires_fill && context.fill_depth == 0;
+                context.group_states |= contents.group_states();
+                context.conditional_lines |= contents.conditional_lines();
+                context.intrinsic_lines |= contents.has_intrinsic_lines();
+                if let Some(states) = states {
+                    let mut fragments = ArenaVec::with_capacity_in(states.len(), allocator);
+                    for state in states {
+                        let (fragment, requires_fill) =
+                            built[*state].ok_or(DocumentBufferError::InvalidDocument)?;
+                        context.requires_fill |= requires_fill && context.fill_depth == 0;
+                        context.conditional_lines |= fragment.conditional_lines();
+                        fragments.push(fragment);
+                    }
+                    context.group_states = true;
+                    context.effect = context.effect.join(BreakEffect::from_request(request));
+                    let group = allocator.alloc(GroupWithStates {
+                        contents,
+                        states: fragments.into_bump_slice(),
+                        request,
+                        id,
+                    });
+                    context.elements.push(FormatElement::GroupWithStates(group));
+                } else {
+                    let effect = BreakEffect::from_request(request).join(contents.effect());
+                    context.effect = context.effect.join(effect);
+                    context.elements.push(FormatElement::StartGroup {
+                        request,
+                        effect,
+                        id,
+                        end_offset: 2,
+                    });
+                    context.elements.push(FormatElement::fragment(contents));
+                    context.elements.push(FormatElement::EndGroup);
+                }
             }
             Op::Simple(15) => context.elements.push(FormatElement::LineSuffixBoundary),
             Op::Simple(16) => {
@@ -715,5 +812,6 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
         allocator,
         elements: root.elements(),
         group_count,
+        group_states: root.group_states(),
     })
 }

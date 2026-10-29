@@ -1,7 +1,7 @@
 //! Interpretation of flat formatting instructions and bounded fit probes.
 
 use super::{
-    ConditionTarget, FlatSummary, FormatElement,
+    ConditionTarget, FlatSummary, FormatElement, GroupRequest,
     text::{Text, Width},
 };
 use crate::{IndentStyle, LineEnding, PrintOptions};
@@ -194,9 +194,9 @@ impl FillStack {
     // Fill's checkpoints and batch initialization must not increase register
     // pressure in the main interpreter, where ordinary text dominates.
     #[inline(never)]
-    fn entry<'a>(
+    fn entry<'a, const GRAPH: bool>(
         &mut self,
-        probe: &mut Probe<'a>,
+        probe: &mut Probe<'a, GRAPH>,
         entry: FillEntry<'a>,
         parents: &[GroupState],
         output: &Output,
@@ -494,9 +494,23 @@ impl Indentation {
     }
 }
 
+pub(super) fn print<'a>(
+    elements: &'a [FormatElement<'a>],
+    allocator: &'a Allocator,
+    group_count: u32,
+    group_states: bool,
+    options: PrintOptions,
+) -> String {
+    if group_states {
+        print_impl::<true>(elements, allocator, group_count, options)
+    } else {
+        print_impl::<false>(elements, allocator, group_count, options)
+    }
+}
+
 // Keep the interpreter's register allocation independent of syntax construction.
 #[inline(never)]
-pub(super) fn print<'a>(
+fn print_impl<'a, const GRAPH: bool>(
     elements: &'a [FormatElement<'a>],
     allocator: &'a Allocator,
     group_count: u32,
@@ -522,6 +536,7 @@ pub(super) fn print<'a>(
         frames: Vec::new(),
         fills: Vec::new(),
         entries: Vec::new(),
+        group_effects: GRAPH.then(|| super::breaks::analyze(elements)),
     };
     let mut cursor = Cursor {
         current: Frame::new(elements),
@@ -586,6 +601,61 @@ pub(super) fn print<'a>(
                     });
                 output.record_group_mode(selected_mode, inherit_flat);
                 cursor.enter(fragment.elements(), false, Some(mode));
+                mode = selected_mode;
+            }
+            FormatElement::GroupWithStates(group) => {
+                if !GRAPH {
+                    unreachable!("group states require graph propagation");
+                }
+                let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
+                let expanded = matches!(group.request, GroupRequest::Expanded);
+                let fits = |probe: &mut Probe<'a, GRAPH>, fragment: super::Fragment<'a>| {
+                    probe.fits(
+                        ProbeRequest {
+                            current: Frame {
+                                restore_mode: Some(mode),
+                                ..Frame::new(fragment.elements())
+                            },
+                            pending: &cursor.suspended,
+                            continuation: Some(cursor.current),
+                            kind: ContinuationProbe::Candidate,
+                            has_line_suffix: !suffixes.is_empty(),
+                            fills: fills.contexts(),
+                            entries: &entries,
+                        },
+                        &modes,
+                        &output,
+                        options,
+                        mode,
+                        group_modes,
+                    )
+                };
+                let (fallback, earlier) = group
+                    .states
+                    .split_last()
+                    .expect("group states are nonempty");
+                let (selected, selected_mode) = if inherit_flat {
+                    (
+                        group.contents,
+                        if expanded { Mode::Break } else { Mode::Flat },
+                    )
+                } else if !expanded && fits(&mut probe, group.contents) {
+                    (group.contents, Mode::Flat)
+                } else if !expanded {
+                    earlier
+                        .iter()
+                        .skip(1)
+                        .copied()
+                        .find(|state| fits(&mut probe, *state))
+                        .map_or((*fallback, Mode::Break), |state| (state, Mode::Flat))
+                } else {
+                    (*fallback, Mode::Break)
+                };
+                output.record_group_mode(selected_mode, inherit_flat);
+                if let Some(id) = group.id {
+                    group_modes[id.index()] = Some(selected_mode);
+                }
+                cursor.enter(selected.elements(), false, Some(mode));
                 mode = selected_mode;
             }
             FormatElement::SoftLineIfBreak(id) => {
@@ -685,9 +755,26 @@ pub(super) fn print<'a>(
                     cursor.enter(HARD_LINE, false, None);
                 }
             }
-            FormatElement::StartGroup { effect, id, .. } => {
+            FormatElement::StartGroup {
+                request,
+                effect,
+                id,
+                ..
+            } => {
+                let expand = if GRAPH {
+                    matches!(request, GroupRequest::Expanded)
+                        || probe
+                            .group_effects
+                            .as_ref()
+                            .expect("graph facts are available")
+                            .get(&(source_element as *const _ as usize))
+                            .copied()
+                            .unwrap_or(false)
+                } else {
+                    effect.preferred_breaks()
+                };
                 let inherit_flat = mode == Mode::Flat && output.fit_state != FitState::Remeasure;
-                let flat = !effect.preferred_breaks()
+                let flat = !expand
                     && (inherit_flat
                         || probe.fits(
                             ProbeRequest {
@@ -887,6 +974,8 @@ impl Output {
         self.write_parts(text.source(), text.width(), options);
     }
 
+    // Keep common text emission inline in both interpreter specializations.
+    #[inline(always)]
     fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions) {
         self.write_indent(options);
         if options.line_ending != LineEnding::Lf && source.contains('\n') {
@@ -906,6 +995,8 @@ impl Output {
         }
     }
 
+    // The specialized interpreters emit ordinary lines on their hot paths.
+    #[inline(always)]
     fn line(&mut self, indent: Indentation, options: PrintOptions, mode: Mode) {
         self.pending_indent = Indentation::default();
         self.text
@@ -977,14 +1068,15 @@ impl ProbeKind for PreparedGroup {
     }
 }
 
-struct Probe<'a> {
+struct Probe<'a, const GRAPH: bool> {
     modes: Vec<GroupState>,
     frames: Vec<Frame<'a>>,
     fills: Vec<FillContext>,
     entries: Vec<Mode>,
+    group_effects: Option<rustc_hash::FxHashMap<usize, bool>>,
 }
 
-impl<'a> Probe<'a> {
+impl<'a, const GRAPH: bool> Probe<'a, GRAPH> {
     fn fits<K: ProbeKind>(
         &mut self,
         request: ProbeRequest<'a, '_, K>,
@@ -1008,6 +1100,7 @@ impl<'a> Probe<'a> {
             frames,
             fills,
             entries,
+            group_effects,
         } = self;
         let mut fills = BorrowedStack::new(parent_fills, fills);
         let mut entries = BorrowedStack::new(parent_entries, entries);
@@ -1044,7 +1137,8 @@ impl<'a> Probe<'a> {
             return false;
         }
         // Active text and committed flat line spaces advance the probe column.
-        while let Some((element, flat)) = cursor.next(&mut mode) {
+        while let Some((source_element, flat)) = cursor.next(&mut mode) {
+            let element = source_element;
             let flattened;
             let element = if flat {
                 let Some(element) = element.flattened() else {
@@ -1108,11 +1202,26 @@ impl<'a> Probe<'a> {
                 | FormatElement::LiteralLine
                 | FormatElement::LiteralLineWithoutBreakParent
                 | FormatElement::LiteralLineWithIndent => return true,
-                FormatElement::StartGroup { effect, id, .. } => {
+                FormatElement::StartGroup {
+                    request,
+                    effect,
+                    id,
+                    ..
+                } => {
                     if id.is_some() && kind.layout_dependency() {
                         return true;
                     }
-                    let expand = effect.preferred_breaks();
+                    let expand = if GRAPH {
+                        matches!(request, GroupRequest::Expanded)
+                            || group_effects
+                                .as_ref()
+                                .expect("graph facts are available")
+                                .get(&(source_element as *const _ as usize))
+                                .copied()
+                                .unwrap_or(false)
+                    } else {
+                        effect.preferred_breaks()
+                    };
                     if expand && K::BOUNDED {
                         return false;
                     }
@@ -1176,6 +1285,26 @@ impl<'a> Probe<'a> {
                 }
                 FormatElement::FlatFragment { elements, .. } => {
                     cursor.enter(elements.get(), true, None)
+                }
+                FormatElement::GroupWithStates(group) => {
+                    if !GRAPH {
+                        unreachable!("group states require graph propagation");
+                    }
+                    if group.id.is_some() && kind.layout_dependency() {
+                        return true;
+                    }
+                    let expanded = matches!(group.request, GroupRequest::Expanded);
+                    if expanded && K::BOUNDED {
+                        return false;
+                    }
+                    let group_mode = if expanded { Mode::Break } else { mode };
+                    let fragment = if group_mode == Mode::Break {
+                        *group.states.last().unwrap()
+                    } else {
+                        group.contents
+                    };
+                    cursor.enter(fragment.elements(), false, Some(mode));
+                    mode = group_mode;
                 }
                 FormatElement::Alternatives(alternatives) => {
                     if kind.layout_dependency() {

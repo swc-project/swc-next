@@ -6,8 +6,8 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
     Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
-    Fragment, FragmentCapabilities, GroupId, GroupRequest, NeutralFragment, RecordedGroup,
-    text::Text, thin::ThinSlice,
+    Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, NeutralFragment,
+    RecordedGroup, text::Text, thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
@@ -16,6 +16,7 @@ pub struct Writer<'a> {
     effect: BreakEffect,
     flattening: bool,
     group_count: u32,
+    group_states: bool,
     conditional_lines: bool,
     intrinsic_lines: bool,
 }
@@ -49,6 +50,7 @@ impl<'a> Writer<'a> {
             effect: BreakEffect::default(),
             flattening: false,
             group_count: 0,
+            group_states: false,
             conditional_lines: false,
             intrinsic_lines: false,
         }
@@ -220,6 +222,7 @@ impl<'a> Writer<'a> {
             FragmentCapabilities::classify(elements),
             false,
             !text.is_single_line(),
+            false,
         )
     }
 
@@ -230,6 +233,7 @@ impl<'a> Writer<'a> {
         broken: Fragment<'a>,
         flat: Fragment<'a>,
     ) {
+        self.group_states |= broken.group_states() || flat.group_states();
         self.effect = self.effect.join(broken.effect()).join(flat.effect());
         self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
         self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
@@ -331,18 +335,22 @@ impl<'a> Writer<'a> {
             request,
             effect: self.effect,
             id,
+            end_offset: 0,
         });
         let result = write(self);
         let effect = BreakEffect::from_request(request).join(self.effect);
         self.effect = outer_effect.join(effect);
+        let distance = instruction_offset(self.elements.len() - start);
         let FormatElement::StartGroup {
             effect: group_effect,
+            end_offset,
             ..
         } = &mut self.elements[start]
         else {
             unreachable!("group scope retains its opening instruction");
         };
         *group_effect = effect;
+        *end_offset = distance;
         self.elements.push(FormatElement::EndGroup);
         result
     }
@@ -535,6 +543,7 @@ impl<'a> Writer<'a> {
             capabilities,
             child.conditional_lines,
             child.intrinsic_lines,
+            child.group_states,
         );
         Ok((fragment, value))
     }
@@ -588,6 +597,7 @@ impl<'a> Writer<'a> {
                 request,
                 effect,
                 id,
+                end_offset: 2,
             },
             FormatElement::fragment(fragment),
             FormatElement::EndGroup,
@@ -598,10 +608,39 @@ impl<'a> Writer<'a> {
             capabilities,
             fragment.conditional_lines(),
             fragment.has_intrinsic_lines(),
+            fragment.group_states(),
         )
     }
 
+    /// Writes a group with independent contents and at least one expanded state.
+    pub fn write_group_with_states(
+        &mut self,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        contents: Fragment<'a>,
+        first: Fragment<'a>,
+        rest: &[Fragment<'a>],
+    ) {
+        let mut states = ArenaVec::with_capacity_in(rest.len() + 1, self.allocator);
+        states.push(first);
+        states.extend_from_slice(rest);
+        self.group_states = true;
+        self.effect = self.effect.join(BreakEffect::from_request(request));
+        self.conditional_lines |= contents.conditional_lines()
+            || first.conditional_lines()
+            || rest.iter().any(|state| state.conditional_lines());
+        self.intrinsic_lines |= contents.has_intrinsic_lines();
+        let group = self.allocator.alloc(GroupWithStates {
+            contents,
+            states: states.into_bump_slice(),
+            request,
+            id,
+        });
+        self.elements.push(FormatElement::GroupWithStates(group));
+    }
+
     pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
+        self.group_states |= fragment.group_states();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -609,10 +648,12 @@ impl<'a> Writer<'a> {
     }
 
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
+        self.group_states |= fragment.0.group_states();
         self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
+        self.group_states |= fragment.group_states();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
@@ -622,6 +663,8 @@ impl<'a> Writer<'a> {
     /// Writes a standard conditional group. Branch-local break requests do not
     /// force an enclosing group; the selected branch still retains its own groups.
     pub fn write_alternatives(&mut self, preferred: &[Fragment<'a>], fallback: Fragment<'a>) {
+        self.group_states |=
+            fallback.group_states() || preferred.iter().any(|fragment| fragment.group_states());
         let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
             choices.push(fallback);
@@ -648,6 +691,7 @@ impl<'a> Writer<'a> {
             allocator: self.allocator,
             elements: ThinSlice::new(self.elements.into_bump_slice()).get(),
             group_count: self.group_count,
+            group_states: self.group_states,
         }
     }
 }
