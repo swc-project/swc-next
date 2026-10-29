@@ -276,7 +276,9 @@ test("complete groups reject invalid flags, states, and fragment cycles", () => 
 });
 
 test("named indent scopes retain unknown and broken behavior", () => {
-  const unknown = wire((t) => [[7, ...word(1), ...hard, ...t("x"), ...end(4)]]);
+  const unknown = wire((t) => [
+    [7, 0, ...word(1), ...hard, ...t("x"), ...end(4)],
+  ]);
   assert.equal(printWire(unknown), "");
   const known = wire((t) => [
     [
@@ -284,6 +286,7 @@ test("named indent scopes retain unknown and broken behavior", () => {
       ...t("a"),
       ...end(3),
       7,
+      0,
       ...word(1),
       ...hard,
       ...t("x"),
@@ -569,7 +572,7 @@ test("decoder validates all fragment bytes and string slices", () => {
   );
   assert.throws(() =>
     decode(
-      wire(() => [[7, ...word(0), ...end(4)]]),
+      wire(() => [[7, 2, ...word(0), ...end(4)]]),
       "",
     ),
   );
