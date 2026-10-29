@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import { a, /* prettier-ignore */ b // @ts-ignore
+, /* d */ } from "foo";
+---------- Options ----------
+{}
+---------- Output ----------
+import {
+  a,
+  /* prettier-ignore */ b // @ts-ignore
+  , /* d */ } from "foo";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import {
+  a,
+  /* prettier-ignore */ b // @ts-ignore
+  , /* d */ } from "foo";
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+import {
+  a,
+  /* prettier-ignore */ b // @ts-ignore
+  , /* d */ } from "foo";
