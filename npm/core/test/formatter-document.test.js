@@ -408,6 +408,36 @@ test("diagnostic buffers preserve UTF-16 columns and validate byte boundaries", 
   assert.throws(() => decode(error(0, 0, 1), source), /Invalid SWCFMT/);
 });
 
+test("multiline Text remains intact across document hosts", () => {
+  const bytes = wire((t) => [
+    [...reference(1), ...hard, ...reference(1)],
+    t("界\r\nλ\r終\n"),
+  ]);
+  const doc = decode(bytes, "");
+  for (const [endOfLine, separator] of [
+    ["lf", "\n"],
+    ["crlf", "\r\n"],
+    ["cr", "\r"],
+  ]) {
+    const options = { printWidth: 80, tabWidth: 2, useTabs: false, endOfLine };
+    const text = "界\r\nλ\r終\n".replaceAll("\n", separator);
+    const expected = `${text}${separator}${text}`;
+    assert.equal(printer.printDocToString(doc, options).formatted, expected);
+    assert.equal(printDocBufferSync(bytes, options), expected);
+  }
+
+  const conditional = wire((t) => [
+    [...group(), 8, 0, ...word(0), ...t("a\nb"), ...end(8), ...end(3)],
+  ]);
+  assert.equal(printWire(conditional), "a\nb");
+  assert.equal(printDocBufferSync(conditional), "a\nb");
+
+  const narrow = wire((t) => [
+    [...group(), ...t("界\nλ"), ...line, ...t("x"), ...end(3)],
+  ]);
+  assert.equal(printDocBufferSync(narrow, { printWidth: 4 }), "界\nλ\nx");
+});
+
 test("literal source boundaries normalize EOL and flush suffixes before fitting", () => {
   const bytes = wire((t) => [
     [
