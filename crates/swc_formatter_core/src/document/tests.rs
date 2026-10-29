@@ -1127,6 +1127,241 @@ fn standard_line_whitespace() {
     assert_eq!(terminal_indent, "a\n  ");
 }
 
+fn rich_indentation_document(options: PrintOptions, write: impl FnOnce(&mut Writer<'_>)) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    write(&mut writer);
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, options);
+    doc.print(options)
+}
+
+#[test]
+fn rich_indentation() {
+    let spaces = PrintOptions::default();
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..spaces
+    };
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.align_text("> ", |w| {
+            w.hard_line();
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\n>\n> x");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align(2, |w| {
+            w.align(5, |w| {
+                w.dedent(|w| {
+                    w.indent(|w| {
+                        w.hard_line();
+                        w.text("x");
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n\t\tx");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align(2, |w| {
+            w.align_text("|", |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        })
+    });
+    assert_eq!(output, "\n\t|x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.align_text("世界", |w| {
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\n世界x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.dedent(|w| {
+                    w.literal_line();
+                    w.text("x");
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.align_text("> ", |w| {
+                    w.mark_as_root(|w| {
+                        w.dedent_to_root(|w| {
+                            w.dedent_to_root(|w| {
+                                w.hard_line();
+                                w.text("x");
+                            })
+                        })
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  x");
+}
+
+#[test]
+fn rich_indentation_absolute() {
+    let spaces = PrintOptions::default();
+    let zero = PrintOptions {
+        indent_width: 0.try_into().unwrap(),
+        ..spaces
+    };
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..spaces
+    };
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.align_text("> ", |w| {
+                    w.mark_as_root(|w| {
+                        w.absolute_indent(2, |w| {
+                            w.hard_line();
+                            w.text("x");
+                        })
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  >   x");
+
+    let output = rich_indentation_document(zero, |w| {
+        w.mark_as_root(|w| {
+            w.absolute_indent(3, |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        })
+    });
+    assert_eq!(output, "\n   x");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align_text("|", |w| {
+            w.mark_as_root(|w| {
+                w.absolute_indent(3, |w| {
+                    w.hard_line();
+                    w.text("x");
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n|\t\tx");
+}
+
+#[test]
+fn rich_indentation_suffix_and_identity() {
+    let options = PrintOptions::default();
+    let output = rich_indentation_document(options, |w| {
+        w.align(3, |w| {
+            w.align_text("", |w| {
+                w.align(0, |w| {
+                    w.dedent(|w| {
+                        w.hard_line();
+                        w.text("x");
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\nx");
+
+    let output = rich_indentation_document(options, |w| {
+        w.align_text("> ", |w| {
+            w.line_suffix(|w| {
+                w.hard_line();
+                w.text("suffix");
+            });
+            w.hard_line();
+            w.text("next");
+        })
+    });
+    assert_eq!(output, "\n> suffix\n> next");
+}
+
+#[test]
+fn rich_indentation_layout_and_codec() {
+    let narrow = PrintOptions {
+        line_width: 4,
+        ..PrintOptions::default()
+    };
+    let output = rich_indentation_document(narrow, |w| {
+        w.align_text("界", |w| {
+            w.hard_line();
+            w.group(false, |w| {
+                w.text("a");
+                w.line();
+                w.text("b");
+            });
+        })
+    });
+    assert_eq!(output, "\n界a\n界b");
+
+    let windows = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..PrintOptions::default()
+    };
+    let output = rich_indentation_document(windows, |w| {
+        w.align_text(">\n", |w| {
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\r\n>\nx");
+
+    let output = rich_indentation_document(PrintOptions::default(), |w| {
+        let contents = record(w, |w| {
+            w.align_text("|", |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        });
+        let state = record(w, |w| w.text("fallback"));
+        w.write_group_with_states(GroupRequest::Auto, None, contents, state, &[]);
+    });
+    assert_eq!(output, "\n|x");
+
+    let allocator = Allocator::new();
+    let bad_utf8 = document_buffer(&[&[23, 0, 0, 0, 0, 1, 0, 0, 0, 17, 23]], &[0xff]);
+    assert!(Doc::decode(&allocator, &bad_utf8).is_err());
+    let bad_end = document_buffer(&[&[24, 17, 25]], &[]);
+    assert!(Doc::decode(&allocator, &bad_end).is_err());
+    let bad_range = document_buffer(&[&[23, 1, 0, 0, 0, 1, 0, 0, 0, 17, 23]], &[]);
+    assert!(Doc::decode(&allocator, &bad_range).is_err());
+    let no_op = document_buffer(
+        &[&[
+            6, 0, 0, 0, 0, 4, 2, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4, 17, 6,
+        ]],
+        b"x",
+    );
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..PrintOptions::default()
+    };
+    assert_eq!(
+        Doc::decode(&allocator, &no_op).unwrap().print(tabs),
+        "\n\tx"
+    );
+}
+
 #[test]
 fn deep_indentation() {
     let allocator = Allocator::new();
