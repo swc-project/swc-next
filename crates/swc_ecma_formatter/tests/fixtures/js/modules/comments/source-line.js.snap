@@ -11,7 +11,7 @@ second as local} from "missing";
 import {
   first,
   // @ts-ignore
-  second as local, } from "missing";
+  second as local } from "missing";
 
 ---------- Options ----------
 {"printWidth":20}
@@ -19,7 +19,7 @@ import {
 import {
   first,
   // @ts-ignore
-  second as local, } from "missing";
+  second as local } from "missing";
 
 ---------- Options ----------
 {"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
@@ -27,4 +27,4 @@ import {
 import {
   first,
   // @ts-ignore
-  second as local,} from 'missing'
+  second as local} from 'missing'
