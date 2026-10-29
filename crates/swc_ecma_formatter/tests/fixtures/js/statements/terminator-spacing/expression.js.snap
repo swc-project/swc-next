@@ -11,22 +11,22 @@ after;
 {}
 ---------- Output ----------
 before;
-
 /* tail */
+
 after;
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 before
-
 /* tail */
+
 after
 
 ---------- Options ----------
 {"printWidth":28,"semi":false}
 ---------- Output ----------
 before
-
 /* tail */
+
 after

@@ -11,22 +11,22 @@ next();
 {}
 ---------- Output ----------
 loop: for (;;) continue loop;
-
 /* tail */
+
 next();
 
 ---------- Options ----------
 {"semi":false}
 ---------- Output ----------
 loop: for (;;) continue loop
-
 /* tail */
+
 next()
 
 ---------- Options ----------
 {"printWidth":28,"semi":false}
 ---------- Output ----------
 loop: for (;;) continue loop
-
 /* tail */
+
 next()

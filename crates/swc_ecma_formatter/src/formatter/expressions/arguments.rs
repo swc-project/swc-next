@@ -436,7 +436,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !has_leading_comments {
             return Ok(item);
         }
-        let source_head = matches!(comments.head, CommentRunLayout::Source)
+        let source_head = comments.head.is_source()
             || !matches!(
                 self.comment_binding(
                     leading,

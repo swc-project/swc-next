@@ -99,6 +99,8 @@ impl CommentBinding {
 #[derive(Clone, Copy)]
 pub(super) enum CommentRunLayout {
     Source,
+    /// A leading packet began inside a preceding statement whose source ends here.
+    SourceProjected(u32),
     /// Keep a terminal packet's Blocks in place and its ordinary Line suffix inline.
     SourceDangling,
     SourceAfter(u32),
@@ -115,6 +117,12 @@ pub(super) enum CommentRunLayout {
     CanonicalDangling,
     Lines,
     OwnLineTrailing,
+}
+
+impl CommentRunLayout {
+    pub(super) fn is_source(self) -> bool {
+        matches!(self, Self::Source | Self::SourceProjected(_))
+    }
 }
 
 /// A caller's separator covers only the first horizontal comment gap.
@@ -1950,7 +1958,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 } else if !nestled && !line_suffix {
                     match layout {
+                        CommentRunLayout::SourceProjected(source_end)
+                            if previous.span.end <= source_end
+                                && source_end < prepared.span.start
+                                && self.next_line_is_empty(source_end, prepared.span.start) =>
+                        {
+                            LineConstraint::NewLine(2).write(writer, FlatSeparator::Space, |_| {});
+                        }
                         CommentRunLayout::Source
+                        | CommentRunLayout::SourceProjected(_)
                         | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
                         | CommentRunLayout::StatementTail(_)

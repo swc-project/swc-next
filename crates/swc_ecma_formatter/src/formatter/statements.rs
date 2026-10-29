@@ -901,9 +901,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         let gap_start = previous_span_end.max(boundary.end());
                         let before_separator = boundary.end() < gap_start
                             && self.next_line_is_empty(boundary.end(), gap_start.min(next_start));
-                        // Comments inside the previous statement do not delimit its following gap.
+                        // A leading comment inside the previous statement prints before
+                        // its following gap; do not project that gap ahead of the comment.
                         let separator_end = leading
-                            .get(leading.partition_point(|comment| comment.span.start < gap_start))
+                            .first()
                             .map_or(statement_span.start, |comment| comment.span.start);
                         let after_separator = gap_start < separator_end
                             && self.next_line_is_empty(gap_start, separator_end);
@@ -944,7 +945,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let head = NodeHead {
                 comments: leading,
                 content_start: statement_span.start,
-                layout: CommentRunLayout::Source,
+                layout: if previous.is_some()
+                    && leading
+                        .first()
+                        .is_some_and(|comment| comment.span.start < previous_span_end)
+                {
+                    CommentRunLayout::SourceProjected(previous_span_end)
+                } else {
+                    CommentRunLayout::Source
+                },
                 gap_end: leading.last().map(|_| statement_span.start),
             };
             if directive_prologue == DirectivePrologue::Open

@@ -3282,7 +3282,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .expression_start
             .needs_statement_guard(self.options.semicolons)
             && context.content_mode == ContentMode::Verbatim
-            && matches!(head.layout, CommentRunLayout::Source)
+            && head.layout.is_source()
             && head.comments.last().is_some_and(|comment| {
                 comment.kind == CommentKind::Block
                     && self.line_breaks(comment.span.end, head.content_start) == 0
@@ -3479,7 +3479,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(end) = head.gap_end
             && let Some(last) = head.comments.last()
         {
-            self.comment_gap(last.span.end, end, writer);
+            if let CommentRunLayout::SourceProjected(source_end) = head.layout
+                && last.span.end <= source_end
+                && source_end < end
+                && self.next_line_is_empty(source_end, end)
+            {
+                // The closing source tokens precede the following statement gap.
+                // Apply that gap after the relocated leading packet, once.
+                LineConstraint::NewLine(2).write(writer, FlatSeparator::Space, |_| {});
+            } else {
+                self.comment_gap(last.span.end, end, writer);
+            }
         }
         Ok(start)
     }
