@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch (s) {
+  case 1:
+    type T = ?;
+  default:
+    z();
+}
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+switch (s) {
+  case 1:
+    type T = ?;
+  default:
+    z()
+}
+
+---------- Options ----------
+{"semi":false,"useTabs":true}
+---------- Output ----------
+switch (s) {
+	case 1:
+		type T = ?;
+	default:
+		z()
+}
