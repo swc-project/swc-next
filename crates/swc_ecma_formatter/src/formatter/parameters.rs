@@ -570,7 +570,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_expression_tail(tail, writer)?;
             return Ok(());
         }
-        let closing = private_boundary
+        let mut closing = private_boundary
             .as_ref()
             .map_or(DelimitedClose::Source, |source| {
                 DelimitedClose::Fixed(source.closing)
@@ -619,6 +619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut has_previous = false;
+                let mut terminal_close = None;
                 let mut following_mode =
                     (leading_mode == ContentMode::Verbatim).then_some(leading_mode);
                 while let Some(parameter) = next {
@@ -627,6 +628,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     next = parameters.next().transpose()?;
                     let span = parameter.span;
+                    if next.is_none() && private_boundary.is_none() {
+                        closing = DelimitedClose::Terminal(
+                            self.terminal_close_boundary(content, || Some((span, end))),
+                        );
+                    }
                     if has_previous {
                         if frame == ParameterFrame::Ordinary
                             && matches!(separator, Separator::EmptyLine)
@@ -681,6 +687,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let tail = self.format_runtime_parameter(parameter, item.mode, hug, writer)?;
                     let boundary =
                         self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
+                    terminal_close = boundary.terminal_close;
                     end = boundary.end;
                     separator = boundary.separator;
                     transition = boundary.transition;
@@ -696,23 +703,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 {
                     writer.break_parent();
                 }
-                Ok::<_, FormatError>(dangling.last().map_or(end, |comment| comment.span.end))
+                Ok::<_, FormatError>((
+                    dangling.last().map_or(end, |comment| comment.span.end),
+                    terminal_close,
+                ))
             };
-            let end = if hug || frame == ParameterFrame::Fixed {
+            let (end, terminal_close) = if hug || frame == ParameterFrame::Fixed {
                 write_items(writer)?
             } else {
                 writer.indent(write_items)?
             };
             if !hug && (has_parameters || end != content.start) {
-                closing.constraint(self, end, content.end).write(
-                    writer,
-                    FlatSeparator::Empty,
-                    |writer| {
+                terminal_close
+                    .unwrap_or_else(|| closing.constraint(self, end, content.end))
+                    .write(writer, FlatSeparator::Empty, |writer| {
                         if frame == ParameterFrame::Ordinary {
                             writer.soft_line();
                         }
-                    },
-                );
+                    });
             }
             writer.text(")");
             Ok(())

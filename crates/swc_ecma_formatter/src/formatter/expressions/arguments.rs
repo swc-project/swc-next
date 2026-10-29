@@ -79,6 +79,7 @@ pub(in crate::formatter) enum TrailingCommaPolicy {
 pub(in crate::formatter) enum DelimitedClose {
     Source,
     Terminal(TerminalCloseBoundary),
+    SourceComma(TerminalCloseBoundary),
     Fixed(LineConstraint),
 }
 
@@ -91,7 +92,9 @@ impl DelimitedClose {
     ) -> LineConstraint {
         match self {
             Self::Source => formatter.line_constraint(end, close),
-            Self::Terminal(boundary) => formatter.terminal_close_constraint(boundary, end),
+            Self::Terminal(boundary) | Self::SourceComma(boundary) => {
+                formatter.terminal_close_constraint(boundary, end)
+            }
             Self::Fixed(constraint) => constraint,
         }
     }
@@ -513,7 +516,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         closing: DelimitedClose,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
-        self.finish_delimited_item_with_boundary(item, tail, None, Some(closing), None, writer)
+        let terminal = match closing {
+            DelimitedClose::Terminal(boundary) | DelimitedClose::SourceComma(boundary) => {
+                Some(boundary)
+            }
+            DelimitedClose::Source | DelimitedClose::Fixed(_) => None,
+        };
+        self.finish_delimited_item_with_boundary(item, tail, None, Some(closing), terminal, writer)
     }
 
     fn finish_delimited_item_with_array_comments(
@@ -615,14 +624,64 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let comments = self.comments.between(gap)?;
         let source_constrained = self.diagnostic_range_is_sensitive(span);
-        let terminal_closing = terminal_closing.filter(|_| {
-            matches!(following, FollowingItem::End)
-                && mode == ContentMode::Formatted
+        // Type lists retain their original optional-comma policy for a covered
+        // terminal item without a real source comma. Other close facts remain
+        // available to protect a source comma and its closing boundary.
+        let preserve_optional_comma = matches!(closing, Some(DelimitedClose::SourceComma(_)))
+            && matches!(following, FollowingItem::End)
+            && source_constrained
+            && self.diagnostic_range_is_sensitive(item_span)
+            && {
+                let source_gap = Span::new(item_span.end, span.end);
+                self.find_comma(source_gap, self.comments.in_range(source_gap))
+                    .is_none()
+            };
+        let closing = if preserve_optional_comma {
+            None
+        } else {
+            closing
+        };
+        let terminal_closing = if preserve_optional_comma {
+            None
+        } else {
+            terminal_closing
+        };
+        // Unconstrained plain items need no terminal ownership preparation.
+        // Fixed frames can still impose a same-line closing constraint.
+        if comments.is_empty()
+            && mode == ContentMode::Formatted
+            && !source_constrained
+            && !matches!(following, FollowingItem::Elision { .. })
+            && !matches!(closing, Some(DelimitedClose::Fixed(_)))
+        {
+            let comma = self.find_comma(gap, comments);
+            let spacing = separator_spacing.for_attachment(true, || {
+                suppression.is_some() || self.content_mode(comments) == ContentMode::Verbatim
+            });
+            let separator = self.format_empty_delimited_separator(
+                has_more,
+                trailing_comma,
+                spacing,
+                comma,
+                gap.end,
+                writer,
+            );
+            return Ok(ItemBoundary {
+                end: content_end,
+                separator,
+                following_mode,
+                elisions: ElisionLayout::Formatted,
+                transition: None,
+                terminal_close: None,
+            });
+        }
+        let release_terminal = !source_constrained
+            || mode == ContentMode::Formatted
                 && suppression.is_none()
                 && !matches!(trailing_comma, TrailingCommaPolicy::Required)
-                && source_constrained
-                && !self.diagnostic_range_is_sensitive(item_span)
-        });
+                && !self.diagnostic_range_is_sensitive(item_span);
+        let terminal_closing = terminal_closing
+            .filter(|_| matches!(following, FollowingItem::End) && source_constrained);
         // A pending expression tail can start inside the real item's raw range.
         // Only punctuation beyond that range can be the array's optional comma.
         let comma = if terminal_closing.is_some() {
@@ -643,7 +702,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(_) => None,
             }
         });
-        let trailing_comma = if !has_more
+        let trailing_comma = if (release_terminal || closing.is_some())
+            && !has_more
             && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
             && terminal_close
                 .or_else(|| {
@@ -704,8 +764,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let separator_coverage_released = transition
             .as_ref()
             .is_some_and(|transition| self.diagnostic_line_is_sensitive(transition.comma));
-        let constrained =
-            source_constrained && !separator_coverage_released && terminal_close.is_none();
+        let constrained = source_constrained
+            && !separator_coverage_released
+            && (!release_terminal || terminal_close.is_none());
         let elision = if matches!(following, FollowingItem::Elision { .. })
             && suppression.is_none()
             && !constrained
@@ -950,6 +1011,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             Separator::Line
         };
+        let suffix_precedes_comma =
+            comma.is_none_or(|comma| boundary.last().is_some_and(|last| last.span.end <= comma));
         if required_comma {
             if !separator_coverage_released
                 && let Some(comma) = comma
@@ -970,11 +1033,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 });
             }
+            if matches!(following, FollowingItem::Elision { .. })
+                && trailing_suffix_pending
+                && suffix_precedes_comma
+            {
+                writer.hard_line();
+                trailing_suffix_pending = false;
+            }
             writer.text(",");
             if pre_packet_empty {
                 separator = Separator::EmptyLine;
             }
         } else if let TrailingCommaPolicy::IfBreak(target) = trailing_comma {
+            if before_comma
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+            {
+                writer.hard_line();
+                trailing_suffix_pending = false;
+            }
             writer.if_break_for(target, ",");
         }
         if let Some((_, run)) = prepared_run {
@@ -993,13 +1070,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let own_line = self.comments.between(Span::new(end, span.end))?;
             let own_line = self.comments.take(own_line.len());
             if let Some(first) = own_line.first() {
-                writer.hard_line();
-                if self.previous_line_is_empty(end, first.span.start) {
+                if constrained {
+                    self.comment_gap(end, first.span.start, writer);
+                } else {
                     writer.hard_line();
+                    if self.previous_line_is_empty(end, first.span.start) {
+                        writer.hard_line();
+                    }
                 }
                 self.format_comment_run_with_array_comments(
                     own_line,
-                    if own_line
+                    if constrained {
+                        CommentRunLayout::Source
+                    } else if own_line
                         .iter()
                         .any(|comment| comment.kind == CommentKind::Line)
                     {
@@ -2431,15 +2514,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?);
                 }
                 let end = previous.map_or(content.start, |boundary| boundary.end);
-                self.format_argument_dangling(Span::new(end, content.end), writer)
+                let end = self.format_argument_dangling(Span::new(end, content.end), writer)?;
+                Ok((end, previous.and_then(|boundary| boundary.terminal_close)))
             };
-            let end = if hugged {
+            let (end, terminal_close) = if hugged {
                 write_items(writer)?
             } else {
                 writer.indent(write_items)?
             };
             if !hugged && (first.is_some() || end != content.start) {
-                closing.constraint(self, end, content.end)
+                terminal_close.unwrap_or_else(|| closing.constraint(self, end, content.end))
                     .write(writer, FlatSeparator::Empty, Writer::soft_line);
             }
             if let CallArgumentFrame::Fixed { closing, .. } = frame {

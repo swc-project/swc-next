@@ -18,7 +18,7 @@ use crate::formatter::comments::{
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{
-    ArgumentLayout, FollowingItem, Separator, TrailingCommaPolicy,
+    ArgumentLayout, DelimitedClose, FollowingItem, Separator, TrailingCommaPolicy,
 };
 use crate::formatter::source::is_source_horizontal_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
@@ -591,6 +591,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
+        let closing = if self.diagnostic_range_is_sensitive(content) {
+            DelimitedClose::SourceComma(self.terminal_close_boundary(content, || match node {
+                TypeList::Arguments(node, _) => {
+                    let mut reversed = node.params(ast).iter().rev();
+                    let last: TsType = ast.get_node_in_sub_range(reversed.next()?);
+                    let head = reversed.next().map_or(content.start, |id| {
+                        let member: TsType = ast.get_node_in_sub_range(id);
+                        member.span(ast).end
+                    });
+                    Some((last.span(ast), head))
+                }
+                TypeList::Parameters(node) => {
+                    let mut reversed = node.params(ast).iter().rev();
+                    let last: TsTypeParameter = ast.get_node_in_sub_range(reversed.next()?);
+                    let head = reversed.next().map_or(content.start, |id| {
+                        let member: TsTypeParameter = ast.get_node_in_sub_range(id);
+                        member.span(ast).end
+                    });
+                    Some((last.span(ast), head))
+                }
+            }))
+        } else {
+            DelimitedClose::Source
+        };
         let type_query = matches!(node, TypeList::Arguments(_, TypeArgumentOwner::TypeQuery));
         let opening_comments = if type_query {
             self.comments.in_range(content)
@@ -849,6 +873,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut following_mode = None;
+                let mut terminal_close = None;
                 while let Some(member) = members.next() {
                     let member_span = member.span(ast);
                     let leading = self
@@ -954,12 +979,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.format_type_parameter(node, context, item.mode, writer)?
                         }
                     };
-                    let boundary = self.finish_delimited_item(item, tail, writer)?;
+                    let boundary =
+                        self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
                     end = boundary.end;
                     source_end = member_span.end;
                     separator = boundary.separator;
                     transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
+                    terminal_close = boundary.terminal_close;
                 }
                 let dangling = self.comments.between(Span::new(end, content.end))?;
                 let dangling = self.comments.take(dangling.len());
@@ -975,14 +1002,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comment_gap(end, first.span.start, writer);
                 }
                 self.format_comment_run(dangling, CommentRunLayout::Lines, writer)?;
-                Ok::<_, FormatError>(dangling.last().map_or(end, |comment| comment.span.end))
+                Ok::<_, FormatError>((
+                    dangling.last().map_or(end, |comment| comment.span.end),
+                    terminal_close,
+                ))
             };
-            let end = if hug {
+            let (end, terminal_close) = if hug {
                 format_members(writer)?
             } else {
                 writer.indent(format_members)?
             };
-            self.line_constraint(end, content.end)
+            terminal_close
+                .unwrap_or_else(|| closing.constraint(self, end, content.end))
                 .write(writer, FlatSeparator::Empty, |writer| {
                     if !hug {
                         writer.soft_line();
