@@ -4058,6 +4058,184 @@ fn assert_decoded_prints(doc: Doc<'_>, options: PrintOptions) {
     assert_eq!(decoded, doc.print(options));
 }
 
+fn states_layout(width: u16, request: GroupRequest, states: usize) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| writer.text("CONTENTS"));
+    let first = record(&mut writer, |writer| writer.text("0"));
+    let middle = record(&mut writer, |writer| writer.text("M"));
+    let last = record(&mut writer, |writer| writer.text("LAST"));
+    let rest = if states == 1 {
+        &[][..]
+    } else {
+        &[middle, last][..]
+    };
+    writer.write_group_with_states(request, None, contents, first, rest);
+    let doc = writer.finish();
+    let options = PrintOptions {
+        line_width: width,
+        ..PrintOptions::default()
+    };
+    assert_decoded_prints(Doc { ..doc }, options);
+    doc.print(options)
+}
+
+#[test]
+fn group_states_layout() {
+    assert_eq!(states_layout(80, GroupRequest::Auto, 3), "CONTENTS");
+    assert_eq!(states_layout(1, GroupRequest::Auto, 3), "M");
+    assert_eq!(states_layout(1, GroupRequest::Expanded, 3), "LAST");
+    assert_eq!(states_layout(1, GroupRequest::Auto, 1), "0");
+    assert_eq!(states_layout(80, GroupRequest::Auto, 1), "CONTENTS");
+}
+
+fn shared_states_layout(shared: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (recorded, ()) = writer
+        .record_group_with_value(|writer| {
+            writer.group(false, |writer| {
+                writer.text("a");
+                writer.line();
+                writer.text("b");
+                writer.break_parent();
+            });
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let state = if shared {
+        recorded.contents()
+    } else {
+        record(&mut writer, |writer| writer.text("state"))
+    };
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.write_group_with_states(
+        GroupRequest::Auto,
+        None,
+        recorded.grouped(),
+        state,
+        &[fallback],
+    );
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    doc.print(PrintOptions::default())
+}
+
+#[test]
+fn group_states_shared_propagation() {
+    assert_eq!(shared_states_layout(false), "a b");
+    assert_eq!(shared_states_layout(true), "a\nb");
+}
+
+#[test]
+fn group_states_modes_and_barriers() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.next_group_id();
+    let contents = record(&mut writer, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.if_break_for(ConditionTarget::Group(id), "B");
+        writer.if_flat_for(ConditionTarget::Group(id), "F");
+    });
+    let state = record(&mut writer, |writer| {
+        writer.text("s");
+        writer.line();
+        writer.if_break_for(ConditionTarget::Group(id), "B");
+    });
+    writer.write_group_with_states(GroupRequest::Expanded, Some(id), contents, state, &[]);
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "s\nB");
+
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| writer.text("C"));
+    let state = record(&mut writer, Writer::break_parent);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.write_group_with_states(GroupRequest::Auto, None, contents, state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "a C");
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.write_group_with_states(GroupRequest::Expanded, None, contents, state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "a\n");
+}
+
+#[test]
+fn group_states_shared_parent_propagation() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let inner = record(&mut writer, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.text("b");
+            writer.break_parent();
+        });
+    });
+    let contents = record(&mut writer, |writer| writer.text("C"));
+    writer.write_group_with_states(GroupRequest::Auto, None, contents, inner, &[]);
+    writer.group(false, |writer| {
+        writer.line();
+        writer.write_fragment(inner);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "C\na\nb");
+}
+
+#[test]
+fn group_states_inherited_flat() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| {
+        writer.text("C");
+        writer.line();
+        writer.text("D");
+    });
+    let fallback = record(&mut writer, |writer| writer.text("LAST"));
+    let inner = record(&mut writer, |writer| {
+        writer.write_group_with_states(GroupRequest::Expanded, None, contents, fallback, &[]);
+    });
+    let outer_state = record(&mut writer, |writer| writer.text("state"));
+    writer.group(false, |writer| {
+        writer.write_group_with_states(GroupRequest::Auto, None, inner, outer_state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "C\nD");
+}
+
+#[test]
+fn group_states_invalid_buffers() {
+    let allocator = Allocator::new();
+    let invalid_flags = document_buffer(&[&[22, 4, 0, 0, 0, 0, 0, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &invalid_flags).is_err());
+    let empty = document_buffer(&[&[22, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], &[]], &[]);
+    assert!(Doc::decode(&allocator, &empty).is_err());
+    let cycle = document_buffer(&[&[22, 0, 0, 0, 0, 0, 0, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &cycle).is_err());
+    let missing_ref = document_buffer(&[&[22, 2, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], &[]], &[]);
+    assert!(Doc::decode(&allocator, &missing_ref).is_err());
+    let no_states = document_buffer(&[&[22, 0, 0, 0, 0, 0, 1, 0, 0, 0], &[2, 0]], &[]);
+    assert_eq!(
+        Doc::decode(&allocator, &no_states)
+            .unwrap()
+            .print(PrintOptions::default()),
+        " "
+    );
+}
+
 #[test]
 fn group_request_codec() {
     let allocator = Allocator::new();
