@@ -108,16 +108,32 @@ impl<'a> Writer<'a> {
         self.text(text);
     }
 
+    /// Writes a hard line and requests expansion of its enclosing groups.
     pub fn hard_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::HardLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
+    /// Writes a hard line without requesting expansion of its enclosing groups.
+    pub fn hard_line_without_break_parent(&mut self) {
+        self.intrinsic_lines = true;
+        self.elements
+            .push(FormatElement::HardLineWithoutBreakParent);
+    }
+
+    /// Preserves trailing whitespace, resets indentation, and expands enclosing groups.
     pub fn literal_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
+    }
+
+    /// Preserves trailing whitespace and resets indentation without expanding parents.
+    pub fn literal_line_without_break_parent(&mut self) {
+        self.intrinsic_lines = true;
+        self.elements
+            .push(FormatElement::LiteralLineWithoutBreakParent);
     }
 
     /// Preserves source whitespace while returning to the current indentation.

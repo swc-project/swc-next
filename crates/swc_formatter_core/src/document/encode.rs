@@ -101,7 +101,9 @@ impl<'a> Encoder<'a> {
                 FormatElement::Line => output.extend([2, 0]),
                 FormatElement::SoftLine => output.extend([2, 1]),
                 FormatElement::HardLine => output.extend([2, 2]),
+                FormatElement::HardLineWithoutBreakParent => output.extend([2, 3]),
                 FormatElement::LiteralLine => output.extend([2, 4]),
+                FormatElement::LiteralLineWithoutBreakParent => output.extend([2, 6]),
                 FormatElement::LiteralLineWithIndent => output.extend([2, 5]),
                 FormatElement::SoftLineIfBreak(id) => {
                     output.extend([8, 1]);
