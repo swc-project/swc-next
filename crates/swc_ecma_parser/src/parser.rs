@@ -9397,18 +9397,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         &mut self,
         cover: ParenthesizedCover,
     ) -> Option<FormalParameters> {
-        let arguments = (0..cover.elements.len())
-            .map(|index| {
-                cover
-                    .elements
-                    .get_node(&self.ast, index)
-                    .expect("parenthesized cover contains its arguments")
-            })
-            .collect::<Vec<_>>();
         let checkpoint = self.scratch_cover.begin();
         let result = (|| {
             let mut rest = None;
-            for (index, argument) in arguments.iter().copied().enumerate() {
+            for (index, id) in cover.elements.iter().enumerate() {
+                let argument = self.ast.get_node_in_sub_range(id);
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
                         if rest.is_some() {
@@ -9428,7 +9421,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_cover.append(parameter);
                     }
                     ArgumentData::SpreadElement(spread) => {
-                        if index + 1 != arguments.len() {
+                        if index + 1 != cover.elements.len() {
                             self.report(
                                 spread.span(&self.ast),
                                 "Rest parameter must be last formal parameter",
