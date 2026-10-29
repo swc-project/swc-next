@@ -697,6 +697,155 @@ fn test_directive_string_value() {
 }
 
 #[test]
+fn test_statement_body_comments() {
+    expect_printed(
+        "if (condition) // @ts-ignore\nf('text');",
+        "if (condition) // @ts-ignore\n f(\"text\");\n",
+    );
+
+    expect_printed(
+        "function f() { /* @ts-expect-error */ }",
+        "function f() {\n  /* @ts-expect-error */ }\n",
+    );
+}
+
+#[test]
+fn test_function_annotations() {
+    expect_printed("/*#__PURE__*/ f();", "/* #__PURE__ */ f();\n");
+
+    expect_printed(
+        "/** @returns {number} */ /*#__PURE__*/ make();",
+        "/** @returns {number} */\n/* #__PURE__ */ make();\n",
+    );
+
+    expect_printed(
+        "/*#__NO_SIDE_EFFECTS__*/ function f() {}",
+        "/* #__NO_SIDE_EFFECTS__ */ function f() {\n}\n",
+    );
+}
+
+#[test]
+fn test_switch_comments() {
+    expect_printed(
+        "switch (0) { default: break; // @ts-ignore\n}",
+        "switch (0) {\n  default:\n    break;\n  // @ts-ignore\n}\n",
+    );
+}
+
+#[test]
+fn test_jsx_comment_directives() {
+    expect_printed_jsx(
+        "<div>{/* @ts-ignore */}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-ignore */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/* @ts-expect-error */}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-expect-error */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/*\n@ts-ignore */}\n<C value={1} /></div>;",
+        "<div>{ /*\n @ts-ignore */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/* @ts-ignore */\n}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-ignore */\n}\n<C value={1} /></div>;\n",
+    );
+}
+
+#[test]
+fn test_object_spread_comments() {
+    expect_printed(
+        "const obj = { // @ts-ignore\n...x };",
+        "const obj = { // @ts-ignore\n...x };\n",
+    );
+}
+
+#[test]
+fn test_directive_comments() {
+    expect_printed(
+        "// @ts-nocheck\n'use strict';",
+        "// @ts-nocheck\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/// <reference path=\"./dep.d.ts\" />\n'use strict';",
+        "/// <reference path=\"./dep.d.ts\" />\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/* @ts-nocheck */\n'use strict';",
+        "/* @ts-nocheck */\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/* @ts-expect-error */ const x = 1;",
+        "/* @ts-expect-error */ const x = 1;\n",
+    );
+
+    let without_comments = PrintOptions {
+        comments: false,
+        ..PrintOptions::default()
+    };
+    expect_printed_with_options(
+        "/** @type {number} */ const x = 1;",
+        "const x = 1;\n",
+        without_comments,
+    );
+}
+
+#[test]
+fn test_parameter_comments() {
+    expect_printed(
+        "function f(/** @type {number} */ x) {}",
+        "function f( /** @type {number} */ x) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** nothing */) {}",
+        "function f( /** nothing */ ) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** @type {number[]} */ ...xs) {}",
+        "function f( /** @type {number[]} */ ...xs) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** @type {number} */ x, /** @type {string} */ y) {}",
+        "function f( /** @type {number} */ x, /** @type {string} */ y) {\n}\n",
+    );
+}
+
+#[test]
+fn test_class_member_comments() {
+    expect_printed(
+        "class C { /** @param {number} x */ constructor(x) {} }",
+        "class C {\n  /** @param {number} x */\n  constructor(x) {\n  }\n}\n",
+    );
+}
+
+#[test]
+fn test_object_member_comments() {
+    expect_printed(
+        "const obj = { /** @type {number} */ x: 1 };",
+        "const obj = { /** @type {number} */ x: 1 };\n",
+    );
+
+    expect_printed(
+        "const obj = { /** @returns {number} */ m() { return 1; } };",
+        "const obj = { /** @returns {number} */ m() {\n  return 1;\n} };\n",
+    );
+
+    expect_printed(
+        "const obj = {\n/** @type {number} */\nx: 'text' };",
+        "const obj = {\n/** @type {number} */\nx: \"text\" };\n",
+    );
+}
+
+#[test]
 fn test_computed_key_comments() {
     expect_printed(
         "({ [/* @__PURE__ */ 'x']: make() })",
@@ -878,7 +1027,7 @@ fn test_parenthesized_comments() {
 
     expect_stable(
         "(/* before */ value /* after */); /* end */",
-        "/* before */\nvalue /* after */ ;\n/* end */\n",
+        "/* before */\nvalue /* after */;\n/* end */\n",
     );
 
     expect_printed_minify(
@@ -925,7 +1074,7 @@ fn test_yield_comments() {
 
     expect_stable_with_parens(
         "function* f() { yield* /*a\nb*/ xs; }",
-        "function* f() {\n  yield* ( /*a\n   b*/\nxs);\n}\n",
+        "function* f() {\n  yield* ( /*a\n   b*/ xs);\n}\n",
         &pretty,
     );
 
@@ -1396,21 +1545,36 @@ fn test_inline_script() {
 fn test_comment_line_terminators() {
     let pretty = PrintOptions::default();
 
+    expect_printed(
+        "function f(){return (\n/** @type {number} */ value);}",
+        "function f() {\n  return (\n  /** @type {number} */ value);\n}\n",
+    );
+
+    expect_printed(
+        "throw (/** @type {Error} */\nerror);",
+        "throw ( /** @type {Error} */\nerror);\n",
+    );
+
+    expect_printed(
+        "function* f(){yield (\n/** @type {number} */\nvalue);}",
+        "function* f() {\n  yield (\n  /** @type {number} */\n  value);\n}\n",
+    );
+
     expect_stable_with_parens(
         "function f() { return (/* lead\rtrail */ value); }",
-        "function f() {\n  return ( /* lead\n   trail */\nvalue);\n}\n",
+        "function f() {\n  return ( /* lead\n   trail */ value);\n}\n",
         &pretty,
     );
 
     expect_stable_with_parens(
         "throw (/* lead\u{2028}trail */ value);",
-        "throw ( /* lead\n trail */\nvalue);\n",
+        "throw ( /* lead\n trail */ value);\n",
         &pretty,
     );
 
     expect_stable_with_parens(
         "function* f() { yield (/* lead\u{2029}trail */ value); }",
-        "function* f() {\n  yield ( /* lead\n   trail */\nvalue);\n}\n",
+        "function* f() {\n  yield ( /* lead\n   trail */ value);\n}\n",
         &pretty,
     );
 }

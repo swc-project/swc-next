@@ -4,7 +4,8 @@ use memchr::{memchr, memchr2, memchr3};
 use swc_next_allocator::Allocator;
 use swc_next_allocator::vec::ArenaVec;
 use swc_next_ecma_ast::{
-    Comment, CommentKind, CommentPosition, Span, is_ident_continue_ascii, is_ident_start_ascii,
+    Comment, CommentKind, CommentNewlines, CommentPosition, Span, is_ident_continue_ascii,
+    is_ident_start_ascii,
 };
 
 use swc_next_simd::memchr::memchr4;
@@ -63,6 +64,8 @@ pub struct LexerState {
     previous_token_tag: Option<TokenTag>,
     /// End offset of the most recently consumed token.
     pub(super) prev_token_end: u32,
+    /// Whether a line terminator occurred since the last comment or token.
+    line_break_before_comment: bool,
 }
 
 impl Default for LexerState {
@@ -72,6 +75,7 @@ impl Default for LexerState {
             had_line_break: true,
             previous_token_tag: None,
             prev_token_end: 0,
+            line_break_before_comment: false,
         }
     }
 }
@@ -467,6 +471,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
         self.state.previous_token_tag = Some(token.tag());
         self.state.had_line_break = false;
+        self.state.line_break_before_comment = false;
     }
 
     /// Records a token read by a fast path. Fast paths never skip comments,
@@ -479,6 +484,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
         self.state.previous_token_tag = Some(token.tag());
         self.state.had_line_break = false;
+        self.state.line_break_before_comment = false;
     }
 
     /// Restores a compound token removed by a failed speculative rescan.
@@ -1361,6 +1367,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         let at_start_of_source = self.cursor == 0;
+        let comments_start = self.comments.len();
 
         loop {
             let src = self.source;
@@ -1372,6 +1379,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     b'\n' | b'\r' => {
                         self.set_token_flag(TokenFlag::LineTerminatorBefore);
                         self.state.had_line_break = true;
+                        self.handle_comment_newline(comments_start);
                         pos += 1;
                     }
                     _ => break,
@@ -1381,7 +1389,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             self.cursor = pos as u32;
             if pos == src.len()
                 || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF)
-                || !self.skip_ws_and_comments_slow(at_start_of_source)?
+                || !self.skip_ws_and_comments_slow(at_start_of_source, comments_start)?
             {
                 return Ok(());
             }
@@ -1393,6 +1401,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn skip_ws_and_comments_slow(
         &mut self,
         at_start_of_source: bool,
+        comments_start: usize,
     ) -> Result<bool, LexicalError> {
         let src = self.source;
         let pos = self.cursor as usize;
@@ -1433,6 +1442,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 if separator_len > 0 {
                     self.set_token_flag(TokenFlag::LineTerminatorBefore);
                     self.state.had_line_break = true;
+                    self.handle_comment_newline(comments_start);
                     self.cursor += separator_len as u32;
                     return Ok(true);
                 }
@@ -1482,6 +1492,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return Ok(());
         }
         let mut comment = Comment::new(Span::new(start, end), kind);
+        comment.newlines.set(
+            CommentNewlines::LEADING,
+            self.state.line_break_before_comment,
+        );
+        self.state.line_break_before_comment = kind == CommentKind::Line;
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
@@ -1492,6 +1507,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
         self.comments.push(comment);
         Ok(())
+    }
+
+    /// Tracks trivia newlines without treating block comment contents as trivia.
+    fn handle_comment_newline(&mut self, comments_start: usize) {
+        self.state.line_break_before_comment = true;
+        if self.comments.len() > comments_start {
+            let last = self.comments.len() - 1;
+            self.comments[last]
+                .newlines
+                .insert(CommentNewlines::TRAILING);
+        }
     }
 
     fn attach_pending_comments(&mut self, token: Token) {
@@ -2050,6 +2076,79 @@ mod tests {
         let mut token = Token::eof(0);
         lexer.next_token(&mut token).unwrap();
         token
+    }
+
+    fn comment_newlines(source: &str, fast: bool) -> Vec<CommentNewlines> {
+        let allocator = Allocator::new();
+        let mut lexer = Lexer::init(&allocator, source, true, true, NoTokenParserConfig);
+        let mut token = Token::eof(0);
+        loop {
+            if !fast || !lexer.try_next_token(&mut token) {
+                lexer.next_token(&mut token).unwrap();
+            }
+            if token.tag() == TokenTag::Eof {
+                break;
+            }
+        }
+        lexer
+            .comments
+            .iter()
+            .map(|comment| comment.newlines)
+            .collect()
+    }
+
+    #[test]
+    fn comment_trivia() {
+        let none = CommentNewlines::empty();
+        let leading = CommentNewlines::LEADING;
+        let trailing = CommentNewlines::TRAILING;
+        let both = leading | trailing;
+        for fast in [false, true] {
+            let flags = comment_newlines("a /* note */ b", fast);
+            assert_eq!(flags, [none]);
+
+            let flags = comment_newlines("\n/* note */x", fast);
+            assert_eq!(flags, [leading]);
+
+            let flags = comment_newlines("x/* note */\r\ny", fast);
+            assert_eq!(flags, [trailing]);
+
+            let flags = comment_newlines("\u{2028}/* note */\u{2029}x", fast);
+            assert_eq!(flags, [both]);
+
+            let flags = comment_newlines("/* a\nb */ /* c */x", fast);
+            assert_eq!(flags, [none, none]);
+
+            let flags = comment_newlines("// note", fast);
+            assert_eq!(flags, [trailing]);
+
+            let flags = comment_newlines("// a\n/* b */x", fast);
+            assert_eq!(flags, [trailing, leading]);
+
+            let flags = comment_newlines("x/* a */\n/* b */y", fast);
+            assert_eq!(flags, [trailing, leading]);
+
+            let flags = comment_newlines("/* note */\n", fast);
+            assert_eq!(flags, [trailing]);
+
+            let flags = comment_newlines("/* a */\nx/* b */y", fast);
+            assert_eq!(flags, [trailing, none]);
+
+            let flags = comment_newlines("/* a */x\n/* b */y", fast);
+            assert_eq!(flags, [none, leading]);
+
+            let flags = comment_newlines("\n/* a */ /* b */x", fast);
+            assert_eq!(flags, [leading, none]);
+
+            let flags = comment_newlines("/* a */ /* b */\nx", fast);
+            assert_eq!(flags, [none, trailing]);
+
+            let flags = comment_newlines("<!-- note\nx", fast);
+            assert_eq!(flags, [trailing]);
+
+            let flags = comment_newlines("\n--> note", fast);
+            assert_eq!(flags, [both]);
+        }
     }
 
     #[test]

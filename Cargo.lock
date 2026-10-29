@@ -2842,6 +2842,7 @@ dependencies = [
 name = "swc_next_ecma_ast"
 version = "0.4.1"
 dependencies = [
+ "bitflags",
  "cow-utils",
  "num-bigint 0.5.1",
  "swc_next_allocator",

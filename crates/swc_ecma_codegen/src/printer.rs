@@ -331,11 +331,16 @@ impl<'a> Printer<'a> {
         } else {
             Vec::new()
         };
+        let comments = if options.comments {
+            ast.comments()
+        } else {
+            &[]
+        };
         Self {
             ast,
             options,
             js: Vec::with_capacity(ast.source().len()),
-            comments: ast.comments(),
+            comments,
             expr_visitor_stack: Vec::new(),
             builder: make_chunk_builder(line_offset_tables),
             next_comment: 0,
@@ -362,7 +367,6 @@ impl<'a> Printer<'a> {
             ast,
             options,
             js,
-            comments,
             builder,
             ..
         } = self;
@@ -375,7 +379,8 @@ impl<'a> Printer<'a> {
         };
 
         let code = String::from_utf8(js).expect("generated code must be valid UTF-8");
-        let legal_comments = comments
+        let legal_comments = ast
+            .comments()
             .iter()
             .filter(|comment| is_legal_comment(ast, **comment))
             .copied()
@@ -451,11 +456,15 @@ impl<'a> Printer<'a> {
             // Interior comments belong to their node's printer. Keep legal
             // notices even when a node has not consumed them.
             let trailing = comment.span.start >= last_statement_end;
-            self.print_comments_before(comment.span.end, true, trailing);
+            self.next_comment += 1;
+            if trailing || is_legal_comment(self.ast, comment) {
+                self.print_comment(comment, true);
+            }
         }
     }
 
     fn print_directive(&mut self, directive: Directive) {
+        self.print_comments_at(directive.span(self.ast).start, true);
         let expression = directive.expression(self.ast);
         let value = self.ast.get_wtf8(expression.value(self.ast));
         let raw = self.ast.get_utf8(expression.raw(self.ast));
@@ -477,93 +486,101 @@ impl<'a> Printer<'a> {
     }
 
     #[inline]
-    fn print_comments_before(&mut self, offset: u32, statement: bool, preserve_all: bool) {
+    fn print_comments_at(&mut self, offset: u32, statement: bool) {
         if self
             .comments
             .get(self.next_comment)
-            .is_some_and(|comment| comment.span.end <= offset)
+            .is_some_and(|comment| comment.attached_to <= offset || comment.span.end <= offset)
         {
-            self.print_comments_before_slow(offset, statement, preserve_all);
+            self.print_comments_at_slow(offset, statement);
         }
     }
 
     #[inline(never)]
-    fn print_comments_before_slow(&mut self, offset: u32, statement: bool, preserve_all: bool) {
-        while self.next_comment < self.comments.len()
-            && self.comments[self.next_comment].span.end <= offset
-        {
-            let comment = self.comments[self.next_comment];
+    fn print_comments_at_slow(&mut self, offset: u32, statement: bool) {
+        while let Some(comment) = self.comments.get(self.next_comment).copied() {
+            if comment.attached_to > offset && comment.span.end > offset {
+                break;
+            }
+            let attached = comment.attached_to == offset;
+            let important = !attached && is_important_comment(self.ast, comment);
+            // A stripped parenthesis can put a leading comment before an outer
+            // node whose start precedes its attachment. Leave ordinary comments
+            // for their exact anchor; annotations may precede the outer wrapper.
+            if comment.attached_to > offset && !important {
+                break;
+            }
             self.next_comment += 1;
-            if !self.options.comments || (!preserve_all && !is_legal_comment(self.ast, comment)) {
-                continue;
+            if attached || important {
+                self.print_comment(comment, statement);
             }
-            let value = self
-                .ast
-                .get_utf8(comment.value(self.ast.source().as_bytes()))
-                .as_bytes();
-            let mut trim_start = 0;
-            while value[trim_start..]
-                .first()
-                .is_some_and(|c| c.is_ascii_whitespace())
-            {
-                trim_start += 1;
+        }
+    }
+
+    fn print_comment(&mut self, comment: Comment, statement: bool) {
+        let value = self
+            .ast
+            .get_utf8(comment.value(self.ast.source().as_bytes()));
+        let trimmed = value.trim();
+        let annotation = comment.kind == CommentKind::Block
+            && matches!(
+                trimmed,
+                "@__PURE__" | "#__PURE__" | "@__NO_SIDE_EFFECTS__" | "#__NO_SIDE_EFFECTS__"
+            );
+        // Statement comments get their own line, except annotations and ts
+        // directives whose original line boundaries determine their scope.
+        let own_line = statement
+            && !self.options.minify
+            && !annotation
+            && (comment.kind == CommentKind::Line || !value.contains("@ts-"));
+        if comment.newlines.contains(CommentNewlines::LEADING)
+            || own_line
+            || (statement && self.js.last() == Some(&b'\n'))
+        {
+            while matches!(self.js.last(), Some(b' ' | b'\t')) {
+                self.js.pop();
             }
-            let mut trim_end = value.len();
-            while trim_end > trim_start && value[trim_end - 1].is_ascii_whitespace() {
-                trim_end -= 1;
+            if self.js.last().is_some_and(|&byte| byte != b'\n') {
+                self.print("\n");
             }
-            let trimmed = &value[trim_start..trim_end];
-            if comment.kind == CommentKind::Block
-                && matches!(
-                    trimmed,
-                    b"@__PURE__" | b"#__PURE__" | b"@__NO_SIDE_EFFECTS__" | b"#__NO_SIDE_EFFECTS__"
-                )
-            {
-                if self.js.last().is_some_and(|&c| !c.is_ascii_whitespace()) {
-                    self.print(" ");
+            self.print_indent();
+        } else if self.js.last().is_some_and(|&byte| {
+            !byte.is_ascii_whitespace() && (!self.options.minify || byte == b'/' || annotation)
+        }) {
+            self.print(" ");
+        }
+        match comment.kind {
+            CommentKind::Line => {
+                self.print("//");
+                self.print_script_text(value.as_bytes());
+                self.print("\n");
+                if !statement {
+                    self.print_indent();
                 }
-                self.print("/* ");
-                self.print_bytes(trimmed);
-                self.print(" */ ");
-                continue;
             }
-            let comment_at_stmt_start = !statement && self.js.len() == self.stmt_start;
-            if statement {
-                if self.js.last().is_some_and(|&c| c != b'\n') {
-                    self.print_newline();
+            CommentKind::Block => {
+                if annotation {
+                    self.print("/* ");
+                    self.print_bytes(trimmed);
+                    self.print(" */");
+                } else {
+                    self.print_indented_block_comment(value.as_bytes());
                 }
-                self.print_indent();
-            } else if self
-                .js
-                .last()
-                .is_some_and(|&c| !c.is_ascii_whitespace() && (!self.options.minify || c == b'/'))
-            {
-                self.print(" ");
-            }
-            match comment.kind {
-                CommentKind::Line => {
-                    self.print("//");
-                    self.print_script_text(value);
+                if comment.newlines.contains(CommentNewlines::TRAILING) || own_line {
                     self.print("\n");
                     if !statement {
                         self.print_indent();
                     }
-                }
-                CommentKind::Block => {
-                    let has_line_terminator = self.print_indented_block_comment(value);
-                    if statement || has_line_terminator || comment_at_stmt_start {
-                        self.print_newline();
-                    } else {
-                        self.print_space();
-                    }
+                } else if annotation {
+                    self.print(" ");
+                } else {
+                    self.print_space();
                 }
             }
         }
     }
 
-    /// Prints a block comment and returns whether its value contains a line
-    /// terminator.
-    fn print_indented_block_comment(&mut self, value: &[u8]) -> bool {
+    fn print_indented_block_comment(&mut self, value: &[u8]) {
         // Re-indent multi-line comments to match the surrounding statement.
         self.print("/*");
         let mut start = 0;
@@ -604,8 +621,6 @@ impl<'a> Printer<'a> {
         }
         self.print_script_text(&value[start..]);
         self.print("*/");
-        // `start` only moves past a line terminator, so it is nonzero iff one was found.
-        start != 0
     }
 
     fn print_script_text(&mut self, text: &[u8]) {
@@ -635,24 +650,13 @@ impl<'a> Printer<'a> {
             if comment.position != CommentPosition::Trailing || comment.attached_to != attached_to {
                 break;
             }
-            self.print_comments_before(comment.span.end, false, true);
+            self.next_comment += 1;
+            self.print_comment(comment, false);
             trim_trailing_space =
                 comment.kind == CommentKind::Block && !self.comment_has_line_terminator(comment);
         }
         if trim_trailing_space && self.js.last() == Some(&b' ') {
             self.js.pop();
-        }
-    }
-
-    fn discard_comments_before_trailing_comma(&mut self, close_offset: u32) {
-        while let Some(comment) = self.comments.get(self.next_comment).copied() {
-            if comment.span.end > close_offset || is_legal_comment(self.ast, comment) {
-                break;
-            }
-            if !self.ast.source()[comment.span.end as usize..close_offset as usize].contains(',') {
-                break;
-            }
-            self.next_comment += 1;
         }
     }
 
@@ -868,10 +872,11 @@ impl<'a> Printer<'a> {
     }
 
     fn print_stmt_with_context(&mut self, stmt: Stmt, prevent_directive: bool) {
-        self.print_comments_before(stmt.span(self.ast).start, true, true);
+        let data = self.ast.stmt_data(stmt);
+        self.print_comments_at(stmt.span(self.ast).start, true);
         self.add_source_mapping(stmt.span(self.ast).start);
         self.stmt_start = self.js.len();
-        match self.ast.stmt_data(stmt) {
+        match data {
             StmtData::BlockStatement(s) => {
                 self.print_indent();
                 self.print_block(s);
@@ -954,7 +959,7 @@ impl<'a> Printer<'a> {
                     .is_some_and(|comment| comment.span.end <= expression.span(self.ast).end)
                 {
                     let first_token = self.expr_first_token_offset(expression);
-                    self.print_comments_before(first_token, true, true);
+                    self.print_comments_at(first_token, true);
                 }
                 self.print_indent();
                 self.stmt_start = self.js.len();
@@ -964,11 +969,12 @@ impl<'a> Printer<'a> {
                     self.print("(");
                 }
                 self.print_expr(expression, Precedence::Lowest);
-                self.print_comments_before(s.span(self.ast).end, false, true);
+                self.print_attached_trailing_comments(expression.span(self.ast).end);
                 if wrap {
                     self.print(")");
                 }
                 self.print_semicolon_after_statement();
+                self.print_comments_at(s.span(self.ast).end, true);
             }
             StmtData::ForInStatement(s) => {
                 self.print_indent();
@@ -977,16 +983,19 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 let left = s.left(self.ast);
-                let leading_comment_end = self.comments[self.next_comment..]
+                let leading_comment_offset = self.comments[self.next_comment..]
                     .first()
-                    .filter(|comment| comment.span.end <= left.span(self.ast).end)
-                    .map(|comment| comment.span.end);
+                    .filter(|comment| {
+                        comment.span.end <= left.span(self.ast).end
+                            && is_important_comment(self.ast, **comment)
+                    })
+                    .map(|comment| comment.attached_to);
                 if !self.options.minify
-                    && let Some(comment_end) = leading_comment_end
+                    && let Some(comment_offset) = leading_comment_offset
                 {
                     self.print_newline();
                     self.indent += 1;
-                    self.print_comments_before(comment_end, true, true);
+                    self.print_comments_at(comment_offset, true);
                     self.print_indent();
                     self.for_init_start = self.js.len();
                     self.print_for_left(left);
@@ -1015,16 +1024,19 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 let left = s.left(self.ast);
-                let leading_comment_end = self.comments[self.next_comment..]
+                let leading_comment_offset = self.comments[self.next_comment..]
                     .first()
-                    .filter(|comment| comment.span.end <= left.span(self.ast).end)
-                    .map(|comment| comment.span.end);
+                    .filter(|comment| {
+                        comment.span.end <= left.span(self.ast).end
+                            && is_important_comment(self.ast, **comment)
+                    })
+                    .map(|comment| comment.attached_to);
                 if !self.options.minify
-                    && let Some(comment_end) = leading_comment_end
+                    && let Some(comment_offset) = leading_comment_offset
                 {
                     self.print_newline();
                     self.indent += 1;
-                    self.print_comments_before(comment_end, true, true);
+                    self.print_comments_at(comment_offset, true);
                     self.print_indent();
                     self.for_of_init_start = self.js.len();
                     self.for_init_start = self.js.len();
@@ -1210,11 +1222,7 @@ impl<'a> Printer<'a> {
             self.print_block(block);
             self.print_newline();
         } else {
-            while self.next_comment < self.comments.len()
-                && self.comments[self.next_comment].span.end <= body.span(self.ast).start
-            {
-                self.next_comment += 1;
-            }
+            self.print_comments_at(body.span(self.ast).start, false);
             self.print_next_indent_as_space = true;
             self.print_stmt(body);
         }
@@ -1224,33 +1232,15 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(block.span(self.ast).start);
         self.print("{");
         let body = block.body(self.ast);
-        if body.is_empty() {
-            let close_offset = block.span(self.ast).end.saturating_sub(1);
-            if self.comments[self.next_comment..]
-                .iter()
-                .any(|comment| comment.span.end <= close_offset)
-            {
-                self.print_newline();
-                self.indent += 1;
-                self.print_comments_before(close_offset, true, true);
-                self.indent -= 1;
-                self.print_indent();
-            } else if !self.options.minify {
-                self.print_newline();
-                self.print_indent();
-            }
-            self.add_source_mapping(block.span(self.ast).end.saturating_sub(1));
-            self.print("}");
-            return;
-        }
         self.print_newline();
         self.indent += 1;
+        self.print_comments_at(block.span(self.ast).start + 1, true);
         for id in body.iter() {
             self.print_semicolon_if_needed();
             self.print_stmt(self.ast.get_node_in_sub_range(id));
         }
         self.needs_semicolon = false;
-        self.print_comments_before(block.span(self.ast).end.saturating_sub(1), true, true);
+        self.print_comments_at(block.span(self.ast).end.saturating_sub(1), true);
         self.indent -= 1;
         self.print_indent();
         self.add_source_mapping(block.span(self.ast).end.saturating_sub(1));
@@ -1262,27 +1252,9 @@ impl<'a> Printer<'a> {
         self.print("{");
         let directives = body.directives(self.ast);
         let statements = body.body(self.ast);
-        if directives.is_empty() && statements.is_empty() {
-            let close_offset = body.span(self.ast).end.saturating_sub(1);
-            if self.comments[self.next_comment..]
-                .iter()
-                .any(|comment| comment.span.end <= close_offset)
-            {
-                self.print_newline();
-                self.indent += 1;
-                self.print_comments_before(close_offset, true, true);
-                self.indent -= 1;
-                self.print_indent();
-            } else if !self.options.minify {
-                self.print_newline();
-                self.print_indent();
-            }
-            self.add_source_mapping(body.span(self.ast).end.saturating_sub(1));
-            self.print("}");
-            return;
-        }
         self.print_newline();
         self.indent += 1;
+        self.print_comments_at(body.span(self.ast).start + 1, true);
         for id in directives.iter() {
             self.print_semicolon_if_needed();
             let directive = self.ast.get_node_in_sub_range(id);
@@ -1296,7 +1268,7 @@ impl<'a> Printer<'a> {
             self.print_stmt_with_context(statement, index == 0);
         }
         self.needs_semicolon = false;
-        self.print_comments_before(body.span(self.ast).end.saturating_sub(1), true, true);
+        self.print_comments_at(body.span(self.ast).end.saturating_sub(1), true);
         self.indent -= 1;
         self.print_indent();
         self.add_source_mapping(body.span(self.ast).end.saturating_sub(1));
@@ -1369,7 +1341,7 @@ impl<'a> Printer<'a> {
         for id in cases.iter() {
             self.print_semicolon_if_needed();
             let case = self.ast.get_node_in_sub_range(id);
-            self.print_comments_before(case.span(self.ast).start, true, true);
+            self.print_comments_at(case.span(self.ast).start, true);
             self.print_indent();
             self.add_source_mapping(case.span(self.ast).start);
             if let Some(test) = case.test(self.ast) {
@@ -1398,6 +1370,7 @@ impl<'a> Printer<'a> {
             }
             self.indent -= 1;
         }
+        self.print_comments_at(s.span(self.ast).end.saturating_sub(1), true);
         self.needs_semicolon = false;
         self.indent -= 1;
         self.print_indent();
@@ -1414,6 +1387,7 @@ impl<'a> Printer<'a> {
         self.print_block(s.block(self.ast));
         if let Some(handler) = s.handler(self.ast) {
             self.print_space();
+            self.print_comments_at(handler.span(self.ast).start, false);
             self.print("catch");
             if let Some(param) = handler.param(self.ast) {
                 self.print_space();
@@ -1511,7 +1485,7 @@ impl<'a> Printer<'a> {
                 self.print_space();
             }
             let d = self.ast.get_node_in_sub_range(id);
-            self.print_comments_before(d.span(self.ast).start, false, true);
+            self.print_comments_at(d.span(self.ast).start, false);
             self.print_binding(d.id(self.ast));
             if d.definite(self.ast) {
                 self.print("!");
@@ -1526,7 +1500,7 @@ impl<'a> Printer<'a> {
                 self.print_expr(value, Precedence::Assignment);
             }
         }
-        self.print_comments_before(decl.span(self.ast).end, false, true);
+        self.print_comments_at(decl.span(self.ast).end, false);
     }
 
     fn print_function(&mut self, f: Function) {
@@ -1599,6 +1573,7 @@ impl<'a> Printer<'a> {
         params: FormalParameters,
         this_param: Option<TsThisParameter>,
     ) {
+        self.print_comments_at(params.span(self.ast).start, false);
         self.add_source_mapping(params.span(self.ast).start);
         self.print("(");
         if let Some(parameter) = this_param {
@@ -1628,6 +1603,7 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
+            self.print_comments_at(rest.span(self.ast).start, false);
             self.print_decorators(rest.decorators(self.ast));
             self.print("...");
             self.print_binding(rest.argument(self.ast).into());
@@ -1635,10 +1611,12 @@ impl<'a> Printer<'a> {
                 self.print_ts_annotation(annotation);
             }
         }
+        self.print_comments_at(params.span(self.ast).end.saturating_sub(1), false);
         self.print(")");
     }
 
     fn print_formal_parameter(&mut self, parameter: FormalParameter) {
+        self.print_comments_at(parameter.span(self.ast).start, false);
         self.print_decorators(parameter.decorators(self.ast));
         self.print_binding(parameter.pattern(self.ast).into());
         if parameter.optional(self.ast) {
@@ -1659,6 +1637,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_binding_identifier(&mut self, id: BindingIdentifier) {
+        self.print_comments_at(id.span(self.ast).start, false);
         let name = self.ast.get_utf8(id.name(self.ast));
         self.print_space_before_identifier();
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
@@ -1666,6 +1645,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_binding(&mut self, binding: BindingPattern) {
+        self.print_comments_at(binding.span(self.ast).start, false);
         match self.ast.binding_pattern_data(binding) {
             BindingPatternData::BindingIdentifier(id) => self.print_binding_identifier(id),
             BindingPatternData::SimpleAssignmentTarget(t) => self.print_simple_assignment_target(t),
@@ -1807,7 +1787,7 @@ impl<'a> Printer<'a> {
     }
 
     fn comment_has_line_terminator(&self, comment: Comment) -> bool {
-        if comment.kind == CommentKind::Line {
+        if !comment.newlines.is_empty() {
             return true;
         }
         self.ast
@@ -2001,7 +1981,7 @@ impl<'a> Printer<'a> {
     fn print_expr_leading_comments(&mut self, expr: Expr) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
-        self.print_comments_before(expr.span(self.ast).start, false, true);
+        self.print_comments_at(expr.span(self.ast).start, false);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
         }
@@ -2233,8 +2213,9 @@ impl<'a> Printer<'a> {
             ExprData::ObjectExpression(e) => self.print_object(e, level),
             ExprData::ParenthesizedExpression(e) => {
                 self.print("(");
+                self.print_comments_at(e.span(self.ast).start + 1, false);
                 self.print_expr(e.expression(self.ast), Precedence::Lowest);
-                self.print_comments_before(e.span(self.ast).end, false, true);
+                self.print_comments_at(e.span(self.ast).end.saturating_sub(1), false);
                 self.print(")");
             }
             ExprData::Function(e) => self.print_function(e),
@@ -2274,19 +2255,18 @@ impl<'a> Printer<'a> {
                     self.indent += 1;
                     self.print_newline();
                     let source = e.source(self.ast);
-                    self.print_comments_before(source.span(self.ast).start, true, true);
+                    self.print_comments_at(source.span(self.ast).start, true);
                     self.print_indent();
                     self.print_expr(source, Precedence::Assignment);
                     if let Some(options) = e.options(self.ast) {
                         self.print(",");
                         self.print_newline();
-                        self.print_comments_before(options.span(self.ast).start, true, true);
+                        self.print_comments_at(options.span(self.ast).start, true);
                         self.print_indent();
                         self.print_expr(options, Precedence::Assignment);
                     }
                     self.print_newline();
-                    self.discard_comments_before_trailing_comma(close_offset);
-                    self.print_comments_before(close_offset, true, true);
+                    self.print_comments_at(close_offset, true);
                     self.indent -= 1;
                     self.print_indent();
                 } else {
@@ -2311,12 +2291,40 @@ impl<'a> Printer<'a> {
                 }
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("yield");
+                self.print_comments_at(e.span(self.ast).start + 5, false);
                 if e.delegate(self.ast) {
+                    if let Some(value) = e.argument(self.ast)
+                        && let Some(comment) = self.comments.get(self.next_comment).copied()
+                        && comment.position == CommentPosition::Leading
+                        && comment.attached_to < self.expr_first_token_offset(value)
+                    {
+                        self.print_comments_at(comment.attached_to, false);
+                    }
                     self.print("*");
                 }
                 if let Some(value) = e.argument(self.ast) {
                     self.print(" ");
-                    self.print_expr_without_leading_line_terminator(value, Precedence::Yield);
+                    let wrap_argument = self.expr_has_leading_line_terminator(value);
+                    if wrap_argument {
+                        self.print("(");
+                    }
+                    if let Some(comment) = self.comments.get(self.next_comment).copied()
+                        && comment.position == CommentPosition::Trailing
+                        && comment.span.end <= self.expr_first_token_offset(value)
+                    {
+                        self.print_comments_at(comment.attached_to, false);
+                    }
+                    self.print_expr(
+                        value,
+                        if wrap_argument {
+                            Precedence::Lowest
+                        } else {
+                            Precedence::Yield
+                        },
+                    );
+                    if wrap_argument {
+                        self.print(")");
+                    }
                 }
                 if wrap {
                     self.print(")");
@@ -2697,7 +2705,7 @@ impl<'a> Printer<'a> {
             }
             let argument = self.ast.get_node_in_sub_range(id);
             if multiline {
-                self.print_comments_before(argument.span(self.ast).start, true, true);
+                self.print_comments_at(argument.span(self.ast).start, true);
                 self.print_indent();
             }
             match self.ast.argument_data(argument) {
@@ -2710,12 +2718,11 @@ impl<'a> Printer<'a> {
         }
         if multiline {
             self.print_newline();
-            self.discard_comments_before_trailing_comma(close_offset);
-            self.print_comments_before(close_offset, true, true);
+            self.print_comments_at(close_offset, true);
             self.indent -= 1;
             self.print_indent();
         } else if args.is_empty() || self.options.minify {
-            self.print_comments_before(close_offset, false, true);
+            self.print_comments_at(close_offset, false);
         }
         self.add_source_mapping(close_offset);
         self.print(")");
@@ -2751,8 +2758,14 @@ impl<'a> Printer<'a> {
         {
             self.print(",");
         }
+        if let Some(last) = elements
+            .last()
+            .and_then(|id| self.ast.get_node_in_sub_range(id))
+        {
+            self.print_comments_at(last.span(self.ast).end, false);
+        }
         let close_offset = e.span(self.ast).end.saturating_sub(1);
-        self.print_comments_before(close_offset, false, true);
+        self.print_comments_at(close_offset, false);
         self.add_source_mapping(close_offset);
         self.print("]");
         self.forbid_in = old_forbid_in;
@@ -2771,6 +2784,7 @@ impl<'a> Printer<'a> {
         if !props.is_empty() {
             self.print_space();
         }
+        self.print_comments_at(e.span(self.ast).start + 1, false);
         for (i, id) in props.iter().enumerate() {
             if i != 0 {
                 self.print(",");
@@ -2781,6 +2795,7 @@ impl<'a> Printer<'a> {
                 .object_property_kind_data(self.ast.get_node_in_sub_range(id))
             {
                 ObjectPropertyKindData::SpreadElement(s) => {
+                    self.print_comments_at(s.span(self.ast).start, false);
                     self.print("...");
                     self.print_expr(s.argument(self.ast), Precedence::Assignment);
                 }
@@ -2811,7 +2826,7 @@ impl<'a> Printer<'a> {
                 _ => {}
             }
         }
-        self.print_comments_before(close_offset, false, true);
+        self.print_comments_at(close_offset, false);
         if !props.is_empty() {
             self.print_space();
         }
@@ -2824,6 +2839,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_object_property(&mut self, p: ObjectProperty) {
+        self.print_comments_at(p.span(self.ast).start, false);
         let kind = p.kind(self.ast);
         match kind {
             PropertyKind::Get => self.print("get "),
@@ -2874,7 +2890,7 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(key.span(self.ast).start);
         if computed {
             self.print("[");
-            self.print_comments_before(key.span(self.ast).start, false, true);
+            self.print_comments_at(key.span(self.ast).start, false);
             self.print_property_key_expr(key, Precedence::Assignment);
             self.print("]");
         } else {
@@ -3038,7 +3054,7 @@ impl<'a> Printer<'a> {
                         .get(self.next_comment)
                         .is_some_and(|comment| comment.span.end <= span.start)
                     {
-                        self.print_comments_before(span.start, false, true);
+                        self.print_comments_at(span.start, false);
                     }
                     if self
                         .comments
@@ -3046,7 +3062,7 @@ impl<'a> Printer<'a> {
                         .is_some_and(|comment| comment.span.end <= span.end)
                     {
                         let first_token_offset = self.expr_first_token_offset(value);
-                        self.print_comments_before(first_token_offset, false, true);
+                        self.print_comments_at(first_token_offset, false);
                     }
                 }
                 let old_arrow_expr_start = self.arrow_expr_start;
@@ -3073,6 +3089,7 @@ impl<'a> Printer<'a> {
             self.print_indent();
         }
         self.print_decorators(c.decorators(self.ast));
+        self.print_comments_at(c.span(self.ast).start, false);
         self.add_source_mapping(c.span(self.ast).start);
         if c.declare(self.ast) {
             self.print("declare ");
@@ -3122,16 +3139,13 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
+        self.print_comments_at(c.body(self.ast).span(self.ast).start + 1, true);
         for id in body.iter() {
             self.print_semicolon_if_needed();
             self.print_class_element(self.ast.get_node_in_sub_range(id));
         }
         self.needs_semicolon = false;
-        self.print_comments_before(
-            c.body(self.ast).span(self.ast).end.saturating_sub(1),
-            true,
-            true,
-        );
+        self.print_comments_at(c.body(self.ast).span(self.ast).end.saturating_sub(1), true);
         self.indent -= 1;
         self.print_indent();
         self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
@@ -3143,6 +3157,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_class_element(&mut self, element: ClassElement) {
+        self.print_comments_at(element.span(self.ast).start, true);
         match self.ast.class_element_data(element) {
             ClassElementData::MethodDefinition(m) => {
                 self.print_indent();
@@ -3803,6 +3818,7 @@ impl<'a> Printer<'a> {
                         self.print(",");
                         self.print_space();
                     }
+                    self.print_comments_at(s.span(self.ast).start, false);
                     if s.import_kind(self.ast) == ImportOrExportKind::Type {
                         self.print("type ");
                     }
@@ -4072,6 +4088,7 @@ impl<'a> Printer<'a> {
             }
             self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
+        self.print_comments_at(d.span(self.ast).end.saturating_sub(1), false);
         self.print_operator(OperatorCode::TsTypeClose, ">");
     }
 
@@ -4197,6 +4214,7 @@ impl<'a> Printer<'a> {
         level: TsTypePrecedence,
         context: TsTypeContext,
     ) {
+        self.print_comments_at(ty.span(self.ast).start, false);
         self.add_source_mapping(ty.span(self.ast).start);
         match self.ast.ts_type_data(ty) {
             TsTypeData::TsAnyKeyword(_) => self.print("any"),
@@ -4476,7 +4494,9 @@ impl<'a> Printer<'a> {
                     );
                 }
             }
-            TsTypeData::TsTypeLiteral(t) => self.print_ts_type_members(t.members(self.ast)),
+            TsTypeData::TsTypeLiteral(t) => {
+                self.print_ts_type_members(t.members(self.ast), t.span(self.ast))
+            }
             TsTypeData::TsMappedType(t) => self.print_ts_mapped(t),
         }
     }
@@ -4621,7 +4641,7 @@ impl<'a> Printer<'a> {
             return;
         }
 
-        self.print_comments_before(argument.span(self.ast).start, false, true);
+        self.print_comments_at(expression.span(self.ast).start, false);
         let operator_code = OperatorCode::Unary(operator);
         self.print_mapped_operator(
             operator_code,
@@ -4629,10 +4649,12 @@ impl<'a> Printer<'a> {
             expression.span(self.ast).start,
         );
 
+        self.print_comments_at(argument.span(self.ast).start, false);
         self.add_source_mapping(argument.span(self.ast).start);
         self.print_number_literal(number, Precedence::Prefix);
     }
     fn print_ts_tuple_element(&mut self, e: TsTupleElement) {
+        self.print_comments_at(e.span(self.ast).start, false);
         match self.ast.ts_tuple_element_data(e) {
             TsTupleElementData::TsType(t) => self.print_ts_type(t, TsTypePrecedence::Lowest),
             TsTupleElementData::TsNamedTupleMember(n) => {
@@ -4649,21 +4671,25 @@ impl<'a> Printer<'a> {
             }
         }
     }
-    fn print_ts_type_members(&mut self, m: SubRange<TsTypeElement>) {
+    fn print_ts_type_members(&mut self, m: SubRange<TsTypeElement>, span: Span) {
         self.print("{");
         if !m.is_empty() {
             self.print_newline();
         }
         self.indent += 1;
+        self.print_comments_at(span.start + 1, true);
         for (index, id) in m.iter().enumerate() {
+            let element = self.ast.get_node_in_sub_range(id);
+            self.print_comments_at(element.span(self.ast).start, true);
             self.print_indent();
-            self.print_ts_type_element(self.ast.get_node_in_sub_range(id));
+            self.print_ts_type_element(element);
             // Type member separators must not affect deferred statement semicolons.
             if !self.options.minify || index + 1 < m.len() {
                 self.print(";");
             }
             self.print_newline();
         }
+        self.print_comments_at(span.end.saturating_sub(1), true);
         self.indent -= 1;
         self.print_indent();
         self.print("}");
@@ -4867,7 +4893,10 @@ impl<'a> Printer<'a> {
             }
         }
         self.print_space();
-        self.print_ts_type_members(d.body(self.ast).body(self.ast));
+        self.print_ts_type_members(
+            d.body(self.ast).body(self.ast),
+            d.body(self.ast).span(self.ast),
+        );
     }
     fn print_ts_enum(&mut self, d: TsEnumDeclaration) {
         self.add_source_mapping(d.span(self.ast).start);
@@ -4887,8 +4916,10 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
+        self.print_comments_at(d.body(self.ast).span(self.ast).start + 1, true);
         for (index, id) in m.iter().enumerate() {
             let x = self.ast.get_node_in_sub_range(id);
+            self.print_comments_at(x.span(self.ast).start, true);
             self.print_indent();
             self.add_source_mapping(x.span(self.ast).start);
             self.print_ts_enum_name(x.id(self.ast), x.computed(self.ast));
@@ -4903,6 +4934,7 @@ impl<'a> Printer<'a> {
             }
             self.print_newline();
         }
+        self.print_comments_at(d.body(self.ast).span(self.ast).end.saturating_sub(1), true);
         self.indent -= 1;
         self.print_indent();
         self.add_source_mapping(d.body(self.ast).span(self.ast).end.saturating_sub(1));
@@ -4911,7 +4943,7 @@ impl<'a> Printer<'a> {
     fn print_ts_enum_name(&mut self, n: TsEnumMemberName, computed: bool) {
         if computed {
             self.print("[");
-            self.print_comments_before(n.span(self.ast).start, false, true);
+            self.print_comments_at(n.span(self.ast).start, false);
         }
         match self.ast.ts_enum_member_name_data(n) {
             TsEnumMemberNameData::IdentifierName(i) => {
@@ -4977,6 +5009,7 @@ impl<'a> Printer<'a> {
                     let statement = self.ast.get_node_in_sub_range(id);
                     self.print_stmt_with_context(statement, index == 0);
                 }
+                self.print_comments_at(b.span(self.ast).end.saturating_sub(1), true);
                 self.needs_semicolon = false;
                 self.indent -= 1;
                 self.print_indent();
@@ -5022,6 +5055,7 @@ impl<'a> Printer<'a> {
         self.print("}");
     }
     fn print_ts_parameter_property(&mut self, p: TsParameterProperty) {
+        self.print_comments_at(p.span(self.ast).start, false);
         self.print_decorators(p.decorators(self.ast));
         self.print_accessibility(p.accessibility(self.ast));
         if p.r#override(self.ast) {
@@ -5069,7 +5103,7 @@ impl<'a> Printer<'a> {
         }
         for id in o.attributes(self.ast).iter() {
             let item = self.ast.get_node_in_sub_range(id);
-            self.print_comments_before(item.span(self.ast).start, false, false);
+            self.print_comments_at(item.span(self.ast).start, false);
             let data = self.ast.jsx_attribute_item_data(item);
             self.print_space();
             match data {
@@ -5085,12 +5119,12 @@ impl<'a> Printer<'a> {
                     self.add_source_mapping(item.span(self.ast).start);
                     self.print("{...");
                     self.print_expr(s.argument(self.ast), Precedence::Comma);
-                    self.print_comments_before(s.span(self.ast).end.saturating_sub(1), false, true);
+                    self.print_comments_at(s.argument(self.ast).span(self.ast).end, false);
+                    self.print_comments_at(s.span(self.ast).end.saturating_sub(1), false);
                     self.print("}");
                 }
             }
         }
-        self.print_comments_before(o.span(self.ast).end, false, false);
         if o.self_closing(self.ast) || (self.options.minify && e.children(self.ast).is_empty()) {
             self.print_space();
             self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
@@ -5105,7 +5139,6 @@ impl<'a> Printer<'a> {
             self.add_source_mapping(c.span(self.ast).start);
             self.print("</");
             self.print_jsx_name(c.name(self.ast));
-            self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
         }
     }
@@ -5119,7 +5152,6 @@ impl<'a> Printer<'a> {
         self.print("</>");
     }
     fn print_jsx_name(&mut self, n: JsxElementName) {
-        self.print_comments_before(n.span(self.ast).start, false, false);
         match self.ast.jsx_element_name_data(n) {
             JsxElementNameData::JsxIdentifier(i) => {
                 let name = self.ast.get_utf8(i.name(self.ast));
@@ -5169,7 +5201,7 @@ impl<'a> Printer<'a> {
         }
     }
     fn print_jsx_attr_value(&mut self, v: JsxAttributeValue) {
-        self.print_comments_before(v.span(self.ast).start, false, false);
+        self.print_comments_at(v.span(self.ast).start, false);
         match self.ast.jsx_attribute_value_data(v) {
             JsxAttributeValueData::StringLiteral(s) => {
                 self.add_source_mapping(s.span(self.ast).start);
@@ -5197,26 +5229,15 @@ impl<'a> Printer<'a> {
     }
     fn print_jsx_container(&mut self, c: JsxExpressionContainer) {
         self.print("{");
+        self.print_comments_at(c.span(self.ast).start + 1, false);
         match self.ast.jsx_expression_data(c.expression(self.ast)) {
             JsxExpressionData::Expr(e) => {
                 self.print_expr(e, Precedence::Assignment);
+                self.print_comments_at(e.span(self.ast).end, false);
             }
-            JsxExpressionData::JsxEmptyExpression(_) => {
-                let close_offset = c.span(self.ast).end.saturating_sub(1);
-                if !self.options.minify
-                    && self.comments[self.next_comment..]
-                        .iter()
-                        .any(|comment| comment.span.end <= close_offset)
-                {
-                    self.print_newline();
-                    self.indent += 1;
-                    self.print_comments_before(close_offset, true, true);
-                    self.indent -= 1;
-                    self.print_indent();
-                }
-            }
+            JsxExpressionData::JsxEmptyExpression(_) => {}
         }
-        self.print_comments_before(c.span(self.ast).end.saturating_sub(1), false, true);
+        self.print_comments_at(c.span(self.ast).end.saturating_sub(1), false);
         self.print("}");
     }
     fn print_jsx_child(&mut self, c: JsxChild) {
@@ -5228,7 +5249,8 @@ impl<'a> Printer<'a> {
             JsxChildData::JsxSpreadChild(s) => {
                 self.print("{...");
                 self.print_expr(s.expression(self.ast), Precedence::Lowest);
-                self.print_comments_before(s.span(self.ast).end.saturating_sub(1), false, true);
+                self.print_comments_at(s.expression(self.ast).span(self.ast).end, false);
+                self.print_comments_at(s.span(self.ast).end.saturating_sub(1), false);
                 self.print("}");
             }
             JsxChildData::JsxElement(e) => self.print_jsx_element(e),
@@ -5281,6 +5303,20 @@ impl Printer<'_> {
             ModuleExportNameData::StringLiteral(s) => ast.get_wtf8(s.value(ast)),
         }
     }
+}
+
+fn is_important_comment(ast: &Ast, comment: Comment) -> bool {
+    let source = ast.source();
+    let text = &source[comment.span.start as usize..comment.span.end as usize];
+    let value = ast.get_utf8(comment.value(source.as_bytes())).trim_start();
+    (text.starts_with("/**") && text != "/**/")
+        || text.starts_with("///")
+        || value.starts_with(['@', '#'])
+        || value.starts_with("webpack")
+        || value.starts_with("istanbul")
+        || value.starts_with("c8 ")
+        || value.starts_with("v8 ")
+        || is_legal_comment(ast, comment)
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {

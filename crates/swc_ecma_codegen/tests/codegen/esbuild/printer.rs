@@ -205,7 +205,7 @@ fn test_new() {
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n);\n",
+        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
@@ -431,8 +431,8 @@ fn test_object() {
 #[test]
 fn test_switch() {
     expect_printed(
-        "switch (x) { /* 1 */ case 1: /* 2 */ case 2: /* default */ default: break }",
-        "switch (x) {\n  /* 1 */\n  case 1:\n  /* 2 */\n  case 2:\n  /* default */\n  default:\n    break;\n}\n",
+        "switch (x) { case 1: /* 2 */ case 2: /* default */ default: break }",
+        "switch (x) {\n  case 1:\n  /* 2 */\n  case 2:\n  /* default */\n  default:\n    break;\n}\n",
     );
 }
 
@@ -532,11 +532,11 @@ fn test_comments_and_parentheses() {
     expect_printed("x = () => (/* foo */ {});", "x = () => /* foo */ ({});\n");
     expect_printed(
         "for ((/* foo */ let).x of y) ;",
-        "for (\n  /* foo */\n  (let).x of y\n) ;\n",
+        "for ( /* foo */ let.x of y) ;\n",
     );
     expect_printed(
         "for (/* foo */ (let).x of y) ;",
-        "for (\n  /* foo */\n  (let).x of y\n) ;\n",
+        "for ( /* foo */ let.x of y) ;\n",
     );
     expect_printed(
         "function *x() { yield (/* foo */ y) }",
@@ -750,7 +750,7 @@ fn test_import() {
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n);\n",
+        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
@@ -973,7 +973,7 @@ fn test_minify() {
     expect_printed_minify("//!single\nthrow 1 + 2", "//!single\nthrow 1+2;");
     expect_printed_minify(
         "/*!multi-\nline*/\nthrow 1 + 2",
-        "/*!multi-\nline*/throw 1+2;",
+        "/*!multi-\nline*/\nthrow 1+2;",
     );
 }
 

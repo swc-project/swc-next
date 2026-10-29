@@ -5978,8 +5978,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_enum_member(&mut self) -> Option<TsEnumMember> {
+        let start = self.current_token.start();
         let (id, computed) = self.parse_enum_member_name()?;
-        let start = id.span(&self.ast).start;
         let initializer = if self.eat(TokenTag::Assign)? {
             // The program or function/static block entry already establishes +In.
             Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)

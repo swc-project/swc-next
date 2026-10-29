@@ -2604,22 +2604,13 @@ fn test_jsx() {
     expect_printed_jsx("<a>>=</a>", "<a>>=</a>;\n");
     expect_printed_jsx("<a>>></a>", "<a>>></a>;\n");
     expect_printed_jsx("<a>{}</a>", "<a>{}</a>;\n");
-    expect_printed_jsx("<a>{/* comment */}</a>", "<a>{\n  /* comment */\n}</a>;\n");
+    expect_printed_jsx("<a>{/* comment */}</a>", "<a>{ /* comment */ }</a>;\n");
     expect_printed_jsx("<a>b{}</a>", "<a>b{}</a>;\n");
-    expect_printed_jsx(
-        "<a>b{/* comment */}</a>",
-        "<a>b{\n  /* comment */\n}</a>;\n",
-    );
+    expect_printed_jsx("<a>b{/* comment */}</a>", "<a>b{ /* comment */ }</a>;\n");
     expect_printed_jsx("<a>{}c</a>", "<a>{}c</a>;\n");
-    expect_printed_jsx(
-        "<a>{/* comment */}c</a>",
-        "<a>{\n  /* comment */\n}c</a>;\n",
-    );
+    expect_printed_jsx("<a>{/* comment */}c</a>", "<a>{ /* comment */ }c</a>;\n");
     expect_printed_jsx("<a>b{}c</a>", "<a>b{}c</a>;\n");
-    expect_printed_jsx(
-        "<a>b{/* comment */}c</a>",
-        "<a>b{\n  /* comment */\n}c</a>;\n",
-    );
+    expect_printed_jsx("<a>b{/* comment */}c</a>", "<a>b{ /* comment */ }c</a>;\n");
     expect_printed_jsx("<a>{1, 2}</a>", "<a>{(1, 2)}</a>;\n");
     expect_printed_jsx("<a>&lt;&gt;</a>", "<a>&lt;&gt;</a>;\n");
     expect_printed_jsx("<a>&wrong;</a>", "<a>&wrong;</a>;\n");
