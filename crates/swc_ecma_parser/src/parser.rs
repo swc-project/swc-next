@@ -5563,6 +5563,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let start = self.current_token.start();
+        self.advance()?;
         let (body, end) = self.parse_object_type_members(TypeParameterContext::Declaration)?;
         Some(self.ast.ts_interface_body(Span::new(start, end), body))
     }
@@ -6298,10 +6299,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LeftParen => self.parse_parenthesized_type(),
             TokenTag::LeftBracket => self.parse_tuple_type(),
             TokenTag::LeftBrace => {
-                if self.is_start_of_mapped_type()? {
-                    self.parse_mapped_type()
+                self.advance()?;
+                if self.is_start_of_mapped_type() {
+                    self.parse_mapped_type(token.start())
                 } else {
-                    self.parse_type_literal()
+                    self.parse_type_literal(token.start())
                 }
             }
             TokenTag::TemplateHead => self.parse_template_literal_type(),
@@ -7015,49 +7017,46 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    fn is_start_of_mapped_type(&mut self) -> Option<bool> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
+    fn is_start_of_mapped_type(&mut self) -> bool {
+        let mut token = self.current_token;
+        if !matches!(
+            token.tag(),
+            TokenTag::LeftBracket | TokenTag::Readonly | TokenTag::Plus | TokenTag::Minus
+        ) {
+            return false;
+        }
         let mut peek = self.begin_peek();
-        let Some(mut token) = peek.next() else {
-            return Some(false);
-        };
         if matches!(token.tag(), TokenTag::Plus | TokenTag::Minus) {
             let Some(next) = peek.next() else {
-                return Some(false);
+                return false;
             };
             token = next;
             if token.tag() != TokenTag::Readonly {
-                return Some(false);
+                return false;
             }
+        }
+        if token.tag() == TokenTag::Readonly {
             let Some(next) = peek.next() else {
-                return Some(false);
-            };
-            token = next;
-        } else if token.tag() == TokenTag::Readonly {
-            let Some(next) = peek.next() else {
-                return Some(false);
+                return false;
             };
             token = next;
         }
         if token.tag() != TokenTag::LeftBracket {
-            return Some(false);
+            return false;
         }
         let Some(name) = peek.next() else {
-            return Some(false);
+            return false;
         };
         if !name.tag().is_identifier_like() {
-            return Some(false);
+            return false;
         }
         let Some(operator) = peek.next() else {
-            return Some(false);
+            return false;
         };
-        Some(operator.tag() == TokenTag::In)
+        operator.tag() == TokenTag::In
     }
 
-    fn parse_mapped_type(&mut self) -> Option<TsType> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
-        let start = self.current_token.start();
-        self.advance()?;
+    fn parse_mapped_type(&mut self, start: u32) -> Option<TsType> {
         let readonly = self.parse_mapped_modifier(TokenTag::Readonly)?;
         if !self.expect(
             TokenTag::LeftBracket,
@@ -7144,21 +7143,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(modifier)
     }
 
-    fn parse_type_literal(&mut self) -> Option<TsType> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
-        let start = self.current_token.start();
+    fn parse_type_literal(&mut self, start: u32) -> Option<TsType> {
         let (members, end) = self.parse_object_type_members(TypeParameterContext::Signature)?;
         Some(TsType::TsTypeLiteral(
             self.ast.ts_type_literal(Span::new(start, end), members),
         ))
     }
 
+    /// Parses a type body whose opening brace has already been consumed.
     fn parse_object_type_members(
         &mut self,
         context: TypeParameterContext,
     ) -> Option<(SubRange<TsTypeElement>, u32)> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LeftBrace);
-        self.advance()?;
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             while self.current_token.tag() != TokenTag::RightBrace
@@ -14369,6 +14365,57 @@ mod tests {
 
         let errors = has_errors("type T = 0 extends infer await ? 0 : 0;", module);
         assert!(errors);
+    }
+
+    #[test]
+    fn type_body_tokens() {
+        fn parse(source: &str) -> (&str, String, Vec<&str>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let declaration = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_declaration(ast)
+                .unwrap();
+            let span = if let Some(alias) = declaration.as_ts_type_alias_declaration(ast) {
+                alias.type_annotation(ast).span(ast)
+            } else {
+                declaration
+                    .as_ts_interface_declaration(ast)
+                    .unwrap()
+                    .body(ast)
+                    .span(ast)
+            };
+            let comments = ast
+                .comments()
+                .iter()
+                .map(|comment| &source[comment.span.start as usize..comment.span.end as usize])
+                .collect();
+            (
+                &source[span.start as usize..span.end as usize],
+                token_texts(source, &parsed.tokens).join(" "),
+                comments,
+            )
+        }
+
+        let (body, tokens, comments) = parse("type T = { /* member */ a: {} };");
+        assert_eq!(body, "{ /* member */ a: {} }");
+        assert_eq!(tokens, "type T = { a : { } } ;");
+        assert_eq!(comments, ["/* member */"]);
+
+        let (body, tokens, comments) = parse("type T = { /* key */ readonly [K in T]?: U };");
+        assert_eq!(body, "{ /* key */ readonly [K in T]?: U }");
+        assert_eq!(tokens, "type T = { readonly [ K in T ] ? : U } ;");
+        assert_eq!(comments, ["/* key */"]);
+
+        let (body, tokens, comments) = parse("interface I { /* member */ [key: string]: T }");
+        assert_eq!(body, "{ /* member */ [key: string]: T }");
+        assert_eq!(tokens, "interface I { [ key : string ] : T }");
+        assert_eq!(comments, ["/* member */"]);
     }
 
     #[test]
