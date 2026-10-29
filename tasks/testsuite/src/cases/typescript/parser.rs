@@ -1,25 +1,20 @@
-//! Based on TypeScript Go's test-case parser:
-//! <https://github.com/microsoft/typescript-go/blob/main/internal/testrunner/test_case_parser.go>
+//! TypeScript parser cases with SWC Next diagnostic and virtual-file filters.
 
 use std::{
-    collections::{HashMap, HashSet, hash_map::Entry},
-    fs::{read_dir, read_to_string},
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::LazyLock,
 };
 
-use jwalk::WalkDir;
 use rayon::prelude::*;
-use regex::Regex;
-use swc_next_ecma_ast::{Lang, SourceType};
+use serde::Deserialize;
+use swc_next_ecma_ast::{Lang, SourceType, Span};
 
-use crate::cases::{Case, fixtures};
+use crate::cases::{Case, fixtures, json_paths, read_json, swc_conformance};
 
-use super::{TestUnit, constants::NOT_SUPPORTED_ERROR_CODES, lang_from_path, read_test_content};
-
-/// A diagnostic rendered inside one `==== virtual-file ====` baseline section.
-static TS_ERROR_CODE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^!!! error TS(?<code>\d{4,5}):").unwrap());
+use super::{
+    TestUnit, constants::NOT_SUPPORTED_ERROR_CODES, lang_from_path, read_test_content,
+    typescript_case_paths,
+};
 
 type UnitErrorCodes = HashMap<String, Vec<HashSet<String>>>;
 
@@ -32,6 +27,7 @@ struct ErrorCodeVariant {
 
 /// Option variants for each actual test file, relative to `tests/cases`.
 type TestErrorCodes = HashMap<PathBuf, Vec<ErrorCodeVariant>>;
+type TestErrorSpans = HashMap<PathBuf, HashMap<String, Vec<Span>>>;
 
 pub struct TypeScriptParserCase {
     path: PathBuf,
@@ -40,6 +36,7 @@ pub struct TypeScriptParserCase {
     source_type: SourceType,
     lang: Lang,
     expects_error: bool,
+    error_spans: Option<Vec<Span>>,
     asserts_semantic_success: bool,
 }
 
@@ -48,13 +45,14 @@ impl Case for TypeScriptParserCase {
 
     fn read() -> Vec<Self> {
         let test_dir = fixtures().join("typescript/tsc/testdata/tests/cases");
-        let error_codes = read_error_codes(&test_dir);
+        let error_codes = read_error_codes();
+        let error_spans = read_error_spans();
         let case_paths = compiler_case_paths(&test_dir);
         validate_non_program_test_paths(&case_paths, &test_dir);
 
         case_paths
             .into_par_iter()
-            .flat_map(|path| Self::read_file(path, &test_dir, &error_codes))
+            .flat_map(|path| Self::read_file(path, &test_dir, &error_codes, &error_spans))
             .collect()
     }
 
@@ -82,13 +80,22 @@ impl Case for TypeScriptParserCase {
         self.expects_error
     }
 
+    fn expected_error_spans(&self) -> Option<&[Span]> {
+        self.error_spans.as_deref()
+    }
+
     fn asserts_semantic_success(&self) -> bool {
         self.asserts_semantic_success
     }
 }
 
 impl TypeScriptParserCase {
-    fn read_file(path: PathBuf, test_dir: &Path, error_codes: &TestErrorCodes) -> Vec<Self> {
+    fn read_file(
+        path: PathBuf,
+        test_dir: &Path,
+        error_codes: &TestErrorCodes,
+        error_spans: &TestErrorSpans,
+    ) -> Vec<Self> {
         let Ok(mut parsed) = read_test_content(&path) else {
             return Vec::new();
         };
@@ -129,6 +136,24 @@ impl TypeScriptParserCase {
                     &parsed.global_options,
                     error_codes,
                 );
+                let spans = if expects_error {
+                    let name = absolute_unit_name(&parsed.current_directory, &unit.name);
+                    error_spans
+                        .get(&actual_path)
+                        .and_then(|files| files.get(&name))
+                        .cloned()
+                } else {
+                    None
+                };
+                if let Some(spans) = &spans {
+                    assert!(
+                        spans.iter().all(|span| span.start <= span.end
+                            && span.end as usize <= unit.content.len()),
+                        "invalid diagnostic spans: {} - {}",
+                        path.display(),
+                        unit.name
+                    );
+                }
                 let asserts_semantic_success =
                     asserts_semantic_success(lang, &unit.content, check_js);
                 Some(Self {
@@ -138,6 +163,7 @@ impl TypeScriptParserCase {
                     name: unit.name,
                     code: unit.content,
                     expects_error,
+                    error_spans: spans,
                     asserts_semantic_success,
                 })
             })
@@ -146,36 +172,15 @@ impl TypeScriptParserCase {
 }
 
 fn compiler_case_paths(test_dir: &Path) -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    for suite in ["compiler", "conformance"] {
-        for file in WalkDir::new(test_dir.join(suite)) {
-            let file = file.unwrap_or_else(|error| {
-                panic!("failed to enumerate TypeScript case files: {error}")
-            });
-            if !file.file_type().is_file() {
-                continue;
-            }
-
-            let path = file.path();
-            let extension = path.extension().and_then(|extension| extension.to_str());
-            if !matches!(extension, Some("ts" | "tsx")) {
-                continue;
-            }
-
-            let actual_path = path
-                .strip_prefix(test_dir)
-                .expect("TypeScript compiler case is inside the cases directory");
-            if IGNORED_TESTS
+    typescript_case_paths(test_dir)
+        .into_iter()
+        .filter(|path| {
+            let actual_path = path.strip_prefix(test_dir).unwrap();
+            !IGNORED_TESTS
                 .iter()
                 .any(|ignored| actual_path == Path::new(ignored))
-            {
-                continue;
-            }
-            paths.push(path);
-        }
-    }
-    paths.sort_unstable();
-    paths
+        })
+        .collect()
 }
 
 fn validate_non_program_test_paths(case_paths: &[PathBuf], test_dir: &Path) {
@@ -316,116 +321,112 @@ fn parse_check_js_directive(comment: &str) -> Option<bool> {
     }
 }
 
-fn read_error_codes(test_dir: &Path) -> TestErrorCodes {
-    let baselines = fixtures().join("typescript/tsc/testdata/baselines/reference");
-    let case_paths = baseline_case_paths(test_dir);
-    let mut baseline_paths = ["compiler", "conformance"]
-        .into_iter()
-        .flat_map(|suite| {
-            let directory = baselines.join(suite);
-            read_dir(&directory).unwrap_or_else(|error| {
-                panic!(
-                    "failed to read TypeScript baseline directory `{}`: {error}",
-                    directory.display()
-                )
-            })
-        })
-        .map(|entry| {
-            entry.unwrap_or_else(|error| {
-                panic!(
-                    "failed to enumerate TypeScript baseline directory `{}`: {error}",
-                    baselines.display()
-                )
-            })
-        })
-        .map(|entry| entry.path())
-        .filter(|path| path.is_file())
-        .collect::<Vec<_>>();
-    baseline_paths.sort_unstable();
+#[derive(Deserialize)]
+struct Baseline {
+    path: PathBuf,
+    variants: Vec<Variant>,
+}
 
-    let variants = baseline_paths
-        .into_par_iter()
-        .filter_map(|path| {
-            let file_name = path.file_name()?.to_str()?;
-            let baseline_name = file_name.strip_suffix(".errors.txt")?;
-            let test_name = baseline_name
-                .split_once('(')
-                .map_or(baseline_name, |(name, _)| name)
-                .to_string();
+#[derive(Deserialize)]
+struct Variant {
+    name: String,
+    diagnostics: Vec<Diagnostic>,
+}
 
-            let Some(actual_path) = case_paths.get(&test_name) else {
-                // These baselines validate a declaration emit in a second
-                // compile, not a physical `.d.ts` compiler case.
-                if test_name.ends_with(".d") {
-                    return None;
-                }
-                panic!(
-                    "TypeScript baseline `{file_name}` does not map to a unique compiler or conformance case"
-                );
-            };
-            let baseline = read_to_string(&path).unwrap_or_else(|error| {
-                panic!(
-                    "failed to read TypeScript baseline `{}`: {error}",
-                    path.display()
-                )
-            });
-            let error_codes = read_unit_error_codes(&baseline);
-            Some((
-                actual_path.clone(),
-                ErrorCodeVariant {
-                    name: baseline_name.to_string(),
-                    error_codes,
-                },
-            ))
-        })
-        .collect::<Vec<_>>();
+#[derive(Deserialize)]
+struct Diagnostic {
+    file: Option<String>,
+    codes: Vec<i32>,
+}
 
+fn read_error_codes() -> TestErrorCodes {
     let mut error_codes = TestErrorCodes::new();
-    for (actual_path, variant) in variants {
-        error_codes.entry(actual_path).or_default().push(variant);
+    for suite in ["compiler", "conformance"] {
+        for path in json_paths(&format!("typescript/{suite}")) {
+            let input: Baseline = read_json(&path);
+            let mut variants = Vec::new();
+            for variant in input.variants {
+                if variant.diagnostics.is_empty() {
+                    continue;
+                }
+                let mut codes = UnitErrorCodes::new();
+                for diagnostic in variant.diagnostics {
+                    if let Some(file) = diagnostic.file {
+                        let name = normalize_unit_name(&file);
+                        let codes = codes.entry(name).or_default();
+                        codes.push(diagnostic.codes.iter().map(ToString::to_string).collect());
+                    }
+                }
+                variants.push(ErrorCodeVariant {
+                    name: variant.name,
+                    error_codes: codes,
+                });
+            }
+            error_codes.insert(input.path, variants);
+        }
     }
     error_codes
 }
 
-fn baseline_case_paths(test_dir: &Path) -> HashMap<String, PathBuf> {
-    let mut case_paths = HashMap::new();
-    for suite in ["compiler", "conformance"] {
-        for file in WalkDir::new(test_dir.join(suite)) {
-            let file = file.unwrap_or_else(|error| {
-                panic!("failed to enumerate TypeScript case files: {error}")
-            });
-            if !file.file_type().is_file() {
+#[derive(Deserialize)]
+struct ReferenceCase {
+    snapshot: PathBuf,
+}
+
+#[derive(Deserialize)]
+struct ReferenceSnapshot {
+    path: PathBuf,
+    diagnostics: Vec<ReferenceDiagnostic>,
+}
+
+#[derive(Deserialize)]
+struct ReferenceDiagnostic {
+    file: String,
+    code: i32,
+    start: u32,
+    end: u32,
+}
+
+fn read_error_spans() -> TestErrorSpans {
+    let root = swc_conformance();
+    let cases: Vec<ReferenceCase> = read_json(&root.join("fixtures-json/runners/tsrs.json"));
+    let root = root.join("tests/parser/typescript");
+    let mut output = TestErrorSpans::new();
+    for case in cases {
+        let snapshot: ReferenceSnapshot = read_json(&root.join(case.snapshot));
+        for diagnostic in snapshot.diagnostics {
+            if NOT_SUPPORTED_ERROR_CODES.contains(&diagnostic.code.to_string().as_str()) {
                 continue;
             }
-
-            let path = file.path();
-            let extension = path.extension().and_then(|extension| extension.to_str());
-            if !matches!(extension, Some("ts" | "tsx")) {
-                continue;
-            }
-
-            let Some(test_name) = path.file_stem().and_then(|name| name.to_str()) else {
-                continue;
-            };
-            let actual_path = path
-                .strip_prefix(test_dir)
-                .expect("TypeScript baseline case is inside the cases directory")
-                .to_path_buf();
-            match case_paths.entry(test_name.to_string()) {
-                Entry::Vacant(entry) => {
-                    entry.insert(actual_path);
-                }
-                Entry::Occupied(entry) => {
-                    panic!(
-                        "TypeScript baseline name `{test_name}` is ambiguous between `{}` and `{}`",
-                        entry.get().display(),
-                        actual_path.display()
-                    );
-                }
+            let files = output.entry(snapshot.path.clone()).or_default();
+            let spans = files.entry(diagnostic.file).or_default();
+            let span = Span::new(diagnostic.start, diagnostic.end);
+            if !spans.contains(&span) {
+                spans.push(span);
             }
         }
     }
-    case_paths
+    output
+}
+
+fn absolute_unit_name(directory: &str, name: &str) -> String {
+    let path = if name.starts_with('/') {
+        name.to_owned()
+    } else {
+        format!("{directory}/{name}")
+    };
+    let path = path.replace('\\', "/");
+    let mut parts = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop();
+            }
+            _ => parts.push(part),
+        }
+    }
+    format!("/{}", parts.join("/"))
 }
 
 fn normalize_unit_name(name: &str) -> String {
@@ -434,42 +435,6 @@ fn normalize_unit_name(name: &str) -> String {
         .collect::<PathBuf>()
         .to_string_lossy()
         .replace('\\', "/")
-}
-
-fn read_unit_error_codes(baseline: &str) -> UnitErrorCodes {
-    let mut error_codes = UnitErrorCodes::new();
-    let mut current_unit = None;
-    for line in baseline.lines() {
-        if let Some(section) = line.strip_prefix("==== ") {
-            current_unit = None;
-            if let Some(section) = section.strip_suffix(" ====")
-                && let Some((name, _)) = section.rsplit_once(" (")
-            {
-                let name = normalize_unit_name(name);
-                let occurrences = error_codes.entry(name.clone()).or_default();
-                let occurrence = occurrences.len();
-                occurrences.push(HashSet::new());
-                current_unit = Some((name, occurrence));
-            }
-            continue;
-        }
-        let Some((unit, occurrence)) = &current_unit else {
-            continue;
-        };
-        let Some(captures) = TS_ERROR_CODE_REGEX.captures(line) else {
-            continue;
-        };
-        let code = captures
-            .name("code")
-            .expect("diagnostic regex has a code capture")
-            .as_str()
-            .to_string();
-        error_codes
-            .get_mut(unit)
-            .expect("current baseline unit has an error-code entry")[*occurrence]
-            .insert(code);
-    }
-    error_codes
 }
 
 fn validate_baseline_units(

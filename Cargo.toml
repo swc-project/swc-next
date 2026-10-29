@@ -92,7 +92,6 @@ libtest-mimic = "0.8.2"
 mimalloc      = "0.1.52"
 oxc           = { version = "0.155.0", features = ["ast_visit", "semantic"] }
 oxc_allocator = "0.155.0"
-saphyr        = "0.3.1"
 tempfile      = "3.27.0"
 tracy-client  = { version = "=0.18.1", features = ["enable", "sampling", "demangle", "system-tracing"] }
 

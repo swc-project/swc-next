@@ -62,7 +62,7 @@ impl TypeScriptTransformCase {
     pub fn read_all(mode_override: Option<TypeScriptTransformMode>) -> Result<Vec<Self>, String> {
         let test_dir = fixtures().join("typescript/tsc/testdata/tests/cases");
         let mut cases = Vec::new();
-        for path in typescript_case_paths(&test_dir)? {
+        for path in typescript_case_paths(&test_dir) {
             let parsed = read_test_content(&path)?;
             let modes = transform_modes(
                 parsed.global_option("verbatimmodulesyntax"),

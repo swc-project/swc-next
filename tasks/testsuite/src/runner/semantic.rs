@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    fmt::Write,
     panic::{AssertUnwindSafe, catch_unwind},
 };
 
@@ -46,7 +45,7 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let actual = semantic_snapshot(&ast, &semantic);
 
-    if actual == case.expected() {
+    if &actual == case.expected() {
         Ok(())
     } else {
         Err(format!("{}: name resolution differs", case.name()))
@@ -55,7 +54,7 @@ fn run_case(case: &SwcResolverCase) -> Result<(), String> {
 
 // Identifier end offsets make ordering independent of AST traversal and scope allocation.
 // Zero denotes a name without an explicit binding in the semantic model.
-fn semantic_snapshot(ast: &Ast<'_>, semantic: &Semantic<'_>) -> String {
+fn semantic_snapshot(ast: &Ast<'_>, semantic: &Semantic<'_>) -> BTreeMap<u32, usize> {
     let mut identifiers = BTreeMap::new();
     for entry in semantic.iter_declarations() {
         let node = entry.declaration.node;
@@ -71,13 +70,13 @@ fn semantic_snapshot(ast: &Ast<'_>, semantic: &Semantic<'_>) -> String {
     }
 
     let mut bindings = HashMap::new();
-    let mut output = String::new();
+    let mut output = BTreeMap::new();
     for (end, symbol) in identifiers {
         let target = symbol.map_or(0, |symbol| {
             let next = bindings.len() + 1;
             *bindings.entry(symbol).or_insert(next)
         });
-        writeln!(output, "{end} -> {target}").unwrap();
+        output.insert(end, target);
     }
     output
 }

@@ -2,58 +2,23 @@
 
 set -euo pipefail
 
-current_worktree="$(git rev-parse --show-toplevel)"
-common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+current_worktree="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+common_git_dir="$(git -C "$current_worktree" rev-parse --path-format=absolute --git-common-dir)"
 repository_root="$common_git_dir/swc-next/testsuite-fixture-cache/repositories"
+fixtures_root="$current_worktree/tasks/testsuite/fixtures"
+conformance_dir="${SWC_CONFORMANCE_DIR:-$fixtures_root/swc-conformance}"
+ref="851d2e7ea79638af25da0cf9ac87c7ffd3f4dc12"
+repository_path="$repository_root/swc-conformance"
+pin_ref="refs/fixture-pins/$ref"
 
-# Ensure the shared bare repository contains the fixture's pinned commit.
-update_fixture_cache() {
-    local repo="$1"
-    local ref="$2"
-    local name="$3"
-    local repository_path="$repository_root/$name"
-    local repository_url="https://github.com/$repo.git"
-    local pin_ref="refs/fixture-pins/$ref"
+git init --quiet --bare --object-format=sha1 "$repository_path"
+if ! git --git-dir="$repository_path" rev-parse --verify --quiet "${pin_ref}^{commit}" > /dev/null; then
+    git --git-dir="$repository_path" fetch --quiet --no-tags --depth 1 \
+        "${SWC_CONFORMANCE_DIR:-https://github.com/CPunisher/swc-conformance.git}" "${ref}:${pin_ref}"
+fi
 
-    mkdir -p "$repository_root"
-    git init --quiet --bare --object-format=sha1 "$repository_path"
+rm -rf -- "$fixtures_root/swc-conformance"
+mkdir -p "$fixtures_root/swc-conformance"
+git --git-dir="$repository_path" archive "$pin_ref" | tar -xf - -C "$fixtures_root/swc-conformance"
 
-    if ! git --git-dir="$repository_path" rev-parse --verify --quiet "${pin_ref}^{commit}" > /dev/null; then
-        git --git-dir="$repository_path" fetch --quiet --no-tags --depth 1 \
-            "$repository_url" "${ref}:${pin_ref}"
-    fi
-}
-
-# Replace a fixture with the tree stored at its pinned commit.
-restore_fixture() {
-    local path="$1"
-    local ref="$2"
-    local name="$3"
-    local repository_path="$repository_root/$name"
-    local pin_ref="refs/fixture-pins/$ref"
-
-    rm -rf -- "$path"
-    mkdir -p "$path"
-    git --git-dir="$repository_path" archive "$pin_ref" | tar -xf - -C "$path"
-}
-
-prepare_fixture() {
-    local repo="$1"
-    local relative_path="$2"
-    local ref="$3"
-    local name="$4"
-    local path="$current_worktree/$relative_path"
-
-    echo "Preparing $name..."
-
-    update_fixture_cache "$repo" "$ref" "$name"
-    restore_fixture "$path" "$ref" "$name"
-    echo "✓ Prepared $name"
-}
-
-prepare_fixture "tc39/test262" "tasks/testsuite/fixtures/test262" "d53ebc8b1931d9f1541e43d59650776e4b766248" "test262"
-prepare_fixture "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "5237fd46890956e4bb8177a1a05dcd69e4166560" "typescript"
-prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "93e39e4d0b657efe7f569f9d25acbff96ddb89dc" "babel"
-prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "eb050aeacb0d0588f84829da0a5cbf0c63676637" "estree-conformance"
-prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "4768dbe091a6706a009d2e9c08950cacba107d55" "swc"
-prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "33fa9c69d4ec84ff5a728835a616add6e3b2e82f" "swc-conformance"
+bash "$conformance_dir/scripts/clone_fixtures.sh" "$fixtures_root" "$repository_root"

@@ -3,173 +3,132 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use jwalk::WalkDir;
 use rayon::prelude::*;
-use saphyr::{LoadableYamlNode, Yaml};
-use swc_next_ecma_ast::{Lang, SourceType};
+use serde::Deserialize;
+use swc_next_ecma_ast::{Lang, SourceType, Span};
 
-use crate::{
-    cases::{Case, fixtures},
-    util::crate_root,
-};
+use crate::cases::{Case, fixtures, json_paths, read_json, swc_conformance};
 
-/// https://github.com/evanw/esbuild/blob/main/scripts/test262.js
 pub struct Test262Case {
     path: PathBuf,
     code: String,
     source_type: SourceType,
     expects_error: bool,
-    name: &'static str,
+    error_spans: Option<Vec<Span>>,
+    name: String,
 }
 
-#[derive(Debug, Default)]
-pub(super) struct Meta {
-    negative: Option<MetaNegative>,
-    pub(super) module: bool,
-    pub(super) only_strict: bool,
-    no_strict: bool,
-    raw: bool,
+#[derive(Deserialize)]
+struct Input {
+    path: PathBuf,
+    metadata: Option<Meta>,
+    modes: Vec<String>,
 }
 
-#[derive(Debug)]
-struct MetaNegative {
-    phase: Phase,
+#[derive(Deserialize)]
+struct Meta {
+    negative: Option<Negative>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Phase {
-    Parse,
-    Early,
-    Resolution,
-    Runtime,
-}
-
-impl From<&str> for Phase {
-    fn from(value: &str) -> Self {
-        match value {
-            "parse" => Self::Parse,
-            "early" => Self::Early,
-            "resolution" => Self::Resolution,
-            "runtime" => Self::Runtime,
-            _ => panic!("invalid meta phase"),
-        }
-    }
+#[derive(Deserialize)]
+struct Negative {
+    phase: String,
+    #[serde(rename = "type")]
+    kind: Option<String>,
 }
 
 impl Test262Case {
     fn read_cases() -> Vec<Self> {
-        let roots = [
-            fixtures().join("test262/test"),
-            crate_root().join("fixtures-test262-legacy"),
-        ];
-        roots
-            .into_iter()
-            .flat_map(WalkDir::new)
-            .filter_map(|file| {
-                let file = file.unwrap();
-                if !file.file_type().is_file() {
-                    return None;
-                }
-
-                let path = file.path();
-                let normalized_path = path.to_string_lossy().replace('\\', "/");
+        let mut inputs = Vec::new();
+        for suite in ["test262", "test262-legacy"] {
+            let root = fixtures().join(suite).join("test");
+            for path in json_paths(suite) {
+                let input: Input = read_json(&path);
+                inputs.push((root.join(&input.path), input, suite));
+            }
+        }
+        inputs
+            .into_par_iter()
+            .filter(|(path, _, _)| {
+                let path = path.to_string_lossy().replace('\\', "/");
                 // These Annex B cases require call expressions to be accepted as assignment
                 // targets in non-strict mode, which this parser intentionally does not support.
-                (normalized_path.ends_with(".js")
-                    && !normalized_path.contains("_FIXTURE")
-                    && !normalized_path.contains("test262/test/staging")
-                    && !normalized_path
-                        .contains("test262/test/annexB/language/expressions/assignmenttargettype"))
-                .then_some(path)
+                !path.contains("_FIXTURE")
+                    && !path.contains("test262/test/staging")
+                    && !path
+                        .contains("test262/test/annexB/language/expressions/assignmenttargettype")
             })
-            .collect::<Vec<_>>()
-            .into_par_iter()
-            .flat_map(Self::read_file)
+            .flat_map(|(path, input, suite)| Self::from_input(path, input, suite))
             .collect()
     }
 
-    pub(super) fn read_file(path: PathBuf) -> Vec<Self> {
-        let code = read_to_string(&path).unwrap();
-        let Some(meta) = parse_meta(&code) else {
+    fn from_input(path: PathBuf, input: Input, suite: &str) -> Vec<Self> {
+        let Some(meta) = input.metadata else {
             return Vec::new();
         };
+        let code = read_to_string(&path).unwrap();
         let expects_error = meta
             .negative
             .as_ref()
-            .is_some_and(|negative| matches!(negative.phase, Phase::Parse | Phase::Early));
-        if meta.module {
-            return vec![Self {
-                path,
-                code,
-                source_type: SourceType::Module,
-                expects_error,
-                name: "module",
-            }];
+            .is_some_and(|negative| matches!(negative.phase.as_str(), "parse" | "early"));
+        let has_reference = meta.negative.is_some_and(|negative| {
+            expects_error && negative.kind.as_deref() == Some("SyntaxError")
+        });
+        let mut oracle_root = swc_conformance().join("tests/parser/test262");
+        if suite == "test262-legacy" {
+            oracle_root.push("legacy");
         }
-
-        let mut cases = Vec::with_capacity(2);
-        if !meta.only_strict {
+        let mut cases = Vec::new();
+        for name in input.modes {
+            let source_type = if name == "module" {
+                SourceType::Module
+            } else {
+                SourceType::Script
+            };
+            let source = if name == "strict" {
+                format!("\"use strict\";\n{code}")
+            } else {
+                code.clone()
+            };
+            let error_spans = if has_reference {
+                let snapshot = input.path.with_added_extension(format!("{name}.json"));
+                read_error_spans(&oracle_root.join(snapshot), source.len())
+            } else {
+                None
+            };
             cases.push(Self {
                 path: path.clone(),
-                code: code.clone(),
-                source_type: SourceType::Script,
+                code: source,
+                source_type,
                 expects_error,
-                name: "sloppy",
-            });
-        }
-        if !meta.no_strict && !meta.raw {
-            cases.push(Self {
-                path,
-                code: format!("\"use strict\";\n{code}"),
-                source_type: SourceType::Script,
-                expects_error,
-                name: "strict",
+                error_spans,
+                name,
             });
         }
         cases
     }
 }
 
-pub(super) fn parse_meta(source: &str) -> Option<Meta> {
-    let meta_start = source.find("/*---")?;
-    let meta_end = source.find("---*/")?;
-    let meta_str = &source[meta_start + 5..meta_end];
+#[derive(Deserialize)]
+struct ReferenceDiagnostic {
+    start: Option<u32>,
+    end: Option<u32>,
+}
 
-    let yaml = Yaml::load_from_str(meta_str).unwrap_or_default();
-    let Some(yaml) = yaml.first() else {
-        return Some(Meta::default());
-    };
-
-    let flags = yaml
-        .as_mapping_get("flags")
-        .and_then(Yaml::as_sequence)
-        .map(Vec::as_slice)
-        .unwrap_or_default();
-    let has_flag = |expected| flags.iter().any(|flag| flag.as_str() == Some(expected));
-
-    Some(Meta {
-        negative: yaml
-            .as_mapping_get("negative")
-            .filter(|yaml| !yaml.is_null() && !yaml.is_badvalue())
-            .map(|yaml| {
-                if yaml.as_str() == Some("SyntaxError") {
-                    return MetaNegative {
-                        phase: Phase::Parse,
-                    };
-                }
-
-                MetaNegative {
-                    phase: yaml
-                        .as_mapping_get("phase")
-                        .map(|p| Phase::from(p.as_str().unwrap()))
-                        .unwrap_or(Phase::Parse),
-                }
-            }),
-        module: has_flag("module"),
-        only_strict: has_flag("onlyStrict"),
-        no_strict: has_flag("noStrict"),
-        raw: has_flag("raw"),
-    })
+fn read_error_spans(path: &Path, source_len: usize) -> Option<Vec<Span>> {
+    let diagnostics: Vec<ReferenceDiagnostic> = read_json(path);
+    let mut spans = Vec::new();
+    for diagnostic in diagnostics {
+        if let (Some(start), Some(end)) = (diagnostic.start, diagnostic.end) {
+            assert!(
+                start <= end && end as usize <= source_len,
+                "invalid diagnostic span: {}",
+                path.display()
+            );
+            spans.push(Span::new(start, end));
+        }
+    }
+    (!spans.is_empty()).then_some(spans)
 }
 
 impl Case for Test262Case {
@@ -184,7 +143,7 @@ impl Case for Test262Case {
     }
 
     fn name(&self) -> &str {
-        self.name
+        &self.name
     }
 
     fn code(&self) -> &str {
@@ -201,5 +160,9 @@ impl Case for Test262Case {
 
     fn expects_error(&self) -> bool {
         self.expects_error
+    }
+
+    fn expected_error_spans(&self) -> Option<&[Span]> {
+        self.error_spans.as_deref()
     }
 }

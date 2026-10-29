@@ -1,14 +1,15 @@
 use std::{
+    collections::BTreeMap,
     fs::read_to_string,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
-use jwalk::WalkDir;
 use rayon::prelude::*;
+use serde::Deserialize;
 use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::{
-    cases::{Case, fixtures, test262::parse_meta},
+    cases::{Case, fixtures, read_json, swc_conformance},
     util::workspace_root,
 };
 
@@ -17,85 +18,64 @@ pub struct SwcResolverCase {
     relative_path: PathBuf,
     name: String,
     code: String,
-    expected: String,
+    expected: BTreeMap<u32, usize>,
     lang: Lang,
     source_type: SourceType,
 }
 
+#[derive(Deserialize)]
+struct Input {
+    path: PathBuf,
+    snapshot: PathBuf,
+    prefix: String,
+    module: bool,
+    jsx: bool,
+}
+
 impl SwcResolverCase {
-    pub fn expected(&self) -> &str {
+    pub fn expected(&self) -> &BTreeMap<u32, usize> {
         &self.expected
     }
 
     fn read_cases() -> Vec<Self> {
         let workspace_root = workspace_root().expect("workspace root should be discoverable");
-        let oracle_root = fixtures()
-            .join("swc-conformance")
-            .join("tests")
-            .join("resolver");
+        let root = swc_conformance();
+        let oracle_root = root.join("tests/resolver");
         assert!(
             oracle_root.is_dir(),
-            "swc-conformance fixtures are missing; run scripts/clone_fixtures.sh first"
+            "missing resolver snapshots: {}",
+            oracle_root.display()
         );
-
-        let mut oracle_paths = WalkDir::new(&oracle_root)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().is_file())
-            .map(|entry| entry.path())
-            .filter(|path| path.to_string_lossy().ends_with(".snap"))
-            .collect::<Vec<_>>();
-        oracle_paths.sort_unstable();
-
-        oracle_paths
+        let inputs: Vec<Input> = read_json(&root.join("fixtures-json/runners/swc.json"));
+        inputs
             .into_par_iter()
-            .map(|oracle_path| Self::read_case(&workspace_root, &oracle_root, oracle_path))
+            .filter_map(|input| {
+                let oracle_path = oracle_root.join(&input.snapshot);
+                // SWC omits resolver snapshots for inputs its parser rejects.
+                if !oracle_path.is_file() {
+                    return None;
+                }
+                Some(Self::read_case(&workspace_root, input, &oracle_path))
+            })
             .collect()
     }
 
-    fn read_case(workspace_root: &Path, oracle_root: &Path, oracle_path: PathBuf) -> Self {
-        let oracle_relative = oracle_path.strip_prefix(oracle_root).unwrap();
-        let mut components = oracle_relative.components();
-        let Component::Normal(suite) = components.next().unwrap() else {
-            panic!("resolver oracle suite should be a normal path component");
-        };
-        let fixture_root = match suite.to_str() {
-            Some("test262") => workspace_root.join("tasks/testsuite/fixtures/test262"),
-            Some("swc") => workspace_root.join("tasks/testsuite/fixtures/swc"),
-            _ => panic!("unknown resolver oracle suite: {}", suite.display()),
-        };
-        let relative_snapshot = components.as_path();
-        let relative_source = relative_snapshot.to_string_lossy();
-        let relative_source = relative_source.strip_suffix(".snap").unwrap();
-        let path = fixture_root.join(relative_source);
+    fn read_case(workspace_root: &Path, input: Input, oracle_path: &Path) -> Self {
+        let path = fixtures().join(&input.path);
         let relative_path = path.strip_prefix(workspace_root).unwrap().to_path_buf();
-        let name = oracle_relative.display().to_string().replace('\\', "/");
-        let mut code = read_to_string(&path).unwrap();
-        let expected = read_to_string(&oracle_path).unwrap();
-        let lang = if suite == "swc" {
-            // swc-conformance enables JSX for every minifier fixture.
-            Lang::Jsx
-        } else {
-            Lang::from_path(&path.to_string_lossy())
-        };
-        let meta = if suite == "test262" {
-            parse_meta(&code)
-        } else {
-            None
-        };
-        let source_type = if meta.as_ref().is_some_and(|meta| meta.module) {
+        let source = read_to_string(&path).unwrap();
+        let code = format!("{}{source}", input.prefix);
+        let expected = read_json(oracle_path);
+        let lang = if input.jsx { Lang::Jsx } else { Lang::Js };
+        let source_type = if input.module {
             SourceType::Module
         } else {
             SourceType::Unambiguous
         };
-        if meta.is_some_and(|meta| meta.only_strict && !meta.module) {
-            code = format!("\"use strict\";\n{code}");
-        }
-
         Self {
             path,
             relative_path,
-            name,
+            name: input.snapshot.to_string_lossy().replace('\\', "/"),
             code,
             expected,
             lang,

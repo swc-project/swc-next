@@ -1,13 +1,11 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::Diagnostic;
+use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 
-use crate::{
-    cases::Case,
-    runner::{Runner, parse_case},
-    suite::TestResult,
-};
+use crate::{cases::Case, runner::Runner, suite::TestResult};
 
 pub struct ParserRunner;
 
@@ -18,11 +16,26 @@ impl<C: Case> Runner<C> for ParserRunner {
         let path = case.relative_path().to_path_buf();
         let result = catch_unwind(AssertUnwindSafe(|| {
             let allocator = Allocator::new();
-            let ast = match parse_case(&allocator, case) {
-                Ok(result) => result,
-                Err(_) if case.expects_error() => return Ok(()),
-                Err(error) => return Err(format!("{}: {error}", case.name())),
+            let options = Options {
+                source_type: case.source_type(),
+                lang: case.lang(),
+                ..Options::default()
             };
+            let parsed =
+                Parser::init(&allocator, case.code(), options, NoTokenParserConfig).parse();
+            if let Some(error) = parsed.diagnostics.first() {
+                if case.expects_error() {
+                    return check_error_spans(case, &parsed.diagnostics);
+                }
+                return Err(format!(
+                    "{}: parser: {} at {}..{}",
+                    case.name(),
+                    error.message,
+                    error.span.start,
+                    error.span.end
+                ));
+            }
+            let ast = parsed.ast;
             if !case.expects_error()
                 && let Some(expected) = case.expected_source_type()
             {
@@ -48,7 +61,8 @@ impl<C: Case> Runner<C> for ParserRunner {
                 ));
             }
             match (case.expects_error(), diagnostics.first()) {
-                (true, Some(_)) | (false, None) => Ok(()),
+                (true, Some(_)) => check_error_spans(case, &diagnostics),
+                (false, None) => Ok(()),
                 (false, Some(_)) if !case.asserts_semantic_success() => Ok(()),
                 (true, None) => Err(format!(
                     "{}: expected a parse or early error, but pipeline succeeded",
@@ -75,4 +89,24 @@ impl<C: Case> Runner<C> for ParserRunner {
             Err(_) => TestResult::Panic { path, negative },
         }
     }
+}
+
+fn check_error_spans<C: Case>(case: &C, diagnostics: &[Diagnostic<'_>]) -> Result<(), String> {
+    let Some(expected) = case.expected_error_spans() else {
+        return Ok(());
+    };
+    for diagnostic in diagnostics {
+        let actual = diagnostic.span;
+        let contained = actual.start <= actual.end
+            && expected
+                .iter()
+                .any(|span| span.start <= actual.start && actual.end <= span.end);
+        if !contained {
+            return Err(format!(
+                "{}: diagnostic span {actual:?} is not contained in reference spans {expected:?}",
+                case.name()
+            ));
+        }
+    }
+    Ok(())
 }
