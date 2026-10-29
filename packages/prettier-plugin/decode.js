@@ -97,6 +97,20 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
         case 21:
           ops.push([op, integer(), reference(), reference()]);
           break;
+        case 22: {
+          const flags = byte();
+          if (flags & ~3) throw invalid();
+          const id = integer();
+          const contents = reference();
+          let states;
+          if (flags & 2) {
+            const length = integer();
+            if (length < 1 || length > (end - offset) / 4) throw invalid();
+            states = Array.from({ length }, reference);
+          }
+          ops.push([op, flags, id, contents, states]);
+          break;
+        }
         default:
           throw invalid();
       }
@@ -133,10 +147,11 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
 // Validate every fragment, including unreachable ones, without recursive walks.
 function fragmentOrder(fragments) {
   const references = fragments.map((ops) =>
-    ops.flatMap(([op, first, second, third]) => {
+    ops.flatMap(([op, first, second, third, fourth]) => {
       if (op === 9) return [first];
       if (op === 10) return first;
       if (op === 21) return [second, third];
+      if (op === 22) return [third, ...(fourth ?? [])];
       return [];
     }),
   );
@@ -169,7 +184,7 @@ function fragmentOrder(fragments) {
 function build(ops, docs, text, group, options) {
   const stack = [{ op: -1, parts: [] }];
   const append = (doc) => stack.at(-1).parts.push(doc);
-  for (const [op, first, second, third] of ops) {
+  for (const [op, first, second, third, fourth] of ops) {
     switch (op) {
       case 0: {
         const value = text(first, second);
@@ -219,6 +234,15 @@ function build(ops, docs, text, group, options) {
       case 21:
         // Both branches remain visible to Prettier's breakParent propagation.
         append(b.ifBreak(docs[second], docs[third], { groupId: group(first) }));
+        break;
+      case 22:
+        append(
+          b.group(docs[third], {
+            id: group(second),
+            shouldBreak: Boolean(first & 1),
+            expandedStates: fourth?.map((id) => docs[id]),
+          }),
+        );
         break;
       case 17: {
         if (stack.length === 1) throw invalid();
