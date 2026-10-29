@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ k: (// @ts-ignore
+first = (// @ts-expect-error
+second = third)) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  k:
+    // @ts-ignore
+    (first = (// @ts-expect-error
+        second = third)), });
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  k:
+    // @ts-ignore
+    (first = (// @ts-expect-error
+          second = third)), });
+
+---------- Options ----------
+{"printWidth":80,"singleQuote":true}
+---------- Output ----------
+({
+  k:
+    // @ts-ignore
+    (first = (// @ts-expect-error
+        second = third)), });
