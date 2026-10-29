@@ -4434,13 +4434,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: &ExpressionContent,
         context: ExpressionContext<'ast>,
         head: &NodeHead<'ast>,
-    ) -> Option<PreparedDiagnosticHeadFrame<'ast>> {
+    ) -> (Option<PreparedDiagnosticHeadFrame<'ast>>, bool) {
         if self.diagnostic_lines.is_empty() {
-            return None;
+            return (None, false);
         }
         let context = self.with_head_scope(context, content);
-        let frame = self.prepare_diagnostic_head_frame(content, context)?;
-        Some(self.prepare_diagnostic_head_placement(frame, head))
+        let frame = self
+            .prepare_diagnostic_head_frame(content, context)
+            .map(|frame| self.prepare_diagnostic_head_placement(frame, head));
+        // Once a diagnostic packet has moved before a generated pair, prepare
+        // that pair with the same body layout on the next parse. Only an empty
+        // source envelope can transfer ownership without losing its comments.
+        let frame = frame.or_else(|| {
+            let removed = content.parentheses?;
+            (!removed.head.has_comments
+                && removed.tail.is_none()
+                && self.expression_has_generated_head_frame(content, context)
+                && head
+                    .comments
+                    .iter()
+                    .any(|&comment| self.comment_semantics(comment).diagnostic))
+            .then_some(PreparedDiagnosticHeadFrame::BeforeGenerated {
+                prefix: &[],
+                packet: DiagnosticHeadLease::Claimed(head.comments),
+            })
+        });
+        // A transparent pair can also release its head without a replacement
+        // pair. The property must choose its RHS indentation for that head now.
+        let released_line = frame.is_none()
+            && content.parentheses.is_some_and(|removed| {
+                removed.head.diagnostic_frontier.is_some()
+                    && !self.expression_has_generated_head_frame(content, context)
+                    && self
+                        .source_parentheses_comments(removed.source)
+                        .head
+                        .iter()
+                        .any(|comment| comment.kind == CommentKind::Line)
+            });
+        let breaks = released_line
+            || frame
+                .as_ref()
+                .is_some_and(|frame| frame.has_leading_line_comment());
+        (frame, breaks)
     }
 
     pub(super) fn format_property_diagnostic_head(
