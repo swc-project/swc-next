@@ -103,10 +103,20 @@ enum JsxSeparator {
 
 #[derive(Clone, Copy)]
 enum JsxContentEdge {
-    Word { single_character: bool },
-    NonText { self_closing: bool },
-    Literal { leading_line: bool },
-    WhitespaceLiteral,
+    Word {
+        single_character: bool,
+    },
+    NonText {
+        self_closing: bool,
+        nested_jsx: bool,
+    },
+    Literal {
+        leading_line: bool,
+        trailing_line: bool,
+    },
+    WhitespaceLiteral {
+        leading: bool,
+    },
 }
 
 #[derive(Default)]
@@ -173,7 +183,9 @@ impl JsxChildrenStream {
         formatter: &Formatter<'_, '_>,
         writer: &mut Writer<'_>,
     ) {
-        let edge = JsxContentEdge::WhitespaceLiteral;
+        let edge = JsxContentEdge::WhitespaceLiteral {
+            leading: self.previous.is_none(),
+        };
         self.boundary(edge, source, formatter, writer);
         let (entry, ()) = writer.fill_entry_with_handle(|writer| {
             write_jsx_space(
@@ -202,11 +214,17 @@ impl JsxChildrenStream {
                 self.layout.leading_space = Some(JsxLeadingSpace::Separator {
                     spaces,
                     following: formatter.line_constraint(space.end, source.start),
-                    literal_line: matches!(next, JsxContentEdge::Literal { leading_line: true }),
+                    literal_line: matches!(
+                        next,
+                        JsxContentEdge::Literal {
+                            leading_line: true,
+                            ..
+                        }
+                    ),
                 });
                 space.start
             } else {
-                if matches!(next, JsxContentEdge::WhitespaceLiteral) {
+                if matches!(next, JsxContentEdge::WhitespaceLiteral { .. }) {
                     self.layout.leading_space = Some(JsxLeadingSpace::Literal);
                 }
                 source.start
@@ -234,7 +252,19 @@ impl JsxChildrenStream {
                     spaces,
                     JsxSpacePlacement::Between,
                     following,
-                    if matches!(next, JsxContentEdge::Literal { leading_line: true }) {
+                    if matches!(
+                        next,
+                        JsxContentEdge::Literal {
+                            leading_line: true,
+                            ..
+                        }
+                    ) || matches!(
+                        previous,
+                        JsxContentEdge::Literal {
+                            trailing_line: true,
+                            ..
+                        }
+                    ) {
                         JsxSpaceLayout::Explicit
                     } else {
                         self.layout.space_layout()
@@ -254,11 +284,13 @@ impl JsxChildrenStream {
                             single_character: true
                         },
                         JsxContentEdge::NonText {
-                            self_closing: false
+                            self_closing: false,
+                            ..
                         },
                     ) | (
                         JsxContentEdge::NonText {
-                            self_closing: false
+                            self_closing: false,
+                            ..
                         },
                         JsxContentEdge::Word {
                             single_character: true
@@ -290,20 +322,23 @@ impl JsxChildrenStream {
                     match (previous, next) {
                         (JsxContentEdge::Literal { .. }, _)
                         | (_, JsxContentEdge::Literal { .. }) => {}
-                        (JsxContentEdge::WhitespaceLiteral, JsxContentEdge::NonText { .. }) => {
-                            writer.hard_line()
-                        }
-                        (JsxContentEdge::WhitespaceLiteral, _) => writer.soft_line(),
-                        (_, JsxContentEdge::WhitespaceLiteral) => {}
+                        // A nested JSX child can choose its own layout when
+                        // this boundary breaks.
+                        (
+                            JsxContentEdge::WhitespaceLiteral { leading },
+                            JsxContentEdge::NonText { nested_jsx, .. },
+                        ) if leading || !nested_jsx => writer.hard_line(),
+                        (JsxContentEdge::WhitespaceLiteral { .. }, _) => writer.soft_line(),
+                        (_, JsxContentEdge::WhitespaceLiteral { .. }) => {}
                         (JsxContentEdge::NonText { .. }, JsxContentEdge::NonText { .. }) => {
                             writer.hard_line()
                         }
                         (
                             JsxContentEdge::Word { single_character },
-                            JsxContentEdge::NonText { self_closing },
+                            JsxContentEdge::NonText { self_closing, .. },
                         )
                         | (
-                            JsxContentEdge::NonText { self_closing },
+                            JsxContentEdge::NonText { self_closing, .. },
                             JsxContentEdge::Word { single_character },
                         ) => {
                             if self_closing && !single_character {
@@ -324,7 +359,7 @@ impl JsxChildrenStream {
         self.layout.has_content = true;
         self.layout.source.get_or_insert(source).end = source.end;
         self.layout.trailing_inline = matches!(edge, JsxContentEdge::Literal { .. });
-        self.layout.trailing_space = matches!(edge, JsxContentEdge::WhitespaceLiteral);
+        self.layout.trailing_space = matches!(edge, JsxContentEdge::WhitespaceLiteral { .. });
     }
 
     fn finish(
@@ -536,6 +571,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }) = expression.as_ref()
                 {
                     previous_ignore = false;
+                    if matches!(stream.pending, Some((JsxSeparator::Newline { .. }, _))) {
+                        stream.pending = None;
+                    }
                     if *spaces == 1 {
                         stream.separator(JsxSeparator::Space { spaces: 1 }, child.span(ast));
                     } else {
@@ -549,12 +587,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if jsx_text_needs_literal(raw) {
                         // Opaque text contains a non-formatting character.
                         previous_ignore = false;
-                        let source = text.span(ast);
+                        let mut source = text.span(ast);
+                        let leading_line = raw
+                            .bytes()
+                            .find(|byte| !matches!(byte, b' ' | b'\t'))
+                            .is_some_and(|byte| matches!(byte, b'\r' | b'\n'));
+                        let leading_spaces = raw.bytes().take_while(|byte| *byte == b' ').count();
+                        let raw = if leading_spaces > 0 && !leading_line {
+                            let end = source.start + leading_spaces as u32;
+                            stream.separator(
+                                JsxSeparator::Space {
+                                    spaces: leading_spaces,
+                                },
+                                Span::new(source.start, end),
+                            );
+                            source.start = end;
+                            &raw[leading_spaces..]
+                        } else {
+                            raw
+                        };
                         // An opaque run owns its physical lines, so the space
                         // before its first line must survive outside that run.
                         let edge = JsxContentEdge::Literal {
-                            leading_line: raw
+                            leading_line,
+                            trailing_line: raw
                                 .bytes()
+                                .rev()
                                 .find(|byte| !matches!(byte, b' ' | b'\t'))
                                 .is_some_and(|byte| matches!(byte, b'\r' | b'\n')),
                         };
@@ -632,7 +690,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     _ => false,
                 };
-                let edge = JsxContentEdge::NonText { self_closing };
+                let nested_jsx = matches!(
+                    data,
+                    JsxChildData::JsxElement(_) | JsxChildData::JsxFragment(_)
+                ) && !self_closing;
+                let edge = JsxContentEdge::NonText {
+                    self_closing,
+                    nested_jsx,
+                };
                 let source = child.span(ast);
                 stream.before(edge, source, self, writer);
                 let ignored = previous_ignore
