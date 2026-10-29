@@ -70,6 +70,31 @@ fn indented_line_doc<'a>(allocator: &'a Allocator, line: impl FnOnce(&mut Writer
     writer.finish()
 }
 
+fn text_layout_document<'a>(
+    allocator: &'a Allocator,
+    text: impl FnOnce(&mut Writer<'a>),
+) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        text(writer);
+        writer.line();
+        writer.text("c");
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn indented_text_document<'a>(allocator: &'a Allocator, text: &'a str) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.indent(|writer| {
+        writer.hard_line();
+        writer.text(text);
+        writer.text("end");
+    });
+    writer.finish()
+}
+
 fn independent_document(allocator: &Allocator) -> Doc<'_> {
     let mut writer = Writer::new(allocator);
     let group = writer.named_group(false, |writer| {
@@ -1725,6 +1750,85 @@ fn text_line_measurement() {
         literal_text_continuation("head\r\ntail\n"),
         "prehead\ntail\n next"
     );
+}
+
+#[test]
+fn ordinary_text_lines() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("aa\n");
+    writer.group(false, |writer| {
+        writer.text("bb");
+        writer.line();
+        writer.text("cc");
+    });
+    let doc = writer.finish();
+    assert_eq!(doc.print(narrow), "aa\nbb\ncc");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.text("x\ny");
+    writer.hard_line();
+    writer.text("z");
+    let output = writer.finish().print(wide);
+    assert_eq!(output, "ax\ny!\nz");
+
+    let mut writer = Writer::new(&allocator);
+    let text = record(&mut writer, |writer| writer.text("a\nb"));
+    assert!(text.has_intrinsic_lines());
+    assert!(text.can_break());
+    assert!(!text.preferred_breaks());
+    assert!(text.try_flat().is_none());
+    assert!(text.try_neutral().is_none());
+    assert_eq!(super::text::Text::new("a\nb").clean_width(), None);
+}
+
+#[test]
+fn text_line_endings() {
+    let allocator = Allocator::new();
+    let lf = PrintOptions::default();
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..lf
+    };
+    let cr = PrintOptions {
+        line_ending: LineEnding::Cr,
+        ..lf
+    };
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(lf), "\n  a \n\tb\r\nc\rd\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(crlf), "\r\n  a \r\n\tb\r\r\nc\rd\r\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(cr), "\r  a \r\tb\r\rc\rd\rend");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(lf), "a\nb\nc\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(crlf), "a\r\nb\r\nc\r\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(cr), "a\rb\rc\rcB");
 }
 
 fn recorded_fill_document(width: u16, inherited: bool, nested: bool) -> String {
