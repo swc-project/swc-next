@@ -313,6 +313,26 @@ pub(super) struct ExpressionTail<'ast> {
     pub(super) comments: &'ast [Comment],
 }
 
+/// Source statement extent and the emitted terminator's position relative to a leased tail.
+#[derive(Clone, Copy)]
+pub(super) struct StatementCommentBoundary {
+    pub(super) source_end: u32,
+    pub(super) terminator: StatementTerminatorPlacement,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum StatementTerminatorPlacement {
+    BeforeTail,
+    Adjacent,
+}
+
+/// The removed source closer lies between the leased tail and its suffix.
+#[derive(Clone, Copy)]
+struct ReleasedTailGap {
+    tail_end: u32,
+    source_end: u32,
+}
+
 /// Source facts remain valid after the pending run has been claimed.
 pub(super) struct CommentBoundary<'ast> {
     comments: &'ast [Comment],
@@ -1923,8 +1943,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if matches!(layout, CommentRunLayout::StatementTail(_))
                     && previous.kind == CommentKind::Line
                 {
-                    // A deferred line suffix must be flushed before the next source comment.
+                    // Flush the suffix and preserve the remaining source gap.
                     writer.hard_line();
+                    if self.previous_line_is_empty(previous.span.end, prepared.span.start) {
+                        writer.hard_line();
+                    }
                 } else if !nestled && !line_suffix {
                     match layout {
                         CommentRunLayout::Source
@@ -2074,21 +2097,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    pub(super) fn line_suffix_following_gap(&self, end: u32) -> LineConstraint {
+        let empty = self
+            .comments
+            .first()
+            .is_some_and(|next| self.next_line_is_empty(end, next.span.start));
+        LineConstraint::NewLine(if empty { 2 } else { 1 })
+    }
+
     pub(super) fn format_trailing_comments(
         &mut self,
         span: Span,
-        statement_end: u32,
+        boundary: StatementCommentBoundary,
         has_following: bool,
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(u32, bool), FormatError> {
+    ) -> Result<(u32, Option<LineConstraint>), FormatError> {
         if has_following
             && let Some(tail) = pending.as_ref()
             && self.optimizer_only_packet(tail.comments)
         {
             // A released marker follows the same next-head owner as a source
             // post-semicolon packet. That owner also places any required ASI guard.
-            return Ok((tail.source_end, false));
+            return Ok((tail.source_end, None));
         }
         let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
         let comments = self.comments.between(Span::new(source_end, span.end))?;
@@ -2096,23 +2127,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (comments, source_end) = if let Some(tail) = pending {
             // Keep the leased child tail and the parent's suffix in one packet:
             // a later block must not overtake a pending line suffix.
-            let (inherited, following) = comments.split_at(tail.comments.len());
-            let start = inherited
-                .last()
-                .map_or(span.start, |comment| span.start.max(comment.span.end));
-            let following = self.trailing_comment_prefix(
-                following,
-                Span::new(start, span.end),
-                statement_end,
-                has_following,
-            );
-            (
-                &comments[..inherited.len() + following.len()],
-                Some(tail.source_end),
-            )
+            if matches!(
+                boundary.terminator,
+                StatementTerminatorPlacement::BeforeTail
+            ) && matches!(
+                self.comment_binding(
+                    tail.comments,
+                    Span::new(tail.source_end, boundary.source_end),
+                    None,
+                ),
+                CommentBinding::SourceBound
+            ) {
+                // The leased tail and the source suffix now share the same
+                // post-terminator boundary as a reparsed statement packet.
+                let prefix = self.trailing_comment_prefix_projected(
+                    comments,
+                    Span::new(tail.source_end, span.end),
+                    tail.source_end,
+                    has_following,
+                    tail.comments.last().map(|last| ReleasedTailGap {
+                        tail_end: last.span.end,
+                        source_end: boundary.source_end,
+                    }),
+                );
+                if prefix.is_empty() && has_following {
+                    return Ok((tail.source_end, None));
+                }
+                let count = prefix.len().max(tail.comments.len());
+                (&comments[..count], Some(tail.source_end))
+            } else {
+                let (inherited, following) = comments.split_at(tail.comments.len());
+                let start = inherited
+                    .last()
+                    .map_or(span.start, |comment| span.start.max(comment.span.end));
+                let following = self.trailing_comment_prefix(
+                    following,
+                    Span::new(start, span.end),
+                    boundary.source_end,
+                    has_following,
+                );
+                (
+                    &comments[..inherited.len() + following.len()],
+                    Some(tail.source_end),
+                )
+            }
         } else {
             (
-                self.trailing_comment_prefix(comments, span, statement_end, has_following),
+                self.trailing_comment_prefix(comments, span, boundary.source_end, has_following),
                 None,
             )
         };
@@ -2138,12 +2199,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
-            let next_line = source_end.is_some()
+            let following_gap = (source_end.is_some()
                 && last.kind == CommentKind::Line
-                && comments.len() < available;
-            Ok((span.start.max(last.span.end), next_line))
+                && comments.len() < available)
+                .then(|| self.line_suffix_following_gap(last.span.end));
+            Ok((span.start.max(last.span.end), following_gap))
         } else {
-            Ok((span.start, false))
+            Ok((span.start, None))
         }
     }
 
@@ -2253,6 +2315,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         statement_end: u32,
         has_following: bool,
     ) -> &'ast [Comment] {
+        self.trailing_comment_prefix_projected(comments, span, statement_end, has_following, None)
+    }
+
+    fn trailing_comment_prefix_projected(
+        &self,
+        comments: &'ast [Comment],
+        span: Span,
+        statement_end: u32,
+        has_following: bool,
+        released_closer: Option<ReleasedTailGap>,
+    ) -> &'ast [Comment] {
         let mut end = span.start;
         let mut count = 0;
         for (index, comment) in comments.iter().enumerate() {
@@ -2268,13 +2341,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let following = comments
                 .get(index + 1)
                 .map_or(span.end, |next| next.span.start);
-            if comment.kind == CommentKind::Line
-                || self.line_breaks(comment.span.end, following) != 0
-            {
+            let gap_start = released_closer
+                .filter(|gap| gap.tail_end == comment.span.end && gap.source_end <= following)
+                .map_or(comment.span.end, |gap| gap.source_end);
+            if comment.kind == CommentKind::Line || self.line_breaks(gap_start, following) != 0 {
                 count = index + 1;
                 break;
             }
-            end = comment.span.end;
+            end = gap_start;
             if !has_following || comment.span.end < statement_end {
                 count = index + 1;
             }
