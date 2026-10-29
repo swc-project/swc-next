@@ -250,6 +250,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         binding: PreparedAnnotatedBinding<'ast>,
         group: BindingGroup,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let (pattern, definite, annotation) = match binding.layout {
@@ -296,7 +297,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text("!");
             }
             match annotation {
-                Some(annotation) => self.format_binding_annotation_content(annotation, writer),
+                Some(annotation) => {
+                    self.format_binding_annotation_content(annotation, continuation, writer)
+                }
                 None => Ok(None),
             }
         };

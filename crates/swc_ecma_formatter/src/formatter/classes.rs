@@ -1973,6 +1973,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_field_suffix(
         &mut self,
         suffix: FieldSuffix<'ast>,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if let Some((marker, token)) = suffix.marker {
@@ -1980,7 +1981,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text(token);
         }
         if let Some(annotation) = suffix.annotation {
-            self.format_annotation_content(annotation, writer)
+            if continuation {
+                self.format_annotation_content_before_continuation(annotation, writer)
+            } else {
+                self.format_annotation_content(annotation, writer)
+            }
         } else {
             Ok(None)
         }
@@ -2031,7 +2036,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         self.format_property_key_context(key, computed, key_mode, key_context, quoting, writer)?;
         let tail = if let Some(suffix) = suffix {
-            self.format_field_suffix(suffix, writer)?
+            self.format_field_suffix(suffix, initializer.is_some(), writer)?
         } else {
             None
         };

@@ -13,6 +13,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_infer_type(
         &mut self,
         node: TsInferType,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let parameter = node.type_parameter(self.ast);
@@ -32,7 +33,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_verbatim(parameter.span(self.ast), writer)?;
                 Ok(None)
             }
-            Some(parameter) => self.format_prepared_type_parameter(parameter, writer),
+            Some(parameter) => self.format_prepared_type_parameter(parameter, continuation, writer),
         }
     }
 }

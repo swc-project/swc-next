@@ -1112,6 +1112,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let tail = self.format_signature_return_with_context(
                     result,
                     TypeContext::ArrowReturn,
+                    true,
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;

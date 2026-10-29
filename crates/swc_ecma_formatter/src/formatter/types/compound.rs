@@ -392,13 +392,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: TypeBoundaryTail<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context(
+        self.format_type_in_context_with_enclosure(
             union.data,
             context,
             layout,
+            context.needs_parentheses(union.data, self.ast),
             writer,
-            |formatter, layout, writer| {
-                formatter.format_union_members(union, layout, head, Some(tail), writer)
+            |formatter, layout, enclosure, writer| {
+                formatter.format_union_members(union, layout, enclosure, head, Some(tail), writer)
             },
         )
     }
@@ -1193,7 +1194,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(inline_count);
             }
         }
-        None
+        separated.then_some(inline_count)
     }
 
     pub(super) fn prepare_union(
@@ -1345,13 +1346,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: Option<Fragment<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
-        self.format_type_in_context(
+        self.format_type_in_context_with_enclosure(
             union.data,
             context,
             layout,
+            context.needs_parentheses(union.data, self.ast),
             writer,
-            |formatter, layout, writer| {
-                formatter.format_union_members(union, layout, head, None, writer)
+            |formatter, layout, enclosure, writer| {
+                formatter.format_union_members(union, layout, enclosure, head, None, writer)
             },
         )
     }
@@ -1360,6 +1362,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         union: PreparedUnion<'ast>,
         layout: TypeLayout,
+        enclosure: super::TypeEnclosure,
         head: Option<Fragment<'ast>>,
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
@@ -1386,16 +1389,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut prepared = None;
                 let mut links = links.into_iter().peekable();
                 while let Some(link) = links.next() {
-                    self.format_union_member(link.left, prefix, prepared, hug, writer)?;
+                    let tail =
+                        self.format_union_member(link.left, prefix, prepared, hug, writer)?;
+                    self.format_expression_tail(tail, writer)?;
                     let next = links.peek().map_or(last, |link| link.left);
                     (prefix, prepared) =
                         self.format_union_separator(link.boundary, next, hug, writer)?;
                 }
-                self.format_union_member(last, prefix, prepared, hug, writer)?;
-                if let Some(trailing) = trailing {
-                    self.format_comment_boundary(&trailing, writer)?;
+                let tail = self.format_union_member(last, prefix, prepared, hug, writer)?;
+                let own_line = self.type_tail_closing_gap(tail.as_ref()).is_some();
+                if (layout == TypeLayout::ContinuationRoot
+                    || layout == TypeLayout::ConditionalConsequent
+                    || enclosure == super::TypeEnclosure::Parentheses)
+                    && own_line
+                {
+                    writer.break_parent();
                 }
-                Ok(None)
+                let tail = if enclosure == super::TypeEnclosure::Parentheses && own_line {
+                    self.format_expression_tail(tail, writer)?;
+                    None
+                } else {
+                    tail
+                };
+                if let Some(trailing) = trailing {
+                    self.format_expression_tail(tail, writer)?;
+                    self.format_comment_boundary(&trailing, writer)?;
+                    Ok(None)
+                } else {
+                    Ok(tail)
+                }
             };
             let pending = if hug || tuple_element {
                 content(writer)?
@@ -1415,17 +1437,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match layout {
             TypeLayout::MultipleTupleElement if tuple_element => writer.group(false, |writer| {
-                writer.indent(|writer| {
+                let tail = writer.indent(|writer| {
                     writer.if_break("(");
                     writer.soft_line();
                     content(writer)
                 })?;
                 writer.soft_line();
                 writer.if_break(")");
-                Ok(None)
+                Ok(tail)
             }),
             TypeLayout::MultipleTupleElement
             | TypeLayout::AliasRhs
+            | TypeLayout::ContinuationRoot
             | TypeLayout::CallerIndented
             | TypeLayout::ConditionalConsequent
             | TypeLayout::ConditionalAlternate => content(writer),
@@ -1516,7 +1539,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: Option<Box<PreparedTypeContent<'ast>>>,
         hug: bool,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<crate::formatter::comments::ExpressionTail<'ast>>, FormatError> {
         let align = !hug && self.union_member_needs_alignment(node, prefix.as_ref());
         let content = |writer: &mut Writer<'ast>| {
             if let Some(prefix) = prefix {
@@ -1548,7 +1571,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?,
                 None => self.format_prepared_type(node, TypeContext::UnionMember, writer)?,
             };
-            self.format_expression_tail(tail, writer)
+            Ok(tail)
         };
         if align {
             writer.align(2, content)

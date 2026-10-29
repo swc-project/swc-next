@@ -624,7 +624,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let result = self.prepare_function_return(result);
                 let object_return = result.has_object_type();
                 let (result, ()) = writer.record_with_value(|writer| {
-                    let tail = self.format_function_return(result, writer)?;
+                    let tail = self.format_function_return_before_body(result, writer)?;
                     self.format_expression_tail(tail, writer)
                 })?;
                 writer.group(false, |writer| {
@@ -655,7 +655,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?;
                     if let Some(result) = result {
-                        let tail = self.format_signature_return(result, writer)?;
+                        let tail = self.format_signature_return_before_body(result, writer)?;
                         self.format_expression_tail(tail, writer)?;
                     }
                     Ok::<_, FormatError>(())
