@@ -612,7 +612,10 @@ pub(super) fn print<'a>(
                     output.write(Text::new(" "), options, mode);
                 }
             }
-            FormatElement::SoftLine | FormatElement::Line | FormatElement::HardLine => {
+            FormatElement::SoftLine
+            | FormatElement::Line
+            | FormatElement::HardLine
+            | FormatElement::HardLineWithoutBreakParent => {
                 if !suffixes.is_empty() {
                     flush_suffixes(
                         &mut suffixes,
@@ -625,7 +628,9 @@ pub(super) fn print<'a>(
                 }
                 output.line(indent, options, mode);
             }
-            FormatElement::LiteralLine | FormatElement::LiteralLineWithIndent => {
+            FormatElement::LiteralLine
+            | FormatElement::LiteralLineWithoutBreakParent
+            | FormatElement::LiteralLineWithIndent => {
                 if !suffixes.is_empty() {
                     flush_suffixes(
                         &mut suffixes,
@@ -1095,7 +1100,9 @@ impl<'a> Probe<'a> {
                 FormatElement::SoftLine
                 | FormatElement::Line
                 | FormatElement::HardLine
+                | FormatElement::HardLineWithoutBreakParent
                 | FormatElement::LiteralLine
+                | FormatElement::LiteralLineWithoutBreakParent
                 | FormatElement::LiteralLineWithIndent => return true,
                 FormatElement::StartGroup { effect, id, .. } => {
                     if id.is_some() && kind.layout_dependency() {

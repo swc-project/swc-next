@@ -83,9 +83,13 @@ enum FormatElement<'a> {
     SoftLine,
     SoftLineIfBreak(GroupId),
     Line,
+    /// Fused `hardlineWithoutBreakParent` and `breakParent` construction.
     HardLine,
+    HardLineWithoutBreakParent,
     BreakParent,
+    /// Fused `literallineWithoutBreakParent` and `breakParent` construction.
     LiteralLine,
+    LiteralLineWithoutBreakParent,
     /// The standard composition `markAsRoot(literalline)`.
     LiteralLineWithIndent,
     IfBreak {
@@ -441,7 +445,9 @@ impl<'a> Fragment<'a> {
                     | FormatElement::SoftLineIfBreak(_)
                     | FormatElement::Line
                     | FormatElement::HardLine
+                    | FormatElement::HardLineWithoutBreakParent
                     | FormatElement::LiteralLine
+                    | FormatElement::LiteralLineWithoutBreakParent
                     | FormatElement::LiteralLineWithIndent => return true,
                     FormatElement::Text { source, width }
                     | FormatElement::IfBreak { source, width }
@@ -614,7 +620,9 @@ impl<'a> FormatElement<'a> {
     fn permits_flat(self) -> bool {
         match self {
             Self::HardLine
+            | Self::HardLineWithoutBreakParent
             | Self::LiteralLine
+            | Self::LiteralLineWithoutBreakParent
             | Self::LiteralLineWithIndent
             | Self::StartLineSuffix { .. }
             | Self::EndLineSuffix
