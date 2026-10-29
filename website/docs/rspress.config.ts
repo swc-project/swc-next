@@ -1,10 +1,24 @@
 import { defineConfig } from "@rspress/core";
+import { pluginOpenGraph } from "rsbuild-plugin-open-graph";
 import { loadConformanceReport } from "./conformance-report";
 import { sidebar } from "./navigation";
 
 export default defineConfig({
   root: "docs",
   builderConfig: {
+    plugins: [
+      pluginOpenGraph({
+        siteName: "SWC Next",
+        type: "website",
+        url: "https://next.swc.rs/",
+        image: "https://next.swc.rs/og.png",
+        description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",
+        twitter: {
+          card: "summary_large_image",
+          image: "https://next.swc.rs/og.png",
+        },
+      }),
+    ],
     source: {
       define: {
         CONFORMANCE_REPORT: JSON.stringify(loadConformanceReport()),
@@ -14,16 +28,6 @@ export default defineConfig({
   title: "SWC Next",
   description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",
   icon: "/favicon.ico",
-  head: [
-    ["meta", { property: "og:image", content: "https://next.swc.rs/og.png" }],
-    ["meta", { property: "og:image:width", content: "1200" }],
-    ["meta", { property: "og:image:height", content: "630" }],
-    ["meta", { property: "og:image:type", content: "image/png" }],
-    ["meta", { property: "og:image:alt", content: "SWC Next — JavaScript and TypeScript toolchain" }],
-    ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    ["meta", { name: "twitter:image", content: "https://next.swc.rs/og.png" }],
-    ["meta", { name: "twitter:image:alt", content: "SWC Next — JavaScript and TypeScript toolchain" }],
-  ],
   lang: "en",
   route: { cleanUrls: true },
   llms: true,
