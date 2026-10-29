@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import { a, b // @ts-ignore
+, /* d */ } from "missing";
+---------- Options ----------
+{}
+---------- Output ----------
+import {
+  a,
+  b // @ts-ignore
+  /* d */ } from "missing";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import {
+  a,
+  b // @ts-ignore
+  /* d */ } from "missing";
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+import {
+  a,
+  b // @ts-ignore
+  /* d */ } from "missing";
