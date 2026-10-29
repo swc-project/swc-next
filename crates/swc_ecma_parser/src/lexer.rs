@@ -1554,10 +1554,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 let bytes = u8x16::from_slice(&src[pos..]);
                 let next = u8x16::from_slice(&src[pos + 1..]);
                 let end = bytes.simd_eq(u8x16::splat(b'*')) & next.simd_eq(u8x16::splat(b'/'));
-                let special = end
-                    | bytes.simd_eq(u8x16::splat(b'\n'))
-                    | bytes.simd_eq(u8x16::splat(b'\r'))
-                    | bytes.simd_eq(u8x16::splat(0xE2));
+                // Once recorded, further line breaks cannot change the next token's flags.
+                let special = if self.has_token_flag(TokenFlag::LineTerminatorBefore) {
+                    end
+                } else {
+                    end | bytes.simd_eq(u8x16::splat(b'\n'))
+                        | bytes.simd_eq(u8x16::splat(b'\r'))
+                        | bytes.simd_eq(u8x16::splat(0xE2))
+                };
                 if let Some(offset) = special.first_set() {
                     pos += offset;
                     break;
