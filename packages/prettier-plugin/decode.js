@@ -173,7 +173,6 @@ function build(ops, docs, text, group, options) {
     switch (op) {
       case 0: {
         const value = text(first, second);
-        if (/[\r\n]/u.test(value)) throw invalid();
         append(value);
         break;
       }
