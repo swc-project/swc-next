@@ -27,6 +27,15 @@ const alternatives = (...ids) => [
   ...word(ids.length),
   ...ids.flatMap(word),
 ];
+const completeGroup = (flags, id, contents, states) => [
+  22,
+  flags,
+  ...word(id),
+  ...word(contents),
+  ...(states === undefined
+    ? []
+    : [...word(states.length), ...states.flatMap(word)]),
+];
 const line = [2, 0];
 const hard = [2, 2];
 const rawHard = [2, 3];
@@ -208,6 +217,62 @@ test("Alternatives retain standard conditionalGroup decisions", () => {
   ];
   assert.equal(printWire(bytes, 5), print(standard, 5));
   assert.equal(printWire(bytes, 20), print(standard, 20));
+});
+
+test("complete groups preserve contents and expanded states at the wire boundary", () => {
+  const bytes = wire((t) => [
+    [...completeGroup(2, 0, 1, [2])],
+    t("contents"),
+    t("state"),
+  ]);
+  const doc = decode(bytes, "");
+  assert.equal(doc.contents, "contents");
+  assert.deepEqual(doc.expandedStates, ["state"]);
+  assert.equal(print(doc), "contents");
+  assert.equal(printDocBufferSync(bytes), "contents");
+
+  const absent = wire((t) => [[...completeGroup(0, 0, 1)], t("plain")]);
+  assert.equal(decode(absent, "").expandedStates, undefined);
+  assert.equal(printDocBufferSync(absent), printWire(absent));
+
+  const named = wire((t) => [
+    [...completeGroup(3, 1, 1, [2]), ...condition(1, 3, 4)],
+    [...t("a"), ...line, ...t("b")],
+    t("expanded"),
+    t("B"),
+    t("F"),
+  ]);
+  const namedDoc = decode(named, "");
+  assert.equal(namedDoc[0].break, true);
+  assert.equal(namedDoc[0].id, namedDoc[1].groupId);
+  assert.equal(printDocBufferSync(named), print(namedDoc));
+});
+
+test("complete groups preserve shared document identity", () => {
+  const bytes = wire((t) => [
+    [...reference(1), ...reference(1)],
+    [...completeGroup(2, 0, 2, [2])],
+    [16, ...t("x")],
+  ]);
+  const doc = decode(bytes, "");
+  assert.equal(doc[0], doc[1]);
+  assert.equal(doc[0].contents, doc[0].expandedStates[0]);
+  assert.equal(printDocBufferSync(bytes), print(doc));
+});
+
+test("complete groups reject invalid flags, states, and fragment cycles", () => {
+  const invalid = [
+    wire((t) => [[...completeGroup(4, 0, 1)], t("x")]),
+    wire((t) => [[...completeGroup(2, 0, 1, [])], t("x")]),
+    wire((t) => [[...completeGroup(2, 0, 1, [2])], t("x")]),
+    wire((t) => [[...completeGroup(0, 0, 0)], t("x")]),
+    wire((t) => [[...completeGroup(2, 0, 1, [0])], t("x")]),
+    wire((t) => [[...completeGroup(2, 0, 1, [2])], t("x"), [...reference(2)]]),
+  ];
+  for (const bytes of invalid) {
+    assert.throws(() => decode(bytes, ""));
+    assert.throws(() => printDocBufferSync(bytes));
+  }
 });
 
 test("named indent scopes retain unknown and broken behavior", () => {
