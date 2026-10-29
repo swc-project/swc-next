@@ -9,6 +9,7 @@
 mod breaks;
 mod decode;
 mod encode;
+mod indent;
 mod printer;
 #[cfg(test)]
 mod tests;
@@ -140,6 +141,11 @@ enum FormatElement<'a> {
     StartAlign {
         width: u32,
     },
+    StartAlignText(&'a AlignText<'a>),
+    StartDedent,
+    StartMarkRoot,
+    StartDedentToRoot,
+    EndRichIndent(u8),
     EndAlign {
         width: u32,
     },
@@ -182,6 +188,7 @@ impl FragmentSummary {
     const CONDITIONAL_LINES: u8 = 1 << 3;
     const INTRINSIC_LINES: u8 = 1 << 4;
     const GROUP_STATES: u8 = 1 << 5;
+    const RICH_INDENT: u8 = 1 << 6;
 
     fn new(
         effect: BreakEffect,
@@ -189,13 +196,15 @@ impl FragmentSummary {
         conditional_lines: bool,
         intrinsic_lines: bool,
         group_states: bool,
+        rich_indent: bool,
     ) -> Self {
         Self(
             u8::from(effect.preferred_breaks())
                 | ((capabilities as u8) << 1)
                 | (u8::from(conditional_lines) << 3)
                 | (u8::from(intrinsic_lines) << 4)
-                | (u8::from(group_states) << 5),
+                | (u8::from(group_states) << 5)
+                | (u8::from(rich_indent) << 6),
         )
     }
 
@@ -214,6 +223,10 @@ impl FragmentSummary {
 
     fn conditional_lines(self) -> bool {
         self.0 & Self::CONDITIONAL_LINES != 0
+    }
+
+    fn rich_indent(self) -> bool {
+        self.0 & Self::RICH_INDENT != 0
     }
 
     fn group_states(self) -> bool {
@@ -413,6 +426,7 @@ impl<'a> Fragment<'a> {
         conditional_lines: bool,
         intrinsic_lines: bool,
         group_states: bool,
+        rich_indent: bool,
     ) -> Self {
         Self {
             elements: ThinSlice::new(elements),
@@ -422,12 +436,17 @@ impl<'a> Fragment<'a> {
                 conditional_lines,
                 intrinsic_lines,
                 group_states,
+                rich_indent,
             ),
         }
     }
 
     fn elements(self) -> &'a [FormatElement<'a>] {
         self.elements.get()
+    }
+
+    fn rich_indent(self) -> bool {
+        self.summary.rich_indent()
     }
 
     fn group_states(self) -> bool {
@@ -602,6 +621,12 @@ struct Alternatives<'a> {
 }
 
 #[derive(Debug)]
+struct AlignText<'a> {
+    source: &'a str,
+    width: usize,
+}
+
+#[derive(Debug)]
 struct GroupWithStates<'a> {
     contents: Fragment<'a>,
     states: &'a [Fragment<'a>],
@@ -710,6 +735,7 @@ pub struct Doc<'a> {
     elements: &'a [FormatElement<'a>],
     group_count: u32,
     group_states: bool,
+    rich_indent: bool,
 }
 
 impl<'a> Doc<'a> {
@@ -745,6 +771,7 @@ impl<'a> Doc<'a> {
             self.allocator,
             self.group_count,
             self.group_states,
+            self.rich_indent,
             options,
         )
     }

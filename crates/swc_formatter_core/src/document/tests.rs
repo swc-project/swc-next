@@ -1139,6 +1139,7 @@ fn deep_indentation() {
         elements: &elements,
         group_count: 0,
         group_states: false,
+        rich_indent: false,
     };
     let options = PrintOptions {
         indent_width: 64.try_into().unwrap(),
@@ -4008,6 +4009,7 @@ fn decode_document() {
         elements: doc.elements,
         group_count: doc.group_count,
         group_states: doc.group_states,
+        rich_indent: doc.rich_indent,
     }
     .encode();
     let actual = Doc::decode(&allocator, &bytes)
@@ -4052,6 +4054,7 @@ fn assert_decoded_prints(doc: Doc<'_>, options: PrintOptions) {
         elements: doc.elements,
         group_count: doc.group_count,
         group_states: doc.group_states,
+        rich_indent: doc.rich_indent,
     }
     .encode();
     let decoded = Doc::decode(allocator, &encoded).unwrap().print(options);

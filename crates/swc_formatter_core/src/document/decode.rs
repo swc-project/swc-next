@@ -3,8 +3,8 @@ use std::{collections::HashMap, fmt, num::NonZeroU32};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FormatElement, Fragment,
-    FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, text::Text,
+    AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FormatElement,
+    Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, text::Text,
 };
 
 /// An invalid, unsupported, or resource-limited document buffer.
@@ -63,6 +63,8 @@ enum ScopeStart {
     Entry,
     Suffix,
     AbsoluteIndent(u32),
+    AlignText(u32, u32),
+    RichIndent(u8),
 }
 
 struct Reader<'a> {
@@ -215,6 +217,16 @@ fn parse_fragment(bytes: &[u8], count: usize) -> Result<Vec<Op>> {
                     states,
                 }
             }
+            23 => {
+                let start = r.word()?;
+                let len = r.word()?;
+                stack.push(tag);
+                Op::Start(ScopeStart::AlignText(start, len))
+            }
+            24..=26 => {
+                stack.push(tag);
+                Op::Start(ScopeStart::RichIndent(tag))
+            }
             15 | 16 => Op::Simple(tag),
             17 => {
                 let end = r.byte()?;
@@ -297,6 +309,7 @@ struct Context<'a> {
     conditional_lines: bool,
     intrinsic_lines: bool,
     group_states: bool,
+    rich_indent: bool,
     requires_fill: bool,
     fill_depth: usize,
 }
@@ -309,6 +322,7 @@ impl<'a> Context<'a> {
             conditional_lines: false,
             intrinsic_lines: false,
             group_states: false,
+            rich_indent: false,
             requires_fill: false,
             fill_depth: 0,
         }
@@ -316,6 +330,7 @@ impl<'a> Context<'a> {
 
     fn append_fragment(&mut self, fragment: Fragment<'a>, requires_fill: bool) {
         self.group_states |= fragment.group_states();
+        self.rich_indent |= fragment.rich_indent();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -339,6 +354,7 @@ impl<'a> Context<'a> {
                 self.conditional_lines,
                 self.intrinsic_lines,
                 self.group_states,
+                self.rich_indent,
             ),
             self.requires_fill,
         )
@@ -374,6 +390,7 @@ enum ScopeFrame<'a> {
         outer_requires_fill: bool,
     },
     AbsoluteIndent,
+    RichIndent(u8),
 }
 
 impl ScopeFrame<'_> {
@@ -388,6 +405,7 @@ impl ScopeFrame<'_> {
             Self::Entry { .. } => 12,
             Self::Suffix { .. } => 14,
             Self::AbsoluteIndent => 19,
+            Self::RichIndent(tag) => *tag,
         }
     }
 }
@@ -427,6 +445,7 @@ fn make_conditional<'a>(
     flat: (Fragment<'a>, bool),
 ) {
     context.group_states |= broken.0.group_states() || flat.0.group_states();
+    context.rich_indent |= broken.0.rich_indent() || flat.0.rich_indent();
     context.effect = context.effect.join(broken.0.effect()).join(flat.0.effect());
     context.conditional_lines |= broken.0.conditional_lines() || flat.0.conditional_lines();
     context.intrinsic_lines |= broken.0.has_intrinsic_lines() || flat.0.has_intrinsic_lines();
@@ -441,15 +460,25 @@ fn make_conditional<'a>(
         .push(FormatElement::Conditional(conditional));
 }
 
+struct StringCache<'a> {
+    texts: HashMap<(u32, u32), Text<'a>>,
+    prefixes: HashMap<(u32, u32), &'a AlignText<'a>>,
+    budget: usize,
+}
+
 fn build<'a>(
     allocator: &'a Allocator,
     ops: &[Op],
     pool: &'a [u8],
     built: &[Option<(Fragment<'a>, bool)>],
     ids: &mut HashMap<u32, GroupId>,
-    texts: &mut HashMap<(u32, u32), Text<'a>>,
-    text_budget: &mut usize,
+    strings: &mut StringCache<'a>,
 ) -> Result<(Fragment<'a>, bool)> {
+    let StringCache {
+        texts,
+        prefixes,
+        budget: text_budget,
+    } = strings;
     let mut context = Context::new(allocator);
     let mut frames: Vec<ScopeFrame<'a>> = Vec::new();
     let empty = Context::new(allocator).finish();
@@ -522,7 +551,9 @@ fn build<'a>(
                         ScopeFrame::Indent
                     }
                     ScopeStart::Align(width) => {
-                        context.elements.push(FormatElement::StartAlign { width });
+                        if width != 0 {
+                            context.elements.push(FormatElement::StartAlign { width });
+                        }
                         ScopeFrame::Align { width }
                     }
                     ScopeStart::IndentIfBreak(id) => {
@@ -564,6 +595,43 @@ fn build<'a>(
                             outer_requires_fill,
                         }
                     }
+                    ScopeStart::AlignText(start, len) => {
+                        let key = (start, len);
+                        let text = if let Some(text) = prefixes.get(&key) {
+                            *text
+                        } else {
+                            let end = (start as usize)
+                                .checked_add(len as usize)
+                                .ok_or(DocumentBufferError::InvalidDocument)?;
+                            let bytes = pool
+                                .get(start as usize..end)
+                                .ok_or(DocumentBufferError::InvalidDocument)?;
+                            *text_budget = text_budget
+                                .checked_sub(len as usize)
+                                .ok_or(DocumentBufferError::LimitExceeded)?;
+                            let source = std::str::from_utf8(bytes)
+                                .map_err(|_| DocumentBufferError::InvalidDocument)?;
+                            let text = &*allocator.alloc(AlignText {
+                                source,
+                                width: crate::measure_text_width(source),
+                            });
+                            prefixes.insert(key, text);
+                            text
+                        };
+                        context.rich_indent = true;
+                        context.elements.push(FormatElement::StartAlignText(text));
+                        ScopeFrame::RichIndent(23)
+                    }
+                    ScopeStart::RichIndent(tag) => {
+                        context.rich_indent = true;
+                        context.elements.push(match tag {
+                            24 => FormatElement::StartDedent,
+                            25 => FormatElement::StartMarkRoot,
+                            26 => FormatElement::StartDedentToRoot,
+                            _ => unreachable!(),
+                        });
+                        ScopeFrame::RichIndent(tag)
+                    }
                     ScopeStart::AbsoluteIndent(width) => {
                         context
                             .elements
@@ -599,11 +667,16 @@ fn build<'a>(
                         context.effect = outer_effect.join(effect);
                         context.elements.push(FormatElement::EndGroup);
                     }
+                    ScopeFrame::RichIndent(tag) => {
+                        context.elements.push(FormatElement::EndRichIndent(tag));
+                    }
                     ScopeFrame::Indent | ScopeFrame::AbsoluteIndent => {
                         context.elements.push(FormatElement::EndIndent);
                     }
                     ScopeFrame::Align { width } => {
-                        context.elements.push(FormatElement::EndAlign { width });
+                        if width != 0 {
+                            context.elements.push(FormatElement::EndAlign { width });
+                        }
                     }
                     ScopeFrame::IndentIfBreak { start } => {
                         let distance = offset(context.elements.len() - start)?;
@@ -677,6 +750,7 @@ fn build<'a>(
                     let (fragment, requires_fill) =
                         built[*id].ok_or(DocumentBufferError::InvalidDocument)?;
                     context.group_states |= fragment.group_states();
+                    context.rich_indent |= fragment.rich_indent();
                     context.conditional_lines |= fragment.conditional_lines();
                     context.requires_fill |= requires_fill && context.fill_depth == 0;
                     preferred.push(fragment);
@@ -685,6 +759,7 @@ fn build<'a>(
                     [*ids.last().ok_or(DocumentBufferError::InvalidDocument)?]
                 .ok_or(DocumentBufferError::InvalidDocument)?;
                 context.group_states |= fallback.group_states();
+                context.rich_indent |= fallback.rich_indent();
                 context.conditional_lines |= fallback.conditional_lines();
                 context.requires_fill |= requires_fill && context.fill_depth == 0;
                 if preferred.is_empty() {
@@ -711,6 +786,7 @@ fn build<'a>(
                 let id = group(ids, *id)?;
                 context.requires_fill |= requires_fill && context.fill_depth == 0;
                 context.group_states |= contents.group_states();
+                context.rich_indent |= contents.rich_indent();
                 context.conditional_lines |= contents.conditional_lines();
                 context.intrinsic_lines |= contents.has_intrinsic_lines();
                 if let Some(states) = states {
@@ -719,6 +795,7 @@ fn build<'a>(
                         let (fragment, requires_fill) =
                             built[*state].ok_or(DocumentBufferError::InvalidDocument)?;
                         context.requires_fill |= requires_fill && context.fill_depth == 0;
+                        context.rich_indent |= fragment.rich_indent();
                         context.conditional_lines |= fragment.conditional_lines();
                         fragments.push(fragment);
                     }
@@ -787,11 +864,14 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
     let order = order(&fragments)?;
     let mut built = vec![None; count];
     let mut ids = HashMap::default();
-    let mut texts = HashMap::default();
-    let mut text_budget = bytes
-        .len()
-        .checked_mul(8)
-        .ok_or(DocumentBufferError::LimitExceeded)?;
+    let mut strings = StringCache {
+        texts: HashMap::default(),
+        prefixes: HashMap::default(),
+        budget: bytes
+            .len()
+            .checked_mul(8)
+            .ok_or(DocumentBufferError::LimitExceeded)?,
+    };
     for id in order {
         built[id] = Some(build(
             allocator,
@@ -799,8 +879,7 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
             pool,
             &built,
             &mut ids,
-            &mut texts,
-            &mut text_budget,
+            &mut strings,
         )?);
     }
     let (root, requires_fill) = built[0].ok_or(DocumentBufferError::InvalidDocument)?;
@@ -813,5 +892,6 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
         elements: root.elements(),
         group_count,
         group_states: root.group_states(),
+        rich_indent: root.rich_indent(),
     })
 }
