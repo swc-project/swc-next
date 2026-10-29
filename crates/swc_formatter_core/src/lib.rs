@@ -12,7 +12,7 @@ mod options;
 
 pub use document::{
     ConditionTarget, Doc, DocumentBufferError, FillEntry, FillSeparatorPolicy, FlatFragment,
-    Fragment, GroupId, GroupRequest, NeutralFragment, RecordedGroup, Writer,
+    Fragment, GroupId, GroupRequest, IndentIfBreakOptions, NeutralFragment, RecordedGroup, Writer,
 };
 pub use options::{IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding, PrintOptions};
 

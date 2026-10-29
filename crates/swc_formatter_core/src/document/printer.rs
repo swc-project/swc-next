@@ -999,15 +999,19 @@ fn print_impl<'a, const GRAPH: bool, M: IndentModel<'a>>(
                 indents.push(indent);
                 indent = output.model.absolute(indent, width as usize, options);
             }
-            FormatElement::StartIndentIfBreak { id, end_offset } => {
-                let binding = group_modes[id.index()];
+            FormatElement::StartIndentIfBreak {
+                target,
+                negate,
+                end_offset,
+            } => {
+                let binding = target.mode(mode, group_modes);
                 if flat || binding.is_none() {
                     let (contents, remaining) =
                         cursor.current.remaining.split_at(end_offset as usize);
                     cursor.current.remaining = remaining;
                     if binding.is_some() {
                         let (body, end) = contents.split_at(contents.len() - 1);
-                        if binding == Some(Mode::Break) {
+                        if binding == Some(if negate { Mode::Flat } else { Mode::Break }) {
                             indents.push(indent);
                             indent = output.model.indent(indent, options);
                             // Restore indentation after the projected body completes.
@@ -1017,7 +1021,7 @@ fn print_impl<'a, const GRAPH: bool, M: IndentModel<'a>>(
                     }
                 } else {
                     indents.push(indent);
-                    if binding == Some(Mode::Break) {
+                    if binding == Some(if negate { Mode::Flat } else { Mode::Break }) {
                         indent = output.model.indent(indent, options);
                     }
                 }
