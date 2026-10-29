@@ -725,11 +725,6 @@ enum JsxExprContext {
     Tag,
 }
 
-struct ExportSpecifiersResult {
-    specifiers: SubRange<ExportSpecifier>,
-    local_tags: Vec<TokenTag>,
-}
-
 #[derive(Clone, Copy, Debug)]
 struct DefaultExportPart {
     declaration: ExportDefaultDeclarationKind,
@@ -835,6 +830,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     scratch_a: ScratchBuffer,
     scratch_b: ScratchBuffer,
     scratch_string: Wtf8Buf,
+    export_specifier_tags: Vec<TokenTag>,
     context: Context,
     statement_context: StatementContext,
     ts_context: TsContext,
@@ -1129,6 +1125,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             scratch_a: ScratchBuffer::default(),
             scratch_b: ScratchBuffer::default(),
             scratch_string: Wtf8Buf::new(),
+            export_specifier_tags: Vec::new(),
             context: Context::default(),
             statement_context: StatementContext::default(),
             ts_context: {
@@ -5040,27 +5037,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         start: u32,
         export_kind: ImportOrExportKind,
     ) -> Option<Stmt> {
-        let result = self.parse_export_specifiers()?;
+        let specifiers = self.parse_export_specifiers()?;
         let (source, attributes) = if self.eat(TokenTag::From)? {
             let source = self.parse_module_specifier()?;
             let attributes = self.parse_with_clause();
             (Some(source), attributes)
         } else {
-            self.resolve_local_export_specifiers(&result)?;
+            self.resolve_local_export_specifiers(specifiers)?;
             (None, SubRange::empty())
         };
         let end = self.eat_semicolon(self.lexer.state.prev_token_end)?;
         Some(self.ast.stmt_export_named_declaration(
             Span::new(start, end),
             None,
-            result.specifiers,
+            specifiers,
             source,
             attributes,
             export_kind,
         ))
     }
 
-    fn parse_export_specifiers(&mut self) -> Option<ExportSpecifiersResult> {
+    fn parse_export_specifiers(&mut self) -> Option<SubRange<ExportSpecifier>> {
         if !self.expect(
             TokenTag::LeftBrace,
             "Expected '{' to start export specifiers",
@@ -5069,12 +5066,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         }
         let checkpoint = self.scratch_a.begin();
-        let mut local_tags = Vec::new();
+        self.export_specifier_tags.clear();
         let result = (|| {
             while self.current_token.tag() != TokenTag::RightBrace
                 && self.current_token.tag() != TokenTag::Eof
             {
-                local_tags.push(self.current_token.tag());
+                self.export_specifier_tags.push(self.current_token.tag());
                 let specifier = self.parse_export_specifier()?;
                 self.scratch_a.append(specifier);
                 if !self.eat(TokenTag::Comma)? {
@@ -5088,10 +5085,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
                 return None;
             }
-            Some(ExportSpecifiersResult {
-                specifiers: self.add_extra_from_scratch_a(checkpoint),
-                local_tags,
-            })
+            Some(self.add_extra_from_scratch_a(checkpoint))
         })();
         self.scratch_a.reset(checkpoint);
         result
@@ -5110,10 +5104,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
-    fn resolve_local_export_specifiers(&mut self, result: &ExportSpecifiersResult) -> Option<()> {
-        for (index, local_tag) in result.local_tags.iter().copied().enumerate() {
-            let specifier = result
-                .specifiers
+    fn resolve_local_export_specifiers(
+        &mut self,
+        specifiers: SubRange<ExportSpecifier>,
+    ) -> Option<()> {
+        for index in 0..self.export_specifier_tags.len() {
+            let local_tag = self.export_specifier_tags[index];
+            let specifier = specifiers
                 .get_node(&self.ast, index)
                 .expect("export specifier range contains its nodes");
             let local = specifier.local(&self.ast);
