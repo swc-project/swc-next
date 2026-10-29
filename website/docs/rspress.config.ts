@@ -14,6 +14,7 @@ export default defineConfig({
         image: "https://next.swc.rs/og.png",
         description: "A fast, extensible JavaScript and TypeScript toolchain, written in Rust.",
         twitter: {
+          site: "@swc_rs",
           card: "summary_large_image",
           image: "https://next.swc.rs/og.png",
         },
