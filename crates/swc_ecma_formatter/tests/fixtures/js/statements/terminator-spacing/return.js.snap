@@ -12,8 +12,8 @@ next();}
 ---------- Output ----------
 function f() {
   return;
-
   // tail
+
   next();
 }
 
@@ -22,8 +22,8 @@ function f() {
 ---------- Output ----------
 function f() {
   return
-
   // tail
+
   next()
 }
 
@@ -32,7 +32,7 @@ function f() {
 ---------- Output ----------
 function f() {
   return
-
   // tail
+
   next()
 }
