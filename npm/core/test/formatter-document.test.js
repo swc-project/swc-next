@@ -608,4 +608,13 @@ test("Rust host prints an SWCD buffer produced by Rust", () => {
   const options = Uint8Array.of(0, 80, 0, 2, 0, 1, 0, 0, 0, 2, 1, 1, 0, 0, 0);
   const document = formatDocBufferSync("const x=1;", 0, options);
   assert.equal(printDocBufferSync(document), "const x = 1;\n");
+
+  const source = "const x = [1, // comment\n 2];";
+  const grouped = formatDocBufferSync(source, 0, options);
+  const doc = decode(grouped, source);
+  const group = doc.find((part) => part?.type === "group");
+  assert.equal(group?.break, false);
+  const expected = "const x = [\n  1, // comment\n  2\n];\n";
+  assert.equal(print(doc), expected);
+  assert.equal(printDocBufferSync(grouped), expected);
 });
