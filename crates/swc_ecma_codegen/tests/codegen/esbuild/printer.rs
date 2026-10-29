@@ -1284,7 +1284,7 @@ fn test_using() {
 fn test_control_flow_minify_and_with() {
     expect_printed_minify(
         "if (x) y(); else z(); for (;;) x(); while(x)y(); do x(); while(y); switch(x){case 1:y();default:z()} try{x()}catch(e){y()}finally{z()} with(x)1e400",
-        "if(x)y();else z();for(;;)x();while(x)y();do x();while(y);switch(x){case 1:y();default:z()}try{x()}catch(e){y()}finally{z()}with(x)1/0;",
+        "if(x)y();else z();for(;;)x();while(x)y();do x();while(y)switch(x){case 1:y();default:z()}try{x()}catch(e){y()}finally{z()}with(x)1/0;",
     );
     expect_printed("with (x) 1e400", "with (x) 1e400;\n");
     expect_printed_minify(

@@ -111,7 +111,7 @@ fn test_expression_token_boundaries() {
 
     expect_token_boundary("new this", "new this;");
 
-    expect_token_boundary("new new C", "new new C();");
+    expect_token_boundary("new new C", "new new C;");
 
     expect_token_boundary("throw true", "throw true;");
 
@@ -295,7 +295,7 @@ fn test_empty_statement_delimiters() {
 
     expect_empty_statement(
         "function f(){do ; while(false);}",
-        "function f(){do ;while(false);}",
+        "function f(){do ;while(false)}",
     );
 
     expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else ;}");
@@ -839,6 +839,37 @@ fn test_assignment_name_inference() {
 }
 
 #[test]
+fn test_minify_bigint() {
+    expect_printed_minify("0x33333333n;", "858993459n;");
+
+    expect_printed_minify("0b1010n;", "10n;");
+
+    expect_printed_minify("0x0001n;", "1n;");
+
+    expect_printed_minify("123456789012345678901n;", "0x6b14e9f812f366c35n;");
+}
+
+#[test]
+fn test_minify_do_while() {
+    expect_printed_minify("do {} while (false);", "do{}while(false)");
+
+    expect_printed_minify(
+        "if (a) do {} while (b); else x();",
+        "if(a)do{}while(b)else x();",
+    );
+
+    expect_printed_minify(
+        "do {} while (false); /x/.test('x');",
+        "do{}while(false)/x/.test(\"x\");",
+    );
+
+    expect_printed_minify(
+        "do do; while (false); while (false);",
+        "do do ;while(false)while(false)",
+    );
+}
+
+#[test]
 fn test_parenthesized_comments() {
     expect_stable(
         "function f() { (/* first */ /* second */ value); }",
@@ -1105,26 +1136,26 @@ fn expect_statement_body(source: &str, expected: &str) {
 
 #[test]
 fn test_do_while_statement_bodies() {
-    expect_statement_body("do debugger; while(false);", "do debugger;while(false);");
+    expect_statement_body("do debugger; while(false);", "do debugger;while(false)");
 
-    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b);");
+    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b)");
 
     expect_statement_body(
         "function f(){ do return 1; while(false); }",
-        "function f(){do return 1;while(false);}",
+        "function f(){do return 1;while(false)}",
     );
 
-    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b);");
+    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b)");
 
-    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b);");
+    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b)");
 
-    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b);");
+    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b)");
 
-    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b);");
+    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b)");
 
-    expect_statement_body("do break; while(false);", "do break;while(false);");
+    expect_statement_body("do break; while(false);", "do break;while(false)");
 
-    expect_statement_body("do continue; while(false);", "do continue;while(false);");
+    expect_statement_body("do continue; while(false);", "do continue;while(false)");
 }
 
 #[test]
@@ -1138,7 +1169,7 @@ fn test_else_statement_bodies() {
 
     expect_statement_body(
         "if(a) x(); else do y(); while(b);",
-        "if(a)x();else do y();while(b);",
+        "if(a)x();else do y();while(b)",
     );
 
     expect_statement_body(
@@ -1166,11 +1197,11 @@ fn test_else_statement_bodies() {
 
 #[test]
 fn test_statement_body_formatting() {
-    expect_statement_body("do x(); while(false);", "do x();while(false);");
+    expect_statement_body("do x(); while(false);", "do x();while(false)");
 
     expect_statement_body("if(a) x(); else y();", "if(a)x();else y();");
 
-    expect_statement_body("do { x(); } while(false);", "do{x()}while(false);");
+    expect_statement_body("do { x(); } while(false);", "do{x()}while(false)");
 
     expect_statement_body("if(a) { x(); } else { y(); }", "if(a){x()}else{y()}");
 

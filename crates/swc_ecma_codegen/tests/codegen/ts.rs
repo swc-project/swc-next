@@ -451,6 +451,8 @@ fn test_type_argument_token_boundaries() {
 
 #[test]
 fn test_new_expression() {
+    expect_printed_ts_minify("const x = new SS<number>();", "const x=new SS<number>;");
+
     expect_printed_ts(
         "new parent.components!.KeepAlive();",
         "new parent.components!.KeepAlive();\n",
@@ -468,13 +470,35 @@ fn test_new_expression() {
 
     expect_token_boundary("new C<T>() >>> x;", "new C<T>()>>>x;");
 
-    expect_token_boundary("new C<T>();", "new C<T>();");
+    expect_token_boundary("new C<T>();", "new C<T>;");
 
     expect_token_boundary("new C<T>(x) + x;", "new C<T>(x)+x;");
 
     expect_token_boundary("new C();", "new C;");
 
     expect_token_boundary("new C() + x;", "new C+x;");
+}
+
+#[test]
+fn test_minify_nested_new() {
+    expect_printed_ts_minify("new new Foo();", "new new Foo;");
+
+    expect_printed_ts_minify("new (new Foo())(1);", "new new Foo()(1);");
+
+    expect_printed_ts_minify("new (new Foo(1))();", "new new Foo(1);");
+}
+
+#[test]
+fn test_minify_let_member() {
+    expect_printed_ts_minify("use((let)[0]);", "use(let[0]);");
+
+    expect_printed_ts_minify("(let)[0]=1;", "(let)[0]=1;");
+
+    expect_printed_ts_minify("for((let)[0] in obj);", "for((let)[0] in obj);");
+
+    expect_printed_ts_minify("for((let)[0] of arr);", "for((let)[0] of arr);");
+
+    expect_printed_ts_minify("for((let)[0];false;);", "for((let)[0];false;);");
 }
 
 #[test]
@@ -508,6 +532,15 @@ fn test_import_equals() {
 
 #[test]
 fn test_export_declarations() {
+    expect_printed_ts_minify("export type * from 'm';", "export type*from\"m\";");
+
+    expect_printed_ts_minify(
+        "export type * as N from 'm';",
+        "export type*as N from\"m\";",
+    );
+
+    expect_printed_ts("export type * from 'm';", "export type * from \"m\";\n");
+
     expect_printed_ts("export type T = string;", "export type T = string;\n");
     expect_printed_ts(
         "export interface I { value: string }",
@@ -606,13 +639,17 @@ fn test_enum_declarations_do_not_emit_semicolons() {
 
 #[test]
 fn test_enum_member_names() {
+    expect_printed_ts_minify("enum E { A }", "enum E{A}");
+
+    expect_printed_ts_minify("enum E { A, B }", "enum E{A,B}");
+
     expect_printed_ts("enum E { [`x`] }", "enum E {\n  [`x`],\n}\n");
 
-    expect_printed_ts_minify("enum E { [`\\u0078\\n`] = 1 }", "enum E{[`x\n`]=1,}");
+    expect_printed_ts_minify("enum E { [`\\u0078\\n`] = 1 }", "enum E{[`x\n`]=1}");
 
-    expect_printed_ts_minify(r#"enum E { "'\"" = 1 }"#, r#"enum E{"'\""=1,}"#);
+    expect_printed_ts_minify(r#"enum E { "'\"" = 1 }"#, r#"enum E{"'\""=1}"#);
 
-    expect_printed_ts_minify(r#"enum E { ["'\""] = 1 }"#, r#"enum E{[`'"`]=1,}"#);
+    expect_printed_ts_minify(r#"enum E { ["'\""] = 1 }"#, r#"enum E{[`'"`]=1}"#);
 }
 
 #[test]
@@ -624,7 +661,7 @@ fn test_computed_enum_name_comments() {
 
     expect_printed_ts_minify(
         "enum E { [/* @__PURE__ */ `x`] = make() }",
-        "enum E{[ /* @__PURE__ */ `x`]=make(),}",
+        "enum E{[ /* @__PURE__ */ `x`]=make()}",
     );
 }
 

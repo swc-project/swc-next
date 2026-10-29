@@ -131,6 +131,7 @@ struct Printer<'a> {
     export_default_start: usize,
     arrow_expr_start: usize,
     for_of_init_start: usize,
+    for_init_start: usize,
 
     // State used to keep neighboring tokens lexically separate.
     prev_op_end: usize,
@@ -345,6 +346,7 @@ impl<'a> Printer<'a> {
             export_default_start: usize::MAX,
             arrow_expr_start: usize::MAX,
             for_of_init_start: usize::MAX,
+            for_init_start: usize::MAX,
             prev_op_end: usize::MAX,
             prev_op: None,
             need_space_before_dot: usize::MAX,
@@ -929,7 +931,10 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 self.print_expr(s.test(self.ast), Precedence::Lowest);
-                self.print(");");
+                self.print(")");
+                if !self.options.minify {
+                    self.print(";");
+                }
                 self.needs_semicolon = false;
                 self.print_newline();
             }
@@ -983,6 +988,7 @@ impl<'a> Printer<'a> {
                     self.indent += 1;
                     self.print_comments_before(comment_end, true, true);
                     self.print_indent();
+                    self.for_init_start = self.js.len();
                     self.print_for_left(left);
                     self.print(" in ");
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
@@ -990,6 +996,7 @@ impl<'a> Printer<'a> {
                     self.indent -= 1;
                     self.print_indent();
                 } else {
+                    self.for_init_start = self.js.len();
                     self.print_for_left(left);
                     self.print(" in ");
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
@@ -1020,6 +1027,7 @@ impl<'a> Printer<'a> {
                     self.print_comments_before(comment_end, true, true);
                     self.print_indent();
                     self.for_of_init_start = self.js.len();
+                    self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
                     self.print(" of ");
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
@@ -1028,6 +1036,7 @@ impl<'a> Printer<'a> {
                     self.print_indent();
                 } else {
                     self.for_of_init_start = self.js.len();
+                    self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
                     self.print(" of ");
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
@@ -1041,6 +1050,7 @@ impl<'a> Printer<'a> {
                 self.print("for");
                 self.print_space();
                 self.print("(");
+                self.for_init_start = self.js.len();
                 if let Some(init) = s.init(self.ast) {
                     let old_forbid_in = self.forbid_in;
                     self.forbid_in = true;
@@ -1149,10 +1159,10 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export");
-                self.print_space();
                 if s.export_kind(self.ast) == ImportOrExportKind::Type {
-                    self.print("type ");
+                    self.print(" type");
                 }
+                self.print_space();
                 self.print("*");
                 if let Some(exported) = s.exported(self.ast) {
                     self.print_space();
@@ -2195,7 +2205,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::NewExpression(e) => self.print_new(e, level),
+            ExprData::NewExpression(e) => self.print_new(e, level, context),
             ExprData::TaggedTemplateExpression(e) => {
                 let tag = e.tag(self.ast);
                 let type_arguments = e.type_arguments(self.ast);
@@ -2547,6 +2557,9 @@ impl<'a> Printer<'a> {
         // begin a lexical declaration. A static member such as `let.foo`
         // doesn't have this ambiguity.
         let wrap_object = computed
+            && (!self.options.minify
+                || self.js.len() == self.stmt_start
+                || self.js.len() == self.for_init_start)
             && matches!(
                 object_data,
                 ExprData::IdentifierReference(identifier)
@@ -2630,7 +2643,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_new(&mut self, e: NewExpression, level: Precedence) {
+    fn print_new(&mut self, e: NewExpression, level: Precedence, context: ExprContext) {
         let wrap = level > Precedence::New;
         if wrap {
             self.print("(");
@@ -2641,21 +2654,20 @@ impl<'a> Printer<'a> {
         self.print_space();
         let callee = e.callee(self.ast);
         let type_arguments = e.type_arguments(self.ast);
-        self.print_expr_with_context(
-            callee,
-            Precedence::New,
-            ExprContext::NO_INSTANTIATION | ExprContext::IN_NEW_CALLEE,
-        );
+        let arguments = e.arguments(self.ast);
+        let print_arguments = !self.options.minify
+            || !arguments.is_empty()
+            || type_arguments.is_some() && level > Precedence::Assignment
+            || level >= Precedence::Postfix && !context.contains(ExprContext::OMIT_NESTED_NEW_ARGS);
+        let mut callee_context = ExprContext::NO_INSTANTIATION | ExprContext::IN_NEW_CALLEE;
+        callee_context.set(ExprContext::OMIT_NESTED_NEW_ARGS, !print_arguments);
+        self.print_expr_with_context(callee, Precedence::New, callee_context);
         if let Some(args) = type_arguments {
             self.print_ts_type_args(args);
         }
-        let arguments = e.arguments(self.ast);
-        // Generic constructors need `()` to disambiguate following operators.
-        if !self.options.minify
-            || !arguments.is_empty()
-            || type_arguments.is_some()
-            || level >= Precedence::Postfix
-        {
+        // Generic constructors need `()` before an enclosing operator, but
+        // delimiters such as `;`, `,` and `)` safely end the type arguments.
+        if print_arguments {
             self.print_arguments(arguments, e.span(self.ast).end.saturating_sub(1));
         }
         if wrap {
@@ -3349,6 +3361,24 @@ impl<'a> Printer<'a> {
 
     fn print_bigint_literal(&mut self, literal: BigIntLiteral) {
         let raw = self.ast.get_utf8(literal.raw(self.ast));
+        if self.options.minify
+            && let Some(value) = literal.value(self.ast)
+        {
+            let decimal = value.to_str_radix(10);
+            let hex = value.to_str_radix(16);
+            let raw_len = raw.bytes().filter(|&byte| byte != b'_').count();
+            if !hex.starts_with('-') && hex.len() + 2 < raw_len && hex.len() + 2 < decimal.len() {
+                self.print("0x");
+                self.print(&hex);
+                self.print("n");
+                return;
+            }
+            if decimal.len() < raw_len {
+                self.print(&decimal);
+                self.print("n");
+                return;
+            }
+        }
         for byte in raw.bytes() {
             if byte != b'_' {
                 self.js.push(byte);
@@ -4857,7 +4887,7 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
-        for id in m.iter() {
+        for (index, id) in m.iter().enumerate() {
             let x = self.ast.get_node_in_sub_range(id);
             self.print_indent();
             self.add_source_mapping(x.span(self.ast).start);
@@ -4868,7 +4898,9 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print_expr(v, Precedence::Assignment);
             }
-            self.print(",");
+            if !self.options.minify || index + 1 < m.len() {
+                self.print(",");
+            }
             self.print_newline();
         }
         self.indent -= 1;
