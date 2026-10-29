@@ -292,6 +292,9 @@ impl ScratchBuffer {
     }
 
     fn append(&mut self, index: impl AstNode) {
+        if self.items.len() == self.items.capacity() {
+            self.items.reserve(16);
+        }
         self.items.push(index.node_id());
     }
 
