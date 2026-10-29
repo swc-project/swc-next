@@ -298,9 +298,7 @@ impl BinaryExprVisitor {
         if self.operator.is_keyword() {
             p.print_space_before_identifier();
             p.print(self.operator.as_str());
-            // This separator is syntactically required even when whitespace
-            // minification is enabled (`in this`, not `inthis`).
-            p.print(" ");
+            p.print_space();
         } else {
             match self.operator {
                 BinaryishOperator::Binary(operator) => {
@@ -999,7 +997,9 @@ impl<'a> Printer<'a> {
                     self.print_indent();
                     self.for_init_start = self.js.len();
                     self.print_for_left(left);
-                    self.print(" in ");
+                    self.print(" ");
+                    self.print("in");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
                     self.print_newline();
                     self.indent -= 1;
@@ -1007,7 +1007,13 @@ impl<'a> Printer<'a> {
                 } else {
                     self.for_init_start = self.js.len();
                     self.print_for_left(left);
-                    self.print(" in ");
+                    if self.options.minify {
+                        self.print_space_before_identifier();
+                    } else {
+                        self.print(" ");
+                    }
+                    self.print("in");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
                 }
                 self.print(")");
@@ -1041,7 +1047,9 @@ impl<'a> Printer<'a> {
                     self.for_of_init_start = self.js.len();
                     self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
-                    self.print(" of ");
+                    self.print(" ");
+                    self.print("of");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                     self.print_newline();
                     self.indent -= 1;
@@ -1050,7 +1058,13 @@ impl<'a> Printer<'a> {
                     self.for_of_init_start = self.js.len();
                     self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
-                    self.print(" of ");
+                    if self.options.minify {
+                        self.print_space_before_identifier();
+                    } else {
+                        self.print(" ");
+                    }
+                    self.print("of");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                 }
                 self.print(")");
@@ -1102,19 +1116,7 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("return");
                 if let Some(value) = s.argument(self.ast) {
-                    let can_omit_space = self.options.minify
-                        && matches!(
-                            self.ast.expr_data(value),
-                            ExprData::BinaryExpression(binary)
-                                if binary.operator(self.ast) == BinaryOperator::In
-                                    && matches!(
-                                        self.ast.expr_data(binary.left(self.ast)),
-                                        ExprData::PrivateIdentifier(_)
-                                    )
-                        );
-                    if !can_omit_space {
-                        self.print(" ");
-                    }
+                    self.print_space();
                     self.print_expr_without_leading_line_terminator(value, Precedence::Lowest);
                 }
                 self.print_semicolon_after_statement();
@@ -2289,6 +2291,7 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("yield");
                 self.print_comments_at(e.span(self.ast).start + 5, false);
@@ -2303,7 +2306,7 @@ impl<'a> Printer<'a> {
                     self.print("*");
                 }
                 if let Some(value) = e.argument(self.ast) {
-                    self.print(" ");
+                    self.print_space();
                     let wrap_argument = self.expr_has_leading_line_terminator(value);
                     if wrap_argument {
                         self.print("(");
@@ -2520,7 +2523,7 @@ impl<'a> Printer<'a> {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
-            self.print(" ");
+            self.print_space();
         } else {
             let operator_code = OperatorCode::Unary(operator);
             self.print_mapped_operator(operator_code, op, e.span(self.ast).start);
@@ -3012,6 +3015,7 @@ impl<'a> Printer<'a> {
             self.forbid_in = false;
         }
         if e.r#async(self.ast) {
+            self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print("async");
             self.print_space();

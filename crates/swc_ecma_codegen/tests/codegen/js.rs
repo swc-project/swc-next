@@ -89,6 +89,43 @@ fn test_print_result_ownership() {
 }
 
 #[test]
+fn test_minify_iteration_spacing() {
+    expect_printed_minify("for (a in {});", "for(a in{});");
+
+    expect_printed_minify("for (a of []);", "for(a of[]);");
+
+    expect_printed_minify("`${\"x\" in {x:1}}`;", "`${\"x\"in{x:1}}`;");
+}
+
+#[test]
+fn test_minify_keyword_spacing() {
+    expect_printed_minify("function f(){return [1]}", "function f(){return[1]}");
+
+    expect_printed_minify("function* f(){yield [1]}", "function*f(){yield[1]}");
+
+    expect_printed_minify(
+        "function*g(){return yield*x}",
+        "function*g(){return yield*x}",
+    );
+
+    expect_printed_minify("typeof [];", "typeof[];");
+
+    expect_printed_minify("void [];", "void[];");
+
+    expect_printed_minify("delete (x+y).p;", "delete(x+y).p;");
+
+    expect_printed_minify("()=>{return async()=>0}", "()=>{return async()=>0};");
+
+    expect_printed_minify("function f(){return value}", "function f(){return value}");
+}
+
+#[test]
+#[ignore = "minified numeric member expressions do not choose the shortest literal"]
+fn test_minify_numeric_member() {
+    expect_printed_minify("4294967295 .x;", "0xffffffff.x;");
+}
+
+#[test]
 fn test_expression_token_boundaries() {
     expect_token_boundary("await true", "await true;");
 
@@ -1086,13 +1123,13 @@ fn test_yield_comments() {
 
     expect_stable_with_parens(
         "function* f() { yield* /*a\nb*/ xs; }",
-        "function*f(){yield* (/*a\nb*/xs)}",
+        "function*f(){yield*(/*a\nb*/xs)}",
         &minified,
     );
 
     expect_stable_with_parens(
         "function* f() { yield* // a\nxs; }",
-        "function*f(){yield* (// a\nxs)}",
+        "function*f(){yield*(// a\nxs)}",
         &minified,
     );
 }
