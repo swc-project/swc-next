@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(v: unknown): v is A & (B
+// c
+) { return true; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f(v: unknown): v is (
+  A & B
+  // c
+) {
+  return true;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  v: unknown,
+): v is (
+  A & B
+  // c
+) {
+  return true;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f(v: unknown): v is (
+  A & B
+  // c
+) {
+  return true
+}

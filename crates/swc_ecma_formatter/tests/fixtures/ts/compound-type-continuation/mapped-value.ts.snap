@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [K in Keys]: A & (B
+// c
+) };
+---------- Options ----------
+{}
+---------- Output ----------
+type T = {
+  [K in Keys]: (
+    A & B
+    // c
+  );
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = {
+  [K in Keys]: (
+    A & B
+    // c
+  );
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = {
+  [K in Keys]: (
+    A & B
+    // c
+  )
+}

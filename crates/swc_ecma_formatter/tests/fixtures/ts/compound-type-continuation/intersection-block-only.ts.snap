@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (B
+/* a */
+) & C;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = B &
+  /* a */
+  C;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = B &
+  /* a */
+  C;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = B &
+  /* a */
+  C

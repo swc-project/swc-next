@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type X<T> = T extends infer U extends A & (B
+// c
+) ? U : never;
+---------- Options ----------
+{}
+---------- Output ----------
+type X<T> = T extends infer U extends (
+  A & B
+  // c
+)
+  ? U
+  : never;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type X<T> =
+  T extends infer U extends
+    (
+      A & B
+      // c
+    )
+    ? U
+    : never;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type X<T> = T extends infer U extends (
+  A & B
+  // c
+)
+  ? U
+  : never

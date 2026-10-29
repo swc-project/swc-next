@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+z as
+// @ts-ignore
+A & (B
+// c
+) as C;
+---------- Options ----------
+{}
+---------- Output ----------
+z as
+// @ts-ignore
+A & (B
+// c
+) as C;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+z as
+// @ts-ignore
+A & (B
+// c
+) as C;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+z as
+// @ts-ignore
+A & (B
+// c
+) as C

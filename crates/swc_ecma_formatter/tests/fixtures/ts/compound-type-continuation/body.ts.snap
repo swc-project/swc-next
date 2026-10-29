@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(): A & (B
+// c
+) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(): (
+  A & B
+  // c
+) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(): (
+  A & B
+  // c
+) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f(): (
+  A & B
+  // c
+) {}
