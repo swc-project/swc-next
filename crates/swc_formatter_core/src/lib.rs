@@ -18,9 +18,9 @@ pub use options::{IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding, Prin
 
 /// Measures displayed columns using Unicode string width in a non-CJK context.
 ///
-/// Physical lines are handled by document line instructions. Cached text widths
-/// and layout probes measure each text instruction; this function measures the
-/// complete supplied string, including any Unicode sequences it contains.
+/// Text instructions and layout probes use the complete supplied string,
+/// including control characters and Unicode sequences. Explicit document line
+/// instructions determine layout breaks independently of text width.
 pub fn measure_text_width(source: &str) -> usize {
     unicode_width::UnicodeWidthStr::width(source)
 }
