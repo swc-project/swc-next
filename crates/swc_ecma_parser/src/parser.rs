@@ -9323,17 +9323,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions::default(),
             );
         }
-        let arguments = (0..cover.elements.len())
-            .map(|index| {
-                cover
-                    .elements
-                    .get_node(&self.ast, index)
-                    .expect("parenthesized cover contains its arguments")
-            })
-            .collect::<Vec<_>>();
         let checkpoint = self.scratch_cover.begin();
         let expression_result = (|| {
-            for argument in arguments {
+            for id in cover.elements.iter() {
+                let argument = self.ast.get_node_in_sub_range(id);
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
                         self.validate_no_cover_initialized_syntax(expression)?;
