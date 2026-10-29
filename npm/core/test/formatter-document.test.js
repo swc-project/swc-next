@@ -413,6 +413,133 @@ test("absolute indentation maps to root-relative standard alignment", () => {
   assert.equal(printWire(bytes), "\n  a\n   b");
 });
 
+test("indent scopes preserve prefix, dedent, root, and suffix through both hosts", () => {
+  const bytes = wire((t) => [
+    [
+      4,
+      25,
+      23,
+      ...t("> ").slice(1),
+      25,
+      ...hard,
+      ...t("a"),
+      24,
+      ...hard,
+      ...t("b"),
+      ...end(24),
+      26,
+      ...hard,
+      ...t("c"),
+      ...end(26),
+      14,
+      ...t(" S"),
+      ...end(14),
+      ...hard,
+      ...t("d"),
+      ...end(25),
+      ...end(23),
+      ...end(25),
+      ...end(4),
+    ],
+  ]);
+  for (const tabWidth of [0, 2, 4]) {
+    for (const useTabs of [false, true]) {
+      const options = { printWidth: 80, tabWidth, useTabs, endOfLine: "lf" };
+      assert.equal(
+        printDocBufferSync(bytes, options),
+        printer.printDocToString(decode(bytes, "", options), options).formatted,
+      );
+    }
+  }
+});
+
+test("absolute indentation resets to the current root once", () => {
+  const bytes = wire((t) => [
+    [
+      4,
+      25,
+      23,
+      ...t("> ").slice(1),
+      25,
+      19,
+      ...word(2),
+      ...hard,
+      ...t("x"),
+      ...end(4),
+      ...end(25),
+      ...end(23),
+      ...end(25),
+      ...end(4),
+    ],
+  ]);
+  for (const tabWidth of [0, 2, 4]) {
+    const options = {
+      printWidth: 80,
+      tabWidth,
+      useTabs: false,
+      endOfLine: "lf",
+    };
+    assert.equal(
+      printDocBufferSync(bytes, options),
+      printer.printDocToString(decode(bytes, "", options), options).formatted,
+    );
+  }
+  assert.equal(
+    printer.printDocToString(decode(bytes, ""), {
+      printWidth: 80,
+      tabWidth: 2,
+      useTabs: false,
+    }).formatted,
+    "\n  >   x",
+  );
+
+  const zero = wire((t) => [
+    [
+      4,
+      25,
+      23,
+      ...t("> ").slice(1),
+      25,
+      19,
+      ...word(0),
+      ...literal,
+      ...t("x"),
+      ...end(4),
+      ...end(25),
+      ...end(23),
+      ...end(25),
+      ...end(4),
+    ],
+  ]);
+  assert.equal(printWire(zero), "\n  x");
+  assert.equal(printDocBufferSync(zero), "\n  x");
+});
+
+test("prefix alignment retains its exact string", () => {
+  const bytes = wire((t) => [
+    [23, ...t("界\r\n\t").slice(1), ...t("x"), ...end(23)],
+  ]);
+  const doc = decode(bytes, "");
+  assert.equal(doc.n, "界\r\n\t");
+  assert.equal(doc.contents, "x");
+});
+
+test("indent scopes reject invalid strings and unmatched ends", () => {
+  const utf8 = wire((t) => [[23, ...t("é").slice(1), ...end(23)]]);
+  utf8[utf8.length - 1] = 0xff;
+  const invalid = [
+    utf8,
+    wire(() => [[23, ...word(0), ...word(1), ...end(23)]]),
+    wire((t) => [[23, ...t("x").slice(1), ...end(24)]]),
+    wire(() => [[24]]),
+    wire(() => [[...end(25)]]),
+  ];
+  for (const bytes of invalid) {
+    assert.throws(() => decode(bytes, ""));
+    assert.throws(() => printDocBufferSync(bytes));
+  }
+});
+
 test("decoder validates all fragment bytes and string slices", () => {
   assert.throws(() => decode(Buffer.alloc(0), ""));
   const valid = wire((t) => [t("value")]);
