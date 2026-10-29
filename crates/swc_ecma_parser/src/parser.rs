@@ -280,13 +280,18 @@ impl Default for ReportOptions {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct ScratchBuffer {
+struct ScratchBuffer<'a> {
     // Allocate on the first append and reuse the capacity after reset.
-    items: Vec<NodeId>,
+    items: ArenaVec<'a, NodeId>,
 }
 
-impl ScratchBuffer {
+impl<'a> ScratchBuffer<'a> {
+    fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            items: ArenaVec::new_in(allocator),
+        }
+    }
+
     fn begin(&self) -> usize {
         self.items.len()
     }
@@ -825,13 +830,13 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// source type is not CommonJS.
     commonjs_conditional_diagnostic_indices: Vec<usize>,
     current_token: Token,
-    scratch_statements: ScratchBuffer,
-    scratch_cover: ScratchBuffer,
-    scratch_decorators: ScratchBuffer,
+    scratch_statements: ScratchBuffer<'a>,
+    scratch_cover: ScratchBuffer<'a>,
+    scratch_decorators: ScratchBuffer<'a>,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
-    scratch_a: ScratchBuffer,
-    scratch_b: ScratchBuffer,
+    scratch_a: ScratchBuffer<'a>,
+    scratch_b: ScratchBuffer<'a>,
     scratch_string: Wtf8Buf,
     export_specifier_tags: Vec<TokenTag>,
     context: Context,
@@ -1122,11 +1127,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             diagnostics: Vec::new(),
             commonjs_conditional_diagnostic_indices: Vec::new(),
             current_token: initial_token,
-            scratch_statements: ScratchBuffer::default(),
-            scratch_cover: ScratchBuffer::default(),
-            scratch_decorators: ScratchBuffer::default(),
-            scratch_a: ScratchBuffer::default(),
-            scratch_b: ScratchBuffer::default(),
+            scratch_statements: ScratchBuffer::new(allocator),
+            scratch_cover: ScratchBuffer::new(allocator),
+            scratch_decorators: ScratchBuffer::new(allocator),
+            scratch_a: ScratchBuffer::new(allocator),
+            scratch_b: ScratchBuffer::new(allocator),
             scratch_string: Wtf8Buf::new(),
             export_specifier_tags: Vec::new(),
             context: Context::default(),
