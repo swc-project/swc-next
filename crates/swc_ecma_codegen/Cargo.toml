@@ -6,7 +6,7 @@ keywords.workspace    = true
 license.workspace     = true
 name                  = "swc_next_ecma_codegen"
 repository.workspace  = true
-version               = "0.4.0"
+version               = "0.4.1"
 
 [dependencies]
 arrayvec           = { workspace = true }

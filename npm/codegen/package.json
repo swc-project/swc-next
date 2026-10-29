@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/codegen",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "The focused JavaScript and TypeScript code generator for SWC Next",
   "repository": {
     "type": "git",

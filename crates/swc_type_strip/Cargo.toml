@@ -4,7 +4,7 @@ edition              = "2024"
 license.workspace    = true
 name                 = "swc_next_type_strip"
 repository.workspace = true
-version              = "0.4.0"
+version              = "0.4.1"
 
 [features]
 benchmarking = []

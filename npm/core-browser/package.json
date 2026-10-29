@@ -1,6 +1,6 @@
 {
   "name": "@swc-next/core-browser",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "The browser WebAssembly API for SWC Next",
   "repository": {
     "type": "git",
