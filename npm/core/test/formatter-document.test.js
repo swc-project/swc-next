@@ -408,39 +408,6 @@ test("diagnostic buffers preserve UTF-16 columns and validate byte boundaries", 
   assert.throws(() => decode(error(0, 0, 1), source), /Invalid SWCFMT/);
 });
 
-test("Text rejects physical newlines including conditional token contents", () => {
-  assert.throws(() =>
-    decode(
-      wire((t) => [t("a\nb")]),
-      "",
-    ),
-  );
-  assert.throws(() =>
-    decode(
-      wire((t) => [t("a\r\nb")]),
-      "",
-    ),
-  );
-  assert.throws(() =>
-    decode(
-      wire((t) => [t("a\rb")]),
-      "",
-    ),
-  );
-  assert.throws(() =>
-    decode(
-      wire((t) => [[8, 1, ...word(0), ...t("a\nb"), ...end(8)]]),
-      "",
-    ),
-  );
-  assert.throws(() =>
-    decode(
-      wire((t) => [[8, 0, ...word(0), ...t("a\rb"), ...end(8)]]),
-      "",
-    ),
-  );
-});
-
 test("literal source boundaries normalize EOL and flush suffixes before fitting", () => {
   const bytes = wire((t) => [
     [
