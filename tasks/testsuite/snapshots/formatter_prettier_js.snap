@@ -1,19 +1,19 @@
 formatter * prettier 3.9.9 * js
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 810
+Fixture files: 809
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1096/1096 (100.00%)
-Snapshot matched: 1096/1096
-AST parity: 1096/1096
-AST mismatched: 0/1096
-AST format errors: 0/1096
-Mismatched: 0/1096
-Format errors: 0/1096
-Panicked: 0/1096
-Not idempotent: 0/1096
-Ignored files: 265
-Parse errors: 0/1096
+Passed: 1095/1095 (100.00%)
+Snapshot matched: 1095/1095
+AST parity: 1095/1095
+AST mismatched: 0/1095
+AST format errors: 0/1095
+Mismatched: 0/1095
+Format errors: 0/1095
+Panicked: 0/1095
+Not idempotent: 0/1095
+Ignored files: 266
+Parse errors: 0/1095
 Expected parser errors: 36
 Unsupported option sets: 14
 

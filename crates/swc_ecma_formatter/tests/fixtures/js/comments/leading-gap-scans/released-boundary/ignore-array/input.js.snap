@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+before
+/* tail */
+;
+
+// prettier-ignore
+/* inline */[  1,  2 ];
+---------- Options ----------
+{}
+---------- Output ----------
+before;
+/* tail */
+
+// prettier-ignore
+/* inline */ [  1,  2 ];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+before;
+/* tail */
+
+// prettier-ignore
+/* inline */ [  1,  2 ];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+before
+/* tail */
+
+// prettier-ignore
+/* inline */;[  1,  2 ]

@@ -211,6 +211,8 @@ const IGNORE: &[IgnorePattern] = &[
     // Preserve the ignored union's source pair and internal marker. Prettier
     // rebuilds the delimiter frame and moves the internal marker outside.
     IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-nested-unions.ts"),
+    // Keep the source blank line after comments released from removed statement terminators.
+    IgnorePattern::Exact("js/for/continue-and-break-comment-without-blocks.js"),
     // Preserve the complete hashbang payload; Prettier trims trailing spaces.
     IgnorePattern::Exact("js/comments/trailing_space.js"),
     // Preserve rendered JSX space counts; Prettier collapses these ASCII spaces.
