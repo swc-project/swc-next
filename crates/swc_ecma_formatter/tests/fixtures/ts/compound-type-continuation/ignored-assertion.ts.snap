@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+z as /* prettier-ignore */ A & (B
+// c
+) as C;
+---------- Options ----------
+{}
+---------- Output ----------
+z as /* prettier-ignore */ A & (B
+// c
+) as C;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+z as /* prettier-ignore */ A & (B
+// c
+) as C;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+z as /* prettier-ignore */ A & (B
+// c
+) as C

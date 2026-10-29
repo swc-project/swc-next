@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (X extends Y ? Z : A | (B
+// c
+))[K];
+---------- Options ----------
+{}
+---------- Output ----------
+type T = (
+  X extends Y ? Z : A | B
+  // c
+)[K];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = (
+  X extends Y
+    ? Z
+    : A | B
+  // c
+)[K];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = (
+  X extends Y ? Z : A | B
+  // c
+)[K]

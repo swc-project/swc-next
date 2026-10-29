@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+z as /* head */ A | (B
+// c
+) as C;
+---------- Options ----------
+{}
+---------- Output ----------
+z as (
+  | /* head */ A
+  | B
+  // c
+) as C;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+z as (
+  | /* head */ A
+  | B
+  // c
+) as C;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+z as (
+  | /* head */ A
+  | B
+  // c
+) as C

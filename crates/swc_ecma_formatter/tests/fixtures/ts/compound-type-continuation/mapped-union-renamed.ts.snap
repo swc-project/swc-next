@@ -1,0 +1,45 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = { [K in A | (B
+// c
+) as "renamed"]: V };
+---------- Options ----------
+{}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      | A
+      | B
+      // c
+    ) as "renamed"
+  ]: V;
+};
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      | A
+      | B
+      // c
+    ) as "renamed"
+  ]: V;
+};
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = {
+  [
+    K in (
+      | A
+      | B
+      // c
+    ) as "renamed"
+  ]: V
+}

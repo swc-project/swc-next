@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(v: unknown): asserts v is A | (B
+// c
+) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f(v: unknown): asserts v is (
+  | A
+  | B
+  // c
+) {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function f(
+  v: unknown,
+): asserts v is (
+  | A
+  | B
+  // c
+) {}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f(v: unknown): asserts v is (
+  | A
+  | B
+  // c
+) {}
