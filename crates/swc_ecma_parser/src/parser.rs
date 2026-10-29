@@ -485,13 +485,18 @@ impl ParserDiagnostics {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct ScratchBuffer {
+struct ScratchBuffer<'a> {
     // Allocate on the first append and reuse the capacity after reset.
-    items: Vec<NodeId>,
+    items: ArenaVec<'a, NodeId>,
 }
 
-impl ScratchBuffer {
+impl<'a> ScratchBuffer<'a> {
+    fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            items: ArenaVec::new_in(allocator),
+        }
+    }
+
     fn begin(&self) -> usize {
         self.items.len()
     }
@@ -675,7 +680,7 @@ struct CoverState {
     /// The same targets must be rejected if later resolved as bindings.
     parenthesized_targets: FxHashSet<NodeId>,
     changes: Vec<CoverChange>,
-    scratch: ScratchBuffer,
+    scratch: ScratchBuffer<'a>,
 }
 
 #[derive(Clone, Copy)]
@@ -1176,12 +1181,12 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     lexer: Lexer<'a, C>,
     diagnostics: ParserDiagnostics,
     current_token: Token,
-    scratch_statements: ScratchBuffer,
-    scratch_decorators: ScratchBuffer,
+    scratch_statements: ScratchBuffer<'a>,
+    scratch_decorators: ScratchBuffer<'a>,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
-    scratch_a: ScratchBuffer,
-    scratch_b: ScratchBuffer,
+    scratch_a: ScratchBuffer<'a>,
+    scratch_b: ScratchBuffer<'a>,
     scratch_string: Wtf8Buf,
     export_specifier_tags: Vec<TokenTag>,
     context: Context,
@@ -1478,10 +1483,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: BoundaryContext::empty(),
             diagnostics: ParserDiagnostics::default(),
             current_token: initial_token,
-            scratch_statements: ScratchBuffer::default(),
-            scratch_decorators: ScratchBuffer::default(),
-            scratch_a: ScratchBuffer::default(),
-            scratch_b: ScratchBuffer::default(),
+            scratch_statements: ScratchBuffer::new(allocator),
+            scratch_decorators: ScratchBuffer::new(allocator),
+            scratch_a: ScratchBuffer::new(allocator),
+            scratch_b: ScratchBuffer::new(allocator),
             scratch_string: Wtf8Buf::new(),
             export_specifier_tags: Vec::new(),
             context: Context::default(),
