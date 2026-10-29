@@ -464,7 +464,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_comment_run(comments, CommentRunLayout::Leading(end), writer)?;
             }
             let tail =
-                self.format_annotated_binding(binding.binding, BindingGroup::Auto, writer)?;
+                self.format_annotated_binding(binding.binding, BindingGroup::Auto, false, writer)?;
             self.format_expression_tail(tail, writer)?;
             if let CatchParameterTail::Parameter {
                 comments, start, ..

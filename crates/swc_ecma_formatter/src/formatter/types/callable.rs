@@ -856,7 +856,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: FunctionReturn<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_function_return_with_context(result, TypeContext::Root, writer)
+        self.format_function_return_with_context(result, TypeContext::Root, false, writer)
+    }
+
+    pub(in crate::formatter) fn format_function_return_before_body(
+        &mut self,
+        result: FunctionReturn<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_function_return_with_context(result, TypeContext::Root, true, writer)
     }
 
     pub(in crate::formatter) fn format_signature_return(
@@ -864,13 +872,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         result: SignatureReturn<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_signature_return_with_context(result, TypeContext::Root, writer)
+        self.format_signature_return_with_context(result, TypeContext::Root, false, writer)
     }
 
     pub(in crate::formatter) fn format_signature_return_with_context(
         &mut self,
         result: SignatureReturn<'ast>,
         context: TypeContext,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_function_return_with_context(
@@ -880,6 +889,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 delimiter: result.delimiter,
             },
             context,
+            continuation,
+            writer,
+        )
+    }
+
+    pub(in crate::formatter) fn format_signature_return_before_body(
+        &mut self,
+        result: SignatureReturn<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_function_return_with_context(
+            FunctionReturn {
+                content: FunctionReturnContent::Annotation(result.content),
+                prefix: result.prefix,
+                delimiter: result.delimiter,
+            },
+            TypeContext::Root,
+            true,
             writer,
         )
     }
@@ -1013,6 +1040,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         result: FunctionReturn<'ast>,
         context: TypeContext,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let layout = match result.prefix {
@@ -1033,6 +1061,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if let FunctionReturnContent::Annotation(AnnotationContent::Type(node)) =
                     &result.content
                 {
+                    if continuation && after.is_empty() {
+                        self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
+                        return self.format_type_before_continuation(
+                            node.node.span(self.ast), writer, |formatter, writer| {
+                                let layout = formatter.continuation_type_layout(
+                                    node.node.span(formatter.ast), TypeLayout::Root);
+                                formatter.format_prepared_type_with_layout(
+                                    *node, context, layout, writer)
+                                    .map(crate::formatter::expressions::ExpressionOutput::unreported)
+                            }).map(|output| output.pending);
+                    }
+                    if continuation
+                        && matches!(
+                            self.comment_boundary_binding(&after, node.node.span(self.ast)),
+                            crate::formatter::comments::CommentBinding::Unbound
+                        )
+                        && self.continuation_type_layout(node.node.span(self.ast), TypeLayout::Root)
+                            == TypeLayout::ContinuationRoot
+                    {
+                        let span = node.node.span(self.ast);
+                        self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
+                        return self
+                            .format_type_before_continuation(span, writer, |formatter, writer| {
+                                formatter
+                                    .format_prepared_type_with_layout(
+                                        *node,
+                                        context,
+                                        TypeLayout::ContinuationRoot,
+                                        writer,
+                                    )
+                                    .map(
+                                        crate::formatter::expressions::ExpressionOutput::unreported,
+                                    )
+                            })
+                            .map(|output| output.pending);
+                    }
                     return self.format_prepared_type_after_comments(
                         *node,
                         context,
@@ -1440,7 +1504,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Ok(None)
             }
             ParameterItemState::Formatted(left) => {
-                self.format_parameter_left(PreparedParameterLeft::Formatted(left), writer)
+                self.format_parameter_left(PreparedParameterLeft::Formatted(left), false, writer)
             }
             ParameterItemState::Default {
                 left,
@@ -1453,7 +1517,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_comment_run(head.comments, head.layout, writer)?;
                 }
                 let end = left.end();
-                let tail = self.format_parameter_left(left, writer)?;
+                let tail = self.format_parameter_left(left, true, writer)?;
                 self.format_expression_tail(tail, writer)?;
                 self.format_initializer_right(
                     end,
@@ -1469,6 +1533,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_parameter_left(
         &mut self,
         left: PreparedParameterLeft<'ast>,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let left = match left {
@@ -1522,6 +1587,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_annotation_content_with_layout(
                     annotation,
                     left.annotation_layout,
+                    continuation,
                     writer,
                 )
             } else {
@@ -1542,6 +1608,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_type_predicate(
         &mut self,
         node: TsTypePredicate,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -1633,6 +1700,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .gap()
                         .write(writer, FlatSeparator::Space, Writer::space);
                 }
+            }
+            if continuation {
+                let span = match bound.content {
+                    AnnotationContent::Wrapper(node) => node.span(self.ast),
+                    AnnotationContent::Type(node) => node.node.span(self.ast),
+                };
+                let layout = self.continuation_type_layout(span, TypeLayout::Root);
+                return self
+                    .format_type_before_continuation(span, writer, |formatter, writer| match bound
+                        .content
+                    {
+                        AnnotationContent::Wrapper(node) => {
+                            formatter.format_verbatim(node.span(formatter.ast), writer)?;
+                            Ok(crate::formatter::expressions::ExpressionOutput::closed(
+                                None,
+                            ))
+                        }
+                        AnnotationContent::Type(node) => formatter.format_prepared_type_output(
+                            node,
+                            TypeContext::Root,
+                            layout,
+                            writer,
+                        ),
+                    })
+                    .map(|output| output.pending);
             }
             return self.format_annotation_owner(bound.content, TypeContext::Root, writer);
         }

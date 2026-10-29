@@ -316,6 +316,7 @@ pub(super) struct RecordedTypeHead<'ast> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum TypeLayout {
     Root,
+    ContinuationRoot,
     OpeningProvided,
     CallerIndented,
     AliasRhs,
@@ -451,7 +452,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content: PreparedAnnotation<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        self.format_annotation_content_with_layout(content, TypeLayout::Root, writer)
+        self.format_annotation_content_with_layout(content, TypeLayout::Root, false, writer)
+    }
+
+    pub(super) fn format_annotation_content_before_continuation(
+        &mut self,
+        content: PreparedAnnotation<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        self.format_annotation_content_with_layout(content, TypeLayout::Root, true, writer)
     }
 
     fn prepare_annotation_content(
@@ -516,6 +525,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         content: PreparedAnnotation<'ast>,
         mut layout: TypeLayout,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match content.prefix {
@@ -530,6 +540,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write(writer, FlatSeparator::Empty, |_| {});
                 writer.text(":");
                 if let AnnotationContent::Formatted(node) = content.content {
+                    if continuation
+                        && (after.is_empty()
+                            || self.continuation_type_layout(node.node.span(self.ast), layout)
+                                == TypeLayout::ContinuationRoot
+                                && matches!(
+                                    self.comment_boundary_binding(&after, node.node.span(self.ast)),
+                                    CommentBinding::Unbound
+                                ))
+                    {
+                        self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
+                        let span = node.node.span(self.ast);
+                        let layout = self.continuation_type_layout(span, layout);
+                        return self
+                            .format_type_before_continuation(span, writer, |formatter, writer| {
+                                formatter.format_prepared_type_output(
+                                    node,
+                                    TypeContext::Root,
+                                    layout,
+                                    writer,
+                                )
+                            })
+                            .map(|output| output.pending);
+                    }
                     return self.format_prepared_type_after_comments(
                         node,
                         TypeContext::Root,
@@ -544,7 +577,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .write(writer, FlatSeparator::Space, Writer::space);
             }
         }
-        self.format_annotation_type_content_with_layout(content.content, layout, writer)
+        if continuation {
+            let span = match content.content {
+                AnnotationContent::Source(node) => node.span(self.ast),
+                AnnotationContent::Formatted(node) => node.node.span(self.ast),
+            };
+            let layout = self.continuation_type_layout(span, layout);
+            self.format_type_before_continuation(span, writer, |formatter, writer| {
+                formatter
+                    .format_annotation_type_content_with_layout(content.content, layout, writer)
+                    .map(ExpressionOutput::unreported)
+            })
+            .map(|output| output.pending)
+        } else {
+            self.format_annotation_type_content_with_layout(content.content, layout, writer)
+        }
     }
 
     fn format_prepared_parentheses_after_comments(
@@ -3361,9 +3408,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )
             );
             if !block {
-                if matches!(data, TsTypeData::TsIntersectionType(node)
-                    if !self.comments.in_range(node.span(self.ast)).is_empty())
-                {
+                let body_span = match data {
+                    TsTypeData::TsIntersectionType(node) => Some(node.span(self.ast)),
+                    TsTypeData::TsConditionalType(node) => Some(node.span(self.ast)),
+                    _ => None,
+                };
+                if body_span.is_some_and(|span| !self.comments.in_range(span).is_empty()) {
                     let (content, tail) = writer.record_with_value(|writer| {
                         print(self, TypeLayout::Root, TypeEnclosure::Parentheses, writer)
                     })?;
@@ -3456,6 +3506,50 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    pub(super) fn format_type_before_continuation(
+        &mut self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+        print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        if self.comments.in_range(span).is_empty() {
+            return print(self, writer);
+        }
+        let (content, output) = writer.record_with_value(|writer| print(self, writer))?;
+        let Some(gap) = self.type_tail_closing_gap(output.pending.as_ref()) else {
+            writer.write_fragment(content);
+            return Ok(output);
+        };
+        writer.group(false, |writer| {
+            writer.text("(");
+            writer.indent(|writer| {
+                writer.soft_line();
+                writer.write_fragment(content);
+                self.format_expression_tail(output.pending, writer)
+            })?;
+            gap.write(writer, FlatSeparator::Empty, |_| {});
+            writer.text(")");
+            Ok(ExpressionOutput::closed(None))
+        })
+    }
+
+    fn continuation_type_layout(&self, span: Span, layout: TypeLayout) -> TypeLayout {
+        if layout == TypeLayout::Root
+            && self.comments.in_range(span).last().is_some_and(|comment| {
+                comment.kind == CommentKind::Line
+                    && self.source_line_starts_line(comment.span.start)
+                    && self
+                        .source(Span::new(comment.span.end, span.end))
+                        .chars()
+                        .all(|character| character == ')' || is_source_whitespace(character))
+            })
+        {
+            TypeLayout::ContinuationRoot
+        } else {
+            layout
+        }
+    }
+
     fn format_type_data(
         &mut self,
         node: PreparedType,
@@ -3507,7 +3601,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ),
             TsTypeData::TsImportType(node) => self.format_import_type(node, writer),
             TsTypeData::TsMappedType(node) => self.format_mapped_type(node, writer),
-            TsTypeData::TsInferType(node) => self.format_infer_type(node, writer),
+            TsTypeData::TsInferType(node) => {
+                self.format_infer_type(node, layout == TypeLayout::ContinuationRoot, writer)
+            }
             TsTypeData::TsConditionalType(node) => {
                 self.format_conditional_type(node, layout, writer)
             }
@@ -3518,7 +3614,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             TsTypeData::TsConstructorType(node) => {
                 self.format_callable_type(callable::CallableType::Constructor(node), writer)
             }
-            TsTypeData::TsTypePredicate(node) => self.format_type_predicate(node, writer),
+            TsTypeData::TsTypePredicate(node) => {
+                self.format_type_predicate(node, layout == TypeLayout::ContinuationRoot, writer)
+            }
 
             TsTypeData::TsTupleType(node) => self.format_tuple_type(node, writer),
             TsTypeData::TsOptionalType(node) => self.format_optional_type(node, writer),
@@ -3528,7 +3626,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 node,
                 union.types(self.ast),
                 compound::CompoundTypeKind::Union,
-                TypeContext::Root,
+                if enclosure == TypeEnclosure::Parentheses {
+                    TypeContext::Parenthesized
+                } else {
+                    TypeContext::Root
+                },
                 layout,
                 writer,
             ),
@@ -3842,7 +3944,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // A trailing packet keeps its delimiter fence until a compound separator
         // supplies the next owner. Leaf pairs keep their existing compact frame;
         // compound envelopes prepare the member packet and its closing line.
-        let transfers_tail = matches!(context, TypeContext::IntersectionMember { .. });
+        let transfers_tail = matches!(
+            context,
+            TypeContext::UnionMember | TypeContext::IntersectionMember { .. }
+        );
         let fenced_tail = !trailing.is_empty()
             && (!matches!(
                 context,
@@ -3853,7 +3958,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let compact_tail = fenced_tail
             && !matches!(
                 child.data,
-                TsTypeData::TsUnionType(_) | TsTypeData::TsIntersectionType(_)
+                TsTypeData::TsUnionType(_)
+                    | TsTypeData::TsIntersectionType(_)
+                    | TsTypeData::TsConditionalType(_)
             );
         if source || compact_tail {
             if source && child.source_owner == Some(child.node) {
@@ -4165,6 +4272,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_binding_annotation_content(
         &mut self,
         annotation: PreparedBindingAnnotation<'ast>,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if !annotation.leading.is_empty() {
@@ -4242,12 +4350,58 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 TypeContext::Root,
                                 writer,
                             )?;
+                            let span = node.node.span(self.ast);
+                            let layout = if continuation {
+                                self.continuation_type_layout(span, TypeLayout::Root)
+                            } else {
+                                TypeLayout::Root
+                            };
+                            if continuation {
+                                return self
+                                    .format_type_before_continuation(
+                                        span,
+                                        writer,
+                                        |formatter, writer| {
+                                            formatter
+                                                .format_recorded_binding_annotation_head(
+                                                    recorded,
+                                                    annotation.type_argument_owner,
+                                                    layout,
+                                                    writer,
+                                                )
+                                                .map(ExpressionOutput::unreported)
+                                        },
+                                    )
+                                    .map(|output| output.pending);
+                            }
                             return self.format_recorded_binding_annotation_head(
                                 recorded,
                                 annotation.type_argument_owner,
-                                TypeLayout::Root,
+                                layout,
                                 writer,
                             );
+                        }
+                        if continuation {
+                            let span = node.node.span(self.ast);
+                            let layout = self.continuation_type_layout(span, TypeLayout::Root);
+                            return self
+                                .format_type_before_continuation(
+                                    span,
+                                    writer,
+                                    |formatter, writer| {
+                                        formatter
+                                            .format_prepared_type_with_caller_head(
+                                                node,
+                                                leading_head,
+                                                TypeContext::Root,
+                                                &boundary,
+                                                layout,
+                                                writer,
+                                            )
+                                            .map(ExpressionOutput::unreported)
+                                    },
+                                )
+                                .map(|output| output.pending);
                         }
                         return self.format_prepared_type_with_caller_head(
                             node,
@@ -4265,12 +4419,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TypeLayout::Root
             }
         };
-        self.format_binding_annotation_type_content(
-            annotation.content,
-            annotation.type_argument_owner,
-            layout,
-            writer,
-        )
+        let span = match annotation.content {
+            AnnotationContent::Source(node) => node.span(self.ast),
+            AnnotationContent::Formatted(node) => node.node.span(self.ast),
+        };
+        let layout = if continuation {
+            self.continuation_type_layout(span, layout)
+        } else {
+            layout
+        };
+        let print = |formatter: &mut Self, writer: &mut Writer<'ast>| {
+            formatter.format_binding_annotation_type_content(
+                annotation.content,
+                annotation.type_argument_owner,
+                layout,
+                writer,
+            )
+        };
+        if continuation {
+            self.format_type_before_continuation(span, writer, |formatter, writer| {
+                print(formatter, writer).map(ExpressionOutput::unreported)
+            })
+            .map(|output| output.pending)
+        } else {
+            print(self, writer)
+        }
     }
 
     pub(super) fn format_typed_variable_declarator(
@@ -4310,7 +4483,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             let group = self.declaration_binding_group(pattern);
             return self
-                .format_annotated_binding(binding, group, writer)
+                .format_annotated_binding(binding, group, false, writer)
                 .map(VariableDeclaratorOutput::formatted);
         };
         let gap = Span::new(left_end, right.span(ast).start);
@@ -4456,7 +4629,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     type_argument_owner,
                     ContentMode::Formatted,
                 )?;
-                let tail = self.format_annotated_binding(binding, group, writer)?;
+                let tail = self.format_annotated_binding(binding, group, true, writer)?;
                 self.format_expression_tail(tail, writer)?;
             }
             self.format_initializer_right_with_raw_end(left_end, right, layout, context, writer)
@@ -4670,13 +4843,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: BinaryTypeHead<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_binary_type_rhs_head_output_with_layout(
+            node,
+            context,
+            after,
+            head,
+            TypeLayout::Root,
+            writer,
+        )
+    }
+
+    fn format_binary_type_rhs_head_output_with_layout(
+        &mut self,
+        node: PreparedType,
+        context: TypeContext,
+        after: &CommentBoundary<'ast>,
+        head: BinaryTypeHead<'ast>,
+        layout: TypeLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if matches!(head.0, BinaryTypeHeadLayout::InlineNamed) {
             self.format_comment_boundary_with_layout(
                 after,
                 CommentRunLayout::FlatLeading(node.node.span(self.ast).start),
                 writer,
             )?;
-            return self.format_prepared_type_output(node, context, TypeLayout::Root, writer);
+            return self.format_prepared_type_output(node, context, layout, writer);
         }
         if matches!(head.0, BinaryTypeHeadLayout::Named) {
             let comments = after.comments();
@@ -4684,7 +4876,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(last) = comments.last() {
                 self.comment_gap(last.span.end, node.node.span(self.ast).start, writer);
             }
-            return self.format_prepared_type_output(node, context, TypeLayout::Root, writer);
+            return self.format_prepared_type_output(node, context, layout, writer);
         }
         if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
             // This name has no nested token boundary to consume the leased packet.
@@ -4700,7 +4892,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .gap()
                     .write(writer, FlatSeparator::Space, Writer::space);
             }
-            return self.format_prepared_type_output(node, context, TypeLayout::Root, writer);
+            return self.format_prepared_type_output(node, context, layout, writer);
         };
         let mut pending =
             PendingTypeHead::new(after.comments(), node.node.span(self.ast).start, leading)
@@ -4721,12 +4913,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ if recorded.riding => None,
             Some(opening) => Some(opening),
             _ => {
-                return self.format_recorded_type_head_output(
-                    recorded,
-                    context,
-                    TypeLayout::Root,
-                    writer,
-                );
+                return self.format_recorded_type_head_output(recorded, context, layout, writer);
             }
         };
         writer.indent(|writer| {
@@ -4742,6 +4929,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         })
+    }
+
+    pub(super) fn format_binary_type_rhs_before_continuation(
+        &mut self,
+        node: PreparedType,
+        after: &CommentBoundary<'ast>,
+        head: BinaryTypeHead<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        if after.is_empty() && matches!(head.0, BinaryTypeHeadLayout::Direct) {
+            after.gap().write(writer, FlatSeparator::Empty, |_| {});
+            let span = node.node.span(self.ast);
+            let layout = self.continuation_type_layout(span, TypeLayout::Root);
+            self.format_type_before_continuation(span, writer, |formatter, writer| {
+                formatter.format_prepared_type_output(
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    layout,
+                    writer,
+                )
+            })
+        } else if matches!(
+            self.comment_boundary_binding(after, node.node.span(self.ast)),
+            CommentBinding::Unbound
+        ) {
+            let span = node.node.span(self.ast);
+            let layout = self.continuation_type_layout(span, TypeLayout::Root);
+            self.format_type_before_continuation(span, writer, |formatter, writer| {
+                formatter.format_binary_type_rhs_head_output_with_layout(
+                    node,
+                    TypeContext::TypeExpressionRhs,
+                    after,
+                    head,
+                    layout,
+                    writer,
+                )
+            })
+        } else {
+            self.format_binary_type_rhs_head_output(
+                node,
+                TypeContext::TypeExpressionRhs,
+                after,
+                head,
+                writer,
+            )
+        }
     }
 
     pub(super) fn prepare_qualified_name_boundary(

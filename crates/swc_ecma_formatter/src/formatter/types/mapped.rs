@@ -293,20 +293,37 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 };
                 if let Some(value) = value {
-                    let tail = match annotation_after {
-                        Some(after) => self.format_prepared_type_after_comments(
-                            value,
-                            TypeContext::Root,
-                            &after,
-                            value_layout,
-                            writer,
-                        )?,
-                        None => self.format_prepared_type_with_layout(
-                            value,
-                            TypeContext::Root,
-                            value_layout,
-                            writer,
-                        )?,
+                    let span = value.node.span(self.ast);
+                    let layout = self.continuation_type_layout(span, value_layout);
+                    let tail = if layout == TypeLayout::ContinuationRoot {
+                        if let Some(after) = &annotation_after {
+                            self.format_type_comment_gap(after, FlatSeparator::Space, writer)?;
+                        }
+                        self.format_type_before_continuation(span, writer, |formatter, writer| {
+                            formatter.format_prepared_type_output(
+                                value,
+                                TypeContext::Root,
+                                layout,
+                                writer,
+                            )
+                        })?
+                        .pending
+                    } else {
+                        match annotation_after {
+                            Some(after) => self.format_prepared_type_after_comments(
+                                value,
+                                TypeContext::Root,
+                                &after,
+                                layout,
+                                writer,
+                            )?,
+                            None => self.format_prepared_type_with_layout(
+                                value,
+                                TypeContext::Root,
+                                layout,
+                                writer,
+                            )?,
+                        }
                     };
                     self.format_expression_tail(tail, writer)?;
                 }
@@ -808,13 +825,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_preceding_type_packet(&preceding.packet, writer)?;
                 writer.space();
                 writer.text(separator.text());
-                return self.format_prepared_type_after_comments(
-                    node,
-                    TypeContext::Root,
-                    &preceding.after,
-                    boundary.following_layout(),
-                    writer,
-                );
+                let span = node.node.span(self.ast);
+                let layout = self.continuation_type_layout(span, boundary.following_layout());
+                return self
+                    .format_type_before_continuation(span, writer, |formatter, writer| {
+                        formatter
+                            .format_prepared_type_after_comments(
+                                node,
+                                TypeContext::Root,
+                                &preceding.after,
+                                layout,
+                                writer,
+                            )
+                            .map(crate::formatter::expressions::ExpressionOutput::unreported)
+                    })
+                    .map(|output| output.pending);
             }
             MappedBoundaryLayout::Source(span) => self.format_source_gap(*span, writer),
             MappedBoundaryLayout::Formatted { before, after } => {
@@ -823,12 +848,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_type_comment_gap(after, FlatSeparator::Space, writer)
             }
         }?;
-        self.format_prepared_type_with_layout(
-            node,
-            TypeContext::Root,
-            boundary.following_layout(),
-            writer,
-        )
+        let span = node.node.span(self.ast);
+        let layout = self.continuation_type_layout(span, boundary.following_layout());
+        self.format_type_before_continuation(span, writer, |formatter, writer| {
+            formatter.format_prepared_type_output(node, TypeContext::Root, layout, writer)
+        })
+        .map(|output| output.pending)
     }
 
     fn format_mapped_token(

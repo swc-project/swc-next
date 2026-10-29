@@ -572,7 +572,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer,
                 )?;
                 self.format_expression_tail(tail, writer)?;
-                self.format_binary_type_right_output(boundary, type_node, writer)
+                self.format_binary_type_right_output(
+                    boundary,
+                    type_node,
+                    context.tail_owner == TailOwner::ParentOperation,
+                    writer,
+                )
             };
             let receiver = context.is_call_or_member_receiver()
                 || matches!(context.position, ExpressionPosition::NewCallee);
@@ -936,6 +941,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: BinaryTypeBoundary<'ast>,
         node: PreparedType,
+        continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
         match boundary.layout {
@@ -948,13 +954,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.space();
                 writer.text(boundary.operator.token());
                 writer.space();
-                self.format_binary_type_rhs_head_output(
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    &after,
-                    head,
-                    writer,
-                )
+                if continuation {
+                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
+                } else {
+                    self.format_binary_type_rhs_head_output(
+                        node,
+                        TypeContext::TypeExpressionRhs,
+                        &after,
+                        head,
+                        writer,
+                    )
+                }
             }
             BinaryTypeLayout::Source(source) => self.format_source_type_operator_rhs_output(
                 source,
@@ -969,13 +979,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } => {
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
-                self.format_binary_type_rhs_head_output(
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    &after,
-                    head,
-                    writer,
-                )
+                if continuation {
+                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
+                } else {
+                    self.format_binary_type_rhs_head_output(
+                        node,
+                        TypeContext::TypeExpressionRhs,
+                        &after,
+                        head,
+                        writer,
+                    )
+                }
             }
             BinaryTypeLayout::Suppressed { before, head } => {
                 self.format_comment_boundary(&before, writer)?;
@@ -1018,13 +1032,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before.gap().write_separator(writer);
                 writer.text(boundary.operator.token());
                 writer.text(" ");
-                self.format_binary_type_rhs_head_output(
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    &after,
-                    head,
-                    writer,
-                )
+                if continuation {
+                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
+                } else {
+                    self.format_binary_type_rhs_head_output(
+                        node,
+                        TypeContext::TypeExpressionRhs,
+                        &after,
+                        head,
+                        writer,
+                    )
+                }
             }
         }
     }
