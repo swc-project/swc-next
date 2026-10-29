@@ -3789,3 +3789,39 @@ fn fill_measurement_invalidation() {
 
     assert_eq!(remeasured_fill_after_measurement(), "first\na force\n{}");
 }
+
+#[test]
+fn group_request_codec() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.break_parent();
+        writer.line();
+    });
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    assert_eq!(&bytes[20..], &[3, 0, 0, 0, 0, 0, 16, 2, 0, 17, 3]);
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(true, Writer::line);
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    assert_eq!(&bytes[20..], &[3, 1, 0, 0, 0, 0, 2, 0, 17, 3]);
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+
+    let mut writer = Writer::new(&allocator);
+    let child = record(&mut writer, |writer| {
+        writer.break_parent();
+        writer.line();
+    });
+    let grouped = writer.group_fragment(false, child);
+    writer.write_fragment(grouped);
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    // The root references the grouped fragment; its opening scope begins in fragment 1.
+    let root_len = u32::from_le_bytes(bytes[16..20].try_into().unwrap()) as usize;
+    let group_start = 20 + root_len + 4;
+    assert_eq!(&bytes[group_start..group_start + 6], &[3, 0, 0, 0, 0, 0]);
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+}
