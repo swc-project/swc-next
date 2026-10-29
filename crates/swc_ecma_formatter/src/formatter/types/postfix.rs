@@ -422,7 +422,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.text(keyword);
         self.format_type_prefix(prefix, FlatSeparator::Space, writer)?;
-        self.format_prepared_type(operand_type, TypeContext::ModifierOperand, writer)
+        self.format_prepared_type(operand_type, TypeContext::ModifierClosedOperand, writer)
     }
 
     pub(super) fn format_type_query(

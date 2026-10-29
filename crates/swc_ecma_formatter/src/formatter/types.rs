@@ -43,7 +43,7 @@ use swc_next_ecma_ast::{
     Ast, BindingIdentifier, BindingPatternData, Comment, CommentKind, ExprData, GetSpan,
     IdentifierReference, Span, TsLiteralData, TsParenthesizedType, TsQualifiedName,
     TsQualifiedNameLeft, TsQualifiedNameLeftData, TsType, TsTypeAliasDeclaration, TsTypeAnnotation,
-    TsTypeData, TsTypeName, TsTypeNameData, UnaryOperator, VariableDeclarator,
+    TsTypeData, TsTypeName, TsTypeNameData, TsTypeOperator, UnaryOperator, VariableDeclarator,
 };
 
 #[derive(Clone, Copy)]
@@ -4797,8 +4797,23 @@ pub(super) fn type_requires_terminator(node: TsType, ast: &Ast<'_>) -> bool {
     type_data_requires_terminator(ast.ts_type_data(node), ast)
 }
 
-fn type_data_requires_terminator(mut data: TsTypeData, ast: &Ast<'_>) -> bool {
-    let mut context = TypeContext::Root;
+fn type_data_requires_terminator(data: TsTypeData, ast: &Ast<'_>) -> bool {
+    type_data_requires_terminator_in_context(data, ast, TypeContext::Root)
+}
+
+fn type_operator_requires_terminator(node: TsTypeOperator, ast: &Ast<'_>) -> bool {
+    type_data_requires_terminator_in_context(
+        ast.ts_type_data(node.type_annotation(ast)),
+        ast,
+        TypeContext::ModifierClosedOperand,
+    )
+}
+
+fn type_data_requires_terminator_in_context(
+    mut data: TsTypeData,
+    ast: &Ast<'_>,
+    mut context: TypeContext,
+) -> bool {
     loop {
         if context.needs_parentheses(data, ast) {
             return false;

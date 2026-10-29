@@ -10,6 +10,7 @@ pub(in crate::formatter) enum TypeContext {
     ArrowReturn,
     PostfixOperand,
     ModifierOperand,
+    ModifierClosedOperand,
     RestOperand,
     JsDocNullableOperand,
     JsDocPrimaryOperand,
@@ -47,6 +48,7 @@ impl TypeContext {
             self,
             Self::PostfixOperand
                 | Self::ModifierOperand
+                | Self::ModifierClosedOperand
                 | Self::RestOperand
                 | Self::JsDocNullableOperand
                 | Self::JsDocPrimaryOperand
@@ -89,8 +91,13 @@ impl TypeContext {
         let minimum = match self {
             Self::Root | Self::Parenthesized => return false,
             Self::TypeExpressionRhs => {
-                return !matches!(data, TsTypeData::TsParenthesizedType(_))
-                    && super::type_data_requires_terminator(data, ast);
+                return match data {
+                    TsTypeData::TsParenthesizedType(_) => false,
+                    TsTypeData::TsTypeOperator(node) => {
+                        super::type_operator_requires_terminator(node, ast)
+                    }
+                    _ => super::type_data_requires_terminator(data, ast),
+                };
             }
             Self::ArrowReturn => return matches!(data, TsTypeData::TsFunctionType(_)),
             Self::ConditionalCheck => {
@@ -122,6 +129,14 @@ impl TypeContext {
                     return true;
                 }
                 TypePrecedence::Postfix
+            }
+            Self::ModifierClosedOperand => {
+                // The bare question mark remains open to the following type;
+                // enclosing the whole operator can parse as a function type.
+                if matches!(data, TsTypeData::TsJsDocUnknownType(_)) {
+                    return true;
+                }
+                TypePrecedence::Query
             }
             Self::ModifierOperand => TypePrecedence::Query,
             Self::RestOperand => {
