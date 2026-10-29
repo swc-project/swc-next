@@ -185,6 +185,7 @@ function build(ops, docs, text, group, options) {
           b.hardlineWithoutBreakParent,
           b.literalline,
           b.markAsRoot(b.literalline),
+          b.literallineWithoutBreakParent,
         ][first];
         if (!line) throw invalid();
         append(line);
