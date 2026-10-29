@@ -72,12 +72,16 @@ impl<'a> Encoder<'a> {
         })
     }
 
-    fn text(&mut self, output: &mut Vec<u8>, text: &'a str) {
-        let (start, length) = *self.string_ids.entry(text).or_insert_with(|| {
+    fn string(&mut self, text: &'a str) -> (usize, usize) {
+        *self.string_ids.entry(text).or_insert_with(|| {
             let start = self.strings.len();
             self.strings.extend(text.as_bytes());
             (start, text.len())
-        });
+        })
+    }
+
+    fn text(&mut self, output: &mut Vec<u8>, text: &'a str) {
+        let (start, length) = self.string(text);
         output.push(0);
         word(output, start);
         word(output, length);
@@ -213,6 +217,16 @@ impl<'a> Encoder<'a> {
                     unreachable!("named indent scopes are encoded before projection")
                 }
                 FormatElement::EndIndent => output.extend([17, 4]),
+                FormatElement::StartAlignText(prefix) => {
+                    let (start, length) = self.string(prefix.source);
+                    output.push(23);
+                    word(&mut output, start);
+                    word(&mut output, length);
+                }
+                FormatElement::StartDedent => output.push(24),
+                FormatElement::StartMarkRoot => output.push(25),
+                FormatElement::StartDedentToRoot => output.push(26),
+                FormatElement::EndRichIndent(tag) => output.extend([17, tag]),
                 FormatElement::StartAlign { width } => {
                     output.push(6);
                     word(&mut output, width as usize);

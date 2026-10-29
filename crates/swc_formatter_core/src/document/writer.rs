@@ -5,9 +5,9 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
-    Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, NeutralFragment,
-    RecordedGroup, text::Text, thin::ThinSlice,
+    AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment,
+    FormatElement, Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates,
+    NeutralFragment, RecordedGroup, text::Text, thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
@@ -17,6 +17,7 @@ pub struct Writer<'a> {
     flattening: bool,
     group_count: u32,
     group_states: bool,
+    rich_indent: bool,
     conditional_lines: bool,
     intrinsic_lines: bool,
 }
@@ -51,6 +52,7 @@ impl<'a> Writer<'a> {
             flattening: false,
             group_count: 0,
             group_states: false,
+            rich_indent: false,
             conditional_lines: false,
             intrinsic_lines: false,
         }
@@ -223,6 +225,7 @@ impl<'a> Writer<'a> {
             false,
             !text.is_single_line(),
             false,
+            false,
         )
     }
 
@@ -234,6 +237,7 @@ impl<'a> Writer<'a> {
         flat: Fragment<'a>,
     ) {
         self.group_states |= broken.group_states() || flat.group_states();
+        self.rich_indent |= broken.rich_indent() || flat.rich_indent();
         self.effect = self.effect.join(broken.effect()).join(flat.effect());
         self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
         self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
@@ -419,6 +423,46 @@ impl<'a> Writer<'a> {
         result
     }
 
+    /// Aligns the scope with an unchanged string prefix.
+    pub fn align_text<T>(&mut self, prefix: &'a str, write: impl FnOnce(&mut Self) -> T) -> T {
+        if prefix.is_empty() {
+            return write(self);
+        }
+        self.rich_indent = true;
+        let text = self.allocator.alloc(AlignText {
+            source: prefix,
+            width: crate::measure_text_width(prefix),
+        });
+        self.elements.push(FormatElement::StartAlignText(text));
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(23));
+        result
+    }
+
+    pub fn dedent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartDedent);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(24));
+        result
+    }
+
+    pub fn mark_as_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartMarkRoot);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(25));
+        result
+    }
+
+    pub fn dedent_to_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartDedentToRoot);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(26));
+        result
+    }
+
     pub fn fill<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
         self.fill_with_separator_policy(|writer| (write(writer), FillSeparatorPolicy::Preserve))
     }
@@ -544,6 +588,7 @@ impl<'a> Writer<'a> {
             child.conditional_lines,
             child.intrinsic_lines,
             child.group_states,
+            child.rich_indent,
         );
         Ok((fragment, value))
     }
@@ -609,6 +654,7 @@ impl<'a> Writer<'a> {
             fragment.conditional_lines(),
             fragment.has_intrinsic_lines(),
             fragment.group_states(),
+            fragment.rich_indent(),
         )
     }
 
@@ -625,6 +671,9 @@ impl<'a> Writer<'a> {
         states.push(first);
         states.extend_from_slice(rest);
         self.group_states = true;
+        self.rich_indent |= contents.rich_indent()
+            || first.rich_indent()
+            || rest.iter().any(|state| state.rich_indent());
         self.effect = self.effect.join(BreakEffect::from_request(request));
         self.conditional_lines |= contents.conditional_lines()
             || first.conditional_lines()
@@ -641,6 +690,7 @@ impl<'a> Writer<'a> {
 
     pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.group_states |= fragment.group_states();
+        self.rich_indent |= fragment.rich_indent();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -649,11 +699,13 @@ impl<'a> Writer<'a> {
 
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.group_states |= fragment.0.group_states();
+        self.rich_indent |= fragment.0.rich_indent();
         self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
         self.group_states |= fragment.group_states();
+        self.rich_indent |= fragment.rich_indent();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
@@ -665,6 +717,8 @@ impl<'a> Writer<'a> {
     pub fn write_alternatives(&mut self, preferred: &[Fragment<'a>], fallback: Fragment<'a>) {
         self.group_states |=
             fallback.group_states() || preferred.iter().any(|fragment| fragment.group_states());
+        self.rich_indent |=
+            fallback.rich_indent() || preferred.iter().any(|fragment| fragment.rich_indent());
         let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
             choices.push(fallback);
@@ -692,6 +746,7 @@ impl<'a> Writer<'a> {
             elements: ThinSlice::new(self.elements.into_bump_slice()).get(),
             group_count: self.group_count,
             group_states: self.group_states,
+            rich_indent: self.rich_indent,
         }
     }
 }
