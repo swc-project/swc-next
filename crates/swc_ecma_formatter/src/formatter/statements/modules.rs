@@ -14,7 +14,9 @@ use crate::formatter::bindings::InitializerLayout;
 use crate::formatter::comments::{CommentRunLayout, NodeHead};
 use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
 use crate::formatter::diagnostics::FlatSeparator;
-use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use crate::formatter::expressions::arguments::{
+    ArgumentLayout, DelimitedClose, FollowingItem, Separator,
+};
 use crate::formatter::expressions::assignment::{AssignmentBoundary, RhsLayout};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
@@ -1363,7 +1365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || leading.is_some_and(|comments| !comments.is_empty());
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("{");
-            let end = writer.indent(|writer| {
+            let (end, terminal_close) = writer.indent(|writer| {
                 if list.breakable {
                     self.opening_line_constraint(content).write(
                         writer,
@@ -1393,6 +1395,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut transition = None;
                 let mut current = Some((first, self.prepare_module_item(first, list.key_quoting)?));
                 let mut end = content.start;
+                let mut terminal_close = None;
                 while let Some((item, prepared_content)) = current {
                     let next = items.next();
                     let span = item.span(self);
@@ -1429,8 +1432,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )?;
                         break;
                     }
-                    let boundary = self.finish_delimited_item(prepared, None, writer)?;
+                    let closing = if next.is_none() {
+                        DelimitedClose::Terminal(
+                            self.terminal_close_boundary(content, || Some((span, end))),
+                        )
+                    } else {
+                        DelimitedClose::Source
+                    };
+                    let boundary = if next.is_none()
+                        && (prepared.mode == ContentMode::Verbatim
+                            || self.diagnostic_range_is_sensitive(span))
+                        && {
+                            let gap = Span::new(span.end, content.end);
+                            self.find_comma(gap, self.comments.in_range(gap)).is_none()
+                        } {
+                        self.finish_delimited_item(prepared, None, writer)?
+                    } else {
+                        self.finish_delimited_item_with_closing(prepared, None, closing, writer)?
+                    };
                     end = boundary.end;
+                    terminal_close = boundary.terminal_close;
                     transition = boundary.transition;
                     let next = next
                         .map(|item| {
@@ -1465,13 +1486,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     current = next;
                 }
-                Ok::<_, FormatError>(end)
+                Ok::<_, FormatError>((end, terminal_close))
             })?;
-            let closing = if list.terminal.is_some() && source_head_len == 0 {
-                self.source_line_constraint(end, content.end)
-            } else {
-                self.line_constraint(end, content.end)
-            };
+            let closing = terminal_close.unwrap_or_else(|| {
+                if list.terminal.is_some() && source_head_len == 0 {
+                    self.source_line_constraint(end, content.end)
+                } else {
+                    self.line_constraint(end, content.end)
+                }
+            });
             closing.write(
                 writer,
                 if self.options.bracket_spacing {

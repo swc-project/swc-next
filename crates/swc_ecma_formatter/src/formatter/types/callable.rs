@@ -16,7 +16,9 @@ use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
-use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use crate::formatter::expressions::arguments::{
+    ArgumentLayout, DelimitedClose, FollowingItem, Separator,
+};
 use crate::formatter::parameters::RestParameterHead;
 use crate::formatter::suppression::{ContentMode, DelimitedSuppression, SuppressionPosition};
 use crate::{FormatError, TrailingCommas, document::Writer};
@@ -1177,6 +1179,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = parameters.node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
+        let sensitive_content = self.diagnostic_range_is_sensitive(content);
+        let last = if sensitive_content {
+            self.last_callable_parameter(&parameters)?
+        } else {
+            None
+        };
+        let closing = if sensitive_content {
+            DelimitedClose::SourceComma(self.terminal_close_boundary(content, || {
+                last.map(|last| (last.span(ast), content.start))
+            }))
+        } else {
+            DelimitedClose::Source
+        };
         let has_parameters = parameters.has_parameters();
         let hug = parameters
             .hug
@@ -1231,6 +1246,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut transition = None;
             let mut separator = Separator::Line;
             let mut has_previous = false;
+            let mut terminal_close = None;
             while let Some(member) = members.next() {
                 let member = member?;
                 let member_span = member.span(ast);
@@ -1285,12 +1301,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     prepared
                 };
                 let tail = self.format_prepared_parameter_item(prepared, writer)?;
-                let boundary = self.finish_delimited_item(item, tail, writer)?;
+                let boundary =
+                    self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
                 end = boundary.end;
                 following_mode = Some(boundary.following_mode);
                 separator = boundary.separator;
                 transition = boundary.transition;
                 has_previous = true;
+                terminal_close = boundary.terminal_close;
             }
             let dangling = self.comments.between(Span::new(end, content.end))?;
             let boundary = self.prepare_comment_boundary(dangling, end, content.end);
@@ -1299,9 +1317,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok::<_, FormatError>((
                 dangling.last().map_or(end, |comment| comment.span.end),
                 boundary.gap(),
+                terminal_close,
             ))
         };
-        let (end, closing) = if hug.is_some() {
+        let (end, gap, terminal_close) = if hug.is_some() {
             write_items(writer)?
         } else {
             writer.indent(write_items)?
@@ -1312,7 +1331,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .closing
                     .write(writer, FlatSeparator::Empty, Writer::soft_line);
             } else {
-                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                if let Some(terminal_close) = terminal_close {
+                    terminal_close.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                } else {
+                    gap.write(writer, FlatSeparator::Empty, Writer::soft_line);
+                }
             }
         }
         writer.text(")");

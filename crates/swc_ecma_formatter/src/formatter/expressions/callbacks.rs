@@ -1126,11 +1126,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let (closing, ()) = writer.record_with_value(|writer| {
             let end = previous.map_or(content.start, |boundary| boundary.end);
             let end = self.format_argument_dangling(Span::new(end, content.end), writer)?;
-            head.closing.constraint(self, end, content.end).write(
-                writer,
-                FlatSeparator::Empty,
-                Writer::soft_line,
-            );
+            previous
+                .and_then(|boundary| boundary.terminal_close)
+                .unwrap_or_else(|| head.closing.constraint(self, end, content.end))
+                .write(writer, FlatSeparator::Empty, Writer::soft_line);
             Ok::<_, FormatError>(())
         })?;
         let fallback_group = match outcome {

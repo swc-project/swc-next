@@ -9,7 +9,9 @@ use super::context::TypeContext;
 use super::{Formatter, PreparedType, TypeBoundaryLayout, TypeLayout};
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail};
 use crate::formatter::diagnostics::FlatSeparator;
-use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
+use crate::formatter::expressions::arguments::{
+    ArgumentLayout, DelimitedClose, FollowingItem, Separator,
+};
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, TrailingCommas, document::Writer};
 
@@ -28,6 +30,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = node.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
         let elements = node.element_types(ast);
+        let closing = if self.diagnostic_range_is_sensitive(content) {
+            DelimitedClose::SourceComma(self.terminal_close_boundary(content, || {
+                let mut reversed = elements.iter().rev();
+                let last = ast.get_node_in_sub_range(reversed.next()?);
+                let head = reversed.next().map_or(content.start, |id| {
+                    let element: swc_next_ecma_ast::TsTupleElement = ast.get_node_in_sub_range(id);
+                    element.span(ast).end
+                });
+                Some((last.span(ast), head))
+            }))
+        } else {
+            DelimitedClose::Source
+        };
         let layout = if elements.len() > 1 {
             TypeLayout::MultipleTupleElement
         } else {
@@ -57,7 +72,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         writer.group(false, |writer| {
             writer.text("[");
-            let end = writer.indent(|writer| {
+            let (end, terminal_close) = writer.indent(|writer| {
                 if empty_dangling.is_some() {
                     self.opening_line_constraint(content).write(
                         writer,
@@ -74,6 +89,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut transition = None;
                 let mut separator = Separator::Line;
                 let mut following_mode = None;
+                let mut terminal_close = None;
                 while let Some(element) = elements.next() {
                     let element_span = element.span(ast);
                     let leading = self
@@ -125,12 +141,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                     item.set_leading_mode(leading_mode);
                     let tail = self.format_tuple_element(element_content, item.mode, TypeContext::Root, layout, writer)?;
-                    let boundary = self.finish_delimited_item(item, tail, writer)?;
+                    let boundary = self.finish_delimited_item_with_closing(item, tail, closing, writer)?;
                     end = boundary.end;
                     source_end = element_span.end;
                     separator = boundary.separator;
                     transition = boundary.transition;
                     following_mode = Some(boundary.following_mode);
+                    terminal_close = boundary.terminal_close;
                 }
                 let (dangling, layout) = if let Some((comments, layout)) = empty_dangling {
                     self.comments.claim(comments)?;
@@ -151,9 +168,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.comment_gap(end, first.span.start, writer);
                 }
                 self.format_comment_run(dangling, layout, writer)?;
-                Ok::<_, FormatError>(dangling.last().map_or(end, |comment| comment.span.end))
+                Ok::<_, FormatError>((dangling.last().map_or(end, |comment| comment.span.end), terminal_close))
             })?;
-            self.line_constraint(end, content.end).write(
+            terminal_close.unwrap_or_else(|| closing.constraint(self, end, content.end)).write(
                 writer,
                 FlatSeparator::Empty,
                 Writer::soft_line,
