@@ -98,6 +98,7 @@ struct ConditionalBranch<'ast> {
 struct ConditionalBoundary<'ast> {
     operator: &'static str,
     source_range: Span,
+    source_enclosed: bool,
     comments: &'ast [Comment],
     source: Option<ConditionalSourceBoundary<'ast>>,
 }
@@ -499,6 +500,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(ConditionalBoundary {
                 operator,
                 source_range: span,
+                source_enclosed: matches!(
+                    self.ast.expr_data(previous.original),
+                    ExprData::ParenthesizedExpression(_)
+                ),
                 comments,
                 source: None,
             });
@@ -630,6 +635,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(ConditionalBoundary {
             operator,
             source_range: span,
+            source_enclosed: matches!(
+                self.ast.expr_data(previous.original),
+                ExprData::ParenthesizedExpression(_)
+            ),
             comments,
             source: Some(ConditionalSourceBoundary {
                 operator_start,
@@ -918,7 +927,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             let defer_outer = enclosed
                 && outer.first().is_some_and(|first| {
-                    self.line_breaks(boundary.source_range.start, first.span.start) != 0
+                    boundary.source_enclosed && first.kind == swc_next_ecma_ast::CommentKind::Line
+                        || self.line_breaks(boundary.source_range.start, first.span.start) != 0
                 });
             if defer_outer {
                 let inside = if inner.is_empty() {
@@ -969,7 +979,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 trailing.partition_point(|comment| comment.span.end <= boundary.source_range.start);
             let (inner, outer) = trailing.split_at(prefix);
             let defer_outer = outer.first().is_some_and(|first| {
-                self.line_breaks(boundary.source_range.start, first.span.start) != 0
+                boundary.source_enclosed && first.kind == swc_next_ecma_ast::CommentKind::Line
+                    || self.line_breaks(boundary.source_range.start, first.span.start) != 0
             });
             if defer_outer {
                 let inside = if inner.is_empty() {
