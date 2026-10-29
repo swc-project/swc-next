@@ -29,8 +29,10 @@ const alternatives = (...ids) => [
 ];
 const line = [2, 0];
 const hard = [2, 2];
+const rawHard = [2, 3];
 const literal = [2, 4];
 const rootLiteral = [2, 5];
+const rawLiteral = [2, 6];
 
 function wire(build, version = 0) {
   const strings = [];
@@ -478,6 +480,81 @@ test("suffix boundaries flush complete Docs only when a suffix is pending", () =
     [...t("a"), 14, ...t(" S"), ...end(14), 15, ...t("b")],
   ]);
   assert.equal(printWire(queued), "a S\nb");
+});
+
+test("raw lines preserve parent mode across the document boundary", () => {
+  for (const raw of [rawHard, rawLiteral]) {
+    const bytes = wire((t) => [
+      [
+        ...group(),
+        ...t("a"),
+        ...raw,
+        ...t("b"),
+        ...line,
+        ...t("c"),
+        ...condition(0, 1, 2),
+        ...end(3),
+      ],
+      t("B"),
+      t("F"),
+    ]);
+    const forced = wire((t) => [
+      [
+        ...group(),
+        ...t("a"),
+        ...raw,
+        16,
+        ...t("b"),
+        ...line,
+        ...t("c"),
+        ...condition(0, 1, 2),
+        ...end(3),
+      ],
+      t("B"),
+      t("F"),
+    ]);
+    for (const width of [1, 3, 4, 80]) {
+      assert.equal(
+        printDocBufferSync(bytes, { printWidth: width }),
+        printWire(bytes, width),
+      );
+      assert.equal(
+        printDocBufferSync(forced, { printWidth: width }),
+        printWire(forced, width),
+      );
+    }
+    assert.equal(printWire(bytes), "a\nb cF");
+    assert.equal(printWire(forced), "a\nb\ncB");
+  }
+});
+
+test("shared raw lines retain suffix and indentation behavior across hosts", () => {
+  for (const raw of [rawHard, rawLiteral]) {
+    const bytes = wire((t) => [
+      [
+        ...group(),
+        4,
+        ...t("a  "),
+        14,
+        ...t(" S "),
+        ...end(14),
+        ...reference(1),
+        ...t("b"),
+        ...line,
+        ...t("c"),
+        ...end(4),
+        ...end(3),
+        ...reference(1),
+        ...t("z"),
+      ],
+      raw,
+    ]);
+    for (const width of [2, 5, 80])
+      assert.equal(
+        printDocBufferSync(bytes, { printWidth: width }),
+        printWire(bytes, width),
+      );
+  }
 });
 
 test("Rust host prints a language-independent document buffer", () => {
