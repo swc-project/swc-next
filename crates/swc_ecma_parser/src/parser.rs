@@ -834,6 +834,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     /// assembled at the same time.
     scratch_a: ScratchBuffer,
     scratch_b: ScratchBuffer,
+    scratch_string: Wtf8Buf,
     context: Context,
     statement_context: StatementContext,
     ts_context: TsContext,
@@ -1127,6 +1128,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             scratch_decorators: ScratchBuffer::default(),
             scratch_a: ScratchBuffer::default(),
             scratch_b: ScratchBuffer::default(),
+            scratch_string: Wtf8Buf::new(),
             context: Context::default(),
             statement_context: StatementContext::default(),
             ts_context: {
@@ -1577,9 +1579,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn decode_escaped_string(&mut self, start: u32, end: u32) -> AstWtf8 {
-        let mut decoded = Wtf8Buf::with_capacity((end - start) as usize);
-        decode_string_escapes(&self.source[start as usize..end as usize], &mut decoded);
-        self.ast.add_wtf8(&decoded)
+        self.scratch_string.clear();
+        self.scratch_string.reserve((end - start) as usize);
+        decode_string_escapes(
+            &self.source[start as usize..end as usize],
+            &mut self.scratch_string,
+        );
+        self.ast.add_wtf8(&self.scratch_string)
     }
 
     fn describe_token(&self, token: Token) -> Cow<'a, str> {
