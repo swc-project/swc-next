@@ -1460,9 +1460,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         })
                         .transpose()?;
                     if let Some((next, next_content)) = next.as_ref() {
+                        let next_start = next.span(self).start;
+                        let gap_end = self
+                            .comments
+                            .in_range(Span::new(end, next_start))
+                            .first()
+                            .map_or(next_start, |comment| comment.span.start);
                         let constraint = self.source_separator_constraint(
                             end,
-                            next.span(self).start,
+                            gap_end,
                             boundary.transition.as_ref(),
                         );
                         let promoted = matches!(

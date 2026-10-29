@@ -17,6 +17,7 @@ use super::{
 };
 use crate::formatter::comments::{
     CommentBinding, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+    StatementCommentBoundary,
 };
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::{
@@ -789,7 +790,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let (end, _) = self.format_trailing_comments(
                 Span::new(printed.boundary.end(), trailing_limit),
-                span.end,
+                StatementCommentBoundary {
+                    source_end: span.end,
+                    terminator: printed.boundary.comment_terminator_placement(),
+                },
                 end.has_following(),
                 None,
                 writer,

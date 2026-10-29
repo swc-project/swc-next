@@ -87,7 +87,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(span.start, |comment| comment.span.start);
             self.source_line_constraint(slot.interior.start, start)
         } else {
-            self.line_constraint(slot.interior.start, span.start)
+            let end = leading
+                .first()
+                .map_or(span.start, |comment| comment.span.start);
+            self.line_constraint(slot.interior.start, end)
         };
         let after = self.prepare_comment_boundary(trailing, span.end, slot.interior.end);
         let content = (mode == ContentMode::Formatted && leading.is_empty() && trailing.is_empty())

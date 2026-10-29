@@ -19,7 +19,10 @@ use swc_next_ecma_ast::{
 };
 
 use super::Formatter;
-use super::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use super::comments::{
+    CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, StatementCommentBoundary,
+    StatementTerminatorPlacement,
+};
 use super::decorators::StatementDecorators;
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::{
@@ -495,6 +498,14 @@ impl StatementBoundary {
             Self::Hashbang { .. } | Self::Semicolon { .. } | Self::SourceTerminator { .. } => true,
             Self::SourceEnd { has_terminator, .. }
             | Self::TypeDeclarationEnd { has_terminator, .. } => has_terminator,
+        }
+    }
+
+    fn comment_terminator_placement(self) -> StatementTerminatorPlacement {
+        if self.has_terminator() {
+            StatementTerminatorPlacement::BeforeTail
+        } else {
+            StatementTerminatorPlacement::Adjacent
         }
     }
 
@@ -1067,25 +1078,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 boundary.end()
             };
-            let (end, next_line) = if let Some(tail) = omitted
+            let (end, following_gap) = if let Some(tail) = omitted
                 && source_packet.is_none()
             {
                 self.format_omitted_statement_tail(tail, trailing_start, pending_tail, writer)?
             } else {
                 self.format_trailing_comments(
                     Span::new(trailing_start, following.unwrap_or(span.end)),
-                    statement_span.end,
+                    StatementCommentBoundary {
+                        source_end: statement_span.end,
+                        terminator: boundary.comment_terminator_placement(),
+                    },
                     following.is_some(),
                     pending_tail,
                     writer,
                 )?
             };
-            if next_line
+            if let Some(LineConstraint::NewLine(required)) = following_gap
                 && let Some(next) = pending.as_mut()
-                && !matches!(next.source_gap, Some(LineConstraint::NewLine(_)))
             {
-                // A deferred released line comment precedes the next head packet.
-                next.source_gap = Some(LineConstraint::NewLine(1));
+                // The deferred suffix and the next head share this source gap.
+                let count = match next.source_gap {
+                    Some(LineConstraint::NewLine(existing)) => existing.max(required),
+                    _ => required,
+                };
+                next.source_gap = Some(LineConstraint::NewLine(count));
             }
             previous_span_end = statement_span.end;
             previous = Some(boundary.with_end(end));
@@ -1209,7 +1226,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         start: u32,
         pending: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
-    ) -> Result<(u32, bool), FormatError> {
+    ) -> Result<(u32, Option<LineConstraint>), FormatError> {
         let source_end = pending.as_ref().map_or(start, |pending| pending.source_end);
         let end = tail
             .comments
@@ -1221,11 +1238,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(end, |comment| end.max(comment.span.end));
         let comments = self.comments.between(Span::new(source_end, end))?;
         self.comments.claim(comments)?;
-        let next_line = pending.is_some()
-            && tail.has_following_comments
-            && comments
-                .last()
-                .is_some_and(|comment| comment.kind == CommentKind::Line);
+        let following_gap = comments.last().and_then(|comment| {
+            (pending.is_some() && tail.has_following_comments && comment.kind == CommentKind::Line)
+                .then(|| self.line_suffix_following_gap(comment.span.end))
+        });
         let binding =
             tail.binding
                 .combine(self.comment_binding(comments, Span::new(source_end, end), None));
@@ -1240,7 +1256,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.format_trailing_comment_run(comments, None, None, writer)?;
         }
-        Ok((end, next_line))
+        Ok((end, following_gap))
     }
 
     fn prepare_sequence_statement(
