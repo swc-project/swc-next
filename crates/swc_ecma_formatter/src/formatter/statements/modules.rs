@@ -1439,13 +1439,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         DelimitedClose::Source
                     };
-                    let boundary = if next.is_none()
-                        && (prepared.mode == ContentMode::Verbatim
-                            || self.diagnostic_range_is_sensitive(span))
-                        && {
-                            let gap = Span::new(span.end, content.end);
-                            self.find_comma(gap, self.comments.in_range(gap)).is_none()
-                        } {
+                    let boundary = if next.is_none() && prepared.mode == ContentMode::Verbatim && {
+                        let gap = Span::new(span.end, content.end);
+                        self.find_comma(gap, self.comments.in_range(gap)).is_none()
+                    } {
                         self.finish_delimited_item(prepared, None, writer)?
                     } else {
                         self.finish_delimited_item_with_closing(prepared, None, closing, writer)?
