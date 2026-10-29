@@ -8,7 +8,8 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser}
 
 use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
-    expect_printed_script, expect_printed_with_options, expect_stable,
+    expect_printed_script, expect_printed_with_options, expect_printed_with_parse_options,
+    expect_stable,
 };
 
 #[track_caller]
@@ -794,6 +795,47 @@ fn test_update_expression_parentheses() {
     expect_printed_minify("a++;", "a++;");
 
     expect_printed_minify("++a;", "++a;");
+}
+
+#[test]
+#[ignore = "assignment-target parentheses do not yet preserve anonymous name inference"]
+fn test_assignment_name_inference() {
+    let without_parens = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let with_parens = ParseOptions::default();
+    for options in [without_parens, with_parens] {
+        expect_printed_with_parse_options(
+            "(fn) = function() {};",
+            "(fn) = function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options("(fn) = () => 0;", "(fn) = () => 0;\n", options);
+
+        expect_printed_with_parse_options("(fn) ??= () => {};", "(fn) ??= () => {\n};\n", options);
+
+        expect_printed_with_parse_options("(C) ||= class {};", "(C) ||= class {\n};\n", options);
+
+        expect_printed_with_parse_options(
+            "(fn) &&= function() {};",
+            "(fn) &&= function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options(
+            "fn = function() {};",
+            "fn = function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options(
+            "[ (fn) = () => 0 ] = [];",
+            "[(fn) = () => 0] = [];\n",
+            options,
+        );
+    }
 }
 
 #[test]
