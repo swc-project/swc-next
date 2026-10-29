@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  return /* @ts-ignore */ (
+    /** @type {Function} */ (first)
+  )();
+}
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return /* @ts-ignore */ (
+    /** @type {Function} */ (first)
+  )();
+}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f() {
+  return /* @ts-ignore */ (
+    /** @type {Function} */ (first)
+  )()
+}
