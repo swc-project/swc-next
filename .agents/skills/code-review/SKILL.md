@@ -19,14 +19,12 @@ simplification suggestions with a concrete alternative and its tradeoffs.
 
 ## Behavior Changes
 
-Explain meaningful behavior changes with small, concrete examples: show the
-same input or triggering condition before and after the change, including the
-observable result. Distinguish intended changes from regressions. For refactors
-intended to preserve behavior, state that expectation and the evidence checked
-rather than inventing a behavior difference.
+Print an input as example and its actual before/after results. For behavior-preserving refactors, report
+the evidence for equivalence.
 
 ## Test Coverage
 
+- When reviewing a GitHub pull request link, do not rerun tests locally.
 - For test refactors, compare inputs, expected results, configuration combinations,
   and assertions with the original. Passing tests or unchanged test counts alone
   do not establish equivalent coverage; preserve checks when reorganizing tests.
