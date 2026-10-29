@@ -4,7 +4,7 @@ use super::{
     ConditionTarget, FlatSummary, FormatElement,
     text::{Text, Width},
 };
-use crate::{IndentStyle, PrintOptions};
+use crate::{IndentStyle, LineEnding, PrintOptions};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -605,11 +605,11 @@ pub(super) fn print<'a>(
             }
             FormatElement::BreakParent => {}
             FormatElement::Text { source, width } => {
-                output.write(Text::from_parts(source, width), options, mode)
+                output.write(Text::from_parts(source, width), options)
             }
             FormatElement::SoftLine | FormatElement::Line if mode == Mode::Flat => {
                 if matches!(element, FormatElement::Line) {
-                    output.write(Text::new(" "), options, mode);
+                    output.write(Text::new(" "), options);
                 }
             }
             FormatElement::SoftLine
@@ -651,7 +651,7 @@ pub(super) fn print<'a>(
             FormatElement::IfBreak { source, width } | FormatElement::IfFlat { source, width } => {
                 let broken = mode == Mode::Break;
                 if broken == matches!(element, FormatElement::IfBreak { .. }) {
-                    output.write(Text::from_parts(source, width), options, mode);
+                    output.write(Text::from_parts(source, width), options);
                 }
             }
             FormatElement::Conditional(conditional)
@@ -883,17 +883,26 @@ impl Output {
     }
 
     #[inline]
-    fn write(&mut self, text: Text<'_>, options: PrintOptions, mode: Mode) {
-        self.write_parts(text.source(), text.width(), options, mode);
+    fn write(&mut self, text: Text<'_>, options: PrintOptions) {
+        self.write_parts(text.source(), text.width(), options);
     }
 
-    fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions, mode: Mode) {
+    fn write_parts(&mut self, source: &str, width: Width, options: PrintOptions) {
         self.write_indent(options);
-        self.text.push_str(source);
-        let (column, multiline) = Text::from_source_parts(source, width).last_line(self.column);
-        self.column = column;
-        if multiline {
-            self.invalidate_line(mode);
+        if options.line_ending != LineEnding::Lf && source.contains('\n') {
+            self.write_text_lines(source, options.line_ending);
+        } else {
+            self.text.push_str(source);
+        }
+        self.column = Text::from_source_parts(source, width).advance_column(self.column);
+    }
+
+    fn write_text_lines(&mut self, source: &str, ending: LineEnding) {
+        let mut lines = source.split('\n');
+        self.text.push_str(lines.next().unwrap_or_default());
+        for line in lines {
+            self.text.push_str(ending.as_str());
+            self.text.push_str(line);
         }
     }
 
@@ -1064,12 +1073,7 @@ impl<'a> Probe<'a> {
                         column += 1;
                     }
                     pending_line_space = false;
-                    let (next_column, multiline) =
-                        Text::from_parts(source, width).first_line(column);
-                    column = next_column;
-                    if multiline {
-                        return column <= usize::from(options.line_width);
-                    }
+                    column = Text::from_parts(source, width).advance_column(column);
                     if column > usize::from(options.line_width) {
                         return false;
                     }

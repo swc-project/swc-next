@@ -676,8 +676,7 @@ pub struct Doc<'a> {
 impl Doc<'_> {
     /// Encodes the logical document into an owned version-0 buffer.
     ///
-    /// The current JavaScript decoder requires text instructions to be single-line.
-    /// Use [`Writer::literal_text`] for source text containing physical line breaks.
+    /// Text instructions retain their complete strings, including source newlines.
     /// This transport is still evolving and does not yet cover every document that
     /// the native printer can render.
     pub fn encode(self) -> Vec<u8> {

@@ -154,17 +154,17 @@ fn compact_widths() {
     let ascii = "a".repeat(80_000);
     let text = Text::new(&ascii);
     assert_eq!(text.clean_ascii_width(), Some(80_000));
-    assert_eq!(text.first_line(17), (80_017, false));
+    assert_eq!(text.advance_column(17), 80_017);
 
     let unicode = "界".repeat(40_000);
     let text = Text::new(&unicode);
     assert_eq!(text.clean_width(), Some(usize::from(u16::MAX)));
-    assert_eq!(text.first_line(17), (usize::from(u16::MAX) + 17, false));
+    assert_eq!(text.advance_column(17), usize::from(u16::MAX) + 17);
 
     let controls = "界\tend";
     let text = Text::new(controls);
     assert_eq!(text.clean_width(), Some(6));
-    assert_eq!(text.first_line(17), (23, false));
+    assert_eq!(text.advance_column(17), 23);
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1674,8 +1674,7 @@ fn cached_text_columns() {
 
     let tab = super::text::Text::new("a\u{7f}\té");
     assert_eq!(tab.clean_width(), Some(4));
-    assert_eq!(tab.first_line(0), (4, false));
-    assert_eq!(tab.last_line(0), (4, false));
+    assert_eq!(tab.advance_column(0), 4);
 }
 
 fn literal_text_continuation(text: &'static str) -> String {
@@ -1692,20 +1691,20 @@ fn literal_text_continuation(text: &'static str) -> String {
 #[test]
 fn text_line_measurement() {
     let ascii = super::text::Text::new("ASCII");
-    assert_eq!(ascii.last_line(3), (8, false));
+    assert_eq!(ascii.advance_column(3), 8);
 
     let unicode = super::text::Text::new("世界");
-    assert_eq!(unicode.last_line(3), (7, false));
+    assert_eq!(unicode.advance_column(3), 7);
 
     let controls = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(controls.last_line(3), (7, false));
+    assert_eq!(controls.advance_column(3), 7);
 
     let tab = super::text::Text::new("a\tb");
-    assert_eq!(tab.first_line(0), (3, false));
-    assert_eq!(tab.last_line(3), (6, false));
+    assert_eq!(tab.advance_column(0), 3);
+    assert_eq!(tab.advance_column(3), 6);
 
     let separators = super::text::Text::new("a\u{2028}b\u{2029}c");
-    assert_eq!(separators.last_line(3), (8, false));
+    assert_eq!(separators.advance_column(3), 8);
 
     assert_eq!(
         literal_text_continuation("é\r\n\u{7f}b"),
