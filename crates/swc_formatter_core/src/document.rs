@@ -106,6 +106,9 @@ enum FormatElement<'a> {
     /// Flushes pending line suffixes before continuing on a new line.
     LineSuffixBoundary,
     StartGroup {
+        /// The builder's explicit request, preserved by the logical codec.
+        request: GroupRequest,
+        /// Cached effective expansion after combining the request and contents.
         effect: BreakEffect,
         id: Option<GroupId>,
     },
@@ -371,6 +374,7 @@ fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
             | FormatElement::StartGroup {
                 effect: BreakEffect(0),
                 id: None,
+                ..
             }
             | FormatElement::EndGroup
             | FormatElement::StartIndent
@@ -531,6 +535,7 @@ impl FragmentCapabilities {
                 FormatElement::StartGroup {
                     effect: BreakEffect(0),
                     id: None,
+                    ..
                 }
                 | FormatElement::StartGroupWithFlatWidth { .. }
                 | FormatElement::EndGroup => continue,
