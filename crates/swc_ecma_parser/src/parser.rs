@@ -905,7 +905,20 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     active: bool,
 }
 
-impl<C: ParserConfig> Peek<'_, '_, C> {
+impl<'peek, 'a, C: ParserConfig> Peek<'peek, 'a, C> {
+    fn new(lexer: &'peek mut Lexer<'a, C>) -> Self {
+        Self {
+            state: lexer.state,
+            cursor: lexer.cursor,
+            comments_len: lexer.comments.len(),
+            module_mode_errors_len: lexer.module_mode_errors.len(),
+            processed_comments: lexer.processed_comments,
+            tokens_len: lexer.tokens.len(),
+            active: true,
+            lexer,
+        }
+    }
+
     /// Keeps the scanned tokens and their lexer side effects.
     fn commit(mut self) {
         self.active = false;
@@ -1763,16 +1776,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
-        Peek {
-            state: self.lexer.state,
-            cursor: self.lexer.cursor,
-            comments_len: self.lexer.comments.len(),
-            module_mode_errors_len: self.lexer.module_mode_errors.len(),
-            processed_comments: self.lexer.processed_comments,
-            tokens_len: self.lexer.tokens.len(),
-            active: true,
-            lexer: &mut self.lexer,
-        }
+        Peek::new(&mut self.lexer)
     }
 
     /// Peeks at the token immediately after `current_token` without advancing.
@@ -5968,12 +5972,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type(&mut self) -> Option<TsType> {
+        self.parse_type_with(Self::parse_type_inner)
+    }
+
+    fn parse_type_with(
+        &mut self,
+        parse: impl FnOnce(&mut Self) -> Option<TsType>,
+    ) -> Option<TsType> {
         let disallow_conditional_types = self.ts_context.disallow_conditional_types();
         if disallow_conditional_types {
             self.ts_context
                 .remove(TsContext::DISALLOW_CONDITIONAL_TYPES);
         }
-        let result = self.parse_type_inner();
+        let result = parse(self);
         if disallow_conditional_types {
             self.ts_context
                 .insert(TsContext::DISALLOW_CONDITIONAL_TYPES);
@@ -6410,6 +6421,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_tuple_element_body(&mut self, rest: bool) -> Option<TsTupleElement> {
+        // Consume the common head before choosing a label or a type reference.
+        if self.current_token.tag() == TokenTag::Identifier
+            && let Some((token, named)) = self.try_consume_tuple_identifier()
+        {
+            if named {
+                let name = self.identifier_name(token);
+                let label = self.ast.identifier_name(token.span(), name);
+                return self.parse_named_tuple_member_with_label(label);
+            }
+            let type_annotation = self.parse_type_with(|p| {
+                let result = p
+                    .parse_entity_name_from_token(token)
+                    .and_then(|name| p.parse_type_reference(token.start(), name))
+                    .and_then(|primary| p.parse_type_from_primary(primary));
+                result.or_else(|| {
+                    p.report_expected(
+                        p.current_token.span(),
+                        "Expected a type",
+                        ReportOptions::default(),
+                    );
+                    None
+                })
+            })?;
+            return Some(TsTupleElement::TsType(
+                self.tuple_element_type(type_annotation),
+            ));
+        }
         if self.is_named_tuple_element()? {
             // Rest labels are IdentifierNames; non-rest labels must start a type.
             return if rest {
@@ -6421,17 +6459,41 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.parse_tuple_element_type().map(TsTupleElement::TsType)
     }
 
+    fn try_consume_tuple_identifier(&mut self) -> Option<(Token, bool)> {
+        let token = self.current_token;
+        let peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = token.end();
+        let mut next = token;
+        if !peek.lexer.try_next_token(&mut next) {
+            // Let the ordinary tuple parser retain lexical-failure recovery.
+            peek.lexer.next_token(&mut next).ok()?;
+        }
+        let named = if next.tag() == TokenTag::Question {
+            let mut after_question = Peek::new(peek.lexer);
+            after_question.next()?.tag() == TokenTag::Colon
+        } else {
+            next.tag() == TokenTag::Colon
+        };
+        peek.commit();
+        self.current_token = next;
+        Some((token, named))
+    }
+
     fn parse_tuple_element_type(&mut self) -> Option<TsType> {
         let type_annotation = self.parse_type_with_start_check()?;
+        Some(self.tuple_element_type(type_annotation))
+    }
+
+    fn tuple_element_type(&mut self, type_annotation: TsType) -> TsType {
         if let Some(nullable) = type_annotation.as_ts_js_doc_nullable_type(&self.ast)
             && nullable.postfix(&self.ast)
         {
-            return Some(TsType::TsOptionalType(self.ast.ts_optional_type(
+            return TsType::TsOptionalType(self.ast.ts_optional_type(
                 type_annotation.span(&self.ast),
                 nullable.type_annotation(&self.ast),
-            )));
+            ));
         }
-        Some(type_annotation)
+        type_annotation
     }
 
     fn is_named_tuple_element(&mut self) -> Option<bool> {
@@ -6458,8 +6520,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_named_tuple_member(&mut self) -> Option<TsTupleElement> {
-        let start = self.current_token.start();
         let label = self.parse_identifier_name()?;
+        self.parse_named_tuple_member_with_label(label)
+    }
+
+    fn parse_named_tuple_member_with_label(
+        &mut self,
+        label: IdentifierName,
+    ) -> Option<TsTupleElement> {
+        let start = label.span(&self.ast).start;
         let optional = self.eat(TokenTag::Question)?;
         if !self.expect(
             TokenTag::Colon,
@@ -7678,6 +7747,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_entity_name(&mut self) -> Option<TsTypeName> {
         let token = self.consume_identifier(IdentifierRole::Name)?;
+        self.parse_entity_name_from_token(token)
+    }
+
+    fn parse_entity_name_from_token(&mut self, token: Token) -> Option<TsTypeName> {
         let name = self.identifier_name(token);
         let identifier = self.ast.identifier_reference(token.span(), name);
         if self.current_token.tag() == TokenTag::Dot {
