@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 
 use super::{ConditionTarget, Doc, FormatElement, Fragment, GroupRequest, Writer};
-use crate::{IndentStyle, LineEnding, PrintOptions};
+use crate::{IndentIfBreakOptions, IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
     writer.space();
@@ -755,6 +755,114 @@ fn dependent_document(options: PrintOptions) -> String {
     });
     writer.text(";");
     writer.finish().print(options)
+}
+
+fn conditional_indentation_document(named: bool, expanded: bool, negate: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let mut options = IndentIfBreakOptions {
+        negate,
+        ..IndentIfBreakOptions::default()
+    };
+    if named {
+        let group = writer.named_group(expanded, |w| w.text("g"));
+        options.target = ConditionTarget::Group(group);
+        writer.indent_if_break_with_options(options, |w| {
+            w.hard_line();
+            w.text("x");
+        });
+    } else {
+        writer.group(expanded, |w| {
+            write_conditional_line(w, options);
+        });
+    }
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    doc.print(PrintOptions::default())
+}
+
+fn write_conditional_line(writer: &mut Writer<'_>, options: IndentIfBreakOptions) {
+    writer.indent_if_break_with_options(options, |w| {
+        w.hard_line_without_break_parent();
+        w.text("x");
+    });
+}
+
+#[test]
+fn conditional_indentation_options() {
+    assert_eq!(conditional_indentation_document(true, false, false), "g\nx");
+    assert_eq!(
+        conditional_indentation_document(true, false, true),
+        "g\n  x"
+    );
+    assert_eq!(
+        conditional_indentation_document(true, true, false),
+        "g\n  x"
+    );
+    assert_eq!(conditional_indentation_document(true, true, true), "g\nx");
+    assert_eq!(conditional_indentation_document(false, false, false), "\nx");
+    assert_eq!(
+        conditional_indentation_document(false, false, true),
+        "\n  x"
+    );
+    assert_eq!(
+        conditional_indentation_document(false, true, false),
+        "\n  x"
+    );
+    assert_eq!(conditional_indentation_document(false, true, true), "\nx");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let group = writer.next_group_id();
+    let options = IndentIfBreakOptions {
+        target: ConditionTarget::Group(group),
+        negate: true,
+    };
+    writer.indent_if_break_with_options(options, |w| w.text("hidden"));
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "");
+}
+
+#[test]
+fn conditional_indentation_projection_and_wire() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|w| w.text("S"));
+    writer.flat(|w| {
+        w.indent_if_break_with_options(IndentIfBreakOptions::default(), |w| {
+            w.line_suffix_boundary();
+            w.text("x");
+        })
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "aS\nx");
+
+    let mut writer = Writer::new(&allocator);
+    let group = writer.named_group(false, |w| w.text("g"));
+    writer.literal_line();
+    writer.text("a");
+    writer.line_suffix(|w| w.text("S"));
+    let options = IndentIfBreakOptions {
+        target: ConditionTarget::Group(group),
+        negate: true,
+    };
+    writer.flat(|w| {
+        w.indent_if_break_with_options(options, |w| {
+            w.line_suffix_boundary();
+            w.text("x");
+        })
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "g\naS\n  x");
+
+    let bytes = document_buffer(&[&[7, 2, 0, 0, 0, 0, 17, 4]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+    let bytes = document_buffer(&[&[7, 1, 0, 0, 0, 0, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
 }
 
 #[test]
