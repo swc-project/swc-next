@@ -51,6 +51,9 @@ fn main() -> Result<(), String> {
             diagnostic.severity.as_str(),
             diagnostic.message,
         );
+        let start = diagnostic.span.start as usize;
+        let end = diagnostic.span.end as usize;
+        eprintln!("  highlight: {:?}", source.get(start..end));
         if let Some(help) = &diagnostic.help {
             eprintln!("  help: {help}");
         }
