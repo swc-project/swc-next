@@ -2354,7 +2354,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.advance()?;
         if self.current_token.has_line_terminator_before() {
             self.report(
-                self.current_token.span(),
+                Span::new(start, start + 5),
                 "Illegal newline after throw",
                 ReportOptions::default(),
             );
