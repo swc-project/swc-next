@@ -5883,6 +5883,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_type_or_type_predicate(&mut self) -> Option<TsType> {
+        let token = self.current_token;
+        // Share the reference/predicate prefix, retaining lookahead recovery
+        // when the next token cannot be scanned.
+        if token.tag() == TokenTag::Identifier && self.try_advance() {
+            if self.current_token.is_keyword(TokenTag::Is)
+                && !self.current_token.has_line_terminator_before()
+            {
+                let name = self.identifier_name(token);
+                let parameter_name = TsTypePredicateName::IdentifierName(
+                    self.ast.identifier_name(token.span(), name),
+                );
+                return self.finish_type_predicate(token.start(), parameter_name, false);
+            }
+            return self.parse_type_from_identifier(token);
+        }
         if !self.is_identifier_predicate_start()? {
             return self.parse_type();
         }
@@ -7743,6 +7758,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             )?;
         }
         self.parse_conditional_type_with(|_| Some(ty))
+    }
+
+    /// Continue a type after consuming its leading identifier.
+    fn parse_type_from_identifier(&mut self, token: Token) -> Option<TsType> {
+        self.parse_type_with(|parser| {
+            let primary = parser
+                .parse_entity_name_from_token(token)
+                .and_then(|name| parser.parse_type_reference(token.start(), name));
+            let result = primary.and_then(|primary| parser.parse_type_from_primary(primary));
+            result.or_else(|| {
+                parser.report_expected(
+                    parser.current_token.span(),
+                    "Expected a type",
+                    ReportOptions::default(),
+                );
+                None
+            })
+        })
     }
 
     fn parse_entity_name(&mut self) -> Option<TsTypeName> {
@@ -13509,6 +13542,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    /// Advance without reporting lexical errors, restoring lexer state on failure.
+    fn try_advance(&mut self) -> bool {
+        let previous_end = self.current_token.end();
+        let peek = self.begin_peek();
+        peek.lexer.state.prev_token_end = previous_end;
+        let mut next = Token::eof(peek.lexer.cursor);
+        if !peek.lexer.try_next_token(&mut next) && peek.lexer.next_token(&mut next).is_err() {
+            return false;
+        }
+        peek.commit();
+        self.check_escaped_keyword();
+        self.current_token = next;
+        true
+    }
+
     #[inline]
     fn eat(&mut self, tag: TokenTag) -> Option<bool> {
         let matched = self.current_token.tag() == tag;
@@ -14146,6 +14194,39 @@ mod tests {
             .iter()
             .map(|token| &source[token.start() as usize..token.end() as usize])
             .collect()
+    }
+
+    #[test]
+    fn token_lookahead() {
+        let allocator = Allocator::new();
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let parser = |source| {
+            let mut parser = Parser::init(&allocator, source, options, TokenParserConfig);
+            parser.advance().unwrap();
+            parser
+        };
+
+        let mut parsed = parser("head /* note */ next");
+        assert!(parsed.try_advance());
+        assert_eq!(
+            token_texts(parsed.source, &parsed.lexer.tokens),
+            ["head", "next"]
+        );
+        assert_eq!(parsed.lexer.comments.len(), 1);
+        assert_eq!(parsed.lexer.comments[0].position, CommentPosition::Trailing);
+        assert_eq!(parsed.lexer.comments[0].attached_to, 4);
+
+        let mut parsed = parser("head /*");
+        assert!(!parsed.try_advance());
+        assert_eq!(parsed.current_token.span(), Span::new(0, 4));
+        assert_eq!(token_texts(parsed.source, &parsed.lexer.tokens), ["head"]);
+        assert!(parsed.lexer.comments.is_empty());
+        assert!(parsed.diagnostics.is_empty());
+        assert!(parsed.advance().is_none());
+        assert!(!parsed.diagnostics.is_empty());
     }
 
     #[test]
