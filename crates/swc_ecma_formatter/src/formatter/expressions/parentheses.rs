@@ -101,6 +101,7 @@ struct DiagnosticHeadFrontier {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) struct HeadScopeOwner {
     expression: Expr,
+    restricted: bool,
 }
 
 impl DiagnosticHeadFrontier {
@@ -3770,10 +3771,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             opening,
             ..
         } = *owner;
-        if matches!(
+        if (matches!(
             context.position,
             ExpressionPosition::RestrictedArgument | ExpressionPosition::YieldArgument
-        ) && context.parentheses_owner == ParenthesesOwner::Expression
+        ) || context.head_scope.is_some_and(|scope| {
+            scope.restricted && scope.expression.span(self.ast).start == source.outer.start
+        })) && context.parentheses_owner == ParenthesesOwner::Expression
             && matches!(opening, LineConstraint::NewLine(_))
         {
             // The source opener keeps the cast on the keyword's argument side.
@@ -4905,12 +4908,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mut context: ExpressionContext<'ast>,
         content: &ExpressionContent,
     ) -> ExpressionContext<'ast> {
+        let restricted = matches!(
+            context.position,
+            ExpressionPosition::RestrictedArgument | ExpressionPosition::YieldArgument
+        );
         if context.content_mode == ContentMode::Formatted
-            && !self.diagnostic_lines.is_empty()
+            && (!self.diagnostic_lines.is_empty() || self.has_type_casts && restricted)
             && context.head_scope.is_none()
         {
             context.head_scope = Some(HeadScopeOwner {
                 expression: content.expression,
+                restricted,
             });
         }
         context
