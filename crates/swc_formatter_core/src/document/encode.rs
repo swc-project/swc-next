@@ -8,13 +8,16 @@ use rustc_hash::FxHashMap;
 use super::{ConditionTarget, Doc, FormatElement, GroupId};
 
 pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
-    let mut encoder = Encoder::default();
+    let mut encoder = Encoder {
+        normalize_groups: document.group_states,
+        ..Encoder::default()
+    };
     encoder.reference(document.elements, false);
     // Fragments form a DAG. A work list avoids recursion through shared scopes.
     let mut index = 0;
     while index < encoder.pending.len() {
-        let (elements, flat) = encoder.pending[index];
-        let instructions = encoder.instructions(elements, flat);
+        let (elements, flat, group_root) = encoder.pending[index];
+        let instructions = encoder.instructions(elements, flat, group_root);
         encoder.fragments.push(instructions);
         index += 1;
     }
@@ -33,8 +36,10 @@ pub(crate) fn encode(document: Doc<'_>) -> Vec<u8> {
 #[derive(Default)]
 struct Encoder<'a> {
     fragments: Vec<Vec<u8>>,
-    pending: Vec<(&'a [FormatElement<'a>], bool)>,
-    fragment_ids: FxHashMap<(usize, usize, bool), usize>,
+    pending: Vec<(&'a [FormatElement<'a>], bool, bool)>,
+    normalize_groups: bool,
+    fragment_ids: FxHashMap<(usize, usize, bool, bool), usize>,
+    group_records: FxHashMap<usize, usize>,
     strings: Vec<u8>,
     string_ids: FxHashMap<&'a str, (usize, usize)>,
 }
@@ -50,10 +55,19 @@ fn group(output: &mut Vec<u8>, id: Option<GroupId>) {
 
 impl<'a> Encoder<'a> {
     fn reference(&mut self, elements: &'a [FormatElement<'a>], flat: bool) -> usize {
-        let key = (elements.as_ptr() as usize, elements.len(), flat);
+        self.reference_kind(elements, flat, false)
+    }
+
+    fn reference_kind(
+        &mut self,
+        elements: &'a [FormatElement<'a>],
+        flat: bool,
+        group_root: bool,
+    ) -> usize {
+        let key = (elements.as_ptr() as usize, elements.len(), flat, group_root);
         let next_id = self.pending.len();
         *self.fragment_ids.entry(key).or_insert_with(|| {
-            self.pending.push((elements, flat));
+            self.pending.push((elements, flat, group_root));
             next_id
         })
     }
@@ -69,11 +83,47 @@ impl<'a> Encoder<'a> {
         word(output, length);
     }
 
-    fn instructions(&mut self, elements: &'a [FormatElement<'a>], flat: bool) -> Vec<u8> {
+    fn instructions(
+        &mut self,
+        elements: &'a [FormatElement<'a>],
+        flat: bool,
+        group_root: bool,
+    ) -> Vec<u8> {
         let mut output = Vec::new();
         let mut index = 0;
         while let Some(&element) = elements.get(index) {
             index += 1;
+            if self.normalize_groups
+                && !flat
+                && !(group_root && index == 1)
+                && let FormatElement::StartGroup { end_offset, .. }
+                | FormatElement::StartGroupWithFlatWidth { end_offset, .. } = element
+            {
+                let end = index + end_offset as usize;
+                output.push(9);
+                word(
+                    &mut output,
+                    self.reference_kind(&elements[index - 1..end], false, true),
+                );
+                index = end;
+                continue;
+            }
+            if self.normalize_groups
+                && !flat
+                && !(group_root && index == 1)
+                && let FormatElement::GroupWithStates(group) = element
+            {
+                let key = group as *const _ as usize;
+                let next = self.pending.len();
+                let reference = *self.group_records.entry(key).or_insert_with(|| {
+                    self.pending
+                        .push((&elements[index - 1..index], false, true));
+                    next
+                });
+                output.push(9);
+                word(&mut output, reference);
+                continue;
+            }
             // A flat projection retains the named condition but projects only
             // this complete indent body. Its scope end is consumed here.
             if let FormatElement::StartIndentIfBreak { id, end_offset } = element {
@@ -190,6 +240,21 @@ impl<'a> Encoder<'a> {
                         &mut output,
                         self.reference(alternatives.fallback.elements(), false),
                     );
+                }
+                FormatElement::GroupWithStates(group_data) => {
+                    output.extend([
+                        22,
+                        2 | u8::from(matches!(group_data.request, super::GroupRequest::Expanded)),
+                    ]);
+                    group(&mut output, group_data.id);
+                    word(
+                        &mut output,
+                        self.reference(group_data.contents.elements(), false),
+                    );
+                    word(&mut output, group_data.states.len());
+                    for state in group_data.states {
+                        word(&mut output, self.reference(state.elements(), false));
+                    }
                 }
                 FormatElement::BreakParent => output.push(16),
             }

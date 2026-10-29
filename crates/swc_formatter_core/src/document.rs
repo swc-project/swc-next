@@ -6,6 +6,7 @@
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
+mod breaks;
 mod decode;
 mod encode;
 mod printer;
@@ -117,6 +118,8 @@ enum FormatElement<'a> {
         /// Cached effective expansion after combining the request and contents.
         effect: BreakEffect,
         id: Option<GroupId>,
+        /// Distance to the matching EndGroup in this scope.
+        end_offset: u32,
     },
     /// An anonymous Auto group with exact context-free flat measurements and
     /// the distance from this opening instruction to its matching EndGroup.
@@ -156,6 +159,7 @@ enum FormatElement<'a> {
         summary: FragmentSummary,
     },
     Alternatives(&'a Alternatives<'a>),
+    GroupWithStates(&'a GroupWithStates<'a>),
 }
 
 const _: () = assert!(std::mem::size_of::<FormatElement<'_>>() <= 16);
@@ -177,18 +181,21 @@ impl FragmentSummary {
     const CAPABILITIES: u8 = 0b110;
     const CONDITIONAL_LINES: u8 = 1 << 3;
     const INTRINSIC_LINES: u8 = 1 << 4;
+    const GROUP_STATES: u8 = 1 << 5;
 
     fn new(
         effect: BreakEffect,
         capabilities: FragmentCapabilities,
         conditional_lines: bool,
         intrinsic_lines: bool,
+        group_states: bool,
     ) -> Self {
         Self(
             u8::from(effect.preferred_breaks())
                 | ((capabilities as u8) << 1)
                 | (u8::from(conditional_lines) << 3)
-                | (u8::from(intrinsic_lines) << 4),
+                | (u8::from(intrinsic_lines) << 4)
+                | (u8::from(group_states) << 5),
         )
     }
 
@@ -207,6 +214,10 @@ impl FragmentSummary {
 
     fn conditional_lines(self) -> bool {
         self.0 & Self::CONDITIONAL_LINES != 0
+    }
+
+    fn group_states(self) -> bool {
+        self.0 & Self::GROUP_STATES != 0
     }
 
     fn intrinsic_lines(self) -> bool {
@@ -401,15 +412,26 @@ impl<'a> Fragment<'a> {
         capabilities: FragmentCapabilities,
         conditional_lines: bool,
         intrinsic_lines: bool,
+        group_states: bool,
     ) -> Self {
         Self {
             elements: ThinSlice::new(elements),
-            summary: FragmentSummary::new(effect, capabilities, conditional_lines, intrinsic_lines),
+            summary: FragmentSummary::new(
+                effect,
+                capabilities,
+                conditional_lines,
+                intrinsic_lines,
+                group_states,
+            ),
         }
     }
 
     fn elements(self) -> &'a [FormatElement<'a>] {
         self.elements.get()
+    }
+
+    fn group_states(self) -> bool {
+        self.summary.group_states()
     }
 
     fn effect(self) -> BreakEffect {
@@ -472,6 +494,9 @@ impl<'a> Fragment<'a> {
                     }
                     FormatElement::Alternatives(alternatives) => {
                         pending.push((alternatives.first().elements(), false));
+                    }
+                    FormatElement::GroupWithStates(group) => {
+                        pending.push((group.contents.elements(), false));
                     }
                     _ => {}
                 }
@@ -569,10 +594,19 @@ impl FragmentCapabilities {
 #[derive(Debug, Clone, Copy)]
 pub struct FlatFragment<'a>(Fragment<'a>);
 
+/// Compact conditional group: Auto, unnamed, with contents equal to the first state.
 #[derive(Debug)]
 struct Alternatives<'a> {
     preferred: &'a [Fragment<'a>],
     fallback: Fragment<'a>,
+}
+
+#[derive(Debug)]
+struct GroupWithStates<'a> {
+    contents: Fragment<'a>,
+    states: &'a [Fragment<'a>],
+    request: GroupRequest,
+    id: Option<GroupId>,
 }
 
 #[derive(Debug)]
@@ -639,6 +673,7 @@ impl<'a> FormatElement<'a> {
             Self::Text { source, width } | Self::IfFlat { source, width } => Text::from_parts(source, width).is_single_line(),
             Self::Fragment { summary, .. } => summary.capabilities().permits_flat(),
             Self::Alternatives(alternatives) => alternatives.first().capabilities().permits_flat(),
+            Self::GroupWithStates(group) => group.id.is_none() && group.contents.capabilities().permits_flat(),
             _ => true,
         }
     }
@@ -660,6 +695,7 @@ impl<'a> FormatElement<'a> {
             Self::Alternatives(alternatives) => {
                 Some(Self::flat_fragment(FlatFragment(alternatives.first())))
             }
+            Self::GroupWithStates(group) => Some(Self::flat_fragment(FlatFragment(group.contents))),
             element @ (Self::Text { .. }
             | Self::LineSuffixBoundary
             | Self::StartIndentIfBreak { .. }
@@ -673,6 +709,7 @@ pub struct Doc<'a> {
     allocator: &'a swc_next_allocator::Allocator,
     elements: &'a [FormatElement<'a>],
     group_count: u32,
+    group_states: bool,
 }
 
 impl<'a> Doc<'a> {
@@ -703,6 +740,12 @@ impl<'a> Doc<'a> {
     }
 
     pub fn print(self, options: PrintOptions) -> String {
-        printer::print(self.elements, self.allocator, self.group_count, options)
+        printer::print(
+            self.elements,
+            self.allocator,
+            self.group_count,
+            self.group_states,
+            options,
+        )
     }
 }
