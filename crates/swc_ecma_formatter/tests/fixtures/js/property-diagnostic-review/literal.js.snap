@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = { k: (// @ts-ignore
+42) };
+---------- Options ----------
+{}
+---------- Output ----------
+x = {
+  k:
+    // @ts-ignore
+    42, };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+x = {
+  k:
+    // @ts-ignore
+    42, };
+
+---------- Options ----------
+{"printWidth":80,"singleQuote":true}
+---------- Output ----------
+x = {
+  k:
+    // @ts-ignore
+    42, };
