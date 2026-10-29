@@ -39,6 +39,37 @@ fn line_document(options: PrintOptions) -> String {
     writer.finish().print(options)
 }
 
+fn line_request_document<'a>(
+    allocator: &'a Allocator,
+    line: impl FnOnce(&mut Writer<'a>),
+) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        line(writer);
+        writer.text("b");
+        writer.line();
+        writer.text("c");
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn indented_line_doc<'a>(allocator: &'a Allocator, line: impl FnOnce(&mut Writer<'a>)) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        writer.indent(|writer| {
+            writer.text("a ");
+            line(writer);
+            writer.text("b");
+        });
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
 fn independent_document(allocator: &Allocator) -> Doc<'_> {
     let mut writer = Writer::new(allocator);
     let group = writer.named_group(false, |writer| {
@@ -1118,6 +1149,59 @@ fn literal_lines() {
         writer.finish().print(PrintOptions::default()),
         "{\n  /* first \n original */\n  value;\n}"
     );
+}
+
+#[test]
+fn line_break_requests() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 0,
+        ..wide
+    };
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.hard_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.literal_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = indented_line_doc(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\n  bF");
+
+    let doc = indented_line_doc(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a \nbF");
+
+    let mut writer = Writer::new(&allocator);
+    let hard = record(&mut writer, Writer::hard_line_without_break_parent);
+    assert!(hard.can_break());
+    assert!(hard.has_intrinsic_lines());
+    assert!(!hard.preferred_breaks());
+    assert!(hard.try_flat().is_none());
+
+    let literal = record(&mut writer, Writer::literal_line_without_break_parent);
+    assert!(literal.can_break());
+    assert!(literal.has_intrinsic_lines());
+    assert!(!literal.preferred_breaks());
+    assert!(literal.try_flat().is_none());
 }
 
 #[test]
