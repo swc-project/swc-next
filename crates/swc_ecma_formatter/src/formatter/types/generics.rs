@@ -1303,6 +1303,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<TypeBoundaryTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        // A retained own-line block head can become separated from its bound
+        // when the enclosing union breaks. Prepare that same flexible gap on
+        // both passes before selecting the bound's indentation group.
+        let comments = match comments {
+            PreparedBoundaryComments::Preserved(_)
+                if node.source_owner.is_none()
+                    && node.source_head.is_none()
+                    && after.comments().last().is_some_and(|last| {
+                        last.kind == CommentKind::Block
+                            && self.source_line_starts_line(last.span.start)
+                            && after.comments().iter().all(|&comment| {
+                                let semantics = self.comment_semantics(comment);
+                                !semantics.suppression
+                                    && !semantics.diagnostic
+                                    && !semantics.file_directive
+                                    && !semantics.optimizer
+                                    && !self.comment_needs_jsdoc_enclosure(comment)
+                            })
+                            && self.line_constraint(last.span.end, node.node.span(self.ast).start)
+                                == LineConstraint::Unconstrained
+                    }) =>
+            {
+                PreparedBoundaryComments::Preserved(CommentGap::Source(
+                    LineConstraint::Unconstrained,
+                ))
+            }
+            comments => comments,
+        };
         let (gap, content) = 'prepared: {
             if let Some(projection) = node.suppressed_projection()
                 && let Some(head) = self.projected_suppressed_type(projection)
