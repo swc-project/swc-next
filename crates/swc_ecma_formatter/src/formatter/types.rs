@@ -191,7 +191,7 @@ pub(super) struct TypeAttachmentHead {
     prefix: TypeCommentPrefix,
     first_owner: std::cell::Cell<Option<TsType>>,
     prefix_carrier: Option<TsType>,
-    parentheses_only: bool,
+    removable_parentheses: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -1961,11 +1961,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut source_barrier = None;
         let mut interior_frame = None;
         let mut prefix_carrier = None;
-        let mut parentheses_only = true;
+        let mut removable_parentheses = false;
         let data = loop {
             let data = self.ast.ts_type_data(node);
             let (types, token) = match data {
                 TsTypeData::TsParenthesizedType(parentheses) => {
+                    removable_parentheses = true;
                     let child = parentheses.type_annotation(self.ast);
                     if !self
                         .comments
@@ -1992,14 +1993,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     node = child;
                     continue;
                 }
-                TsTypeData::TsUnionType(union) => {
-                    parentheses_only = false;
-                    (union.types(self.ast), "|")
-                }
-                TsTypeData::TsIntersectionType(intersection) => {
-                    parentheses_only = false;
-                    (intersection.types(self.ast), "&")
-                }
+                TsTypeData::TsUnionType(union) => (union.types(self.ast), "|"),
+                TsTypeData::TsIntersectionType(intersection) => (intersection.types(self.ast), "&"),
                 _ => break data,
             };
             let Some(first) = types.first() else {
@@ -2027,7 +2022,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             interior_union_frame: interior_frame.filter(|_| union),
             first_owner: std::cell::Cell::new(None),
             prefix_carrier,
-            parentheses_only: parentheses_only && source != node,
+            removable_parentheses: removable_parentheses && source != node,
             prefix: self.prepare_type_comment_tie(
                 node,
                 union,
@@ -2713,7 +2708,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         role,
                         SuppressedTypeHeadRole::ConditionalExtends
                             | SuppressedTypeHeadRole::MappedBoundary
-                    ) && attachment.parentheses_only
+                    ) && attachment.removable_parentheses
                         && node.source_head.is_none())
                 || attachment.union
                     && !(matches!(role, SuppressedTypeHeadRole::ConditionalExtends)
