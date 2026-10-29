@@ -42,6 +42,24 @@ pub enum ConditionTarget {
     Group(GroupId),
 }
 
+/// Selects the group mode that controls conditional indentation.
+#[derive(Debug, Clone, Copy)]
+pub struct IndentIfBreakOptions {
+    /// The active mode or a previously resolved named group.
+    pub target: ConditionTarget,
+    /// Indent in flat mode instead of break mode.
+    pub negate: bool,
+}
+
+impl Default for IndentIfBreakOptions {
+    fn default() -> Self {
+        Self {
+            target: ConditionTarget::Current,
+            negate: false,
+        }
+    }
+}
+
 /// Explicit layout requests use the same meaning during measurement and printing.
 #[derive(Debug, Clone, Copy)]
 pub enum GroupRequest {
@@ -134,7 +152,8 @@ enum FormatElement<'a> {
         width: u32,
     },
     StartIndentIfBreak {
-        id: GroupId,
+        target: ConditionTarget,
+        negate: bool,
         end_offset: u32,
     },
     EndIndent,
@@ -721,6 +740,10 @@ impl<'a> FormatElement<'a> {
                 Some(Self::flat_fragment(FlatFragment(alternatives.first())))
             }
             Self::GroupWithStates(group) => Some(Self::flat_fragment(FlatFragment(group.contents))),
+            Self::StartIndentIfBreak {
+                target: ConditionTarget::Current,
+                ..
+            } => None,
             element @ (Self::Text { .. }
             | Self::LineSuffixBoundary
             | Self::StartIndentIfBreak { .. }

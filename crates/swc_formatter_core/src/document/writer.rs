@@ -7,7 +7,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 use super::{
     AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment,
     FormatElement, Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates,
-    NeutralFragment, RecordedGroup, text::Text, thin::ThinSlice,
+    IndentIfBreakOptions, NeutralFragment, RecordedGroup, text::Text, thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
@@ -397,15 +397,32 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent_if_break<T>(&mut self, group: GroupId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.indent_if_break_with_options(
+            IndentIfBreakOptions {
+                target: ConditionTarget::Group(group),
+                negate: false,
+            },
+            write,
+        )
+    }
+
+    /// Indents the scope when the selected group mode matches the options.
+    pub fn indent_if_break_with_options<T>(
+        &mut self,
+        options: IndentIfBreakOptions,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let start = self.elements.len();
         self.elements.push(FormatElement::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset: 0,
         });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = FormatElement::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset,
         };
         self.elements.push(FormatElement::EndIndent);

@@ -4729,7 +4729,7 @@ fn decode_shared_fill_entries() {
 fn decode_sparse_group_ids() {
     let allocator = Allocator::new();
     let bytes = document_buffer(
-        &[&[7, 255, 255, 255, 255, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4]],
+        &[&[7, 0, 255, 255, 255, 255, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4]],
         b"x",
     );
     let decoded = Doc::decode(&allocator, &bytes)

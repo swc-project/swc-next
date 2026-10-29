@@ -57,7 +57,7 @@ enum ScopeStart {
     Group { expanded: bool, id: u32 },
     Indent,
     Align(u32),
-    IndentIfBreak(u32),
+    IndentIfBreak { id: u32, negate: bool },
     Conditional { broken: bool, id: u32 },
     Fill,
     Entry,
@@ -165,15 +165,23 @@ fn parse_fragment(bytes: &[u8], count: usize) -> Result<Vec<Op>> {
                     _ => unreachable!(),
                 })
             }
-            6 | 7 | 19 => {
-                let value = r.word()?;
-                if tag == 7 && value == 0 {
+            7 => {
+                let flags = r.byte()?;
+                if flags & !1 != 0 {
                     return Err(DocumentBufferError::InvalidDocument);
                 }
+                let id = r.word()?;
+                stack.push(tag);
+                Op::Start(ScopeStart::IndentIfBreak {
+                    id,
+                    negate: flags != 0,
+                })
+            }
+            6 | 19 => {
+                let value = r.word()?;
                 stack.push(tag);
                 Op::Start(match tag {
                     6 => ScopeStart::Align(value),
-                    7 => ScopeStart::IndentIfBreak(value),
                     19 => ScopeStart::AbsoluteIndent(value),
                     _ => unreachable!(),
                 })
@@ -556,9 +564,10 @@ fn build<'a>(
                         }
                         ScopeFrame::Align { width }
                     }
-                    ScopeStart::IndentIfBreak(id) => {
+                    ScopeStart::IndentIfBreak { id, negate } => {
                         context.elements.push(FormatElement::StartIndentIfBreak {
-                            id: group(ids, id)?.ok_or(DocumentBufferError::InvalidDocument)?,
+                            target: target(ids, id)?,
+                            negate,
                             end_offset: 0,
                         });
                         ScopeFrame::IndentIfBreak { start }

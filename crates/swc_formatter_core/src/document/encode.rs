@@ -130,12 +130,26 @@ impl<'a> Encoder<'a> {
             }
             // A flat projection retains the named condition but projects only
             // this complete indent body. Its scope end is consumed here.
-            if let FormatElement::StartIndentIfBreak { id, end_offset } = element {
+            if let FormatElement::StartIndentIfBreak {
+                target,
+                negate,
+                end_offset,
+            } = element
+            {
+                if flat && matches!(target, ConditionTarget::Current) {
+                    continue;
+                }
                 let end = index
                     .checked_add(end_offset as usize)
                     .expect("document scope offset exceeds usize");
-                output.push(7);
-                group(&mut output, Some(id));
+                output.extend([7, u8::from(negate)]);
+                group(
+                    &mut output,
+                    match target {
+                        ConditionTarget::Current => None,
+                        ConditionTarget::Group(id) => Some(id),
+                    },
+                );
                 output.push(9);
                 word(&mut output, self.reference(&elements[index..end - 1], flat));
                 output.extend([17, 4]);
