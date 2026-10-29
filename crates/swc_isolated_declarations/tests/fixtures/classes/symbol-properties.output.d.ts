@@ -6,7 +6,6 @@ export declare abstract class Foo {
   [globalThis.Symbol.iterator](): void;
   get [Symbol.toStringTag](): string;
 }
-// OK because these are not exported
 // Incorrect
 export declare namespace Foo {
   const foo: {  };

@@ -8,5 +8,4 @@ declare enum Enum {
   B,
   C,
 }
-// Should not be included in the output, because they are not exported
 export { Class, Function, variable, Enum };

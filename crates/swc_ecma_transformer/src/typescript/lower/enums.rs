@@ -2,7 +2,7 @@ use rustc_hash::FxHashSet;
 
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, AstWtf8, DUMMY_SP, Expr, ExprData, GetSpan,
-    ObjectProperty, PropertyKey, SimpleAssignmentTarget, Stmt, SubRange, SymbolId,
+    ObjectProperty, PropertyKey, SimpleAssignmentTarget, Span, Stmt, SubRange, SymbolId,
     TsEnumDeclaration, UnaryOperator, VisitMut, VisitMutWith,
 };
 use swc_next_ecma_semantic::Semantic;
@@ -29,7 +29,10 @@ impl TypeScriptLowerer<'_, '_> {
         }
 
         let enum_name = binding.name(self.ast_ref());
-        let span = declaration.span(self.ast_ref());
+        let span = Span {
+            start: declaration.span(self.ast_ref()).start,
+            end: binding.span(self.ast_ref()).end,
+        };
         let prefix = self
             .register_runtime_binding(owner)
             .map(|kind| self.runtime_binding_statement(binding, span, kind, exported));
@@ -60,7 +63,10 @@ impl TypeScriptLowerer<'_, '_> {
             return;
         }
         let enum_name = binding.name(self.ast_ref());
-        let span = declaration.span(self.ast_ref());
+        let span = Span {
+            start: declaration.span(self.ast_ref()).start,
+            end: binding.span(self.ast_ref()).end,
+        };
         if let Some(kind) = self.register_runtime_binding(owner) {
             output.push(self.runtime_binding_statement(binding, span, kind, false));
         }
@@ -122,11 +128,16 @@ impl TypeScriptLowerer<'_, '_> {
                 member_name,
                 initializer,
                 value.is_string(),
+                member.span(self.ast_ref()),
             ));
         }
 
         let statements = self.ast().add_sub_range(statements);
-        self.object_iife_statement(parameter, SubRange::empty(), statements, target, DUMMY_SP)
+        let span = Span {
+            start: declaration.id(self.ast_ref()).span(self.ast_ref()).end,
+            end: declaration.span(self.ast_ref()).end,
+        };
+        self.object_iife_statement(parameter, SubRange::empty(), statements, target, span)
     }
 
     fn enum_member_statement(
@@ -135,6 +146,7 @@ impl TypeScriptLowerer<'_, '_> {
         member_name: AstWtf8,
         initializer: Expr,
         string_member: bool,
+        span: Span,
     ) -> Stmt {
         let member = self.enum_member_access(enum_name, member_name);
         let target = AssignmentTarget::SimpleAssignmentTarget(
@@ -147,7 +159,7 @@ impl TypeScriptLowerer<'_, '_> {
             AssignmentOperator::Assign,
         );
         if string_member {
-            return self.ast().stmt_expression_statement(DUMMY_SP, assignment);
+            return self.ast().stmt_expression_statement(span, assignment);
         }
 
         let object = self.ast().expr_identifier_reference(DUMMY_SP, enum_name);
@@ -168,8 +180,7 @@ impl TypeScriptLowerer<'_, '_> {
             Expr::StringLiteral(name),
             AssignmentOperator::Assign,
         );
-        self.ast()
-            .stmt_expression_statement(DUMMY_SP, outer_assignment)
+        self.ast().stmt_expression_statement(span, outer_assignment)
     }
 
     fn enum_member_access(

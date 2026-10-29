@@ -1,1 +1,1 @@
-function f(){let x=1;return ()=>x}
+function f(){let x=1;return()=>x}

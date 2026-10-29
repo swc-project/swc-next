@@ -5,4 +5,3 @@ export declare function B(): (() => void) | undefined;
 // two overloads.
 export declare function C(x: string): void;
 export declare function C(x: number): void;
-// private, not emitted

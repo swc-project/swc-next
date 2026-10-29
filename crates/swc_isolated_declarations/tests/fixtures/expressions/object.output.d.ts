@@ -3,20 +3,16 @@ declare const A: {
 };
 declare const B: {
   state: string;
-} // do something
-;
+};
 declare const C: {
   get state(): number;
   set state(v: number);
-} // do something
-;
+};
 declare const D: {
   get state(): number;
   set state(v: string);
-} // do something
-;
-declare const E: {} // do something
-;
+};
+declare const E: {};
 declare const ObjectMethods: {
   a(): number;
   b(): number;
@@ -47,6 +43,7 @@ declare const Y: {
   "5": number;
 };
 declare const exoticKeys: {
+  // --- WORKING KEYS ---
   a: string;
   é: string;
   ø: string;
@@ -55,6 +52,7 @@ declare const exoticKeys: {
   あ: string;
   한: string;
   á: string;
+  // --- NON-WORKING KEYS ---
   "😃": string;
   "👍🏻": string;
   "👨‍👩‍👧‍👦": string;
@@ -63,22 +61,4 @@ declare const exoticKeys: {
   "“": string;
   "\0": string;
   "\\": string;
-} // --- WORKING KEYS ---
-// latin
-// latin-1 supplement
-// extended latin
-// cyrillic
-// chinese
-// japanese
-// korean
-// zalgo (a + combining acute accent)
-// --- NON-WORKING KEYS ---
-// emoji
-// emoji + skin tone
-// emoji sequence (family)
-// math symbol
-// currency
-// curly quote
-// null byte (not expected to work)
-// backslash (unique error)
-;
+};

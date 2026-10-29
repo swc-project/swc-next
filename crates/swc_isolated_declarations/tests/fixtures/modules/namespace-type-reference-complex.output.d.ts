@@ -31,4 +31,3 @@ declare namespace NS4 {
   type Type4 = bigint;
 }
 export {};
-// Unreferenced namespace should not be included
