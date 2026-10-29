@@ -716,6 +716,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .as_ref()
                     .map_or(ContentMode::Formatted, |tail| tail.modes.current)
             };
+            let following_syntax = if pending.is_some() {
+                Some(FollowingSyntax::Statement)
+            } else if matches!(
+                kind,
+                StatementSequenceKind::Case {
+                    has_following: true,
+                    ..
+                }
+            ) {
+                Some(FollowingSyntax::Keyword)
+            } else {
+                None
+            };
             let source_terminator = if annotation_tail.is_some() {
                 self.statement_source_terminator(statement_span)
             } else {
@@ -724,7 +737,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_terminator = source_terminator.or_else(|| {
                 if self.options.semicolons == Semicolons::AsNeeded
                     && mode == ContentMode::Verbatim
-                    && pending.is_some()
+                    && following_syntax.is_some()
                     && let Some(terminator) = self.statement_source_terminator(statement_span)
                     && statement.raw_type_terminal(ast) != super::types::RawTypeTerminal::Closed
                 {
@@ -756,7 +769,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     StatementPunctuation::Source,
                 )
             } else if self.options.semicolons == Semicolons::AsNeeded
-                && (pending.is_some()
+                && (following_syntax.is_some()
                     && source_terminator.is_none()
                     && statement.has_open_type_tail(ast)
                     || pending.as_ref().is_some_and(|next| {
@@ -770,19 +783,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Some(terminator) => StatementPunctuation::Source(terminator),
                     None => StatementPunctuation::Canonical(self.options.semicolons),
                 }
-            };
-            let following_syntax = if pending.is_some() {
-                Some(FollowingSyntax::Statement)
-            } else if matches!(
-                kind,
-                StatementSequenceKind::Case {
-                    has_following: true,
-                    ..
-                }
-            ) {
-                Some(FollowingSyntax::Keyword)
-            } else {
-                None
             };
             let source_candidate = if let Some(kind) = following_syntax
                 && matches!(

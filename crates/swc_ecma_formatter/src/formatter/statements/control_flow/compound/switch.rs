@@ -686,7 +686,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let statements = node.node.consequent(ast);
         let first = node.first;
-        let content_start = if node.body_head.has_suppression() {
+        let guarded_head = if self.options.semicolons == crate::Semicolons::AsNeeded
+            && node.body_head.has_suppression()
+            && let (Some(first), Some(CaseIncoming::Statement(incoming))) = (first, node.incoming)
+            && first.span(ast) == incoming.span
+            && let StmtData::ExpressionStatement(statement) = ast.stmt_data(first)
+        {
+            self.expression_needs_asi_guard(
+                statement.expression(ast),
+                ExpressionContext::at(ExpressionPosition::Statement)
+                    .with_content_mode(incoming.mode),
+            )?
+        } else {
+            false
+        };
+        if guarded_head {
+            // The case owns the colon; the statement owns its complete leading
+            // packet so an ASI guard cannot become an ignore directive's target.
+            self.format_verbatim(Span::new(node.body_head.span.start, node.colon + 1), writer)?;
+        }
+        let content_start = if node.body_head.has_suppression() && !guarded_head {
             first.map_or(node.node.span(ast).end, |first| first.span(ast).start)
         } else {
             node.colon + 1
@@ -720,7 +739,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         self.comments.claim(node.body_leading.comments())?;
         let mut write_body = |writer: &mut Writer<'ast>| {
-            if node.body_head.has_suppression() {
+            if guarded_head {
+                let first_start = first.map_or(body_span.end, |first| first.span(ast).start);
+                let next = self
+                    .comments
+                    .in_range(Span::new(body_span.start, first_start))
+                    .first()
+                    .map_or(first_start, |comment| comment.span.start);
+                self.line_constraint(body_span.start, next).write(
+                    writer,
+                    FlatSeparator::Space,
+                    if block {
+                        Writer::space
+                    } else {
+                        Writer::hard_line
+                    },
+                );
+            } else if node.body_head.has_suppression() {
                 self.format_compound_gap(
                     node.body_head,
                     FlatSeparator::Space,
