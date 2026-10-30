@@ -2298,38 +2298,11 @@ impl<'a> Printer<'a> {
                 self.print("yield");
                 self.print_comments_at(e.span(self.ast).start + 5, false);
                 if e.delegate(self.ast) {
-                    if let Some(value) = e.argument(self.ast)
-                        && let Some(comment) = self.comments.get(self.next_comment).copied()
-                        && comment.position == CommentPosition::Leading
-                        && comment.attached_to < self.expr_first_token_offset(value)
-                    {
-                        self.print_comments_at(comment.attached_to, false);
-                    }
                     self.print("*");
                 }
                 if let Some(value) = e.argument(self.ast) {
                     self.print_space();
-                    let wrap_argument = self.expr_has_leading_line_terminator(value);
-                    if wrap_argument {
-                        self.print("(");
-                    }
-                    if let Some(comment) = self.comments.get(self.next_comment).copied()
-                        && comment.position == CommentPosition::Trailing
-                        && comment.span.end <= self.expr_first_token_offset(value)
-                    {
-                        self.print_comments_at(comment.attached_to, false);
-                    }
-                    self.print_expr(
-                        value,
-                        if wrap_argument {
-                            Precedence::Lowest
-                        } else {
-                            Precedence::Yield
-                        },
-                    );
-                    if wrap_argument {
-                        self.print(")");
-                    }
+                    self.print_expr_without_leading_line_terminator(value, Precedence::Yield);
                 }
                 if wrap {
                     self.print(")");
