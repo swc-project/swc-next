@@ -15,6 +15,7 @@ crate-type = ["cdylib"]
 test-codec = ["dep:swc_next_allocator", "dep:swc_next_ecma_codegen", "dep:swc_next_ecma_parser"]
 
 [dependencies]
+mimalloc              = { workspace = true, features = ["v2"] }
 swc_next_allocator    = { workspace = true, optional = true }
 swc_next_bridge       = { workspace = true, features = ["codegen", "parser"] }
 swc_next_ecma_ast     = { workspace = true }
