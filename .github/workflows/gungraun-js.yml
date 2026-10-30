@@ -5,6 +5,7 @@ on:
     branches: [chenjiahan/experiment-native-size-linux]
 permissions:
   contents: read
+  actions: read
 jobs:
   compare:
     runs-on: ubuntu-24.04
@@ -19,15 +20,22 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24.19.0
-      - name: Install pinned nightly and Rust source
-        run: rustup toolchain install nightly-2026-10-29 --profile minimal --component rust-src --no-self-update
       - run: pnpm install --frozen-lockfile
-      - name: Measure size, verify API, and benchmark
-        run: python3 .github/scripts/native-size-linux/run.py
+      - name: Download previously measured binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: native-size-linux
+          run-id: 40995106402
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/native-size-linux
+      - name: Repeat noisy workloads with GC outside timing
+        env:
+          NATIVE_BENCH_FOLLOWUP: '1'
+        run: python3 .github/scripts/native-size-linux/followup.py
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: native-size-linux
+          name: native-size-linux-followup
           retention-days: 30
           path: |
             ${{ runner.temp }}/native-size-linux/*.json
