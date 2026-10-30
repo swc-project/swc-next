@@ -793,6 +793,17 @@ fn test_statement_body_comments() {
 fn test_function_annotations() {
     expect_printed("/*#__PURE__*/ f();", "/* #__PURE__ */ f();\n");
 
+    expect_printed("/*  @__PURE__  */ f();", "/* @__PURE__ */ f();\n");
+
+    expect_printed(
+        "/*\u{2003}#__NO_SIDE_EFFECTS__\u{2003}*/ function f() {}",
+        "/* #__NO_SIDE_EFFECTS__ */ function f() {\n}\n",
+    );
+
+    expect_printed("/* @__PURE__ extra */ f();", "/* @__PURE__ extra */ f();\n");
+
+    expect_printed("/* @__PURE__extra */ f();", "/* @__PURE__extra */ f();\n");
+
     expect_printed(
         "/** @returns {number} */ /*#__PURE__*/ make();",
         "/** @returns {number} */\n/* #__PURE__ */ make();\n",

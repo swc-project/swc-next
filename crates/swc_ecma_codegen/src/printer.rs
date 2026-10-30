@@ -531,11 +531,11 @@ impl<'a> Printer<'a> {
         let value = self
             .ast
             .get_utf8(comment.value(self.ast.source().as_bytes()));
-        let trimmed = value.trim();
+        let trimmed = value.trim_start();
         let annotation = comment.kind == CommentKind::Block
-            && matches!(
-                trimmed,
-                "@__PURE__" | "#__PURE__" | "@__NO_SIDE_EFFECTS__" | "#__NO_SIDE_EFFECTS__"
+            && matches!(trimmed.as_bytes(),
+                [b'@' | b'#', rest @ ..]
+                    if rest.starts_with(b"__PURE__") || rest.starts_with(b"__NO_SIDE_EFFECTS__")
             );
         // Statement comments get their own line, except annotations and ts
         // directives whose original line boundaries determine their scope.
@@ -571,7 +571,7 @@ impl<'a> Printer<'a> {
             CommentKind::Block => {
                 if annotation {
                     self.print("/* ");
-                    self.print_bytes(trimmed);
+                    self.print_bytes(trimmed.trim_end().as_bytes());
                     self.print(" */");
                 } else {
                     self.print_indented_block_comment(value.as_bytes());
