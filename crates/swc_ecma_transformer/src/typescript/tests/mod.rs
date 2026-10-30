@@ -49,7 +49,8 @@ fn transformed_code_with_source_type(
     let mut ast = parsed.ast;
     Normalizer::normalize_runtime(ast.root_program(), &mut ast);
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
-    transform(ast.root_program(), &mut ast, &semantic, transform_options);
+    let diagnostics = transform(ast.root_program(), &mut ast, &semantic, transform_options);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
     swc_next_ecma_codegen::print(&ast, Default::default()).code
 }
 

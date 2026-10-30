@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, BlockStatement, CatchClause, Class, ClassBody, ClassType, Decl,
-    ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
+    Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
     FormalParameters, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
     TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
     TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
@@ -36,6 +36,9 @@ pub struct TransformerOptions {
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
+    /// Errors produced during lowering. The AST is recovery output when this
+    /// list contains errors and must not be executed as a successful transform.
+    pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
 pub struct Transformer {
@@ -50,12 +53,20 @@ impl Transformer {
         mut semantic: Semantic<'ast>,
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
+        let mut diagnostics = Vec::new();
         if let Some(typescript) = options.typescript.take() {
-            typescript::transform(ast.root_program(), ast, &semantic, typescript);
+            diagnostics.extend(typescript::transform(
+                ast.root_program(),
+                ast,
+                &semantic,
+                typescript,
+            ));
             semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
 
-        Self::transform_with_scopes(ast, ScopeModel::new(semantic), options)
+        let mut result = Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
+        result.diagnostics = diagnostics;
+        result
     }
 
     /// Run synchronized transforms on an already normalized runtime AST and its ScopeModel.
@@ -78,6 +89,7 @@ impl Transformer {
         TransformCtx::new(&mut ctx).finish();
         TransformerReturn {
             semantic: ctx.state.semantic,
+            diagnostics: Vec::new(),
         }
     }
 }

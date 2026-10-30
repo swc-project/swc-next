@@ -146,7 +146,14 @@ fn transform_program<'a, C: TransformCase>(
     {
         return None;
     }
-    Transformer::transform(&mut ast, semantic_ret.semantic, options);
+    let transformed = Transformer::transform(&mut ast, semantic_ret.semantic, options);
+    if transformed
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == Severity::Error)
+    {
+        return None;
+    }
     Some(ast)
 }
 

@@ -161,3 +161,65 @@ fn decorator_bindings() {
     assert_parameter_assignment(&code);
     assert_eq!(code.matches("_initProperties()").count(), 1);
 }
+
+#[test]
+fn assignment_field_initialization() {
+    let assignment = TypeScriptOptions {
+        native_class_properties: false,
+        ..Default::default()
+    };
+    let code = transformed_code_with_options(
+        "class C { value = this.x; constructor(public x: number) {} }",
+        assignment.clone(),
+    );
+    assert!(code.find("this.x = x").unwrap() < code.find("this.value = this.x").unwrap());
+    assert!(!code.contains("value = this.x;\n  constructor"));
+
+    let code = transformed_code_with_options(
+        "class C extends Base { #value = this.x; constructor(public x: number) { super(); } }",
+        assignment,
+    );
+    assert!(code.contains("#value;"));
+    assert!(code.find("super()").unwrap() < code.find("this.x = x").unwrap());
+    assert!(code.find("this.x = x").unwrap() < code.find("this.#value = this.x").unwrap());
+}
+
+#[test]
+fn assignment_field_diagnostics() {
+    fn rejected(source: &str) -> bool {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(
+            &allocator,
+            source,
+            ParserOptions {
+                lang: Lang::Ts,
+                ..Default::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parsed.diagnostics.is_empty());
+        let mut ast = parsed.ast;
+        Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+        let diagnostics = transform(
+            ast.root_program(),
+            &mut ast,
+            &semantic,
+            TypeScriptOptions {
+                native_class_properties: false,
+                ..Default::default()
+            },
+        );
+        !diagnostics.is_empty()
+    }
+    assert!(rejected(
+        "class C { [key()] = 1; constructor(public x: number) {} }"
+    ));
+    assert!(rejected(
+        "const x = 1; class C { value = x; constructor(public x: number) {} }"
+    ));
+    assert!(rejected(
+        "class C { value = new.target; constructor(public x: number) {} }"
+    ));
+}

@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct TypeScriptOptions {
     /// TypeScript's `verbatimModuleSyntax`: preserves value imports/exports
@@ -21,6 +21,13 @@ pub struct TypeScriptOptions {
     /// Retain the loading effects of value imports whose bindings are used only
     /// as types or are unused. Explicit `import type` declarations are erased.
     pub import_not_used_as_values: ImportsNotUsedAsValues,
+    /// Keep instance field initializers in native class fields. When false,
+    /// classes with parameter properties initialize those properties before
+    /// other instance fields. Defaults to true. Computed keys, auto-accessors,
+    /// decorators, field `new.target`, and constructor-binding capture currently
+    /// produce diagnostics when their initializers would need to move.
+    #[serde(default = "default_native_class_properties")]
+    pub native_class_properties: bool,
     /// Factory dependencies for JSX preserved for a later transform.
     pub jsx: JsxImportOptions,
 }
@@ -40,4 +47,22 @@ pub enum ImportsNotUsedAsValues {
     #[default]
     Remove,
     Preserve,
+}
+
+fn default_native_class_properties() -> bool {
+    true
+}
+
+impl Default for TypeScriptOptions {
+    fn default() -> Self {
+        Self {
+            verbatim_module_syntax: false,
+            preserve_const_enums: false,
+            ts_enum_is_mutable: false,
+            no_empty_export: false,
+            import_not_used_as_values: ImportsNotUsedAsValues::Remove,
+            native_class_properties: true,
+            jsx: JsxImportOptions::default(),
+        }
+    }
 }
