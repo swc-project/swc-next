@@ -145,7 +145,9 @@ fn without_separators(raw: &str, has_separator: bool) -> Cow<'_, str> {
     if !has_separator {
         return Cow::Borrowed(raw);
     }
-    Cow::Owned(raw.chars().filter(|&character| character != '_').collect())
+    let mut clean = String::with_capacity(raw.len());
+    clean.extend(raw.chars().filter(|&character| character != '_'));
+    Cow::Owned(clean)
 }
 
 #[inline]
