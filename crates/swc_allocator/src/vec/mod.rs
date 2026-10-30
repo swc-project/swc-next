@@ -1394,6 +1394,11 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     /// Creates an iterator that removes the elements in the vector
     /// for which the predicate returns `true` and yields the removed items.
     ///
+    /// Dropping the iterator finishes filtering, unless the thread is unwinding
+    /// or the predicate has panicked. If the predicate panics, the iterator stops
+    /// yielding elements. Dropping it keeps the current and unvisited elements,
+    /// including any changes made by the predicate, in their original order.
+    ///
     /// # Examples
     ///
     /// ```ignore
@@ -1426,6 +1431,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
             del: 0,
             old_len,
             pred: filter,
+            predicate_panicked: false,
         }
     }
 
@@ -3084,6 +3090,7 @@ where
     del: usize,
     old_len: usize,
     pred: F,
+    predicate_panicked: bool,
 }
 
 impl<'a, 'bump, T, F> Iterator for DrainFilter<'a, 'bump, T, F>
@@ -3093,22 +3100,27 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
+        if self.predicate_panicked {
+            return None;
+        }
         unsafe {
             while self.idx != self.old_len {
                 let i = self.idx;
+                // Only borrow the current initialized slot. Earlier slots can
+                // contain moved-out values, including mutable references.
+                let ptr = self.vec.as_mut_ptr();
+                let current = ptr.add(i);
+                self.predicate_panicked = true;
+                let remove = (self.pred)(&mut *current);
+                self.predicate_panicked = false;
+                // A panicking predicate leaves this element in the unvisited tail.
                 self.idx += 1;
-                let v = slice::from_raw_parts_mut(self.vec.as_mut_ptr(), self.old_len);
-                if (self.pred)(&mut v[i]) {
+                if remove {
                     self.del += 1;
-                    return Some(ptr::read(&v[i]));
+                    return Some(ptr::read(current));
                 } else if self.del > 0 {
-                    let del = self.del;
-                    let src: *const T = &v[i];
-                    let dst: *mut T = &mut v[i - del];
-                    // This is safe because self.vec has length 0
-                    // thus its elements will not have Drop::drop
-                    // called on them in the event of a panic.
-                    ptr::copy_nonoverlapping(src, dst, 1);
+                    // Move into the first hole without borrowing its old value.
+                    ptr::copy_nonoverlapping(current, ptr.add(i - self.del), 1);
                 }
             }
             None
@@ -3125,9 +3137,35 @@ where
     F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        self.for_each(drop);
-        unsafe {
-            self.vec.set_len(self.old_len - self.del);
+        struct BackshiftOnDrop<'d, 'a, 'bump, T, F>(&'d mut DrainFilter<'a, 'bump, T, F>)
+        where
+            F: FnMut(&mut T) -> bool;
+
+        impl<T, F> Drop for BackshiftOnDrop<'_, '_, '_, T, F>
+        where
+            F: FnMut(&mut T) -> bool,
+        {
+            fn drop(&mut self) {
+                let drain = &mut self.0;
+                unsafe {
+                    // The kept prefix ends at idx - del. Move the initialized
+                    // tail over the holes, including any panicking element.
+                    if drain.del > 0 && drain.idx < drain.old_len {
+                        let ptr = drain.vec.as_mut_ptr();
+                        ptr::copy(
+                            ptr.add(drain.idx),
+                            ptr.add(drain.idx - drain.del),
+                            drain.old_len - drain.idx,
+                        );
+                    }
+                    drain.vec.set_len(drain.old_len - drain.del);
+                }
+            }
+        }
+
+        let guard = BackshiftOnDrop(self);
+        if !guard.0.predicate_panicked && !std::thread::panicking() {
+            guard.0.by_ref().for_each(drop);
         }
     }
 }
@@ -3177,8 +3215,201 @@ mod serialize {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        cell::Cell,
+        panic::{AssertUnwindSafe, catch_unwind},
+    };
+
     use super::ArenaVec;
     use crate::Allocator;
+
+    fn catch_filter_panic(values: &mut ArenaVec<'_, i32>, panic_at: i32) {
+        let calls = Cell::new(0);
+        let mut drain = values.drain_filter(|value| {
+            calls.set(calls.get() + 1);
+            assert_ne!(*value, panic_at);
+            *value % 2 == 1
+        });
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            for removed in drain.by_ref() {
+                assert_eq!(removed % 2, 1);
+            }
+        }));
+        assert!(result.is_err());
+        let calls_before_drop = calls.get();
+        assert_eq!(drain.next(), None);
+        drop(drain);
+        assert_eq!(calls.get(), calls_before_drop);
+    }
+
+    #[test]
+    fn drain_filter() {
+        let allocator = Allocator::new();
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
+        let removed = values
+            .drain_filter(|value| *value % 2 == 0)
+            .collect::<Vec<_>>();
+        assert_eq!(removed, [2, 4]);
+        assert_eq!(values.as_slice(), &[1, 3]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
+        let mut drain = values.drain_filter(|value| *value % 2 == 1);
+        assert_eq!(drain.next(), Some(1));
+        drop(drain);
+        assert_eq!(values.as_slice(), &[2, 4]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2], &allocator);
+        drop(values.drain_filter(|_| true));
+        assert!(values.is_empty());
+
+        let mut values = ArenaVec::<i32>::new_in(&allocator);
+        drop(values.drain_filter(|_| panic!("empty vector")));
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn drain_filter_panic() {
+        let allocator = Allocator::new();
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
+        catch_filter_panic(&mut values, 2);
+        assert_eq!(values.as_slice(), &[2, 3, 4]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2], &allocator);
+        catch_filter_panic(&mut values, 2);
+        assert_eq!(values.as_slice(), &[2]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        catch_filter_panic(&mut values, 1);
+        assert_eq!(values.as_slice(), &[1, 2, 3]);
+
+        let mut values = ArenaVec::from_iter_in([1], &allocator);
+        catch_filter_panic(&mut values, 1);
+        assert_eq!(values.as_slice(), &[1]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4, 5], &allocator);
+        catch_filter_panic(&mut values, 4);
+        assert_eq!(values.as_slice(), &[2, 4, 5]);
+    }
+
+    #[test]
+    fn drain_filter_unwind() {
+        let allocator = Allocator::new();
+        let calls = Cell::new(0);
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            let mut drain = values.drain_filter(|value| {
+                calls.set(calls.get() + 1);
+                assert_ne!(*value, 2);
+                true
+            });
+            assert_eq!(drain.next(), Some(1));
+            drain.next();
+        }));
+        assert!(result.is_err());
+        assert_eq!(calls.get(), 2);
+        assert_eq!(values.as_slice(), &[2, 3]);
+
+        calls.set(0);
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            let mut drain = values.drain_filter(|_| {
+                calls.set(calls.get() + 1);
+                true
+            });
+            assert_eq!(drain.next(), Some(1));
+            panic!("consumer");
+        }));
+        assert!(result.is_err());
+        assert_eq!(calls.get(), 1);
+        assert_eq!(values.as_slice(), &[2, 3]);
+    }
+
+    #[test]
+    fn drain_filter_references() {
+        let allocator = Allocator::new();
+        let (mut first, mut second, mut third) = (1, 2, 3);
+        let mut values = ArenaVec::from_iter_in([&mut first, &mut second, &mut third], &allocator);
+        let mut drain = values.drain_filter(|value| {
+            assert_ne!(**value, 2);
+            **value == 1
+        });
+        let removed = drain.next().unwrap();
+        assert!(catch_unwind(AssertUnwindSafe(|| drain.next())).is_err());
+        drop(drain);
+        *removed = 9;
+        *values[0] = 10;
+        *values[1] = 11;
+        assert_eq!(*removed, 9);
+        assert_eq!(
+            values.iter().map(|value| **value).collect::<Vec<_>>(),
+            [10, 11]
+        );
+
+        let (mut first, mut second, mut third, mut fourth) = (1, 2, 3, 4);
+        let mut values = ArenaVec::from_iter_in(
+            [&mut first, &mut second, &mut third, &mut fourth],
+            &allocator,
+        );
+        let mut drain = values.drain_filter(|value| **value % 2 == 1);
+        let first_removed = drain.next().unwrap();
+        let second_removed = drain.next().unwrap();
+        drop(drain);
+        *first_removed = 10;
+        *second_removed = 30;
+        *values[0] = 20;
+        *values[1] = 40;
+        assert_eq!((*first_removed, *second_removed), (10, 30));
+        assert_eq!(
+            values.iter().map(|value| **value).collect::<Vec<_>>(),
+            [20, 40]
+        );
+    }
+
+    #[test]
+    fn retain() {
+        let allocator = Allocator::new();
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
+        values.retain(|value| *value % 2 == 0);
+        assert_eq!(values.as_slice(), &[2, 4]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
+        values.retain_mut(|value| {
+            *value += 1;
+            *value % 2 == 0
+        });
+        assert_eq!(values.as_slice(), &[2, 4]);
+    }
+
+    #[test]
+    fn retain_panic() {
+        let allocator = Allocator::new();
+        let calls = Cell::new(0);
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            values.retain(|value| {
+                calls.set(calls.get() + 1);
+                assert_ne!(*value, 2);
+                false
+            })
+        }));
+        assert!(result.is_err());
+        assert_eq!(calls.get(), 2);
+        assert_eq!(values.as_slice(), &[2, 3]);
+
+        calls.set(0);
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            values.retain_mut(|value| {
+                calls.set(calls.get() + 1);
+                *value += 10;
+                assert_ne!(*value, 12);
+                false
+            })
+        }));
+        assert!(result.is_err());
+        assert_eq!(calls.get(), 2);
+        assert_eq!(values.as_slice(), &[12, 3]);
+    }
 
     #[test]
     fn truncate() {
