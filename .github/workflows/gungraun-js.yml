@@ -1,4 +1,4 @@
-name: Native Linux build-std experiment
+name: Hashbrown feature size comparison
 on:
   workflow_dispatch:
   push:
@@ -10,44 +10,29 @@ jobs:
   compare:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [base, location, std, both]
     env:
-      RUSTUP_TOOLCHAIN: nightly-2026-10-29
+      RUSTUP_TOOLCHAIN: 1.99.0
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           persist-credentials: false
+          fetch-depth: 16
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24.19.0
-      - name: Install pinned nightly and Rust source
-        run: rustup toolchain install nightly-2026-10-29 --profile minimal --component rust-src --no-self-update
+      - name: Install pinned stable
+        run: rustup toolchain install 1.99.0 --profile minimal --no-self-update
       - run: pnpm install --frozen-lockfile
-      - name: Download previously measured binaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: native-size-linux
-          run-id: 40995106402
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/native-size-linux
-      - name: Install Valgrind
-        run: sudo apt-get update && sudo apt-get install --yes valgrind
-      - name: Isolate flags and collect symbolized instruction profiles
-        env:
-          CAUSE_VARIANT: ${{ matrix.variant }}
-        run: python3 .github/scripts/native-size-linux/cause.py
+      - name: Compare hashbrown feature sets
+        run: python3 .github/scripts/native-size-linux/features.py
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: native-cause-${{ matrix.variant }}
+          name: hashbrown-features-linux
           retention-days: 30
           path: |
-            ${{ runner.temp }}/native-cause/*.json
-            ${{ runner.temp }}/native-cause/*.txt
-            ${{ runner.temp }}/native-cause/*.log
-            ${{ runner.temp }}/native-cause/*.callgrind
-            ${{ runner.temp }}/native-cause/core.node
+            ${{ runner.temp }}/hashbrown-features/*.json
+            ${{ runner.temp }}/hashbrown-features/*.log
+            ${{ runner.temp }}/hashbrown-features/base/*
+            ${{ runner.temp }}/hashbrown-features/candidate/*
