@@ -544,6 +544,7 @@ impl<'a, T> RawVec<'a, T> {
     #[cold]
     #[inline(never)]
     pub(super) fn grow_one(&mut self) {
+        debug_assert_eq!(self.len, self.cap_u32());
         self.reserve_internal_or_panic(self.len, 1, Amortized);
     }
 
