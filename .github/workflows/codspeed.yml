@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/codspeed.yml'
+      - '.github/scripts/compare-walltime.py'
+      - '.github/scripts/test_compare_walltime.py'
       - '.cargo/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
@@ -46,3 +48,77 @@ jobs:
         with:
           mode: walltime
           run: cargo codspeed run -m walltime -p benchmark --bench parser --bench visit --bench semantic
+
+  compare:
+    name: Compare wall-time medians
+    if: >-
+      (github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000') ||
+      (contains(github.event.pull_request.labels.*.name, 'Codspeed') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'Codspeed'))
+    runs-on: codspeed-macro-arm64-graviton-ubuntu-22-04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: head
+          persist-credentials: false
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          persist-credentials: false
+      - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          rust-src-dir: head
+          cache: false
+      - name: Freeze the compare revision's Rust toolchain
+        working-directory: head
+        run: |
+          rustup show active-toolchain
+          echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+      - name: Compare independent benchmark processes
+        run: |
+          python3 head/.github/scripts/test_compare_walltime.py
+          python3 head/.github/scripts/compare-walltime.py base head "$RUNNER_TEMP/walltime-comparison"
+      - name: Upload raw samples and comparison
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: walltime-comparison
+          path: |
+            ${{ runner.temp }}/walltime-comparison/*.json
+            ${{ runner.temp }}/walltime-comparison/*.jsonl
+            ${{ runner.temp }}/walltime-comparison/*.md
+            ${{ runner.temp }}/walltime-comparison/samples
+          if-no-files-found: error
+          retention-days: 90
+
+  report:
+    name: Publish wall-time median comparison
+    needs: compare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: walltime-comparison
+          path: report
+      - name: Show comparison
+        run: cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish comparison
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          id="$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- walltime-median -->"))) | .id' | head -1)"
+          if [[ -n "$id" ]]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@report/summary.md
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" -F body=@report/summary.md
+          fi
