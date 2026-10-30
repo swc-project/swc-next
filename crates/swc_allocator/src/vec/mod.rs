@@ -2152,7 +2152,10 @@ impl<'bump, T: 'bump + Copy> ArenaVec<'bump, T> {
     pub fn extend_from_slices_copy(&mut self, slices: &[&[T]]) {
         // Reserve the total amount of capacity we'll need to safely append the aggregated contents
         // of each slice in `slices`.
-        let capacity_to_reserve: usize = slices.iter().map(|slice| slice.len()).sum();
+        let capacity_to_reserve = slices
+            .iter()
+            .try_fold(0usize, |total, slice| total.checked_add(slice.len()))
+            .expect("capacity overflow");
         self.reserve(capacity_to_reserve);
 
         // SAFETY:
@@ -3179,6 +3182,50 @@ mod serialize {
 mod tests {
     use super::ArenaVec;
     use crate::Allocator;
+
+    #[test]
+    fn extend_from_slices_copy() {
+        let bump = Allocator::new();
+        let mut values = ArenaVec::from_iter_in([1_u8], &bump);
+        values.extend_from_slices_copy(&[&[], &[2, 3], &[], &[4], &[]]);
+        assert_eq!(values.as_slice(), &[1, 2, 3, 4]);
+
+        let capacity = values.capacity();
+        values.extend_from_slices_copy(&[]);
+        assert_eq!(values.as_slice(), &[1, 2, 3, 4]);
+        assert_eq!(values.capacity(), capacity);
+
+        values.extend_from_slices_copy(&[&[], &[]]);
+        assert_eq!(values.as_slice(), &[1, 2, 3, 4]);
+        assert_eq!(values.capacity(), capacity);
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    #[test]
+    fn extend_from_slices_copy_overflow() {
+        use std::panic::{AssertUnwindSafe, catch_unwind};
+
+        fn assert_rejected(values: &mut ArenaVec<'_, u8>, slices: &[&[u8]]) {
+            let contents = values.as_slice().to_vec();
+            let capacity = values.capacity();
+            let pointer = values.as_ptr();
+            let result = catch_unwind(AssertUnwindSafe(|| values.extend_from_slices_copy(slices)));
+            assert!(result.is_err());
+            assert_eq!(values.as_slice(), contents);
+            assert_eq!(values.capacity(), capacity);
+            assert_eq!(values.as_ptr(), pointer);
+        }
+
+        let bump = Allocator::new();
+        let source = std::vec![7_u8; 1024 * 1024];
+        let slices = std::vec![source.as_slice(); 4096];
+
+        let mut values = ArenaVec::new_in(&bump);
+        assert_rejected(&mut values, &slices);
+
+        let mut values = ArenaVec::from_iter_in([1_u8, 2, 3], &bump);
+        assert_rejected(&mut values, &slices);
+    }
 
     #[test]
     fn truncate() {
