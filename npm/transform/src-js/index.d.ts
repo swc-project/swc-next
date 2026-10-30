@@ -2,8 +2,8 @@ import type { Node } from "@swc-next/types";
 import type { WalkHooks } from "@swc-next/walker";
 export type * from "@swc-next/types";
 
-import type { CodegenOutput } from "./binding.js";
-export type { CodegenOutput } from "./binding.js";
+import type { CodegenOptions, CodegenOutput, ParserOptions as BindingParserOptions } from "./binding.js";
+export type { CodegenOptions, CodegenOutput } from "./binding.js";
 
 export interface DiagnosticLabel {
   message: string;
@@ -28,60 +28,52 @@ export interface JsPlugin {
   visitors: WalkHooks<unknown, Node>;
 }
 
-/** Supported parser configuration. Explicit settings override filename inference. */
-export type TransformParserOptions =
-  | { syntax: "ecmascript"; jsx?: boolean }
-  | { syntax: "typescript"; tsx?: boolean };
+/** Rust parser options. Transform always collects diagnostics and omits comments. */
+export type TransformParserOptions = Omit<BindingParserOptions, "comments" | "semanticErrors"> & {
+  comments?: "none";
+  semanticErrors?: true;
+  errorRecovery?: true;
+};
 
-export interface TransformJscOptions {
-  parser?: TransformParserOptions;
-  /** Defaults to "esnext". Other targets are not implemented. */
-  target?: "esnext";
-  transform?: {
-    /**
-     * Preserve value imports/exports. Defaults to false.
-     * SWC Next also disables const-enum inlining/removal; SWC 1.16.18 still
-     * inlines const-enum uses with this enabled.
-     */
-    verbatimModuleSyntax?: boolean;
-  };
-  output?: {
-    /** Defaults to "utf8". */
-    charset?: "ascii" | "utf8";
-  };
-}
-
-/** SWC Next extensions, separate from the supported SWC configuration subset. */
-export interface SwcNextTransformOptions {
-  /** Lower TypeScript. Defaults to true for TS input; false retains TS syntax. */
-  typescript?: boolean;
-  /** Lower class static blocks. Defaults to false. */
-  staticBlocks?: boolean;
-  /** Preserve explicit parentheses in plugin ASTs. Defaults to true. */
-  preserveParens?: boolean;
-  /** Escape closing script tags; tagged template raw text is preserved. Defaults to false. */
-  inlineScript?: boolean;
+/** Matches Rust TypeScriptOptions. Omitted fields use Rust defaults. */
+export interface TypeScriptOptions {
+  /** Preserve value imports/exports and disable const-enum inlining/removal. Defaults to false. */
+  verbatimModuleSyntax?: boolean;
   /** Retain const-enum declarations while allowing inlining. Defaults to false. */
   preserveConstEnums?: boolean;
+  /** Factory dependencies for JSX preserved for a later transform. */
+  jsx?: JsxImportOptions;
 }
 
-/**
- * Strict SWC configuration subset. Unknown fields and unsupported values throw
- * TypeError with the option path. No config files are discovered or loaded.
- */
+/** Matches Rust JsxImportOptions; this controls import retention, not JSX lowering. */
+export interface JsxImportOptions {
+  automatic?: boolean;
+  pragma?: string | null;
+  pragmaFrag?: string | null;
+}
+
+/** Matches Rust ES2022Options. */
+export interface ES2022Options {
+  /** Lower class static blocks. Defaults to false. */
+  staticBlocks?: boolean;
+}
+
+/** Matches Rust ProposalOptions. */
+export interface ProposalOptions {
+  /** Preserve static-block behavior when a block makes its class object non-extensible. */
+  preventExtensions?: boolean;
+}
+
+/** Rust-aligned configuration. Unsupported fields and values throw TypeError. */
 export interface TransformOptions {
-  /**
-   * Used for diagnostics and language inference when jsc.parser is omitted.
-   * Explicit parser settings win. TS declaration filenames select ambient
-   * parsing with TypeScript syntax. Does not select the input module mode.
-   */
+  /** Used for diagnostics and language inference when parser.lang is omitted. */
   filename?: string;
-  /** Defaults to true (module). false selects script; "commonjs" allows top-level return. */
-  isModule?: boolean | "commonjs";
-  jsc?: TransformJscOptions;
-  /** Compact printing only; does not compress code or mangle names. Defaults to false. */
-  minify?: boolean;
-  swcNext?: SwcNextTransformOptions;
+  parser?: TransformParserOptions;
+  /** Enabled by default for TypeScript input. false retains TS syntax; {} uses Rust defaults. */
+  typescript?: TypeScriptOptions | false;
+  es2022?: ES2022Options;
+  proposal?: ProposalOptions;
+  codegen?: CodegenOptions;
   /** Before plugins run first, then Rust transforms, then after plugins.
    * Stages without plugins stay in Rust without transferring their AST.
    */
@@ -94,7 +86,7 @@ export interface TransformOutput extends CodegenOutput {
 
 /**
  * Parse, run JS plugins around Rust transforms, and print synchronously.
- * TypeScript is lowered by default; JSX is preserved. Source maps and comment
+ * TypeScript inputs are lowered by default; JSX is preserved. Source maps and comment
  * printing are not yet supported. Plugin errors propagate unchanged.
  * With no JS plugins, the entire pipeline runs in Rust without AST transfers.
  * @throws {SyntaxError} On parser or semantic errors, with a diagnostics array

@@ -63,27 +63,6 @@ export type SourceType =  'module'|
 'script'|
 'commonjs'|
 'unambiguous';
-
-/** Rust transforms applied between JavaScript plugin stages. */
-export interface TransformPassOptions {
-  /**
-   * Lower TypeScript syntax. Defaults to true for TypeScript input.
-   * JSX is preserved.
-   */
-  typescript?: boolean
-  /** Lower class static blocks. Defaults to false. */
-  staticBlocks?: boolean
-  /**
-   * Preserve value imports/exports and disable const-enum inlining and removal.
-   * Only applies when lowering TypeScript. Defaults to false.
-   */
-  verbatimModuleSyntax?: boolean
-  /**
-   * Preserve const-enum declarations while still allowing inlining.
-   * Only applies when lowering TypeScript. Defaults to false.
-   */
-  preserveConstEnums?: boolean
-}
 export declare function langFromPath(path: string): Lang
 
 /**
@@ -100,7 +79,7 @@ export declare function parseSync(source: Buffer, sourceUtf16Len: number, option
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function parseTransformSync(source: Buffer, sourceUtf16Len: number, parserOptions?: ParserOptions | undefined | null, transformOptions?: TransformPassOptions | undefined | null): Buffer
+export declare function parseTransformSync(source: Buffer, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string): Buffer
 
 /**
  * # Safety
@@ -120,7 +99,7 @@ export declare function sourceTypeFromPath(path: string): SourceType
  * the validity, alignment, and immutability contracts of
  * `swc_next_bridge::transform_from_parts`.
  */
-export declare function transformAstSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: TransformPassOptions | undefined | null): Buffer
+export declare function transformAstSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string): Buffer
 
 /**
  * # Safety
@@ -129,7 +108,7 @@ export declare function transformAstSync(header: Buffer, spans: Buffer, kinds: B
  * the validity, alignment, and immutability contracts of
  * `swc_next_bridge::transform_print_from_parts`.
  */
-export declare function transformPrintSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: TransformPassOptions | undefined | null, codegenOptions?: CodegenOptions | undefined | null): Buffer
+export declare function transformPrintSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string, codegenOptions?: CodegenOptions | undefined | null): Buffer
 
 /**
  * # Safety
@@ -137,4 +116,6 @@ export declare function transformPrintSync(header: Buffer, spans: Buffer, kinds:
  * The caller must ensure that `source` contains valid UTF-8.
  * `source_utf16_len` must match the UTF-16 code unit length of `source`.
  */
-export declare function transformSync(source: Buffer, sourceUtf16Len: number, parserOptions?: ParserOptions | undefined | null, transformOptions?: TransformPassOptions | undefined | null, codegenOptions?: CodegenOptions | undefined | null): Buffer
+export declare function transformSync(source: Buffer, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string, codegenOptions?: CodegenOptions | undefined | null): Buffer
+
+export declare function validateTransformOptions(options: string): void

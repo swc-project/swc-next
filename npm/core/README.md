@@ -32,29 +32,27 @@ array needs one AST round trip, while using both phases needs two. When
 `plugins` is omitted or empty, the entire pipeline stays in Rust.
 
 `transformSync` shares its options and behavior with
-[`@swc-next/transform`](../transform/README.md). It accepts a strict subset of
-`@swc/core` configuration, plus `plugins` and explicit `swcNext` extensions:
+[`@swc-next/transform`](../transform/README.md). Pass options use the Rust
+structures directly, with Rust handling defaults and validation:
 
 ```js
 transformSync("const answer: number = 42;", {
   filename: "input.ts",
-  isModule: true,
-  jsc: {
-    parser: { syntax: "typescript" },
-    target: "esnext",
-    transform: { verbatimModuleSyntax: true },
-  },
+  typescript: { verbatimModuleSyntax: true },
+  es2022: { staticBlocks: true },
+  codegen: { minify: true },
 });
 ```
 
-`filename` infers the input language unless `jsc.parser` is provided. Module
-mode defaults to `isModule: true` regardless of the filename; use `false` for
-scripts or `"commonjs"` for CommonJS. The default target is `"esnext"`, which is
-also the only supported target. This differs from SWC's default of ES5.
-Top-level `minify` only compacts printing. JSX is preserved; comments, JSX
-pragmas, source maps, and configuration file discovery are not supported.
-Unknown fields, unsupported values, and the former `parser`, `transform`, and
-`codegen` options throw an error identifying the configuration path.
+TypeScript conversion is enabled by default for TypeScript input. Use
+`typescript: {}` for Rust defaults or `typescript: false` to retain TS syntax.
+`parser` and `codegen` use the same field names as `parseSync` and `printSync`.
+`parser.lang` overrides filename inference; `parser.sourceType` defaults to
+`"module"`. Transform requires semantic checks and omits comments.
+
+JSX is preserved. General target lowering, comment pragmas, source maps, and
+configuration file discovery are not supported. `codegen.minify` compacts
+printing without compression or mangling. Unsupported options throw an error.
 
 Syntax and semantic errors throw `SyntaxError` with a `diagnostics` array
 containing UTF-16 source offsets. The input is parsed and checked; ASTs edited by

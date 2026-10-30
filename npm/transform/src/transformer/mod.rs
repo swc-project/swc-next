@@ -1,6 +1,9 @@
-use swc_next_bridge::{
-    CodegenOptions, DeserializeError, ParserOptions, TransformPassOptions, bridge,
-};
+use swc_next_bridge::{CodegenOptions, ParserOptions, TransformPassOptions, bridge};
+
+#[bridge]
+pub fn validate_transform_options(options: String) -> Result<(), String> {
+    TransformPassOptions::from_json(&options).map(|_| ())
+}
 
 #[bridge]
 /// # Safety
@@ -11,17 +14,18 @@ pub unsafe fn parse_transform_sync(
     source: &[u8],
     source_utf16_len: u32,
     parser_options: Option<ParserOptions>,
-    transform_options: Option<TransformPassOptions>,
-) -> Vec<u8> {
+    transform_options: String,
+) -> Result<Vec<u8>, String> {
+    let transform_options = Some(TransformPassOptions::from_json(&transform_options)?);
     // SAFETY: The caller guarantees the source encoding and UTF-16 length.
-    unsafe {
+    Ok(unsafe {
         swc_next_bridge::parse_transform_to_buffer(
             source,
             source_utf16_len,
             parser_options,
             transform_options,
         )
-    }
+    })
 }
 
 #[bridge]
@@ -33,11 +37,12 @@ pub unsafe fn transform_sync(
     source: &[u8],
     source_utf16_len: u32,
     parser_options: Option<ParserOptions>,
-    transform_options: Option<TransformPassOptions>,
+    transform_options: String,
     codegen_options: Option<CodegenOptions>,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, String> {
+    let transform_options = Some(TransformPassOptions::from_json(&transform_options)?);
     // SAFETY: The caller guarantees the source encoding and UTF-16 length.
-    unsafe {
+    Ok(unsafe {
         swc_next_bridge::transform_source_to_buffer(
             source,
             source_utf16_len,
@@ -45,7 +50,7 @@ pub unsafe fn transform_sync(
             transform_options,
             codegen_options,
         )
-    }
+    })
 }
 
 #[bridge]
@@ -61,14 +66,16 @@ pub unsafe fn transform_ast_sync(
     payloads: &[u8],
     extra: &[u8],
     strings: &[u8],
-    options: Option<TransformPassOptions>,
-) -> Result<Vec<u8>, DeserializeError> {
+    options: String,
+) -> Result<Vec<u8>, String> {
+    let options = Some(TransformPassOptions::from_json(&options)?);
     // SAFETY: The caller guarantees valid, immutable encoder sections.
     unsafe {
         swc_next_bridge::transform_from_parts(
             header, spans, kinds, payloads, extra, strings, options,
         )
     }
+    .map_err(|error| error.to_string())
 }
 
 #[bridge]
@@ -88,9 +95,10 @@ pub unsafe fn transform_print_sync(
     payloads: &[u8],
     extra: &[u8],
     strings: &[u8],
-    options: Option<TransformPassOptions>,
+    options: String,
     codegen_options: Option<CodegenOptions>,
-) -> Result<Vec<u8>, DeserializeError> {
+) -> Result<Vec<u8>, String> {
+    let options = Some(TransformPassOptions::from_json(&options)?);
     // SAFETY: The caller guarantees valid, immutable encoder sections.
     unsafe {
         swc_next_bridge::transform_print_from_parts(
@@ -104,4 +112,5 @@ pub unsafe fn transform_print_sync(
             codegen_options,
         )
     }
+    .map_err(|error| error.to_string())
 }

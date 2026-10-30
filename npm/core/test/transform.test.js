@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { registerHooks } from "node:module";
 import test, { describe } from "node:test";
+import { runInNewContext } from "node:vm";
 
 import { parseSync, transformSync as coreTransformSync } from "../src-js/index.js";
 import * as standalone from "../../transform/src-js/index.js";
@@ -131,16 +132,14 @@ for (const { name, entrypoint, transformSync } of [
       const typescript = { filename: "input.ts" };
       const retainedTypes = {
         filename: "input.js",
-        jsc: { parser: { syntax: "typescript" } },
-        swcNext: { preserveParens: false, typescript: false },
+        parser: { lang: "ts", preserveParens: false },
+        typescript: false,
       };
-      const commonjs = { filename: "input.cjs", isModule: "commonjs" };
-      const moduleOverride = { filename: "input.cjs", isModule: true };
-      const staticBlocks = { swcNext: { staticBlocks: true } };
+      const commonjs = { filename: "input.cjs", parser: { sourceType: "commonjs" } };
+      const moduleOverride = { filename: "input.cjs", parser: { sourceType: "module" } };
+      const staticBlocks = { es2022: { staticBlocks: true } };
       const escapedCode = {
-        jsc: { output: { charset: "ascii" } },
-        minify: true,
-        swcNext: { inlineScript: true },
+        codegen: { asciiOnly: true, minify: true, inlineScript: true },
       };
 
       assert.equal(assertSameTransform("const value: number = 1;", typescript).code, "const value = 1;\nexport {};\n");
@@ -192,11 +191,17 @@ for (const { name, entrypoint, transformSync } of [
 
       assertSameTransformError(source, { filename: 1 });
 
-      assertSameTransformError(source, { jsc: { parser: [] } });
+      assertSameTransformError(source, { parser: [] });
 
-      assertSameTransformError(source, { swcNext: { typescript: "false" } });
+      assertSameTransformError(source, { typescript: "false" });
 
-      assertSameTransformError(source, { minify: "true" });
+      assertSameTransformError(source, { codegen: { minify: "true" } });
+
+      assertSameTransformError(source, { typescript: { jsx: { automatic: "true" } } });
+
+      assertSameTransformError(source, { es2022: { staticBlocks: "true" } });
+
+      assertSameTransformError(source, { proposal: { preventExtensions: "true" } });
     });
 
     test("transformSync rejects unsupported options before invoking plugins", () => {
@@ -219,23 +224,26 @@ for (const { name, entrypoint, transformSync } of [
         assert.equal(visited, false);
       }
 
-      invalid({ parser: {} }, "parser");
       invalid({ transform: {} }, "transform");
-      invalid({ codegen: {} }, "codegen");
       invalid({ sourceMaps: true }, "sourceMaps");
-      invalid({ isModule: "unknown" }, "isModule");
-      invalid({ jsc: { target: "es5" } }, "jsc.target");
-      invalid({ jsc: { parser: {} } }, "jsc.parser.syntax");
-      invalid({ jsc: { parser: { syntax: "ecmascript", tsx: true } } }, "jsc.parser.tsx");
-      invalid({ jsc: { parser: { syntax: "typescript", dts: true } } }, "jsc.parser.dts");
-      invalid({ jsc: { transform: { react: {} } } }, "jsc.transform.react");
-      invalid({ jsc: { output: { charset: "utf16" } } }, "jsc.output.charset");
-      invalid({ jsc: null }, "jsc");
-      invalid({ jsc: { parser: null } }, "jsc.parser");
-      invalid({ swcNext: { staticBlocks: null } }, "swcNext.staticBlocks");
+      invalid({ isModule: true }, "isModule");
+      invalid({ jsc: {} }, "jsc");
+      invalid({ swcNext: {} }, "swcNext");
+      invalid({ minify: true }, "minify");
+      invalid({ parser: { syntax: "typescript" } }, "parser.syntax");
+      invalid({ parser: { comments: "flat" } }, "parser.comments");
+      invalid({ parser: { semanticErrors: false } }, "parser.semanticErrors");
+      invalid({ parser: { errorRecovery: false } }, "parser.errorRecovery");
+      invalid({ codegen: { charset: "ascii" } }, "codegen.charset");
+      invalid({ typescript: { unsupported: true } }, "unsupported");
+      invalid({ typescript: { jsx: { unsupported: true } } }, "unsupported");
+      invalid({ typescript: true }, "Invalid transform options");
+      invalid({ typescript: null }, "Invalid transform options");
+      invalid({ es2022: { unsupported: true } }, "unsupported");
+      invalid({ proposal: { unsupported: true } }, "unsupported");
 
       const symbol = Symbol("unknown");
-      invalid({ jsc: { [symbol]: true } }, String(symbol));
+      invalid({ [symbol]: true }, String(symbol));
     });
 
     test("transformSync exposes the complete program and supports statement edits", () => {
@@ -365,7 +373,7 @@ for (const { name, entrypoint, transformSync } of [
       assert.equal(result.code, "const finalValue = 1;\n");
     });
 
-    test("transformSync infers syntax from filename and maps explicit parser options", () => {
+    test("transformSync infers syntax from filename and forwards Rust parser options", () => {
       assert.equal(
         transformSync("const value: number = 1;", { filename: "input.ts" }).code,
         "const value = 1;\nexport {};\n",
@@ -374,27 +382,27 @@ for (const { name, entrypoint, transformSync } of [
       assert.equal(
         transformSync("const value: number = 1;", {
           filename: "input.js",
-          jsc: { parser: { syntax: "typescript" } },
+          parser: { lang: "ts" },
         }).code,
         "const value = 1;\nexport {};\n",
       );
 
       assert.ok(assertSameTransformError("const value: number = 1;", {
         filename: "input.ts",
-        jsc: { parser: { syntax: "ecmascript" } },
+        parser: { lang: "js" },
       }) instanceof SyntaxError);
 
       assertSameTransform("const view = <section />;", {
-        jsc: { parser: { syntax: "ecmascript", jsx: true } },
+        parser: { lang: "jsx" },
       });
 
       assertSameTransform("const view: unknown = <section />;", {
-        jsc: { parser: { syntax: "typescript", tsx: true } },
+        parser: { lang: "tsx" },
       });
 
       assertSameTransform("export const value: number;", {
         filename: "input.d.ts",
-        jsc: { parser: { syntax: "typescript" } },
+        parser: { lang: "dts" },
       });
 
       function sourceType(options) {
@@ -411,19 +419,20 @@ for (const { name, entrypoint, transformSync } of [
 
       assert.equal(sourceType({}), "module");
       assert.equal(sourceType({ filename: "input.cjs" }), "module");
-      assert.equal(sourceType({ isModule: true }), "module");
-      assert.equal(sourceType({ isModule: false }), "script");
-      assert.equal(sourceType({ isModule: "commonjs" }), "commonjs");
+      assert.equal(sourceType({ parser: { sourceType: "module" } }), "module");
+      assert.equal(sourceType({ parser: { sourceType: "script" } }), "script");
+      assert.equal(sourceType({ parser: { sourceType: "commonjs" } }), "commonjs");
 
       assert.deepEqual(transformSync("const value = 1;", null), transformSync("const value = 1;"));
-      assertSameTransform("const value = () => 1;", { jsc: { target: "esnext" } });
+      assertSameTransform("const value = () => 1;", { parser: {}, codegen: {} });
     });
 
     test("transformSync forwards parser and transform options", () => {
       const seen = [];
       const result = transformSync("const value: number = (1);", {
         filename: "input.ts",
-        swcNext: { preserveParens: false, typescript: false },
+        parser: { preserveParens: false },
+        typescript: false,
         plugins: [{
           name: "inspect",
           phase: "after",
@@ -440,7 +449,7 @@ for (const { name, entrypoint, transformSync } of [
       function staticBlocks(options) {
         let remainingBlocks = 0;
         transformSync("class C { static { run(); } }", {
-          swcNext: options,
+          es2022: options,
           plugins: [{
             name: "inspect-static-blocks",
             phase: "after",
@@ -455,22 +464,20 @@ for (const { name, entrypoint, transformSync } of [
     });
 
     test("transformSync forwards module modes across plugin phase configurations", () => {
-      assertSameTransform("with (scope) {}", { isModule: false });
+      assertSameTransform("with (scope) {}", { parser: { sourceType: "script" } });
 
-      assert.ok(assertSameTransformError("with (scope) {}", { isModule: true }) instanceof SyntaxError);
+      assert.ok(assertSameTransformError("with (scope) {}", { parser: { sourceType: "module" } }) instanceof SyntaxError);
 
-      assertSameTransform("return new.target;", { isModule: "commonjs" });
+      assertSameTransform("return new.target;", { parser: { sourceType: "commonjs" } });
 
-      assert.ok(assertSameTransformError("return new.target;", { isModule: false }) instanceof SyntaxError);
+      assert.ok(assertSameTransformError("return new.target;", { parser: { sourceType: "script" } }) instanceof SyntaxError);
 
-      assert.ok(assertSameTransformError("return new.target;", { isModule: true }) instanceof SyntaxError);
+      assert.ok(assertSameTransformError("return new.target;", { parser: { sourceType: "module" } }) instanceof SyntaxError);
     });
 
     test("transformSync maps output options across plugin phase configurations", () => {
       const options = {
-        jsc: { output: { charset: "ascii" } },
-        minify: true,
-        swcNext: { inlineScript: true },
+        codegen: { asciiOnly: true, minify: true, inlineScript: true },
       };
       const source = 'const value = "😀</script>";';
       const expected = 'const value="\\u{1F600}<\\/script>";';
@@ -478,35 +485,79 @@ for (const { name, entrypoint, transformSync } of [
       assert.equal(assertSameTransform(source, options).code, expected);
 
       assert.equal(assertSameTransform('const value = "😀";', {
-        jsc: { output: { charset: "utf8" } },
-        minify: false,
+        codegen: { asciiOnly: false, minify: false },
       }).code, 'const value = "😀";\n');
     });
 
     test("transformSync forwards TypeScript emission flags across plugin phases", () => {
       const source = "const enum E { X = 1 } export const value = E.X;";
-      const typescript = { parser: { syntax: "typescript" } };
-      const defaults = assertSameTransform(source, { jsc: typescript });
+      const parser = { lang: "ts" };
+      const defaults = assertSameTransform(source, { parser });
       assert.ok(!defaults.code.includes("var E"));
       assert.ok(defaults.code.includes("export const value = 1"));
 
       const preserved = assertSameTransform(source, {
-        jsc: typescript,
-        swcNext: { preserveConstEnums: true },
+        parser,
+        typescript: { preserveConstEnums: true },
       });
       assert.ok(preserved.code.includes("var E"));
       assert.ok(preserved.code.includes("export const value = 1"));
 
       const verbatim = assertSameTransform(source, {
-        jsc: { ...typescript, transform: { verbatimModuleSyntax: true } },
+        parser,
+        typescript: { verbatimModuleSyntax: true },
       });
       assert.ok(verbatim.code.includes("var E"));
       assert.ok(verbatim.code.includes("export const value = E.X"));
 
       const imports = assertSameTransform('import { value } from "dependency";', {
-        jsc: { ...typescript, transform: { verbatimModuleSyntax: true } },
+        parser,
+        typescript: { verbatimModuleSyntax: true },
       });
       assert.ok(imports.code.includes('import { value } from "dependency"'));
+    });
+
+    test("transformSync uses Rust TypeScript defaults and supports disabling the pass", () => {
+      const source = "const value: number = 1;";
+      const options = { filename: "input.ts" };
+      const inferred = assertSameTransform(source, options);
+      const enabled = assertSameTransform(source, { ...options, typescript: {} });
+      assert.deepEqual(enabled, inferred);
+      assert.equal(enabled.code, "const value = 1;\nexport {};\n");
+
+      const disabled = assertSameTransform(source, { ...options, typescript: false });
+      assert.equal(disabled.code, "const value: number = 1;\n");
+    });
+
+    test("transformSync forwards nested Rust JSX import options", () => {
+      const source = 'import { h, Fragment } from "ui"; const view: unknown = <><section /></>;';
+      const options = { filename: "input.tsx" };
+      const defaults = assertSameTransform(source, { ...options, typescript: {} });
+      assert.ok(!defaults.code.includes('from "ui"'));
+
+      const classic = assertSameTransform(source, {
+        ...options,
+        typescript: { jsx: { pragma: "h", pragmaFrag: "Fragment" } },
+      });
+      const { program } = parseSync(classic.code, { lang: "jsx" });
+      assert.deepEqual(program.body[0].specifiers.map(specifier => specifier.local.name), ["h", "Fragment"]);
+      assert.ok(classic.code.includes("<><section /></>"));
+
+      const automatic = assertSameTransform(source, {
+        ...options,
+        typescript: { jsx: { automatic: true, pragma: "h", pragmaFrag: "Fragment" } },
+      });
+      assert.ok(!automatic.code.includes('from "ui"'));
+    });
+
+    test("transformSync forwards Rust proposal options", () => {
+      const source = "class C { static { Object.freeze(this); } } Object.isFrozen(C);";
+      const result = assertSameTransform(source, {
+        es2022: { staticBlocks: true },
+        proposal: { preventExtensions: true },
+      });
+      assert.ok(!result.code.includes("static {"));
+      assert.equal(runInNewContext(result.code), true);
     });
 
     test("transformSync preserves string values through both plugin boundaries", () => {

@@ -57,7 +57,7 @@ The current Rust AST API has known soundness issues:
 
 ## Compatibility
 
-`transformSync` supports a strict subset of SWC [configuration options](https://swc.rs/docs/configuration/compilation), shared by `@swc-next/core` and `@swc-next/transform`. See the [transform package](npm/transform/README.md) for supported options and behavior differences. Unsupported options are rejected; configuration file discovery is not implemented.
+`transformSync` uses Rust-aligned parser, transform, and codegen options, shared by `@swc-next/core` and `@swc-next/transform`. See the [transform package](npm/transform/README.md) for usage and supported options. Unsupported options are rejected; configuration file discovery is not implemented.
 
 SWC Next's Rust APIs, ESTree AST, and JavaScript plugin API are independent of SWC's.
 

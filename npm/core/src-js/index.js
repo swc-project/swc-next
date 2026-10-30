@@ -6,6 +6,7 @@ import {
   transformAstSync as __transformAstSync,
   transformPrintSync as __transformPrintSync,
   transformSync as __transformSync,
+  validateTransformOptions as __validateTransformOptions,
 } from "./binding.js";
 import { createWalker } from "@swc-next/walker";
 import {
@@ -62,7 +63,7 @@ export function transformSync(source, options) {
   const plugins = compilePlugins(options?.plugins);
 
   if (plugins.before.length === 0 && plugins.after.length === 0) {
-    const result = decodeTransformOutput(__transformSync(
+    const result = decodeTransformOutput(callTransform(__transformSync,
       encodeSource(source),
       source.length,
       encodeParserOptions(parserOptions),
@@ -78,7 +79,7 @@ export function transformSync(source, options) {
   if (plugins.before.length === 0) {
     const sourceBytes = encodeSource(source);
     transformed = decode(
-      __parseTransformSync(
+      callTransform(__parseTransformSync,
         sourceBytes,
         source.length,
         encodeParserOptions(parserOptions),
@@ -89,6 +90,7 @@ export function transformSync(source, options) {
     );
     diagnostics = transformed.diagnostics;
   } else {
+    callTransform(__validateTransformOptions, transformOptions);
     const parsed = parseSync(source, parserOptions);
     throwOnDiagnostics(parsed.diagnostics, filename);
     const program = parsed.program;
@@ -97,7 +99,7 @@ export function transformSync(source, options) {
 
     if (plugins.after.length === 0) {
       const result = decodeTransformOutput(
-        __transformPrintSync(...parts, transformOptions, codegenOptions),
+        callTransform(__transformPrintSync, ...parts, transformOptions, codegenOptions),
       );
       const diagnostics = [...parsed.diagnostics, ...result.diagnostics];
       throwOnDiagnostics(diagnostics, filename);
@@ -107,7 +109,7 @@ export function transformSync(source, options) {
     // A transferred AST has an empty source and strings in the extra pool.
     // Its spans are already UTF-16 offsets in the original input.
     transformed = decode(
-      __transformAstSync(...parts, transformOptions),
+      callTransform(__transformAstSync, ...parts, transformOptions),
       "",
       emptySourceBytes,
     );
@@ -191,78 +193,49 @@ function compilePlugins(plugins) {
 }
 
 function normalizeTransformOptions(options) {
-  const config = optionObject(options ?? {}, "", ["filename", "isModule", "jsc", "minify", "plugins", "swcNext"]);
+  const config = optionObject(options ?? {}, "", [
+    "filename", "parser", "typescript", "es2022", "proposal", "codegen", "plugins",
+  ]);
   const filename = config.filename === undefined ? "input.js" : config.filename;
   if (typeof filename !== "string") throw new TypeError("filename must be a string");
-  const jsc = optionObject(config.jsc, "jsc", ["parser", "target", "transform", "output"]);
-  const transform = optionObject(jsc.transform, "jsc.transform", ["verbatimModuleSyntax"]);
-  const output = optionObject(jsc.output, "jsc.output", ["charset"]);
-  const extensions = optionObject(config.swcNext, "swcNext", [
-    "typescript", "staticBlocks", "preserveParens", "inlineScript", "preserveConstEnums",
+  const parser = optionObject(config.parser, "parser", [
+    "lang", "sourceType", "preserveParens", "comments", "semanticErrors", "errorRecovery",
   ]);
-
-  if (jsc.target !== undefined && jsc.target !== "esnext") {
-    throw new TypeError('Unsupported option jsc.target: only "esnext" is supported');
+  if (parser.comments !== undefined && parser.comments !== "none") {
+    throw new TypeError('Unsupported option parser.comments: transform only supports "none"');
   }
-  if (output.charset !== undefined && output.charset !== "ascii" && output.charset !== "utf8") {
-    throw new TypeError('jsc.output.charset must be "ascii" or "utf8"');
+  if (parser.semanticErrors !== undefined && parser.semanticErrors !== true) {
+    throw new TypeError("Unsupported option parser.semanticErrors: transform requires semantic checks");
   }
-  let sourceType;
-  switch (config.isModule) {
-    case undefined:
-    case true: sourceType = "module"; break;
-    case false: sourceType = "script"; break;
-    case "commonjs": sourceType = "commonjs"; break;
-    default: throw new TypeError('Unsupported option isModule: expected true, false, or "commonjs"');
+  if (parser.errorRecovery !== undefined && parser.errorRecovery !== true) {
+    throw new TypeError("Unsupported option parser.errorRecovery: transform collects diagnostics before throwing");
   }
-
-  let lang = langFromPath(filename);
-  if (jsc.parser !== undefined) {
-    const parser = optionObject(jsc.parser, "jsc.parser", ["syntax", "jsx", "tsx"]);
-    if (parser.syntax === "ecmascript") {
-      optionObject(parser, "jsc.parser", ["syntax", "jsx"]);
-      lang = booleanOption(parser.jsx, "jsc.parser.jsx") ? "jsx" : "js";
-    } else if (parser.syntax === "typescript") {
-      optionObject(parser, "jsc.parser", ["syntax", "tsx"]);
-      const tsx = booleanOption(parser.tsx, "jsc.parser.tsx");
-      lang = lang === "dts" ? "dts" : tsx ? "tsx" : "ts";
-    } else {
-      throw new TypeError('jsc.parser.syntax must be "ecmascript" or "typescript"');
-    }
-  }
-
   const parserOptions = {
-    lang,
-    sourceType,
-    preserveParens: booleanOption(extensions.preserveParens, "swcNext.preserveParens"),
+    ...parser,
+    lang: parser.lang ?? langFromPath(filename),
     comments: "none",
     semanticErrors: true,
-    // Transform reports diagnostics consistently across every plugin phase.
     errorRecovery: true,
   };
-  const transformOptions = 1
-    | (encodeBoolean(extensions.typescript, "swcNext.typescript") << 1)
-    | (encodeBoolean(extensions.staticBlocks, "swcNext.staticBlocks") << 3)
-    | (encodeBoolean(transform.verbatimModuleSyntax, "jsc.transform.verbatimModuleSyntax") << 5)
-    | (encodeBoolean(extensions.preserveConstEnums, "swcNext.preserveConstEnums") << 7);
-  const codegenOptions = encodeCodegenOptions({
-    asciiOnly: output.charset === "ascii",
-    minify: booleanOption(config.minify, "minify"),
-    inlineScript: booleanOption(extensions.inlineScript, "swcNext.inlineScript"),
+  const transformOptions = JSON.stringify({
+    typescript: config.typescript,
+    es2022: config.es2022,
+    proposal: config.proposal,
   });
+  const codegen = optionObject(config.codegen, "codegen", ["asciiOnly", "minify", "inlineScript"]);
+  const codegenOptions = encodeCodegenOptions(codegen);
   return { filename, parserOptions, transformOptions, codegenOptions };
 }
 
-function encodeBoolean(value, path) {
-  const boolean = booleanOption(value, path);
-  return boolean === undefined ? 0 : boolean ? 2 : 1;
-}
-
-function booleanOption(value, path) {
-  if (value !== undefined && typeof value !== "boolean") {
-    throw new TypeError(`${path} must be a boolean`);
+function callTransform(binding, ...args) {
+  try {
+    return binding(...args);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Invalid transform options: ")) {
+      throw new TypeError(error.message);
+    }
+    throw error;
   }
-  return value;
 }
 
 function optionObject(value, path, keys) {

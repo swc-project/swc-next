@@ -22,12 +22,7 @@ const { code } = transformSync(
   'import value from "dependency"; const answer: number = value; debugger;',
   {
     filename: "input.ts",
-    isModule: true,
-    jsc: {
-      parser: { syntax: "typescript" },
-      target: "esnext",
-      transform: { verbatimModuleSyntax: true },
-    },
+    typescript: { verbatimModuleSyntax: true },
     plugins: [removeDebugger()],
   },
 );

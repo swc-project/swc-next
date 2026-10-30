@@ -28,7 +28,9 @@ pub use transformer::parse_transform_to_buffer;
 #[cfg(all(feature = "transformer", feature = "parser", feature = "codegen"))]
 pub use transformer::transform_source_to_buffer;
 #[cfg(feature = "transformer")]
-pub use transformer::{TransformPassOptions, transform_from_buffer, transform_from_parts};
+pub use transformer::{
+    TransformPassOptions, TypeScriptPassOptions, transform_from_buffer, transform_from_parts,
+};
 #[cfg(all(feature = "transformer", feature = "codegen"))]
 pub use transformer::{transform_print_from_buffer, transform_print_from_parts};
 

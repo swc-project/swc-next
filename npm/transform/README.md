@@ -31,57 +31,36 @@ node properties do not cross the Rust boundary.
 Stages without plugins stay in Rust: no plugins means no AST transfers; one
 plugin phase needs one AST round trip, and both phases need two.
 
-`@swc-next/core` exposes the same `transformSync` API. Both accept a strict
-subset of `@swc/core` configuration, plus `plugins` and explicit `swcNext`
-extensions:
+`@swc-next/core` exposes the same `transformSync` API. Pass options use the
+Rust structures directly, with Rust handling defaults and validation:
 
 ```js
 transformSync("const answer: number = 42;", {
   filename: "input.ts",
-  isModule: true,
-  jsc: {
-    parser: { syntax: "typescript" },
-    target: "esnext",
-    transform: { verbatimModuleSyntax: true },
-    output: { charset: "ascii" },
-  },
-  minify: true,
+  parser: { sourceType: "module" },
+  typescript: {},
+  es2022: { staticBlocks: true },
+  codegen: { asciiOnly: true, minify: true },
 });
 // code: "const answer=42;export{};"
 ```
 
-`filename` infers JavaScript, JSX, TypeScript, or TSX when `jsc.parser` is
-omitted; without either, input is JavaScript. An explicit parser selects
-`{ syntax: "ecmascript", jsx?: boolean }` or
-`{ syntax: "typescript", tsx?: boolean }` and overrides filename inference.
-TypeScript declaration filenames select ambient parsing with TypeScript syntax.
-These filename rules follow SWC Next. Module mode defaults to
-`isModule: true` regardless of the filename. Use `false` for scripts or
-`"commonjs"` for CommonJS; `"unknown"` is not supported.
+`filename` infers JavaScript, JSX, TypeScript, TSX, or declaration syntax unless
+`parser.lang` is provided. `parser.sourceType` defaults to `"module"` regardless
+of the filename. Parser and codegen field names match `parseSync` and
+`printSync`; transform requires semantic checks and omits comments.
 
-The default target is `"esnext"`, which is also the only supported target.
-This differs from SWC's default of ES5. Top-level `minify` compacts printing;
-it does not compress or mangle. `jsc.output.charset` accepts `"ascii"` or
-`"utf8"` and defaults to `"utf8"`.
+TypeScript conversion is enabled by default for TypeScript input. Use
+`typescript: {}` for Rust defaults or `typescript: false` to retain TS syntax.
+The options follow [TypeScriptOptions](../../crates/swc_ecma_transformer/src/typescript/options.rs),
+[ES2022Options](../../crates/swc_ecma_transformer/src/es2022/mod.rs), and
+[ProposalOptions](../../crates/swc_ecma_transformer/src/proposal.rs).
+`typescript.jsx` controls retention of JSX factory imports; JSX itself is
+preserved for a later transform.
 
-TypeScript types are removed by default. `jsc.transform.verbatimModuleSyntax`
-preserves imports and exports without explicit type modifiers. In SWC Next it
-also preserves const enum declarations and disables their inlining, so its
-const enum behavior differs from `@swc/core`.
-
-The `swcNext` extensions expose `typescript: false` to retain TypeScript,
-`staticBlocks: true` to lower static blocks, `preserveParens` to control
-parentheses in plugin ASTs, and `inlineScript` to escape closing script tags.
-`swcNext.preserveConstEnums: true` retains
-const enum declarations while allowing safe local uses to be inlined; it is
-not equivalent to SWC's `treatConstEnumAsEnum`.
-
-Unknown fields and unsupported values throw an error identifying the
-configuration path. This includes the former top-level `parser`, `transform`,
-and `codegen` options, as well as unsupported SWC options such as `env`,
-`module`, `jsc.minify`, and `jsc.transform.react`. JSX is preserved. Comments,
-JSX pragmas, source maps, and configuration file discovery are not supported.
-Matching a configuration field does not imply full SWC behavior compatibility.
+General target lowering, comment pragmas, source maps, and configuration file
+discovery are not supported. `codegen.minify` compacts printing without
+compression or mangling. Unsupported options throw an error.
 
 Syntax and semantic errors throw `SyntaxError` with a `diagnostics` array
 containing UTF-16 source offsets. The input is parsed and checked; ASTs edited by

@@ -1,5 +1,4 @@
 mod options;
-mod options_wire;
 
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
@@ -7,12 +6,9 @@ use swc_next_ecma_ast::{
     ffi::ast::{DeserializeError, buffer_size, deserialize_from, serialize_into},
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
-use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    typescript::TypeScriptOptions,
-};
+use swc_next_ecma_transformer::{Transformer, normalize::Normalizer};
 
-pub use self::options::TransformPassOptions;
+pub use self::options::{TransformPassOptions, TypeScriptPassOptions};
 
 /// Transform a trusted AST transfer buffer and serialize its AST and diagnostics.
 ///
@@ -323,28 +319,15 @@ fn has_errors(diagnostics: &[Diagnostic<'_>]) -> bool {
 }
 
 fn run_passes(ast: &mut Ast<'_>, options: TransformPassOptions) {
-    let typescript = options.typescript.unwrap_or(ast.lang().is_typescript());
+    let options = options.normalize(ast.lang());
+    let typescript = options.typescript.is_some();
     if typescript {
         Normalizer::normalize_runtime(ast.root_program(), ast);
     } else {
         Normalizer::normalize(ast.root_program(), ast);
     }
     let analyzed = analyze(ast, AnalyzeOptions::default());
-    Transformer::transform(
-        ast,
-        analyzed.semantic,
-        TransformerOptions {
-            typescript: typescript.then(|| TypeScriptOptions {
-                verbatim_module_syntax: options.verbatim_module_syntax.unwrap_or_default(),
-                preserve_const_enums: options.preserve_const_enums.unwrap_or_default(),
-                ..TypeScriptOptions::default()
-            }),
-            es2022: ES2022Options {
-                static_blocks: options.static_blocks.unwrap_or_default(),
-            },
-            ..TransformerOptions::default()
-        },
-    );
+    Transformer::transform(ast, analyzed.semantic, options);
     if typescript {
         let lang = if ast.lang().is_jsx() {
             Lang::Jsx
