@@ -11453,15 +11453,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         cover: ParenthesizedCover,
         callee: Expr,
     ) -> Option<Expr> {
-        let arguments = (0..cover.elements.len())
-            .map(|index| {
-                cover
-                    .elements
-                    .get_node(&self.ast, index)
-                    .expect("call cover contains its arguments")
-            })
-            .collect::<Vec<_>>();
-        for argument in arguments {
+        for id in cover.elements.iter() {
+            let argument = self.ast.get_node_in_sub_range(id);
             let expression = match self.ast.argument_data(argument) {
                 ArgumentData::Expr(expression) => expression,
                 ArgumentData::SpreadElement(spread) => spread.argument(&self.ast),
