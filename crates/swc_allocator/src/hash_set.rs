@@ -40,6 +40,42 @@ type InnerHashSet<'alloc, T, S> = hashbrown::HashSet<T, S, &'alloc Allocator>;
 /// All APIs are the same, except create a [`HashSet`] with
 /// either [`new_in`](HashSet::new_in) or [`with_capacity_in`](HashSet::with_capacity_in).
 ///
+/// # Thread safety
+///
+/// This collection is neither `Send` nor `Sync`, even when its elements are.
+/// Removing the previous `Sync` implementation is an intentional compatibility
+/// correction: `Deref` exposes shared methods that allocate in the non-thread-safe
+/// arena. `Deref` and `DerefMut` remain available on the same thread.
+///
+/// A shared reference cannot cross a thread boundary to access the allocator:
+///
+/// ```compile_fail,E0277
+/// use std::ops::Deref;
+/// use swc_next_allocator::{Allocator, hash_set::HashSet};
+///
+/// let allocator = Allocator::new();
+/// let collection = HashSet::<u32>::new_in(&allocator);
+/// let shared = &collection;
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || { shared.deref().allocator().alloc(1_u64); });
+/// });
+/// ```
+///
+/// Explicitly cloning the underlying collection cannot bypass this restriction:
+///
+/// ```compile_fail,E0277
+/// use std::ops::Deref;
+/// use swc_next_allocator::{Allocator, hash_set::HashSet};
+///
+/// let allocator = Allocator::new();
+/// let mut collection = HashSet::<u32>::new_in(&allocator);
+/// collection.insert(1);
+/// let shared = &collection;
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || { let _ = shared.deref().clone(); });
+/// });
+/// ```
+///
 /// # No `Drop`s
 ///
 /// Objects allocated into Oxc memory arenas are never [`Dropped`](Drop). Memory is released in bulk
@@ -59,9 +95,6 @@ impl<T: fmt::Debug, S> fmt::Debug for HashSet<'_, T, S> {
         f.debug_set().entries(self.0.iter()).finish()
     }
 }
-
-/// SAFETY: Same as `HashMap`. See `HashMap`'s doc comment for details.
-unsafe impl<T: Sync, S: Sync> Sync for HashSet<'_, T, S> {}
 
 // TODO: `IntoIter` and other consuming iterators provided by `hashbrown` are `Drop`.
 // Wrap them in `ManuallyDrop` to prevent that.
@@ -107,15 +140,9 @@ impl<'alloc, T, S> HashSet<'alloc, T, S> {
 
     /// Calling this method produces a compile-time panic.
     ///
-    /// This method would be unsound, because [`HashSet`] is `Sync`, and the underlying allocator
-    /// (`Arena`) is not `Sync`.
-    ///
-    /// This method exists only to block access as much as possible to the underlying
-    /// `hashbrown::HashSet::allocator` method. That method can still be accessed via explicit `Deref`
-    /// (`hash_set.deref().allocator()`), but that's unsound.
-    ///
-    /// We'll prevent access to it completely and remove this method as soon as we can.
-    // TODO: Do that!
+    /// This legacy guard shadows `hashbrown::HashSet::allocator`.
+    /// Explicit `Deref` access remains available on the same thread.
+    /// Thread safety is enforced by the collection's auto traits.
     #[allow(unfulfilled_lint_expectations)]
     #[expect(clippy::unused_self)]
     pub fn allocator(&self) -> &'alloc Allocator {
@@ -255,5 +282,28 @@ impl<'alloc, T, S> From<HashMap<'alloc, T, (), S>> for HashSet<'alloc, T, S> {
         let inner_map = ManuallyDrop::into_inner(map.0);
         let inner_set = hashbrown::HashSet::from(inner_map);
         Self(ManuallyDrop::new(inner_set))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Deref;
+
+    use super::HashSet;
+    use crate::Allocator;
+
+    #[test]
+    fn shared_access() {
+        let allocator = Allocator::new();
+        let mut set = HashSet::new_in(&allocator);
+        set.insert(1_u32);
+
+        let shared = &set;
+        assert!(shared.contains(&1));
+        assert_eq!(shared.iter().next(), Some(&1));
+
+        let cloned = shared.deref().clone();
+        assert!(cloned.contains(&1));
+        assert_eq!(*shared.deref().allocator().alloc(3_u64), 3);
     }
 }

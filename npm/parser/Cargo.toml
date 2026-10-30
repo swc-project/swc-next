@@ -15,5 +15,8 @@ crate-type = ["cdylib"]
 swc_next_bridge   = { workspace = true, features = ["parser"] }
 swc_next_ecma_ast = { workspace = true }
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+mimalloc = { workspace = true, features = ["v2"] }
+
 [build-dependencies]
 napi-build = { workspace = true }
