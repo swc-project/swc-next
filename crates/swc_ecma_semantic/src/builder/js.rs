@@ -14,10 +14,15 @@ pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, litera
         return;
     }
     let span = builder.ast.span(literal.node_id());
-    if has_octal_escape(&builder.ast.source().as_bytes()[span.start as usize..span.end as usize]) {
+    let raw = &builder.ast.source().as_bytes()[span.start as usize..span.end as usize];
+    if let Some(escape) = last_legacy_escape(raw) {
+        let message = match escape {
+            LegacyEscape::NonOctalDecimal => "\\8 and \\9 are not allowed in strict mode.",
+            LegacyEscape::Octal => "Octal escape sequences are not allowed in strict mode.",
+        };
         builder.report(
             span,
-            "Octal escape sequences are not allowed in strict mode",
+            message,
             ReportOptions {
                 help: Some(Cow::Borrowed(
                     "Use \\xHH (hex) or \\uHHHH (unicode) escape instead",
@@ -203,8 +208,14 @@ fn is_legacy_numeric_literal(raw: &[u8]) -> bool {
     raw.len() >= 2 && raw[0] == b'0' && raw[1].is_ascii_digit()
 }
 
-fn has_octal_escape(value: &[u8]) -> bool {
+enum LegacyEscape {
+    Octal,
+    NonOctalDecimal,
+}
+
+fn last_legacy_escape(value: &[u8]) -> Option<LegacyEscape> {
     let mut position = 0;
+    let mut escape = None;
     while let Some(offset) = memchr::memchr(b'\\', &value[position..]) {
         let slash = position + offset;
         let next = slash + 1;
@@ -212,13 +223,16 @@ fn has_octal_escape(value: &[u8]) -> bool {
             break;
         }
         match value[next] {
-            b'1'..=b'9' => return true,
-            b'0' if value.get(next + 1).is_some_and(u8::is_ascii_digit) => return true,
+            b'1'..=b'7' => escape = Some(LegacyEscape::Octal),
+            b'8' | b'9' => escape = Some(LegacyEscape::NonOctalDecimal),
+            b'0' if value.get(next + 1).is_some_and(u8::is_ascii_digit) => {
+                escape = Some(LegacyEscape::Octal);
+            }
             _ => {}
         }
         position = next + 1;
     }
-    false
+    escape
 }
 
 pub(super) fn check_binary_expression(
