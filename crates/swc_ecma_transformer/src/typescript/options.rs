@@ -12,6 +12,9 @@ pub struct TypeScriptOptions {
     /// disabling inlining. Defaults to `false`; only safe, unexported enums
     /// may be removed by this single-file transform.
     pub preserve_const_enums: bool,
+    /// Retain const enums and their member reads so runtime mutations remain
+    /// observable, independently of `verbatimModuleSyntax`. Defaults to false.
+    pub ts_enum_is_mutable: bool,
     /// Suppress only the synthetic `export {}` marker inserted after erasing
     /// all module syntax. Explicit exports remain unchanged. Defaults to false.
     pub no_empty_export: bool,

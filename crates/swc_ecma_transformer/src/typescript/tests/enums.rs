@@ -460,3 +460,31 @@ fn assignment_target_reads() {
     let code = transformed_code("const enum E { X = 0 } const a = []; a[E.X]++;");
     assert!(code.contains("a[0]++"));
 }
+
+#[test]
+fn mutable_enum_policy() {
+    let mutable = TypeScriptOptions {
+        ts_enum_is_mutable: true,
+        ..Default::default()
+    };
+    let code = transformed_code_with_options(
+        "const enum E { A = 1 } export const value = E.A;",
+        mutable.clone(),
+    );
+    assert!(code.contains("var E"));
+    assert!(code.contains("value = E.A"));
+
+    let code = transformed_code_with_options(
+        "namespace N { export const enum E { A = 1 } } export const value = N.E.A;",
+        mutable.clone(),
+    );
+    assert!(code.contains("function(N)"));
+    assert!(code.contains("value = N.E.A"));
+
+    let code = transformed_code_with_options(
+        "import { unused } from 'dep'; const enum E { A = 1 } export const value = E.A;",
+        mutable,
+    );
+    assert!(!code.contains("dep"));
+    assert!(code.contains("value = E.A"));
+}

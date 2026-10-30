@@ -25,7 +25,7 @@ pub(super) struct EnumCollector {
 
 impl EnumCollector {
     pub(super) fn new(ast: &Ast<'_>, semantic: &Semantic<'_>, options: &TypeScriptOptions) -> Self {
-        let inline_const_enum_uses = !options.verbatim_module_syntax;
+        let inline_const_enum_uses = !options.verbatim_module_syntax && !options.ts_enum_is_mutable;
         let remove_const_enums = inline_const_enum_uses && !options.preserve_const_enums;
         let mut collect_const_bindings = false;
         let mut collect_const_enum_uses = false;

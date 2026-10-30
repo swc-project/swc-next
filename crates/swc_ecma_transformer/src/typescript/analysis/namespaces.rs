@@ -247,7 +247,8 @@ impl<'visit, 'ast> NamespaceFinalizer<'visit, 'ast> {
                 let ambient_const_enum = declaration.declare(self.ast)
                     && declaration.is_const(self.ast)
                     && !self.options.preserve_const_enums
-                    && !self.options.verbatim_module_syntax;
+                    && !self.options.verbatim_module_syntax
+                    && !self.options.ts_enum_is_mutable;
                 if ambient_const_enum {
                     return false;
                 }
