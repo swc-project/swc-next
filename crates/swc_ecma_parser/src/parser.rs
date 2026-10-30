@@ -14496,9 +14496,9 @@ mod tests {
         assert_eq!(parsed.current_token.span(), Span::new(0, 4));
         assert_eq!(token_texts(parsed.source, &parsed.lexer.tokens), ["head"]);
         assert!(parsed.lexer.comments.is_empty());
-        assert!(parsed.diagnostics.is_empty());
+        assert!(parsed.diagnostics.entries.is_empty());
         assert!(parsed.advance().is_none());
-        assert!(!parsed.diagnostics.is_empty());
+        assert!(!parsed.diagnostics.entries.is_empty());
     }
 
     #[test]
