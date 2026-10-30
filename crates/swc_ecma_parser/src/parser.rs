@@ -671,8 +671,7 @@ struct ArrowBodyResult {
 /// An ordered table owns both candidate spans and their scope boundaries; a consumed
 /// candidate stays in place until its scope ends. One journal restores metadata mutations.
 /// Node scratch storage is reset at each conversion boundary.
-#[derive(Default)]
-struct CoverState {
+struct CoverState<'a> {
     initialized_names: IndexMap<NodeId, Option<Span>, FxBuildHasher>,
     /// Commas which become errors only if their spread nodes become rest elements.
     trailing_commas: FxHashMap<NodeId, Span>,
@@ -692,7 +691,17 @@ enum CoverChange {
     ParenthesizedTarget(NodeId),
 }
 
-impl CoverState {
+impl<'a> CoverState<'a> {
+    fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            initialized_names: IndexMap::default(),
+            trailing_commas: FxHashMap::default(),
+            parenthesized_targets: FxHashSet::default(),
+            changes: Vec::new(),
+            scratch: ScratchBuffer::new(allocator),
+        }
+    }
+
     fn start_expression(&self) -> usize {
         self.initialized_names.len()
     }
@@ -1193,7 +1202,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     statement_context: StatementContext,
     ts_context: TsContext,
     module_detection: ModuleDetection,
-    cover: CoverState,
+    cover: CoverState<'a>,
     /// TypeScript grammar alternatives rejected in a particular parse context.
     ///
     /// Failures survive [`Checkpoint`] rollback so enclosing speculation can
@@ -1497,7 +1506,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 context
             },
             module_detection: ModuleDetection::new(options.source_type),
-            cover: CoverState::default(),
+            cover: CoverState::new(allocator),
             ts_rejected_speculations: FxHashSet::default(),
             await_identifier_in_async_head: None,
             failed_type_arguments: FxHashMap::default(),
