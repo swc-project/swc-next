@@ -170,16 +170,6 @@ pub fn serialize_into(
     };
     if positions.is_none() && cfg!(target_endian = "little") {
         write(buf, &mut pos, spans);
-    } else if matches!(positions, Some(PositionMap::Sparse { .. })) {
-        let span_buf = &mut buf[pos..pos + spans.len()];
-        let nodes = unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) };
-        for (span, bytes) in nodes.iter().zip(span_buf.chunks_exact_mut(SPAN_SIZE)) {
-            let start = utf16_pos(span.start, positions.as_ref());
-            bytes[..4].copy_from_slice(&start.to_le_bytes());
-            let end = utf16_pos(span.end, positions.as_ref());
-            bytes[4..].copy_from_slice(&end.to_le_bytes());
-        }
-        pos += spans.len();
     } else {
         for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
             let start = utf16_pos(span.start, positions.as_ref());
