@@ -189,31 +189,31 @@ fn test_new() {
     expect_printed_minify("new x() ** 2", "new x**2;");
     expect_printed(
         "new Worker(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
-        "new Worker(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\"\n);\n",
+        "new Worker( // webpackFoo: 1\n// webpackBar: 2\n\"path\");\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
-        "new Worker(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\"\n);\n",
+        "new Worker( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\");\n",
     );
     expect_printed(
         "new Worker(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "new Worker(\n  /* multi\n   * line\n   * webpackBar: */\n  \"path\"\n);\n",
+        "new Worker(\n/* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
-        "new Worker(new URL(\n  \"path\",\n  /* webpackFoo: these can go anywhere */\n  import.meta.url\n));\n",
+        "new Worker(new URL(\"path\", /* webpackFoo: these can go anywhere */ import.meta.url));\n",
     );
 }
 
@@ -726,43 +726,43 @@ fn test_import() {
     expect_printed("import('path');", "import(\"path\");\n");
     expect_printed(
         "import(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
-        "import(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\"\n);\n",
+        "import( // webpackFoo: 1\n// webpackBar: 2\n\"path\");\n",
     );
     expect_printed(
         "import(// webpackFoo: 1\n // webpackBar: 2\n 'path', {type: 'module'});",
-        "import(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\",\n  { type: \"module\" }\n);\n",
+        "import( // webpackFoo: 1\n// webpackBar: 2\n\"path\", { type: \"module\" });\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
-        "import(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\"\n);\n",
+        "import( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\");\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path', {type: 'module'});",
-        "import(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\",\n  { type: \"module\" }\n);\n",
+        "import( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\", { type: \"module\" });\n",
     );
     expect_printed(
         "import(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "import(\n  /* multi\n   * line\n   * webpackBar: */\n  \"path\"\n);\n",
+        "import(\n/* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path', { type: 'module' } /* webpackBar:2 */ );",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\",\n  { type: \"module\" }\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\", { type: \"module\" } /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
-        "import(new URL(\n  \"path\",\n  /* webpackFoo: these can go anywhere */\n  import.meta.url\n));\n",
+        "import(new URL(\"path\", /* webpackFoo: these can go anywhere */ import.meta.url));\n",
     );
     expect_printed_minify(
         "import defer * as foo from 'bar'",

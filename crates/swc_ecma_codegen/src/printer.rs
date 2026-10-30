@@ -516,6 +516,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_comment(&mut self, comment: Comment, statement: bool) {
+        self.print_semicolon_if_needed();
         let value = self
             .ast
             .get_utf8(comment.value(self.ast.source().as_bytes()));
@@ -658,18 +659,6 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn has_direct_argument_comments(&self, args: SubRange<Argument>, close_offset: u32) -> bool {
-        self.comments[self.next_comment..]
-            .iter()
-            .take_while(|comment| comment.span.end <= close_offset)
-            .any(|comment| {
-                !args.iter().any(|id| {
-                    let span = self.ast.get_node_in_sub_range(id).span(self.ast);
-                    span.start <= comment.span.start && comment.span.end <= span.end
-                })
-            })
-    }
-
     #[inline]
     fn print_indent(&mut self) {
         if self.options.minify {
@@ -778,11 +767,26 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_semicolon_after_statement(&mut self) {
+        self.print_statement_semicolon();
+        self.print_newline();
+    }
+
+    #[inline]
+    fn print_statement_semicolon(&mut self) {
         if self.options.minify {
             self.needs_semicolon = true;
         } else {
-            self.print(";\n");
+            self.print(";");
             self.needs_semicolon = false;
+        }
+    }
+
+    fn print_newline_after_comments(&mut self) {
+        while matches!(self.js.last(), Some(b' ' | b'\t')) {
+            self.js.pop();
+        }
+        if self.js.last() != Some(&b'\n') {
+            self.print_newline();
         }
     }
 
@@ -969,11 +973,12 @@ impl<'a> Printer<'a> {
                     self.print("(");
                 }
                 self.print_expr(expression, Precedence::Lowest);
-                self.print_attached_trailing_comments(expression.span(self.ast).end);
                 if wrap {
                     self.print(")");
                 }
-                self.print_semicolon_after_statement();
+                self.print_statement_semicolon();
+                self.print_attached_trailing_comments(s.span(self.ast).end);
+                self.print_newline_after_comments();
                 self.print_comments_at(s.span(self.ast).end, true);
             }
             StmtData::ForInStatement(s) => {
@@ -1473,6 +1478,10 @@ impl<'a> Printer<'a> {
         };
         if ends_with_block {
             self.print_newline();
+        } else if matches!(self.ast.decl_data(decl), DeclData::VariableDeclaration(_)) {
+            self.print_statement_semicolon();
+            self.print_attached_trailing_comments(decl.span(self.ast).end);
+            self.print_newline_after_comments();
         } else {
             self.print_semicolon_after_statement();
         }
@@ -1506,7 +1515,6 @@ impl<'a> Printer<'a> {
                 self.print_expr(value, Precedence::Assignment);
             }
         }
-        self.print_comments_at(decl.span(self.ast).end, false);
     }
 
     fn print_function(&mut self, f: Function) {
@@ -1594,15 +1602,14 @@ impl<'a> Printer<'a> {
                 self.print(",");
                 self.print_space();
             }
-            match self
-                .ast
-                .formal_parameter_item_data(self.ast.get_node_in_sub_range(id))
-            {
+            let item = self.ast.get_node_in_sub_range(id);
+            match self.ast.formal_parameter_item_data(item) {
                 FormalParameterItemData::FormalParameter(p) => self.print_formal_parameter(p),
                 FormalParameterItemData::TsParameterProperty(p) => {
                     self.print_ts_parameter_property(p)
                 }
             }
+            self.print_comments_at(item.span(self.ast).end, false);
         }
         if let Some(rest) = params.rest(self.ast) {
             if !items.is_empty() || this_param.is_some() {
@@ -1616,6 +1623,7 @@ impl<'a> Printer<'a> {
             if let Some(annotation) = rest.type_annotation(self.ast) {
                 self.print_ts_annotation(annotation);
             }
+            self.print_comments_at(rest.span(self.ast).end, false);
         }
         self.print_comments_at(params.span(self.ast).end.saturating_sub(1), false);
         self.print(")");
@@ -2244,45 +2252,16 @@ impl<'a> Printer<'a> {
                     }
                 }
                 let close_offset = e.span(self.ast).end.saturating_sub(1);
-                let source_span = e.source(self.ast).span(self.ast);
-                let options_span = e.options(self.ast).map(|options| options.span(self.ast));
-                let multiline = !self.options.minify
-                    && self.comments[self.next_comment..]
-                        .iter()
-                        .take_while(|comment| comment.span.end <= close_offset)
-                        .any(|comment| {
-                            !(source_span.start <= comment.span.start
-                                && comment.span.end <= source_span.end
-                                || options_span.is_some_and(|span| {
-                                    span.start <= comment.span.start && comment.span.end <= span.end
-                                }))
-                        });
-                if multiline {
-                    self.indent += 1;
-                    self.print_newline();
-                    let source = e.source(self.ast);
-                    self.print_comments_at(source.span(self.ast).start, true);
-                    self.print_indent();
-                    self.print_expr(source, Precedence::Assignment);
-                    if let Some(options) = e.options(self.ast) {
-                        self.print(",");
-                        self.print_newline();
-                        self.print_comments_at(options.span(self.ast).start, true);
-                        self.print_indent();
-                        self.print_expr(options, Precedence::Assignment);
-                    }
-                    self.print_newline();
-                    self.print_comments_at(close_offset, true);
-                    self.indent -= 1;
-                    self.print_indent();
-                } else {
-                    self.print_expr(e.source(self.ast), Precedence::Assignment);
-                    if let Some(options) = e.options(self.ast) {
-                        self.print(",");
-                        self.print_space();
-                        self.print_expr(options, Precedence::Assignment);
-                    }
+                let source = e.source(self.ast);
+                self.print_expr(source, Precedence::Assignment);
+                self.print_comments_at(source.span(self.ast).end, false);
+                if let Some(options) = e.options(self.ast) {
+                    self.print(",");
+                    self.print_space();
+                    self.print_expr(options, Precedence::Assignment);
+                    self.print_comments_at(options.span(self.ast).end, false);
                 }
+                self.print_comments_at(close_offset, false);
                 self.print(")");
                 self.forbid_in = old_forbid_in;
                 if context.contains(ExprContext::IN_NEW_CALLEE) {
@@ -2694,26 +2673,11 @@ impl<'a> Printer<'a> {
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.print("(");
-        let multiline = !self.options.minify
-            && !args.is_empty()
-            && self.has_direct_argument_comments(args, close_offset);
-        if multiline {
-            self.indent += 1;
-            self.print_newline();
-        }
         for (i, id) in args.iter().enumerate() {
+            let argument = self.ast.get_node_in_sub_range(id);
             if i != 0 {
                 self.print(",");
-                if multiline {
-                    self.print_newline();
-                } else {
-                    self.print_space();
-                }
-            }
-            let argument = self.ast.get_node_in_sub_range(id);
-            if multiline {
-                self.print_comments_at(argument.span(self.ast).start, true);
-                self.print_indent();
+                self.print_space();
             }
             match self.ast.argument_data(argument) {
                 ArgumentData::Expr(e) => self.print_expr(e, Precedence::Assignment),
@@ -2722,15 +2686,9 @@ impl<'a> Printer<'a> {
                     self.print_expr(s.argument(self.ast), Precedence::Assignment);
                 }
             }
+            self.print_comments_at(argument.span(self.ast).end, false);
         }
-        if multiline {
-            self.print_newline();
-            self.print_comments_at(close_offset, true);
-            self.indent -= 1;
-            self.print_indent();
-        } else if args.is_empty() || self.options.minify {
-            self.print_comments_at(close_offset, false);
-        }
+        self.print_comments_at(close_offset, false);
         self.add_source_mapping(close_offset);
         self.print(")");
         self.forbid_in = old_forbid_in;
@@ -3441,6 +3399,7 @@ impl<'a> Printer<'a> {
             if wrap {
                 self.print(")");
             }
+            self.print_attached_trailing_comments(decorator.span(self.ast).end);
             self.print_space();
             self.print_space_before_identifier();
         }

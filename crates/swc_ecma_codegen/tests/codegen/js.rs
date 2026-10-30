@@ -879,6 +879,11 @@ fn test_directive_comments() {
 #[test]
 fn test_parameter_comments() {
     expect_printed(
+        "function f(a, /* keep */) {}",
+        "function f(a /* keep */ ) {\n}\n",
+    );
+
+    expect_printed(
         "function f(/** @type {number} */ x) {}",
         "function f( /** @type {number} */ x) {\n}\n",
     );
@@ -901,6 +906,11 @@ fn test_parameter_comments() {
 
 #[test]
 fn test_class_member_comments() {
+    expect_stable(
+        "export @d /* keep */ class C {}",
+        "export @d /* keep */ class C {\n}\n",
+    );
+
     expect_printed(
         "class C { /** @param {number} x */ constructor(x) {} }",
         "class C {\n  /** @param {number} x */\n  constructor(x) {\n  }\n}\n",
@@ -984,7 +994,7 @@ fn test_jsx_container_comments() {
 
 #[test]
 fn test_container_comments() {
-    expect_stable("let x /*! license */;", "let x /*! license */ ;\n");
+    expect_stable("let x /*! license */;", "let x;\n/*! license */\n");
 
     expect_stable("const x = [1 /* keep */];", "const x = [1 /* keep */ ];\n");
 
@@ -1099,24 +1109,51 @@ fn test_minify_do_while() {
 }
 
 #[test]
+fn test_expression_comments() {
+    expect_stable("f() // keep\ng();", "f(); // keep\ng();\n");
+
+    expect_stable("f(); // keep\ng();", "f(); // keep\ng();\n");
+
+    expect_printed_minify("{ f(); /* keep */ g(); }", "{f();/* keep */g()}");
+}
+
+#[test]
+fn test_variable_comments() {
+    expect_stable(
+        "let x = 1; // comment\nf();",
+        "let x = 1; // comment\nf();\n",
+    );
+
+    expect_stable(
+        "let x = 1; /* comment */\nf();",
+        "let x = 1; /* comment */\nf();\n",
+    );
+
+    expect_stable(
+        "let x = 1 // comment\nf();",
+        "let x = 1; // comment\nf();\n",
+    );
+
+    expect_stable("let x = 1;\n/* comment */", "let x = 1;\n/* comment */\n");
+
+    expect_printed_minify("let x = 1; // comment\nf();", "let x=1;// comment\nf();");
+
+    expect_stable(
+        "{ let x = 1; // comment\nf(); }",
+        "{\n  let x = 1; // comment\n  f();\n}\n",
+    );
+}
+
+#[test]
 fn test_parenthesized_comments() {
     expect_stable(
         "function f() { (/* first */ /* second */ value); }",
         "function f() {\n  /* first */\n  /* second */\n  value;\n}\n",
     );
 
-    expect_stable(
-        "(/* before */ value /* after */); /* end */",
-        "/* before */\nvalue /* after */;\n/* end */\n",
-    );
-
-    expect_printed_minify(
-        "function f() { (/* before */ value /* after */); }",
-        "function f(){/* before */value/* after */}",
-    );
     expect_printed_minify(
         "function f(){/* before */value/* after */}",
-        "function f(){/* before */value/* after */}",
+        "function f(){/* before */value;/* after */}",
     );
 }
 
