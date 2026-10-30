@@ -7,7 +7,7 @@ use swc_next_allocator::{
 use swc_next_ecma_ast::{
     Ast, AstUtf8, BinaryOperator, Expr, ExprData, MemberExpression, NodeId, NodeKindData,
     NumericLiteral, PropertyKeyData, SymbolId, TsEnumDeclaration, TsEnumMember, UnaryOperator,
-    VariableDeclarator,
+    VariableDeclarator, Visit, VisitWith,
 };
 use swc_next_ecma_semantic::{NameResolution, Semantic, SymbolFlags};
 
@@ -117,6 +117,7 @@ pub(super) fn evaluate<'a>(
         enum_evaluations: vec![EnumEvaluation::Pending; declarations.len()],
         enum_values: FxHashMap::default(),
         const_evaluations: FxHashMap::default(),
+        order: None,
     };
 
     for index in 0..declarations.len() {
@@ -135,6 +136,42 @@ struct EnumValueComputer<'visit, 'a> {
     enum_evaluations: Vec<EnumEvaluation>,
     enum_values: EnumMemberValues<'a>,
     const_evaluations: FxHashMap<SymbolId, ConstEvaluation<'a>>,
+    order: Option<TraversalOrder<'visit, 'a>>,
+}
+
+/// Source spans survive AST edits, so declaration order and containment must
+/// follow the current tree. Build this index only for symbol-dependent values.
+struct TraversalOrder<'visit, 'a> {
+    tree: &'visit Ast<'a>,
+    ranges: Vec<std::ops::Range<usize>>,
+    next: usize,
+}
+
+impl<'visit, 'a> TraversalOrder<'visit, 'a> {
+    fn new(tree: &'visit Ast<'a>) -> Self {
+        let mut order = Self {
+            tree,
+            ranges: vec![0..0; tree.node_count()],
+            next: 0,
+        };
+        tree.root_program().visit_with(&mut order);
+        order
+    }
+}
+
+impl<'a> Visit<'a> for TraversalOrder<'_, 'a> {
+    fn ast(&self) -> &Ast<'a> {
+        self.tree
+    }
+
+    fn enter_node(&mut self, node: NodeKindData) {
+        self.ranges[node.node_id().index()].start = self.next;
+        self.next += 1;
+    }
+
+    fn leave_node(&mut self, node: NodeKindData) {
+        self.ranges[node.node_id().index()].end = self.next;
+    }
 }
 
 impl<'a> EnumValueComputer<'_, 'a> {
@@ -302,19 +339,22 @@ impl<'a> EnumValueComputer<'_, 'a> {
         value
     }
 
-    fn is_declared_before(&self, declaration: NodeId, location: EvaluationLocation) -> bool {
+    fn is_declared_before(&mut self, declaration: NodeId, location: EvaluationLocation) -> bool {
         if declaration == location.node {
             return false;
         }
-        let declaration = self.tree.span(declaration);
-        if declaration.start <= self.tree.span(location.node).start {
+        let order = self
+            .order
+            .get_or_insert_with(|| TraversalOrder::new(self.tree));
+        let declaration = &order.ranges[declaration.index()];
+        if declaration.start <= order.ranges[location.node.index()].start {
             return true;
         }
         // A function or instance initializer may execute after an outer binding
         // is initialized. Bindings within that same deferred region still obey
         // source order. Immediately invoked functions do not create a region.
         location.deferred.is_some_and(|region| {
-            let region = self.tree.span(region);
+            let region = &order.ranges[region.index()];
             declaration.start < region.start || declaration.end > region.end
         })
     }
