@@ -1279,7 +1279,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
         assert!(index <= len);
 
         // space for the new element
-        if len == self.buf.cap() {
+        if self.len_u32() == self.capacity_u32() {
             self.reserve(1);
         }
 
@@ -1678,11 +1678,11 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
         let len = self.len();
         let start = match range.start_bound() {
             Included(&n) => n,
-            Excluded(&n) => n + 1,
+            Excluded(&n) => n.checked_add(1).expect("drain start bound overflow"),
             Unbounded => 0,
         };
         let end = match range.end_bound() {
-            Included(&n) => n + 1,
+            Included(&n) => n.checked_add(1).expect("drain end bound overflow"),
             Excluded(&n) => n,
             Unbounded => len,
         };
@@ -2003,13 +2003,10 @@ impl<'bump, T: 'bump + Clone> ArenaVec<'bump, T> {
     ///
     /// [`extend`]: #method.extend
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        let capacity = self.capacity();
+        let capacity = self.capacity_u32() as usize;
 
-        /*
-        Cannot underflow via invariant of the ArenaVec (capacity >= length).
-
-        This also holds for ZSTs, as capacity is usize::MAX
-        */
+        // Use the representable length limit for ZSTs, not their storage capacity.
+        // Cannot underflow because capacity is at least the current length.
         let remaining_cap = capacity - self.len();
 
         /*
