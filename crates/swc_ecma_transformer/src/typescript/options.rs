@@ -12,6 +12,12 @@ pub struct TypeScriptOptions {
     /// disabling inlining. Defaults to `false`; only safe, unexported enums
     /// may be removed by this single-file transform.
     pub preserve_const_enums: bool,
+    /// Suppress only the synthetic `export {}` marker inserted after erasing
+    /// all module syntax. Explicit exports remain unchanged. Defaults to false.
+    pub no_empty_export: bool,
+    /// Retain the loading effects of value imports whose bindings are used only
+    /// as types or are unused. Explicit `import type` declarations are erased.
+    pub import_not_used_as_values: ImportsNotUsedAsValues,
     /// Factory dependencies for JSX preserved for a later transform.
     pub jsx: JsxImportOptions,
 }
@@ -22,4 +28,13 @@ pub struct JsxImportOptions {
     pub automatic: bool,
     pub pragma: Option<String>,
     pub pragma_frag: Option<String>,
+}
+
+/// Policy for value imports without runtime references.
+#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportsNotUsedAsValues {
+    #[default]
+    Remove,
+    Preserve,
 }

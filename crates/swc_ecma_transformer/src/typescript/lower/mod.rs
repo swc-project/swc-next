@@ -62,7 +62,8 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
         if let Some(body) = self.lower_statement_list(body) {
             program.set_body(self.ast(), body);
         }
-        if self.ast_ref().source_type() == SourceType::Module
+        if !self.options.no_empty_export
+            && self.ast_ref().source_type() == SourceType::Module
             && !self.has_module_indicator(program.body(self.ast_ref()))
         {
             self.append_esm_marker(program);

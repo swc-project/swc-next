@@ -207,3 +207,37 @@ fn module_side_effects() {
     let code = transformed_code_with_options("export type {} from 'dep';", verbatim);
     assert_eq!(code.trim(), "export {};");
 }
+
+#[test]
+fn module_emission_options() {
+    let no_marker = TypeScriptOptions {
+        no_empty_export: true,
+        ..Default::default()
+    };
+    let code = transformed_code_with_options("export type T = number;", no_marker.clone());
+    assert!(code.trim().is_empty());
+
+    let code = transformed_code_with_options("export {};", no_marker);
+    assert_eq!(code.trim(), "export {};");
+
+    let preserve = TypeScriptOptions {
+        import_not_used_as_values: super::super::ImportsNotUsedAsValues::Preserve,
+        ..Default::default()
+    };
+    let code =
+        transformed_code_with_options("import { T } from 'dep'; let value: T;", preserve.clone());
+    assert!(code.contains("import \"dep\";"));
+    assert!(!code.contains("{ T }"));
+
+    let code = transformed_code_with_options(
+        "import type { T } from 'dep'; let value: T;",
+        preserve.clone(),
+    );
+    assert!(!code.contains("dep"));
+
+    let code = transformed_code_with_options("import { type T } from 'dep';", preserve.clone());
+    assert!(code.contains("import \"dep\";"));
+
+    let code = transformed_code_with_options("import { value } from 'dep'; value();", preserve);
+    assert!(code.contains("import { value }"));
+}

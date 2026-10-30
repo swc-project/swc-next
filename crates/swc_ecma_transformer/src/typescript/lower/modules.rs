@@ -55,7 +55,11 @@ impl TypeScriptLowerer<'_, '_> {
         }
 
         if let Some(lowered) = lowered {
-            if lowered.is_empty() && !self.options.verbatim_module_syntax {
+            if lowered.is_empty()
+                && !self.options.verbatim_module_syntax
+                && self.options.import_not_used_as_values
+                    == super::super::ImportsNotUsedAsValues::Remove
+            {
                 return false;
             }
             let specifiers = self.ast().add_sub_range(lowered);

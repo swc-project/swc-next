@@ -31,6 +31,7 @@ impl From<TransformTypeScriptOptions> for TypeScriptOptions {
                 pragma_frag: options.jsx_pragma_frag,
                 ..JsxImportOptions::default()
             },
+            ..Self::default()
         }
     }
 }
