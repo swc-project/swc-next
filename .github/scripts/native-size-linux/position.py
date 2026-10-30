@@ -35,8 +35,17 @@ try:
         row = {'side': side, 'bytes': len(data), 'gzip_bytes': len(gzip.compress(data, mtime=0)), 'sha256': hashlib.sha256(data).hexdigest(), 'profiles': []}
         runenv = {**env, 'NAPI_RS_NATIVE_LIBRARY_PATH': str(binary), 'MEASURE_ADDON': str(addon)}
         shutil.copy2(binary, root / 'npm/core/src-js/swc-next-core.linux-x64-gnu.node')
+        # The core API tests also import the standalone parser and codegen packages.
+        for component in ['parser', 'codegen']:
+            component_cmd = ['cargo', 'build', '--locked', '--release', '--target', 'x86_64-unknown-linux-gnu', '-p', f'swc_next_{component}_bridge', *extra]
+            with (dest / f'{component}-build.log').open('w') as log:
+                subprocess.run(component_cmd, env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+            shutil.copy2(out / f'target/x86_64-unknown-linux-gnu/release/libswc_next_{component}_bridge.so', root / f'npm/{component}/src-js/swc-next-{component}.linux-x64-gnu.node')
         with (dest / 'tests.log').open('w') as log:
-            subprocess.run(['pnpm', 'test'], env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
+            tested = subprocess.run(['pnpm', 'test'], env=env, stdout=log, stderr=subprocess.STDOUT)
+        if tested.returncode:
+            print((dest / 'tests.log').read_text(), flush=True)
+        tested.check_returncode()
         # Compare complete raw transfers, including spans, for every real and synthetic fixture.
         row['outputs'] = {}
         for fixture in sorted(p.name for p in fixtures.iterdir() if p.suffix in ['.js','.jsx','.ts','.tsx']):
