@@ -145,9 +145,21 @@ fn without_separators(raw: &str, has_separator: bool) -> Cow<'_, str> {
     if !has_separator {
         return Cow::Borrowed(raw);
     }
-    let mut clean = String::with_capacity(raw.len());
-    clean.extend(raw.chars().filter(|&character| character != '_'));
-    Cow::Owned(clean)
+    let mut clean = Vec::<u8>::with_capacity(raw.len());
+    let dst = clean.as_mut_ptr();
+    let mut len = 0;
+    for byte in raw.bytes() {
+        if byte != b'_' {
+            // SAFETY: Each input byte produces at most one write, so `len < raw.len()`.
+            // The buffer has at least that capacity and never reallocates in this loop.
+            unsafe { dst.add(len).write(byte) };
+            len += 1;
+        }
+    }
+    // SAFETY: The loop initialized exactly the first `len` bytes, within capacity.
+    unsafe { clean.set_len(len) };
+    // SAFETY: Removing ASCII `_` from valid UTF-8 preserves every multibyte character.
+    Cow::Owned(unsafe { String::from_utf8_unchecked(clean) })
 }
 
 #[inline]
@@ -168,7 +180,33 @@ fn radix_digit(byte: u8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_binary_literal, parse_hex_literal, parse_octal_literal};
+    use std::borrow::Cow;
+
+    use super::{parse_binary_literal, parse_hex_literal, parse_octal_literal, without_separators};
+
+    #[test]
+    fn numeric_separators() {
+        let clean = without_separators("1_234.5_678e9_0", true);
+        assert_eq!(clean, "1234.5678e90");
+
+        let clean = without_separators("", true);
+        assert_eq!(clean, "");
+
+        let clean = without_separators("____", true);
+        assert_eq!(clean, "");
+
+        let clean = without_separators("1234", true);
+        assert_eq!(clean, "1234");
+
+        let clean = without_separators("_é_中_🦀_\0_", true);
+        assert_eq!(clean, "é中🦀\0");
+
+        let clean = without_separators("1_234", false);
+        assert!(matches!(clean, Cow::Borrowed("1_234")));
+
+        let clean = without_separators("", false);
+        assert!(matches!(clean, Cow::Borrowed("")));
+    }
 
     #[test]
     fn parse_slow_radix_boundaries() {
