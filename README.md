@@ -94,10 +94,10 @@ Configuration compatibility has not been implemented yet.
 
 Thanks to:
 
-- [Yuku](https://github.com/yuku-toolchain/yuku), whose AST definitions, parser, and semantic analysis form the basis of the corresponding SWC Next components, with modifications for SWC Next.
+- [Yuku](https://github.com/yuku-toolchain/yuku), whose AST definitions, parser, and semantic analysis were ported to Rust and adapted for SWC Next.
 - The [Zig](https://codeberg.org/ziglang/zig) compiler and [rowan](https://github.com/rust-analyzer/rowan), which inspire the flattening AST design.
-- [Oxc](https://github.com/oxc-project/oxc), whose arena data structures and regular expression parser form the basis of our implementations, with modifications for SWC Next. Its AST tooling and test harness also inform our design.
-- [esbuild](https://github.com/evanw/esbuild), whose printer implementation and codegen tests form the basis of ours, with modifications for SWC Next.
+- [Oxc](https://github.com/oxc-project/oxc), whose arena hash collections, regular expression parser, and portions of isolated-declarations logic and conformance test infrastructure were copied or adapted for SWC Next. Its AST tooling also informs our design.
+- [esbuild](https://github.com/evanw/esbuild), whose printer implementation and portions of its test suite were ported from Go to Rust and adapted for SWC Next.
 
 ## License
 
