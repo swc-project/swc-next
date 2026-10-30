@@ -914,7 +914,7 @@ impl<C: ParserConfig> Iterator for Peek<'_, '_, C> {
     fn next(&mut self) -> Option<Self::Item> {
         debug_assert!(self.active);
         let mut token = Token::eof(self.lexer.cursor);
-        self.lexer.next_token(&mut token).ok()?;
+        self.lexer.next_token(&mut token, &mut 0).ok()?;
         Some(token)
     }
 }
@@ -2117,7 +2117,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return self.parse_expression_statement();
         }
         peek.commit();
-        self.check_escaped_keyword();
+        self.check_escaped_keyword()?;
+        if !self.lang.is_typescript()
+            && self.source_type == SourceType::Module
+            && self.statement_context != StatementContext::ModuleItem
+        {
+            self.report(
+                next.span(),
+                "Import declarations may only appear at the top level",
+                ReportOptions::default(),
+            );
+            return None;
+        }
         self.current_token = next;
         self.parse_import_declaration_from(import.start())
     }
@@ -2523,15 +2534,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         is_declare: bool,
         declaration_start: u32,
     ) -> Option<VariableDeclaration> {
-        let context = if is_declare || self.ts_context.ambient() {
-            DeclaratorCtx::Declare
-        } else {
-            DeclaratorCtx::Normal
-        };
-        // The program or function/static block entry already establishes +In.
-        let declarators = self.parse_variable_declarators(kind, context)?;
-        let declaration_end = self.lexer.state.prev_token_end;
-        let end = self.eat_semicolon(declaration_end)?;
         if !self.statement_context.permits_declaration()
             && matches!(
                 kind,
@@ -2541,15 +2543,32 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     | VariableKind::AwaitUsing
             )
         {
+            let span = match kind {
+                VariableKind::Using | VariableKind::AwaitUsing => self.current_token.span(),
+                _ => Span::new(
+                    declaration_start,
+                    declaration_start + kind.as_str().len() as u32,
+                ),
+            };
             self.report(
-                Span::new(declaration_start, end),
+                span,
                 "Lexical declaration cannot appear in a single-statement context",
                 ReportOptions {
                     help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
                     ..ReportOptions::default()
                 },
             );
+            return None;
         }
+        let context = if is_declare || self.ts_context.ambient() {
+            DeclaratorCtx::Declare
+        } else {
+            DeclaratorCtx::Normal
+        };
+        // The program or function/static block entry already establishes +In.
+        let declarators = self.parse_variable_declarators(kind, context)?;
+        let declaration_end = self.lexer.state.prev_token_end;
+        let end = self.eat_semicolon(declaration_end)?;
         Some(self.ast.variable_declaration(
             Span::new(declaration_start, end),
             kind,
@@ -2616,7 +2635,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let destructuring = self.is_destructuring_pattern(id);
         if is_using && destructuring {
             self.report(
-                id_span,
+                Span::new(id_span.start, id_span.start + 1),
                 "Using declaration cannot have destructuring patterns.",
                 ReportOptions::default(),
             );
@@ -2751,6 +2770,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<ParsedFunction> {
         debug_assert!(start_from_param.is_some() || self.current_token.tag() == TokenTag::Function);
         let start = start_from_param.unwrap_or(self.current_token.start());
+        let function_span = self.current_token.span();
         if !self.expect(TokenTag::Function, "Expected 'function' keyword", None) {
             return None;
         }
@@ -2771,7 +2791,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             if !opts.is_expression && !opts.is_default_export {
                 self.report(
-                    self.current_token.span(),
+                    if !self.lang.is_typescript() && self.current_token.tag() == TokenTag::LeftParen
+                    {
+                        function_span
+                    } else {
+                        self.current_token.span()
+                    },
                     "Function declaration requires a name",
                     ReportOptions {
                         help: Some(Cow::Borrowed(
@@ -2780,8 +2805,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         ..ReportOptions::default()
                     },
                 );
+                None
+            } else {
+                Some(None)
             }
-            Some(None)
         };
         self.context = context;
         let tail = (|| {
@@ -2837,13 +2864,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 body,
                 type_parameters,
                 return_type,
-                params_end,
                 end,
             ))
         })();
         self.context = context;
         self.boundary_context = boundary_context;
-        let (id, this_param, params, body, type_parameters, return_type, params_end, end) = tail?;
+        let (id, this_param, params, body, type_parameters, return_type, end) = tail?;
         // Only declarations are restricted here. A function expression is a valid
         // operand in any expression position, for example:
         //   if (a) c(function* () {});
@@ -2851,14 +2877,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !is_function_expression && !self.statement_context.permits_declaration() {
             if opts.is_async {
                 self.report(
-                    self.current_token.span(),
+                    Span::new(start, start + 5),
                     "Async functions can only be declared at the top level or inside a block",
                     ReportOptions::default(),
                 );
-            }
-            if generator {
+            } else if generator {
                 self.report(
-                    Span::new(start, params_end),
+                    function_span,
                     "Generators can only be declared at the top level or inside a block",
                     ReportOptions::default(),
                 );
@@ -2927,6 +2952,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             self.advance()?;
         }
 
+        let class_span = self.current_token.span();
         if !self.expect(TokenTag::Class, "Expected 'class' keyword", None) {
             return None;
         }
@@ -2939,7 +2965,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && !self.statement_context.permits_declaration()
         {
             self.report(
-                Span::new(start, self.current_token.end()),
+                class_span,
                 "Class declarations are not allowed in single-statement contexts",
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -3707,7 +3733,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let expression = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
-            TokenTag::Import => self.parse_import_expression()?,
+            TokenTag::Import => self.parse_import_expression(false)?,
             _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
         let expression = self.parse_postfix_expression(expression, context)?;
@@ -3811,11 +3837,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
                 if self.current_token.tag() == TokenTag::Spread {
                     rest = Some(self.parse_formal_parameter_rest(decorators)?);
+                    let comma_span = self.current_token.span();
                     if self.eat(TokenTag::Comma)?
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
                     {
-                        self.recover_rest_parameter_end()?;
+                        self.recover_rest_parameter_end(comma_span)?;
                     }
                     break;
                 }
@@ -3860,9 +3887,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn recover_rest_parameter_end(&mut self) -> Option<()> {
+    fn recover_rest_parameter_end(&mut self, comma_span: Span) -> Option<()> {
         self.report(
-            self.current_token.span(),
+            comma_span,
             "Rest parameter must be the last parameter",
             ReportOptions::default(),
         );
@@ -4347,7 +4374,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             return None;
         };
         let name = identifier.name(&self.ast);
-        self.validate_identifier(parts.name_token, IdentifierRole::Binding);
+        self.validate_identifier(parts.name_token, IdentifierRole::Binding)?;
         let local = self.ast.binding_identifier(local_span, name);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
@@ -8339,8 +8366,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         VariableKind::Using | VariableKind::AwaitUsing
                     )
                 {
+                    let declarators = declaration.declarators(&self.ast);
+                    let first = declarators.get_node(&self.ast, 0).unwrap();
                     self.report(
-                        statement.span(&self.ast),
+                        first.id(&self.ast).span(&self.ast),
                         "Using declaration cannot appear in the bare case statement.",
                         ReportOptions {
                             help: Some(Cow::Borrowed("Wrap this declaration in a block statement")),
@@ -8373,7 +8402,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         if handler.is_none() && finalizer.is_none() {
             self.report(
-                self.current_token.span(),
+                Span::new(block.span(&self.ast).end - 1, block.span(&self.ast).end),
                 "Try statement requires catch or finally clause",
                 ReportOptions::default(),
             );
@@ -8595,8 +8624,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
             let token = self.current_token;
             let can_classify_as_module = self.boundary_context.can_be_module();
+            if token.is_escaped() {
+                self.report_escaped_keyword(token.span());
+                return None;
+            }
             self.advance_without_escape_check()?;
-            self.report_if_escaped_keyword(token);
             let ambiguous_script_different_ast =
                 can_classify_as_module && self.is_ambiguous_await_prefix();
             let diagnostics_len = self.diagnostics.len();
@@ -8627,7 +8659,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if tag == TokenTag::Import {
-            return self.parse_import_expression();
+            return self.parse_import_expression(false);
         }
 
         if tag == TokenTag::Async {
@@ -8726,7 +8758,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // `import.meta` is a PrimaryExpression and can therefore be the
             // constructor target in `new import.meta()`. Import calls share
             // this parser entry and are rejected by `parse_new_expression`.
-            TokenTag::Import => self.parse_import_expression(),
+            TokenTag::Import => self.parse_import_expression(false),
             TokenTag::Await | TokenTag::Yield => self.parse_recovered_await_or_yield(minimum),
             tag if tag.is_identifier_like() => self.parse_identifier(),
             _ => {
@@ -10218,7 +10250,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ObjectPropertyKindData::ObjectProperty(property) => {
                         if property.method(&self.ast) {
                             self.report(
-                                property.span(&self.ast),
+                                property.key(&self.ast).span(&self.ast),
                                 "Method cannot appear in destructuring pattern",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -10231,7 +10263,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         }
                         if property.kind(&self.ast) != PropertyKind::Init {
                             self.report(
-                                property.span(&self.ast),
+                                Span::new(
+                                    property.span(&self.ast).start,
+                                    property.key(&self.ast).span(&self.ast).end,
+                                ),
                                 "Getter/setter cannot appear in destructuring pattern",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
@@ -10971,7 +11006,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             );
             return None;
         };
-        self.validate_identifier(token, IdentifierRole::Reference);
+        self.validate_identifier(token, IdentifierRole::Reference)?;
         Some(
             self.ast
                 .expr_identifier_reference(identifier.span(&self.ast), identifier.name(&self.ast)),
@@ -11652,10 +11687,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if self.current_token.tag() == TokenTag::Dot {
             return self.parse_new_target(meta);
         }
-        let callee_starts_with_import = self.current_token.tag() == TokenTag::Import;
         let callee = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
+            TokenTag::Import => self.parse_import_expression(true)?,
             _ => self.parse_primary_expression(false, Precedence::Primary)?,
         };
         let PostfixExpression {
@@ -11669,20 +11704,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ReportOptions {
                     help: Some(Cow::Borrowed(
                         "Call the parent constructor with 'super()', or construct a parent member with 'new super.prop()'.",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-        }
-        if callee_starts_with_import
-            && is_import_expression_or_member_access_on_import_expression(callee, &self.ast)
-        {
-            self.report(
-                callee.span(&self.ast),
-                "Dynamic import cannot be used as the target of 'new'",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Parenthesize the import call if its result should be constructed",
                     )),
                     ..ReportOptions::default()
                 },
@@ -11720,17 +11741,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )
     }
 
-    fn parse_import_expression(&mut self) -> Option<Expr> {
+    fn parse_import_expression(&mut self, new_callee: bool) -> Option<Expr> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Import);
         self.report_if_escaped_keyword(self.current_token);
         let import_name = self.parse_identifier_name()?;
         let start = import_name.span(&self.ast).start;
         match self.current_token.tag() {
-            TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name),
-            TokenTag::LeftParen => self.parse_dynamic_import(start, None, false),
+            TokenTag::Dot => self.parse_import_meta_or_phase_import(import_name, new_callee),
+            TokenTag::LeftParen => self.parse_dynamic_import(start, None, false, new_callee),
             _ => {
                 self.report(
-                    self.current_token.span(),
+                    import_name.span(&self.ast),
                     "'import' keyword is not allowed here",
                     ReportOptions::default(),
                 );
@@ -11739,7 +11760,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_import_meta_or_phase_import(&mut self, import_name: IdentifierName) -> Option<Expr> {
+    fn parse_import_meta_or_phase_import(
+        &mut self,
+        import_name: IdentifierName,
+        new_callee: bool,
+    ) -> Option<Expr> {
         self.advance()?;
         let property = self.current_token;
         let (phase, sync) = match property.tag() {
@@ -11759,10 +11784,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 return self.parse_meta_property(import_name);
             }
         };
+        if new_callee {
+            self.report(
+                property.span(),
+                "Dynamic import cannot be used as the target of 'new'",
+                ReportOptions::default(),
+            );
+            return None;
+        }
         self.advance()?;
         if self.current_token.tag() != TokenTag::LeftParen {
             self.report_expected(
-                self.current_token.span(),
+                property.span(),
                 "Expected '(' after import",
                 ReportOptions::default(),
             );
@@ -11777,7 +11810,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 property,
             ));
         }
-        self.parse_dynamic_import(import_name.span(&self.ast).start, phase, sync)
+        self.parse_dynamic_import(import_name.span(&self.ast).start, phase, sync, false)
     }
 
     // ImportCall[Yield, Await] :
@@ -11788,6 +11821,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         start: u32,
         phase: Option<ImportPhase>,
         sync: bool,
+        new_callee: bool,
     ) -> Option<Expr> {
         if !self.expect(TokenTag::LeftParen, "Expected '(' after import", None) {
             return None;
@@ -11809,6 +11843,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             };
             let end = self.current_token.end();
+            if new_callee && self.current_token.tag() == TokenTag::RightParen {
+                self.report(
+                    self.current_token.span(),
+                    "Dynamic import cannot be used as the target of 'new'",
+                    ReportOptions::default(),
+                );
+                return None;
+            }
             if !self.expect(
                 TokenTag::RightParen,
                 "Expected ')' after import()",
@@ -12914,6 +12956,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn parse_logical_expression(&mut self, left: Expr, tag: TokenTag) -> Option<Expr> {
         let start = left.span(&self.ast).start;
+        let operator_span = self.current_token.span();
         let precedence = tag.precedence();
         self.advance()?;
         let right = self.parse_expr(precedence.next(), ParseExpressionOpts::default())?;
@@ -12932,7 +12975,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         });
         if mixes_coalesce {
             self.report(
-                Span::new(start, right.span(&self.ast).end),
+                operator_span,
                 "Logical expressions and nullish coalescing cannot be mixed",
                 ReportOptions::default(),
             );
@@ -13179,12 +13222,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some(self.ast.label_identifier(token.span(), name))
     }
 
-    /// Diagnose the grammar role, but only stop when a token cannot be a name.
-    /// Always consume identifiers without the keyword escape check.
+    /// Validate the name in its grammar role, then consume it without the
+    /// keyword escape check.
     #[inline(always)]
     fn consume_identifier(&mut self, role: IdentifierRole) -> Option<Token> {
         let token = self.current_token;
-        self.validate_identifier(token, role);
+        self.validate_identifier(token, role)?;
         if !token.tag().is_identifier_like() {
             return None;
         }
@@ -13193,19 +13236,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[inline]
-    fn validate_identifier(&mut self, token: Token, role: IdentifierRole) {
+    fn validate_identifier(&mut self, token: Token, role: IdentifierRole) -> Option<()> {
         if token.tag() == TokenTag::Identifier
             || role == IdentifierRole::Name && token.tag().is_identifier_like()
         {
-            return;
+            return Some(());
         }
 
-        self.validate_identifier_slow(token, role);
+        self.validate_identifier_slow(token, role)
     }
 
     #[cold]
     #[inline(never)]
-    fn validate_identifier_slow(&mut self, token: Token, role: IdentifierRole) {
+    fn validate_identifier_slow(&mut self, token: Token, role: IdentifierRole) -> Option<()> {
         let as_what = role.description();
         if !token.tag().is_identifier_like() {
             self.report_expected(
@@ -13218,9 +13261,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     ..ReportOptions::default()
                 },
             );
+            return None;
         }
         if role == IdentifierRole::Name {
-            return;
+            return Some(());
         }
         if token.tag().is_unconditionally_reserved() {
             let found = self.describe_token(token);
@@ -13231,9 +13275,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )),
                 ReportOptions::default(),
             );
+            return None;
         }
         if role == IdentifierRole::TypeScript {
-            return;
+            return Some(());
         }
         if token.tag() == TokenTag::Yield && self.context.contains(Context::YIELD) {
             self.report(
@@ -13243,6 +13288,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 )),
                 ReportOptions::default(),
             );
+            return None;
         }
         let await_is_reserved = self.context.contains(Context::AWAIT)
             || self.source_type == SourceType::Module && !self.ts_context.in_ts_container_body();
@@ -13257,7 +13303,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         if token.tag() == TokenTag::Await && !self.ts_context.ambient() && await_is_reserved {
             self.report_reserved_await(token.span(), as_what);
+            if !self.lang.is_typescript() {
+                return None;
+            }
         }
+        Some(())
     }
 
     #[cold]
@@ -13273,24 +13323,47 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[inline]
     fn next_token(&mut self) -> Option<()> {
-        match self.lexer.next_token(&mut self.current_token) {
+        let mut start = self.lexer.cursor;
+        match self.lexer.next_token(&mut self.current_token, &mut start) {
             Ok(()) => Some(()),
-            Err(error) => self.next_token_error(error),
+            Err(error) => self.next_token_error(error, start),
         }
     }
 
     #[cold]
     #[inline(never)]
-    fn next_token_error(&mut self, error: LexicalError) -> Option<()> {
-        let current_token_end = self.current_token.end();
+    fn next_token_error(&mut self, error: LexicalError, start: u32) -> Option<()> {
         let lexer_cursor = self.lexer.cursor;
+        let at_separator = match error {
+            LexicalError::ConsecutiveNumericSeparators => true,
+            LexicalError::NumericSeparatorMisuse => {
+                self.source
+                    .as_bytes()
+                    .get(lexer_cursor.saturating_sub(1) as usize)
+                    == Some(&b'_')
+            }
+            LexicalError::IdentifierAfterNumericLiteral => {
+                let literal = &self.source.as_bytes()[start as usize..lexer_cursor as usize];
+                let legacy_octal = literal.starts_with(b"0")
+                    && literal.len() > 1
+                    && literal.iter().all(|b| matches!(b, b'0'..=b'7'));
+                !legacy_octal && self.source.as_bytes().get(lexer_cursor as usize) == Some(&b'_')
+            }
+            _ => false,
+        };
+        let span = if at_separator {
+            let end = self.source[lexer_cursor as usize..]
+                .chars()
+                .next()
+                .map_or(lexer_cursor, |c| lexer_cursor + c.len_utf8() as u32);
+            Span::new(lexer_cursor, end)
+        } else {
+            Span::new(start.min(lexer_cursor), start.max(lexer_cursor))
+        };
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
             message: Cow::Borrowed(lexical_error_message(error)),
-            span: Span::new(
-                current_token_end.min(lexer_cursor),
-                current_token_end.max(lexer_cursor),
-            ),
+            span,
             help: Some(Cow::Borrowed(lexical_error_help(error))),
             labels: Vec::new(),
         });
@@ -13303,7 +13376,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// position.
     #[inline]
     fn advance(&mut self) -> Option<()> {
-        self.check_escaped_keyword();
+        self.check_escaped_keyword()?;
         self.lexer.state.prev_token_end = self.current_token.end();
         if self.lexer.try_next_token(&mut self.current_token) {
             Some(())
@@ -13334,14 +13407,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     #[inline]
-    fn check_escaped_keyword(&mut self) {
+    fn check_escaped_keyword(&mut self) -> Option<()> {
         let current_token = self.current_token;
-        if !current_token.is_escaped() {
-            return;
-        }
-        if current_token.tag().is_keyword() {
+        if current_token.is_escaped() && current_token.tag().is_keyword() {
             self.report_escaped_keyword(current_token.span());
+            return None;
         }
+        Some(())
     }
 
     #[cold]
@@ -13510,21 +13582,6 @@ fn member_expression_is_optional(member: MemberExpression, ast: &Ast<'_>) -> boo
         ExprData::CallExpression(call) => call.optional(ast),
         ExprData::ChainExpression(_) => true,
         _ => false,
-    }
-}
-
-fn is_import_expression_or_member_access_on_import_expression(
-    mut expression: Expr,
-    ast: &Ast<'_>,
-) -> bool {
-    loop {
-        expression = match ast.expr_data(expression) {
-            ExprData::ImportExpression(_) => return true,
-            ExprData::MemberExpression(member) => member.object(ast),
-            ExprData::TaggedTemplateExpression(tagged) => tagged.tag(ast),
-            ExprData::TsNonNullExpression(non_null) => non_null.expression(ast),
-            _ => return false,
-        };
     }
 }
 

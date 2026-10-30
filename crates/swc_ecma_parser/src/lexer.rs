@@ -196,8 +196,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
-        self.read_next_token(target)?;
+    pub fn next_token(&mut self, target: &mut Token, start: &mut u32) -> Result<(), LexicalError> {
+        self.read_next_token(target, start)?;
         self.handle_token(*target, HandleTokenMode::Append);
         Ok(())
     }
@@ -413,10 +413,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
+    fn read_next_token(&mut self, target: &mut Token, start: &mut u32) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         self.clear_token_flags();
-        self.skip_ws_and_comments()?;
+        self.skip_ws_and_comments(start)?;
+        *start = self.cursor;
 
         if (self.cursor as usize) >= self.source.len() {
             *target = self.create_token(TokenTag::Eof, self.cursor, self.cursor);
@@ -764,6 +765,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.set_token_flag(TokenFlag::Escaped);
         let parsed = parse_unicode_escape(self.source, self.cursor as usize + 1)
             .ok_or(LexicalError::InvalidUnicodeEscape)?;
+        self.cursor = parsed.end as u32;
         match context {
             ConsumeUnicodeContext::IdentifierStart => {
                 if !can_start_id(parsed.value.to_u32()) {
@@ -777,7 +779,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
             ConsumeUnicodeContext::Normal => {}
         }
-        self.cursor = parsed.end as u32;
         Ok(parsed.value.to_u32())
     }
 
@@ -1358,7 +1359,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     #[inline]
-    fn skip_ws_and_comments(&mut self) -> Result<(), LexicalError> {
+    fn skip_ws_and_comments(&mut self, start: &mut u32) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
         let at_start_of_source = self.cursor == 0;
 
@@ -1379,6 +1380,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
 
             self.cursor = pos as u32;
+            *start = self.cursor;
             if pos == src.len()
                 || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF)
                 || !self.skip_ws_and_comments_slow(at_start_of_source)?
@@ -2030,7 +2032,7 @@ mod tests {
         let allocator = Allocator::new();
         let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
         let mut token = Token::eof(0);
-        lexer.next_token(&mut token)?;
+        lexer.next_token(&mut token, &mut 0)?;
         Ok(token)
     }
 
@@ -2044,7 +2046,7 @@ mod tests {
             NoTokenParserConfig,
         );
         let mut token = Token::eof(0);
-        lexer.next_token(&mut token).unwrap();
+        lexer.next_token(&mut token, &mut 0).unwrap();
         token
     }
 

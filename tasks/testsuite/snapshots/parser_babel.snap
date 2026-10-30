@@ -3,7 +3,7 @@ parser * babel
 Positive Passed: 2275/2278 (99.87%)
 Negative Passed: 1711/1802 (94.95%)
 Panicked: 0/4080 (0.00%)
-Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..19
+Failed: fixtures/babel/packages/babel-parser/test/fixtures/annex-b/enabled/1.1-html-comments-open-export-default-from/input.js - annex-b/enabled/1.1-html-comments-open-export-default-from: semantic: Cannot use 'export default' declaration outside a module at 0..6
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/class-private-property/typescript-invalid-abstract/input.ts - estree/class-private-property/typescript-invalid-abstract: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/estree/typescript/invalid-class-method-empty-body/input.js - estree/typescript/invalid-class-method-empty-body: expected a parse or early error, but pipeline succeeded
 Failed: fixtures/babel/packages/babel-parser/test/fixtures/typescript/arrow-function/generic-tsx/input.ts - typescript/arrow-function/generic-tsx: expected a parse or early error, but pipeline succeeded

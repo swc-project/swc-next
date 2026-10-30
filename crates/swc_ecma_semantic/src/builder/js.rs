@@ -14,17 +14,30 @@ pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, litera
         return;
     }
     let span = builder.ast.span(literal.node_id());
-    if has_octal_escape(&builder.ast.source().as_bytes()[span.start as usize..span.end as usize]) {
-        builder.report(
-            span,
-            "Octal escape sequences are not allowed in strict mode",
-            ReportOptions {
-                help: Some(Cow::Borrowed(
-                    "Use \\xHH (hex) or \\uHHHH (unicode) escape instead",
-                )),
-                ..ReportOptions::default()
-            },
-        );
+    let raw = &builder.ast.source().as_bytes()[span.start as usize..span.end as usize];
+    let mut position = 0;
+    while let Some(offset) = memchr::memchr(b'\\', &raw[position..]) {
+        let digit = position + offset + 1;
+        let octal = match raw.get(digit) {
+            Some(b'1'..=b'9') => true,
+            Some(b'0') => raw.get(digit + 1).is_some_and(u8::is_ascii_digit),
+            _ => false,
+        };
+        if octal {
+            let start = span.start + digit as u32;
+            builder.report(
+                Span::new(start, start + 1),
+                "Octal escape sequences are not allowed in strict mode",
+                ReportOptions {
+                    help: Some(Cow::Borrowed(
+                        "Use \\xHH (hex) or \\uHHHH (unicode) escape instead",
+                    )),
+                    ..ReportOptions::default()
+                },
+            );
+            break;
+        }
+        position = (digit + 1).min(raw.len());
     }
 }
 
@@ -203,24 +216,6 @@ fn is_legacy_numeric_literal(raw: &[u8]) -> bool {
     raw.len() >= 2 && raw[0] == b'0' && raw[1].is_ascii_digit()
 }
 
-fn has_octal_escape(value: &[u8]) -> bool {
-    let mut position = 0;
-    while let Some(offset) = memchr::memchr(b'\\', &value[position..]) {
-        let slash = position + offset;
-        let next = slash + 1;
-        if next >= value.len() {
-            break;
-        }
-        match value[next] {
-            b'1'..=b'9' => return true,
-            b'0' if value.get(next + 1).is_some_and(u8::is_ascii_digit) => return true,
-            _ => {}
-        }
-        position = next + 1;
-    }
-    false
-}
-
 pub(super) fn check_binary_expression(
     builder: &mut SemanticBuilder<'_, '_>,
     expression: BinaryExpression,
@@ -276,7 +271,7 @@ pub(super) fn check_unary_expression(
                     == NodeKind::PrivateIdentifier =>
         {
             builder.report(
-                builder.ast.span(expression.node_id()),
+                builder.ast.span(member.property(builder.ast).node_id()),
                 "Private fields cannot be deleted",
                 ReportOptions::default(),
             );
@@ -296,7 +291,7 @@ pub(super) fn check_update_expression(
         && is_eval_or_arguments_reference(builder.ast, expression.argument(builder.ast).node_id())
     {
         builder.report(
-            builder.ast.span(expression.node_id()),
+            builder.ast.span(expression.argument(builder.ast).node_id()),
             "Cannot assign to 'eval' or 'arguments' in strict mode",
             ReportOptions::default(),
         );
@@ -347,7 +342,7 @@ pub(super) fn check_object_expression(
         }
         if let Some(first) = first_proto {
             builder.report(
-                builder.ast.span(property),
+                builder.ast.span(item.key(builder.ast).node_id()),
                 "Duplicate '__proto__' property in object literal",
                 ReportOptions {
                     labels: builder
@@ -371,7 +366,7 @@ pub(super) fn check_member_expression(
         && !is_super_property_valid(builder)
     {
         builder.report(
-            builder.ast.span(expression.node_id()),
+            builder.ast.span(object),
             "'super' property access is only valid inside a method or class body",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -394,7 +389,7 @@ pub(super) fn check_member_expression(
                 return;
             }
             builder.report(
-                builder.ast.span(expression.node_id()),
+                builder.ast.span(property),
                 "'super' keyword unexpected here",
                 ReportOptions::default(),
             );
@@ -423,7 +418,7 @@ pub(super) fn check_call_expression(builder: &mut SemanticBuilder<'_, '_>, call:
         match super_call_validity(builder) {
             SuperCallValidity::Valid => {}
             SuperCallValidity::NotInConstructor => builder.report(
-                builder.ast.span(call.node_id()),
+                builder.ast.span(call.callee(builder.ast).node_id()),
                 message,
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -433,7 +428,7 @@ pub(super) fn check_call_expression(builder: &mut SemanticBuilder<'_, '_>, call:
                 },
             ),
             SuperCallValidity::NoExtends => builder.report(
-                builder.ast.span(call.node_id()),
+                builder.ast.span(call.callee(builder.ast).node_id()),
                 message,
                 ReportOptions {
                     help: Some(Cow::Borrowed(
@@ -455,8 +450,9 @@ pub(super) fn check_await_expression(
     }
     let message = await_expression_error(builder);
     if let Some(message) = message {
+        let start = builder.ast.span(expression.node_id()).start;
         builder.report(
-            builder.ast.span(expression.node_id()),
+            Span::new(start, start + 5),
             message,
             ReportOptions::default(),
         );
@@ -471,8 +467,9 @@ pub(super) fn check_yield_expression(
         return;
     }
     if let Some(message) = yield_expression_error(builder) {
+        let start = builder.ast.span(expression.node_id()).start;
         builder.report(
-            builder.ast.span(expression.node_id()),
+            Span::new(start, start + 5),
             message,
             ReportOptions::default(),
         );
@@ -492,7 +489,7 @@ pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, propert
         && !builder.ast.is_module()
     {
         builder.report(
-            builder.ast.span(property.node_id()),
+            builder.ast.span(property.property(builder.ast).node_id()),
             "'import.meta' is only valid in module code",
             ReportOptions::default(),
         );
@@ -503,7 +500,7 @@ pub(super) fn check_meta_property(builder: &mut SemanticBuilder<'_, '_>, propert
         && !is_new_target_available(builder)
     {
         builder.report(
-            builder.ast.span(property.node_id()),
+            builder.ast.span(property.property(builder.ast).node_id()),
             "'new.target' is only valid inside functions, class field initializers, or static blocks",
             ReportOptions::default(),
         );
@@ -656,8 +653,9 @@ pub(super) fn check_switch_statement(
             continue;
         }
         if let Some(first) = first_default {
+            let start = builder.ast.span(case.node_id()).start;
             builder.report(
-                builder.ast.span(case.node_id()),
+                Span::new(start, start + 7),
                 "A switch statement can only have one default clause",
                 ReportOptions {
                     labels: builder.labels(&[
@@ -728,14 +726,15 @@ pub(super) fn check_break_statement(
                 LabelSearch::Found => unreachable!(),
             };
             builder.report(
-                builder.ast.span(statement.node_id()),
+                builder.ast.span(label.node_id()),
                 message,
                 ReportOptions::default(),
             );
         }
     } else if !is_inside_breakable(builder) {
+        let start = builder.ast.span(statement.node_id()).start;
         builder.report(
-            builder.ast.span(statement.node_id()),
+            Span::new(start, start + 5),
             "Illegal break statement",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -785,7 +784,7 @@ pub(super) fn check_continue_statement(
                 ContinueLabelSearch::Found => unreachable!(),
             };
             builder.report(
-                builder.ast.span(statement.node_id()),
+                builder.ast.span(label.node_id()),
                 message,
                 ReportOptions {
                     help,
@@ -794,8 +793,9 @@ pub(super) fn check_continue_statement(
             );
         }
     } else if !is_inside_iteration(builder) {
+        let start = builder.ast.span(statement.node_id()).start;
         builder.report(
-            builder.ast.span(statement.node_id()),
+            Span::new(start, start + 8),
             "Illegal continue statement",
             ReportOptions {
                 help: Some(Cow::Borrowed(
@@ -862,8 +862,9 @@ pub(super) fn check_with_statement(
         return;
     }
     if builder.is_strict() {
+        let start = builder.ast.span(statement.node_id()).start;
         builder.report(
-            builder.ast.span(statement.node_id()),
+            Span::new(start, start + 4),
             "'with' statements are not allowed in strict mode",
             ReportOptions::default(),
         );
@@ -1031,8 +1032,9 @@ pub(super) fn check_function(builder: &mut SemanticBuilder<'_, '_>, function: Fu
         } else {
             "In non-strict mode code, functions can only be declared at top level, inside a block, or as the body of an if statement"
         };
+        let start = builder.ast.span(function.node_id()).start;
         builder.report(
-            builder.ast.span(function.node_id()),
+            Span::new(start, start + 8),
             message,
             ReportOptions::default(),
         );
@@ -1067,7 +1069,9 @@ pub(super) fn check_directive(builder: &mut SemanticBuilder<'_, '_>, directive: 
     }
     if let Some(parameter) = parameter {
         builder.report(
-            builder.ast.span(directive.node_id()),
+            builder
+                .ast
+                .span(directive.expression(builder.ast).node_id()),
             "Illegal 'use strict' directive in function with non-simple parameter list",
             ReportOptions {
                 labels: builder
@@ -1580,8 +1584,15 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
         };
         let declarators = declaration.declarators(self.ast);
         if declarators.len() > 1 {
+            let first = declarators.get_node(self.ast, 0).unwrap();
+            let last = declarators
+                .get_node(self.ast, declarators.len() - 1)
+                .unwrap();
             self.report(
-                self.ast.span(left),
+                Span::new(
+                    self.ast.span(first.node_id()).start,
+                    self.ast.span(last.node_id()).end,
+                ),
                 "Only a single variable declaration is allowed in a for-in/of statement",
                 ReportOptions::default(),
             );
@@ -1653,7 +1664,12 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             ))),
         };
         if let Some(message) = message {
-            self.report(self.ast.span(node), message, ReportOptions::default());
+            let start = self.ast.span(node).start;
+            self.report(
+                Span::new(start, start + 6),
+                message,
+                ReportOptions::default(),
+            );
         }
     }
 
