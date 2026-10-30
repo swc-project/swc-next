@@ -531,7 +531,11 @@ impl<'a> Printer<'a> {
         let value = self
             .ast
             .get_utf8(comment.value(self.ast.source().as_bytes()));
-        let trimmed = value.trim_start();
+        let trimmed = if comment.kind == CommentKind::Block {
+            value.trim_start()
+        } else {
+            value
+        };
         let annotation = comment.kind == CommentKind::Block
             && matches!(trimmed.as_bytes(),
                 [b'@' | b'#', rest @ ..]
@@ -885,11 +889,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_stmt_with_context(&mut self, stmt: Stmt, prevent_directive: bool) {
-        let data = self.ast.stmt_data(stmt);
         self.print_comments_at(stmt.span(self.ast).start, true);
         self.add_source_mapping(stmt.span(self.ast).start);
         self.stmt_start = self.js.len();
-        match data {
+        match self.ast.stmt_data(stmt) {
             StmtData::BlockStatement(s) => {
                 self.print_indent();
                 self.print_block(s);
@@ -1478,7 +1481,8 @@ impl<'a> Printer<'a> {
     }
 
     fn print_decl_terminator(&mut self, decl: Decl) {
-        let ends_with_block = match self.ast.decl_data(decl) {
+        let data = self.ast.decl_data(decl);
+        let ends_with_block = match data {
             DeclData::Function(_)
             | DeclData::Class(_)
             | DeclData::TsInterfaceDeclaration(_)
@@ -1489,7 +1493,7 @@ impl<'a> Printer<'a> {
         };
         if ends_with_block {
             self.print_newline();
-        } else if matches!(self.ast.decl_data(decl), DeclData::VariableDeclaration(_)) {
+        } else if matches!(data, DeclData::VariableDeclaration(_)) {
             self.print_statement_semicolon();
             self.print_attached_trailing_comments(decl.span(self.ast).end);
             self.print_newline_after_comments();
