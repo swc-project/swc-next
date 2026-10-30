@@ -44,6 +44,42 @@ type InnerHashMap<'alloc, K, V, S> = hashbrown::HashMap<K, V, S, &'alloc Allocat
 /// All APIs are the same, except create a [`HashMap`] with
 /// either [`new_in`](HashMap::new_in) or [`with_capacity_in`](HashMap::with_capacity_in).
 ///
+/// # Thread safety
+///
+/// This collection is neither `Send` nor `Sync`, even when its elements are.
+/// Removing the previous `Sync` implementation is an intentional compatibility
+/// correction: `Deref` exposes shared methods that allocate in the non-thread-safe
+/// arena. `Deref` and `DerefMut` remain available on the same thread.
+///
+/// A shared reference cannot cross a thread boundary to access the allocator:
+///
+/// ```compile_fail,E0277
+/// use std::ops::Deref;
+/// use swc_next_allocator::{Allocator, hash_map::HashMap};
+///
+/// let allocator = Allocator::new();
+/// let collection = HashMap::<u32, u32>::new_in(&allocator);
+/// let shared = &collection;
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || { shared.deref().allocator().alloc(1_u64); });
+/// });
+/// ```
+///
+/// Explicitly cloning the underlying collection cannot bypass this restriction:
+///
+/// ```compile_fail,E0277
+/// use std::ops::Deref;
+/// use swc_next_allocator::{Allocator, hash_map::HashMap};
+///
+/// let allocator = Allocator::new();
+/// let mut collection = HashMap::<u32, u32>::new_in(&allocator);
+/// collection.insert(1, 2);
+/// let shared = &collection;
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || { let _ = shared.deref().clone(); });
+/// });
+/// ```
+///
 /// # No `Drop`s
 ///
 /// Objects allocated into Oxc memory arenas are never [`Dropped`](Drop). Memory is released in bulk
@@ -65,42 +101,6 @@ impl<K: fmt::Debug, V: fmt::Debug, S> fmt::Debug for HashMap<'_, K, V, S> {
         f.debug_map().entries(self.0.iter()).finish()
     }
 }
-
-/// SAFETY: Even though `Arena` is not `Sync`, we can make `HashMap<K, V>` `Sync` if both `K` and `V`
-/// are `Sync` because:
-///
-/// 1. No public methods allow access to the `&Arena` that `HashMap` contains (in `hashbrown::HashMap`),
-///    so user cannot illegally obtain 2 `&Arena`s on different threads via `HashMap`.
-///
-/// 2. All internal methods which access the `&Arena` take a `&mut self`.
-///    `&mut HashMap` cannot be transferred across threads, and nor can an owned `HashMap`
-///    (`HashMap` is not `Send`).
-///    Therefore these methods taking `&mut self` can be sure they're not operating on a `HashMap`
-///    which has been moved across threads.
-///
-/// Note: `HashMap` CANNOT be `Send`, even if `K` and `V` are `Send`, because that would allow 2 `HashMap`s
-/// on different threads to both allocate into same arena simultaneously. `Arena` is not thread-safe,
-/// and this would be undefined behavior.
-///
-/// ### Soundness holes
-///
-/// This is not actually fully sound. There are 2 holes I (@overlookmotel) am aware of:
-///
-/// 1. `allocator` method, which does allow access to the `&Arena` that `HashMap` contains.
-/// 2. `Clone` impl on `hashbrown::HashMap`, which may perform allocations in the arena, given only a
-///    `&self` reference.
-///
-/// [`HashMap::allocator`] prevents accidental access to the underlying method of `hashbrown::HashMap`,
-/// and `clone` called on a `&HashMap` clones the `&HashMap` reference, not the `HashMap` itself (harmless).
-/// But both can be accessed via explicit `Deref` (`hash_map.deref().allocator()` or `hash_map.deref().clone()`),
-/// so we don't have complete soundness.
-///
-/// To close these holes we need to remove `Deref` and `DerefMut` impls on `HashMap`, and instead add
-/// methods to `HashMap` itself which pass on calls to the inner `hashbrown::HashMap`.
-///
-/// TODO: Fix these holes.
-/// TODO: Remove any other methods that currently allow performing allocations with only a `&self` reference.
-unsafe impl<K: Sync, V: Sync, S: Sync> Sync for HashMap<'_, K, V, S> {}
 
 // TODO: `IntoIter`, `Drain`, and other consuming iterators provided by `hashbrown` are `Drop`.
 // Wrap them in `ManuallyDrop` to prevent that.
@@ -168,15 +168,9 @@ impl<'alloc, K, V, S> HashMap<'alloc, K, V, S> {
 
     /// Calling this method produces a compile-time panic.
     ///
-    /// This method would be unsound, because [`HashMap`] is `Sync`, and the underlying allocator
-    /// (`Arena`) is not `Sync`.
-    ///
-    /// This method exists only to block access as much as possible to the underlying
-    /// `hashbrown::HashMap::allocator` method. That method can still be accessed via explicit `Deref`
-    /// (`hash_map.deref().allocator()`), but that's unsound.
-    ///
-    /// We'll prevent access to it completely and remove this method as soon as we can.
-    // TODO: Do that!
+    /// This legacy guard shadows `hashbrown::HashMap::allocator`.
+    /// Explicit `Deref` access remains available on the same thread.
+    /// Thread safety is enforced by the collection's auto traits.
     #[allow(unfulfilled_lint_expectations)]
     #[expect(clippy::unused_self)]
     pub fn allocator(&self) -> &'alloc Allocator {
@@ -331,3 +325,26 @@ where
 }
 
 // Note: `Index` and `Extend` are implemented via `Deref`
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Deref;
+
+    use super::HashMap;
+    use crate::Allocator;
+
+    #[test]
+    fn shared_access() {
+        let allocator = Allocator::new();
+        let mut map = HashMap::<u32, u32>::new_in(&allocator);
+        map.insert(1_u32, 2_u32);
+
+        let shared = &map;
+        assert_eq!(shared.get(&1), Some(&2));
+        assert_eq!(shared.iter().next(), Some((&1, &2)));
+
+        let cloned = shared.deref().clone();
+        assert_eq!(cloned.get(&1), Some(&2));
+        assert_eq!(*shared.deref().allocator().alloc(3_u64), 3);
+    }
+}

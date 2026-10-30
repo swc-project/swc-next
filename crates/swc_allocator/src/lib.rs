@@ -147,6 +147,20 @@ impl<'a, T> FromIn<'a, Option<T>> for Option<boxed::Box<'a, T>> {
     }
 }
 
+/// An arena allocator for use on one thread at a time.
+///
+/// Shared references cannot cross thread boundaries because allocation mutates
+/// unsynchronized arena state.
+///
+/// ```compile_fail,E0277
+/// use swc_next_allocator::Allocator;
+///
+/// let allocator = Allocator::new();
+/// let shared = &allocator;
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || { shared.alloc(1_u64); });
+/// });
+/// ```
 pub struct Allocator {
     arena: Bump,
 }

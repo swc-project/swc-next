@@ -2449,12 +2449,12 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use swc_next_allocator::{Allocator, vec::ArenaVec};
     ///
     /// let b = Allocator::new();
     ///
-    /// let mut v = swc_next_allocator::vec![in &b; 1, 2, 3];
+    /// let mut v = ArenaVec::from_iter_in([1, 2, 3], &b);
     /// let new = [7, 8];
     /// let u: ArenaVec<_> = ArenaVec::from_iter_in(v.splice(..2, new.iter().cloned()), &b);
     /// assert_eq!(v, &[7, 8, 3]);
@@ -2473,6 +2473,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
         Splice {
             drain: self.drain(range),
             replace_with: replace_with.into_iter(),
+            allocator: PhantomData,
         }
     }
 }
@@ -2624,6 +2625,37 @@ impl<'bump, T: 'bump> BorrowMut<[T]> for ArenaVec<'bump, T> {
 /// (provided by the [`IntoIterator`] trait).
 ///
 /// [`IntoIterator`]: https://doc.rust-lang.org/std/iter/trait.IntoIterator.html
+///
+/// This iterator can move to a scoped thread when its elements implement `Send`.
+/// Consuming or dropping it does not allocate in the arena.
+///
+/// ```
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+/// let iter = vec.into_iter();
+/// std::thread::scope(|scope| {
+///     let worker = scope.spawn(move || iter.sum::<u64>());
+///     allocator.alloc(4_u64);
+///     assert_eq!(worker.join().unwrap(), 6);
+/// });
+/// ```
+///
+/// Elements that are not `Send` cannot cross the thread boundary:
+///
+/// ```compile_fail,E0277
+/// use std::cell::Cell;
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let value = Cell::new(1_u64);
+/// let vec = ArenaVec::from_iter_in([&value], &allocator);
+/// let iter = vec.into_iter();
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || drop(iter));
+/// });
+/// ```
 pub struct IntoIter<'bump, T> {
     phantom: PhantomData<&'bump [T]>,
     ptr: *const T,
@@ -2757,6 +2789,37 @@ impl<'bump, T> Drop for IntoIter<'bump, T> {
 /// A draining iterator for `ArenaVec<'bump, T>`.
 ///
 /// This `struct` is created by the [`ArenaVec::drain`] method.
+///
+/// This iterator can move to a scoped thread when its elements implement `Send`.
+/// Consuming or dropping it does not allocate in the arena.
+///
+/// ```
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let mut vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+/// let iter = vec.drain(..);
+/// std::thread::scope(|scope| {
+///     let worker = scope.spawn(move || iter.sum::<u64>());
+///     allocator.alloc(4_u64);
+///     assert_eq!(worker.join().unwrap(), 6);
+/// });
+/// ```
+///
+/// Elements that are not `Send` cannot cross the thread boundary:
+///
+/// ```compile_fail,E0277
+/// use std::cell::Cell;
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let value = Cell::new(1_u64);
+/// let mut vec = ArenaVec::from_iter_in([&value], &allocator);
+/// let iter = vec.drain(..);
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || drop(iter));
+/// });
+/// ```
 pub struct Drain<'a, 'bump, T: 'a + 'bump> {
     /// Index of tail to preserve
     tail_start: usize,
@@ -2830,6 +2893,55 @@ impl<'a, 'bump, T> FusedIterator for Drain<'a, 'bump, T> {}
 ///
 /// This struct is created by the [`ArenaVec::splice`] method. See its
 /// documentation for more information.
+///
+/// # Thread safety
+///
+/// `Splice` is neither `Send` nor `Sync` because its destructor can allocate
+/// replacement storage in the original arena. This intentionally corrects the
+/// previous auto-trait guarantees. Plain `Drain` and `IntoIter` remain `Send`
+/// when their elements are `Send`.
+///
+/// Even with `Send` elements and replacements, a splice cannot move to a worker:
+///
+/// ```compile_fail,E0277
+/// use swc_next_allocator::Allocator;
+///
+/// let allocator = Allocator::new();
+/// let mut vec = allocator.vec::<u64>();
+/// let splice = vec.splice(.., [1, 2, 3, 4, 5, 6, 7, 8]);
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || drop(splice));
+///     allocator.alloc(99_u64);
+/// });
+/// ```
+///
+/// Retaining a tail can also require arena allocation:
+///
+/// ```compile_fail,E0277
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let mut vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+/// let splice = vec.splice(1..2, [4, 5, 6, 7, 8, 9, 10, 11]);
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || drop(splice));
+///     allocator.alloc(99_u64);
+/// });
+/// ```
+///
+/// Replacements with a zero lower size hint can require temporary arena storage:
+///
+/// ```compile_fail,E0277
+/// use swc_next_allocator::{Allocator, vec::ArenaVec};
+///
+/// let allocator = Allocator::new();
+/// let mut vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+/// let splice = vec.splice(1..2, (4..12).filter(|_| true));
+/// std::thread::scope(|scope| {
+///     scope.spawn(move || drop(splice));
+///     allocator.alloc(99_u64);
+/// });
+/// ```
 #[derive(Debug)]
 pub struct Splice<'a, 'bump, I>
 where
@@ -2838,6 +2950,8 @@ where
 {
     drain: Drain<'a, 'bump, I::Item>,
     replace_with: I,
+    // Drop may allocate, unlike the contained Drain.
+    allocator: PhantomData<&'bump Allocator>,
 }
 
 impl<'a, 'bump, I: Iterator> Iterator for Splice<'a, 'bump, I> {
@@ -3044,5 +3158,33 @@ mod serialize {
             }
             seq.end()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ArenaVec;
+    use crate::Allocator;
+
+    #[test]
+    fn splice_growth() {
+        let allocator = Allocator::new();
+
+        let mut vec = allocator.vec::<u64>();
+        let removed = vec.splice(.., [1, 2, 3, 4, 5, 6, 7, 8]).collect::<Vec<_>>();
+        assert!(removed.is_empty());
+        assert_eq!(vec.as_slice(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+
+        let mut vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+        let replacements = [4, 5, 6, 7, 8, 9, 10, 11];
+        let removed = vec.splice(1..2, replacements).collect::<Vec<_>>();
+        assert_eq!(removed, [2]);
+        assert_eq!(vec.as_slice(), &[1, 4, 5, 6, 7, 8, 9, 10, 11, 3]);
+
+        let mut vec = ArenaVec::from_iter_in([1_u64, 2, 3], &allocator);
+        let replacements = (4..12).filter(|_| true);
+        let removed = vec.splice(1..2, replacements).collect::<Vec<_>>();
+        assert_eq!(removed, [2]);
+        assert_eq!(vec.as_slice(), &[1, 4, 5, 6, 7, 8, 9, 10, 11, 3]);
     }
 }
