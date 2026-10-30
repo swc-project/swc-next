@@ -16,6 +16,7 @@ use crate::{
 
 mod context;
 mod helpers;
+pub mod jsx;
 mod jsx_pragma;
 mod used_names;
 
@@ -31,6 +32,7 @@ pub struct TransformerOptions {
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
     pub typescript: Option<typescript::TypeScriptOptions>,
+    pub jsx: Option<jsx::JsxOptions>,
 }
 
 /// Semantic indexes for the transformed AST.
@@ -54,7 +56,10 @@ impl Transformer {
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         let mut diagnostics = Vec::new();
-        if let Some(typescript) = options.typescript.take() {
+        if let Some(mut typescript) = options.typescript.take() {
+            if options.jsx.is_some() {
+                typescript.jsx.automatic = true;
+            }
             diagnostics.extend(typescript::transform(
                 ast.root_program(),
                 ast,
@@ -64,6 +69,10 @@ impl Transformer {
             semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
 
+        if let Some(jsx) = options.jsx.take() {
+            diagnostics.extend(jsx::transform(ast, &semantic, jsx));
+            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+        }
         let mut result = Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
         result.diagnostics = diagnostics;
         result

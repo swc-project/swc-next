@@ -100,6 +100,7 @@ impl From<BabelOptions> for TransformerOptions {
         let plugins = options.plugins;
         Self {
             assumptions: options.assumptions,
+            jsx: None,
             typescript: plugins.typescript,
             es2022: ES2022Options {
                 static_blocks: plugins.static_blocks,

@@ -11,6 +11,7 @@ repository.workspace  = true
 version               = "0.4.1"
 
 [dependencies]
+html-escape = "0.2.13"
 rustc-hash = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
 zmij_ecma  = { workspace = true }
