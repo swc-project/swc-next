@@ -3246,9 +3246,8 @@ mod tests {
     fn drain_filter() {
         let allocator = Allocator::new();
         let mut values = ArenaVec::from_iter_in([1, 2, 3, 4], &allocator);
-        let removed = values
-            .drain_filter(|value| *value % 2 == 0)
-            .collect::<Vec<_>>();
+        let even = |value: &mut i32| *value % 2 == 0;
+        let removed = values.drain_filter(even).collect::<Vec<_>>();
         assert_eq!(removed, [2, 4]);
         assert_eq!(values.as_slice(), &[1, 3]);
 
@@ -3346,10 +3345,8 @@ mod tests {
         );
 
         let (mut first, mut second, mut third, mut fourth) = (1, 2, 3, 4);
-        let mut values = ArenaVec::from_iter_in(
-            [&mut first, &mut second, &mut third, &mut fourth],
-            &allocator,
-        );
+        let input = [&mut first, &mut second, &mut third, &mut fourth];
+        let mut values = ArenaVec::from_iter_in(input, &allocator);
         let mut drain = values.drain_filter(|value| **value % 2 == 1);
         let first_removed = drain.next().unwrap();
         let second_removed = drain.next().unwrap();
