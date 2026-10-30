@@ -5347,30 +5347,37 @@ impl Printer<'_> {
 fn is_important_comment(ast: &Ast, comment: Comment) -> bool {
     let source = ast.source();
     let text = &source[comment.span.start as usize..comment.span.end as usize];
-    let value = ast.get_utf8(comment.value(source.as_bytes())).trim_start();
-    (text.starts_with("/**") && text != "/**/")
-        || text.starts_with("///")
-        || value.starts_with(['@', '#'])
-        || value.starts_with("webpack")
-        || value.starts_with("istanbul")
-        || value.starts_with("c8 ")
-        || value.starts_with("v8 ")
-        || is_legal_comment(ast, comment)
+    match text.as_bytes() {
+        [b'/', b'*', b'!', ..] | [b'/', b'/', b'!' | b'/', ..] => return true,
+        [b'/', b'*', b'*', ..] if text != "/**/" => return true,
+        _ => {}
+    }
+
+    let value = ast.get_utf8(comment.value(source.as_bytes()));
+    let important = match value.trim_start().as_bytes() {
+        [b'@' | b'#', ..] => true,
+        [b'w', rest @ ..] => rest.starts_with(b"ebpack"),
+        [b'i', rest @ ..] => rest.starts_with(b"stanbul"),
+        [b'c' | b'v', b'8', b' ', ..] => true,
+        _ => false,
+    };
+    important || has_legal_annotation(value.as_bytes())
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
-    let value = ast
-        .get_utf8(comment.value(ast.source().as_bytes()))
-        .as_bytes();
-    if ast
-        .source()
-        .as_bytes()
+    let source = ast.source().as_bytes();
+    if source
         .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
     {
         return true;
     }
 
+    has_legal_annotation(ast.get_utf8(comment.value(source)).as_bytes())
+}
+
+#[inline]
+fn has_legal_annotation(value: &[u8]) -> bool {
     value.iter().enumerate().any(|(index, &byte)| {
         byte == b'@'
             && value
