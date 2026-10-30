@@ -1364,7 +1364,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     where
         F: FnMut(&T) -> bool,
     {
-        self.drain_filter(|x| !f(x));
+        self.drain_filter(|x| !f(x)).for_each(drop);
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1388,7 +1388,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     where
         F: FnMut(&mut T) -> bool,
     {
-        self.drain_filter(|x| !f(x));
+        self.drain_filter(|x| !f(x)).for_each(drop);
     }
 
     /// Creates an iterator that removes the elements in the vector
@@ -3373,6 +3373,39 @@ mod tests {
         values.retain_mut(|value| {
             *value += 1;
             *value % 2 == 0
+        });
+        assert_eq!(values.as_slice(), &[2, 4]);
+    }
+
+    fn during_unwind(f: impl FnOnce()) {
+        struct Cleanup<F: FnOnce()>(Option<F>);
+
+        impl<F: FnOnce()> Drop for Cleanup<F> {
+            fn drop(&mut self) {
+                self.0.take().unwrap()();
+            }
+        }
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            let _cleanup = Cleanup(Some(f));
+            panic!("unrelated panic");
+        }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn retain_unwind() {
+        let allocator = Allocator::new();
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        during_unwind(|| values.retain(|value| *value % 2 == 0));
+        assert_eq!(values.as_slice(), &[2]);
+
+        let mut values = ArenaVec::from_iter_in([1, 2, 3], &allocator);
+        during_unwind(|| {
+            values.retain_mut(|value| {
+                *value += 1;
+                *value % 2 == 0
+            });
         });
         assert_eq!(values.as_slice(), &[2, 4]);
     }
