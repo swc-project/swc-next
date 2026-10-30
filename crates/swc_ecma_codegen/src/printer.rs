@@ -3416,24 +3416,6 @@ impl<'a> Printer<'a> {
 
     fn print_bigint_literal(&mut self, literal: BigIntLiteral) {
         let raw = self.ast.get_utf8(literal.raw(self.ast));
-        if self.options.minify
-            && let Some(value) = literal.value(self.ast)
-        {
-            let decimal = value.to_str_radix(10);
-            let hex = value.to_str_radix(16);
-            let raw_len = raw.bytes().filter(|&byte| byte != b'_').count();
-            if !hex.starts_with('-') && hex.len() + 2 < raw_len && hex.len() + 2 < decimal.len() {
-                self.print("0x");
-                self.print(&hex);
-                self.print("n");
-                return;
-            }
-            if decimal.len() < raw_len {
-                self.print(&decimal);
-                self.print("n");
-                return;
-            }
-        }
         for byte in raw.bytes() {
             if byte != b'_' {
                 self.js.push(byte);
