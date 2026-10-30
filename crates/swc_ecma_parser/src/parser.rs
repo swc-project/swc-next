@@ -9974,15 +9974,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_async_function_or_arrow(&mut self, minimum: Precedence) -> Option<Expr> {
-        let token = self.current_token;
-        let async_identifier = self.parse_identifier()?;
+        let token = self.consume_identifier(IdentifierRole::Reference)?;
+        if self.current_token.tag() == TokenTag::Function
+            && !self.current_token.has_line_terminator_before()
+        {
+            return self.parse_async_function_expression(token);
+        }
+
+        let name = self.identifier_name(token);
+        let async_identifier = self.ast.expr_identifier_reference(token.span(), name);
 
         if self.current_token.has_line_terminator_before() {
             return Some(async_identifier);
         }
 
         match self.current_token.tag() {
-            TokenTag::Function => self.parse_async_function_expression(token),
             TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
                 token.span(),
                 async_identifier,
@@ -19074,6 +19080,74 @@ mod tests {
         let allocator = Allocator::new();
         let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         !parsed.diagnostics.is_empty()
+    }
+
+    #[test]
+    fn async_expressions() {
+        fn async_references(ast: &Ast<'_>) -> Vec<Span> {
+            (0..ast.node_count())
+                .filter_map(|index| match ast.kind_data(NodeId::from_usize(index)) {
+                    NodeKindData::IdentifierReference(identifier)
+                        if ast.get_utf8(identifier.name(ast)) == "async" =>
+                    {
+                        Some(identifier.span(ast))
+                    }
+                    _ => None,
+                })
+                .collect()
+        }
+
+        for lang in [Lang::Js, Lang::Ts] {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                ..Options::default()
+            };
+            let parse =
+                |source| Parser::init(&allocator, source, options, TokenParserConfig).parse();
+
+            let parsed = parse("const f = async function() {};");
+            assert!(parsed.diagnostics.is_empty());
+            assert!(async_references(&parsed.ast).is_empty());
+            assert_eq!(
+                token_texts(parsed.ast.source(), &parsed.tokens).join(" "),
+                "const f = async function ( ) { } ;"
+            );
+
+            let parsed = parse("const f = async function*() {};");
+            assert!(parsed.diagnostics.is_empty());
+            assert!(async_references(&parsed.ast).is_empty());
+
+            let parsed = parse("const f = as\\u0079nc function() {};");
+            assert!(async_references(&parsed.ast).is_empty());
+            assert_eq!(parsed.diagnostics.len(), 1);
+            assert_eq!(parsed.diagnostics[0].span, Span::new(10, 20));
+            assert_eq!(
+                token_texts(parsed.ast.source(), &parsed.tokens).join(" "),
+                "const f = as\\u0079nc function ( ) { } ;"
+            );
+
+            let parsed = parse("const f = as\\u0079nc;");
+            assert!(parsed.diagnostics.is_empty());
+            assert_eq!(async_references(&parsed.ast), [Span::new(10, 20)]);
+
+            let parsed = parse("const f = async\nfunction g() {};");
+            assert!(parsed.diagnostics.is_empty());
+            assert_eq!(async_references(&parsed.ast), [Span::new(10, 15)]);
+
+            let parsed = parse("const f = async(1);");
+            assert!(parsed.diagnostics.is_empty());
+            assert_eq!(async_references(&parsed.ast), [Span::new(10, 15)]);
+        }
+
+        let allocator = Allocator::new();
+        let parsed = parse_tokens(&allocator, "const f = async<T>(1);");
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(async_references(&parsed.ast), [Span::new(10, 15)]);
+        assert_eq!(
+            token_texts(parsed.ast.source(), &parsed.tokens).join(" "),
+            "const f = async < T > ( 1 ) ;"
+        );
     }
 
     #[test]
