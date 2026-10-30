@@ -30,7 +30,7 @@ if (process.argv[2] === '--worker') {
   const result={node:process.version,method:'Fresh processes, alternating AB/BA, >=1s warmup, GC outside timed rounds, median of 7 per-process best ~10ms rounds',cases:[]};
   const files=['astro-config.ts','cal.com.tsx','backbone-1.1.0.js','jquery-1.9.1.js','position-sparse.js','position-dense.js'];
   for(const kind of ['control-before','comparison','control-after']) {
-    const cases=kind==='comparison'?files.flatMap(file=>['native','lazy'].map(operation=>({file,operation}))):['astro-config.ts','cal.com.tsx'].map(file=>({file,operation:'native'}));
+    const cases=kind==='comparison'?[...files.map(file=>({file,operation:'native'})),...['astro-config.ts','cal.com.tsx'].map(file=>({file,operation:'lazy'}))]:['astro-config.ts','cal.com.tsx'].map(file=>({file,operation:'native'}));
     for(const item of cases) {
       const trials=kind==='comparison'?7:3;
       const row={kind,...item,base:[],candidate:[]};

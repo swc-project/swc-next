@@ -46,4 +46,3 @@ jobs:
             ${{ runner.temp }}/position-map/*.log
             ${{ runner.temp }}/position-map/base/*
             ${{ runner.temp }}/position-map/candidate/*
-            ${{ runner.temp }}/position-map/explicit/*

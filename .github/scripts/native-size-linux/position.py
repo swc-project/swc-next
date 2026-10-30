@@ -8,7 +8,6 @@ toolchain = '1.99.0' if mode == 'stable' else 'nightly-2026-10-29'
 extra = ['-Zbuild-std=panic_abort,std'] if mode == 'std' else []
 source = root / 'crates/swc_ecma_ast/src/ffi/ast.rs'
 candidate = source.read_bytes()
-explicit = subprocess.check_output(['git', 'show', 'fe53849e:crates/swc_ecma_ast/src/ffi/ast.rs'])
 baseline = subprocess.check_output(['git', 'show', 'a781afa1:crates/swc_ecma_ast/src/ffi/ast.rs'])
 fixtures = root / 'tasks/benchmark/files'
 # Exercise both sparse and dense Unicode independently of source language.
@@ -21,7 +20,7 @@ metadata = {'mode': mode, 'toolchain': toolchain, 'extra': extra, 'revision': su
 cleanenv = {k: v for k,v in os.environ.items() if not k.startswith('CARGO_PROFILE_') and k not in ['RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','RUSTC_BOOTSTRAP','NAPI_RS_NATIVE_LIBRARY_PATH']}
 env = {**cleanenv, 'RUSTUP_TOOLCHAIN': toolchain, 'CARGO_ENCODED_RUSTFLAGS': '', 'CARGO_TARGET_DIR': str(out / 'target')}
 try:
-    for side, content in [('base', baseline), ('explicit', explicit), ('candidate', candidate)]:
+    for side, content in [('base', baseline), ('candidate', candidate)]:
         source.write_bytes(content)
         dest = out / side
         dest.mkdir(exist_ok=True)
