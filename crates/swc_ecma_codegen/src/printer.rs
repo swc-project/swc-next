@@ -782,8 +782,12 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_semicolon_after_statement(&mut self) {
-        self.print_statement_semicolon();
-        self.print_newline();
+        if self.options.minify {
+            self.needs_semicolon = true;
+        } else {
+            self.print(";\n");
+            self.needs_semicolon = false;
+        }
     }
 
     #[inline]
