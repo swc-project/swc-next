@@ -121,6 +121,7 @@ struct Printer<'a> {
     expr_visitor_stack: Vec<BinaryExprVisitor>,
     builder: ChunkBuilder<'a>,
     next_comment: usize,
+    next_comment_trigger: u64,
     indent: usize,
     print_next_indent_as_space: bool,
     needs_semicolon: bool,
@@ -342,6 +343,9 @@ impl<'a> Printer<'a> {
             expr_visitor_stack: Vec::new(),
             builder: make_chunk_builder(line_offset_tables),
             next_comment: 0,
+            next_comment_trigger: comments.first().map_or(u64::MAX, |comment| {
+                u64::from(comment.attached_to.min(comment.span.end))
+            }),
             indent: 0,
             print_next_indent_as_space: false,
             needs_semicolon: false,
@@ -454,7 +458,7 @@ impl<'a> Printer<'a> {
             // Interior comments belong to their node's printer. Keep legal
             // notices even when a node has not consumed them.
             let trailing = comment.span.start >= last_statement_end;
-            self.next_comment += 1;
+            self.advance_comment();
             if trailing || is_legal_comment(self.ast, comment) {
                 self.print_comment(comment, true);
             }
@@ -485,13 +489,20 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_comments_at(&mut self, offset: u32, statement: bool) {
-        if self
-            .comments
-            .get(self.next_comment)
-            .is_some_and(|comment| comment.attached_to <= offset || comment.span.end <= offset)
-        {
+        if u64::from(offset) >= self.next_comment_trigger {
             self.print_comments_at_slow(offset, statement);
         }
+    }
+
+    #[inline]
+    fn advance_comment(&mut self) {
+        self.next_comment += 1;
+        self.next_comment_trigger = self
+            .comments
+            .get(self.next_comment)
+            .map_or(u64::MAX, |comment| {
+                u64::from(comment.attached_to.min(comment.span.end))
+            });
     }
 
     #[inline(never)]
@@ -508,7 +519,7 @@ impl<'a> Printer<'a> {
             if comment.attached_to > offset && !important {
                 break;
             }
-            self.next_comment += 1;
+            self.advance_comment();
             if attached || important {
                 self.print_comment(comment, statement);
             }
@@ -649,7 +660,7 @@ impl<'a> Printer<'a> {
             if comment.position != CommentPosition::Trailing || comment.attached_to != attached_to {
                 break;
             }
-            self.next_comment += 1;
+            self.advance_comment();
             self.print_comment(comment, false);
             trim_trailing_space =
                 comment.kind == CommentKind::Block && !self.comment_has_line_terminator(comment);
