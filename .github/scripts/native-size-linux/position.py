@@ -8,6 +8,7 @@ toolchain = '1.99.0' if mode == 'stable' else 'nightly-2026-10-29'
 extra = ['-Zbuild-std=panic_abort,std'] if mode == 'std' else []
 source = root / 'crates/swc_ecma_ast/src/ffi/ast.rs'
 candidate = source.read_bytes()
+explicit = subprocess.check_output(['git', 'show', 'fe53849e:crates/swc_ecma_ast/src/ffi/ast.rs'])
 baseline = subprocess.check_output(['git', 'show', 'a781afa1:crates/swc_ecma_ast/src/ffi/ast.rs'])
 fixtures = root / 'tasks/benchmark/files'
 # Exercise both sparse and dense Unicode independently of source language.
@@ -20,7 +21,7 @@ metadata = {'mode': mode, 'toolchain': toolchain, 'extra': extra, 'revision': su
 cleanenv = {k: v for k,v in os.environ.items() if not k.startswith('CARGO_PROFILE_') and k not in ['RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','RUSTC_BOOTSTRAP','NAPI_RS_NATIVE_LIBRARY_PATH']}
 env = {**cleanenv, 'RUSTUP_TOOLCHAIN': toolchain, 'CARGO_ENCODED_RUSTFLAGS': '', 'CARGO_TARGET_DIR': str(out / 'target')}
 try:
-    for side, content in [('base', baseline), ('candidate', candidate)]:
+    for side, content in [('base', baseline), ('explicit', explicit), ('candidate', candidate)]:
         source.write_bytes(content)
         dest = out / side
         dest.mkdir(exist_ok=True)
@@ -33,8 +34,9 @@ try:
         data = binary.read_bytes()
         row = {'side': side, 'bytes': len(data), 'gzip_bytes': len(gzip.compress(data, mtime=0)), 'sha256': hashlib.sha256(data).hexdigest(), 'profiles': []}
         runenv = {**env, 'NAPI_RS_NATIVE_LIBRARY_PATH': str(binary), 'MEASURE_ADDON': str(addon)}
+        shutil.copy2(binary, root / 'npm/core/src-js/swc-next-core.linux-x64-gnu.node')
         with (dest / 'tests.log').open('w') as log:
-            subprocess.run(['pnpm', 'test'], env=runenv, stdout=log, stderr=subprocess.STDOUT, check=True)
+            subprocess.run(['pnpm', 'test'], env=env, stdout=log, stderr=subprocess.STDOUT, check=True)
         # Compare complete raw transfers, including spans, for every real and synthetic fixture.
         row['outputs'] = {}
         for fixture in sorted(p.name for p in fixtures.iterdir() if p.suffix in ['.js','.jsx','.ts','.tsx']):
@@ -57,7 +59,7 @@ try:
         (out / 'results.json').write_text(json.dumps(metadata, indent=2))
 finally:
     source.write_bytes(candidate)
-assert metadata['results'][0]['outputs'] == metadata['results'][1]['outputs']
+assert all(row['outputs'] == metadata['results'][0]['outputs'] for row in metadata['results'])
 metadata['outputs_match'] = True
 cpu = min(os.sched_getaffinity(0))
 os.sched_setaffinity(0, {cpu})
