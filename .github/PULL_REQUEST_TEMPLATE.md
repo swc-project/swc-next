@@ -8,4 +8,4 @@
 
 ## Related Links
 
-<!-- Link relevant issues, design docs, PRs, or discussions. For npm dependency upgrades, link the new version's release notes or tag when available. Remove this section if there are no relevant links. -->
+<!-- List relevant issues, PRs, specifications, or release notes as Markdown bullets (prefer `- #123`, `- Close #123`, or `- owner/repo#123` for GitHub issues and PRs). Remove this section if there are none. -->

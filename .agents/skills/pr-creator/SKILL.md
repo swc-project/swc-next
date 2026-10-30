@@ -1,6 +1,6 @@
 ---
 name: pr-creator
-description: Use when asked to create a pull request for this repository. It helps the PR follow the repository's branch safety rules, title convention, pull request template, and concise English writing style.
+description: Use when asked to create a pull request for this repository. Follow its branch safety rules, title convention, pull request template, reference policy, and concise English writing style. Create draft PRs by default after a dry run and explicit human approval.
 ---
 
 # Pull request creator
@@ -36,13 +36,25 @@ description: Use when asked to create a pull request for this repository. It hel
      - `This PR fixes incorrect padding in URL labels to keep terminal output aligned across different label lengths.`
      - `This PR updates the English docs to clarify how the extraction option works and when to enable it.`
 
-6. Fill `Related Links` with issue links, design docs, related PRs, or discussion pages.
-   If the PR upgrades an npm dependency, add a link to the upgraded version's release notes or tag page when available.
-   If there is no relevant link, omit the entire `Related Links` section from the PR body.
+6. Fill `Related Links` according to the reference policy below, or omit the section when no references are needed.
 
-7. Push the branch only after re-checking the branch name. Never push the default branch directly.
+7. Perform a mandatory **dry run** before pushing or creating the PR:
+   - Refresh the base branch's remote-tracking ref and compute the merge-base commit with `git merge-base <base-ref> HEAD`.
+   - Print the exact title, target repository, base branch, merge-base SHA, head branch and SHA, draft status (`draft` by default), and full Markdown description in the conversation.
+   - Wait for explicit human approval of this preview (the initial request to create a PR does not count). Do not push or create any PR during the dry run.
+   - Repeat the dry run and obtain approval again if any of these fields change.
 
-8. Create the PR with `gh pr create`. For multiline bodies, write the exact Markdown to a temporary file and pass it with `--body-file`.
+8. After approval, re-check the branch name (never push the default branch), push the head branch, write the approved Markdown body to a temporary file, and run `gh pr create` (`--draft` by default unless ready-for-review was explicitly requested and approved) with explicit `--repo`, `--base`, `--head`, `--title`, and `--body-file` flags.
+
+## Reference policy
+
+- Format `Related Links` as a Markdown bullet list. For GitHub issues and PRs, prefer plain refs (`- #123` or `- Close #123` for the current repository; `- owner/repo#123` for another repository) over full URLs or code spans; other resources (such as specifications, design docs, commits, tags, or release notes) may use Markdown links or URLs when needed.
+- Cite only existing, directly supporting refs from these official sources (not forks, mirrors, or unrelated repositories in the same organization):
+  - SWC: repositories owned by `swc-project`.
+  - Upstream and downstream: official project repositories for Rspack, Next.js, Node.js, and Deno.
+  - Standards, references, and JS engines: official project repositories for Test262, Babel, ESTree, and TC39 proposals, plus official V8, JavaScriptCore, and SpiderMonkey implementation repositories.
+- Apply these source restrictions across the entire PR body (`Motivation`, `Changes`, and `Related Links`).
+- Repositories outside the allowed list cannot serve as evidence for a change. Any change originating from an external source must first be discussed and approved in an `swc-project` issue (with an independent reproduction or specification basis), and the PR must reference that `swc-project` issue instead. If no such issue exists yet, ask the user to open one for discussion and wait for its ref before creating the PR; never create the issue automatically.
 
 ## Constraints
 
