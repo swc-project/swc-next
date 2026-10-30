@@ -952,7 +952,7 @@ fn test_instantiation_expression_boundaries() {
 
     expect_printed_ts_minify(
         "class C extends (f?.x<T>)<U> {}",
-        "class C extends (f?.x<T>)<U>{}",
+        "class C extends(f?.x<T>)<U>{}",
     );
 
     expect_printed_ts("f<T>?.<U>();", "f<T>?.<U>();\n");

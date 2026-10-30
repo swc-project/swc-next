@@ -920,7 +920,9 @@ impl<'a> Printer<'a> {
                     self.print_block(block);
                     self.print_space();
                 } else {
-                    if self.options.minify {
+                    if self.options.minify
+                        && !matches!(self.ast.stmt_data(body), StmtData::EmptyStatement(_))
+                    {
                         self.print(" ");
                     }
                     self.print_newline();
@@ -1313,7 +1315,9 @@ impl<'a> Printer<'a> {
                 self.print_block(block);
                 self.print_newline();
             } else {
-                if self.options.minify {
+                if self.options.minify
+                    && !matches!(self.ast.stmt_data(alternate), StmtData::EmptyStatement(_))
+                {
                     self.print(" ");
                 }
                 self.print_body(alternate);
@@ -2845,8 +2849,18 @@ impl<'a> Printer<'a> {
         self.print_comments_at(p.span(self.ast).start, false);
         let kind = p.kind(self.ast);
         match kind {
-            PropertyKind::Get => self.print("get "),
-            PropertyKind::Set => self.print("set "),
+            PropertyKind::Get => {
+                self.print("get");
+                if self.property_key_needs_modifier_space(p.key(self.ast), p.computed(self.ast)) {
+                    self.print(" ");
+                }
+            }
+            PropertyKind::Set => {
+                self.print("set");
+                if self.property_key_needs_modifier_space(p.key(self.ast), p.computed(self.ast)) {
+                    self.print(" ");
+                }
+            }
             PropertyKind::Init => {}
         }
         if (p.method(self.ast) || kind != PropertyKind::Init)
@@ -2899,6 +2913,16 @@ impl<'a> Printer<'a> {
         } else {
             self.print_property_key_plain(key);
         }
+    }
+
+    fn property_key_needs_modifier_space(&self, key: PropertyKey, computed: bool) -> bool {
+        !self.options.minify
+            || !computed
+                && !matches!(
+                    self.ast.property_key_data(key),
+                    PropertyKeyData::Expr(expr)
+                        if matches!(self.ast.expr_data(expr), ExprData::StringLiteral(_))
+                )
     }
 
     fn print_property_key_expr(&mut self, key: PropertyKey, level: Precedence) {
@@ -3111,7 +3135,8 @@ impl<'a> Printer<'a> {
             self.print_ts_type_params(t);
         }
         if let Some(s) = c.super_class(self.ast) {
-            self.print(" extends ");
+            self.print(" extends");
+            self.print_space();
             let type_arguments = c.super_type_arguments(self.ast);
             self.print_expr_with_context(s, Precedence::Postfix, ExprContext::NO_INSTANTIATION);
             if let Some(t) = type_arguments {
@@ -3169,7 +3194,21 @@ impl<'a> Printer<'a> {
                 self.print_decorators(m.decorators(self.ast));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
-                    self.print("static ");
+                    self.print("static");
+                    let f = m.value(self.ast);
+                    if !self.options.minify
+                        || m.r#abstract(self.ast)
+                        || m.r#override(self.ast)
+                        || f.r#async(self.ast)
+                        || (!f.generator(self.ast)
+                            && (!m.computed(self.ast)
+                                || matches!(
+                                    m.kind(self.ast),
+                                    MethodDefinitionKind::Get | MethodDefinitionKind::Set
+                                )))
+                    {
+                        self.print(" ");
+                    }
                 }
                 if m.r#abstract(self.ast) {
                     self.print("abstract ");
@@ -3182,8 +3221,19 @@ impl<'a> Printer<'a> {
                     self.print("async ");
                 }
                 match m.kind(self.ast) {
-                    MethodDefinitionKind::Get => self.print("get "),
-                    MethodDefinitionKind::Set => self.print("set "),
+                    MethodDefinitionKind::Get | MethodDefinitionKind::Set => {
+                        self.print(if m.kind(self.ast) == MethodDefinitionKind::Get {
+                            "get"
+                        } else {
+                            "set"
+                        });
+                        if self.property_key_needs_modifier_space(
+                            m.key(self.ast),
+                            m.computed(self.ast),
+                        ) {
+                            self.print(" ");
+                        }
+                    }
                     _ => {}
                 }
                 if f.generator(self.ast) {
@@ -3210,7 +3260,21 @@ impl<'a> Printer<'a> {
                 self.print_decorators(m.decorators(self.ast));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
-                    self.print("static ");
+                    self.print("static");
+                    let f = m.value(self.ast);
+                    if !self.options.minify
+                        || m.r#abstract(self.ast)
+                        || m.r#override(self.ast)
+                        || f.r#async(self.ast)
+                        || (!f.generator(self.ast)
+                            && (!m.computed(self.ast)
+                                || matches!(
+                                    m.kind(self.ast),
+                                    MethodDefinitionKind::Get | MethodDefinitionKind::Set
+                                )))
+                    {
+                        self.print(" ");
+                    }
                 }
                 if m.r#abstract(self.ast) {
                     self.print("abstract ");
@@ -3223,8 +3287,19 @@ impl<'a> Printer<'a> {
                     self.print("async ");
                 }
                 match m.kind(self.ast) {
-                    MethodDefinitionKind::Get => self.print("get "),
-                    MethodDefinitionKind::Set => self.print("set "),
+                    MethodDefinitionKind::Get | MethodDefinitionKind::Set => {
+                        self.print(if m.kind(self.ast) == MethodDefinitionKind::Get {
+                            "get"
+                        } else {
+                            "set"
+                        });
+                        if self.property_key_needs_modifier_space(
+                            m.key(self.ast),
+                            m.computed(self.ast),
+                        ) {
+                            self.print(" ");
+                        }
+                    }
                     _ => {}
                 }
                 if f.generator(self.ast) {
@@ -3290,7 +3365,9 @@ impl<'a> Printer<'a> {
             ClassElementData::StaticBlock(b) => {
                 self.print_indent();
                 self.add_source_mapping(element.span(self.ast).start);
-                self.print("static {");
+                self.print("static");
+                self.print_space();
+                self.print("{");
                 let body = b.body(self.ast);
                 if !body.is_empty() {
                     self.print_newline();
@@ -3998,7 +4075,13 @@ impl<'a> Printer<'a> {
             ExportDefaultDeclarationKindData::Class(class)
                 if !class.decorators(self.ast).is_empty()
         );
-        if decorated_class {
+        if decorated_class
+            || matches!(
+                self.ast
+                    .export_default_declaration_kind_data(d.declaration(self.ast)),
+                ExportDefaultDeclarationKindData::Expr(_)
+            )
+        {
             self.print_space();
         } else {
             self.print(" ");

@@ -89,6 +89,49 @@ fn test_print_result_ownership() {
 }
 
 #[test]
+fn test_minify_computed_properties() {
+    expect_printed_minify("({get [x](){}});", "({get[x](){}});");
+
+    expect_printed_minify("({set [x](v){}});", "({set[x](v){}});");
+
+    expect_printed_minify("({get \"0\"(){}});", "({get\"0\"(){}});");
+
+    expect_printed_minify("({set \"0\"(v){}});", "({set\"0\"(v){}});");
+
+    expect_printed_minify("class C{static get [x](){}}", "class C{static get[x](){}}");
+
+    expect_printed_minify("class C{get \"x\"(){}}", "class C{get\"x\"(){}}");
+
+    expect_printed_minify("class C{get x(){}}", "class C{get x(){}}");
+}
+
+#[test]
+fn test_minify_class_modifiers() {
+    expect_printed_minify("class C{static [x](){}}", "class C{static[x](){}}");
+
+    expect_printed_minify("class C{static *[x](){}}", "class C{static*[x](){}}");
+
+    expect_printed_minify("class C{static {}}", "class C{static{}}");
+}
+
+#[test]
+fn test_minify_keyword_expressions() {
+    expect_printed_minify("class C extends (a,b){}", "class C extends(a,b){}");
+
+    expect_printed_minify(
+        "export default \"x\" in value;",
+        "export default\"x\"in value;",
+    );
+}
+
+#[test]
+fn test_minify_empty_bodies() {
+    expect_printed_minify("do;while(false);", "do;while(false)");
+
+    expect_printed_minify("if(a)b();else;", "if(a)b();else;");
+}
+
+#[test]
 fn test_minify_iteration_spacing() {
     expect_printed_minify("for (a in {});", "for(a in{});");
 
@@ -332,10 +375,10 @@ fn test_empty_statement_delimiters() {
 
     expect_empty_statement(
         "function f(){do ; while(false);}",
-        "function f(){do ;while(false)}",
+        "function f(){do;while(false)}",
     );
 
-    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else ;}");
+    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else;}");
 
     expect_printed_minify("function f(){x();}", "function f(){x()}");
 
@@ -1051,7 +1094,7 @@ fn test_minify_do_while() {
 
     expect_printed_minify(
         "do do; while (false); while (false);",
-        "do do ;while(false)while(false)",
+        "do do;while(false)while(false)",
     );
 }
 
@@ -1209,21 +1252,21 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ class {} + 1) + 2;",
-        "export default /* a */(class{})+1+2;",
+        "export default/* a */(class{})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ function(){} && 1) && 2;",
-        "export default /* a */(function(){})&&1&&2;",
+        "export default/* a */(function(){})&&1&&2;",
         minified.clone(),
         false,
     );
@@ -1237,24 +1280,24 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default (/* a */function(){}+1)+2;",
+        "export default(/* a */function(){}+1)+2;",
         minified,
         true,
     );
 
     expect_printed_minify(
         "export default (function(){} + 1) + 2;",
-        "export default (function(){})+1+2;",
+        "export default(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default /* a */ (function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default (/* a */ function(){} + 1) * 2;",
-        "export default /* a */(function(){}+1)*2;",
+        "export default/* a */(function(){}+1)*2;",
     );
 
     expect_stable(
@@ -1459,11 +1502,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_printed_minify(
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_stable(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
@@ -1471,11 +1514,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
     expect_printed_minify(
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
 }
 
