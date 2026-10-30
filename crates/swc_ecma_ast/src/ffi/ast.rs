@@ -719,12 +719,11 @@ fn utf16_pos(byte: u32, map: Option<&PositionMap>) -> u32 {
                 return byte;
             }
             let block = &blocks[byte_index / POSITION_BLOCK_SIZE];
-            block
-                .positions
-                .as_ref()
-                .map_or(byte - block.delta, |positions| {
-                    positions[byte_index % POSITION_BLOCK_SIZE]
-                })
+            if let Some(positions) = &block.positions {
+                positions[byte_index % POSITION_BLOCK_SIZE]
+            } else {
+                byte - block.delta
+            }
         }
     }
 }
