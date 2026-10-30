@@ -241,3 +241,87 @@ fn module_emission_options() {
     let code = transformed_code_with_options("import { value } from 'dep'; value();", preserve);
     assert!(code.contains("import { value }"));
 }
+
+#[test]
+fn import_assignment_modes() {
+    use super::super::ImportExportAssignConfig;
+    let classic = TypeScriptOptions {
+        import_export_assign_config: ImportExportAssignConfig::Classic,
+        ..Default::default()
+    };
+    let code =
+        transformed_code_with_options("import value = require('dep'); export = value;", classic);
+    assert!(code.contains("require(\"dep\")"));
+    assert!(code.contains("module.exports = value"));
+
+    let preserve = TypeScriptOptions {
+        import_export_assign_config: ImportExportAssignConfig::Preserve,
+        ..Default::default()
+    };
+    let code =
+        transformed_code_with_options("import value = require('dep'); export = value;", preserve);
+    assert!(code.contains("import value = require(\"dep\")"));
+    assert!(code.contains("export = value"));
+
+    let node = TypeScriptOptions {
+        import_export_assign_config: ImportExportAssignConfig::NodeNext,
+        ..Default::default()
+    };
+    let code = transformed_code_with_options(
+        "const _require = 1; import value = require('dep'); export { value };",
+        node,
+    );
+    assert!(code.contains("createRequire"));
+    assert!(code.contains("import.meta.url"));
+    assert!(code.contains("value = _require2(\"dep\")"));
+    assert!(!code.contains("import.sync"));
+}
+
+#[test]
+fn invalid_import_assignment_modes() {
+    use super::super::ImportExportAssignConfig;
+    fn diagnostics(
+        source: &str,
+        mode: ImportExportAssignConfig,
+    ) -> Vec<swc_next_ecma_ast::Diagnostic<'static>> {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(
+            &allocator,
+            source,
+            ParserOptions {
+                lang: Lang::Ts,
+                ..Default::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(parsed.diagnostics.is_empty());
+        let mut ast = parsed.ast;
+        let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+        transform(
+            ast.root_program(),
+            &mut ast,
+            &semantic,
+            TypeScriptOptions {
+                import_export_assign_config: mode,
+                ..Default::default()
+            },
+        )
+    }
+    assert!(
+        !diagnostics(
+            "import value = require('dep'); value();",
+            ImportExportAssignConfig::EsNext
+        )
+        .is_empty()
+    );
+    assert!(!diagnostics("export = value;", ImportExportAssignConfig::EsNext).is_empty());
+    assert!(!diagnostics("export = value;", ImportExportAssignConfig::NodeNext).is_empty());
+    assert!(
+        diagnostics(
+            "import type value = require('dep');",
+            ImportExportAssignConfig::EsNext
+        )
+        .is_empty()
+    );
+}

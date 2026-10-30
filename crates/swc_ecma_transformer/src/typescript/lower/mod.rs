@@ -22,6 +22,7 @@ use statements::StatementExpansion;
 pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
     diagnostics: Vec<Diagnostic<'static>>,
+    node_require: Option<(swc_next_ecma_ast::AstUtf8, swc_next_ecma_ast::AstUtf8)>,
     options: &'visit TypeScriptOptions,
     analysis: TypeScriptAnalysis<'ast>,
     semantic: &'visit Semantic<'ast>,
@@ -46,6 +47,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
         Self {
             ast,
             diagnostics: Vec::new(),
+            node_require: None,
             options,
             analysis,
             semantic,
@@ -71,6 +73,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             self.append_esm_marker(program);
         }
 
+        self.prepend_node_require(program);
         self.comments.flush(self.ast);
         self.diagnostics
     }

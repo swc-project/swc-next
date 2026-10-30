@@ -5,7 +5,9 @@ mod analysis;
 mod lower;
 
 mod options;
-pub use options::{ImportsNotUsedAsValues, JsxImportOptions, TypeScriptOptions};
+pub use options::{
+    ImportExportAssignConfig, ImportsNotUsedAsValues, JsxImportOptions, TypeScriptOptions,
+};
 
 /// Applies only the TypeScript syntax transform.
 ///

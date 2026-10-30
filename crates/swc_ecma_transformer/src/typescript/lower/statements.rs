@@ -118,6 +118,11 @@ impl TypeScriptLowerer<'_, '_> {
                     return Some(StatementExpansion::Remove);
                 }
             }
+            StmtData::TsExportAssignment(export) => {
+                if let Some(statement) = self.lower_export_assignment(export) {
+                    return Some(StatementExpansion::Single(statement));
+                }
+            }
             StmtData::ImportDeclaration(import) if !self.lower_import_declaration(import) => {
                 return Some(StatementExpansion::Remove);
             }

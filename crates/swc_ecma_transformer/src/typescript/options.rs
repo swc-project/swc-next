@@ -28,6 +28,9 @@ pub struct TypeScriptOptions {
     /// produce diagnostics when their initializers would need to move.
     #[serde(default = "default_native_class_properties")]
     pub native_class_properties: bool,
+    /// Runtime policy for TypeScript import/export assignments. The default
+    /// retains SWC Next's synchronous-import representation.
+    pub import_export_assign_config: ImportExportAssignConfig,
     /// Factory dependencies for JSX preserved for a later transform.
     pub jsx: JsxImportOptions,
 }
@@ -62,7 +65,24 @@ impl Default for TypeScriptOptions {
             no_empty_export: false,
             import_not_used_as_values: ImportsNotUsedAsValues::Remove,
             native_class_properties: true,
+            import_export_assign_config: ImportExportAssignConfig::ImportSync,
             jsx: JsxImportOptions::default(),
         }
     }
+}
+
+/// Emission policy for `import value = require("pkg")` and `export = value`.
+#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq, Eq)]
+pub enum ImportExportAssignConfig {
+    /// Emit `import.sync`, retaining export assignments for later lowering.
+    #[default]
+    ImportSync,
+    /// Emit `require` calls and `module.exports` assignments.
+    Classic,
+    /// Keep runtime TypeScript assignments for a later module transform.
+    Preserve,
+    /// Load through Node's `createRequire(import.meta.url)`; reject `export =`.
+    NodeNext,
+    /// Reject runtime external import assignments and export assignments.
+    EsNext,
 }

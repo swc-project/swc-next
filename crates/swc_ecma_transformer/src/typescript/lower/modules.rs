@@ -1,11 +1,13 @@
 use swc_next_ecma_ast::{
-    BindingIdentifier, BindingPattern, Decl, ExportNamedDeclaration, Expr, GetSpan,
-    ImportDeclaration, ImportDeclarationSpecifierData, ImportOrExportKind, PropertyKey, Stmt,
-    SubRange, TsImportEqualsDeclaration, TsModuleReferenceData, TsQualifiedName,
-    TsQualifiedNameLeft, TsQualifiedNameLeftData, TsTypeName, TsTypeNameData, VariableKind,
-    VisitMut, VisitMutWith,
+    Argument, AssignmentOperator, AssignmentTarget, AstUtf8, BindingIdentifier, BindingPattern,
+    DUMMY_SP, Decl, Diagnostic, ExportNamedDeclaration, Expr, GetSpan, ImportDeclaration,
+    ImportDeclarationSpecifierData, ImportOrExportKind, ModuleExportName, PropertyKey,
+    SimpleAssignmentTarget, Stmt, SubRange, TsExportAssignment, TsImportEqualsDeclaration,
+    TsModuleReferenceData, TsQualifiedName, TsQualifiedNameLeft, TsQualifiedNameLeftData,
+    TsTypeName, TsTypeNameData, VariableKind, VisitMut, VisitMutWith,
 };
 
+use super::super::ImportExportAssignConfig;
 use super::TypeScriptLowerer;
 
 impl TypeScriptLowerer<'_, '_> {
@@ -187,6 +189,23 @@ impl TypeScriptLowerer<'_, '_> {
             return None;
         }
 
+        if self.options.import_export_assign_config == ImportExportAssignConfig::Preserve {
+            let decl = Decl::TsImportEqualsDeclaration(declaration);
+            let span = declaration.span(self.ast_ref());
+            return Some(if exported {
+                self.ast().stmt_export_named_declaration(
+                    span,
+                    Some(decl),
+                    SubRange::empty(),
+                    None,
+                    SubRange::empty(),
+                    ImportOrExportKind::Value,
+                )
+            } else {
+                Stmt::Declaration(decl)
+            });
+        }
+
         let module_reference = declaration.module_reference(self.ast_ref());
         let kind = match self.ast_ref().ts_module_reference_data(module_reference) {
             TsModuleReferenceData::TsTypeName(_) => VariableKind::Var,
@@ -231,8 +250,142 @@ impl TypeScriptLowerer<'_, '_> {
             TsModuleReferenceData::TsExternalModuleReference(reference) => {
                 let span = reference.span(self.ast_ref());
                 let source = Expr::StringLiteral(reference.expression(self.ast_ref()));
-                self.ast()
-                    .expr_import_expression(span, source, None, None, true)
+                match self.options.import_export_assign_config {
+                    ImportExportAssignConfig::Classic => {
+                        let name = self.ast().add_utf8("require");
+                        self.require_call(span, name, source)
+                    }
+                    ImportExportAssignConfig::NodeNext => {
+                        let (_, name) = self.ensure_node_require();
+                        self.require_call(span, name, source)
+                    }
+                    ImportExportAssignConfig::EsNext => {
+                        self.diagnostics.push(Diagnostic::error(
+                            "External import assignments are not allowed in ECMAScript modules",
+                            declaration.span(self.ast_ref()),
+                        ));
+                        source
+                    }
+                    ImportExportAssignConfig::ImportSync | ImportExportAssignConfig::Preserve => {
+                        self.ast()
+                            .expr_import_expression(span, source, None, None, true)
+                    }
+                }
+            }
+        }
+    }
+
+    fn require_call(&mut self, span: swc_next_ecma_ast::Span, name: AstUtf8, source: Expr) -> Expr {
+        let callee = self.ast().expr_identifier_reference(span, name);
+        let arguments = self.ast().add_sub_range([Argument::Expr(source)]);
+        self.ast()
+            .expr_call_expression(span, callee, None, arguments, false)
+    }
+
+    fn ensure_node_require(&mut self) -> (AstUtf8, AstUtf8) {
+        if let Some(names) = self.node_require {
+            return names;
+        }
+        let names = (self.fresh_uid("_createRequire"), self.fresh_uid("_require"));
+        self.node_require = Some(names);
+        names
+    }
+
+    pub(super) fn prepend_node_require(&mut self, program: swc_next_ecma_ast::Program) {
+        let Some((create_require, require)) = self.node_require else {
+            return;
+        };
+        let imported = self.ast().add_utf8("createRequire");
+        let imported = self.ast().identifier_name(DUMMY_SP, imported);
+        let local = self.ast().binding_identifier(DUMMY_SP, create_require);
+        let specifier = self.ast().import_declaration_specifier_import_specifier(
+            DUMMY_SP,
+            ModuleExportName::IdentifierName(imported),
+            local,
+            ImportOrExportKind::Value,
+        );
+        let specifiers = self.ast().add_sub_range([specifier]);
+        let value = self
+            .ast()
+            .add_wtf8(swc_next_allocator::wtf8::Wtf8::from_str("node:module"));
+        let raw = self.ast().empty_utf8();
+        let source = self.ast().string_literal(DUMMY_SP, value, raw);
+        let import = self.ast().stmt_import_declaration(
+            DUMMY_SP,
+            specifiers,
+            source,
+            SubRange::empty(),
+            None,
+            ImportOrExportKind::Value,
+        );
+        let meta_name = self.ast().add_utf8("import");
+        let meta = self.ast().identifier_name(DUMMY_SP, meta_name);
+        let property_name = self.ast().add_utf8("meta");
+        let property = self.ast().identifier_name(DUMMY_SP, property_name);
+        let import_meta = self.ast().expr_meta_property(DUMMY_SP, meta, property);
+        let url_name = self.ast().add_utf8("url");
+        let url = self.ast().property_key_identifier_name(DUMMY_SP, url_name);
+        let argument = self
+            .ast()
+            .expr_member_expression(DUMMY_SP, import_meta, url, false, false);
+        let call = self.require_call(DUMMY_SP, create_require, argument);
+        let binding = self.ast().binding_identifier(DUMMY_SP, require);
+        let declarator = self.ast().variable_declarator(
+            DUMMY_SP,
+            BindingPattern::BindingIdentifier(binding),
+            None,
+            Some(call),
+            false,
+        );
+        let declarators = self.ast().add_sub_range([declarator]);
+        let declaration =
+            self.ast()
+                .variable_declaration(DUMMY_SP, VariableKind::Const, declarators, false);
+        let mut body = vec![
+            import,
+            Stmt::Declaration(Decl::VariableDeclaration(declaration)),
+        ];
+        body.extend(
+            program
+                .body(self.ast_ref())
+                .iter()
+                .map(|id| self.ast_ref().get_node_in_sub_range(id)),
+        );
+        let body = self.ast().add_sub_range(body);
+        program.set_body(self.ast(), body);
+    }
+
+    pub(super) fn lower_export_assignment(&mut self, export: TsExportAssignment) -> Option<Stmt> {
+        let span = export.span(self.ast_ref());
+        match self.options.import_export_assign_config {
+            ImportExportAssignConfig::ImportSync | ImportExportAssignConfig::Preserve => None,
+            ImportExportAssignConfig::NodeNext | ImportExportAssignConfig::EsNext => {
+                self.diagnostics.push(Diagnostic::error(
+                    "Export assignments are not allowed in ECMAScript modules",
+                    span,
+                ));
+                None
+            }
+            ImportExportAssignConfig::Classic => {
+                let name = self.ast().add_utf8("module");
+                let object = self.ast().expr_identifier_reference(span, name);
+                let name = self.ast().add_utf8("exports");
+                let key = self.ast().property_key_identifier_name(span, name);
+                let target = self
+                    .ast()
+                    .member_expression(span, object, key, false, false);
+                let left = AssignmentTarget::SimpleAssignmentTarget(
+                    SimpleAssignmentTarget::MemberExpression(target),
+                );
+                let expression = export.expression(self.ast_ref());
+                let expression = expression.visit_mut_with(self).unwrap_or(expression);
+                let assignment = self.ast().expr_assignment_expression(
+                    span,
+                    left,
+                    expression,
+                    AssignmentOperator::Assign,
+                );
+                Some(self.ast().stmt_expression_statement(span, assignment))
             }
         }
     }
