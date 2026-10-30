@@ -607,16 +607,7 @@ impl Wtf8 {
     /// Returns `true` if this WTF-8 string starts with the given UTF-8 string.
     #[inline]
     pub fn starts_with(&self, pattern: &str) -> bool {
-        if pattern.len() > self.len() {
-            return false;
-        }
-
-        let pattern_wtf8 = self.slice_to(pattern.len());
-        if let Some(pattern_str) = pattern_wtf8.as_str() {
-            pattern_str == pattern
-        } else {
-            false
-        }
+        self.bytes.starts_with(pattern.as_bytes())
     }
 
     /// Try to convert the string to UTF-8 and return a `&str` slice.
@@ -878,10 +869,13 @@ impl<'a> Iterator for IllFormedUtf16CodeUnits<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.code_points.size_hint();
-        // every code point gets either one u16 or two u16,
-        // so this iterator is between 1 or 2 times as
-        // long as the underlying iterator.
-        (low, high.and_then(|n| n.checked_mul(2)))
+        let extra = usize::from(self.extra != 0);
+        // Each remaining code point emits one or two units, in addition to
+        // any buffered low surrogate.
+        (
+            low.saturating_add(extra),
+            high.and_then(|n| n.checked_mul(2)?.checked_add(extra)),
+        )
     }
 }
 
@@ -1398,6 +1392,39 @@ mod tests {
     }
 
     #[test]
+    fn wtf8_starts_with() {
+        assert!(Wtf8::from_str("aé 💩").starts_with("aé"));
+
+        assert!(Wtf8::from_str("aé 💩").starts_with(""));
+
+        assert!(Wtf8::from_str("é").starts_with("é"));
+
+        assert!(Wtf8::from_str("日本").starts_with("日"));
+
+        assert!(!Wtf8::from_str("日本").starts_with("本"));
+
+        assert!(!Wtf8::from_str("a").starts_with("ab"));
+
+        assert!(!Wtf8::from_str("é").starts_with("a"));
+
+        assert!(!Wtf8::from_str("日本").starts_with("x"));
+
+        assert!(!Wtf8::from_str("日本").starts_with("xy"));
+
+        assert!(!Wtf8::from_str("😀").starts_with("abc"));
+
+        let surrogate = Wtf8Buf::from_ill_formed_utf16(&[0xD800]);
+        assert!(!surrogate.starts_with("a"));
+        assert!(!surrogate.starts_with("ab"));
+        assert!(!surrogate.starts_with("abc"));
+
+        let prefixed_surrogate = Wtf8Buf::from_ill_formed_utf16(&[0x61, 0xD800]);
+        assert!(prefixed_surrogate.starts_with("a"));
+        assert!(!prefixed_surrogate.starts_with("ab"));
+        assert!(!prefixed_surrogate.starts_with("abc"));
+    }
+
+    #[test]
     fn wtf8_as_str() {
         assert_eq!(Wtf8::from_str("").as_str(), Some(""));
         assert_eq!(Wtf8::from_str("aé 💩").as_str(), Some("aé 💩"));
@@ -1430,6 +1457,49 @@ mod tests {
             string.to_ill_formed_utf16().collect::<Vec<_>>(),
             vec![0x61, 0xe9, 0x20, 0xd83d, 0xd83d, 0xdca9]
         );
+    }
+
+    #[test]
+    fn wtf8_utf16_iteration() {
+        fn assert_bounds(iter: &IllFormedUtf16CodeUnits<'_>) {
+            let remaining = iter.clone().count();
+            let (low, high) = iter.size_hint();
+            assert!(low <= remaining);
+            if let Some(high) = high {
+                assert!(remaining <= high);
+            }
+        }
+
+        fn assert_units(string: &Wtf8, expected: &[u16]) {
+            let mut iter = string.to_ill_formed_utf16();
+            assert_bounds(&iter);
+            for &unit in expected {
+                assert_eq!(iter.next(), Some(unit));
+                assert_bounds(&iter);
+            }
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+            assert_eq!(iter.next(), None);
+            assert_bounds(&iter);
+        }
+
+        let mut iter = Wtf8::from_str("😀").to_ill_formed_utf16();
+        assert_bounds(&iter);
+        assert_eq!(iter.next(), Some(0xD83D));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+        assert_bounds(&iter);
+        assert_eq!(iter.next(), Some(0xDE00));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_bounds(&iter);
+
+        assert_units(Wtf8::from_str("😀a"), &[0xD83D, 0xDE00, 0x61]);
+
+        assert_units(Wtf8::from_str(""), &[]);
+
+        assert_units(Wtf8::from_str("a"), &[0x61]);
+
+        let surrogate = Wtf8Buf::from_ill_formed_utf16(&[0xD800]);
+        assert_units(&surrogate, &[0xD800]);
     }
 
     #[test]
