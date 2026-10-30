@@ -1,6 +1,8 @@
 name: Native Linux build-std experiment
 on:
   workflow_dispatch:
+  push:
+    branches: [chenjiahan/experiment-native-size-linux]
 permissions:
   contents: read
 jobs:
