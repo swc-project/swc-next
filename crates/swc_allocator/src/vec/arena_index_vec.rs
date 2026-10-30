@@ -464,13 +464,14 @@ mod tests {
     #[test]
     fn raw_storage() {
         let allocator = Allocator::new();
-        let mut data = ArenaIndexVec::<TestId, u32>::with_capacity_in(2, &allocator);
+        let mut raw = ArenaVec::<u32>::with_capacity_in(2, &allocator);
+        let ptr = raw.as_mut_ptr();
+        let mut data = ArenaIndexVec::<TestId, u32>::from_vec(raw);
         assert!(std::ptr::eq(data.bump(), &allocator));
 
         // SAFETY: The allocation has room for two u32 values, both initialized
         // before exposing them through the vector's length.
         unsafe {
-            let ptr = data.as_mut_slice().as_mut_ptr();
             ptr.write(10);
             ptr.add(1).write(20);
             data.set_len(2);
@@ -558,5 +559,78 @@ mod tests {
         let mut data = ArenaIndexVec::<TestId, ()>::new_in(&allocator);
         data.push(());
         assert!(catch_unwind(AssertUnwindSafe(|| data.reserve(usize::MAX))).is_err());
+    }
+
+    #[test]
+    fn zero_sized_elements() {
+        let allocator = Allocator::new();
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([(); 3], &allocator);
+        let mut iter = data.into_iter();
+        assert_eq!(iter.len(), 3);
+        assert_eq!(iter.next(), Some(()));
+        assert_eq!(iter.len(), 2);
+        assert_eq!(iter.next_back(), Some(()));
+        assert_eq!(iter.len(), 1);
+        assert_eq!(iter.count(), 1);
+
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([(); 3], &allocator);
+        assert_eq!(data.into_iter().collect::<std::vec::Vec<_>>(), [(); 3]);
+
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([(); 3], &allocator);
+        assert_eq!(data.into_iter().rev().collect::<std::vec::Vec<_>>(), [(); 3]);
+    }
+
+    #[test]
+    fn remaining_slices() {
+        #[derive(Debug)]
+        #[repr(align(8))]
+        struct Z;
+
+        fn check_remaining<T>(iter: &mut crate::vec::IntoIter<'_, T>, len: usize) {
+            assert_eq!(iter.len(), len);
+            let slice = iter.as_slice();
+            assert_eq!(slice.len(), len);
+            assert_eq!(slice.as_ptr().align_offset(std::mem::align_of::<T>()), 0);
+            let slice = iter.as_mut_slice();
+            assert_eq!(slice.len(), len);
+            assert_eq!(slice.as_ptr().align_offset(std::mem::align_of::<T>()), 0);
+        }
+
+        let allocator = Allocator::new();
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([Z, Z, Z], &allocator);
+        let mut iter = data.into_iter();
+        check_remaining(&mut iter, 3);
+        assert!(iter.next().is_some());
+        check_remaining(&mut iter, 2);
+        assert_eq!(format!("{iter:?}"), "IntoIter([Z, Z])");
+        assert!(iter.next_back().is_some());
+        check_remaining(&mut iter, 1);
+        assert!(iter.next().is_some());
+        check_remaining(&mut iter, 0);
+        assert!(iter.next().is_none());
+        assert!(iter.next_back().is_none());
+
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([(); 3], &allocator);
+        let mut iter = data.into_iter();
+        check_remaining(&mut iter, 3);
+        assert_eq!(iter.next(), Some(()));
+        check_remaining(&mut iter, 2);
+        assert_eq!(iter.next_back(), Some(()));
+        check_remaining(&mut iter, 1);
+        assert_eq!(iter.next(), Some(()));
+        check_remaining(&mut iter, 0);
+
+        let data = ArenaIndexVec::<TestId, _>::from_iter_in([10, 20, 30], &allocator);
+        let mut iter = data.into_iter();
+        check_remaining(&mut iter, 3);
+        assert_eq!(iter.next(), Some(10));
+        assert_eq!(iter.as_slice(), [20, 30]);
+        iter.as_mut_slice()[0] = 40;
+        assert_eq!(iter.next_back(), Some(30));
+        check_remaining(&mut iter, 1);
+        assert_eq!(iter.next(), Some(40));
+        check_remaining(&mut iter, 0);
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next_back(), None);
     }
 }

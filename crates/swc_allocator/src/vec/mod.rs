@@ -120,7 +120,7 @@ use core::slice;
 use std::io;
 
 unsafe fn arith_offset<T>(p: *const T, offset: isize) -> *const T {
-    p.offset(offset)
+    p.wrapping_offset(offset)
 }
 
 fn partition_dedup_by<T, F>(s: &mut [T], mut same_bucket: F) -> (&mut [T], &mut [T])
@@ -2653,7 +2653,13 @@ impl<'bump, T: 'bump> IntoIter<'bump, T> {
     /// assert_eq!(into_iter.as_slice(), &['b', 'c']);
     /// ```
     pub fn as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr, self.len()) }
+        // ZST iteration uses `ptr` as a byte counter, which may be unaligned.
+        let ptr = if mem::size_of::<T>() == 0 {
+            NonNull::<T>::dangling().as_ptr()
+        } else {
+            self.ptr
+        };
+        unsafe { slice::from_raw_parts(ptr, self.len()) }
     }
 
     /// Returns the remaining items of this iterator as a mutable slice.
@@ -2674,7 +2680,13 @@ impl<'bump, T: 'bump> IntoIter<'bump, T> {
     /// assert_eq!(into_iter.next().unwrap(), 'z');
     /// ```
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr as *mut T, self.len()) }
+        // ZST slices still require a non-null, aligned pointer when empty.
+        let ptr = if mem::size_of::<T>() == 0 {
+            NonNull::<T>::dangling().as_ptr()
+        } else {
+            self.ptr as *mut T
+        };
+        unsafe { slice::from_raw_parts_mut(ptr, self.len()) }
     }
 }
 
