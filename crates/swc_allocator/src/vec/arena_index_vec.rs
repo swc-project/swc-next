@@ -577,7 +577,10 @@ mod tests {
         assert_eq!(data.into_iter().collect::<std::vec::Vec<_>>(), [(); 3]);
 
         let data = ArenaIndexVec::<TestId, _>::from_iter_in([(); 3], &allocator);
-        assert_eq!(data.into_iter().rev().collect::<std::vec::Vec<_>>(), [(); 3]);
+        assert_eq!(
+            data.into_iter().rev().collect::<std::vec::Vec<_>>(),
+            [(); 3]
+        );
     }
 
     #[test]
