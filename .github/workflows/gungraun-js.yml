@@ -13,8 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        operation: [parse, print]
-        fixture: [backbone-1.1.0.js, jquery-1.9.1.js, astro-config.ts, cal.com.tsx]
+        variant: [base, location, std, both]
     env:
       RUSTUP_TOOLCHAIN: nightly-2026-10-29
     steps:
@@ -25,6 +24,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: 24.19.0
+      - name: Install pinned nightly and Rust source
+        run: rustup toolchain install nightly-2026-10-29 --profile minimal --component rust-src --no-self-update
       - run: pnpm install --frozen-lockfile
       - name: Download previously measured binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -35,14 +36,18 @@ jobs:
           path: ${{ runner.temp }}/native-size-linux
       - name: Install Valgrind
         run: sudo apt-get update && sudo apt-get install --yes valgrind
-      - name: Compare native executed instructions
+      - name: Isolate flags and collect symbolized instruction profiles
         env:
-          PROFILE_OPERATION: ${{ matrix.operation }}
-          PROFILE_FIXTURE: ${{ matrix.fixture }}
-        run: python3 .github/scripts/native-size-linux/profile.py
+          CAUSE_VARIANT: ${{ matrix.variant }}
+        run: python3 .github/scripts/native-size-linux/cause.py
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: native-instructions-${{ matrix.operation }}-${{ matrix.fixture }}
+          name: native-cause-${{ matrix.variant }}
           retention-days: 30
-          path: ${{ runner.temp }}/native-instructions
+          path: |
+            ${{ runner.temp }}/native-cause/*.json
+            ${{ runner.temp }}/native-cause/*.txt
+            ${{ runner.temp }}/native-cause/*.log
+            ${{ runner.temp }}/native-cause/*.callgrind
+            ${{ runner.temp }}/native-cause/core.node
