@@ -237,6 +237,8 @@ function normalizeTransformOptions(options) {
     preserveParens: booleanOption(extensions.preserveParens, "swcNext.preserveParens"),
     comments: "none",
     semanticErrors: true,
+    // Transform reports diagnostics consistently across every plugin phase.
+    errorRecovery: true,
   };
   const transformOptions = 1
     | (encodeBoolean(extensions.typescript, "swcNext.typescript") << 1)

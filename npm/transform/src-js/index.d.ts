@@ -98,8 +98,9 @@ export interface TransformOutput extends CodegenOutput {
  * printing are not yet supported. Plugin errors propagate unchanged.
  * With no JS plugins, the entire pipeline runs in Rust without AST transfers.
  * @throws {SyntaxError} On parser or semantic errors, with a diagnostics array
- * containing UTF-16 source offsets. Source and before-plugin ASTs are checked;
- * after-plugin edits are printed without another semantic check.
+ * containing UTF-16 source offsets. Before-plugin ASTs undergo semantic checks;
+ * parser-only context checks are not rerun. After-plugin edits are printed
+ * without another semantic check.
  * No later phase runs after an error. Invalid options throw TypeError.
  */
 export declare function transformSync(

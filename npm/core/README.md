@@ -57,8 +57,10 @@ Unknown fields, unsupported values, and the former `parser`, `transform`, and
 `codegen` options throw an error identifying the configuration path.
 
 Syntax and semantic errors throw `SyntaxError` with a `diagnostics` array
-containing UTF-16 source offsets. The input and AST edited by `before` plugins
-are checked; edits from `after` plugins are printed without another semantic
+containing UTF-16 source offsets. The input is parsed and checked; ASTs edited by
+`before` plugins are checked again for semantic errors. Parser-only context
+checks, such as the placement of `new.target` and `import.meta`, are not rerun
+on edited ASTs. Edits from `after` plugins are printed without another semantic
 check. Plugin exceptions propagate to the caller.
 
 For separate parsing, editing, and printing, use `parseSync`, `walk`, and

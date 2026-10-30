@@ -17,9 +17,11 @@ pub use self::options::TransformPassOptions;
 /// Transform a trusted AST transfer buffer and serialize its AST and diagnostics.
 ///
 /// The original source must have passed parser and semantic syntax checks.
-/// Edited ASTs are checked again, except for source-only octal escape and legacy
-/// numeric literal checks. Comments and comment-based JSX pragmas are absent
-/// from the transfer. The returned buffer uses an empty source and UTF-16 spans.
+/// Edited ASTs undergo semantic checks, excluding source-only octal escape and
+/// legacy numeric literal checks. Parser-only context checks, including the
+/// placement of `new.target` and `import.meta`, are not rerun. Comments and
+/// comment-based JSX pragmas are absent from the transfer. The returned buffer
+/// uses an empty source and UTF-16 spans.
 ///
 /// # Safety
 ///

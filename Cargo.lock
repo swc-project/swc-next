@@ -2971,8 +2971,9 @@ version = "0.4.1"
 
 [[package]]
 name = "swc_next_transform_bridge"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
+ "mimalloc",
  "napi-build",
  "swc_next_bridge",
  "swc_next_ecma_ast",
