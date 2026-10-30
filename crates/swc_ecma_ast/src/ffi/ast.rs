@@ -401,7 +401,7 @@ pub unsafe fn deserialize_from<'a>(
         let source = std::str::from_utf8(&buf[strings..source_end])
             .map_err(|_| DeserializeError("AST string source contains invalid UTF-8"))?;
         let mut tree = Ast::new(source, allocator);
-        tree.reserve(node_count, extra_count);
+        tree.reserve(node_count, 0);
 
         // SAFETY: `reserve` allocated each destination for `node_count` elements.
         // The section bounds were checked above and all node-kind bytes are valid
@@ -436,24 +436,7 @@ pub unsafe fn deserialize_from<'a>(
         tree.root = Some(NodeId::from_usize(program_index));
 
         // =================== Extra Data ====================
-        // SAFETY: `reserve` allocated space for `extra_count` entries, the source
-        // section has the checked byte length, and all bit patterns are valid for
-        // `ExtraData`.
-        unsafe {
-            ptr::copy_nonoverlapping(
-                buf.as_ptr().add(extra),
-                tree.extra_data.as_raw_slice_mut().as_mut_ptr().cast::<u8>(),
-                extra_count * EXTRA_DATA_SIZE,
-            );
-            let bytes = slice::from_raw_parts_mut(
-                tree.extra_data.as_raw_slice_mut().as_mut_ptr().cast::<u8>(),
-                extra_count * EXTRA_DATA_SIZE,
-            );
-            for word in bytes.as_chunks_mut::<4>().0 {
-                word.reverse();
-            }
-            tree.extra_data.set_len(extra_count);
-        }
+        deserialize_extra_data(&mut tree, &buf[extra..strings]);
 
         // =================== String Pool ====================
         tree.strings.initialize_extra(&buf[source_end..pool_end]);
@@ -764,6 +747,26 @@ fn write_bytes_with_length(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
     write(buf, pos, bytes);
 }
 
+#[cfg(target_endian = "big")]
+fn deserialize_extra_data(tree: &mut Ast<'_>, bytes: &[u8]) {
+    assert!(bytes.len().is_multiple_of(EXTRA_DATA_SIZE));
+    let extra_count = bytes.len() / EXTRA_DATA_SIZE;
+    tree.extra_data.reserve(extra_count);
+
+    // SAFETY: The allocation has room for `extra_count` entries. Copy through
+    // its allocation pointer before creating a byte slice over initialized
+    // storage. All bit patterns are valid for `ExtraData`.
+    unsafe {
+        let destination = tree.extra_data.as_mut_ptr().cast::<u8>();
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), destination, bytes.len());
+        let initialized = slice::from_raw_parts_mut(destination, bytes.len());
+        for word in initialized.as_chunks_mut::<4>().0 {
+            word.reverse();
+        }
+        tree.extra_data.set_len(extra_count);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::borrow::Cow;
@@ -829,6 +832,15 @@ mod tests {
         assert_eq!(decoded_program.span(&decoded), Span::new(1, 4));
         assert_eq!(decoded_statement.span(&decoded), Span::new(2, 3));
         assert!(decoded_statement.is_empty_statement(&decoded));
+
+        // Every Program stores its body range in extra data. Exercise an empty
+        // section directly through the production decoder.
+        #[cfg(target_endian = "big")]
+        {
+            let mut empty = Ast::new("", &allocator);
+            super::deserialize_extra_data(&mut empty, &[]);
+            assert_eq!(empty.extra_data_count(), 0);
+        }
     }
 
     #[test]

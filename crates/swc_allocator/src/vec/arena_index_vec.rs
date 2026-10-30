@@ -285,6 +285,16 @@ impl<'alloc, I: Idx, T> ArenaIndexVec<'alloc, I, T> {
         self.raw.as_mut_slice()
     }
 
+    /// Returns a mutable pointer to the allocation, including spare capacity.
+    ///
+    /// This does not create a reference to the elements. The caller must
+    /// initialize spare elements before including them in [`set_len`](Self::set_len).
+    /// Operations that reallocate the vector invalidate this pointer.
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.raw.as_mut_ptr()
+    }
+
     /// Consumes the vector and returns a slice valid for the arena's lifetime.
     #[inline]
     pub fn into_bump_slice(self) -> &'alloc IndexSlice<I, [T]> {
@@ -587,10 +597,9 @@ mod tests {
     #[test]
     fn raw_storage() {
         let allocator = Allocator::new();
-        let mut raw = ArenaVec::<u32>::with_capacity_in(2, &allocator);
-        let ptr = raw.as_mut_ptr();
-        let mut data = ArenaIndexVec::<TestId, u32>::from_vec(raw);
+        let mut data = ArenaIndexVec::<TestId, u32>::with_capacity_in(2, &allocator);
         assert!(std::ptr::eq(data.bump(), &allocator));
+        let ptr = data.as_mut_ptr();
 
         // SAFETY: The allocation has room for two u32 values, both initialized
         // before exposing them through the vector's length.
