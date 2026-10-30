@@ -502,10 +502,10 @@ impl<'a> ScratchBuffer<'a> {
     }
 
     fn append(&mut self, index: impl AstNode) {
-        if self.items.len() == self.items.capacity() {
+        if let Err(index) = self.items.push_within_capacity(index.node_id()) {
             self.items.reserve(16);
+            self.items.push(index);
         }
-        self.items.push(index.node_id());
     }
 
     fn reset(&mut self, checkpoint: usize) {
