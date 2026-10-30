@@ -14,7 +14,7 @@ for trial in range(3):
   cmd=['valgrind','--tool=callgrind','--instr-atstart=no','--collect-atstart=no','--cache-sim=no','--branch-sim=no','--smc-check=all-non-file',f'--callgrind-out-file={profile}',str(node),'--jitless','--predictable','--expose-gc','--random-seed=42','.github/scripts/native-size-linux/profile.mjs',operation,fixture]
   with (out/f'{name}.log').open('w') as log:
    result=subprocess.run(cmd,env=env,stdout=subprocess.PIPE,stderr=log,text=True,check=True)
-  payload=json.loads(result.stdout);summary=re.search(r'^summary:\s+(\d+)',profile.read_text(),re.M);assert summary
+  payload=json.loads(result.stdout);summary=re.search(r'^totals:\s+(\d+)',profile.read_text(),re.M);assert summary and int(summary[1]) > 0
   metadata['results'].append({'side':side,'trial':trial,'instructions':int(summary[1]),'output':payload,'command':cmd})
   (out/'instructions.json').write_text(json.dumps(metadata,indent=2))
   print(side,trial,summary[1],flush=True)
