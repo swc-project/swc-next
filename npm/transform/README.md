@@ -90,6 +90,10 @@ checks, such as the placement of `new.target` and `import.meta`, are not rerun
 on edited ASTs. Edits from `after` plugins are printed without another semantic
 check. Plugin exceptions propagate unchanged.
 
+Known limitation: moving declarations in a `before` plugin can produce incorrect
+enum constant folding because Rust transforms still use original source positions
+for some semantic decisions. See [#1259](https://github.com/swc-project/swc-next/issues/1259).
+
 ## Testing
 
 API and FFI tests are maintained in `@swc-next/core`. Run from the workspace root:

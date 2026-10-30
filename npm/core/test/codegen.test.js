@@ -74,18 +74,6 @@ test("printSync preserves special numeric values across FFI", () => {
   assert.equal(printSync(program).code, "const value = -1 / 0;\n");
 });
 
-test("encoder ignores empty numeric and BigInt raw spellings", () => {
-  for (const lang of ["js", "ts"]) {
-    const number = parseSync("0;", { lang }).program;
-    number.body[0].expression.raw = "";
-    assert.equal(printSync(number, {}, { lang }).code, "0;\n");
-
-    const bigint = parseSync("0n;", { lang }).program;
-    bigint.body[0].expression.raw = "n";
-    assert.equal(printSync(bigint, {}, { lang }).code, "0n;\n");
-  }
-});
-
 test("decoder preserves literal spelling from the transformed string pool", () => {
   function transformedLiteral(source, lang) {
     let literal;

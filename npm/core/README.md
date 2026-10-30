@@ -63,6 +63,10 @@ checks, such as the placement of `new.target` and `import.meta`, are not rerun
 on edited ASTs. Edits from `after` plugins are printed without another semantic
 check. Plugin exceptions propagate to the caller.
 
+Known limitation: moving declarations in a `before` plugin can produce incorrect
+enum constant folding because Rust transforms still use original source positions
+for some semantic decisions. See [#1259](https://github.com/swc-project/swc-next/issues/1259).
+
 For separate parsing, editing, and printing, use `parseSync`, `walk`, and
 `printSync`. Pass the parser result's `meta` to `printSync` to retain its language
 and source type.

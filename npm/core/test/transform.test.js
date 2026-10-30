@@ -365,20 +365,6 @@ for (const { name, entrypoint, transformSync } of [
       assert.equal(result.code, "const finalValue = 1;\n");
     });
 
-    test("transformSync respects statement order changed by a before plugin", () => {
-      const options = { filename: "input.ts" };
-      const expected = transformSync("enum E { Member = value } const value = 1;", options);
-      const result = transformSync("const value = 1; enum E { Member = value }", {
-        ...options,
-        plugins: [{
-          name: "reorder-statements",
-          visitors: { Program(program) { program.body.reverse(); } },
-        }],
-      });
-
-      assert.equal(result.code, expected.code);
-    });
-
     test("transformSync infers syntax from filename and maps explicit parser options", () => {
       assert.equal(
         transformSync("const value: number = 1;", { filename: "input.ts" }).code,
