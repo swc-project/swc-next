@@ -1535,14 +1535,32 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     /// ```
     #[inline]
     pub fn push(&mut self, value: T) {
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if self.len_u32() == self.capacity_u32() {
+        if let Err(value) = self.push_within_capacity(value) {
+            // Grow before incrementing the length, including for full ZST vectors.
             self.buf.grow_one();
+            unsafe {
+                self.push_unchecked(value);
+            }
         }
+    }
+
+    /// Appends an element if there is spare capacity, without allocating.
+    ///
+    /// Returns the element unchanged if the vector is full. The vector's
+    /// contents, length, and capacity are unchanged on failure.
+    #[inline]
+    pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
+        let len = self.len_u32();
+        if len == self.capacity_u32() {
+            return Err(value);
+        }
+
+        // Reuse the checked length for both the write and the length update.
         unsafe {
-            self.push_unchecked(value);
+            ptr::write(self.buf.ptr().add(len as usize), value);
         }
+        self.buf.set_len(len + 1);
+        Ok(())
     }
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
@@ -3215,6 +3233,37 @@ mod tests {
         values.push(2);
         assert_eq!(&*values, &[1, 2]);
         assert!(values.capacity() >= 2);
+    }
+
+    #[test]
+    fn push_within_capacity() {
+        let bump = Allocator::new();
+        let mut values = ArenaVec::new_in(&bump);
+        assert_eq!(values.push_within_capacity(1), Err(1));
+        assert!(values.is_empty());
+        assert_eq!(values.capacity(), 0);
+
+        let mut values = ArenaVec::with_capacity_in(1, &bump);
+        let capacity = values.capacity();
+        for value in 0..capacity {
+            assert_eq!(values.push_within_capacity(value), Ok(()));
+        }
+        assert_eq!(values.push_within_capacity(capacity), Err(capacity));
+        assert_eq!(values.as_slice(), (0..capacity).collect::<Vec<_>>());
+        assert_eq!(values.capacity(), capacity);
+
+        values.truncate(0);
+        assert_eq!(values.push_within_capacity(7), Ok(()));
+        assert_eq!(values.as_slice(), &[7]);
+        assert_eq!(values.capacity(), capacity);
+
+        let mut zero_sized = ArenaVec::new_in(&bump);
+        assert_eq!(zero_sized.push_within_capacity(()), Ok(()));
+        assert_eq!(zero_sized.len(), 1);
+
+        zero_sized.buf.set_len(u32::MAX);
+        assert_eq!(zero_sized.push_within_capacity(()), Err(()));
+        assert_eq!(zero_sized.len(), u32::MAX as usize);
     }
 
     #[test]
