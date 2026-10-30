@@ -14,6 +14,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec, wtf8::Wtf8Buf};
 use swc_next_ecma_ast::*;
 use swc_next_ecma_ast::{AstUtf8, AstWtf8};
 
+use crate::util::code_point_at;
 use crate::{
     TokenFlag,
     config::{NoTokenParserConfig, ParserConfig},
@@ -13774,15 +13775,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     #[cold]
     #[inline(never)]
     fn next_token_error(&mut self, error: LexicalError) -> Option<()> {
-        let current_token_end = self.current_token.end();
-        let lexer_cursor = self.lexer.cursor;
+        let cursor = self.lexer.cursor;
+        let width = if cursor as usize == self.source.len() {
+            0
+        } else {
+            code_point_at(self.source.as_bytes(), cursor as usize)
+                .map_or(1, |code_point| u32::from(code_point.len))
+        };
         self.diagnostics.push(Diagnostic {
             severity: Severity::Error,
             message: Cow::Borrowed(lexical_error_message(error)),
-            span: Span::new(
-                current_token_end.min(lexer_cursor),
-                current_token_end.max(lexer_cursor),
-            ),
+            span: Span::new(cursor, cursor + width),
             help: Some(Cow::Borrowed(lexical_error_help(error))),
             labels: Vec::new(),
         });
