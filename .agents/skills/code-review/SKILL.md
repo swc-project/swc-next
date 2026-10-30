@@ -22,6 +22,9 @@ simplification suggestions with a concrete alternative and its tradeoffs.
 Print an input as example and its actual before/after results. For behavior-preserving refactors, report
 the evidence for equivalence.
 
+For performance optimization PRs, briefly explain the core optimization and show the
+relevant before/after code snippets. Distinguish measured results from expected gains.
+
 ## Test Coverage
 
 - When reviewing a GitHub pull request link, do not rerun tests locally.
