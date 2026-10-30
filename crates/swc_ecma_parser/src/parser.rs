@@ -3213,7 +3213,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !is_function_expression && !self.statement_context.permits_declaration() {
             if opts.is_async {
                 self.report(
-                    self.current_token.span(),
+                    Span::new(start, end),
                     "Async functions can only be declared at the top level or inside a block",
                     ReportOptions::default(),
                 );
