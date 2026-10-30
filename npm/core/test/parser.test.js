@@ -202,8 +202,32 @@ test("parseSync can disable comment collection", () => {
   assert.deepEqual(result.comments, []);
 });
 
+test("errorRecovery controls whether the first diagnostic is thrown", () => {
+  for (const parse of [parseSync, parseStandalone]) {
+    const source = "const a; const b;";
+    const recovered = parse(source, { errorRecovery: true });
+    assert.equal(recovered.diagnostics.length, 2);
+    assert.ok(recovered.program.body.length > 0);
+    for (const options of [undefined, null, {}, { errorRecovery: false }]) {
+      assert.throws(() => parse(source, options), (error) => {
+        assert.deepEqual(error, recovered.diagnostics[0]);
+        return true;
+      });
+    }
+    assert.throws(() => parse(source, { errorRecovery: 1 }), TypeError);
+    const semantic = "let a; let a;";
+    const options = { semanticErrors: true, errorRecovery: true };
+    const first = parse(semantic, options).diagnostics[0];
+    assert.throws(() => parse(semantic, { semanticErrors: true }), (error) => {
+      assert.deepEqual(error, first);
+      return true;
+    });
+    assert.deepEqual(parse("let a;", { errorRecovery: true }).diagnostics, []);
+  }
+});
+
 test("parseSync exposes parser diagnostics lazily", () => {
-  const result = parseSync("const = 1");
+  const result = parseSync("const = 1", { errorRecovery: true });
   const descriptor = Object.getOwnPropertyDescriptor(result, "diagnostics");
 
   assert.equal(typeof descriptor.get, "function");
@@ -235,23 +259,23 @@ test("parseSync makes semantic early-error checking optional", () => {
   assert.deepEqual(parseSync(source).diagnostics, []);
   assert.deepEqual(parseSync(source, { semanticErrors: false }).diagnostics, []);
 
-  const checked = parseSync(source, { semanticErrors: true });
+  const checked = parseSync(source, { semanticErrors: true, errorRecovery: true });
   assert.equal(checked.diagnostics.length, 1);
   assert.equal(checked.diagnostics[0].severity, "error");
   assert.equal(checked.program.body.length, 2);
   assert.deepEqual(checked.program, parseSync(source).program);
 
-  const valid = parseSync("let value; { let value; }", { semanticErrors: true });
+  const valid = parseSync("let value; { let value; }", { semanticErrors: true, errorRecovery: true });
   assert.deepEqual(valid.diagnostics, []);
   const missingExport = "export { missing };";
   assert.deepEqual(parseSync(missingExport).diagnostics, []);
-  assert.equal(parseSync(missingExport, { semanticErrors: true }).diagnostics.length, 1);
+  assert.equal(parseSync(missingExport, { semanticErrors: true, errorRecovery: true }).diagnostics.length, 1);
   assert.throws(() => parseSync(source, { semanticErrors: 1 }), TypeError);
 });
 
 test("semantic checking supports TypeScript through both parser entry points", () => {
   const source = "type Value = string; type Value = number;";
-  const options = { lang: "ts", semanticErrors: true };
+  const options = { lang: "ts", semanticErrors: true, errorRecovery: true };
   const checked = parseSync(source, options);
   assert.deepEqual(parseSync(source, { lang: "ts" }).diagnostics, []);
   assert.deepEqual(parseSync(source, { ...options, semanticErrors: false }).diagnostics, []);
@@ -268,13 +292,13 @@ test("semantic checking supports TypeScript through both parser entry points", (
   const invalid = "type Value = ;";
   assert.deepEqual(
     parseSync(invalid, options).diagnostics,
-    parseSync(invalid, { lang: "ts" }).diagnostics,
+    parseSync(invalid, { lang: "ts", errorRecovery: true }).diagnostics,
   );
 });
 
 test("semantic diagnostics preserve Unicode offsets and related labels", () => {
   const source = "/* 😀 */ let 文; let 文;";
-  const result = parseSync(source, { semanticErrors: true, comments: "none" });
+  const result = parseSync(source, { semanticErrors: true, comments: "none", errorRecovery: true });
   const [error] = result.diagnostics;
   assert.equal(error.start, source.lastIndexOf("文"));
   assert.equal(error.end, source.lastIndexOf("文") + 1);
@@ -285,8 +309,8 @@ test("semantic diagnostics preserve Unicode offsets and related labels", () => {
 
 test("semantic checking appends diagnostics after parser recovery", () => {
   function checkRecovery(source, lang) {
-    const unchecked = parseSync(source, { lang });
-    const checked = parseSync(source, { lang, semanticErrors: true });
+    const unchecked = parseSync(source, { lang, errorRecovery: true });
+    const checked = parseSync(source, { lang, semanticErrors: true, errorRecovery: true });
     assert.equal(unchecked.diagnostics.length, 1);
     assert.equal(checked.diagnostics.length, 2);
     assert.deepEqual(checked.diagnostics.slice(0, 1), unchecked.diagnostics);
@@ -294,7 +318,7 @@ test("semantic checking appends diagnostics after parser recovery", () => {
     assert.deepEqual(checked.program, unchecked.program);
     assert.deepEqual(checked.comments, unchecked.comments);
     assert.deepEqual(
-      parseStandalone(source, { lang, semanticErrors: true }).diagnostics,
+      parseStandalone(source, { lang, semanticErrors: true, errorRecovery: true }).diagnostics,
       checked.diagnostics,
     );
   }
@@ -305,19 +329,19 @@ test("semantic checking appends diagnostics after parser recovery", () => {
 
 test("parseSync reports diagnostics with UTF-16 offsets", () => {
   const source = "/* 文😀 */ const = 1";
-  const result = parseSync(source);
+  const result = parseSync(source, { errorRecovery: true });
 
   assert.equal(result.diagnostics.length, 1);
   assert.equal(result.diagnostics[0].start, source.indexOf("="));
   assert.equal(result.diagnostics[0].end, source.indexOf("=") + 1);
   assert.equal(result.comments[0].value, " 文😀 ");
 
-  const noComments = parseSync(source, { comments: "none" });
+  const noComments = parseSync(source, { comments: "none", errorRecovery: true });
   assert.deepEqual(noComments.diagnostics, result.diagnostics);
   assert.deepEqual(noComments.comments, []);
 
   const eofSource = '"文😀"; const value =';
-  const eof = parseSync(eofSource);
+  const eof = parseSync(eofSource, { errorRecovery: true });
   assert.equal(eof.diagnostics.length, 1);
   assert.equal(eof.diagnostics[0].start, eofSource.length);
   assert.equal(eof.diagnostics[0].end, eofSource.length);
@@ -325,7 +349,7 @@ test("parseSync reports diagnostics with UTF-16 offsets", () => {
 
 test("parseSync preserves diagnostic help, labels, and Unicode messages", () => {
   const source = "/* 😀 */ <开始></结束>";
-  const result = parseSync(source, { lang: "jsx" });
+  const result = parseSync(source, { lang: "jsx", errorRecovery: true });
 
   assert.equal(result.diagnostics.length, 1);
   const [error] = result.diagnostics;
@@ -342,14 +366,14 @@ test("parseSync preserves diagnostic help, labels, and Unicode messages", () => 
 });
 
 test("parseSync decodes diagnostic arrays and optional metadata", () => {
-  const result = parseSync("const a; const b;");
+  const result = parseSync("const a; const b;", { errorRecovery: true });
 
   assert.equal(result.diagnostics.length, 2);
   assert.equal(result.diagnostics[0].severity, "error");
   assert.equal(result.diagnostics[1].severity, "error");
   assert.ok(result.diagnostics[0].start < result.diagnostics[1].start);
 
-  const ambient = parseSync("declare function f() {}", { lang: "dts" });
+  const ambient = parseSync("declare function f() {}", { lang: "dts", errorRecovery: true });
   assert.equal(ambient.diagnostics.length, 1);
   assert.equal(ambient.diagnostics[0].severity, "error");
   assert.equal(ambient.diagnostics[0].help, undefined);

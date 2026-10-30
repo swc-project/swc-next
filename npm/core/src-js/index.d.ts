@@ -5,7 +5,7 @@ export * from "@swc-next/walker";
 import type {
   CodegenOptions,
   CodegenOutput,
-  ParserOptions,
+  ParserOptions as BindingParserOptions,
 } from "./binding.js";
 import type { AstMeta } from "@swc-next/decoder";
 export type { AstMeta } from "@swc-next/decoder";
@@ -15,8 +15,12 @@ export type {
   CommentMode,
   CodegenOptions,
   CodegenOutput,
-  ParserOptions,
 } from "./binding.js";
+
+export interface ParserOptions extends BindingParserOptions {
+  /** Return diagnostics and the recovered AST instead of throwing the first diagnostic. @default false */
+  errorRecovery?: boolean;
+}
 
 export interface Comment {
   type: "Line" | "Block";

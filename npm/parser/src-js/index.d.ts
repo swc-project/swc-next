@@ -1,12 +1,17 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 
-import type { ParserOptions } from "./binding.js";
+import type { ParserOptions as BindingParserOptions } from "./binding.js";
 import type { AstMeta } from "@swc-next/decoder";
 export type { AstMeta } from "@swc-next/decoder";
 
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
-export type { CommentMode, ParserOptions } from "./binding.js";
+export type { CommentMode } from "./binding.js";
+
+export interface ParserOptions extends BindingParserOptions {
+  /** Return diagnostics and the recovered AST instead of throwing the first diagnostic. @default false */
+  errorRecovery?: boolean;
+}
 
 export interface Comment {
   type: "Line" | "Block";

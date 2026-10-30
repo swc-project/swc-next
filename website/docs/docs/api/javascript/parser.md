@@ -16,7 +16,7 @@ declare function parseSync(
 ): ParseResult;
 ```
 
-`source` is the complete source text. Omitting `options` or passing `null` uses the defaults below. Parsing is synchronous and can return a recovered AST with diagnostics.
+`source` is the complete source text. Omitting `options` or passing `null` uses the defaults below. Parsing is synchronous. By default, the first diagnostic is thrown; enable `errorRecovery` to return diagnostics and a recovered AST.
 
 ## ParserOptions
 
@@ -26,6 +26,7 @@ declare function parseSync(
 | [`sourceType`](#sourcetype) | `"module" \| "script" \| "commonjs" \| "unambiguous"` | `"module"` | Select module, script, or CommonJS parsing rules, or detect them from the source. |
 | [`preserveParens`](#preserveparens) | `boolean` | `true` | Keep explicit nodes for parenthesized expressions and types. |
 | [`comments`](#comments) | `"none" \| "flat"` | `"flat"` | Collect comments in a separate list, or skip collection. |
+| [`errorRecovery`](#errorrecovery) | `boolean` | `false` | Return diagnostics and a recovered AST instead of throwing the first diagnostic. |
 | [`semanticErrors`](#semanticerrors) | `boolean` | `false` | Also check semantic early errors that require an AST pass. |
 
 Omitted fields use their defaults. Invalid option values, such as `lang: "javascript"` or `preserveParens: 1`, throw a `TypeError`.
@@ -141,6 +142,14 @@ parseSync(source, { comments: "none" }).comments;
 
 Collecting comments does not make [`printSync`](/api/javascript/codegen) emit them: its JavaScript interface takes the program and metadata, without the flat comment list.
 
+### errorRecovery
+
+Type: `boolean`
+
+Default: `false`
+
+When parsing produces diagnostics, the default behavior throws the first `Diagnostic` object. Set `errorRecovery: true` to return the AST and diagnostics instead. The AST may be incomplete for invalid input. This also applies to semantic diagnostics when `semanticErrors` is enabled.
+
 ### semanticErrors
 
 Type: `boolean`
@@ -156,7 +165,7 @@ const source = "let answer; let answer;";
 parseSync(source, { semanticErrors: false }).diagnostics.length;
 // 0
 
-parseSync(source, { semanticErrors: true }).diagnostics.length;
+parseSync(source, { semanticErrors: true, errorRecovery: true }).diagnostics.length;
 // 1
 ```
 
@@ -180,7 +189,7 @@ interface ParseResult {
 | `comments` | Flat comments with `type: "Line" \| "Block"`, delimiter-free `value`, `start`, and `end`. Empty when collection is disabled. |
 | `diagnostics` | Syntax diagnostics and, with `semanticErrors`, semantic early errors. Check these before using recovered output. |
 
-The program, comments, and diagnostics are decoded lazily when accessed. See [AST types](/api/javascript/types) for node declarations.
+The program and comments are decoded lazily when accessed. Diagnostics are decoded lazily when `errorRecovery` is enabled. See [AST types](/api/javascript/types) for node declarations.
 
 ## Diagnostics and positions
 

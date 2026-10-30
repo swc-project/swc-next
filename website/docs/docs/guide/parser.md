@@ -17,7 +17,7 @@ console.log(program.type); // Program
 console.log(diagnostics); // []
 ```
 
-Inspect diagnostics before transforming or printing recovered syntax.
+By default, `parseSync` throws the first diagnostic if parsing reports an error. Set `errorRecovery: true` to receive diagnostics and a recovered AST; inspect the diagnostics before transforming or printing it.
 
 ## Parse TypeScript or JSX
 

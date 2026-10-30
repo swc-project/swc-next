@@ -31,7 +31,12 @@ export function parseSync(source, options) {
     ? new Uint8Array(sourceBuffer.buffer.transferToFixedLength(written))
     : sourceBuffer.slice(0, written);
   const buffer = __parseSync(sourceBytes, source.length, encodeParserOptions(options));
-  return decode(buffer, source, sourceBytes);
+  const result = decode(buffer, source, sourceBytes);
+  if (!options?.errorRecovery) {
+    const diagnostics = result.diagnostics;
+    if (diagnostics.length) throw diagnostics[0];
+  }
+  return result;
 }
 
 export function printSync(program, options, meta) {

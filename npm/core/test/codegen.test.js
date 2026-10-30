@@ -29,7 +29,7 @@ test("printSync prints modified parser-produced ESTree", () => {
 });
 
 test("encoder preserves array rests", () => {
-  const print = (source, lang) => printSync(parseSync(source).program, {}, { lang }).code;
+  const print = (source, lang) => printSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
 
   assert.equal(print("const [...a, b] = v;", "js"), "const [...a, b] = v;\n");
   assert.equal(print("const [...a, b] = v;", "ts"), "const [...a, b] = v;\n");
