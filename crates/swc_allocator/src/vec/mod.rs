@@ -996,8 +996,13 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
     ///
     /// [`clear`]: #method.clear
     /// [`drain`]: #method.drain
+    #[inline]
     pub fn truncate(&mut self, len: usize) {
         let current_len = self.len_usize();
+        if !mem::needs_drop::<T>() {
+            self.buf.set_len(len.min(current_len) as u32);
+            return;
+        }
         unsafe {
             let mut ptr = self.as_mut_ptr().add(current_len);
             // Set the final length at the end, keeping in mind that
@@ -1533,7 +1538,7 @@ impl<'bump, T: 'bump> ArenaVec<'bump, T> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if self.len_u32() == self.capacity_u32() {
-            self.reserve(1);
+            self.buf.grow_one();
         }
         unsafe {
             self.push_unchecked(value);
@@ -3044,5 +3049,47 @@ mod serialize {
             }
             seq.end()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate() {
+        let bump = Allocator::new();
+        let mut values = ArenaVec::new_in(&bump);
+        values.extend_from_slice(&[1, 2, 3]);
+        let capacity = values.capacity();
+
+        values.truncate(2);
+        assert_eq!(&*values, &[1, 2]);
+        assert_eq!(values.capacity(), capacity);
+
+        values.truncate(usize::MAX);
+        assert_eq!(&*values, &[1, 2]);
+
+        values.truncate(0);
+        assert!(values.is_empty());
+        values.push(4);
+        assert_eq!(&*values, &[4]);
+        assert_eq!(values.capacity(), capacity);
+
+        let mut zero_sized = ArenaVec::new_in(&bump);
+        zero_sized.push(());
+        zero_sized.push(());
+        zero_sized.truncate(1);
+        assert_eq!(zero_sized.len(), 1);
+    }
+
+    #[test]
+    fn push() {
+        let bump = Allocator::new();
+        let mut values = ArenaVec::with_capacity_in(1, &bump);
+        values.push(1);
+        values.push(2);
+        assert_eq!(&*values, &[1, 2]);
+        assert!(values.capacity() >= 2);
     }
 }
