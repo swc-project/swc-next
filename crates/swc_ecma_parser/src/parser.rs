@@ -2242,7 +2242,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.parse_variable_declaration(VariableKind::Var, false, start)
                     .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
             }
-            TokenTag::Const => self.parse_const_or_const_enum(),
+            TokenTag::Const => {
+                // TypeScript const enums were handled by the declaration check above.
+                let start = self.current_token.start();
+                self.advance()?;
+                self.parse_variable_declaration(VariableKind::Const, false, start)
+                    .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
+            }
             TokenTag::Let if !self.current_token.is_escaped() => self.parse_let(),
             TokenTag::Using => self.parse_using_or_expression(),
             TokenTag::LeftBrace => Some(Stmt::BlockStatement(self.parse_block_statement()?)),
@@ -2434,20 +2440,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let expression = self.parse_await_expression(start)?;
         let expression = self.parse_expr_from_left(expression, Precedence::Comma)?;
         self.parse_expression_statement_with_expression(start, expression)
-    }
-
-    fn parse_const_or_const_enum(&mut self) -> Option<Stmt> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::Const);
-        if self.lang.is_typescript() {
-            let next = self.peek_ahead()?;
-            if is_const_enum_head(next) {
-                return self.parse_ts_declaration();
-            }
-        }
-        let start = self.current_token.start();
-        self.advance()?;
-        self.parse_variable_declaration(VariableKind::Const, false, start)
-            .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
     }
 
     fn parse_async_function_or_expression(&mut self) -> Option<Stmt> {
