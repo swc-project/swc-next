@@ -1567,6 +1567,16 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     break;
                 }
                 pos += 16;
+                if self.has_token_flag(TokenFlag::LineTerminatorBefore) {
+                    static COMMENT_END: std::sync::LazyLock<memchr::memmem::Finder<'static>> =
+                        std::sync::LazyLock::new(|| memchr::memmem::Finder::new(b"*/"));
+                    let Some(offset) = COMMENT_END.find(&src[pos..]) else {
+                        self.cursor = src.len() as u32;
+                        return Err(LexicalError::UnterminatedMultiLineComment);
+                    };
+                    pos += offset;
+                    break;
+                }
             }
 
             match src[pos] {
