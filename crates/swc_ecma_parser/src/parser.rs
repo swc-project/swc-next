@@ -2097,12 +2097,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn next_token_may_start_with(&self, matches_ascii: impl FnOnce(u8) -> bool) -> bool {
-        let start = self.current_token.end() as usize;
+        let mut start = self.current_token.end() as usize;
         let source = self.source.as_bytes();
+        while matches!(source.get(start), Some(b' ' | b'\t' | 0x0B | 0x0C)) {
+            start += 1;
+        }
         let Some(&byte) = source.get(start) else {
             return false;
         };
-        // Keep full lookahead for trivia and non-ASCII bytes.
+        // Keep full lookahead for line breaks, comments, and non-ASCII bytes.
         // '/' may start a line or block comment, and '<' may start an HTML comment.
         byte >= 0x80 || matches!(byte, b' ' | b'\t'..=b'\r' | b'/' | b'<') || matches_ascii(byte)
     }
