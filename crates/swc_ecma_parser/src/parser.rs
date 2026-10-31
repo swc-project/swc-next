@@ -11322,13 +11322,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut key = None;
         let key_token = self.current_token;
 
+        // Ordinary `name: value` keys fall through to the single colon-value site
+        // below. `parse_expr` force-inlines the Pratt loop, so a second call site
+        // would duplicate it and hurt instruction-cache locality.
         if key_token.tag() == TokenTag::Identifier {
             let name = self.parse_identifier_name()?;
-            let parsed_key = PropertyKey::IdentifierName(name);
-            if self.current_token.tag() == TokenTag::Colon {
-                return self.parse_object_property_value(start, parsed_key, false);
-            }
-            key = Some(parsed_key);
+            key = Some(PropertyKey::IdentifierName(name));
         } else if key_token.tag() == TokenTag::Async {
             let token = self.current_token;
             self.advance_without_escape_check()?;
@@ -11401,7 +11400,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
 
         if self.current_token.tag() == TokenTag::Colon {
-            return self.parse_object_property_value(start, key, computed);
+            self.advance()?;
+            let value = self.parse_expr(
+                Precedence::Assignment,
+                ParseExpressionOpts {
+                    allow_type_binding_identifiers: true,
+                },
+            )?;
+            return Some(ObjectPropertyKind::ObjectProperty(
+                self.ast.object_property(
+                    Span::new(start, value.span(&self.ast).end),
+                    key,
+                    value,
+                    PropertyKind::Init,
+                    false,
+                    false,
+                    computed,
+                ),
+            ));
         }
 
         let reference = self.property_key_to_reference(key, key_token)?;
@@ -11435,33 +11451,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 .record_initialized_name(property.node_id(), property.span(&self.ast));
         }
         Some(ObjectPropertyKind::ObjectProperty(property))
-    }
-
-    #[inline(always)]
-    fn parse_object_property_value(
-        &mut self,
-        start: u32,
-        key: PropertyKey,
-        computed: bool,
-    ) -> Option<ObjectPropertyKind> {
-        self.advance()?;
-        let value = self.parse_expr(
-            Precedence::Assignment,
-            ParseExpressionOpts {
-                allow_type_binding_identifiers: true,
-            },
-        )?;
-        Some(ObjectPropertyKind::ObjectProperty(
-            self.ast.object_property(
-                Span::new(start, value.span(&self.ast).end),
-                key,
-                value,
-                PropertyKind::Init,
-                false,
-                false,
-                computed,
-            ),
-        ))
     }
 
     /// Both shorthand forms change an IdentifierName into an IdentifierReference.
