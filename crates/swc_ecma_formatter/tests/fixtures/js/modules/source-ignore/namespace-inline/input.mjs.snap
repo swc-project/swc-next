@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export * as ns /* prettier-ignore */ // c
+from 'm';
+---------- Options ----------
+{}
+---------- Output ----------
+export * as ns /* prettier-ignore */ // c
+from "m";

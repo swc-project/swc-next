@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+t ? <a />
+/* #__PURE__ */ : z();
+---------- Options ----------
+{}
+---------- Output ----------
+t ? (
+  <a />
+)
+/* #__PURE__ */ : (
+  z()
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+t ? (
+  <a />
+)
+/* #__PURE__ */ : (
+  z()
+);

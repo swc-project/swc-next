@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare const test: boolean, other: number, fn: number;
+// @ts-expect-error
+test ? (
+fn
+)() : other;
+---------- Options ----------
+{}
+---------- Output ----------
+declare const test: boolean, other: number, fn: number;
+// @ts-expect-error
+test ? (
+      fn
+    )()
+  : other;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+declare const test: boolean, other: number, fn: number
+// @ts-expect-error
+test ? (
+      fn
+    )()
+  : other

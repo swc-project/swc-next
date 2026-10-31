@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {constructor(@a
+/* c */ @b private x: number) {}}---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  constructor(
+    @a
+    /* c */
+    @b
+    private x: number,
+  ) {}
+}

@@ -1,0 +1,2 @@
+first;
+([secondLong] ? thirdLong : fourthLong);

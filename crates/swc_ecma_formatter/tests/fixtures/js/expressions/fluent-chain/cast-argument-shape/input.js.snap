@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+flow.first(state[/** @type {string} */ (key)]).second(1).third(2).fourth();---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+flow
+  .first(state[/** @type {string} */ (key)])
+  .second(1)
+  .third(2)
+  .fourth();
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+flow
+  .first(
+    state[
+      /** @type {string} */ (
+        key
+      )
+    ],
+  )
+  .second(1)
+  .third(2)
+  .fourth();

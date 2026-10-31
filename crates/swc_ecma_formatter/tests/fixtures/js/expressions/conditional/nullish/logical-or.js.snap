@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+condition ? first || second : alternate;
+---------- Options ----------
+{}
+---------- Output ----------
+condition ? first || second : alternate;
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+condition
+  ? first || second
+  : alternate;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+condition ? first || second : alternate
+

@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+first +
+  /* before */ (second +
+    third);---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+// @ts-ignore
+first +
+  /* before */ (second +
+    third);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+// @ts-ignore
+first +
+  /* before */ (second + third);

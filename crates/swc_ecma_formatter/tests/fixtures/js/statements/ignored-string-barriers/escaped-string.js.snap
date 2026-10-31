@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+;
+// prettier-ignore
+'\x75se strict';
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// prettier-ignore
+;'\x75se strict'
+
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+;'\x75se strict';

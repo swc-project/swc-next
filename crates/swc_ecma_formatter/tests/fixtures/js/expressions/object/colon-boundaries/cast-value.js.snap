@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key // boundary
+: /** @type {number} */ (unknown) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  // boundary
+  key: /** @type {number} */ (unknown),
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  // boundary
+  key: /** @type {number} */ (
+    unknown
+  ),
+});
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  // boundary
+  key: /** @type {number} */ (unknown),
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  // boundary
+  key: /** @type {number} */ (
+    unknown
+  ),
+})

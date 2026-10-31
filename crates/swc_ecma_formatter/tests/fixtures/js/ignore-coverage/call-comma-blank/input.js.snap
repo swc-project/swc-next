@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+Math. // prettier-ignore
+max(1+2
+
+,3+4);
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+Math. // prettier-ignore
+max(
+  1 + 2,
+
+  3 + 4,
+);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+Math. // prettier-ignore
+max(
+  1 + 2,
+
+  3 + 4,
+)

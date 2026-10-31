@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Signatures={<T>(value:T):T;new<T>(value:T):Box<T>};
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Signatures = { <T>(value: T): T; new <T>(value: T): Box<T> };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Signatures = {
+  <T>(value: T): T;
+  new <T>(
+    value: T,
+  ): Box<T>;
+};
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Signatures =
+  {
+    <
+      T,
+    >(
+      value: T,
+    ): T
+    new <
+      T,
+    >(
+      value: T,
+    ): Box<T>
+  }
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+type Signatures = {
+	<T>(value: T): T;
+	new <T>(
+		value: T,
+	): Box<T>;
+};

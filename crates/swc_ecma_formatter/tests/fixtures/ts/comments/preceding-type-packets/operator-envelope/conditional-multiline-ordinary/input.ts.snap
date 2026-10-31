@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = A extends /* prettier-ignore */ /* c
+ * x */ | B ? D : E;---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+type T = A extends /* prettier-ignore */ /* c
+ * x */ | B
+  ? D
+  : E;

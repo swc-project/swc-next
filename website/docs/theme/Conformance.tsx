@@ -2,8 +2,8 @@ import type { ConformanceKind, ConformanceResult, Count } from "../conformance-r
 
 declare const CONFORMANCE_REPORT: ConformanceResult[];
 const number = (value: number) => value.toLocaleString("en-US");
-const suiteNames: Record<string, string> = { test262: "Test262", typescript: "TypeScript", babel: "Babel", swc: "SWC", swc_resolver: "SWC resolver" };
-const suiteOrder = ["test262", "typescript", "babel", "swc", "swc_resolver"];
+const suiteNames: Record<string, string> = { test262: "Test262", typescript: "TypeScript", babel: "Babel", swc: "SWC", swc_resolver: "SWC resolver", prettier_js: "Prettier JavaScript / JSX", prettier_typescript: "Prettier TypeScript / TSX" };
+const suiteOrder = ["test262", "typescript", "babel", "swc", "swc_resolver", "prettier_js", "prettier_typescript"];
 
 function PassCount({ passed, total }: Count) {
   if (total === 0) return <span aria-label="No cases">—</span>;
@@ -13,13 +13,13 @@ function PassCount({ passed, total }: Count) {
 export function ConformanceTable({ kind }: { kind: ConformanceKind }) {
   const results = CONFORMANCE_REPORT.filter((result) => result.kind === kind).sort((left, right) => suiteOrder.indexOf(left.suite) - suiteOrder.indexOf(right.suite));
   if (!results.length) throw new Error(`No conformance results for ${kind}`);
-  const native = kind !== "estree" && kind !== "codec";
+  const native = kind !== "estree" && kind !== "codec" && kind !== "formatter";
   const showNegative = results.some((result) => (result.negative?.total ?? 0) > 0);
   const showSkipped = results.some((result) => (result.skipped ?? 0) > 0);
   return <div className="conformance-table rp-scrollbar">
     <table>
       <thead><tr><th>Suite</th>
-        {native ? <><th>Positive passed</th>{showNegative && <th>Negative passed</th>}</> : <>{kind === "estree" && <th>AST parsed</th>}<th>{kind === "estree" ? "AST matched" : "Codec passed"}</th></>}
+        {native ? <><th>Positive passed</th>{showNegative && <th>Negative passed</th>}</> : <>{kind === "estree" && <th>AST parsed</th>}<th>{kind === "estree" ? "AST matched" : kind === "codec" ? "Codec passed" : "Passed"}</th></>}
         <th>{native ? "Failed" : "Not passed"}</th>{showSkipped && <th>Skipped</th>}
       </tr></thead>
       <tbody>{results.map((result) => <tr key={result.snapshot}>

@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import // @ts-expect-error
+type {Model as Record} from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+import // @ts-expect-error
+type { Model as Record } from "m";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+import // @ts-expect-error
+type { Model as Record } from "m";
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+import // @ts-expect-error
+type { Model as Record } from "m"

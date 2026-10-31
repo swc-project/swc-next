@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = F<A, /* prettier-ignore */ B // @ts-ignore
+, /* d */ >;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = F<
+  A,
+  /* prettier-ignore */ B // @ts-ignore
+  , /* d */>;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+type T = F<
+	A,
+	/* prettier-ignore */ B // @ts-ignore
+	, /* d */>;
+
+---------- Options ----------
+{}
+---------- Output ----------
+type T = F<
+  A,
+  /* prettier-ignore */ B // @ts-ignore
+  , /* d */>;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = F<
+  A,
+  /* prettier-ignore */ B // @ts-ignore
+  , /* d */>

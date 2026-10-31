@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [key /* inside */] /* outside */
+: // after
+value });
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+({
+  /* outside */
+  // after
+  [key /* inside */]: value,
+});

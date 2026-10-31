@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export declare function f(): void;
+{console.log("x");}
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+export declare function f(): void;
+{
+  console.log("x")
+}

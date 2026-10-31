@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A
+// c
+)
+
+/* @ts-ignore */ & B;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = A
+// c
+
+/* @ts-ignore */ & B;

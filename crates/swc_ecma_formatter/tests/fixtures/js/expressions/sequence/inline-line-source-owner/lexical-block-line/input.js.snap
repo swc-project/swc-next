@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first, /** @type {number} */ // @ts-expect-error
+(
+"wrong"
+);
+---------- Options ----------
+{}
+---------- Output ----------
+(first,
+  /** @type {number} */ // @ts-expect-error
+  (
+    "wrong"
+  ));

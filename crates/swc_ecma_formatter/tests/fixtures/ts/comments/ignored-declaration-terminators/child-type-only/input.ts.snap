@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = /* prettier-ignore */ (( A |  B ));
+---------- Options ----------
+{}
+---------- Output ----------
+type T = /* prettier-ignore */ A |  B;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T = /* prettier-ignore */ A |  B

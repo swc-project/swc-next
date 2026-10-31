@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+assertion_line: 58
+---
+---------- Input ----------
+async () => (
+/** @type {number} */
+a, b);
+---------- Options ----------
+{}
+---------- Output ----------
+async () =>
+  /** @type {number} */
+  (a, b);

@@ -1,0 +1,84 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+first ? second : [thirdLong, fourthLong, fifthLong] ? sixthLong : seventhLong;
+---------- Options ----------
+{}
+---------- Output ----------
+first ? second : [thirdLong, fourthLong, fifthLong] ? sixthLong : seventhLong;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+first ? second : [thirdLong, fourthLong, fifthLong] ? sixthLong : seventhLong
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+first
+  ? second
+  : [
+        thirdLong,
+        fourthLong,
+        fifthLong,
+      ]
+    ? sixthLong
+    : seventhLong;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+first
+  ? second
+  : [
+        thirdLong,
+        fourthLong,
+        fifthLong,
+      ]
+    ? sixthLong
+    : seventhLong;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4}
+---------- Output ----------
+first
+    ? second
+    : [
+            thirdLong,
+            fourthLong,
+            fifthLong,
+        ]
+      ? sixthLong
+      : seventhLong;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+first
+	? second
+	: [
+				thirdLong,
+				fourthLong,
+				fifthLong,
+		  ]
+		? sixthLong
+		: seventhLong;
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":1}
+---------- Output ----------
+first
+ ? second
+ : [
+      thirdLong,
+      fourthLong,
+      fifthLong,
+     ]
+   ? sixthLong
+   : seventhLong;
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+first ? second : [thirdLong, fourthLong, fifthLong] ? sixthLong : seventhLong;

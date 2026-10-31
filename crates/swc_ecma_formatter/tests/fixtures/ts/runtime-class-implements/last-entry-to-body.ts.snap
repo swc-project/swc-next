@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Empty<T> {}
+class Incoming implements Empty<number> // prettier-ignore
+{ x  =  7; }
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+interface Empty<T> {}
+class Incoming implements Empty<number> // prettier-ignore
+{
+  x  =  7;
+}
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface Empty<
+  T,
+> {}
+class Incoming implements Empty<number> // prettier-ignore
+{
+  x  =  7;
+}
+class Inline implements Empty<number> /* prettier-ignore */ {    }
+class Eol implements Empty<number> // prettier-ignore
+{    }

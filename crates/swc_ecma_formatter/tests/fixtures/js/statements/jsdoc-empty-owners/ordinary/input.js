@@ -1,0 +1,1 @@
+/** Ordinary comment. */; Math.random();

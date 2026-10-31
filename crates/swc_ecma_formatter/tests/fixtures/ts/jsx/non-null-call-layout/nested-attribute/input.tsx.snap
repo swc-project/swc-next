@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const view = <Box items={items.map(x => <Cell />)!!}/>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const view = (
+  <Box
+    items={items.map(
+      (x) => (
+        <Cell />
+      ),
+    )!!}
+  />
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const view = <Box items={items.map((x) => <Cell />)!!} />;

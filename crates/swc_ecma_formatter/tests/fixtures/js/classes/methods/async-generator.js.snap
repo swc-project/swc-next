@@ -1,0 +1,64 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C {static async *m(a){yield await a;}}
+---------- Options ----------
+{}
+---------- Output ----------
+class C {
+  static async *m(a) {
+    yield await a;
+  }
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C {
+  static async *m(
+    a,
+  ) {
+    yield await a;
+  }
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class C {
+  static async *m(a) {
+    yield await a
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C {
+  static async *m(
+    a,
+  ) {
+    yield await a
+  }
+}
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":2,"useTabs":true}
+---------- Output ----------
+class C {
+	static async *m(
+		a,
+	) {
+		yield await a;
+	}
+}
+
+---------- Options ----------
+{"quoteProps":"preserve","semi":false}
+---------- Output ----------
+class C {
+  static async *m(a) {
+    yield await a
+  }
+}

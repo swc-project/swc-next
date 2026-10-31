@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [/* head */ first + name]: value });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  [/* head */ first +
+  name]: value,
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({ [/* head */ first + name]: value });

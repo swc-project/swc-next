@@ -1,0 +1,1 @@
+first /* left */ + /* right */ second;

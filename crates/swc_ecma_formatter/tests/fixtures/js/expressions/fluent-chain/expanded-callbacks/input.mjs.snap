@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+items.map(item => { return item; }).filter(Boolean).reduce(collect, initial);
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+items
+  .map((item) => {
+    return item;
+  })
+  .filter(Boolean)
+  .reduce(collect, initial);

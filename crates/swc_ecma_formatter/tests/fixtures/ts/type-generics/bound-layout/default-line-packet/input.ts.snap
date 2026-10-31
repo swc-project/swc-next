@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A<
+  B  = // Inline comment about void.
+  // Above line comment about exclue.
+  C
+> = R;
+---------- Options ----------
+{}
+---------- Output ----------
+type A<
+  B = // Inline comment about void.
+    // Above line comment about exclue.
+    C,
+> = R;

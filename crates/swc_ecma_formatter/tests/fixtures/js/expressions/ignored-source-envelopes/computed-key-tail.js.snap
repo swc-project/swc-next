@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ [(/*#__PURE__*/ ((object  .  method)) /* prettier-ignore */)]: second() });
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;({
+  [
+    (/*#__PURE__*/ ((object  .  method)) /* prettier-ignore */)
+  ]: second(),
+})
+
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+({
+  [
+    (/*#__PURE__*/ ((object  .  method)) /* prettier-ignore */)
+  ]: second(),
+});

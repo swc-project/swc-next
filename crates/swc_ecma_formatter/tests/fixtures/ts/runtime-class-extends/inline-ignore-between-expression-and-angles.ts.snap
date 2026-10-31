@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Base<T> {}
+const ns = { Base };
+class Derived extends ns . Base /* prettier-ignore */ <  number  > {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class Base<T> {}
+const ns = { Base };
+class Derived extends ns.Base /* prettier-ignore */ <  number  > {}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class Base<T> {}
+const ns = { Base };
+class Derived
+  extends ns.Base /* prettier-ignore */ <  number  > {}

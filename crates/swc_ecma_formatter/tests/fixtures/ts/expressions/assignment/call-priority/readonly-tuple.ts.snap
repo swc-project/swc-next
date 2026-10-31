@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const assignedValueName = receiver.branch.method<readonly [A,B]>();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method<
+    readonly [A, B]
+  >();
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const assignedValueName =
+  receiver.branch.method<
+    readonly [A, B]
+  >();
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const assignedValueName = receiver.branch.method<readonly [A, B]>();

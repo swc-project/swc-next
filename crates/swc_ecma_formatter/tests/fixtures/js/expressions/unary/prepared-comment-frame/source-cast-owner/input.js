@@ -1,0 +1,1 @@
+!// @ts-ignore ( /** @type {number} */ (first) );

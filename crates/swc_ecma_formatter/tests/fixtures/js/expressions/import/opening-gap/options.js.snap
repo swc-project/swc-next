@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+import(
+
+  a, { with: { type: "json" } });
+---------- Options ----------
+{}
+---------- Output ----------
+import(a, { with: { type: "json" } });

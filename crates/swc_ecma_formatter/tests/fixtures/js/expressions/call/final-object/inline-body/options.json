@@ -1,0 +1,17 @@
+[
+  {
+    "printWidth": 20
+  },
+  {
+    "printWidth": 20,
+    "semi": false
+  },
+  {
+    "printWidth": 20,
+    "trailingComma": "none"
+  },
+  {
+    "printWidth": 20,
+    "trailingComma": "es5"
+  }
+]

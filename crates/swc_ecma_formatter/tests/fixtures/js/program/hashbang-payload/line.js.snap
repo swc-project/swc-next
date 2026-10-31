@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+#!/usr/bin/env node 	 
+run()
+---------- Options ----------
+{"endOfLine":"lf"}
+---------- Output ----------
+#!/usr/bin/env node 	 
+run();
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+#!/usr/bin/env node 	 
+run();

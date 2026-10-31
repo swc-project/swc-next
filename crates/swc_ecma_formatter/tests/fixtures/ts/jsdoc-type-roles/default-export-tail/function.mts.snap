@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default function(): ?;
+a;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+export default function (): ?;
+a

@@ -1,0 +1,2 @@
+result = /** @type {number} */
+(input);

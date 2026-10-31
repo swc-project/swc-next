@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (AlphaLongType & (BetaLongType
+// c
+))[];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T = (
+  AlphaLongType &
+    BetaLongType
+  // c
+)[];
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = (
+  AlphaLongType & BetaLongType
+  // c
+)[];

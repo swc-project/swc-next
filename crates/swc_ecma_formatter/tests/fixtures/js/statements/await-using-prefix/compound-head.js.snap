@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function f() { await /* first */ using /* second */ resource = createResource(firstArgument, secondArgument); }
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+async function f() {
+  await using /* first */ /* second */ resource = createResource(
+      firstArgument,
+      secondArgument,
+    );
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+async function f() {
+  await using /* first */ /* second */ resource =
+      createResource(
+        firstArgument,
+        secondArgument,
+      );
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+async function f() {
+  await using /* first */ /* second */ resource =
+      createResource(
+        firstArgument,
+        secondArgument,
+      )
+}

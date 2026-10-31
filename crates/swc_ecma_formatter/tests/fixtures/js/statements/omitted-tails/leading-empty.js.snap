@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+; /* head */
+
+b;
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+/* head */
+
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+/* head */
+
+b

@@ -1,0 +1,68 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+pipe((x) => x, (y) => y + 1);
+---------- Options ----------
+{}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+)
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+pipe(
+	(x) => x,
+	(y) => y + 1,
+);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+);
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1
+);
+
+---------- Options ----------
+{"bracketSpacing":false}
+---------- Output ----------
+pipe(
+  (x) => x,
+  (y) => y + 1,
+);

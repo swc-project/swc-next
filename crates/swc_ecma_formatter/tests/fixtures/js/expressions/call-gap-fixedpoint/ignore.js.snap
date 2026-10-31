@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,
+
+// prettier-ignore
+second(  ));
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  first,
+
+  // prettier-ignore
+  second(  ),
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+f(
+  first,
+
+  // prettier-ignore
+  second(  ),
+)

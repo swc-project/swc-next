@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A<T extends
+// a
+B> = 1;
+---------- Options ----------
+{}
+---------- Output ----------
+type A<
+  T extends
+    // a
+    B,
+> = 1;
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+type A<
+  T extends
+    // a
+    B,
+> = 1;

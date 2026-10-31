@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = { "long-property" /* first */ // second
+: veryLongValue };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = {
+  /* first */ // second
+  "long-property":
+    veryLongValue,
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result = {
+  /* first */ // second
+  "long-property": veryLongValue,
+};

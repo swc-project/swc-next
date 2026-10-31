@@ -1,0 +1,1 @@
+target = ( // @ts-ignore  first, second );

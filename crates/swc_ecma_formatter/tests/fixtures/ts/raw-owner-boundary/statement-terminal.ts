@@ -1,0 +1,2 @@
+// prettier-ignore
+x as ?;

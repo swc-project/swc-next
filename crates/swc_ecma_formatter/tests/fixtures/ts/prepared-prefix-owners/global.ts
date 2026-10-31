@@ -1,0 +1,1 @@
+declare /* body */ global {}

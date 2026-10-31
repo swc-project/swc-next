@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,
+
+{ key: second });
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  first,
+
+  { key: second },
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+f(
+  first,
+
+  { key: second },
+)

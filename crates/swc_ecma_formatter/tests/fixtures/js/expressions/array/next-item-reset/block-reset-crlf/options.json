@@ -1,0 +1,10 @@
+[
+  {
+    "endOfLine": "crlf",
+    "printWidth": 10
+  },
+  {
+    "printWidth": 20,
+    "trailingComma": "none"
+  }
+]

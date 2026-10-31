@@ -1,0 +1,14 @@
+[package]
+description          = "Language-independent document construction and layout printing"
+edition              = "2024"
+homepage.workspace   = true
+keywords             = ["formatting", "pretty-printing"]
+license.workspace    = true
+name                 = "swc_next_formatter_core"
+repository.workspace = true
+version              = "0.1.0"
+
+[dependencies]
+memchr             = { workspace = true }
+rustc-hash         = { workspace = true }
+swc_next_allocator = { workspace = true }

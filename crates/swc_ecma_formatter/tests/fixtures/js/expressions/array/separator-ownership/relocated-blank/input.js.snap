@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first
+/* before */
+,
+
+, last];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  first
+  /* before */,
+
+  ,
+  last,
+];

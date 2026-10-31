@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+!/* @ts-expect-error */ (
+/** @type {number} */ (first)
+);---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+! /* @ts-expect-error */
+/** @type {number} */ (first);
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+! /* @ts-expect-error */
+/** @type {number} */ (first)

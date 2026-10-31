@@ -1,0 +1,38 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Factory { new /* before parameters */ (/* inside parameters */): Result; }
+---------- Options ----------
+{}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (/* inside parameters */): Result;
+}
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (
+    /* inside parameters */
+  ): Result;
+}
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+interface Factory {
+  new /* before parameters */ (
+    /* inside parameters */
+  ): Result
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+interface Factory {
+	new /* before parameters */ (
+		/* inside parameters */
+	): Result;
+}

@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<A,
+
+// @ts-expect-error
+B extends number = "wrong"> = A;
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+type T<
+  A,
+
+  // @ts-expect-error
+  B extends number = "wrong",> = A;

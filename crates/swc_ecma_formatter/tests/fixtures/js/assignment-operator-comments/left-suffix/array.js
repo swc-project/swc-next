@@ -1,0 +1,2 @@
+[target // left
+??= first + second];

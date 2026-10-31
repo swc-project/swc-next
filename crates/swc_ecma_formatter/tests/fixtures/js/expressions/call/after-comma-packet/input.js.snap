@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first, /*#__PURE__*/ // @ts-expect-error
+g());
+---------- Options ----------
+{}
+---------- Output ----------
+f(
+  first,
+  /*#__PURE__*/ // @ts-expect-error
+  g(),
+);

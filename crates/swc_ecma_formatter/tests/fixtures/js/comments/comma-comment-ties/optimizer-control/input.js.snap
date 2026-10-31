@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[effect(), /* ordinary */ /* @__PURE__ */ // line
+factory()];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  effect(), /* ordinary */ /* @__PURE__ */ // line
+  factory(),
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+[
+  effect(), /* ordinary */ /* @__PURE__ */ // line
+  factory()
+];

@@ -1,0 +1,3 @@
+_ = `${
+firstLongName || secondLongName || thirdLongName
+}`;

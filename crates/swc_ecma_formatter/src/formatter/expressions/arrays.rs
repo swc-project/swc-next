@@ -1,0 +1,604 @@
+//! Array slots, comment boundaries, and grouped delimiter layout.
+
+use swc_next_ecma_ast::{
+    Argument, ArgumentData, ArrayExpression, CommentKind, Expr, ExprData, GetSpan, Span,
+    UnaryOperator,
+};
+
+use super::Formatter;
+use super::arguments::{
+    ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingArgument, Separator,
+    TrailingCommaPolicy,
+};
+use super::parentheses::NumericContentView;
+use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
+use crate::formatter::suppression::ContentMode;
+use crate::{
+    FormatError, TrailingCommas,
+    document::{ConditionTarget, Fragment, GroupId, Writer},
+};
+
+#[derive(Clone, Copy)]
+pub(super) enum ArrayArgumentArity {
+    Single,
+    Multiple,
+}
+
+enum SourceArray<'ast> {
+    Verbatim(Span),
+    Empty,
+    Formatted(PreparedArray<'ast>),
+}
+
+struct PreparedArray<'ast> {
+    array: ArrayExpression,
+    content: Span,
+    expand: bool,
+    opening: LineConstraint,
+    closing: TerminalCloseBoundary,
+    layout: ArgumentLayout,
+    numeric_comments: Option<ArrayCommentOwner<'ast>>,
+}
+
+struct NumericArrayFacts {
+    fill_first: Option<Argument>,
+    reference: Option<ReferenceNumericBounds>,
+}
+
+struct ReferenceNumericBounds {
+    first: Expr,
+    last: Expr,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct RecordedArray<'ast> {
+    pub(super) normal: Fragment<'ast>,
+    pub(super) forced: Option<Fragment<'ast>>,
+}
+
+pub(super) enum RecordedArrayArgument<'ast> {
+    Ordinary(Fragment<'ast>),
+    Selected(RecordedArray<'ast>),
+}
+
+struct ArgumentItem {
+    holes: usize,
+    argument: Option<Argument>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ArrayChildKind {
+    Array,
+    Object,
+}
+
+fn next_item(elements: &mut impl Iterator<Item = Option<Argument>>) -> Option<ArgumentItem> {
+    let mut holes = 0;
+    for element in elements.by_ref() {
+        if let Some(argument) = element {
+            return Some(ArgumentItem {
+                holes,
+                argument: Some(argument),
+            });
+        }
+        holes += 1;
+    }
+    (holes != 0).then_some(ArgumentItem {
+        holes,
+        argument: None,
+    })
+}
+
+impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(in crate::formatter) fn format_array(
+        &mut self,
+        array: ArrayExpression,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        let source = self.source_array(array, false)?;
+        self.format_source_array(source, writer)
+    }
+
+    fn source_array(
+        &mut self,
+        array: ArrayExpression,
+        qualify: bool,
+    ) -> Result<SourceArray<'ast>, FormatError> {
+        let elements = array.elements(self.ast);
+        let span = array.span(self.ast);
+        let content = Span::new(span.start + 1, span.end - 1);
+        if self.has_suppression
+            && elements
+                .iter()
+                .all(|id| self.ast.get_node_in_sub_range(id).is_none())
+            && self.content_mode(self.comments.in_range(content)) == ContentMode::Verbatim
+        {
+            return Ok(SourceArray::Verbatim(span));
+        }
+        if elements.is_empty() && self.comments.between(content)?.is_empty() {
+            return Ok(SourceArray::Empty);
+        }
+        let expand = self.array_should_expand(array);
+        let numeric = if qualify {
+            self.numeric_array_facts(array)
+        } else {
+            NumericArrayFacts {
+                fill_first: self.numeric_array_first(array),
+                reference: None,
+            }
+        };
+        let opening = self.opening_line_constraint(content);
+        let (layout, numeric_comments) = match numeric.fill_first {
+            Some(first) => {
+                // Keep this old fallible query even if qualification demotes later.
+                let comments = self.comments.between(content)?;
+                let first_end = first.span(self.ast).end;
+                let fill_line = self.array_has_inline_line_comments(comments, first_end);
+                let layout = if fill_line {
+                    ArgumentLayout::Lines
+                } else {
+                    ArgumentLayout::Fill
+                };
+                (
+                    layout,
+                    numeric.reference.map(|bounds| {
+                        ArrayCommentOwner::new(
+                            comments,
+                            bounds.first.span(self.ast).end,
+                            bounds.last.span(self.ast).start,
+                        )
+                    }),
+                )
+            }
+            None => {
+                // A reference-only number behind source protection must not add between.
+                let comments = numeric.reference.map(|bounds| {
+                    ArrayCommentOwner::new(
+                        self.comments.in_range(content),
+                        bounds.first.span(self.ast).end,
+                        bounds.last.span(self.ast).start,
+                    )
+                });
+                (ArgumentLayout::Lines, comments)
+            }
+        };
+        let closing = self.terminal_close_boundary(content, || {
+            let mut elements = elements.iter().rev();
+            let last: Option<Argument> = self.ast.get_node_in_sub_range(elements.next()?);
+            let last = last?;
+            let head_start = elements
+                .find_map(|id| {
+                    let argument: Option<Argument> = self.ast.get_node_in_sub_range(id);
+                    argument.map(|argument| argument.span(self.ast).end)
+                })
+                .unwrap_or(content.start);
+            let last = match self.ast.argument_data(last) {
+                ArgumentData::Expr(expression) => self.terminal_argument_content_span(expression),
+                ArgumentData::SpreadElement(_) => last.span(self.ast),
+            };
+            Some((last, head_start))
+        });
+        Ok(SourceArray::Formatted(PreparedArray {
+            array,
+            content,
+            expand,
+            opening,
+            closing,
+            layout,
+            numeric_comments,
+        }))
+    }
+
+    fn format_source_array(
+        &mut self,
+        source: SourceArray<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        match source {
+            SourceArray::Verbatim(span) => self.format_verbatim(span, writer),
+            SourceArray::Empty => {
+                writer.text("[]");
+                Ok(())
+            }
+            SourceArray::Formatted(source) => {
+                let group = self.array_trailing_comma_group(source.layout, writer);
+                writer.group_with_id(source.expand.into(), group, |writer| {
+                    self.format_array_contents(source, group, writer)
+                        .map(|_| ())
+                })
+            }
+        }
+    }
+
+    pub(super) fn record_array(
+        &mut self,
+        array: ArrayExpression,
+        arity: ArrayArgumentArity,
+        writer: &mut Writer<'ast>,
+    ) -> Result<RecordedArrayArgument<'ast>, FormatError> {
+        let qualify = matches!(arity, ArrayArgumentArity::Multiple);
+        let source = self.source_array(array, qualify)?;
+        let source = match source {
+            SourceArray::Formatted(source) => source,
+            source => {
+                let (value, ()) =
+                    writer.record_with_value(|writer| self.format_source_array(source, writer))?;
+                return Ok(RecordedArrayArgument::Ordinary(value));
+            }
+        };
+        let expand = source.expand;
+        let group = self.array_trailing_comma_group(source.layout, writer);
+        let (content, concise) =
+            writer.record_with_value(|writer| self.format_array_contents(source, group, writer))?;
+        let (normal, ()) = writer.record_with_value(|writer| {
+            writer.group_with_id(expand.into(), group, |writer| {
+                writer.write_fragment(content)
+            });
+            Ok::<_, FormatError>(())
+        })?;
+        if concise {
+            return Ok(RecordedArrayArgument::Ordinary(normal));
+        }
+        let forced = if normal.preferred_breaks() {
+            None
+        } else {
+            let (forced, ()) = writer.record_with_value(|writer| {
+                writer.group_with_id(true.into(), group, |writer| writer.write_fragment(content));
+                Ok::<_, FormatError>(())
+            })?;
+            Some(forced)
+        };
+        Ok(RecordedArrayArgument::Selected(RecordedArray {
+            normal,
+            forced,
+        }))
+    }
+
+    fn format_array_contents(
+        &mut self,
+        mut source: PreparedArray<'ast>,
+        group: Option<GroupId>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<bool, FormatError> {
+        let mut numeric_comments = source.numeric_comments.take();
+        writer.text("[");
+        let closing = writer.indent(|writer| {
+            source
+                .opening
+                .write(writer, FlatSeparator::Empty, Writer::soft_line);
+            match source.layout {
+                ArgumentLayout::Lines => {
+                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
+                }
+                ArgumentLayout::Fill => writer.fill(|writer| {
+                    self.format_array_items(&source, group, numeric_comments.as_mut(), writer)
+                }),
+            }
+        })?;
+        closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
+        writer.text("]");
+        if let Some(owner) = numeric_comments.as_mut() {
+            owner.finish_source(self, source.content.end);
+        }
+        Ok(numeric_comments
+            .as_ref()
+            .is_some_and(ArrayCommentOwner::is_concise))
+    }
+
+    fn array_trailing_comma_group(
+        &self,
+        layout: ArgumentLayout,
+        writer: &mut Writer<'ast>,
+    ) -> Option<GroupId> {
+        // Fill entries choose their own modes; the comma still belongs to the array.
+        (matches!(layout, ArgumentLayout::Fill)
+            && self.options.trailing_commas != TrailingCommas::None)
+            .then(|| writer.next_group_id())
+    }
+
+    /// Selected Multiple qualification reduces two decisions in one element pass.
+    fn numeric_array_facts(&self, array: ArrayExpression) -> NumericArrayFacts {
+        let mut elements = array
+            .elements(self.ast)
+            .iter()
+            .map(|id| self.ast.get_node_in_sub_range(id));
+        let Some(Some(first)) = elements.next() else {
+            return NumericArrayFacts {
+                fill_first: None,
+                reference: None,
+            };
+        };
+        let mut fill = true;
+        let mut reference = true;
+        let mut reference_bounds = None;
+        for argument in std::iter::once(Some(first)).chain(elements) {
+            let Some(argument) = argument else {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            };
+            let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            };
+            let view = match (fill, reference) {
+                (true, true) => NumericContentView::Both,
+                (true, false) => NumericContentView::Source,
+                (false, true) => NumericContentView::Reference,
+                (false, false) => {
+                    return NumericArrayFacts {
+                        fill_first: None,
+                        reference: None,
+                    };
+                }
+            };
+            let content = self.numeric_argument_content(expression, view);
+            let source_numeric = matches!(content.source, Some(ExprData::NumericLiteral(_)));
+            let reference_root = content.reference;
+            let reference_numeric = reference_root
+                .as_ref()
+                .is_some_and(|root| matches!(root.data, ExprData::NumericLiteral(_)));
+            let source_unary = match content.source {
+                Some(ExprData::UnaryExpression(unary)) => Some(unary),
+                _ => None,
+            };
+            let reference_unary = reference_root.as_ref().and_then(|root| match root.data {
+                ExprData::UnaryExpression(unary) => Some(unary),
+                _ => None,
+            });
+            let mut signed_source = false;
+            let mut signed_reference = false;
+            let signed = match (source_unary, reference_unary) {
+                (Some(unary), Some(_)) => Some((unary, NumericContentView::Both)),
+                (Some(unary), None) => Some((unary, NumericContentView::Source)),
+                (None, Some(unary)) => Some((unary, NumericContentView::Reference)),
+                (None, None) => None,
+            };
+            if let Some((unary, view)) = signed
+                && matches!(
+                    unary.operator(self.ast),
+                    UnaryOperator::Positive | UnaryOperator::Negate
+                )
+            {
+                let actual_operand = unary.argument(self.ast);
+                let operand = self.numeric_argument_content(actual_operand, view);
+                let source_operand = matches!(operand.source, Some(ExprData::NumericLiteral(_)));
+                let reference_operand = operand
+                    .reference
+                    .as_ref()
+                    .is_some_and(|root| matches!(root.data, ExprData::NumericLiteral(_)));
+                if source_operand || reference_operand {
+                    // Under the numeric reference proof, actual_operand's source
+                    // envelope has exactly one normalized Numeric child. Both the
+                    // operator-to-child gap and its trailing envelope attach to
+                    // that child; comments outside this unary span do not.
+                    let no_comments = self.comments.in_range(unary.span(self.ast)).is_empty();
+                    signed_source = source_unary.is_some() && source_operand && no_comments;
+                    signed_reference =
+                        reference_unary.is_some() && reference_operand && no_comments;
+                }
+            }
+            fill &= source_numeric || signed_source;
+            reference &= reference_numeric || signed_reference;
+            if reference && let Some(root) = reference_root {
+                reference_bounds = Some(match reference_bounds {
+                    Some(ReferenceNumericBounds { first, .. }) => ReferenceNumericBounds {
+                        first,
+                        last: root.expression,
+                    },
+                    None => ReferenceNumericBounds {
+                        first: root.expression,
+                        last: root.expression,
+                    },
+                });
+            }
+            if !fill && !reference {
+                return NumericArrayFacts {
+                    fill_first: None,
+                    reference: None,
+                };
+            }
+        }
+        NumericArrayFacts {
+            fill_first: fill.then_some(first),
+            reference: if reference { reference_bounds } else { None },
+        }
+    }
+
+    fn array_should_expand(&self, array: ArrayExpression) -> bool {
+        let elements = array.elements(self.ast);
+        if elements.len() < 2 {
+            return false;
+        }
+        let mut kinds = elements.iter().map(|id| {
+            let argument = self.ast.get_node_in_sub_range(id)?;
+            let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+                return None;
+            };
+            match self.expression_data(expression) {
+                ExprData::ArrayExpression(child) if child.elements(self.ast).len() > 1 => {
+                    Some(ArrayChildKind::Array)
+                }
+                ExprData::ObjectExpression(child) if child.properties(self.ast).len() > 1 => {
+                    Some(ArrayChildKind::Object)
+                }
+                _ => None,
+            }
+        });
+        let Some(Some(kind)) = kinds.next() else {
+            return false;
+        };
+        kinds.all(|next| next == Some(kind))
+    }
+
+    fn numeric_array_first(&self, array: ArrayExpression) -> Option<Argument> {
+        let mut elements = array
+            .elements(self.ast)
+            .iter()
+            .map(|id| self.ast.get_node_in_sub_range(id));
+        let first = elements.next().flatten()?;
+        for argument in std::iter::once(Some(first)).chain(elements) {
+            let argument = argument?;
+            let ArgumentData::Expr(expression) = self.ast.argument_data(argument) else {
+                return None;
+            };
+            let data = self.expression_data(expression);
+            let numeric = match data {
+                ExprData::NumericLiteral(_) => true,
+                ExprData::UnaryExpression(unary)
+                    if matches!(
+                        unary.operator(self.ast),
+                        UnaryOperator::Positive | UnaryOperator::Negate
+                    ) =>
+                {
+                    let argument = self.expression_data(unary.argument(self.ast));
+                    matches!(argument, ExprData::NumericLiteral(_))
+                        && self.comments.in_range(unary.span(self.ast)).is_empty()
+                }
+                _ => false,
+            };
+            if !numeric {
+                return None;
+            }
+        }
+        Some(first)
+    }
+
+    fn format_array_items(
+        &mut self,
+        source: &PreparedArray<'ast>,
+        group: Option<GroupId>,
+        mut numeric_comments: Option<&mut ArrayCommentOwner<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<LineConstraint, FormatError> {
+        let ast = self.ast;
+        let span = source.content;
+        let layout = source.layout;
+        let mut elements = source
+            .array
+            .elements(ast)
+            .iter()
+            .map(|id| ast.get_node_in_sub_range(id));
+        let mut items = std::iter::from_fn(|| next_item(&mut elements)).peekable();
+        let mut previous_end = span.start;
+        let mut has_slot = false;
+        let mut transition = None;
+        let mut separator = Separator::Line;
+        let mut following_mode = None;
+        let mut elisions = ElisionLayout::Formatted;
+        let mut terminal_close = None;
+        let trailing_comma = if self.options.trailing_commas == TrailingCommas::None {
+            TrailingCommaPolicy::Forbidden
+        } else {
+            TrailingCommaPolicy::IfBreak(
+                group.map_or(ConditionTarget::Current, ConditionTarget::Group),
+            )
+        };
+        while let Some(item) = items.next() {
+            // Resolve the initial source prefix before its elisions claim comments.
+            // Later real items receive their binding from the preceding source gap.
+            let mode = item.argument.map_or(ContentMode::Formatted, |argument| {
+                following_mode.unwrap_or_else(|| {
+                    if self.has_suppression {
+                        self.content_mode(
+                            self.comments
+                                .in_range(Span::new(span.start, argument.span(ast).start)),
+                        )
+                    } else {
+                        ContentMode::Formatted
+                    }
+                })
+            });
+            if item.holes != 0 {
+                (previous_end, separator) = self.format_array_elisions(
+                    item.holes,
+                    Span::new(
+                        previous_end,
+                        item.argument
+                            .map_or(span.end, |argument| argument.span(ast).start),
+                    ),
+                    elisions,
+                    has_slot.then_some(separator),
+                    layout,
+                    writer,
+                )?;
+                has_slot = true;
+            }
+            let Some(argument) = item.argument else {
+                continue;
+            };
+            let argument_span = argument.span(ast);
+            if has_slot {
+                let next_start = self
+                    .comments
+                    .between(Span::new(previous_end, argument_span.start))?
+                    .first()
+                    .map_or(argument_span.start, |comment| comment.span.start);
+                layout.separator(
+                    separator,
+                    self.source_separator_constraint(previous_end, next_start, transition.as_ref()),
+                    writer,
+                );
+            }
+            let boundary = layout.entry(writer, |writer| {
+                self.format_argument_item_with_array_comments(
+                    ArrayArgumentSlot {
+                        argument,
+                        mode,
+                        layout,
+                        transition,
+                        closing: items.peek().is_none().then_some(source.closing),
+                        following: match items.peek() {
+                            Some(item) if item.holes != 0 => FollowingArgument::Elision {
+                                argument: item.argument,
+                                holes: item.holes,
+                            },
+                            Some(item) => item
+                                .argument
+                                .map_or(FollowingArgument::End, FollowingArgument::Argument),
+                            None => FollowingArgument::End,
+                        },
+                    },
+                    Span::new(previous_end, span.end),
+                    trailing_comma,
+                    numeric_comments.as_deref_mut(),
+                    writer,
+                )
+            })?;
+            previous_end = boundary.end;
+            separator = boundary.separator;
+            transition = boundary.transition;
+            following_mode = Some(boundary.following_mode);
+            elisions = boundary.elisions;
+            terminal_close = boundary.terminal_close;
+            has_slot = true;
+        }
+        let dangling = self.comments.between(Span::new(previous_end, span.end))?;
+        let dangling = self.comments.take(dangling.len());
+        if dangling
+            .iter()
+            .any(|comment| comment.kind == CommentKind::Line)
+        {
+            writer.break_parent();
+        }
+        if has_slot && let Some(first) = dangling.first() {
+            self.comment_gap(previous_end, first.span.start, writer);
+        }
+        self.format_comment_run_with_array_comments(
+            dangling,
+            CommentRunLayout::Lines,
+            numeric_comments,
+            writer,
+        )?;
+        let end = dangling
+            .last()
+            .map_or(previous_end, |comment| comment.span.end);
+        Ok(terminal_close
+            .filter(|_| dangling.is_empty())
+            .unwrap_or_else(|| self.terminal_close_constraint(source.closing, end)))
+    }
+}

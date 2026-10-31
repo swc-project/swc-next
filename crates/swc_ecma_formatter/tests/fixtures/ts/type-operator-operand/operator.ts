@@ -1,0 +1,2 @@
+x as keyof ?;
+b;

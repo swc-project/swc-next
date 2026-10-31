@@ -1,0 +1,1 @@
+(veryLongIdentifierThatDoesNotFitOnOneLine) /* prettier-ignore */ ? second : third;

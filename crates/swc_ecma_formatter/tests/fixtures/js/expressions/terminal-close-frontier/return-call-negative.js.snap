@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { return call(first,
+// @ts-ignore
+second) + third; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  return (
+    call(
+      first,
+      // @ts-ignore
+      second) + third); }
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    call(
+      first,
+      // @ts-ignore
+      second) + third) }

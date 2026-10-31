@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const {plain,key:local=1+2,...rest}=source;
+---------- Options ----------
+{"printWidth":1}
+---------- Output ----------
+const {
+  plain,
+  key: local = 1 +
+    2,
+  ...rest
+} = source;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const {
+  plain,
+  key: local = 1 +
+    2,
+  ...rest
+} = source
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const { plain, key: local = 1 + 2, ...rest } = source;
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const { plain, key: local = 1 + 2, ...rest } = source

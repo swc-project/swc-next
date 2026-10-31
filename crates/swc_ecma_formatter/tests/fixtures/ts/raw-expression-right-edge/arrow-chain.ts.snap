@@ -1,0 +1,11 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = a => b => /* prettier-ignore */ b as ?;
+c;
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const f = (a) => (b) => /* prettier-ignore */ b as ?;
+c

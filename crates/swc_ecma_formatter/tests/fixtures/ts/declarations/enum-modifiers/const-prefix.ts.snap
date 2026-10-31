@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const /* prefix */ enum E { A = 1, B = A + 2 }
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+const enum /* prefix */ E {
+  A = 1,
+  B = A + 2,
+}

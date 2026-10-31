@@ -1,0 +1,18 @@
+[
+  {},
+  {
+    "semi": false
+  },
+  {
+    "printWidth": 10
+  },
+  {
+    "printWidth": 20,
+    "semi": false
+  },
+  {
+    "printWidth": 20,
+    "useTabs": true,
+    "tabWidth": 4
+  }
+]

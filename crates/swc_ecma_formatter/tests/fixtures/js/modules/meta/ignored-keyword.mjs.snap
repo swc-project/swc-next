@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const url=import /* prettier-ignore */ .   meta.url;
+---------- Options ----------
+{}
+---------- Output ----------
+const url = import /* prettier-ignore */ .meta.url;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const url =
+  import /* prettier-ignore */ .meta
+    .url;
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+const url =
+  import /* prettier-ignore */ .meta
+    .url

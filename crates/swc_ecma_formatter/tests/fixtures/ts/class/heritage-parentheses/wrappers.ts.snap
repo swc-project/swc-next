@@ -1,0 +1,34 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Nested extends ((({})!)!) {}
+class CastBase extends (Base as typeof Base)! {}
+class Instantiated extends Base<string> {}
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+class Nested extends ({}!!) {}
+class CastBase extends ((Base as typeof Base)!) {}
+class Instantiated extends Base<string> {}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+class Nested extends ({}!!) {}
+class CastBase extends ((Base as typeof Base)!) {}
+class Instantiated extends Base<string> {}
+
+---------- Options ----------
+{"printWidth":80,"useTabs":true}
+---------- Output ----------
+class Nested extends ({}!!) {}
+class CastBase extends ((Base as typeof Base)!) {}
+class Instantiated extends Base<string> {}
+
+---------- Options ----------
+{"printWidth":80,"trailingComma":"none"}
+---------- Output ----------
+class Nested extends ({}!!) {}
+class CastBase extends ((Base as typeof Base)!) {}
+class Instantiated extends Base<string> {}

@@ -1,0 +1,27 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A extends B ? C : D) extends E ? F : G;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type T = (A extends B ? C : D) extends E ? F : G;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+type T = (
+  A extends B ? C : D
+) extends E
+  ? F
+  : G;
+
+---------- Options ----------
+{"printWidth":24,"semi":false,"useTabs":true}
+---------- Output ----------
+type T = (
+	A extends B ? C : D
+) extends E
+	? F
+	: G

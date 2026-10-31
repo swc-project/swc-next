@@ -1,0 +1,3 @@
+({ [name]
+/** @satisfies {number} */
+: value });

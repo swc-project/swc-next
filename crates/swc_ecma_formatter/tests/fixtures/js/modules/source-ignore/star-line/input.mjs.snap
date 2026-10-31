@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export *
+// prettier-ignore
+from 'm';
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+export * from // prettier-ignore
+'m';

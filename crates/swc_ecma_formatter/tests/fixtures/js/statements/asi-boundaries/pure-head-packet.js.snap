@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (condition);
+
+/* ordinary prefix */
+/*#__PURE__*/ (() => call())();
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (condition);
+
+;
+/* ordinary prefix */
+/*#__PURE__*/ (() => call())()
+
+---------- Options ----------
+{"semi":true}
+---------- Output ----------
+if (condition);
+
+/* ordinary prefix */
+/*#__PURE__*/ (() => call())();

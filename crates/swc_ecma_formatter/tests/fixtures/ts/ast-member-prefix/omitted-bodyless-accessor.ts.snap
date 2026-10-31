@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+declare class Example { readonly declare get value(): number; }
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+declare class Example {
+  get value(): number
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+declare class Example {
+  get value(): number
+}

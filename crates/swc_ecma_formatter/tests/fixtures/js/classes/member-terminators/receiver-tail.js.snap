@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A {
+  value = (
+    foo()
+    // source tail
+  );
+  // prettier-ignore
+  [next] = other;
+}
+---------- Options ----------
+{}
+---------- Output ----------
+class A {
+  value = foo()
+  // source tail
+  ;
+  // prettier-ignore
+  [next] = other;
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+class A {
+  value = foo()
+  // source tail
+  ;
+  // prettier-ignore
+  [next] = other;
+}

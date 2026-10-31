@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/* head */ object).property;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/* head */ object.property;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+/* head */ object.property;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/* head */ object.property;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+/* head */ object.property

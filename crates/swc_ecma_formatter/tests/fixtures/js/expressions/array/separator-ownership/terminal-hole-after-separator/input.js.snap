@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[1, /* hole */,
+// tail
+];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  1,
+  /* hole */,
+  // tail
+];

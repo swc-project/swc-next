@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[
+  (/* call owner */ function (value) { return value; }(argument)),
+];
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+[
+  /* call owner */ (function (value) {
+    return value;
+  })(argument),
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+[
+  /* call owner */ (function (value) {
+    return value;
+  })(argument),
+];
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+;[
+  /* call owner */ (function (value) {
+    return value
+  })(argument),
+]

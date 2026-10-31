@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target = this;
+---------- Options ----------
+{}
+---------- Output ----------
+target = this;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+target = this
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+target =
+  this;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+target = this
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+target = this;

@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export * as namespace from "module" with {type:"json"};
+---------- Options ----------
+{}
+---------- Output ----------
+export * as namespace from "module" with { type: "json" };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export * as namespace from "module" with { type: "json" };
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export * as namespace from 'module' with {type: 'json'}

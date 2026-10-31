@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+target
+/* own left */
++= // right
+first + second;---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+target += // right
+  /* own left */
+  first + second;
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+target += // right
+  /* own left */
+  first +
+  second;

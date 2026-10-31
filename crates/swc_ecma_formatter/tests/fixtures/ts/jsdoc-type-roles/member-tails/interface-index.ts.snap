@@ -1,0 +1,12 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I { [x: string]: ?; y: number; }
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+interface I {
+  [x: string]: ?;
+  y: number
+}

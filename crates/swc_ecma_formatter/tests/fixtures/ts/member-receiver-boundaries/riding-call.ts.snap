@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = makeSource(argument) // receiver
+.field;
+---------- Options ----------
+{}
+---------- Output ----------
+const value = makeSource(argument) // receiver
+.field;
+
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+const value =
+  makeSource(argument) // receiver
+  .field;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = makeSource(argument) // receiver
+.field

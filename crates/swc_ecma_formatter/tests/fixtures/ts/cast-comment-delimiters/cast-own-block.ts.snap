@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = (foo
+/* before */
+) as Foo;
+---------- Options ----------
+{}
+---------- Output ----------
+const x = (
+  foo
+  /* before */
+) as Foo;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const x = (
+  foo
+  /* before */
+) as Foo
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+const x = (
+  foo
+  /* before */
+) as Foo;
+
+---------- Options ----------
+{"printWidth":120}
+---------- Output ----------
+const x = (
+  foo
+  /* before */
+) as Foo;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+const x = (
+  foo
+  /* before */
+) as Foo

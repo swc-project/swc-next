@@ -1,0 +1,61 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* before */true/* between */,false// after
+];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  /* before */ true /* between */,
+  false, // after
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  /* before */ true /* between */,
+  false, // after
+]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  /* before */ true /* between */,
+  false, // after
+];
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+[
+  /* before */ true /* between */,
+  false, // after
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* before */ true /* between */,
+  false, // after
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* before */ true /* between */,
+  false // after
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* before */ true /* between */,
+	false, // after
+];

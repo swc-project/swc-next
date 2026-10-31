@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = \u0076alue as /* prettier-ignore */ /* c
+ * x */ \u0041;---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+const x = \u0076alue /* prettier-ignore */ as /* c
+ * x */ A;
+
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+const x =
+  \u0076alue /* prettier-ignore */ as /* c
+   * x */ A;

@@ -1,0 +1,20 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(typeof first /* header
+ * @ts-ignore */
+);
+next;---------- Options ----------
+{}
+---------- Output ----------
+typeof first; /* header
+ * @ts-ignore */
+next;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+typeof first /* header
+ * @ts-ignore */
+next

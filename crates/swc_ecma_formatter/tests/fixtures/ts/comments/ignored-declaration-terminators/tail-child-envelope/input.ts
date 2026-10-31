@@ -1,0 +1,1 @@
+declare function f(): A /* prettier-ignore */;

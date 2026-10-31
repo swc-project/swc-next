@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/*#__PURE__*/ /** @type {Function} */ (callback))(argument);
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+/*#__PURE__*/ /** @type {Function} */ (
+  callback
+)(argument);
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+;
+/*#__PURE__*/ /** @type {Function} */ (
+  callback
+)(argument)
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/*#__PURE__*/ /** @type {Function} */ (callback)(argument);

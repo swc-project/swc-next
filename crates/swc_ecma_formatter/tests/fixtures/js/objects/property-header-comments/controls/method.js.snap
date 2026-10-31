@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = { method /* first */ // second
+() {} };
+---------- Options ----------
+{}
+---------- Output ----------
+result = {
+  method /* first */ // second
+  () {},
+};

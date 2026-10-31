@@ -1,0 +1,29 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+---------- Options ----------
+{}
+---------- Output ----------
+type M = { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+
+---------- Options ----------
+{"printWidth":36}
+---------- Output ----------
+type M =
+  { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":18,"semi":false}
+---------- Output ----------
+type M =
+  { readonly /* prettier-ignore */
+ [K    in "a" | "b"]?:    {x:   1}
+}

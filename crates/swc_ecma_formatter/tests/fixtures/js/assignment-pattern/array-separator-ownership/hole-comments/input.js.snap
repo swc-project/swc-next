@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[first, /* slot */, last] = value;
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+[
+  first,
+  /* slot */,
+  last,
+] = value;

@@ -1,0 +1,46 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ async *"method"(first, ...rest) { yield first; } });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  async *method(first, ...rest) {
+    yield first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  async *method(
+    first,
+    ...rest
+  ) {
+    yield first;
+  },
+});
+
+---------- Options ----------
+{"printWidth":1,"semi":false,"trailingComma":"none"}
+---------- Output ----------
+;({
+  async *method(
+    first,
+    ...rest
+  ) {
+    yield first
+  }
+})
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":40,"semi":false}
+---------- Output ----------
+;({
+  async *method(first, ...rest) {
+    yield first
+  },
+})

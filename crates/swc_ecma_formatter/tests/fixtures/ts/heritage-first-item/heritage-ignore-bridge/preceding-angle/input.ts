@@ -1,0 +1,1 @@
+class C extends B<  T  > /* prettier-ignore */ implements I { value : T; }

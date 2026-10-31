@@ -1,0 +1,4 @@
+({ key
+/* before */
+: // after
+value });

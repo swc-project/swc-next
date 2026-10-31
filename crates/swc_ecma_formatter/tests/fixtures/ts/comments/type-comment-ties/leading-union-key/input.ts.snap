@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type M = { [\u004b in /* prettier-ignore */ | \u0041]: number };---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type M = {
+  [
+    \u004b /* prettier-ignore */ in A
+  ]: number;
+};
+
+---------- Options ----------
+{}
+---------- Output ----------
+type M = { [\u004b /* prettier-ignore */ in A]: number };

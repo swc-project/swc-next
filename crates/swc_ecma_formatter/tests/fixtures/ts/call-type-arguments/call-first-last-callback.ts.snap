@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = Factory.first<number>
+// prettier-ignore
+({ one :1, two:2 }, (entry) => { const next = entry + 1; return next; }).second<string>(other);---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result = Factory
+  .first<number>
+  // prettier-ignore
+  ({ one :1, two:2 }, (entry) => {
+    const next = entry + 1;
+    return next;
+  })
+  .second<string>(other);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+result = Factory
+  .first<number>
+  // prettier-ignore
+  (
+    { one :1, two:2 },
+    (entry) => {
+      const next =
+        entry + 1;
+      return next;
+    },
+  )
+  .second<string>(
+    other,
+  );
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+result =
+  Factory
+    .first<number>
+    // prettier-ignore
+    (
+      { one :1, two:2 },
+      (
+        entry,
+      ) => {
+        const next =
+          entry +
+          1
+        return next
+      },
+    )
+    .second<string>(
+      other,
+    )
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"useTabs":true}
+---------- Output ----------
+result = Factory
+	.first<number>
+	// prettier-ignore
+	(
+		{ one :1, two:2 },
+		(entry) => {
+			const next =
+				entry + 1;
+			return next;
+		},
+	)
+	.second<string>(
+		other,
+	);

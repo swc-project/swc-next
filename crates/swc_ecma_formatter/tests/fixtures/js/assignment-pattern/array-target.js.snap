@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[target[key]=1+2,,other,...rest]=values;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+[
+  target[key] = 1 +
+    2,
+  ,
+  other,
+  ...rest
+] = values;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+[target[key] = 1 + 2, , other, ...rest] = values;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;[
+  target[key] = 1 +
+    2,
+  ,
+  other,
+  ...rest
+] = values
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+;[target[key] = 1 + 2, , other, ...rest] = values

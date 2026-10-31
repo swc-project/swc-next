@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = <Box>	first	
+	 middle	value	
+	last	</Box>;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const x = (
+  <Box>	first	
+	 middle	value	
+	last	</Box>
+);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const x = (
+  <Box>	first	
+	 middle	value	
+	last	</Box>
+);

@@ -1,0 +1,1 @@
+call /* first */ ?. /* second */();

@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+(missing // tail
+) /** @type {x} */
+b;
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-ignore
+(missing // tail
+);
+/** @type {x} */
+b;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-ignore
+;(missing // tail
+)
+/** @type {x} */
+b

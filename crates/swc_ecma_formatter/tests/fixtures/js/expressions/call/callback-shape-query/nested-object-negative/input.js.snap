@@ -1,0 +1,14 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(function () { return run(); }, /** @type {Object} */ (state).key);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+schedule(
+  function () {
+    return run();
+  },
+  /** @type {Object} */ (state).key,
+);

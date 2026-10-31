@@ -1,0 +1,33 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(value) {
+  return (
+    /* explanation */ value
+  ) || fallback;
+}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f(value) {
+  return (
+    /* explanation */ value || fallback
+  );
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f(value) {
+  return /* explanation */ value || fallback;
+}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f(value) {
+  return (
+    /* explanation */ value || fallback
+  )
+}

@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f({ a // c
+= 0 /* d */ }) {}
+---------- Options ----------
+{}
+---------- Output ----------
+function f({
+  a = // c
+    0 /* d */,
+}) {}

@@ -1,0 +1,3 @@
+x as () => ? // terminal
+;
+b;

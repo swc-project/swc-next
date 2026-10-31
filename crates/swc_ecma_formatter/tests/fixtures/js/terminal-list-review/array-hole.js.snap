@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[a // c
+, /* #__PURE__ */ , b];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b,
+];
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b,
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+[
+  a // c
+  , /* #__PURE__ */ ,
+  b
+];

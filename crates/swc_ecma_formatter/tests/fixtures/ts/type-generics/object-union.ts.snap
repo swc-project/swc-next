@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Example = Box<{ longPropertyName: number } | null>;
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+type Example = Box<{ longPropertyName: number } | null>;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type Example = Box<{
+  longPropertyName: number;
+} | null>;
+
+---------- Options ----------
+{"printWidth":1,"semi":false}
+---------- Output ----------
+type Example =
+  Box<{
+    longPropertyName: number
+  } | null>
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":20,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type Example = Box<{
+	longPropertyName: number;
+} | null>;

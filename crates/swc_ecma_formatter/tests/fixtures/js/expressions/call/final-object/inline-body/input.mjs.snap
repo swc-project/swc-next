@@ -1,0 +1,39 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+f(first,{one:1,two:2,three:3});---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+});
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+})
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"none"}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3
+});
+
+---------- Options ----------
+{"printWidth":20,"trailingComma":"es5"}
+---------- Output ----------
+f(first, {
+  one: 1,
+  two: 2,
+  three: 3,
+});

@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const value = f(first,
+
+second);
+---------- Options ----------
+{}
+---------- Output ----------
+const value = f(
+  first,
+
+  second,
+);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+const value = f(
+  first,
+
+  second,
+)

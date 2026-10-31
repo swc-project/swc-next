@@ -1,0 +1,36 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type X = A & (B
+// c
+) extends C ? D : E;
+---------- Options ----------
+{}
+---------- Output ----------
+type X = (
+  A & B
+  // c
+) extends C
+  ? D
+  : E;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type X = (
+  A & B
+  // c
+) extends C
+  ? D
+  : E;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type X = (
+  A & B
+  // c
+) extends C
+  ? D
+  : E

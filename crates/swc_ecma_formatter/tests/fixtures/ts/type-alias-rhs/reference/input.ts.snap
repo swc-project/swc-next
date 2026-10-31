@@ -1,0 +1,32 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = OtherType;
+---------- Options ----------
+{"printWidth":17}
+---------- Output ----------
+type A =
+  OtherType;
+
+---------- Options ----------
+{"printWidth":18}
+---------- Output ----------
+type A =
+  OtherType;
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+type A = OtherType;
+
+---------- Options ----------
+{"printWidth":18,"semi":false}
+---------- Output ----------
+type A = OtherType
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":18,"useTabs":true}
+---------- Output ----------
+type A =
+	OtherType;

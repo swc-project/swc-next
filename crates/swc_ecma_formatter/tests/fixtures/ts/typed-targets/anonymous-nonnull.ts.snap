@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(value!) = (() => {}) as unknown;
+---------- Options ----------
+{}
+---------- Output ----------
+(value!) = (() => {}) as unknown;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+(value!) =
+  (() => {}) as unknown;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+;(value!) =
+  (() => {}) as unknown

@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T<\u004b = /* prettier-ignore */
+| B> = \u004b;
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+type T<\u004b /* prettier-ignore */ = B> = K;
+
+---------- Options ----------
+{"printWidth":40,"semi":true}
+---------- Output ----------
+type T<
+  \u004b /* prettier-ignore */ = B,
+> = K;

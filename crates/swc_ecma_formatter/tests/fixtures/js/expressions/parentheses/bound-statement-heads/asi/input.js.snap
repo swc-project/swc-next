@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+previous();
+(/** @param {number} value */ function (value) { return value; }).name;
+---------- Options ----------
+{}
+---------- Output ----------
+previous();
+(
+  /** @param {number} value */ function (value) {
+    return value;
+  }
+).name;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+previous()
+;(
+  /** @param {number} value */ function (value) {
+    return value
+  }
+).name

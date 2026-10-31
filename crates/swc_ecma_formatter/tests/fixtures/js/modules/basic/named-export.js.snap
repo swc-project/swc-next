@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {first,second as renamed};
+---------- Options ----------
+{}
+---------- Output ----------
+export { first, second as renamed };
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export {
+  first,
+  second as renamed,
+};
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export {
+  first,
+  second as renamed,
+}

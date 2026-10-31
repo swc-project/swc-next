@@ -1,0 +1,35 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try{}catch(error:
+// type lead
+unknown){use(error);}
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+try {
+} catch (error: // type lead
+unknown) {
+  use(error);
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+try {
+} catch (error: // type lead
+unknown) {
+  use(error);
+}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+try {
+} catch (error: // type lead
+unknown) {
+  use(
+    error,
+  )
+}

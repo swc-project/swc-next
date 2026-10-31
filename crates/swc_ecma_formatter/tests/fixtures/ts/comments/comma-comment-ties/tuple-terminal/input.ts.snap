@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = [First, /* block */ // line
+];
+---------- Options ----------
+{}
+---------- Output ----------
+type T = [
+  First /* block */, // line
+];
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+type T = [
+  First /* block */ // line
+];

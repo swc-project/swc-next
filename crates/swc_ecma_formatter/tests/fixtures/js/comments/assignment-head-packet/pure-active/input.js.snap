@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function invoke() { globalThis.effects = 1; return 1; }
+const result = /*#__PURE__*/
+invoke();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1;
+  return 1;
+}
+const result =
+  /*#__PURE__*/
+  invoke();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1
+  return 1
+}
+const result =
+  /*#__PURE__*/
+  invoke()
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function invoke() {
+  globalThis.effects = 1;
+  return 1;
+}
+const result = /*#__PURE__*/ invoke();

@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const unused = { key
+/** @type {number} */
+: /*#__PURE__*/ effect() };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const unused = {
+  key:
+    /** @type {number} */
+    /*#__PURE__*/ effect(),
+};

@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default /* prettier-ignore */ interface Model<T> extends Base<T> { readonly id:  T }
+---------- Options ----------
+{}
+---------- Output ----------
+export default /* prettier-ignore */ interface Model<T> extends Base<T> { readonly id:  T }
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export default /* prettier-ignore */ interface Model<T> extends Base<T> { readonly id:  T }
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+export default /* prettier-ignore */ interface Model<T> extends Base<T> { readonly id:  T }

@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+new F(a
+// c
+,
+// @ts-ignore
+);
+---------- Options ----------
+{}
+---------- Output ----------
+new F(
+  a
+  // c
+  ,
+  // @ts-ignore
+);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+new F(
+  a
+  // c
+  ,
+  // @ts-ignore
+);
+
+---------- Options ----------
+{"trailingComma":"none"}
+---------- Output ----------
+new F(
+  a
+  // c
+  // @ts-ignore
+);

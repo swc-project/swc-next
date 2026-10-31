@@ -1,0 +1,37 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type ArrayTail<T extends unknown[]> = T extends [...(/* element */ infer R)[]] ? R : never;
+---------- Options ----------
+{}
+---------- Output ----------
+type ArrayTail<T extends unknown[]> = T extends [.../* element */ (infer R)[]]
+  ? R
+  : never;
+
+---------- Options ----------
+{"printWidth":32}
+---------- Output ----------
+type ArrayTail<
+  T extends unknown[],
+> = T extends [
+  .../* element */ (infer R)[],
+]
+  ? R
+  : never;
+
+---------- Options ----------
+{"printWidth":120,"semi":false}
+---------- Output ----------
+type ArrayTail<T extends unknown[]> = T extends [.../* element */ (infer R)[]] ? R : never
+
+---------- Options ----------
+{"printWidth":40,"trailingComma":"none","useTabs":true}
+---------- Output ----------
+type ArrayTail<T extends unknown[]> =
+	T extends [
+		.../* element */ (infer R)[]
+	]
+		? R
+		: never;

@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(/** @type {number} #__PURE__ */ ("value")).toFixed();
+---------- Options ----------
+{"printWidth":24}
+---------- Output ----------
+/** @type {number} #__PURE__ */ (
+  "value"
+).toFixed();
+
+---------- Options ----------
+{"printWidth":24,"semi":false}
+---------- Output ----------
+;
+/** @type {number} #__PURE__ */ (
+  "value"
+).toFixed()

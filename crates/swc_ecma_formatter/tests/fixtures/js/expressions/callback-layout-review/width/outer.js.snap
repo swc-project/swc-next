@@ -1,0 +1,23 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const result = foo([1, 2], () => {
+  return 1;
+});
+---------- Options ----------
+{}
+---------- Output ----------
+const result = foo([1, 2], () => {
+  return 1;
+});
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const result = foo(
+  [1, 2],
+  () => {
+    return 1;
+  },
+);

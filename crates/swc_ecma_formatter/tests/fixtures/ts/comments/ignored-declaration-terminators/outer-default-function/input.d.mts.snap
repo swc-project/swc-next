@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+export default function f( x :  A ) :  B;
+---------- Options ----------
+{}
+---------- Output ----------
+// prettier-ignore
+export default function f( x :  A ) :  B;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// prettier-ignore
+export default function f( x :  A ) :  B

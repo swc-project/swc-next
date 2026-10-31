@@ -1,0 +1,19 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export *  as  n\u0073 /* prettier-ignore */ from "m";
+---------- Options ----------
+{}
+---------- Output ----------
+export *  as  n\u0073 /* prettier-ignore */ from "m";
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+export *  as  n\u0073 /* prettier-ignore */ from "m";
+
+---------- Options ----------
+{"bracketSpacing":false,"printWidth":20,"semi":false,"singleQuote":true}
+---------- Output ----------
+export *  as  n\u0073 /* prettier-ignore */ from 'm'

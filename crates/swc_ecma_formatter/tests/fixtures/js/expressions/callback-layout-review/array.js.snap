@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+foo([1, 2], () => {
+  return 1;
+});
+---------- Options ----------
+{}
+---------- Output ----------
+foo([1, 2], () => {
+  return 1;
+});

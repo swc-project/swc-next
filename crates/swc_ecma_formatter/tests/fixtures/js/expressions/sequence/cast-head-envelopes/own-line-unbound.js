@@ -1,0 +1,2 @@
+/** @type {number} */
+first, third;

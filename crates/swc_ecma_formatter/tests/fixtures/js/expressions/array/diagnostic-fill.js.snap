@@ -1,0 +1,96 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[// @ts-ignore
+1,2,3,4,5,first,
+second];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	// @ts-ignore
+	1, 2, 3, 4, 5, first,
+	second,
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  // @ts-ignore
+  1, 2, 3, 4, 5, first,
+  second,
+];

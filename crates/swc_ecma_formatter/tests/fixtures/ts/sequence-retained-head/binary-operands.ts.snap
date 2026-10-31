@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+result = ((/* inner */ first), second) + third;
+
+result = first + ((/* inner */ second), third);
+
+result = ((/* inner */ first), second) && third;
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+result =
+  /* inner */ (first, second) + third;
+
+result =
+  first + /* inner */ (second, third);
+
+result =
+  /* inner */ (first, second) && third;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+result = /* inner */ (first, second) + third;
+
+result = first + /* inner */ (second, third);
+
+result = /* inner */ (first, second) && third;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+result =
+  /* inner */ (first, second) + third
+
+result =
+  first + /* inner */ (second, third)
+
+result =
+  /* inner */ (first, second) && third

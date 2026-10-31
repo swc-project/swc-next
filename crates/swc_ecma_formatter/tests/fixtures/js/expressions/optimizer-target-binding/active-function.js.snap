@@ -1,0 +1,22 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const f = (/*#__NO_SIDE_EFFECTS__*/ () => sideEffect()); f();
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const f =
+  (/*#__NO_SIDE_EFFECTS__*/ () =>
+      sideEffect()
+  );
+f();
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+const f =
+  (/*#__NO_SIDE_EFFECTS__*/ () =>
+      sideEffect()
+  )
+f()

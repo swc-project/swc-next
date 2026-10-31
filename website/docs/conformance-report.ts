@@ -1,6 +1,6 @@
 import { closeSync, openSync, readSync, readdirSync } from "node:fs";
 
-export type ConformanceKind = "parser" | "codegen" | "semantic" | "transform" | "estree" | "codec";
+export type ConformanceKind = "parser" | "codegen" | "semantic" | "transform" | "estree" | "codec" | "formatter";
 export interface Count {
   passed: number;
   total: number;
@@ -19,17 +19,21 @@ export interface ConformanceResult {
   panicked?: number;
 }
 
-const kinds = new Set<ConformanceKind>(["parser", "codegen", "semantic", "transform", "estree", "codec"]);
+const kinds = new Set<ConformanceKind>(["parser", "codegen", "semantic", "transform", "estree", "codec", "formatter"]);
 
 export function parseConformanceHeader(snapshot: string, header: string): ConformanceResult {
   const name = snapshot.match(/^([a-z]+)_(.+)\.snap$/);
-  if (!name || !kinds.has(name[1] as ConformanceKind)) throw new Error(`Unknown conformance snapshot: ${snapshot}`);
-  const kind = name[1] as ConformanceKind;
-  const suite = name[2];
+  const kind = (name?.[1] === "prettier" ? "formatter" : name?.[1]) as ConformanceKind;
+  if (!name || !kinds.has(kind)) throw new Error(`Unknown conformance snapshot: ${snapshot}`);
+  const suite = kind === "formatter" ? name[2].replace(/^prettier_/, "") : name[2];
   const lines = header.split(/\r?\n/);
   const fields = new Map<string, { value: number; total?: number }>();
   let start = 0;
-  if (!["estree", "codec"].includes(kind)) {
+  if (kind === "formatter") {
+    const reference = lines[0].match(/^formatter \* prettier \d+\.\d+\.\d+ \* (js|typescript)$/);
+    start = lines.findIndex((line) => line.startsWith("Passed:"));
+    if (!reference || reference[1] !== suite || !/^=+$/.test(lines[1]) || start < 2) throw new Error(`Invalid conformance header: ${snapshot}`);
+  } else if (!["estree", "codec"].includes(kind)) {
     if (lines[0] !== `${kind} * ${suite}` || !/^=+$/.test(lines[1])) throw new Error(`Invalid conformance header: ${snapshot}`);
     start = 2;
   }
@@ -51,6 +55,13 @@ export function parseConformanceHeader(snapshot: string, header: string): Confor
     if (!field || field.total === undefined) throw new Error(`Missing ${label}: ${snapshot}`);
     return { passed: field.value, total: field.total };
   };
+  if (kind === "formatter") {
+    const passed = count("Passed");
+    const outcomes = ["Snapshot matched", "Mismatched", "Format errors", "Panicked", "Parse errors"].map(count);
+    const notIdempotent = count("Not idempotent");
+    if (outcomes.some((outcome) => outcome.total !== passed.total) || outcomes.reduce((total, outcome) => total + outcome.passed, 0) !== passed.total || passed.passed > outcomes[0].passed || notIdempotent.total !== passed.total) throw new Error(`Inconsistent formatter counts: ${snapshot}`);
+    return { kind, suite: `prettier_${suite}`, snapshot, total: passed.total, passed: passed.passed, failed: passed.total - passed.passed };
+  }
   if (kind === "codec") {
     const passed = count("Codec Passed");
     if (fields.get("Cases")?.value !== passed.total) throw new Error(`Inconsistent codec counts: ${snapshot}`);

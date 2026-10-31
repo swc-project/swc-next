@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let first: number;
+let second: string;
+({ k: (// @ts-ignore
+first = second) });
+---------- Options ----------
+{}
+---------- Output ----------
+let first: number;
+let second: string;
+({
+  k:
+    // @ts-ignore
+    (first = second), });

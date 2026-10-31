@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if (condition) (/** @param {number} value */ function (value) { return value; }).name;
+---------- Options ----------
+{}
+---------- Output ----------
+if (condition)
+  (
+    /** @param {number} value */ function (value) {
+      return value;
+    }
+  ).name;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+if (condition)
+  (
+    /** @param {number} value */ function (value) {
+      return value
+    }
+  ).name

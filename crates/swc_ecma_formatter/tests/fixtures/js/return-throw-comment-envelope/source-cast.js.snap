@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  return (/** @type {number} */ ("x"))
+    // result member
+    .toFixed();
+}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  return (
+    /** @type {number} */ ("x")
+      // result member
+      .toFixed()
+  );
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f() {
+  return (
+    /** @type {number} */ ("x")
+      // result member
+      .toFixed()
+  );
+}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f() {
+  return (
+    /** @type {number} */ ("x")
+      // result member
+      .toFixed()
+  )
+}

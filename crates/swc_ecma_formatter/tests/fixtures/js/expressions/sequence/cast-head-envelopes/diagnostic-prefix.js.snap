@@ -1,0 +1,53 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-expect-error
+/* head */ /** @type {number} */ (first), third;
+---------- Options ----------
+{}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"printWidth":8}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+// @ts-expect-error
+/* head */ ;(/** @type {number} */ (first), third)
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+// @ts-expect-error
+/* head */ ;(/** @type {number} */ (first), third)
+
+---------- Options ----------
+{"printWidth":20,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+// @ts-expect-error
+/* head */ (/** @type {number} */ (first), third);

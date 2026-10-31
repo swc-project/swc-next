@@ -1,0 +1,1 @@
+class C {m(@a /* a */ /* b */ @b x: number) {}}

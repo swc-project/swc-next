@@ -1,0 +1,13 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ k: (// @ts-ignore
+object.value += (other = result)) });
+---------- Options ----------
+{}
+---------- Output ----------
+({
+  k:
+    // @ts-ignore
+    (object.value += other = result), });

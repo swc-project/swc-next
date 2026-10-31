@@ -1,0 +1,16 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(item /* #__PURE__ */)]; /* @__PURE__ */ active();
+---------- Options ----------
+{"printWidth":30,"semi":false}
+---------- Output ----------
+;[item /* #__PURE__ */]
+/* @__PURE__ */ active()
+
+---------- Options ----------
+{"printWidth":30}
+---------- Output ----------
+[item /* #__PURE__ */];
+/* @__PURE__ */ active();

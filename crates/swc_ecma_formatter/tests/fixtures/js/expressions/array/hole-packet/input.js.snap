@@ -1,0 +1,15 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[a /* #__PURE__ */ // c
+, , b];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  a /* #__PURE__ */ // c
+  ,
+  ,
+  b,
+];

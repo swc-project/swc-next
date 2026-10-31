@@ -1,0 +1,17 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+abc.a().b([1, 2]).c();
+---------- Options ----------
+{}
+---------- Output ----------
+abc.a().b([1, 2]).c();
+
+---------- Options ----------
+{"printWidth":12}
+---------- Output ----------
+abc
+  .a()
+  .b([1, 2])
+  .c();

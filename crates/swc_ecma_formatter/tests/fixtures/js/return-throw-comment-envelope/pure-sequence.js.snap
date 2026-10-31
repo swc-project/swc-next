@@ -1,0 +1,41 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() {
+  return (/* @__PURE__ */ make(), source
+    // result member
+    .value);
+}
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+function f() {
+  return (/* @__PURE__ */ make(),
+    source
+      // result member
+      .value
+  );
+}
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+function f() {
+  return (/* @__PURE__ */ make(),
+    source
+      // result member
+      .value
+  );
+}
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+function f() {
+  return (/* @__PURE__ */ make(),
+    source
+      // result member
+      .value
+  )
+}

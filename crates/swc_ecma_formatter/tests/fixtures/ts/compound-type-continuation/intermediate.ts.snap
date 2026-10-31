@@ -1,0 +1,30 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A
+// c
+) | B;
+---------- Options ----------
+{}
+---------- Output ----------
+type T =
+  | A
+  // c
+  | B;
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+type T =
+  | A
+  // c
+  | B;
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+type T =
+  | A
+  // c
+  | B

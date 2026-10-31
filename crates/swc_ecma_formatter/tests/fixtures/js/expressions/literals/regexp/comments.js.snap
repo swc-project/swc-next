@@ -1,0 +1,59 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[/* before *//世界/yg/* after */,/slash\//,null];
+---------- Options ----------
+{}
+---------- Output ----------
+[/* before */ /世界/gy /* after */, /slash\//, null];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[/* before */ /世界/gy /* after */, /slash\//, null]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"printWidth":19}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null,
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  /* before */ /世界/gy /* after */,
+  /slash\//,
+  null
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	/* before */ /世界/gy /* after */,
+	/slash\//,
+	null,
+];

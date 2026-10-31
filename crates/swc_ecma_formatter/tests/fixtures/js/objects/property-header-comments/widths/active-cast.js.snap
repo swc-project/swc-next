@@ -1,0 +1,25 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+/** @type {number} */ let result; result = { key /* first */ // second
+: /** @type {number} */ (unknownValue) };
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+/** @type {number} */ let result;
+result = {
+  /* first */ // second
+  key: /** @type {number} */ (
+    unknownValue
+  ),
+};
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+/** @type {number} */ let result;
+result = {
+  /* first */ // second
+  key: /** @type {number} */ (unknownValue),
+};

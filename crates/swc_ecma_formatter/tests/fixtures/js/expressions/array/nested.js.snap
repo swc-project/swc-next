@@ -1,0 +1,129 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[[first, last], [next, end]];
+---------- Options ----------
+{}
+---------- Output ----------
+[
+  [first, last],
+  [next, end],
+];
+
+---------- Options ----------
+{"printWidth":14}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [next, end],
+];
+
+---------- Options ----------
+{"printWidth":13}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [
+    next,
+    end,
+  ],
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [
+    next,
+    end,
+  ],
+];
+
+---------- Options ----------
+{"printWidth":0}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [
+    next,
+    end,
+  ],
+];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;[
+  [first, last],
+  [next, end],
+]
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"none"}
+---------- Output ----------
+[
+  [
+    first,
+    last
+  ],
+  [
+    next,
+    end
+  ]
+];
+
+---------- Options ----------
+{"printWidth":10,"trailingComma":"es5"}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [
+    next,
+    end,
+  ],
+];
+
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	[
+		first,
+		last,
+	],
+	[
+		next,
+		end,
+	],
+];
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":10}
+---------- Output ----------
+[
+  [
+    first,
+    last,
+  ],
+  [
+    next,
+    end,
+  ],
+];

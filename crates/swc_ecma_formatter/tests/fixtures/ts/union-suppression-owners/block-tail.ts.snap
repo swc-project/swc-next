@@ -1,0 +1,28 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type T = (A<  X > | B<   Y> /* prettier-ignore */
+) & C;
+---------- Options ----------
+{}
+---------- Output ----------
+type T = (A<X> | B<   Y> /* prettier-ignore */
+) &
+  C;
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+type T = (| A<X>
+  | B<   Y> /* prettier-ignore */
+) &
+  C;
+
+---------- Options ----------
+{"printWidth":40,"semi":false}
+---------- Output ----------
+type T = (| A<X>
+  | B<   Y> /* prettier-ignore */
+) &
+  C

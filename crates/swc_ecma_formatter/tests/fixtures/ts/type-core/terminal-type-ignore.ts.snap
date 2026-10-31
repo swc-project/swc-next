@@ -1,0 +1,24 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Value = ( "a\x62" ) /* prettier-ignore */;
+---------- Options ----------
+{"printWidth":20,"semi":true}
+---------- Output ----------
+type Value = ( "a\x62" ) /* prettier-ignore */;
+
+---------- Options ----------
+{"printWidth":80,"semi":true}
+---------- Output ----------
+type Value = ( "a\x62" ) /* prettier-ignore */;
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+type Value = ( "a\x62" ) /* prettier-ignore */;
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":1,"semi":false}
+---------- Output ----------
+type Value = ( "a\x62" ) /* prettier-ignore */;

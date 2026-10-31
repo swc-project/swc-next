@@ -1,0 +1,1 @@
+third, ( // @ts-expect-error first = second );

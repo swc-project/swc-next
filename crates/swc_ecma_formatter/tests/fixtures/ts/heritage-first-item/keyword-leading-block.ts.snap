@@ -1,0 +1,31 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class A extends Base<T> implements
+/* head */ First, Second {}
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+class A
+  extends Base<T>
+  /* head */
+  implements First, Second {}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class A
+  extends Base<T>
+  /* head */
+  implements
+    First,
+    Second {}
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":100,"useTabs":true}
+---------- Output ----------
+class A
+	extends Base<T>
+	/* head */
+	implements First, Second {}

@@ -1,0 +1,26 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+({ key
+/** @type {number} */
+: /** @type {Missing} */ (value) });
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+({
+  key:
+    /** @type {number} */
+    /** @type {Missing} */ (
+      value
+    ),
+});
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+({
+  key:
+    /** @type {number} */
+    /** @type {Missing} */ (value),
+});

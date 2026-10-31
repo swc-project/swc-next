@@ -1,0 +1,1 @@
+(firstLong + secondLong, thirdLong + fourthLong);

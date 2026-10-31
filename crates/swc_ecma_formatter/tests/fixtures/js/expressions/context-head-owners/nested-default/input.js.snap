@@ -1,0 +1,18 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const { value = (target = /* head */ (source)).field } = input;
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+const {
+  value = (target =
+    /* head */ source)
+    .field,
+} = input;
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+const { value = (target = /* head */ source).field } = input;

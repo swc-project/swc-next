@@ -1,0 +1,50 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+schedule(function (
+// prettier-ignore
+firstValue=createValue(  1+2 ), secondValue, thirdValue) { return firstValue + secondValue + thirdValue; }, delay);
+---------- Options ----------
+{"printWidth":32}
+---------- Output ----------
+schedule(function (
+  // prettier-ignore
+  firstValue=createValue(  1+2 ),
+  secondValue,
+  thirdValue,
+) {
+  return (
+    firstValue +
+    secondValue +
+    thirdValue
+  );
+}, delay);
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+schedule(function (
+  // prettier-ignore
+  firstValue=createValue(  1+2 ),
+  secondValue,
+  thirdValue,
+) {
+  return (
+    firstValue +
+    secondValue +
+    thirdValue
+  );
+}, delay);
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+schedule(function (
+  // prettier-ignore
+  firstValue=createValue(  1+2 ),
+  secondValue,
+  thirdValue,
+) {
+  return firstValue + secondValue + thirdValue;
+}, delay);

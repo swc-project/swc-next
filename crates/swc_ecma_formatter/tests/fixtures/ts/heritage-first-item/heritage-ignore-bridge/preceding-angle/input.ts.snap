@@ -1,0 +1,21 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends B<  T  > /* prettier-ignore */ implements I { value : T; }---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+class C
+  extends B<  T  > /* prettier-ignore */ implements I
+{
+  value: T;
+}
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+class C
+  extends B<  T  > /* prettier-ignore */ implements I
+{
+  value: T
+}

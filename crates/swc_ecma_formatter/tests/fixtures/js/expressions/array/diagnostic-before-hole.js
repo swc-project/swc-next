@@ -1,0 +1,5 @@
+[first
+// @ts-ignore
+,
+,
+second];

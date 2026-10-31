@@ -1,0 +1,60 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+do {call(1+2);}
+// prettier-ignore
+while (a+b);
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+do {
+  call(1 + 2);
+}
+// prettier-ignore
+while (a+b);
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+do {
+  call(1 + 2);
+}
+// prettier-ignore
+while (a+b);
+
+---------- Options ----------
+{"printWidth":80,"semi":false}
+---------- Output ----------
+do {
+  call(1 + 2)
+}
+// prettier-ignore
+while (a+b)
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+do {
+  call(1 + 2)
+}
+// prettier-ignore
+while (a+b)
+
+---------- Options ----------
+{"printWidth":20,"useTabs":true}
+---------- Output ----------
+do {
+	call(1 + 2);
+}
+// prettier-ignore
+while (a+b);
+
+---------- Options ----------
+{"endOfLine":"crlf","printWidth":40}
+---------- Output ----------
+do {
+  call(1 + 2);
+}
+// prettier-ignore
+while (a+b);

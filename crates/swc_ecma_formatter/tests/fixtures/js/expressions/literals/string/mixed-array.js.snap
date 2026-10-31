@@ -1,0 +1,75 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+['a', 1, true, null, ...rest, ['b', 'c']];
+---------- Options ----------
+{}
+---------- Output ----------
+["a", 1, true, null, ...rest, ["b", "c"]];
+
+---------- Options ----------
+{"singleQuote":true}
+---------- Output ----------
+['a', 1, true, null, ...rest, ['b', 'c']];
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+;["a", 1, true, null, ...rest, ["b", "c"]]
+
+---------- Options ----------
+{"semi":false,"singleQuote":true}
+---------- Output ----------
+;['a', 1, true, null, ...rest, ['b', 'c']]
+
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+[
+  "a",
+  1,
+  true,
+  null,
+  ...rest,
+  ["b", "c"],
+];
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+[
+  "a",
+  1,
+  true,
+  null,
+  ...rest,
+  [
+    "b",
+    "c",
+  ],
+];
+
+---------- Options ----------
+{"endOfLine":"crlf"}
+---------- Output ----------
+["a", 1, true, null, ...rest, ["b", "c"]];
+
+---------- Options ----------
+{"endOfLine":"cr"}
+---------- Output ----------
+["a", 1, true, null, ...rest, ["b", "c"]];
+---------- Options ----------
+{"printWidth":10,"tabWidth":4,"useTabs":true}
+---------- Output ----------
+[
+	"a",
+	1,
+	true,
+	null,
+	...rest,
+	[
+		"b",
+		"c",
+	],
+];

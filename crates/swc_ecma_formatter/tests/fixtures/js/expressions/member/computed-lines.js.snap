@@ -1,0 +1,43 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+object // receiver
+[ // key
+first // end
+];
+---------- Options ----------
+{"printWidth":20}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"printWidth":40}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"printWidth":80}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+];
+
+---------- Options ----------
+{"printWidth":20,"semi":false}
+---------- Output ----------
+object // receiver
+[
+  // key
+  first // end
+]
