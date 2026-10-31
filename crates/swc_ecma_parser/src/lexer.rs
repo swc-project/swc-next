@@ -214,6 +214,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let Some(mut byte) = self.source.get(start as usize).copied() else {
             return false;
         };
+        self.clear_token_flags();
         if byte == b' ' {
             start += 1;
             let Some(next) = self.source.get(start as usize).copied() else {
@@ -221,10 +222,16 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             };
             byte = next;
         } else if byte == b'\n' {
-            return self.try_next_token_on_new_line(target);
+            let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
+                return false;
+            };
+            start = next_start;
+            byte = next;
+            self.set_token_flag(TokenFlag::LineTerminatorBefore);
         }
 
-        self.clear_token_flags();
+        // Every scanner below leaves the cursor unchanged on failure, so a line
+        // feed is rescanned by the trivia scanner with its original context.
         self.try_next_token_at(target, start, byte)
     }
 
@@ -330,12 +337,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         true
     }
 
-    /// Scan a line feed, blank lines, and space or tab indentation without
-    /// entering the trivia scanner. Leave the cursor at the first line feed
-    /// when the following token needs the slow path.
-    #[inline]
-    fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
-        let line_feed = self.cursor;
+    /// Skips a line feed, blank lines, and space or tab indentation. Returns the
+    /// position and value of the next byte, or `None` at the end of the source.
+    #[inline(always)]
+    fn skip_line_feed_indentation(&self, line_feed: u32) -> Option<(u32, u8)> {
         let mut start = line_feed as usize + 1;
         if self.source.get(start) == Some(&b' ') {
             // Skip a run of spaces eight bytes at a time. The first byte that differs from a
@@ -352,17 +357,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
             start += 1;
         }
-        let Some(&byte) = self.source.get(start) else {
-            return false;
-        };
-        self.clear_token_flags();
-        self.set_token_flag(TokenFlag::LineTerminatorBefore);
-        if self.try_next_token_at(target, start as u32, byte) {
-            true
-        } else {
-            self.cursor = line_feed;
-            false
-        }
+        let byte = *self.source.get(start)?;
+        Some((start as u32, byte))
     }
 
     #[inline(always)]
