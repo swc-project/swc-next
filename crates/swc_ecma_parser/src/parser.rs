@@ -485,22 +485,27 @@ impl ParserDiagnostics {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct ScratchBuffer {
+struct ScratchBuffer<'a> {
     // Allocate on the first append and reuse the capacity after reset.
-    items: Vec<NodeId>,
+    items: ArenaVec<'a, NodeId>,
 }
 
-impl ScratchBuffer {
+impl<'a> ScratchBuffer<'a> {
+    fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            items: ArenaVec::new_in(allocator),
+        }
+    }
+
     fn begin(&self) -> usize {
         self.items.len()
     }
 
     fn append(&mut self, index: impl AstNode) {
-        if self.items.len() == self.items.capacity() {
+        if let Err(index) = self.items.push_within_capacity(index.node_id()) {
             self.items.reserve(16);
+            self.items.push(index);
         }
-        self.items.push(index.node_id());
     }
 
     fn reset(&mut self, checkpoint: usize) {
@@ -666,8 +671,7 @@ struct ArrowBodyResult {
 /// An ordered table owns both candidate spans and their scope boundaries; a consumed
 /// candidate stays in place until its scope ends. One journal restores metadata mutations.
 /// Node scratch storage is reset at each conversion boundary.
-#[derive(Default)]
-struct CoverState {
+struct CoverState<'a> {
     initialized_names: IndexMap<NodeId, Option<Span>, FxBuildHasher>,
     /// Commas which become errors only if their spread nodes become rest elements.
     trailing_commas: FxHashMap<NodeId, Span>,
@@ -675,7 +679,7 @@ struct CoverState {
     /// The same targets must be rejected if later resolved as bindings.
     parenthesized_targets: FxHashSet<NodeId>,
     changes: Vec<CoverChange>,
-    scratch: ScratchBuffer,
+    scratch: ScratchBuffer<'a>,
 }
 
 #[derive(Clone, Copy)]
@@ -687,7 +691,17 @@ enum CoverChange {
     ParenthesizedTarget(NodeId),
 }
 
-impl CoverState {
+impl<'a> CoverState<'a> {
+    fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            initialized_names: IndexMap::default(),
+            trailing_commas: FxHashMap::default(),
+            parenthesized_targets: FxHashSet::default(),
+            changes: Vec::new(),
+            scratch: ScratchBuffer::new(allocator),
+        }
+    }
+
     fn start_expression(&self) -> usize {
         self.initialized_names.len()
     }
@@ -1176,19 +1190,19 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     lexer: Lexer<'a, C>,
     diagnostics: ParserDiagnostics,
     current_token: Token,
-    scratch_statements: ScratchBuffer,
-    scratch_decorators: ScratchBuffer,
+    scratch_statements: ScratchBuffer<'a>,
+    scratch_decorators: ScratchBuffer<'a>,
     /// General-purpose scratch buffers used when two extra-data lists are
     /// assembled at the same time.
-    scratch_a: ScratchBuffer,
-    scratch_b: ScratchBuffer,
+    scratch_a: ScratchBuffer<'a>,
+    scratch_b: ScratchBuffer<'a>,
     scratch_string: Wtf8Buf,
     export_specifier_tags: Vec<TokenTag>,
     context: Context,
     statement_context: StatementContext,
     ts_context: TsContext,
     module_detection: ModuleDetection,
-    cover: CoverState,
+    cover: CoverState<'a>,
     /// TypeScript grammar alternatives rejected in a particular parse context.
     ///
     /// Failures survive [`Checkpoint`] rollback so enclosing speculation can
@@ -1478,10 +1492,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: BoundaryContext::empty(),
             diagnostics: ParserDiagnostics::default(),
             current_token: initial_token,
-            scratch_statements: ScratchBuffer::default(),
-            scratch_decorators: ScratchBuffer::default(),
-            scratch_a: ScratchBuffer::default(),
-            scratch_b: ScratchBuffer::default(),
+            scratch_statements: ScratchBuffer::new(allocator),
+            scratch_decorators: ScratchBuffer::new(allocator),
+            scratch_a: ScratchBuffer::new(allocator),
+            scratch_b: ScratchBuffer::new(allocator),
             scratch_string: Wtf8Buf::new(),
             export_specifier_tags: Vec::new(),
             context: Context::default(),
@@ -1492,7 +1506,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 context
             },
             module_detection: ModuleDetection::new(options.source_type),
-            cover: CoverState::default(),
+            cover: CoverState::new(allocator),
             ts_rejected_speculations: FxHashSet::default(),
             await_identifier_in_async_head: None,
             failed_type_arguments: FxHashMap::default(),
