@@ -38,6 +38,13 @@ fn modifiers() {
         "class C { override value = 1; }",
         "class C {          value = 1; }",
     );
+
+    assert_strip("class C { abstract() {} }", "class C { abstract() {} }");
+
+    assert_strip(
+        "class C { abstract abstract() {} }",
+        "class C {          abstract() {} }",
+    );
 }
 
 #[test]
@@ -145,6 +152,36 @@ fn member_boundaries() {
     );
 
     assert_strip(
+        "class C { first = 1\nabstract next() {} }",
+        "class C { first = 1\n         next() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\nabstract *next() {} }",
+        "class C { first = 1\n;        *next() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\nabstract ['next']() {} }",
+        "class C { first = 1\n;        ['next']() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\nabstract in() {} }",
+        "class C { first = 1\n;        in() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\nabstract instanceof() {} }",
+        "class C { first = 1\n;        instanceof() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\nabstract static ['next']() {} }",
+        "class C { first = 1\n         static ['next']() {} }",
+    );
+
+    assert_strip(
         "class C { first = 1\npublic in; }",
         "class C { first = 1\n;      in; }",
     );
@@ -195,6 +232,41 @@ fn parameter_properties() {
 #[test]
 fn member_declarations() {
     assert_strip(
+        "class C { abstract next() {} }",
+        "class C {          next() {} }",
+    );
+
+    assert_strip(
+        "abstract class C { abstract next() {} }",
+        "         class C {          next() {} }",
+    );
+
+    assert_strip(
+        "class C { abstract get next() { return 1 } }",
+        "class C {          get next() { return 1 } }",
+    );
+
+    assert_strip(
+        "class C { abstract set next(v) {} }",
+        "class C {          set next(v) {} }",
+    );
+
+    assert_strip(
+        "class C { abstract constructor() {} }",
+        "class C {          constructor() {} }",
+    );
+
+    assert_strip(
+        "class C { public abstract next() {} }",
+        "class C {                 next() {} }",
+    );
+
+    assert_strip(
+        "class C { abstract public next() {} }",
+        "class C {                 next() {} }",
+    );
+
+    assert_strip(
         "class C { abstract value: number; next = 1; }",
         "class C {                         next = 1; }",
     );
@@ -240,6 +312,11 @@ fn decorators() {
     assert_strip(
         "class C { first = 1\n@dec public ['second']() {} }",
         "class C { first = 1\n@dec        ['second']() {} }",
+    );
+
+    assert_strip(
+        "class C { first = 1\n@decorators.abstract abstract ['next']() {} }",
+        "class C { first = 1\n@decorators.abstract          ['next']() {} }",
     );
 
     assert_strip(

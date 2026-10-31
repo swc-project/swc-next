@@ -881,6 +881,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         let key_token = self.tokens.first_in_range(key_span.start, key_span.end);
         let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         let mut first_erased_modifier = None;
+        if node.r#abstract(self.ast) {
+            let start = self.erase_token(modifiers_start, key_span.start, TokenTag::Abstract);
+            first_erased_modifier = earliest_position(first_erased_modifier, start);
+        }
         if node.r#override(self.ast) {
             let start = self.erase_token(modifiers_start, key_span.start, TokenTag::Override);
             first_erased_modifier = earliest_position(first_erased_modifier, start);
