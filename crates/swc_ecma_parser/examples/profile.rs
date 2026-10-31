@@ -21,7 +21,7 @@ fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
     } else if path.extension().is_some_and(|ext| {
         matches!(
             ext.to_str(),
-            Some("js" | "jsx" | "mjs" | "cjs" | "ts" | "tsx")
+            Some("js" | "jsx" | "mjs" | "cjs" | "ts" | "tsx" | "mts" | "cts")
         )
     }) {
         files.push(path.to_owned());
