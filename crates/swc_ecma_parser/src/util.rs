@@ -274,6 +274,10 @@ pub fn decode_string_escapes(raw_str: &str, out: &mut Wtf8Buf) {
                     i += 1;
                 }
             }
+            byte if byte.is_ascii() => {
+                out.push_char(char::from(byte));
+                i += 1;
+            }
             _ => {
                 let us_len = unicode_separator_len(raw, i);
                 if us_len > 0 {
