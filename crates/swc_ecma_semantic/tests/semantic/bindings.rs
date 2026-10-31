@@ -222,6 +222,61 @@ fn assert_linked_symbols(source: &str, options: Options, name: &[u8], group_size
 }
 
 #[test]
+fn canonical_names_across_analysis() {
+    let allocator = Allocator::new();
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+    let (mut ast, first) = analyze_source(&allocator, "let value; v\\u0061lue;", script);
+    let symbol = first.binding(ScopeId::ROOT, b"value").unwrap();
+    let reference = first.iter_references().next().unwrap().reference;
+    let second = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let repeated = second.iter_references().next().unwrap().reference;
+    assert_eq!(repeated.name, reference.name);
+    assert_eq!(repeated.symbol, Some(symbol));
+    assert_eq!(
+        second.lookup(ScopeId::ROOT, b"value", ReferenceSpace::Value),
+        Some(symbol)
+    );
+
+    let swc_next_ecma_ast::NodeKindData::IdentifierReference(identifier) =
+        ast.kind_data(reference.node)
+    else {
+        unreachable!()
+    };
+    let renamed = ast.add_utf8("missing");
+    identifier.set_name(&mut ast, renamed);
+    let changed = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let reference = changed.iter_references().next().unwrap().reference;
+    assert_eq!(ast.get_utf8(reference.name), "missing");
+    assert_eq!(reference.symbol, None);
+    assert_eq!(changed.binding(ScopeId::ROOT, b"value"), Some(symbol));
+}
+
+#[test]
+fn canonical_names() {
+    let allocator = Allocator::new();
+    let script = Options {
+        source_type: SourceType::Script,
+        ..Options::default()
+    };
+
+    let (ast, semantic) = analyze_source(&allocator, "let value; v\\u0061lue;", script);
+    let symbol = semantic.symbol(symbol_named(&ast, &semantic, b"value"));
+    let reference = semantic.iter_references().next().unwrap().reference;
+    assert_eq!(symbol.name.as_utf8(), Some(reference.name));
+
+    let (ast, semantic) = analyze_source(&allocator, r#"enum E { "\ud800" }"#, ts_module_options());
+    let member = semantic
+        .iter_symbols()
+        .find(|entry| entry.symbol.flags.contains(SymbolFlags::ENUM_MEMBER))
+        .unwrap();
+    assert!(matches!(member.symbol.name, SymbolName::Wtf8(_)));
+    assert_eq!(ast.get_wtf8(member.symbol.name).as_bytes(), b"\xed\xa0\x80");
+}
+
+#[test]
 fn hoisting_variables_keep_lexical_bindings() {
     let module = Options::default();
     let ts_module = ts_module_options();

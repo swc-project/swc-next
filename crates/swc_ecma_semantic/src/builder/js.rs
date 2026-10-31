@@ -145,7 +145,7 @@ pub(super) fn check_binding_identifier<'traverse>(
     let prepared = if builder.check_syntax.redeclarations() {
         let prepared = builder.symbols.prepare_declaration(
             builder.ast,
-            identifier.name(builder.ast).into(),
+            builder.ast.intern_utf8(identifier.name(builder.ast)).into(),
             node_id,
         );
         builder.check_redeclaration(node_id, name, prepared);

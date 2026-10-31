@@ -9,21 +9,21 @@ use swc_next_allocator::{
     vec::{ArenaIndexVec, ArenaVec},
 };
 use swc_next_ecma_ast::{
-    AssignmentExpression, AssignmentOperator, Ast, AstUtf8, AstWtf8, BindingIdentifier, Class,
-    ClassType, ExportNamedDeclaration, ExportSpecifier, Function, FunctionType,
-    IdentifierReference, ImportDeclaration, ImportOrExportKind, ImportSpecifier, JsxClosingElement,
-    JsxElementName, JsxElementNameData, JsxIdentifier, JsxMemberExpressionObjectData,
-    JsxOpeningElement, MemberExpression, ModuleExportName, ModuleExportNameData, NodeId, NodeKind,
-    NodeKindData, ReferenceId, ScopeId, SymbolId, TsEnumDeclaration, TsEnumMember, TsFunction,
-    TsGlobalDeclaration, TsImportEqualsDeclaration, TsInterfaceDeclaration, TsModuleDeclaration,
-    TsModuleName, TsModuleNameData, TsNamespaceExportDeclaration, TsQualifiedName,
-    TsQualifiedNameLeftData, TsTypeAliasDeclaration, TsTypePredicate, VariableDeclaration,
-    VariableKind,
+    AssignmentExpression, AssignmentOperator, Ast, AstInternedUtf8, AstStringLookup, AstUtf8,
+    AstWtf8, BindingIdentifier, Class, ClassType, ExportNamedDeclaration, ExportSpecifier,
+    Function, FunctionType, IdentifierReference, ImportDeclaration, ImportOrExportKind,
+    ImportSpecifier, JsxClosingElement, JsxElementName, JsxElementNameData, JsxIdentifier,
+    JsxMemberExpressionObjectData, JsxOpeningElement, MemberExpression, ModuleExportName,
+    ModuleExportNameData, NodeId, NodeKind, NodeKindData, ReferenceId, ScopeId, SymbolId,
+    TsEnumDeclaration, TsEnumMember, TsFunction, TsGlobalDeclaration, TsImportEqualsDeclaration,
+    TsInterfaceDeclaration, TsModuleDeclaration, TsModuleName, TsModuleNameData,
+    TsNamespaceExportDeclaration, TsQualifiedName, TsQualifiedNameLeftData, TsTypeAliasDeclaration,
+    TsTypePredicate, VariableDeclaration, VariableKind,
 };
 
 use crate::{
     DeclarationId, Declarations, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps,
-    Scopes, Semantic, Symbols,
+    Scopes, Semantic, SymbolName, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -65,7 +65,7 @@ use module_instance::{TsModuleInstanceMemo, TsModuleInstanceState, ts_module_ins
 pub struct Symbol {
     /// Same-named declarations that shadow an internal name reuse its name
     /// handle, so lexical lookup can compare names without reading the AST.
-    pub name: AstWtf8,
+    pub name: SymbolName,
     pub flags: SymbolFlags,
     /// The first declaration contributing to this symbol.
     pub declaration: DeclarationId,
@@ -386,7 +386,7 @@ impl Excludes {
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Reference {
-    pub name: AstUtf8,
+    pub name: AstInternedUtf8,
     /// The scope the reference appears in.
     pub scope: ScopeId,
     /// The referencing node.
@@ -954,6 +954,7 @@ struct TsImportAliasIndex<'a> {
 
 #[derive(Debug)]
 pub(crate) struct TsMemberIndex<'a> {
+    names: AstStringLookup<'a>,
     source_exports: Option<TsSourceExports<'a>>,
     local_exports: TsLocalExportMap<'a>,
     environments: TsMemberEnvironments<'a>,
@@ -993,6 +994,7 @@ impl TsMemberIndex<'_> {
             .unwrap_or_default();
         let symbol = resolution.candidate()?;
         let target = TsValueTargetLookup {
+            names: self.names,
             locals: &self.local_exports,
             symbols,
             declarations,
@@ -1036,6 +1038,7 @@ impl TsMemberIndex<'_> {
         Some(TsSourceBindingIterator {
             inner: self.environments.environment(source.environment).iter(),
             locals,
+            names: self.names,
         })
     }
 
@@ -1120,7 +1123,15 @@ impl TsMemberIndex<'_> {
         name: &[u8],
         space: ReferenceSpace,
     ) -> NameResolution {
-        let query = NameLookupQuery { scope, name, space };
+        let Some(key) = semantic.names.get(name) else {
+            return NameResolution::Unresolved;
+        };
+        let query = NameLookupQuery {
+            scope,
+            name,
+            key,
+            space,
+        };
         let lexical = LexicalLookup {
             scopes: &semantic.scopes.list,
             symbols: &semantic.symbols,
@@ -1161,6 +1172,7 @@ impl TsMemberIndex<'_> {
 }
 
 pub(crate) struct TsSourceBindingIterator<'a> {
+    names: AstStringLookup<'a>,
     inner: swc_next_allocator::hash_map::Iter<'a, &'a [u8], TsMemberEntry>,
     locals: &'a ScopeMap<'a>,
 }
@@ -1170,7 +1182,12 @@ impl Iterator for TsSourceBindingIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.find_map(|(&name, member)| {
-            (name != b"default" && !self.locals.contains_key(name)).then_some(member.symbol)
+            (name != b"default"
+                && !self
+                    .names
+                    .get(name)
+                    .is_some_and(|key| self.locals.contains_key(&key)))
+            .then_some(member.symbol)
         })
     }
 }
@@ -1426,8 +1443,8 @@ impl<'a> TsResolvedImportTarget<'a> {
 
 #[derive(Clone, Copy)]
 pub(crate) enum TsNamespaceExportAliasIssue {
-    Missing { name: AstUtf8, node: NodeId },
-    NonLocal { name: AstUtf8, node: NodeId },
+    Missing { name: AstInternedUtf8, node: NodeId },
+    NonLocal { name: AstInternedUtf8, node: NodeId },
     Duplicate { node: NodeId, previous: NodeId },
     Conflict { node: NodeId, previous: NodeId },
 }
@@ -1713,6 +1730,7 @@ impl TsExportLocal {
 }
 
 fn ts_exported_value(
+    names: AstStringLookup<'_>,
     locals: &TsLocalExportMap<'_>,
     symbols: &Symbols,
     declarations: &Declarations,
@@ -1723,10 +1741,11 @@ fn ts_exported_value(
     let first = symbols[lexical].declaration;
     let scope = declarations[first].scope;
     let target = locals.get(&(scope, name))?.exported_value()?;
-    (scope_maps[scope].get(name).copied() == Some(lexical)).then_some(target)
+    (scope_maps[scope].get(&names.get(name)?).copied() == Some(lexical)).then_some(target)
 }
 
 struct TsValueTargetLookup<'lookup, 'arena> {
+    names: AstStringLookup<'arena>,
     locals: &'lookup TsLocalExportMap<'arena>,
     symbols: &'lookup Symbols,
     declarations: &'lookup Declarations,
@@ -1746,6 +1765,7 @@ impl TsValueTargetLookup<'_, '_> {
             ReferenceSpace::Value | ReferenceSpace::Typeof
         ));
         let symbol = ts_exported_value(
+            self.names,
             self.locals,
             self.symbols,
             self.declarations,
@@ -1873,6 +1893,7 @@ impl<'a> SymbolLinks<'a> {
 /// Collects symbols and references during the AST walk and finalizes
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
+    names: AstStringLookup<'a>,
     allocator: &'a Allocator,
     internal_names: crate::InternalNames<'a>,
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
@@ -1948,7 +1969,7 @@ pub(crate) struct PendingBinding {
 
 #[derive(Clone, Copy)]
 struct PendingDeclaration {
-    name: AstWtf8,
+    name: SymbolName,
     node: NodeId,
     binding: PendingBinding,
 }
@@ -2002,7 +2023,7 @@ enum DeclarationConflictKind {
 }
 
 impl PreparedDeclaration {
-    pub(crate) fn name(self) -> AstWtf8 {
+    pub(crate) fn name(self) -> SymbolName {
         self.declaration.name
     }
 
@@ -2077,6 +2098,7 @@ impl<'a> SymbolTracker<'a> {
         let mut node_semantic = ArenaIndexVec::with_capacity_in(nodes, allocator);
         node_semantic.resize(nodes, NodeSemanticId::None);
         let mut tracker = Self {
+            names: tree.string_lookup(),
             allocator,
             internal_names: crate::InternalNames::new_in(allocator),
             symbols: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
@@ -2122,7 +2144,7 @@ impl<'a> SymbolTracker<'a> {
         let (owner, _) = self.declare_symbol(
             tree,
             PendingDeclaration {
-                name: tree.empty_wtf8(),
+                name: SymbolName::Utf8(AstInternedUtf8::EMPTY),
                 node: program.node_id(),
                 binding: PendingBinding {
                     flags: SymbolFlags::VALUE_MODULE | SymbolFlags::NAMESPACE_MODULE,
@@ -2640,7 +2662,7 @@ impl<'a> SymbolTracker<'a> {
         let (owner, _) = self.declare_symbol(
             tree,
             PendingDeclaration {
-                name: identifier.name(tree).into(),
+                name: tree.intern_utf8(identifier.name(tree)).into(),
                 node: identifier.node_id(),
                 binding: PendingBinding {
                     flags: SymbolFlags::NAMESPACE_MODULE | SymbolFlags::AMBIENT,
@@ -2806,12 +2828,12 @@ impl<'a> SymbolTracker<'a> {
     pub(crate) fn prepare_declaration(
         &self,
         tree: &Ast<'a>,
-        name: AstWtf8,
+        name: SymbolName,
         node: NodeId,
     ) -> PreparedDeclaration {
         let name_text = tree.get_wtf8(name).as_bytes();
         let local = self
-            .own_binding(self.pending.scope, name_text)
+            .own_binding(self.pending.scope, name.into())
             .filter(|&symbol| {
                 !self.symbols[symbol]
                     .flags
@@ -2828,7 +2850,7 @@ impl<'a> SymbolTracker<'a> {
             let shared = self
                 .ts_type_parameters
                 .get(&owner)
-                .and_then(|parameters| parameters.get(name_text).copied());
+                .and_then(|parameters| parameters.get(&AstWtf8::from(name)).copied());
             (
                 DeclarationDestination::TsTypeParameter { owner },
                 shared,
@@ -2851,7 +2873,9 @@ impl<'a> SymbolTracker<'a> {
             let shared = self
                 .ts_member_environments
                 .member(environment, name_text)
-                .or_else(|| projection_scope.and_then(|scope| self.binding(scope, name_text)));
+                .or_else(|| {
+                    projection_scope.and_then(|scope| self.binding_key(scope, name.into()))
+                });
             (
                 DeclarationDestination::TsMember {
                     environment,
@@ -2910,7 +2934,7 @@ impl<'a> SymbolTracker<'a> {
         else {
             return;
         };
-        let declaration_id = self.declare(tree, name.into(), node);
+        let declaration_id = self.declare(tree, name, node);
         self.finish_binding_identifier(tree, name, declaration_id, scope, current_scope);
     }
 
@@ -2927,7 +2951,7 @@ impl<'a> SymbolTracker<'a> {
             return;
         };
         debug_assert_eq!(prepared.node(), node);
-        debug_assert_eq!(prepared.name(), name.into());
+        debug_assert_eq!(prepared.name(), SymbolName::Utf8(tree.intern_utf8(name)));
         let declaration_id = self.declare_prepared(tree, prepared);
         self.finish_binding_identifier(tree, name, declaration_id, scope, current_scope);
     }
@@ -2962,7 +2986,8 @@ impl<'a> SymbolTracker<'a> {
             .environment(environment)
             .get(name_text)
             .map(|entry| entry.symbol);
-        let local = self.own_binding(current_scope, name_text);
+        let name = SymbolName::intern_wtf8(tree, name);
+        let local = self.own_binding(current_scope, name.into());
         let prepared = PreparedDeclaration {
             declaration: PendingDeclaration {
                 name,
@@ -3001,10 +3026,11 @@ impl<'a> SymbolTracker<'a> {
     /// as a declaration for error recovery.
     // Keep map-entry temporaries out of the visitor shared with syntax checking.
     #[inline(never)]
-    pub fn declare(&mut self, tree: &Ast<'a>, name: AstWtf8, node: NodeId) -> DeclarationId {
+    pub fn declare(&mut self, tree: &Ast<'a>, name: AstUtf8, node: NodeId) -> DeclarationId {
         debug_assert!(node.index() < tree.node_count());
 
-        let name_text = tree.get_wtf8(name).as_bytes();
+        let canonical = tree.intern_utf8(name);
+        let key: AstWtf8 = canonical.into();
         if self.ts_container_stack.is_empty()
             && self.pending_type_parameter_owner().is_none()
             && (self.pending.scope != ScopeId::MODULE
@@ -3017,10 +3043,8 @@ impl<'a> SymbolTracker<'a> {
             declaration_flags.set(SymbolFlags::IS_DEFAULT, self.export_state.is_default());
             let declaration_id = self.declarations.next_idx();
             let bindings = &mut self.scope_maps[target];
-            let hash = bindings.hasher().hash_one(name_text);
-            let entry = bindings
-                .raw_entry_mut()
-                .from_key_hashed_nocheck(hash, name_text);
+            let hash = bindings.hasher().hash_one(key);
+            let entry = bindings.raw_entry_mut().from_key_hashed_nocheck(hash, &key);
             // The internal name shares the function scope, but is shadowed
             // rather than redeclared by parameters and local declarations.
             // Keep its symbol and AST identity while replacing the name map.
@@ -3033,13 +3057,11 @@ impl<'a> SymbolTracker<'a> {
                     let symbol_name = self.symbols[*entry.get()].name;
                     entry.remove_entry();
                     (
-                        bindings
-                            .raw_entry_mut()
-                            .from_key_hashed_nocheck(hash, name_text),
+                        bindings.raw_entry_mut().from_key_hashed_nocheck(hash, &key),
                         symbol_name,
                     )
                 }
-                entry => (entry, name),
+                entry => (entry, SymbolName::Utf8(canonical)),
             };
             let id = match entry {
                 hashbrown::hash_map::RawEntryMut::Occupied(entry) => {
@@ -3062,7 +3084,7 @@ impl<'a> SymbolTracker<'a> {
                         flags: declaration_flags,
                         declaration: declaration_id,
                     });
-                    vacant.insert_hashed_nocheck(hash, name_text, new_id);
+                    vacant.insert_hashed_nocheck(hash, key, new_id);
                     new_id
                 }
             };
@@ -3077,7 +3099,7 @@ impl<'a> SymbolTracker<'a> {
             return declaration_id;
         }
 
-        self.declare_ts_context_binding(tree, name, node)
+        self.declare_ts_context_binding(tree, canonical.into(), node)
     }
 
     fn record_ts_scope_views(&mut self, scope: ScopeId, views: Range) {
@@ -3210,7 +3232,7 @@ impl<'a> SymbolTracker<'a> {
                     let mut flags = self.pending.flags;
                     flags.insert(SymbolFlags::EXPORTED);
                     let declaration = PendingDeclaration {
-                        name,
+                        name: SymbolName::intern_wtf8(tree, name),
                         node,
                         binding: PendingBinding {
                             flags,
@@ -3244,7 +3266,7 @@ impl<'a> SymbolTracker<'a> {
         self.declare_symbol(
             tree,
             PendingDeclaration {
-                name: identifier.name(tree).into(),
+                name: tree.intern_utf8(identifier.name(tree)).into(),
                 node: identifier.node_id(),
                 binding: PendingBinding {
                     flags: SymbolFlags::UMD_EXPORT,
@@ -3282,7 +3304,7 @@ impl<'a> SymbolTracker<'a> {
             return;
         }
         let declaration = PendingDeclaration {
-            name: tree.empty_wtf8(),
+            name: SymbolName::Utf8(AstInternedUtf8::EMPTY),
             node,
             binding: PendingBinding {
                 flags: self.pending.flags | SymbolFlags::EXPORTED | SymbolFlags::IS_DEFAULT,
@@ -3393,7 +3415,11 @@ impl<'a> SymbolTracker<'a> {
         let symbol = self
             .symbol_of_node(name.node_id())
             .expect("the infer parameter is already declared");
-        self.insert_scope_binding(tree, current_scope, name.name(tree).into(), symbol);
+        self.insert_scope_binding(
+            current_scope,
+            tree.intern_utf8(name.name(tree)).into(),
+            symbol,
+        );
     }
 
     #[inline(always)]
@@ -3425,7 +3451,7 @@ impl<'a> SymbolTracker<'a> {
         // block-scoped redeclarations see it.
         let declaration = self.declarations[declaration_id];
         if declaration.flags.is_hoisting_var() && current_scope != declaration.scope {
-            let name = tree.get_utf8(name).as_bytes();
+            let name = tree.intern_utf8(name).into();
             for scope_id in scope.ancestors(Some(current_scope)) {
                 if scope_id == declaration.scope {
                     break;
@@ -3473,7 +3499,7 @@ impl<'a> SymbolTracker<'a> {
     fn declare_ts_context_binding(
         &mut self,
         tree: &Ast<'a>,
-        name: AstWtf8,
+        name: SymbolName,
         node: NodeId,
     ) -> DeclarationId {
         let plan = self.prepare_declaration(tree, name, node);
@@ -3491,19 +3517,14 @@ impl<'a> SymbolTracker<'a> {
                 let (id, declaration_id) =
                     self.declare_symbol(tree, declaration, plan.existing, true);
                 if plan.local.is_none() {
-                    self.insert_scope_binding(
-                        tree,
-                        declaration.binding.scope,
-                        declaration.name,
-                        id,
-                    );
+                    self.insert_scope_binding(declaration.binding.scope, declaration.name, id);
                 }
                 let parameters = self
                     .ts_type_parameters
                     .entry(owner)
                     .or_insert_with(|| ScopeMap::new_in(self.allocator));
-                let name = tree.get_wtf8(declaration.name).as_bytes();
-                if !parameters.contains_key(name) {
+                let name = self.symbols[id].name.into();
+                if !parameters.contains_key(&name) {
                     parameters.insert(name, id);
                 }
                 declaration_id
@@ -3513,12 +3534,7 @@ impl<'a> SymbolTracker<'a> {
                     self.declare_symbol(tree, plan.declaration, plan.existing, true);
                 if plan.existing.is_none() {
                     let declaration = plan.declaration;
-                    self.insert_scope_binding(
-                        tree,
-                        declaration.binding.scope,
-                        declaration.name,
-                        id,
-                    );
+                    self.insert_scope_binding(declaration.binding.scope, declaration.name, id);
                 }
                 declaration_id
             }
@@ -3548,7 +3564,7 @@ impl<'a> SymbolTracker<'a> {
         let name_text = tree.get_wtf8(name).as_bytes();
         let environment = self.ts_member_environments.ensure(owner, self.allocator);
         let shared_existing = self.ts_member_environments.member(environment, name_text);
-        let local_existing = actual_scope.and_then(|scope| self.own_binding(scope, name_text));
+        let local_existing = actual_scope.and_then(|scope| self.own_binding(scope, name.into()));
         let target = actual_scope.unwrap_or(declaration.binding.scope);
         let mut declaration = declaration;
         declaration.binding.scope = target;
@@ -3594,10 +3610,10 @@ impl<'a> SymbolTracker<'a> {
         if merges {
             self.record_ts_member(environment, name_text, id, kind, declaration.binding.flags);
             if let Some(scope) = projection_scope {
-                if let Some(projected) = self.binding(scope, name_text) {
+                if let Some(projected) = self.binding_key(scope, name.into()) {
                     debug_assert_eq!(projected, id);
                 } else {
-                    self.insert_scope_binding(tree, scope, name, id);
+                    self.insert_scope_binding(scope, name, id);
                 }
             }
         }
@@ -3685,13 +3701,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             let new_id = self.symbols.next_idx();
             self.symbols.push(Symbol {
-                name: self
-                    .scope_maps
-                    .get(binding.scope)
-                    .and_then(|bindings| bindings.get(tree.get_wtf8(name).as_bytes()))
-                    .map(|&symbol| self.symbols[symbol])
-                    .filter(|symbol| symbol.flags.intersects(SymbolFlags::INTERNAL_NAME))
-                    .map_or(name, |symbol| symbol.name),
+                name,
                 flags: declaration_flags,
                 declaration: declaration_id,
             });
@@ -3720,20 +3730,14 @@ impl<'a> SymbolTracker<'a> {
         if symbol.flags.intersects(SymbolFlags::INTERNAL_NAME) {
             let scope = self.declarations[symbol.declaration].scope;
             self.internal_names
-                .entry((scope, symbol.name))
+                .entry((scope, symbol.name.into()))
                 .or_insert(id);
         }
     }
 
     #[inline(always)]
-    fn insert_scope_binding(
-        &mut self,
-        tree: &Ast<'a>,
-        scope: ScopeId,
-        name: AstWtf8,
-        id: SymbolId,
-    ) {
-        let name = tree.get_wtf8(name).as_bytes();
+    fn insert_scope_binding(&mut self, scope: ScopeId, name: SymbolName, id: SymbolId) {
+        let name = name.into();
         self.scope_maps[scope].insert(name, id);
     }
 
@@ -3826,6 +3830,8 @@ impl<'a> SymbolTracker<'a> {
             return;
         };
         let exported_name = ts_module_export_name(tree, specifier.exported(tree));
+        // Alias-only names also participate in public textual lookup queries.
+        let exported_name = tree.intern_wtf8(exported_name);
         let exported_name = tree.get_wtf8(exported_name).as_bytes();
         let aliases = self.ts_member_environments.export_aliases_mut(environment);
         let previous = aliases.get(exported_name).map(|entry| entry.node);
@@ -3899,7 +3905,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             current_scope
         };
-        let Some(parameter) = self.own_binding(parameter_scope, tree.get_utf8(name).as_bytes())
+        let Some(parameter) = self.own_binding(parameter_scope, tree.intern_utf8(name).into())
         else {
             return;
         };
@@ -3978,7 +3984,7 @@ impl<'a> SymbolTracker<'a> {
         );
     }
 
-    /// Records an identifier reference at `node` in `scope`.
+    /// Records a reference to an already canonicalized name at `node` in `scope`.
     pub fn add_reference(
         &mut self,
         tree: &Ast<'a>,
@@ -3997,6 +4003,7 @@ impl<'a> SymbolTracker<'a> {
         } else {
             flags
         };
+        let name = tree.intern_utf8(name);
         let id = self.references.next_idx();
         self.references.push(Reference {
             name,
@@ -4110,10 +4117,10 @@ impl<'a> SymbolTracker<'a> {
 
     /// The binding of `name` declared directly in `scope`, excluding
     /// hoisting `var`s passing through.
-    pub fn own_binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+    pub fn own_binding(&self, scope: ScopeId, name: AstWtf8) -> Option<SymbolId> {
         self.scope_maps
             .get(scope)
-            .and_then(|map| map.get(name).copied())
+            .and_then(|map| map.get(&name).copied())
     }
 
     fn symbol_declared_in_scope(&self, symbol: SymbolId, scope: ScopeId) -> bool {
@@ -4194,23 +4201,27 @@ impl<'a> SymbolTracker<'a> {
     /// The binding of `name` at `scope`, including a hoisting `var` passing
     /// through on its way to its hoist target.
     pub fn binding(&self, scope: ScopeId, name: &[u8]) -> Option<SymbolId> {
+        self.binding_key(scope, self.names.get(name)?)
+    }
+
+    fn binding_key(&self, scope: ScopeId, name: AstWtf8) -> Option<SymbolId> {
         self.own_binding(scope, name).or_else(|| {
             self.hoisting_declaration(scope, name)
                 .map(|declaration| self.declarations[declaration].symbol)
         })
     }
 
-    fn hoisting_declaration(&self, scope: ScopeId, name: &[u8]) -> Option<DeclarationId> {
+    fn hoisting_declaration(&self, scope: ScopeId, name: AstWtf8) -> Option<DeclarationId> {
         self.hoisting_variables
             .get(scope)
             .and_then(Option::as_deref)
-            .and_then(|map| map.get(name).copied())
+            .and_then(|map| map.get(&name).copied())
     }
 
     pub(crate) fn hoisting_conflict(
         &self,
         prepared: PreparedDeclaration,
-        name: &[u8],
+        name: AstWtf8,
     ) -> Option<Declaration> {
         // Passing vars are conflict-only declarations, never binding candidates.
         // Only declarations that exclude var need the scope's hoisting map.
@@ -4232,6 +4243,7 @@ impl<'a> SymbolTracker<'a> {
     /// symbol used for conflict checks or qualified namespace ownership.
     fn ts_exported_value(&self, lexical: SymbolId, name: &[u8]) -> Option<SymbolId> {
         ts_exported_value(
+            self.names,
             &self.ts_local_exports,
             &self.symbols,
             &self.declarations,
@@ -4414,6 +4426,7 @@ impl<'a> SymbolTracker<'a> {
         };
 
         Semantic {
+            names: self.names,
             scopes,
             symbols: self.symbols,
             symbol_links: self.symbol_links,
@@ -4429,6 +4442,7 @@ impl<'a> SymbolTracker<'a> {
             hoisting_variables: self.hoisting_variables,
             node_semantic,
             ts_members: TsMemberIndex {
+                names: self.names,
                 source_exports: self.ts_source_exports,
                 local_exports: self.ts_local_exports,
                 environments: self.ts_member_environments,
@@ -4528,6 +4542,7 @@ impl<'a> SymbolTracker<'a> {
             let name = tree.get_utf8(reference.name).as_bytes();
             let query = NameLookupQuery {
                 scope: reference.scope,
+                key: reference.name.into(),
                 name,
                 space: reference.flags.space,
             };
@@ -4624,6 +4639,7 @@ impl<'a> SymbolTracker<'a> {
             );
             let query = NameLookupQuery {
                 scope: reference.scope,
+                key: reference.name.into(),
                 name: tree.get_utf8(reference.name).as_bytes(),
                 space: reference.flags.space,
             };
@@ -4672,6 +4688,7 @@ impl<'a> SymbolTracker<'a> {
             .unwrap_or_default();
         let hash = self.scope_maps[ScopeId::ROOT].hasher().hash_one(name);
         let value_targets = TsValueTargetLookup {
+            names: self.names,
             locals: &self.ts_local_exports,
             symbols: &self.symbols,
             declarations: &self.declarations,
@@ -4726,6 +4743,7 @@ impl<'a> SymbolTracker<'a> {
             .map(|aliases| aliases.spaces.as_slice())
             .unwrap_or_default();
         let target = TsValueTargetLookup {
+            names: self.names,
             locals: &self.ts_local_exports,
             symbols: &self.symbols,
             declarations: &self.declarations,

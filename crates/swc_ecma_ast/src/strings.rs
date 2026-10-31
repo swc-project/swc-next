@@ -1,4 +1,9 @@
-use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::ArenaVec, wtf8::Wtf8};
+use swc_next_allocator::{
+    Allocator,
+    hash_map::{EntryRef, HashMap as ArenaHashMap},
+    vec::ArenaVec,
+    wtf8::Wtf8,
+};
 
 macro_rules! define_ast_string {
     ($name:ident) => {
@@ -22,25 +27,80 @@ macro_rules! define_ast_string {
             pub const fn is_empty(self) -> bool {
                 self.start == self.end
             }
-
-            #[inline]
-            pub(crate) const fn from_raw(raw: u64) -> Self {
-                Self {
-                    start: raw as u32,
-                    end: (raw >> 32) as u32,
-                }
-            }
-
-            #[inline]
-            pub(crate) const fn raw(self) -> u64 {
-                self.start as u64 | ((self.end as u64) << 32)
-            }
         }
     };
 }
 
 define_ast_string!(AstUtf8);
+define_ast_string!(AstInternedUtf8);
 define_ast_string!(AstWtf8);
+
+/// Read-only access to canonical ranges in an AST's arena-owned string table.
+/// The view remains valid when the AST grows or is dropped before its arena.
+#[derive(Clone, Copy, Debug)]
+pub struct AstStringLookup<'a> {
+    dedup: *mut (),
+    marker: std::marker::PhantomData<&'a Allocator>,
+}
+
+impl AstStringLookup<'_> {
+    /// Finds a previously interned value without adding it to the table.
+    #[inline]
+    pub fn get(self, text: &[u8]) -> Option<AstWtf8> {
+        if text.is_empty() {
+            return Some(AstWtf8::EMPTY);
+        }
+        // SAFETY: the table and its owned keys live in the arena. No reference
+        // into the table escapes this call. The raw pointer prevents Send/Sync.
+        unsafe {
+            &*self
+                .dedup
+                .cast::<ArenaHashMap<'_, ArenaVec<'_, u8>, (u32, u32)>>()
+        }
+        .get(text)
+        .map(|&(start, end)| AstWtf8 { start, end })
+    }
+}
+
+impl AstUtf8 {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
+        Self {
+            start: raw as u32,
+            end: (raw >> 32) as u32,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
+
+impl AstWtf8 {
+    #[inline]
+    pub(crate) const fn from_raw(raw: u64) -> Self {
+        Self {
+            start: raw as u32,
+            end: (raw >> 32) as u32,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn raw(self) -> u64 {
+        self.start as u64 | ((self.end as u64) << 32)
+    }
+}
+
+impl From<AstInternedUtf8> for AstUtf8 {
+    #[inline]
+    fn from(value: AstInternedUtf8) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
 
 impl From<AstUtf8> for AstWtf8 {
     #[inline]
@@ -52,21 +112,62 @@ impl From<AstUtf8> for AstWtf8 {
     }
 }
 
+impl From<AstInternedUtf8> for AstWtf8 {
+    #[inline]
+    fn from(value: AstInternedUtf8) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
 pub(crate) struct StringPool<'a> {
     allocator: &'a Allocator,
     pub(crate) source: &'a str,
     extra: ArenaVec<'a, u8>,
-    dedup: ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>,
+    // Type-erased arena pointer keeps the pool covariant in `'a`. The pointee
+    // is mutated only through `dedup`, and raw mutable pointers make the pool
+    // non-`Sync`, so safe code cannot intern concurrently.
+    dedup: *mut (),
+    // Memoize immutable ranges, including aliases of the canonical range. A
+    // second semantic pass must not hash their contents again.
+    interned_ranges: *mut (),
 }
 
 impl<'a> StringPool<'a> {
+    pub fn reserve_interned_ranges(&self, capacity: usize) {
+        // SAFETY: same arena-owned, non-Sync table used by intern_range; no
+        // references into it escape this call.
+        let ranges = unsafe {
+            &mut *self
+                .interned_ranges
+                .cast::<ArenaHashMap<'a, u64, (u32, u32)>>()
+        };
+        if capacity > ranges.capacity() {
+            let additional = capacity.saturating_sub(ranges.len());
+            ranges.reserve(additional);
+        }
+    }
+
+    pub fn lookup(&self) -> AstStringLookup<'a> {
+        AstStringLookup {
+            dedup: self.dedup,
+            marker: std::marker::PhantomData,
+        }
+    }
     pub fn new_in(allocator: &'a Allocator, source: &'a str) -> Self {
         assert!(source.len() <= u32::MAX as usize);
+        let dedup: &'a mut ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)> =
+            allocator.alloc(ArenaHashMap::new_in(allocator));
+        let interned_ranges: &'a mut ArenaHashMap<'a, u64, (u32, u32)> =
+            allocator.alloc(ArenaHashMap::new_in(allocator));
         Self {
             source,
             allocator,
             extra: ArenaVec::new_in(allocator),
-            dedup: ArenaHashMap::new_in(allocator),
+            dedup: (dedup as *mut ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>).cast(),
+            interned_ranges: (interned_ranges as *mut ArenaHashMap<'a, u64, (u32, u32)>).cast(),
         }
     }
 
@@ -80,6 +181,14 @@ impl<'a> StringPool<'a> {
     pub fn get_wtf8(&self, id: AstWtf8) -> &'a Wtf8 {
         // SAFETY: `AstWtf8` is guaranteed to reference valid WTF-8.
         unsafe { Wtf8::from_bytes_unchecked(self.get_bytes(id.start, id.end)) }
+    }
+
+    #[inline]
+    pub fn as_utf8(&self, id: AstWtf8) -> Option<AstUtf8> {
+        self.get_wtf8(id).as_str().map(|_| AstUtf8 {
+            start: id.start,
+            end: id.end,
+        })
     }
 
     #[inline]
@@ -158,11 +267,63 @@ impl<'a> StringPool<'a> {
         AstWtf8 { start, end }
     }
 
+    /// Canonicalizes a UTF-8 range already stored in this pool.
+    #[inline]
+    pub fn intern_utf8(&self, text: AstUtf8) -> AstInternedUtf8 {
+        let (start, end) = self.intern_range(text.start, text.end);
+        AstInternedUtf8 { start, end }
+    }
+
+    /// Canonicalizes a WTF-8 range already stored in this pool.
+    #[inline]
+    pub fn intern_wtf8(&self, text: AstWtf8) -> AstWtf8 {
+        let (start, end) = self.intern_range(text.start, text.end);
+        AstWtf8 { start, end }
+    }
+
+    fn intern_range(&self, start: u32, end: u32) -> (u32, u32) {
+        if start == end {
+            return (0, 0);
+        }
+        // SAFETY: this arena allocation outlives the pool; the pool is not
+        // Sync and neither content lookup nor insertion accesses this map.
+        let ranges = unsafe {
+            &mut *self
+                .interned_ranges
+                .cast::<ArenaHashMap<'a, u64, (u32, u32)>>()
+        };
+        *ranges
+            .entry(AstUtf8 { start, end }.raw())
+            .or_insert_with(|| {
+                let text = self.get_bytes(start, end);
+                // SAFETY: this is the separate arena-owned content table. No
+                // references to its entries escape, and allocating its owned
+                // key does not access either interning table.
+                let dedup = unsafe {
+                    &mut *self
+                        .dedup
+                        .cast::<ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>>()
+                };
+                match dedup.entry_ref(text) {
+                    EntryRef::Occupied(entry) => *entry.get(),
+                    EntryRef::Vacant(entry) => {
+                        // Retain the original range. Only the map key needs
+                        // stable owned bytes; reuse the lookup hash on insertion.
+                        let mut key = ArenaVec::with_capacity_in(text.len(), self.allocator);
+                        key.extend_from_slice(text);
+                        // SAFETY: key is an exact copy of the queried bytes,
+                        // so checking equivalence again would repeat the work.
+                        *unsafe { entry.insert_with_key_unchecked(key, (start, end)) }
+                    }
+                }
+            })
+    }
+
     fn add_bytes(&mut self, text: &[u8]) -> (u32, u32) {
         if text.is_empty() {
             return (0, 0);
         }
-        if let Some(&id) = self.dedup.get(text) {
+        if let Some(id) = self.dedup_get(text) {
             return id;
         }
         let start = self
@@ -179,8 +340,34 @@ impl<'a> StringPool<'a> {
         let id = (start as u32, end as u32);
         let mut key = ArenaVec::with_capacity_in(text.len(), self.allocator);
         key.extend_from_slice(text);
-        self.dedup.insert(key, id);
+        self.dedup_insert(key, id);
         id
+    }
+
+    #[inline]
+    fn dedup_get(&self, text: &[u8]) -> Option<(u32, u32)> {
+        // SAFETY: `dedup` is initialized from an arena allocation of exactly
+        // this type and remains valid for `'a`.
+        unsafe {
+            (&*self
+                .dedup
+                .cast::<ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>>())
+                .get(text)
+                .copied()
+        }
+    }
+
+    #[inline]
+    fn dedup_insert(&self, key: ArenaVec<'a, u8>, value: (u32, u32)) {
+        // SAFETY: `dedup` is initialized from an arena allocation of exactly
+        // this type and remains valid for `'a`. `StringPool` is not `Sync`, and
+        // this method keeps the mutable access scoped to one insertion.
+        unsafe {
+            (&mut *self
+                .dedup
+                .cast::<ArenaHashMap<'a, ArenaVec<'a, u8>, (u32, u32)>>())
+                .insert(key, value);
+        }
     }
 }
 
@@ -222,5 +409,41 @@ mod tests {
         assert_eq!(large.as_bytes()[4095], b'x');
         assert_eq!(last, "last");
         assert_eq!(surrogate.as_bytes(), b"\xed\xa0\x80");
+    }
+
+    #[test]
+    fn interns_existing_ranges_without_moving_the_first_value() {
+        let allocator = Allocator::new();
+        let strings = StringPool::new_in(&allocator, "name name");
+        let first = strings.source_slice(0, 4);
+        let second = strings.source_slice(5, 9);
+
+        let canonical = strings.intern_utf8(first);
+        assert_eq!(canonical.start, 0);
+        assert_eq!(canonical.end, 4);
+        assert_eq!(strings.extra.len(), 0);
+        assert_eq!(strings.intern_utf8(second), canonical);
+        assert_eq!(strings.extra.len(), 0);
+        assert_eq!(strings.intern_utf8(first), canonical);
+        assert_eq!(strings.intern_utf8(second), canonical);
+        assert_eq!(strings.intern_wtf8(second.into()), canonical.into());
+    }
+
+    #[test]
+    fn canonical_lookup_lifetime() {
+        let allocator = Allocator::new();
+        let (lookup, canonical) = {
+            let mut ast = Ast::new("name name", &allocator);
+            let lookup = ast.string_lookup();
+            assert_eq!(lookup.get(b"name"), None);
+            let canonical = ast.intern_utf8(ast.source_slice(5, 9));
+            assert_eq!(lookup.get(b"name"), Some(canonical.into()));
+            ast.add_utf8(&"x".repeat(4096));
+            assert_eq!(ast.intern_utf8(ast.source_slice(0, 4)), canonical);
+            (lookup, canonical)
+        };
+        assert_eq!(lookup.get(b"name"), Some(canonical.into()));
+        assert_eq!(lookup.get(b"missing"), None);
+        assert_eq!(lookup.get(b""), Some(AstWtf8::EMPTY));
     }
 }
