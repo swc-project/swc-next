@@ -2916,6 +2916,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let checkpoint = self.scratch_a.begin();
         let result = (|| {
             let first = self.parse_variable_declarator(kind, context)?;
+            if self.current_token.tag() != TokenTag::Comma {
+                return Some(self.ast.add_sub_range([first]));
+            }
             self.scratch_a.append(first);
             while self.eat(TokenTag::Comma)? {
                 if !can_start_binding_pattern(self.current_token.tag()) {
