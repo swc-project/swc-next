@@ -18,6 +18,21 @@ cargo run -p swc_next_ecma_parser --example parser -- input.ts
 Use `--preserve-parens` to retain explicit parenthesis nodes. The input file's
 extension selects JavaScript, TypeScript, or JSX/TSX.
 
+## Profiling
+
+The `profile` example parses JavaScript and TypeScript files recursively and prints
+the path, source bytes, AST node count, extra-data count, and diagnostic count as TSV.
+It uses the default parser options without token collection.
+
+```sh
+cargo build --locked -p swc_next_ecma_parser --example profile --profile bench
+valgrind --tool=callgrind --collect-atstart=no --toggle-collect=profile_parse \
+  target/release/examples/profile tasks/benchmark/files /path/to/swc-minifier-inputs
+```
+
+Callgrind collects parser initialization, parsing, and AST cleanup. File discovery,
+file reads, and TSV output run outside the collection region.
+
 ## Testing
 
 Unit tests live beside the lexer and parser implementations.
