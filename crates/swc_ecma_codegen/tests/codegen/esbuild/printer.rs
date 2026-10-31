@@ -189,31 +189,31 @@ fn test_new() {
     expect_printed_minify("new x() ** 2", "new x**2;");
     expect_printed(
         "new Worker(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
-        "new Worker(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\"\n);\n",
+        "new Worker( // webpackFoo: 1\n// webpackBar: 2\n\"path\");\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
-        "new Worker(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\"\n);\n",
+        "new Worker( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\");\n",
     );
     expect_printed(
         "new Worker(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "new Worker(\n  /* multi\n   * line\n   * webpackBar: */\n  \"path\"\n);\n",
+        "new Worker( /* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
-        "new Worker(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "new Worker( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "new Worker(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
-        "new Worker(new URL(\n  \"path\",\n  /* webpackFoo: these can go anywhere */\n  import.meta.url\n));\n",
+        "new Worker(new URL(\"path\", /* webpackFoo: these can go anywhere */ import.meta.url));\n",
     );
 }
 
@@ -431,8 +431,8 @@ fn test_object() {
 #[test]
 fn test_switch() {
     expect_printed(
-        "switch (x) { /* 1 */ case 1: /* 2 */ case 2: /* default */ default: break }",
-        "switch (x) {\n  /* 1 */\n  case 1:\n  /* 2 */\n  case 2:\n  /* default */\n  default:\n    break;\n}\n",
+        "switch (x) { case 1: /* 2 */ case 2: /* default */ default: break }",
+        "switch (x) {\n  case 1:\n    /* 2 */\n  case 2:\n    /* default */\n  default:\n    break;\n}\n",
     );
 }
 
@@ -532,11 +532,11 @@ fn test_comments_and_parentheses() {
     expect_printed("x = () => (/* foo */ {});", "x = () => /* foo */ ({});\n");
     expect_printed(
         "for ((/* foo */ let).x of y) ;",
-        "for (\n  /* foo */\n  (let).x of y\n) ;\n",
+        "for ( /* foo */ let.x of y) ;\n",
     );
     expect_printed(
         "for (/* foo */ (let).x of y) ;",
-        "for (\n  /* foo */\n  (let).x of y\n) ;\n",
+        "for ( /* foo */ let.x of y) ;\n",
     );
     expect_printed(
         "function *x() { yield (/* foo */ y) }",
@@ -726,43 +726,43 @@ fn test_import() {
     expect_printed("import('path');", "import(\"path\");\n");
     expect_printed(
         "import(// webpackFoo: 1\n // webpackBar: 2\n 'path');",
-        "import(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\"\n);\n",
+        "import( // webpackFoo: 1\n// webpackBar: 2\n\"path\");\n",
     );
     expect_printed(
         "import(// webpackFoo: 1\n // webpackBar: 2\n 'path', {type: 'module'});",
-        "import(\n  // webpackFoo: 1\n  // webpackBar: 2\n  \"path\",\n  { type: \"module\" }\n);\n",
+        "import( // webpackFoo: 1\n// webpackBar: 2\n\"path\", { type: \"module\" });\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path');",
-        "import(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\"\n);\n",
+        "import( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\");\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ /* webpackBar: 2 */ 'path', {type: 'module'});",
-        "import(\n  /* webpackFoo: 1 */\n  /* webpackBar: 2 */\n  \"path\",\n  { type: \"module\" }\n);\n",
+        "import( /* webpackFoo: 1 */ /* webpackBar: 2 */ \"path\", { type: \"module\" });\n",
     );
     expect_printed(
         "import(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "import(\n  /* multi\n   * line\n   * webpackBar: */\n  \"path\"\n);\n",
+        "import( /* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */ ,);",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path', /* webpackBar:2 */ );",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\"\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\" /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path', { type: 'module' } /* webpackBar:2 */ );",
-        "import(\n  /* webpackFoo: 1 */\n  \"path\",\n  { type: \"module\" }\n  /* webpackBar:2 */\n);\n",
+        "import( /* webpackFoo: 1 */ \"path\", { type: \"module\" } /* webpackBar:2 */ );\n",
     );
     expect_printed(
         "import(new URL('path', /* webpackFoo: these can go anywhere */ import.meta.url))",
-        "import(new URL(\n  \"path\",\n  /* webpackFoo: these can go anywhere */\n  import.meta.url\n));\n",
+        "import(new URL(\"path\", /* webpackFoo: these can go anywhere */ import.meta.url));\n",
     );
     expect_printed_minify(
         "import defer * as foo from 'bar'",
@@ -1284,7 +1284,7 @@ fn test_using() {
 fn test_control_flow_minify_and_with() {
     expect_printed_minify(
         "if (x) y(); else z(); for (;;) x(); while(x)y(); do x(); while(y); switch(x){case 1:y();default:z()} try{x()}catch(e){y()}finally{z()} with(x)1e400",
-        "if(x)y();else z();for(;;)x();while(x)y();do x();while(y);switch(x){case 1:y();default:z()}try{x()}catch(e){y()}finally{z()}with(x)1/0;",
+        "if(x)y();else z();for(;;)x();while(x)y();do x();while(y)switch(x){case 1:y();default:z()}try{x()}catch(e){y()}finally{z()}with(x)1/0;",
     );
     expect_printed("with (x) 1e400", "with (x) 1e400;\n");
     expect_printed_minify(

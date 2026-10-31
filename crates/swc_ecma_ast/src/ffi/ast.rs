@@ -74,13 +74,13 @@ const _: () = {
     assert!(size_of::<ExtraData>() == EXTRA_DATA_SIZE);
     assert!(align_of::<NodePayload>() <= 8);
     assert!(align_of::<ExtraData>() <= 8);
-    assert!(size_of::<CommentKind>() == 2);
-    assert!(size_of::<CommentPosition>() == 2);
+    assert!(size_of::<CommentKind>() == 1);
+    assert!(size_of::<CommentPosition>() == 1);
     assert!(size_of::<Comment>() == COMMENT_SIZE);
     assert!(offset_of!(Comment, span) == 0);
     assert!(offset_of!(Comment, attached_to) == 8);
     assert!(offset_of!(Comment, kind) == 12);
-    assert!(offset_of!(Comment, position) == 14);
+    assert!(offset_of!(Comment, position) == 13);
 };
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.

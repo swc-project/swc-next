@@ -4,6 +4,15 @@ use swc_next_ecma_codegen::{Options as PrintOptions, print};
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParseOptions, Parser};
 
 #[track_caller]
+pub fn expect_printed_with_parse_options(source: &str, expected: &str, options: ParseOptions) {
+    let allocator = Allocator::new();
+    let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let output = print(&parsed.ast, PrintOptions::default());
+    assert_eq!(output.code, expected);
+}
+
+#[track_caller]
 pub fn expect_printed_ts_pair(source: &str, pretty: &str, minified: &str) {
     let options = ParseOptions {
         lang: Lang::Ts,

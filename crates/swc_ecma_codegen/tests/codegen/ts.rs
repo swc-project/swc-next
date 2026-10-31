@@ -41,6 +41,18 @@ fn expect_generic_parameters(source: &str, lang: Lang, pretty: &str, compact: &s
 }
 
 #[test]
+#[ignore = "minified TypeScript type operators retain unnecessary spaces"]
+fn test_minify_type_spacing() {
+    expect_printed_ts_minify("type X=A | B;", "type X=A|B;");
+
+    expect_printed_ts_minify("type X=A & B;", "type X=A&B;");
+
+    expect_printed_ts_minify("type F=(x:A) => B;", "type F=(x:A)=>B;");
+
+    expect_printed_ts_minify("type X=`${A | B}`;", "type X=`${A|B}`;");
+}
+
+#[test]
 fn test_tsx_generic_arrows() {
     expect_generic_parameters(
         "const f = <T,>(x: T) => x;",
@@ -331,7 +343,7 @@ fn test_type_members_directives() {
 
     expect_token_boundary(
         "function f(): { a: number } { \"use strict\"; return { a: 1 }; }",
-        "function f():{a:number}{\"use strict\";return {a:1}}",
+        "function f():{a:number}{\"use strict\";return{a:1}}",
     );
 
     expect_token_boundary(
@@ -341,7 +353,7 @@ fn test_type_members_directives() {
 
     expect_token_boundary(
         "const f = (): { a: number } => { \"use strict\"; return { a: 1 }; };",
-        "const f=():{a:number}=>{\"use strict\";return {a:1}};",
+        "const f=():{a:number}=>{\"use strict\";return{a:1}};",
     );
 
     expect_token_boundary(
@@ -451,6 +463,8 @@ fn test_type_argument_token_boundaries() {
 
 #[test]
 fn test_new_expression() {
+    expect_printed_ts_minify("const x = new SS<number>();", "const x=new SS<number>;");
+
     expect_printed_ts(
         "new parent.components!.KeepAlive();",
         "new parent.components!.KeepAlive();\n",
@@ -468,13 +482,35 @@ fn test_new_expression() {
 
     expect_token_boundary("new C<T>() >>> x;", "new C<T>()>>>x;");
 
-    expect_token_boundary("new C<T>();", "new C<T>();");
+    expect_token_boundary("new C<T>();", "new C<T>;");
 
     expect_token_boundary("new C<T>(x) + x;", "new C<T>(x)+x;");
 
     expect_token_boundary("new C();", "new C;");
 
     expect_token_boundary("new C() + x;", "new C+x;");
+}
+
+#[test]
+fn test_minify_nested_new() {
+    expect_printed_ts_minify("new new Foo();", "new new Foo;");
+
+    expect_printed_ts_minify("new (new Foo())(1);", "new new Foo()(1);");
+
+    expect_printed_ts_minify("new (new Foo(1))();", "new new Foo(1);");
+}
+
+#[test]
+fn test_minify_let_member() {
+    expect_printed_ts_minify("use((let)[0]);", "use(let[0]);");
+
+    expect_printed_ts_minify("(let)[0]=1;", "(let)[0]=1;");
+
+    expect_printed_ts_minify("for((let)[0] in obj);", "for((let)[0]in obj);");
+
+    expect_printed_ts_minify("for((let)[0] of arr);", "for((let)[0]of arr);");
+
+    expect_printed_ts_minify("for((let)[0];false;);", "for((let)[0];false;);");
 }
 
 #[test]
@@ -508,6 +544,15 @@ fn test_import_equals() {
 
 #[test]
 fn test_export_declarations() {
+    expect_printed_ts_minify("export type * from 'm';", "export type*from\"m\";");
+
+    expect_printed_ts_minify(
+        "export type * as N from 'm';",
+        "export type*as N from\"m\";",
+    );
+
+    expect_printed_ts("export type * from 'm';", "export type * from \"m\";\n");
+
     expect_printed_ts("export type T = string;", "export type T = string;\n");
     expect_printed_ts(
         "export interface I { value: string }",
@@ -606,13 +651,113 @@ fn test_enum_declarations_do_not_emit_semicolons() {
 
 #[test]
 fn test_enum_member_names() {
+    expect_printed_ts_minify("enum E { A }", "enum E{A}");
+
+    expect_printed_ts_minify("enum E { A, B }", "enum E{A,B}");
+
     expect_printed_ts("enum E { [`x`] }", "enum E {\n  [`x`],\n}\n");
 
-    expect_printed_ts_minify("enum E { [`\\u0078\\n`] = 1 }", "enum E{[`x\n`]=1,}");
+    expect_printed_ts_minify("enum E { [`\\u0078\\n`] = 1 }", "enum E{[`x\n`]=1}");
 
-    expect_printed_ts_minify(r#"enum E { "'\"" = 1 }"#, r#"enum E{"'\""=1,}"#);
+    expect_printed_ts_minify(r#"enum E { "'\"" = 1 }"#, r#"enum E{"'\""=1}"#);
 
-    expect_printed_ts_minify(r#"enum E { ["'\""] = 1 }"#, r#"enum E{[`'"`]=1,}"#);
+    expect_printed_ts_minify(r#"enum E { ["'\""] = 1 }"#, r#"enum E{[`'"`]=1}"#);
+}
+
+#[test]
+fn test_module_body_comments() {
+    expect_printed_ts(
+        "namespace N { // @ts-ignore\n}",
+        "namespace N {\n  // @ts-ignore\n}\n",
+    );
+}
+
+#[test]
+fn test_module_comments() {
+    expect_printed_ts(
+        "import { // @ts-ignore\nmissing } from 'm';",
+        "import { // @ts-ignore\nmissing } from \"m\";\n",
+    );
+}
+
+#[test]
+fn test_catch_comments() {
+    expect_printed_ts(
+        "try {} // @ts-ignore\ncatch(e: number) {}",
+        "try {\n} // @ts-ignore\ncatch (e: number) {\n}\n",
+    );
+
+    expect_printed_ts(
+        "try {} catch (/** @type {any} */ {x}) {}",
+        "try {\n} catch ( /** @type {any} */ { x }) {\n}\n",
+    );
+}
+
+#[test]
+fn test_parameter_property_comments() {
+    expect_printed_ts(
+        "class C { constructor(/** @internal */ public x: number) {} }",
+        "class C {\n  constructor( /** @internal */ public x: number) {\n  }\n}\n",
+    );
+}
+
+#[test]
+fn test_type_comments() {
+    expect_printed_ts(
+        "type T = /** @internal */ Foo;",
+        "type T = /** @internal */ Foo;\n",
+    );
+
+    expect_printed_ts(
+        "type T = Cell<infer V /** hint */>;",
+        "type T = Cell<infer V /** hint */ >;\n",
+    );
+
+    expect_printed_ts(
+        "type T = [/** @deprecated */ x: number];",
+        "type T = [ /** @deprecated */ x: number];\n",
+    );
+
+    expect_printed_ts(
+        "function f(): // @ts-ignore\nMissing {}",
+        "function f(): // @ts-ignore\nMissing {\n}\n",
+    );
+}
+
+#[test]
+fn test_signature_comments() {
+    expect_printed_ts(
+        "interface I { /** @internal */ x: number; }",
+        "interface I {\n  /** @internal */\n  x: number;\n}\n",
+    );
+
+    expect_printed_ts(
+        "interface I { /** @internal */ (): void; }",
+        "interface I {\n  /** @internal */\n  (): void;\n}\n",
+    );
+
+    expect_printed_ts(
+        "interface I { /** @internal */ new (): I; }",
+        "interface I {\n  /** @internal */\n  new (): I;\n}\n",
+    );
+
+    expect_printed_ts(
+        "interface I { /** @internal */ [key: string]: number; }",
+        "interface I {\n  /** @internal */\n  [key: string]: number;\n}\n",
+    );
+}
+
+#[test]
+fn test_enum_comments() {
+    expect_printed_ts(
+        "enum E { /** @deprecated */ A }",
+        "enum E {\n  /** @deprecated */\n  A,\n}\n",
+    );
+
+    expect_printed_ts(
+        "enum E { A, // @ts-ignore\n}",
+        "enum E {\n  A,\n  // @ts-ignore\n}\n",
+    );
 }
 
 #[test]
@@ -624,7 +769,7 @@ fn test_computed_enum_name_comments() {
 
     expect_printed_ts_minify(
         "enum E { [/* @__PURE__ */ `x`] = make() }",
-        "enum E{[ /* @__PURE__ */ `x`]=make(),}",
+        "enum E{[ /* @__PURE__ */ `x`]=make()}",
     );
 }
 
@@ -703,7 +848,7 @@ fn test_satisfies_assignment_targets() {
     );
     expect_printed_ts_minify(
         "for ((value satisfies number) of values) {}",
-        "for((value satisfies number) of values){}",
+        "for((value satisfies number)of values){}",
     );
     expect_printed_ts(
         "for ((value satisfies number) in values) {}",
@@ -715,7 +860,7 @@ fn test_satisfies_assignment_targets() {
     );
     expect_printed_ts_minify(
         "for ((value satisfies number) in values) {}",
-        "for((value satisfies number) in values){}",
+        "for((value satisfies number)in values){}",
     );
 }
 
@@ -732,11 +877,10 @@ fn test_non_finite_numeric_literal_types() {
 
 #[test]
 fn test_signed_numeric_literal_type_comments() {
-    let source = "type T = -/* note */1;";
-    let expected = "type T = /* note */ -1;\n";
-    expect_printed_ts(source, expected);
-    expect_printed_ts(expected, expected);
-    expect_printed_ts_minify(source, "type T=/* note */-1;");
+    expect_printed_ts(
+        "type T = -/** @type {number} */1;",
+        "type T = - /** @type {number} */ 1;\n",
+    );
 }
 
 #[test]
@@ -808,7 +952,7 @@ fn test_instantiation_expression_boundaries() {
 
     expect_printed_ts_minify(
         "class C extends (f?.x<T>)<U> {}",
-        "class C extends (f?.x<T>)<U>{}",
+        "class C extends(f?.x<T>)<U>{}",
     );
 
     expect_printed_ts("f<T>?.<U>();", "f<T>?.<U>();\n");
@@ -872,7 +1016,7 @@ fn test_parenthesized_boundaries() {
     expect(
         "(typeof (f<T>)) ** x;",
         "(typeof (f<T>)) ** x;\n",
-        "(typeof (f<T>))**x;",
+        "(typeof(f<T>))**x;",
     );
 
     expect(
@@ -953,7 +1097,7 @@ fn test_conditional_casts() {
     expect_printed_ts_pair(
         "class C extends B { m() { return (x as T) ? super.m() : false; } }",
         "class C extends B {\n  m() {\n    return (x as T) ? super.m() : false;\n  }\n}\n",
-        "class C extends B{m(){return (x as T)?super.m():false}}",
+        "class C extends B{m(){return(x as T)?super.m():false}}",
     );
 
     expect_printed_ts_pair(
@@ -1037,13 +1181,13 @@ fn test_conditional_casts() {
     expect_printed_ts_pair(
         "let a = typeof ((\"a\" as unknown) ? /a/ : false);",
         "let a = typeof ((\"a\" as unknown) ? /a/ : false);\n",
-        "let a=typeof ((\"a\" as unknown)?/a/:false);",
+        "let a=typeof((\"a\" as unknown)?/a/:false);",
     );
 
     expect_printed_ts_pair(
         "let a = typeof ((\"a\" satisfies foo) ? /a/ : false);",
         "let a = typeof ((\"a\" satisfies foo) ? /a/ : false);\n",
-        "let a=typeof ((\"a\" satisfies foo)?/a/:false);",
+        "let a=typeof((\"a\" satisfies foo)?/a/:false);",
     );
 }
 
@@ -1128,7 +1272,7 @@ fn test_instantiation_binary_operators() {
     expect_printed_ts_pair(
         "typeof (f<T>) - x;",
         "typeof (f<T>) - x;\n",
-        "typeof (f<T>)-x;",
+        "typeof(f<T>)-x;",
     );
 
     expect_printed_ts_pair("+(f<T>) + x;", "+(f<T>) + x;\n", "+(f<T>)+x;");
@@ -1159,13 +1303,13 @@ fn test_type_assertion_targets() {
     expect_printed_ts_pair(
         "for ((<string>a) in obj) {}",
         "for ((<string>a) in obj) {\n}\n",
-        "for((<string>a) in obj){}",
+        "for((<string>a)in obj){}",
     );
 
     expect_printed_ts_pair(
         "for ((<number>a) of values) {}",
         "for ((<number>a) of values) {\n}\n",
-        "for((<number>a) of values){}",
+        "for((<number>a)of values){}",
     );
 
     expect_printed_ts_pair(
@@ -1209,13 +1353,13 @@ fn test_type_assertion_targets() {
     expect_printed_ts_pair(
         "for ((a as string) in obj) {}",
         "for ((a as string) in obj) {\n}\n",
-        "for((a as string) in obj){}",
+        "for((a as string)in obj){}",
     );
 
     expect_printed_ts_pair(
         "for ((a as number) of values) {}",
         "for ((a as number) of values) {\n}\n",
-        "for((a as number) of values){}",
+        "for((a as number)of values){}",
     );
 
     expect_printed_ts_pair(

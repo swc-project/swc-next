@@ -8,7 +8,8 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser}
 
 use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
-    expect_printed_script, expect_printed_with_options, expect_stable,
+    expect_printed_script, expect_printed_with_options, expect_printed_with_parse_options,
+    expect_stable,
 };
 
 #[track_caller]
@@ -88,6 +89,86 @@ fn test_print_result_ownership() {
 }
 
 #[test]
+fn test_minify_computed_properties() {
+    expect_printed_minify("({get [x](){}});", "({get[x](){}});");
+
+    expect_printed_minify("({set [x](v){}});", "({set[x](v){}});");
+
+    expect_printed_minify("({get \"0\"(){}});", "({get\"0\"(){}});");
+
+    expect_printed_minify("({set \"0\"(v){}});", "({set\"0\"(v){}});");
+
+    expect_printed_minify("class C{static get [x](){}}", "class C{static get[x](){}}");
+
+    expect_printed_minify("class C{get \"x\"(){}}", "class C{get\"x\"(){}}");
+
+    expect_printed_minify("class C{get x(){}}", "class C{get x(){}}");
+}
+
+#[test]
+fn test_minify_class_modifiers() {
+    expect_printed_minify("class C{static [x](){}}", "class C{static[x](){}}");
+
+    expect_printed_minify("class C{static *[x](){}}", "class C{static*[x](){}}");
+
+    expect_printed_minify("class C{static {}}", "class C{static{}}");
+}
+
+#[test]
+fn test_minify_keyword_expressions() {
+    expect_printed_minify("class C extends (a,b){}", "class C extends(a,b){}");
+
+    expect_printed_minify(
+        "export default \"x\" in value;",
+        "export default\"x\"in value;",
+    );
+}
+
+#[test]
+fn test_minify_empty_bodies() {
+    expect_printed_minify("do;while(false);", "do;while(false)");
+
+    expect_printed_minify("if(a)b();else;", "if(a)b();else;");
+}
+
+#[test]
+fn test_minify_iteration_spacing() {
+    expect_printed_minify("for (a in {});", "for(a in{});");
+
+    expect_printed_minify("for (a of []);", "for(a of[]);");
+
+    expect_printed_minify("`${\"x\" in {x:1}}`;", "`${\"x\"in{x:1}}`;");
+}
+
+#[test]
+fn test_minify_keyword_spacing() {
+    expect_printed_minify("function f(){return [1]}", "function f(){return[1]}");
+
+    expect_printed_minify("function* f(){yield [1]}", "function*f(){yield[1]}");
+
+    expect_printed_minify(
+        "function*g(){return yield*x}",
+        "function*g(){return yield*x}",
+    );
+
+    expect_printed_minify("typeof [];", "typeof[];");
+
+    expect_printed_minify("void [];", "void[];");
+
+    expect_printed_minify("delete (x+y).p;", "delete(x+y).p;");
+
+    expect_printed_minify("()=>{return async()=>0}", "()=>{return async()=>0};");
+
+    expect_printed_minify("function f(){return value}", "function f(){return value}");
+}
+
+#[test]
+#[ignore = "minified numeric member expressions do not choose the shortest literal"]
+fn test_minify_numeric_member() {
+    expect_printed_minify("4294967295 .x;", "0xffffffff.x;");
+}
+
+#[test]
 fn test_expression_token_boundaries() {
     expect_token_boundary("await true", "await true;");
 
@@ -110,7 +191,7 @@ fn test_expression_token_boundaries() {
 
     expect_token_boundary("new this", "new this;");
 
-    expect_token_boundary("new new C", "new new C();");
+    expect_token_boundary("new new C", "new new C;");
 
     expect_token_boundary("throw true", "throw true;");
 
@@ -294,10 +375,10 @@ fn test_empty_statement_delimiters() {
 
     expect_empty_statement(
         "function f(){do ; while(false);}",
-        "function f(){do ;while(false);}",
+        "function f(){do;while(false)}",
     );
 
-    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else ;}");
+    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else;}");
 
     expect_printed_minify("function f(){x();}", "function f(){x()}");
 
@@ -696,6 +777,176 @@ fn test_directive_string_value() {
 }
 
 #[test]
+fn test_statement_body_comments() {
+    expect_printed(
+        "if (condition) // @ts-ignore\nf('text');",
+        "if (condition) // @ts-ignore\n f(\"text\");\n",
+    );
+
+    expect_printed(
+        "function f() { /* @ts-expect-error */ }",
+        "function f() {\n  /* @ts-expect-error */\n}\n",
+    );
+}
+
+#[test]
+fn test_function_annotations() {
+    expect_printed("/*#__PURE__*/ f();", "/* #__PURE__ */ f();\n");
+
+    expect_printed("/*  @__PURE__  */ f();", "/* @__PURE__ */ f();\n");
+
+    expect_printed(
+        "/*\u{2003}#__NO_SIDE_EFFECTS__\u{2003}*/ function f() {}",
+        "/* #__NO_SIDE_EFFECTS__ */ function f() {\n}\n",
+    );
+
+    expect_printed("/* @__PURE__ extra */ f();", "/* @__PURE__ extra */ f();\n");
+
+    expect_printed("/* @__PURE__extra */ f();", "/* @__PURE__extra */ f();\n");
+
+    expect_printed(
+        "/** @returns {number} */ /*#__PURE__*/ make();",
+        "/** @returns {number} */\n/* #__PURE__ */ make();\n",
+    );
+
+    expect_printed(
+        "/*#__NO_SIDE_EFFECTS__*/ function f() {}",
+        "/* #__NO_SIDE_EFFECTS__ */ function f() {\n}\n",
+    );
+}
+
+#[test]
+fn test_switch_comments() {
+    expect_printed(
+        "switch (0) { default: break; // @ts-ignore\n}",
+        "switch (0) {\n  default:\n    break;\n    // @ts-ignore\n}\n",
+    );
+}
+
+#[test]
+fn test_jsx_comment_directives() {
+    expect_printed_jsx(
+        "<div>{/* @ts-ignore */}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-ignore */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/* @ts-expect-error */}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-expect-error */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/*\n@ts-ignore */}\n<C value={1} /></div>;",
+        "<div>{ /*\n @ts-ignore */ }\n<C value={1} /></div>;\n",
+    );
+
+    expect_printed_jsx(
+        "<div>{/* @ts-ignore */\n}\n<C value={1} /></div>;",
+        "<div>{ /* @ts-ignore */ }\n<C value={1} /></div>;\n",
+    );
+}
+
+#[test]
+fn test_object_spread_comments() {
+    expect_printed(
+        "const obj = { // @ts-ignore\n...x };",
+        "const obj = { // @ts-ignore\n...x };\n",
+    );
+}
+
+#[test]
+fn test_directive_comments() {
+    expect_printed(
+        "// @ts-nocheck\n'use strict';",
+        "// @ts-nocheck\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/// <reference path=\"./dep.d.ts\" />\n'use strict';",
+        "/// <reference path=\"./dep.d.ts\" />\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/* @ts-nocheck */\n'use strict';",
+        "/* @ts-nocheck */\n'use strict';\n",
+    );
+
+    expect_printed(
+        "/* @ts-expect-error */ const x = 1;",
+        "/* @ts-expect-error */\nconst x = 1;\n",
+    );
+
+    let without_comments = PrintOptions {
+        comments: false,
+        ..PrintOptions::default()
+    };
+    expect_printed_with_options(
+        "/** @type {number} */ const x = 1;",
+        "const x = 1;\n",
+        without_comments,
+    );
+}
+
+#[test]
+fn test_parameter_comments() {
+    expect_printed(
+        "function f(a, /* keep */) {}",
+        "function f(a /* keep */ ) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** @type {number} */ x) {}",
+        "function f( /** @type {number} */ x) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** nothing */) {}",
+        "function f( /** nothing */ ) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** @type {number[]} */ ...xs) {}",
+        "function f( /** @type {number[]} */ ...xs) {\n}\n",
+    );
+
+    expect_printed(
+        "function f(/** @type {number} */ x, /** @type {string} */ y) {}",
+        "function f( /** @type {number} */ x, /** @type {string} */ y) {\n}\n",
+    );
+}
+
+#[test]
+fn test_class_member_comments() {
+    expect_stable(
+        "export @d /* keep */ class C {}",
+        "export @d /* keep */ class C {\n}\n",
+    );
+
+    expect_printed(
+        "class C { /** @param {number} x */ constructor(x) {} }",
+        "class C {\n  /** @param {number} x */\n  constructor(x) {\n  }\n}\n",
+    );
+}
+
+#[test]
+fn test_object_member_comments() {
+    expect_printed(
+        "const obj = { /** @type {number} */ x: 1 };",
+        "const obj = { /** @type {number} */ x: 1 };\n",
+    );
+
+    expect_printed(
+        "const obj = { /** @returns {number} */ m() { return 1; } };",
+        "const obj = { /** @returns {number} */ m() {\n  return 1;\n} };\n",
+    );
+
+    expect_printed(
+        "const obj = {\n/** @type {number} */\nx: 'text' };",
+        "const obj = { /** @type {number} */ x: \"text\" };\n",
+    );
+}
+
+#[test]
 fn test_computed_key_comments() {
     expect_printed(
         "({ [/* @__PURE__ */ 'x']: make() })",
@@ -744,7 +995,7 @@ fn test_jsx_container_comments() {
 
     expect_printed_jsx(
         "<C /* tag */ value={x // keep\n} />;",
-        "<C value={x // keep\n} />;\n",
+        "<C /* tag */  value={x // keep\n} />;\n",
     );
 
     expect_printed_jsx_minify("<C value={x /* keep */} />;", "<C value={x/* keep */}/>;");
@@ -754,7 +1005,7 @@ fn test_jsx_container_comments() {
 
 #[test]
 fn test_container_comments() {
-    expect_stable("let x /*! license */;", "let x /*! license */ ;\n");
+    expect_stable("let x /*! license */;", "let x;\n/*! license */\n");
 
     expect_stable("const x = [1 /* keep */];", "const x = [1 /* keep */ ];\n");
 
@@ -797,24 +1048,129 @@ fn test_update_expression_parentheses() {
 }
 
 #[test]
+#[ignore = "assignment-target parentheses do not yet preserve anonymous name inference"]
+fn test_assignment_name_inference() {
+    let without_parens = ParseOptions {
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let with_parens = ParseOptions::default();
+    for options in [without_parens, with_parens] {
+        expect_printed_with_parse_options(
+            "(fn) = function() {};",
+            "(fn) = function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options("(fn) = () => 0;", "(fn) = () => 0;\n", options);
+
+        expect_printed_with_parse_options("(fn) ??= () => {};", "(fn) ??= () => {\n};\n", options);
+
+        expect_printed_with_parse_options("(C) ||= class {};", "(C) ||= class {\n};\n", options);
+
+        expect_printed_with_parse_options(
+            "(fn) &&= function() {};",
+            "(fn) &&= function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options(
+            "fn = function() {};",
+            "fn = function() {\n};\n",
+            options,
+        );
+
+        expect_printed_with_parse_options(
+            "[ (fn) = () => 0 ] = [];",
+            "[(fn) = () => 0] = [];\n",
+            options,
+        );
+    }
+}
+
+#[test]
+#[ignore = "minified BigInt literals do not yet choose the shortest representation"]
+fn test_minify_bigint() {
+    expect_printed_minify("0x33333333n;", "858993459n;");
+
+    expect_printed_minify("0b1010n;", "10n;");
+
+    expect_printed_minify("0x0001n;", "1n;");
+
+    expect_printed_minify("123456789012345678901n;", "0x6b14e9f812f366c35n;");
+}
+
+#[test]
+fn test_minify_do_while() {
+    expect_printed_minify("do {} while (false);", "do{}while(false)");
+
+    expect_printed_minify(
+        "if (a) do {} while (b); else x();",
+        "if(a)do{}while(b)else x();",
+    );
+
+    expect_printed_minify(
+        "do {} while (false); /x/.test('x');",
+        "do{}while(false)/x/.test(\"x\");",
+    );
+
+    expect_printed_minify(
+        "do do; while (false); while (false);",
+        "do do;while(false)while(false)",
+    );
+}
+
+#[test]
+fn test_expression_comments() {
+    expect_stable("f() // keep\ng();", "f();\n// keep\ng();\n");
+
+    expect_stable("f(); // keep\ng();", "f();\n// keep\ng();\n");
+
+    expect_stable(
+        "f(); // eslint-disable-line no-unused-expressions\ng();",
+        "f();\n// eslint-disable-line no-unused-expressions\ng();\n",
+    );
+
+    expect_printed_minify("{ f(); /* keep */ g(); }", "{f();/* keep */g()}");
+}
+
+#[test]
+fn test_variable_comments() {
+    expect_stable(
+        "let x = 1; // comment\nf();",
+        "let x = 1;\n// comment\nf();\n",
+    );
+
+    expect_stable(
+        "let x = 1; /* comment */\nf();",
+        "let x = 1;\n/* comment */\nf();\n",
+    );
+
+    expect_stable(
+        "let x = 1 // comment\nf();",
+        "let x = 1;\n// comment\nf();\n",
+    );
+
+    expect_stable("let x = 1;\n/* comment */", "let x = 1;\n/* comment */\n");
+
+    expect_printed_minify("let x = 1; // comment\nf();", "let x=1;// comment\nf();");
+
+    expect_stable(
+        "{ let x = 1; // comment\nf(); }",
+        "{\n  let x = 1;\n  // comment\n  f();\n}\n",
+    );
+}
+
+#[test]
 fn test_parenthesized_comments() {
     expect_stable(
         "function f() { (/* first */ /* second */ value); }",
         "function f() {\n  /* first */\n  /* second */\n  value;\n}\n",
     );
 
-    expect_stable(
-        "(/* before */ value /* after */); /* end */",
-        "/* before */\nvalue /* after */ ;\n/* end */\n",
-    );
-
-    expect_printed_minify(
-        "function f() { (/* before */ value /* after */); }",
-        "function f(){/* before */value/* after */}",
-    );
     expect_printed_minify(
         "function f(){/* before */value/* after */}",
-        "function f(){/* before */value/* after */}",
+        "function f(){/* before */value;/* after */}",
     );
 }
 
@@ -852,7 +1208,7 @@ fn test_yield_comments() {
 
     expect_stable_with_parens(
         "function* f() { yield* /*a\nb*/ xs; }",
-        "function* f() {\n  yield* ( /*a\n   b*/\nxs);\n}\n",
+        "function* f() {\n  yield* ( /*a\n   b*/ xs);\n}\n",
         &pretty,
     );
 
@@ -864,13 +1220,13 @@ fn test_yield_comments() {
 
     expect_stable_with_parens(
         "function* f() { yield* /*a\nb*/ xs; }",
-        "function*f(){yield* (/*a\nb*/xs)}",
+        "function*f(){yield*(/*a\nb*/xs)}",
         &minified,
     );
 
     expect_stable_with_parens(
         "function* f() { yield* // a\nxs; }",
-        "function*f(){yield* (// a\nxs)}",
+        "function*f(){yield*(// a\nxs)}",
         &minified,
     );
 }
@@ -950,21 +1306,21 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ class {} + 1) + 2;",
-        "export default /* a */(class{})+1+2;",
+        "export default/* a */(class{})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ function(){} && 1) && 2;",
-        "export default /* a */(function(){})&&1&&2;",
+        "export default/* a */(function(){})&&1&&2;",
         minified.clone(),
         false,
     );
@@ -978,24 +1334,24 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default (/* a */function(){}+1)+2;",
+        "export default(/* a */function(){}+1)+2;",
         minified,
         true,
     );
 
     expect_printed_minify(
         "export default (function(){} + 1) + 2;",
-        "export default (function(){})+1+2;",
+        "export default(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default /* a */ (function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default (/* a */ function(){} + 1) * 2;",
-        "export default /* a */(function(){}+1)*2;",
+        "export default/* a */(function(){}+1)*2;",
     );
 
     expect_stable(
@@ -1063,26 +1419,26 @@ fn expect_statement_body(source: &str, expected: &str) {
 
 #[test]
 fn test_do_while_statement_bodies() {
-    expect_statement_body("do debugger; while(false);", "do debugger;while(false);");
+    expect_statement_body("do debugger; while(false);", "do debugger;while(false)");
 
-    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b);");
+    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b)");
 
     expect_statement_body(
         "function f(){ do return 1; while(false); }",
-        "function f(){do return 1;while(false);}",
+        "function f(){do return 1;while(false)}",
     );
 
-    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b);");
+    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b)");
 
-    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b);");
+    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b)");
 
-    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b);");
+    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b)");
 
-    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b);");
+    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b)");
 
-    expect_statement_body("do break; while(false);", "do break;while(false);");
+    expect_statement_body("do break; while(false);", "do break;while(false)");
 
-    expect_statement_body("do continue; while(false);", "do continue;while(false);");
+    expect_statement_body("do continue; while(false);", "do continue;while(false)");
 }
 
 #[test]
@@ -1096,7 +1452,7 @@ fn test_else_statement_bodies() {
 
     expect_statement_body(
         "if(a) x(); else do y(); while(b);",
-        "if(a)x();else do y();while(b);",
+        "if(a)x();else do y();while(b)",
     );
 
     expect_statement_body(
@@ -1124,11 +1480,11 @@ fn test_else_statement_bodies() {
 
 #[test]
 fn test_statement_body_formatting() {
-    expect_statement_body("do x(); while(false);", "do x();while(false);");
+    expect_statement_body("do x(); while(false);", "do x();while(false)");
 
     expect_statement_body("if(a) x(); else y();", "if(a)x();else y();");
 
-    expect_statement_body("do { x(); } while(false);", "do{x()}while(false);");
+    expect_statement_body("do { x(); } while(false);", "do{x()}while(false)");
 
     expect_statement_body("if(a) { x(); } else { y(); }", "if(a){x()}else{y()}");
 
@@ -1200,11 +1556,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_printed_minify(
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_stable(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
@@ -1212,11 +1568,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
     expect_printed_minify(
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
 }
 
@@ -1323,21 +1679,36 @@ fn test_inline_script() {
 fn test_comment_line_terminators() {
     let pretty = PrintOptions::default();
 
+    expect_printed(
+        "function f(){return (\n/** @type {number} */ value);}",
+        "function f() {\n  return /** @type {number} */ value;\n}\n",
+    );
+
+    expect_printed(
+        "throw (/** @type {Error} */\nerror);",
+        "throw /** @type {Error} */ error;\n",
+    );
+
+    expect_printed(
+        "function* f(){yield (\n/** @type {number} */\nvalue);}",
+        "function* f() {\n  yield /** @type {number} */ value;\n}\n",
+    );
+
     expect_stable_with_parens(
         "function f() { return (/* lead\rtrail */ value); }",
-        "function f() {\n  return ( /* lead\n   trail */\nvalue);\n}\n",
+        "function f() {\n  return ( /* lead\n   trail */ value);\n}\n",
         &pretty,
     );
 
     expect_stable_with_parens(
         "throw (/* lead\u{2028}trail */ value);",
-        "throw ( /* lead\n trail */\nvalue);\n",
+        "throw ( /* lead\n trail */ value);\n",
         &pretty,
     );
 
     expect_stable_with_parens(
         "function* f() { yield (/* lead\u{2029}trail */ value); }",
-        "function* f() {\n  yield ( /* lead\n   trail */\nvalue);\n}\n",
+        "function* f() {\n  yield ( /* lead\n   trail */ value);\n}\n",
         &pretty,
     );
 }
