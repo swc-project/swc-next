@@ -17283,6 +17283,24 @@ mod tests {
     }
 
     #[test]
+    fn class_index_signature_separators() {
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+
+        assert!(!has_errors("class C { [k: string]: T, a: U }", options));
+
+        assert!(!has_errors("class C { [k: string]: T, }", options));
+
+        assert!(has_errors("class C { [k: string]: T,, a: U }", options));
+
+        assert!(has_errors("class C { a: T, b: U }", options));
+
+        assert!(has_errors("class C { m() {}, n() {} }", options));
+    }
+
+    #[test]
     fn module_names() {
         fn texts(source: &str, spans: impl Iterator<Item = Span>) -> Vec<&str> {
             spans
