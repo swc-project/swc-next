@@ -1290,7 +1290,9 @@ impl<C: ParserConfig> Iterator for Peek<'_, '_, C> {
     fn next(&mut self) -> Option<Self::Item> {
         debug_assert!(self.active);
         let mut token = Token::eof(self.lexer.cursor);
-        self.lexer.next_token(&mut token).ok()?;
+        if !self.lexer.try_next_token(&mut token) {
+            self.lexer.next_token(&mut token).ok()?;
+        }
         Some(token)
     }
 }
