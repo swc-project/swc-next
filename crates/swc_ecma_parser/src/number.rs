@@ -5,6 +5,10 @@ use std::borrow::Cow;
 pub(crate) fn parse_decimal_literal(raw: &str) -> f64 {
     const MAX_FAST_DECIMAL_LEN: usize = 19;
 
+    if let [byte] = raw.as_bytes() {
+        return f64::from(decimal_digit(*byte));
+    }
+
     if raw.len() <= MAX_FAST_DECIMAL_LEN {
         let mut value = 0_u64;
         for byte in raw.bytes() {
