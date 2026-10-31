@@ -13978,6 +13978,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             || token.tag() == TokenTag::RightBrace
     }
 
+    #[inline(always)]
     fn eat_semicolon(&mut self, end: u32) -> Option<u32> {
         if self.current_token.tag() == TokenTag::Semicolon {
             let semicolon_end = self.current_token.end();
