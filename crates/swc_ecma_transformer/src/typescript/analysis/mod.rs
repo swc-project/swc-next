@@ -20,6 +20,7 @@ mod modules;
 mod namespaces;
 
 pub(super) use constants::{EnumMemberValue, TsEnumConstantValue};
+pub(super) use jsx::dependencies as jsx_dependencies;
 
 #[derive(Default)]
 pub(super) struct TypeScriptAnalysis<'ast> {
@@ -34,8 +35,8 @@ impl<'ast> TypeScriptAnalysis<'ast> {
         ast: &Ast<'ast>,
         semantic: &Semantic<'ast>,
         options: &TypeScriptOptions,
+        implicit_usage: FxHashSet<SymbolId>,
     ) -> Self {
-        let implicit_usage = jsx::dependencies(program, ast, semantic, &options.jsx);
         // Ordinary imports use semantic reference flags directly during lowering.
         // Only enums, namespaces and import-equals need a precomputed emission plan.
         let source_module = semantic.ts_source_module_symbol();

@@ -1339,13 +1339,12 @@ fn is_arguments_available(builder: &SemanticBuilder<'_, '_>) -> bool {
     for ancestor in builder.ancestors() {
         match builder.ast.kind_data(ancestor) {
             NodeKindData::Function(_) => return true,
-            NodeKindData::PropertyDefinition(property) => {
+            NodeKindData::PropertyDefinition(property)
                 if property
                     .value(builder.ast)
-                    .is_some_and(|value| Some(value.node_id()) == child)
-                {
-                    return false;
-                }
+                    .is_some_and(|value| Some(value.node_id()) == child) =>
+            {
+                return false;
             }
             NodeKindData::StaticBlock(_) => return false,
             NodeKindData::ArrowFunctionExpression(_) | NodeKindData::Program(_) => {}
@@ -1482,14 +1481,16 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             return;
         }
         match self.ast.kind_data(node) {
-            NodeKindData::IdentifierReference(identifier) => {
-                if is_eval_or_arguments(self.ast.get_utf8(identifier.name(self.ast)).as_bytes()) {
-                    self.report(
-                        self.ast.span(node),
-                        "Cannot assign to 'eval' or 'arguments' in strict mode",
-                        ReportOptions::default(),
-                    );
-                }
+            NodeKindData::IdentifierReference(identifier)
+                if is_eval_or_arguments(
+                    self.ast.get_utf8(identifier.name(self.ast)).as_bytes(),
+                ) =>
+            {
+                self.report(
+                    self.ast.span(node),
+                    "Cannot assign to 'eval' or 'arguments' in strict mode",
+                    ReportOptions::default(),
+                );
             }
             NodeKindData::ArrayPattern(array) => {
                 let elements = array.elements(self.ast);

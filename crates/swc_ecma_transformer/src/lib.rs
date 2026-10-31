@@ -1,11 +1,11 @@
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BlockStatement, CatchClause, Class, ClassBody, ClassType, Decl,
-    ExportDefaultDeclarationKind, Expr, ForInStatement, ForOfStatement, ForStatement,
-    FormalParameters, Function, FunctionBody, NodeId, Program, StaticBlock, SwitchCase,
-    TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith, TsCallSignatureDeclaration,
-    TsConstructSignatureDeclaration, TsEnumBody, TsFunction, TsIndexSignature,
-    TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
-    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
+    ArrowFunctionExpression, Ast, BlockStatement, CallExpression, CatchClause, Class, ClassBody,
+    ClassType, Decl, Diagnostic, ExportDefaultDeclarationKind, Expr, ForInStatement,
+    ForOfStatement, ForStatement, FormalParameters, Function, FunctionBody, NodeId, Program,
+    StaticBlock, SwitchCase, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    TsCallSignatureDeclaration, TsConstructSignatureDeclaration, TsEnumBody, TsFunction,
+    TsIndexSignature, TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter,
+    TsType, TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
 
@@ -17,45 +17,124 @@ use crate::{
 mod context;
 mod helpers;
 mod jsx_pragma;
+mod syntax;
+mod uid;
 mod used_names;
 
 pub mod assumptions;
 pub mod es2022;
+pub mod jsx;
 pub mod normalize;
 pub mod proposal;
 pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
+    pub source_path: Option<String>,
+    pub react_display_name: bool,
     pub assumptions: Assumptions,
     pub es2022: es2022::ES2022Options,
     pub proposal: proposal::ProposalOptions,
+    /// Keep the optional JSX configuration out of the common options footprint.
+    pub jsx: Option<Box<jsx::JsxOptions>>,
     pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
+    pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
-pub struct Transformer {
+pub struct Transformer;
+
+struct ScopedTransformer<F> {
     x0_es2022: es2022::ES2022,
+    transform_call: F,
 }
 
 impl Transformer {
-    /// Run the Semantic-based TypeScript phase, then synchronized scope transforms.
+    /// Run TypeScript and JSX syntax lowering, then synchronized scope transforms.
     /// Normalize runtime syntax before analysis when TypeScript is enabled, otherwise normalize all syntax.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
         mut semantic: Semantic<'ast>,
         mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
-        if let Some(typescript) = options.typescript.take() {
-            typescript::transform(ast.root_program(), ast, &semantic, typescript);
+        let program = ast.root_program();
+        let Some(jsx_options) = options.jsx.take() else {
+            if let Some(typescript) = options.typescript.take() {
+                typescript::transform(program, ast, &semantic, typescript);
+                semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+            }
+            return Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
+        };
+        // Resolve header pragmas before Refresh can prepend generated statements.
+        let jsx = jsx::resolve_options(program, ast, *jsx_options);
+        let bindings = jsx::RuntimeBindings::new(&jsx, ast.source_type());
+        let mut runtime_import_anchor = None;
+        if let Some(refresh) = jsx.refresh.as_ref() {
+            runtime_import_anchor =
+                jsx::transform_refresh(program, ast, &semantic, refresh, &bindings);
             semantic = analyze(ast, AnalyzeOptions::default()).semantic;
         }
+        let syntax_result = match options.typescript.take() {
+            Some(typescript) => {
+                if jsx.development && jsx.source_self {
+                    Self::transform_tsx::<true>(
+                        ast,
+                        &semantic,
+                        typescript,
+                        &jsx,
+                        bindings,
+                        options.source_path.as_deref(),
+                        runtime_import_anchor,
+                    )
+                } else {
+                    Self::transform_tsx::<false>(
+                        ast,
+                        &semantic,
+                        typescript,
+                        &jsx,
+                        bindings,
+                        options.source_path.as_deref(),
+                        runtime_import_anchor,
+                    )
+                }
+            }
+            None => jsx::transform_resolved(
+                program,
+                ast,
+                &semantic,
+                &jsx,
+                bindings,
+                options.source_path.as_deref(),
+                runtime_import_anchor,
+            ),
+        };
+        semantic = analyze(ast, AnalyzeOptions::default()).semantic;
 
-        Self::transform_with_scopes(ast, ScopeModel::new(semantic), options)
+        let mut result = Self::transform_with_scopes(ast, ScopeModel::new(semantic), options);
+        result.diagnostics = syntax_result.diagnostics;
+        result
+    }
+
+    fn transform_tsx<'ast, 'options, const TRACK_SELF: bool>(
+        ast: &mut Ast<'ast>,
+        semantic: &Semantic<'ast>,
+        typescript: typescript::TypeScriptOptions,
+        options: &'options jsx::JsxOptions,
+        bindings: jsx::RuntimeBindings<'options>,
+        source_path: Option<&str>,
+        runtime_import_anchor: Option<swc_next_ecma_ast::Stmt>,
+    ) -> syntax::SyntaxResult {
+        let program = ast.root_program();
+        let implicit_roots = bindings.implicit_roots();
+        let uid = uid::LazyUidGenerator::new(semantic, &implicit_roots);
+        let mut jsx = jsx::JsxLowerer::<TRACK_SELF>::new(options, bindings, uid, source_path);
+        jsx.set_runtime_import_anchor(runtime_import_anchor);
+        typescript::transform_with_following(program, ast, semantic, typescript, &mut jsx);
+        jsx.take_result()
     }
 
     /// Run synchronized transforms on an already normalized runtime AST and its ScopeModel.
@@ -63,13 +142,34 @@ impl Transformer {
     fn transform_with_scopes<'ast>(
         ast: &mut Ast<'ast>,
         semantic: ScopeModel<'ast>,
-        options: TransformerOptions,
+        mut options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         debug_assert!(options.typescript.is_none());
+        let es2022 = es2022::ES2022::new(options.es2022, options.proposal);
+        if options.react_display_name {
+            let display_name = jsx::DisplayName::new(options.source_path.take());
+            Self::transform_runtime(ast, semantic, es2022, move |node, ctx| {
+                display_name.exit_call_expression(node, ctx);
+            })
+        } else {
+            Self::transform_runtime(ast, semantic, es2022, |_, _| {})
+        }
+    }
+
+    fn transform_runtime<'ast, F>(
+        ast: &mut Ast<'ast>,
+        semantic: ScopeModel<'ast>,
+        es2022: es2022::ES2022,
+        transform_call: F,
+    ) -> TransformerReturn<'ast>
+    where
+        F: FnMut(CallExpression, &mut TransformCtx<'_, 'ast>),
+    {
         let program = ast.root_program();
 
-        let mut transformer = Self {
-            x0_es2022: es2022::ES2022::new(options.es2022, options.proposal),
+        let mut transformer = ScopedTransformer {
+            x0_es2022: es2022,
+            transform_call,
         };
 
         let state = TransformerState::new(semantic);
@@ -78,11 +178,24 @@ impl Transformer {
         TransformCtx::new(&mut ctx).finish();
         TransformerReturn {
             semantic: ctx.state.semantic,
+            diagnostics: Vec::new(),
         }
     }
 }
 
-impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
+impl<'a, F> TraverseMut<'a, TransformerState<'a>> for ScopedTransformer<F>
+where
+    F: FnMut(CallExpression, &mut TransformCtx<'_, 'a>),
+{
+    fn exit_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
+    ) -> TraverseAction<CallExpression> {
+        (self.transform_call)(node, &mut TransformCtx::new(ctx));
+        TraverseAction::Continue
+    }
+
     fn enter_program(
         &mut self,
         node: Program,
