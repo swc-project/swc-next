@@ -623,6 +623,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     // Inline `context` to eliminate the branch
     #[inline(always)]
     fn consume_escape(&mut self, context: EscapeContext) -> Result<(), LexicalError> {
+        if matches!(
+            self.source.get(self.cursor as usize + 1),
+            Some(b'\\' | b'"' | b'\'' | b'n' | b'r' | b't' | b'b' | b'f' | b'v')
+        ) {
+            self.set_token_flag(TokenFlag::Escaped);
+            self.cursor += 2;
+            return Ok(());
+        }
         if context == EscapeContext::Template {
             match self.consume_escape_impl(context) {
                 Ok(()) => Ok(()),
