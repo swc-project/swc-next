@@ -204,7 +204,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
-    #[inline]
+    #[inline(always)]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         if self.mode != LexerMode::Normal {
             return self.try_next_jsx_tag_token(target);
