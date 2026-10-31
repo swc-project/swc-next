@@ -2963,8 +2963,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let id = self.parse_binding_pattern()?;
         let id_span = id.span(&self.ast);
         let is_using = matches!(kind, VariableKind::Using | VariableKind::AwaitUsing);
-        let destructuring = self.is_destructuring_pattern(id);
-        if is_using && destructuring {
+        if is_using && self.is_destructuring_pattern(id) {
             self.report(
                 id_span,
                 "Using declaration cannot have destructuring patterns.",
@@ -2979,7 +2978,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             id_span.end
         };
-        if definite && (destructuring || context == DeclaratorCtx::ForLoop) {
+        if definite && (context == DeclaratorCtx::ForLoop || self.is_destructuring_pattern(id)) {
             self.report(
                 Span::new(end - 1, end),
                 "A definite assignment assertion is not permitted in this context",
@@ -3003,7 +3002,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         if init.is_none() && context == DeclaratorCtx::Normal {
-            if destructuring {
+            if self.is_destructuring_pattern(id) {
                 self.report(
                     id_span,
                     "Destructuring declaration must have an initializer",
