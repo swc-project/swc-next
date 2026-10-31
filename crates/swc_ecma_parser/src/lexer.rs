@@ -224,15 +224,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return self.try_next_token_on_new_line(target);
         }
 
+        self.clear_token_flags();
+        self.try_next_token_at(target, start, byte)
+    }
+
+    #[inline(always)]
+    fn try_next_token_at(&mut self, target: &mut Token, start: u32, byte: u8) -> bool {
         match FAST_CLASS[byte as usize] {
             FastClass::Identifier => {
-                self.clear_token_flags();
                 if !self.scan_ascii_identifier(start, target) {
                     return false;
                 }
             }
             FastClass::Punctuation => {
-                self.clear_token_flags();
                 self.cursor = start;
                 *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
             }
@@ -249,7 +253,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return false;
                 }
-                self.clear_token_flags();
                 self.cursor = start;
                 *target = self.punc_token(1, TokenTag::Dot, start);
             }
@@ -258,7 +261,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 if byte == b'<' && self.source[start as usize..].starts_with(b"<!--") {
                     return false;
                 }
-                self.clear_token_flags();
                 self.cursor = start;
                 *target = self.scan_punctuation();
             }
@@ -353,24 +355,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let Some(&byte) = self.source.get(start) else {
             return false;
         };
-        let class = FAST_CLASS[byte as usize];
-        if !matches!(class, FastClass::Identifier | FastClass::Punctuation) {
-            return false;
-        }
-
         self.clear_token_flags();
         self.set_token_flag(TokenFlag::LineTerminatorBefore);
-        if class == FastClass::Identifier {
-            if !self.scan_ascii_identifier(start as u32, target) {
-                self.cursor = line_feed;
-                return false;
-            }
+        if self.try_next_token_at(target, start as u32, byte) {
+            true
         } else {
-            self.cursor = start as u32;
-            *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start as u32);
+            self.cursor = line_feed;
+            false
         }
-        self.handle_fast_token(*target);
-        true
     }
 
     #[inline(always)]
@@ -406,7 +398,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         {
             return false;
         }
-        self.clear_token_flags();
         self.cursor = end as u32;
         *target = self.create_token(TokenTag::NumericLiteral, start, end as u32);
         true
