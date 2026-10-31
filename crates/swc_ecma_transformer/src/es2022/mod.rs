@@ -8,7 +8,8 @@ pub struct ES2022 {
     static_blocks: Option<static_blocks::StaticBlocks>,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, serde::Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct ES2022Options {
     pub static_blocks: bool,
 }

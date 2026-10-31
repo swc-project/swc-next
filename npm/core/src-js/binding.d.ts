@@ -76,6 +76,14 @@ export declare function parseSync(source: Buffer, sourceUtf16Len: number, option
 /**
  * # Safety
  *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function parseTransformSync(source: Buffer, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string): Buffer
+
+/**
+ * # Safety
+ *
  * Sections must be produced by the matching JavaScript encoder and satisfy
  * the validity, alignment, and immutability contracts of
  * `swc_next_bridge::print_from_parts`.
@@ -83,3 +91,31 @@ export declare function parseSync(source: Buffer, sourceUtf16Len: number, option
 export declare function printSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: CodegenOptions | undefined | null): CodegenOutput
 
 export declare function sourceTypeFromPath(path: string): SourceType
+
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_from_parts`.
+ */
+export declare function transformAstSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string): Buffer
+
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_print_from_parts`.
+ */
+export declare function transformPrintSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options: string, codegenOptions?: CodegenOptions | undefined | null): Buffer
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function transformSync(source: Buffer, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string, codegenOptions?: CodegenOptions | undefined | null): Buffer
+
+export declare function validateTransformOptions(options: string): void

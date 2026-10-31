@@ -370,6 +370,28 @@ importers:
         specifier: 'catalog:'
         version: 26.1.1
 
+  npm/transform:
+    dependencies:
+      '@swc-next/decoder':
+        specifier: workspace:*
+        version: link:../../packages/decoder
+      '@swc-next/encoder':
+        specifier: workspace:*
+        version: link:../../packages/encoder
+      '@swc-next/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@swc-next/walker':
+        specifier: workspace:*
+        version: link:../../packages/walker
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+
   packages/decoder:
     dependencies:
       '@swc-next/types':
@@ -3359,6 +3381,37 @@ snapshots:
       typanion: 3.14.0
     optionalDependencies:
       '@emnapi/runtime': 1.11.2
+    transitivePeerDependencies:
+      - '@napi-rs/cross-toolchain-arm64-target-aarch64'
+      - '@napi-rs/cross-toolchain-arm64-target-armv7'
+      - '@napi-rs/cross-toolchain-arm64-target-ppc64le'
+      - '@napi-rs/cross-toolchain-arm64-target-s390x'
+      - '@napi-rs/cross-toolchain-arm64-target-x86_64'
+      - '@napi-rs/cross-toolchain-x64-target-aarch64'
+      - '@napi-rs/cross-toolchain-x64-target-armv7'
+      - '@napi-rs/cross-toolchain-x64-target-ppc64le'
+      - '@napi-rs/cross-toolchain-x64-target-s390x'
+      - '@napi-rs/cross-toolchain-x64-target-x86_64'
+      - '@types/node'
+      - node-addon-api
+      - supports-color
+
+  '@napi-rs/cli@3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)':
+    dependencies:
+      '@inquirer/prompts': 8.5.2(@types/node@26.1.1)
+      '@napi-rs/cross-toolchain': 1.0.3
+      '@napi-rs/wasm-tools': 1.1.0
+      '@octokit/rest': 22.0.1
+      clipanion: 4.0.0-rc.4(typanion@3.14.0)
+      colorette: 2.0.20
+      emnapi: 1.11.3
+      es-toolkit: 1.50.0
+      js-yaml: 4.3.0
+      obug: 2.1.4
+      semver: 7.8.5
+      typanion: 3.14.0
+    optionalDependencies:
+      '@emnapi/runtime': 1.11.3
     transitivePeerDependencies:
       - '@napi-rs/cross-toolchain-arm64-target-aarch64'
       - '@napi-rs/cross-toolchain-arm64-target-armv7'
