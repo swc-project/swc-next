@@ -21,6 +21,71 @@ fn optional_bindings() {
         "function f([value]?: Items) {}",
         "function f([value]        ) {}",
     );
+
+    assert_strip(
+        "function f(value? = cond ? 1 : 2) {}",
+        "function f(value  = cond ? 1 : 2) {}",
+    );
+
+    assert_strip(
+        "function f(value?: number = cond ? 1 : 2) {}",
+        "function f(value          = cond ? 1 : 2) {}",
+    );
+
+    assert_strip(
+        "function f(value?: A extends B ? C : D) {}",
+        "function f(value                      ) {}",
+    );
+
+    assert_strip(
+        "function f(value?: A extends B ? C : D = 1) {}",
+        "function f(value                       = 1) {}",
+    );
+
+    assert_strip(
+        "function f(value? = a ? b ? 1 : 2 : 3) {}",
+        "function f(value  = a ? b ? 1 : 2 : 3) {}",
+    );
+
+    assert_strip(
+        "function f(value? = () => cond ? 1 : 2) {}",
+        "function f(value  = () => cond ? 1 : 2) {}",
+    );
+
+    assert_strip(
+        "function f(value? = (inner? = cond ? 1 : 2) => inner) {}",
+        "function f(value  = (inner  = cond ? 1 : 2) => inner) {}",
+    );
+
+    assert_strip(
+        "class C { constructor(value? = cond ? 1 : 2) {} }",
+        "class C { constructor(value  = cond ? 1 : 2) {} }",
+    );
+
+    assert_strip(
+        "function f([value]? = cond ? 1 : 2) {}",
+        "function f([value]  = cond ? 1 : 2) {}",
+    );
+
+    assert_strip(
+        "function f({value}? = cond ? 1 : 2) {}",
+        "function f({value}  = cond ? 1 : 2) {}",
+    );
+
+    assert_strip(
+        "function f([value = cond ? 1 : 2]?) {}",
+        "function f([value = cond ? 1 : 2] ) {}",
+    );
+
+    assert_strip(
+        "function f(value? = obj?.prop) {}",
+        "function f(value  = obj?.prop) {}",
+    );
+
+    assert_strip(
+        "function f(value? = a ?? b) {}",
+        "function f(value  = a ?? b) {}",
+    );
 }
 
 #[test]

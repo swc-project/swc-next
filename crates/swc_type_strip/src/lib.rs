@@ -328,15 +328,16 @@ impl TypeEraser<'_, '_, '_> {
         Some(token.start())
     }
 
-    fn erase_optional_parameter(&mut self, type_annotation: Option<TsTypeAnnotation>, span: Span) {
-        let marker_end =
-            type_annotation.map_or(span.end, |annotation| annotation.span(self.ast).start);
-        if let Some(marker) = self
-            .tokens
-            .find_backward(span.start, marker_end, TokenTag::Question)
-        {
-            self.edits.blank(marker.span());
+    fn erase_optional_parameter(&mut self, node: FormalParameter) {
+        let pattern_end = node.pattern(self.ast).span(self.ast).end;
+        let mut marker_end = node.span(self.ast).end;
+        if let Some(annotation) = node.type_annotation(self.ast) {
+            marker_end = marker_end.min(annotation.span(self.ast).start);
         }
+        if let Some(initializer) = node.initializer(self.ast) {
+            marker_end = marker_end.min(initializer.span(self.ast).start);
+        }
+        self.erase_token(pattern_end, marker_end, TokenTag::Question);
     }
 
     fn erase_list_item(&mut self, item: Span, next: Option<Span>, container: Span) {
@@ -1130,7 +1131,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
 
     fn visit_formal_parameter(&mut self, node: FormalParameter) {
         if node.optional(self.ast) {
-            self.erase_optional_parameter(node.type_annotation(self.ast), node.span(self.ast));
+            self.erase_optional_parameter(node);
         }
         node.visit_children_with(self);
     }

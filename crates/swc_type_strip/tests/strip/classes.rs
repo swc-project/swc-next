@@ -59,6 +59,11 @@ fn heritage() {
 fn member_markers() {
     assert_strip("class C { value?: number; }", "class C { value         ; }");
 
+    assert_strip(
+        "class C { value? = cond ? 1 : 2; }",
+        "class C { value  = cond ? 1 : 2; }",
+    );
+
     assert_strip("class C { value!: number; }", "class C { value         ; }");
 
     assert_strip(
@@ -170,6 +175,12 @@ fn parameter_properties() {
     assert_strip_error_at(
         "class C { constructor(public value: number) {} }",
         "class C { constructor(       value        ) {} }",
+        "public",
+    );
+
+    assert_strip_error_at(
+        "class C { constructor(public value? = cond ? 1 : 2) {} }",
+        "class C { constructor(       value  = cond ? 1 : 2) {} }",
         "public",
     );
 
