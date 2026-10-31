@@ -5610,7 +5610,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn is_start_of_ts_declaration(&mut self) -> Option<bool> {
-        if !self.lang.is_typescript() {
+        if !self.lang.is_typescript()
+            || !matches!(
+                self.current_token.tag(),
+                TokenTag::Declare
+                    | TokenTag::Abstract
+                    | TokenTag::Const
+                    | TokenTag::Enum
+                    | TokenTag::Type
+                    | TokenTag::Interface
+                    | TokenTag::Namespace
+                    | TokenTag::Module
+                    | TokenTag::Global
+            )
+        {
             return Some(false);
         }
         let mut current = self.current_token;
