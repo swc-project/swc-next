@@ -8985,10 +8985,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         minimum: Precedence,
         allow_type_binding_identifiers: bool,
     ) -> Option<Expr> {
-        let left = if self.current_token.tag() == TokenTag::Identifier {
-            self.parse_plain_identifier()?
-        } else {
-            self.parse_prefix(allow_type_binding_identifiers, minimum)?
+        // These primary expressions need no prefix-operator or contextual-keyword checks.
+        let left = match self.current_token.tag() {
+            TokenTag::Identifier => self.parse_plain_identifier()?,
+            tag if tag.is_numeric_literal() => self.parse_numeric_literal()?,
+            TokenTag::StringLiteral => Expr::StringLiteral(self.parse_string_literal()?),
+            TokenTag::True | TokenTag::False => self.parse_boolean_literal()?,
+            TokenTag::NullLiteral => self.parse_null_literal()?,
+            TokenTag::This => self.parse_this_expression()?,
+            _ => self.parse_prefix(allow_type_binding_identifiers, minimum)?,
         };
         self.parse_expr_from_left(left, minimum)
     }
