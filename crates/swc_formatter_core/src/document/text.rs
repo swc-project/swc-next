@@ -1,6 +1,6 @@
-//! Cached display widths for single-line borrowed text.
+//! Cached display widths and source-line classification for borrowed text.
 
-use crate::text_width;
+use crate::measure_text_width;
 
 use super::thin::ThinStr;
 
@@ -15,7 +15,8 @@ pub(super) struct Text<'a> {
 enum WidthKind {
     Ascii,
     Unicode,
-    Dynamic,
+    UnicodeWithLines,
+    Multiline,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -25,28 +26,33 @@ pub(super) struct Width {
     value: u16,
 }
 
+impl Width {
+    #[cold]
+    fn measure_slow(source: &str) -> Self {
+        let kind = if memchr::memchr2(b'\r', b'\n', source.as_bytes()).is_some() {
+            WidthKind::Multiline
+        } else if source.contains(['\u{2028}', '\u{2029}']) {
+            WidthKind::UnicodeWithLines
+        } else {
+            WidthKind::Unicode
+        };
+        Self {
+            kind,
+            value: u16::try_from(measure_text_width(source)).unwrap_or(u16::MAX),
+        }
+    }
+}
+
 impl<'a> Text<'a> {
     #[inline]
     pub(super) fn new(source: &'a str) -> Self {
-        let width = if text_width::ascii_width(source).is_some() {
+        let width = if source.bytes().all(|byte| (0x20..=0x7f).contains(&byte)) {
             Width {
                 kind: WidthKind::Ascii,
                 value: 0,
             }
-        } else if source.chars().any(char::is_control) {
-            debug_assert!(
-                !source.contains(['\r', '\n']),
-                "physical lines must use literal_text or a line instruction"
-            );
-            Width {
-                kind: WidthKind::Dynamic,
-                value: 0,
-            }
         } else {
-            Width {
-                kind: WidthKind::Unicode,
-                value: u16::try_from(text_width::unicode_width(source)).unwrap_or(u16::MAX),
-            }
+            Width::measure_slow(source)
         };
         Self { source, width }
     }
@@ -75,23 +81,15 @@ impl<'a> Text<'a> {
     }
 
     pub(super) fn is_single_line(self) -> bool {
-        match self.width.kind {
-            WidthKind::Ascii => true,
-            _ => !self.source().contains(['\n', '\r', '\u{2028}', '\u{2029}']),
-        }
+        matches!(self.width.kind, WidthKind::Ascii | WidthKind::Unicode)
     }
 
     /// Textual width has no column context and does not prove a flat render view.
     pub(super) fn clean_width(self) -> Option<usize> {
         Some(match self.width.kind {
             WidthKind::Ascii => self.source().len(),
-            WidthKind::Unicode => usize::from(self.width.value),
-            WidthKind::Dynamic => {
-                if self.source().contains(['\r', '\n']) {
-                    return None;
-                }
-                text_width::width(self.source())
-            }
+            WidthKind::Unicode | WidthKind::UnicodeWithLines => usize::from(self.width.value),
+            WidthKind::Multiline => return None,
         })
     }
 
@@ -102,41 +100,12 @@ impl<'a> Text<'a> {
         }
     }
 
-    pub(super) fn first_line(self, column: usize) -> (usize, bool) {
-        match self.width.kind {
-            WidthKind::Ascii => (column + self.source().len(), false),
-            WidthKind::Unicode => (column + usize::from(self.width.value), false),
-            WidthKind::Dynamic => advance(self.source(), column),
-        }
+    /// A Text is one string for layout, even when its source contains newlines.
+    pub(super) fn advance_column(self, column: usize) -> usize {
+        column
+            + match self.width.kind {
+                WidthKind::Ascii => self.source().len(),
+                _ => usize::from(self.width.value),
+            }
     }
-
-    /// Returns the final column and whether the text crossed a physical line break.
-    pub(super) fn last_line(self, column: usize) -> (usize, bool) {
-        if matches!(self.width.kind, WidthKind::Dynamic)
-            && let Some((index, character)) = self
-                .source()
-                .char_indices()
-                .rfind(|(_, character)| matches!(character, '\r' | '\n'))
-        {
-            return (
-                advance(&self.source()[index + character.len_utf8()..], 0).0,
-                true,
-            );
-        }
-        self.first_line(column)
-    }
-}
-
-fn advance(mut source: &str, mut column: usize) -> (usize, bool) {
-    while let Some((index, character)) = source
-        .char_indices()
-        .find(|(_, character)| character.is_control())
-    {
-        column += text_width::unicode_width(&source[..index]);
-        if matches!(character, '\r' | '\n') {
-            return (column, true);
-        }
-        source = &source[index + character.len_utf8()..];
-    }
-    (column + text_width::unicode_width(source), false)
 }

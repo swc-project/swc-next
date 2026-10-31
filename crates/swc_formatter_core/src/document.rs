@@ -6,7 +6,10 @@
 //! Line suffixes retain complete Docs and their insertion mode and indentation.
 //! Syntax-specific whitespace and break requests belong to the caller's Doc.
 
+mod breaks;
+mod decode;
 mod encode;
+mod indent;
 mod printer;
 #[cfg(test)]
 mod tests;
@@ -14,6 +17,7 @@ mod text;
 mod thin;
 mod writer;
 
+pub use decode::DocumentBufferError;
 pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
 
 use std::num::NonZeroU32;
@@ -36,6 +40,24 @@ impl GroupId {
 pub enum ConditionTarget {
     Current,
     Group(GroupId),
+}
+
+/// Selects the group mode that controls conditional indentation.
+#[derive(Debug, Clone, Copy)]
+pub struct IndentIfBreakOptions {
+    /// The active mode or a previously resolved named group.
+    pub target: ConditionTarget,
+    /// Indent in flat mode instead of break mode.
+    pub negate: bool,
+}
+
+impl Default for IndentIfBreakOptions {
+    fn default() -> Self {
+        Self {
+            target: ConditionTarget::Current,
+            negate: false,
+        }
+    }
 }
 
 /// Explicit layout requests use the same meaning during measurement and printing.
@@ -83,9 +105,13 @@ enum FormatElement<'a> {
     SoftLine,
     SoftLineIfBreak(GroupId),
     Line,
+    /// Fused `hardlineWithoutBreakParent` and `breakParent` construction.
     HardLine,
+    HardLineWithoutBreakParent,
     BreakParent,
+    /// Fused `literallineWithoutBreakParent` and `breakParent` construction.
     LiteralLine,
+    LiteralLineWithoutBreakParent,
     /// The standard composition `markAsRoot(literalline)`.
     LiteralLineWithIndent,
     IfBreak {
@@ -106,8 +132,13 @@ enum FormatElement<'a> {
     /// Flushes pending line suffixes before continuing on a new line.
     LineSuffixBoundary,
     StartGroup {
+        /// The builder's explicit request, preserved by the logical codec.
+        request: GroupRequest,
+        /// Cached effective expansion after combining the request and contents.
         effect: BreakEffect,
         id: Option<GroupId>,
+        /// Distance to the matching EndGroup in this scope.
+        end_offset: u32,
     },
     /// An anonymous Auto group with exact context-free flat measurements and
     /// the distance from this opening instruction to its matching EndGroup.
@@ -121,13 +152,19 @@ enum FormatElement<'a> {
         width: u32,
     },
     StartIndentIfBreak {
-        id: GroupId,
+        target: ConditionTarget,
+        negate: bool,
         end_offset: u32,
     },
     EndIndent,
     StartAlign {
         width: u32,
     },
+    StartAlignText(&'a AlignText<'a>),
+    StartDedent,
+    StartMarkRoot,
+    StartDedentToRoot,
+    EndRichIndent(u8),
     EndAlign {
         width: u32,
     },
@@ -147,6 +184,7 @@ enum FormatElement<'a> {
         summary: FragmentSummary,
     },
     Alternatives(&'a Alternatives<'a>),
+    GroupWithStates(&'a GroupWithStates<'a>),
 }
 
 const _: () = assert!(std::mem::size_of::<FormatElement<'_>>() <= 16);
@@ -168,18 +206,24 @@ impl FragmentSummary {
     const CAPABILITIES: u8 = 0b110;
     const CONDITIONAL_LINES: u8 = 1 << 3;
     const INTRINSIC_LINES: u8 = 1 << 4;
+    const GROUP_STATES: u8 = 1 << 5;
+    const RICH_INDENT: u8 = 1 << 6;
 
     fn new(
         effect: BreakEffect,
         capabilities: FragmentCapabilities,
         conditional_lines: bool,
         intrinsic_lines: bool,
+        group_states: bool,
+        rich_indent: bool,
     ) -> Self {
         Self(
             u8::from(effect.preferred_breaks())
                 | ((capabilities as u8) << 1)
                 | (u8::from(conditional_lines) << 3)
-                | (u8::from(intrinsic_lines) << 4),
+                | (u8::from(intrinsic_lines) << 4)
+                | (u8::from(group_states) << 5)
+                | (u8::from(rich_indent) << 6),
         )
     }
 
@@ -198,6 +242,14 @@ impl FragmentSummary {
 
     fn conditional_lines(self) -> bool {
         self.0 & Self::CONDITIONAL_LINES != 0
+    }
+
+    fn rich_indent(self) -> bool {
+        self.0 & Self::RICH_INDENT != 0
+    }
+
+    fn group_states(self) -> bool {
+        self.0 & Self::GROUP_STATES != 0
     }
 
     fn intrinsic_lines(self) -> bool {
@@ -248,17 +300,17 @@ fn clean_text_width(elements: &[FormatElement<'_>]) -> Option<usize> {
     };
     add_clean_text_width(elements, &mut text)?;
     if let Some(width) = text.ascii_width {
-        // This shortcut applies to the complete joined text, including DEL.
+        // ASCII string widths are additive, including control characters.
         return Some(width);
     }
     let Some(CleanUnicodeText::Joined(bytes)) = text.unicode else {
         return Some(text.width);
     };
-    // Clean, non-ASCII text can compose emoji across instruction boundaries.
+    // Unicode sequences can compose across clean instruction boundaries.
     // The synthesized spelling belongs to this measurement, not to the Doc.
     let mut joined = String::with_capacity(bytes);
     append_clean_text(elements, &mut joined)?;
-    Some(crate::text_width::width(&joined))
+    Some(crate::measure_text_width(&joined))
 }
 
 fn add_clean_text_width(elements: &[FormatElement<'_>], text: &mut CleanTextWidth) -> Option<()> {
@@ -371,6 +423,7 @@ fn flat_summary(elements: &[FormatElement<'_>]) -> Option<FlatSummary> {
             | FormatElement::StartGroup {
                 effect: BreakEffect(0),
                 id: None,
+                ..
             }
             | FormatElement::EndGroup
             | FormatElement::StartIndent
@@ -391,15 +444,32 @@ impl<'a> Fragment<'a> {
         capabilities: FragmentCapabilities,
         conditional_lines: bool,
         intrinsic_lines: bool,
+        group_states: bool,
+        rich_indent: bool,
     ) -> Self {
         Self {
             elements: ThinSlice::new(elements),
-            summary: FragmentSummary::new(effect, capabilities, conditional_lines, intrinsic_lines),
+            summary: FragmentSummary::new(
+                effect,
+                capabilities,
+                conditional_lines,
+                intrinsic_lines,
+                group_states,
+                rich_indent,
+            ),
         }
     }
 
     fn elements(self) -> &'a [FormatElement<'a>] {
         self.elements.get()
+    }
+
+    fn rich_indent(self) -> bool {
+        self.summary.rich_indent()
+    }
+
+    fn group_states(self) -> bool {
+        self.summary.group_states()
     }
 
     fn effect(self) -> BreakEffect {
@@ -437,7 +507,9 @@ impl<'a> Fragment<'a> {
                     | FormatElement::SoftLineIfBreak(_)
                     | FormatElement::Line
                     | FormatElement::HardLine
+                    | FormatElement::HardLineWithoutBreakParent
                     | FormatElement::LiteralLine
+                    | FormatElement::LiteralLineWithoutBreakParent
                     | FormatElement::LiteralLineWithIndent => return true,
                     FormatElement::Text { source, width }
                     | FormatElement::IfBreak { source, width }
@@ -460,6 +532,9 @@ impl<'a> Fragment<'a> {
                     }
                     FormatElement::Alternatives(alternatives) => {
                         pending.push((alternatives.first().elements(), false));
+                    }
+                    FormatElement::GroupWithStates(group) => {
+                        pending.push((group.contents.elements(), false));
                     }
                     _ => {}
                 }
@@ -531,6 +606,7 @@ impl FragmentCapabilities {
                 FormatElement::StartGroup {
                     effect: BreakEffect(0),
                     id: None,
+                    ..
                 }
                 | FormatElement::StartGroupWithFlatWidth { .. }
                 | FormatElement::EndGroup => continue,
@@ -556,10 +632,25 @@ impl FragmentCapabilities {
 #[derive(Debug, Clone, Copy)]
 pub struct FlatFragment<'a>(Fragment<'a>);
 
+/// Compact conditional group: Auto, unnamed, with contents equal to the first state.
 #[derive(Debug)]
 struct Alternatives<'a> {
     preferred: &'a [Fragment<'a>],
     fallback: Fragment<'a>,
+}
+
+#[derive(Debug)]
+struct AlignText<'a> {
+    source: &'a str,
+    width: usize,
+}
+
+#[derive(Debug)]
+struct GroupWithStates<'a> {
+    contents: Fragment<'a>,
+    states: &'a [Fragment<'a>],
+    request: GroupRequest,
+    id: Option<GroupId>,
 }
 
 #[derive(Debug)]
@@ -609,7 +700,9 @@ impl<'a> FormatElement<'a> {
     fn permits_flat(self) -> bool {
         match self {
             Self::HardLine
+            | Self::HardLineWithoutBreakParent
             | Self::LiteralLine
+            | Self::LiteralLineWithoutBreakParent
             | Self::LiteralLineWithIndent
             | Self::StartLineSuffix { .. }
             | Self::EndLineSuffix
@@ -624,6 +717,7 @@ impl<'a> FormatElement<'a> {
             Self::Text { source, width } | Self::IfFlat { source, width } => Text::from_parts(source, width).is_single_line(),
             Self::Fragment { summary, .. } => summary.capabilities().permits_flat(),
             Self::Alternatives(alternatives) => alternatives.first().capabilities().permits_flat(),
+            Self::GroupWithStates(group) => group.id.is_none() && group.contents.capabilities().permits_flat(),
             _ => true,
         }
     }
@@ -645,6 +739,11 @@ impl<'a> FormatElement<'a> {
             Self::Alternatives(alternatives) => {
                 Some(Self::flat_fragment(FlatFragment(alternatives.first())))
             }
+            Self::GroupWithStates(group) => Some(Self::flat_fragment(FlatFragment(group.contents))),
+            Self::StartIndentIfBreak {
+                target: ConditionTarget::Current,
+                ..
+            } => None,
             element @ (Self::Text { .. }
             | Self::LineSuffixBoundary
             | Self::StartIndentIfBreak { .. }
@@ -658,13 +757,31 @@ pub struct Doc<'a> {
     allocator: &'a swc_next_allocator::Allocator,
     elements: &'a [FormatElement<'a>],
     group_count: u32,
+    group_states: bool,
+    rich_indent: bool,
 }
 
-impl Doc<'_> {
+impl<'a> Doc<'a> {
+    /// Decodes a versioned document, borrowing its text from the input buffer.
+    ///
+    /// Supports version 0's complete balanced fragment scopes, including
+    /// shared fragments. Line suffixes must not depend on a fill outside the
+    /// suffix. This is not a decoder for arbitrary Prettier documents.
+    ///
+    /// Returns an error for unsupported versions or malformed documents.
+    /// Distinct text ranges may consume at most eight times the buffer length
+    /// in decoding work; exceeding this limit returns a resource error. The
+    /// returned document's later printing work is not bounded by this limit.
+    pub fn decode(
+        allocator: &'a swc_next_allocator::Allocator,
+        buffer: &'a [u8],
+    ) -> Result<Self, DocumentBufferError> {
+        decode::decode(allocator, buffer)
+    }
+
     /// Encodes the logical document into an owned version-0 buffer.
     ///
-    /// The current JavaScript decoder requires text instructions to be single-line.
-    /// Use [`Writer::literal_text`] for source text containing physical line breaks.
+    /// Text instructions retain their complete strings, including source newlines.
     /// This transport is still evolving and does not yet cover every document that
     /// the native printer can render.
     pub fn encode(self) -> Vec<u8> {
@@ -672,6 +789,13 @@ impl Doc<'_> {
     }
 
     pub fn print(self, options: PrintOptions) -> String {
-        printer::print(self.elements, self.allocator, self.group_count, options)
+        printer::print(
+            self.elements,
+            self.allocator,
+            self.group_count,
+            self.group_states,
+            self.rich_indent,
+            options,
+        )
     }
 }

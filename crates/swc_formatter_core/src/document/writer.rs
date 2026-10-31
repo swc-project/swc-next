@@ -5,9 +5,9 @@ use std::borrow::Cow;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment, FormatElement,
-    Fragment, FragmentCapabilities, GroupId, GroupRequest, NeutralFragment, RecordedGroup,
-    text::Text, thin::ThinSlice,
+    AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment,
+    FormatElement, Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates,
+    IndentIfBreakOptions, NeutralFragment, RecordedGroup, text::Text, thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
@@ -16,6 +16,8 @@ pub struct Writer<'a> {
     effect: BreakEffect,
     flattening: bool,
     group_count: u32,
+    group_states: bool,
+    rich_indent: bool,
     conditional_lines: bool,
     intrinsic_lines: bool,
 }
@@ -49,14 +51,17 @@ impl<'a> Writer<'a> {
             effect: BreakEffect::default(),
             flattening: false,
             group_count: 0,
+            group_states: false,
+            rich_indent: false,
             conditional_lines: false,
             intrinsic_lines: false,
         }
     }
 
-    /// Appends text using the native printer's whitespace handling.
-    /// For portable version-0 encoding, text must not contain physical line breaks;
-    /// use [`Self::literal_text`] when preserving multiline source text.
+    /// Appends one string whose complete source width participates in layout.
+    /// Internal newlines do not reset the layout column or expand groups; LF is
+    /// converted to the selected output line ending. Use [`Self::literal_text`]
+    /// when source lines should instead behave as explicit literal lines.
     pub fn text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
@@ -89,7 +94,9 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::text(text));
     }
 
-    /// Literal source lines retain their contents without structural indentation.
+    /// Splits source lines with explicit literal lines, expanding enclosing groups.
+    /// Source CR, LF, and CRLF become the selected output line ending, and each
+    /// line resets the layout column without structural indentation.
     pub fn literal_text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
@@ -108,16 +115,32 @@ impl<'a> Writer<'a> {
         self.text(text);
     }
 
+    /// Writes a hard line and requests expansion of its enclosing groups.
     pub fn hard_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::HardLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
     }
 
+    /// Writes a hard line without requesting expansion of its enclosing groups.
+    pub fn hard_line_without_break_parent(&mut self) {
+        self.intrinsic_lines = true;
+        self.elements
+            .push(FormatElement::HardLineWithoutBreakParent);
+    }
+
+    /// Preserves trailing whitespace, resets indentation, and expands enclosing groups.
     pub fn literal_line(&mut self) {
         self.intrinsic_lines = true;
         self.elements.push(FormatElement::LiteralLine);
         self.effect = self.effect.join(BreakEffect::REQUIRED);
+    }
+
+    /// Preserves trailing whitespace and resets indentation without expanding parents.
+    pub fn literal_line_without_break_parent(&mut self) {
+        self.intrinsic_lines = true;
+        self.elements
+            .push(FormatElement::LiteralLineWithoutBreakParent);
     }
 
     /// Preserves source whitespace while returning to the current indentation.
@@ -201,6 +224,8 @@ impl<'a> Writer<'a> {
             FragmentCapabilities::classify(elements),
             false,
             !text.is_single_line(),
+            false,
+            false,
         )
     }
 
@@ -211,6 +236,8 @@ impl<'a> Writer<'a> {
         broken: Fragment<'a>,
         flat: Fragment<'a>,
     ) {
+        self.group_states |= broken.group_states() || flat.group_states();
+        self.rich_indent |= broken.rich_indent() || flat.rich_indent();
         self.effect = self.effect.join(broken.effect()).join(flat.effect());
         self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
         self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
@@ -307,22 +334,27 @@ impl<'a> Writer<'a> {
     ) -> T {
         let start = self.elements.len();
         let outer_effect = self.effect;
-        self.effect = BreakEffect::from_request(request);
+        self.effect = BreakEffect::default();
         self.elements.push(FormatElement::StartGroup {
+            request,
             effect: self.effect,
             id,
+            end_offset: 0,
         });
         let result = write(self);
-        let effect = self.effect;
+        let effect = BreakEffect::from_request(request).join(self.effect);
         self.effect = outer_effect.join(effect);
+        let distance = instruction_offset(self.elements.len() - start);
         let FormatElement::StartGroup {
             effect: group_effect,
+            end_offset,
             ..
         } = &mut self.elements[start]
         else {
             unreachable!("group scope retains its opening instruction");
         };
         *group_effect = effect;
+        *end_offset = distance;
         self.elements.push(FormatElement::EndGroup);
         result
     }
@@ -365,15 +397,32 @@ impl<'a> Writer<'a> {
     }
 
     pub fn indent_if_break<T>(&mut self, group: GroupId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.indent_if_break_with_options(
+            IndentIfBreakOptions {
+                target: ConditionTarget::Group(group),
+                negate: false,
+            },
+            write,
+        )
+    }
+
+    /// Indents the scope when the selected group mode matches the options.
+    pub fn indent_if_break_with_options<T>(
+        &mut self,
+        options: IndentIfBreakOptions,
+        write: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let start = self.elements.len();
         self.elements.push(FormatElement::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset: 0,
         });
         let result = write(self);
         let end_offset = instruction_offset(self.elements.len() - start);
         self.elements[start] = FormatElement::StartIndentIfBreak {
-            id: group,
+            target: options.target,
+            negate: options.negate,
             end_offset,
         };
         self.elements.push(FormatElement::EndIndent);
@@ -388,6 +437,46 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::StartAlign { width });
         let result = write(self);
         self.elements.push(FormatElement::EndAlign { width });
+        result
+    }
+
+    /// Aligns the scope with an unchanged string prefix.
+    pub fn align_text<T>(&mut self, prefix: &'a str, write: impl FnOnce(&mut Self) -> T) -> T {
+        if prefix.is_empty() {
+            return write(self);
+        }
+        self.rich_indent = true;
+        let text = self.allocator.alloc(AlignText {
+            source: prefix,
+            width: crate::measure_text_width(prefix),
+        });
+        self.elements.push(FormatElement::StartAlignText(text));
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(23));
+        result
+    }
+
+    pub fn dedent<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartDedent);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(24));
+        result
+    }
+
+    pub fn mark_as_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartMarkRoot);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(25));
+        result
+    }
+
+    pub fn dedent_to_root<T>(&mut self, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.rich_indent = true;
+        self.elements.push(FormatElement::StartDedentToRoot);
+        let result = write(self);
+        self.elements.push(FormatElement::EndRichIndent(26));
         result
     }
 
@@ -515,6 +604,8 @@ impl<'a> Writer<'a> {
             capabilities,
             child.conditional_lines,
             child.intrinsic_lines,
+            child.group_states,
+            child.rich_indent,
         );
         Ok((fragment, value))
     }
@@ -564,7 +655,12 @@ impl<'a> Writer<'a> {
             fragment.capabilities()
         };
         let elements = self.allocator.alloc([
-            FormatElement::StartGroup { effect, id },
+            FormatElement::StartGroup {
+                request,
+                effect,
+                id,
+                end_offset: 2,
+            },
             FormatElement::fragment(fragment),
             FormatElement::EndGroup,
         ]);
@@ -574,10 +670,44 @@ impl<'a> Writer<'a> {
             capabilities,
             fragment.conditional_lines(),
             fragment.has_intrinsic_lines(),
+            fragment.group_states(),
+            fragment.rich_indent(),
         )
     }
 
+    /// Writes a group with independent contents and at least one expanded state.
+    pub fn write_group_with_states(
+        &mut self,
+        request: GroupRequest,
+        id: Option<GroupId>,
+        contents: Fragment<'a>,
+        first: Fragment<'a>,
+        rest: &[Fragment<'a>],
+    ) {
+        let mut states = ArenaVec::with_capacity_in(rest.len() + 1, self.allocator);
+        states.push(first);
+        states.extend_from_slice(rest);
+        self.group_states = true;
+        self.rich_indent |= contents.rich_indent()
+            || first.rich_indent()
+            || rest.iter().any(|state| state.rich_indent());
+        self.effect = self.effect.join(BreakEffect::from_request(request));
+        self.conditional_lines |= contents.conditional_lines()
+            || first.conditional_lines()
+            || rest.iter().any(|state| state.conditional_lines());
+        self.intrinsic_lines |= contents.has_intrinsic_lines();
+        let group = self.allocator.alloc(GroupWithStates {
+            contents,
+            states: states.into_bump_slice(),
+            request,
+            id,
+        });
+        self.elements.push(FormatElement::GroupWithStates(group));
+    }
+
     pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
+        self.group_states |= fragment.group_states();
+        self.rich_indent |= fragment.rich_indent();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -585,10 +715,14 @@ impl<'a> Writer<'a> {
     }
 
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
+        self.group_states |= fragment.0.group_states();
+        self.rich_indent |= fragment.0.rich_indent();
         self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
+        self.group_states |= fragment.group_states();
+        self.rich_indent |= fragment.rich_indent();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
@@ -598,6 +732,10 @@ impl<'a> Writer<'a> {
     /// Writes a standard conditional group. Branch-local break requests do not
     /// force an enclosing group; the selected branch still retains its own groups.
     pub fn write_alternatives(&mut self, preferred: &[Fragment<'a>], fallback: Fragment<'a>) {
+        self.group_states |=
+            fallback.group_states() || preferred.iter().any(|fragment| fragment.group_states());
+        self.rich_indent |=
+            fallback.rich_indent() || preferred.iter().any(|fragment| fragment.rich_indent());
         let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
             choices.push(fallback);
@@ -624,6 +762,8 @@ impl<'a> Writer<'a> {
             allocator: self.allocator,
             elements: ThinSlice::new(self.elements.into_bump_slice()).get(),
             group_count: self.group_count,
+            group_states: self.group_states,
+            rich_indent: self.rich_indent,
         }
     }
 }

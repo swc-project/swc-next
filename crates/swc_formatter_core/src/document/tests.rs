@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 
 use super::{ConditionTarget, Doc, FormatElement, Fragment, GroupRequest, Writer};
-use crate::{IndentStyle, LineEnding, PrintOptions};
+use crate::{IndentIfBreakOptions, IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
     writer.space();
@@ -37,6 +37,62 @@ fn line_document(options: PrintOptions) -> String {
     writer.text("second");
     writer.hard_line();
     writer.finish().print(options)
+}
+
+fn line_request_document<'a>(
+    allocator: &'a Allocator,
+    line: impl FnOnce(&mut Writer<'a>),
+) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        line(writer);
+        writer.text("b");
+        writer.line();
+        writer.text("c");
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn indented_line_doc<'a>(allocator: &'a Allocator, line: impl FnOnce(&mut Writer<'a>)) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        writer.indent(|writer| {
+            writer.text("a ");
+            line(writer);
+            writer.text("b");
+        });
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn text_layout_document<'a>(
+    allocator: &'a Allocator,
+    text: impl FnOnce(&mut Writer<'a>),
+) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.group(false, |writer| {
+        text(writer);
+        writer.line();
+        writer.text("c");
+        writer.if_break("B");
+        writer.if_flat("F");
+    });
+    writer.finish()
+}
+
+fn indented_text_document<'a>(allocator: &'a Allocator, text: &'a str) -> Doc<'a> {
+    let mut writer = Writer::new(allocator);
+    writer.indent(|writer| {
+        writer.hard_line();
+        writer.text(text);
+        writer.text("end");
+    });
+    writer.finish()
 }
 
 fn independent_document(allocator: &Allocator) -> Doc<'_> {
@@ -123,17 +179,17 @@ fn compact_widths() {
     let ascii = "a".repeat(80_000);
     let text = Text::new(&ascii);
     assert_eq!(text.clean_ascii_width(), Some(80_000));
-    assert_eq!(text.first_line(17), (80_017, false));
+    assert_eq!(text.advance_column(17), 80_017);
 
     let unicode = "界".repeat(40_000);
     let text = Text::new(&unicode);
     assert_eq!(text.clean_width(), Some(usize::from(u16::MAX)));
-    assert_eq!(text.first_line(17), (usize::from(u16::MAX) + 17, false));
+    assert_eq!(text.advance_column(17), usize::from(u16::MAX) + 17);
 
     let controls = "界\tend";
     let text = Text::new(controls);
-    assert_eq!(text.clean_width(), Some(5));
-    assert_eq!(text.first_line(17), (22, false));
+    assert_eq!(text.clean_width(), Some(6));
+    assert_eq!(text.advance_column(17), 23);
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -574,9 +630,9 @@ fn prepared_group_columns() {
 
     assert_eq!(flat_width_text("世界", 6), "a (\n  世界\n);");
 
-    assert_eq!(flat_width_text("a\tb", 5), "a a\tb;");
+    assert_eq!(flat_width_text("a\tb", 6), "a a\tb;");
 
-    assert_eq!(flat_width_text("a\tb", 4), "a (\n  a\tb\n);");
+    assert_eq!(flat_width_text("a\tb", 5), "a (\n  a\tb\n);");
 
     assert_eq!(flat_width_text("a\u{7f}b", 6), "a a\u{7f}b;");
 
@@ -699,6 +755,114 @@ fn dependent_document(options: PrintOptions) -> String {
     });
     writer.text(";");
     writer.finish().print(options)
+}
+
+fn conditional_indentation_document(named: bool, expanded: bool, negate: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let mut options = IndentIfBreakOptions {
+        negate,
+        ..IndentIfBreakOptions::default()
+    };
+    if named {
+        let group = writer.named_group(expanded, |w| w.text("g"));
+        options.target = ConditionTarget::Group(group);
+        writer.indent_if_break_with_options(options, |w| {
+            w.hard_line();
+            w.text("x");
+        });
+    } else {
+        writer.group(expanded, |w| {
+            write_conditional_line(w, options);
+        });
+    }
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    doc.print(PrintOptions::default())
+}
+
+fn write_conditional_line(writer: &mut Writer<'_>, options: IndentIfBreakOptions) {
+    writer.indent_if_break_with_options(options, |w| {
+        w.hard_line_without_break_parent();
+        w.text("x");
+    });
+}
+
+#[test]
+fn conditional_indentation_options() {
+    assert_eq!(conditional_indentation_document(true, false, false), "g\nx");
+    assert_eq!(
+        conditional_indentation_document(true, false, true),
+        "g\n  x"
+    );
+    assert_eq!(
+        conditional_indentation_document(true, true, false),
+        "g\n  x"
+    );
+    assert_eq!(conditional_indentation_document(true, true, true), "g\nx");
+    assert_eq!(conditional_indentation_document(false, false, false), "\nx");
+    assert_eq!(
+        conditional_indentation_document(false, false, true),
+        "\n  x"
+    );
+    assert_eq!(
+        conditional_indentation_document(false, true, false),
+        "\n  x"
+    );
+    assert_eq!(conditional_indentation_document(false, true, true), "\nx");
+
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let group = writer.next_group_id();
+    let options = IndentIfBreakOptions {
+        target: ConditionTarget::Group(group),
+        negate: true,
+    };
+    writer.indent_if_break_with_options(options, |w| w.text("hidden"));
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "");
+}
+
+#[test]
+fn conditional_indentation_projection_and_wire() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|w| w.text("S"));
+    writer.flat(|w| {
+        w.indent_if_break_with_options(IndentIfBreakOptions::default(), |w| {
+            w.line_suffix_boundary();
+            w.text("x");
+        })
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "aS\nx");
+
+    let mut writer = Writer::new(&allocator);
+    let group = writer.named_group(false, |w| w.text("g"));
+    writer.literal_line();
+    writer.text("a");
+    writer.line_suffix(|w| w.text("S"));
+    let options = IndentIfBreakOptions {
+        target: ConditionTarget::Group(group),
+        negate: true,
+    };
+    writer.flat(|w| {
+        w.indent_if_break_with_options(options, |w| {
+            w.line_suffix_boundary();
+            w.text("x");
+        })
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "g\naS\n  x");
+
+    let bytes = document_buffer(&[&[7, 2, 0, 0, 0, 0, 17, 4]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+    let bytes = document_buffer(&[&[7, 1, 0, 0, 0, 0, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
 }
 
 #[test]
@@ -1071,6 +1235,241 @@ fn standard_line_whitespace() {
     assert_eq!(terminal_indent, "a\n  ");
 }
 
+fn rich_indentation_document(options: PrintOptions, write: impl FnOnce(&mut Writer<'_>)) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    write(&mut writer);
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, options);
+    doc.print(options)
+}
+
+#[test]
+fn rich_indentation() {
+    let spaces = PrintOptions::default();
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..spaces
+    };
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.align_text("> ", |w| {
+            w.hard_line();
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\n>\n> x");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align(2, |w| {
+            w.align(5, |w| {
+                w.dedent(|w| {
+                    w.indent(|w| {
+                        w.hard_line();
+                        w.text("x");
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n\t\tx");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align(2, |w| {
+            w.align_text("|", |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        })
+    });
+    assert_eq!(output, "\n\t|x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.align_text("世界", |w| {
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\n世界x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.dedent(|w| {
+                    w.literal_line();
+                    w.text("x");
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  x");
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.align_text("> ", |w| {
+                    w.mark_as_root(|w| {
+                        w.dedent_to_root(|w| {
+                            w.dedent_to_root(|w| {
+                                w.hard_line();
+                                w.text("x");
+                            })
+                        })
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  x");
+}
+
+#[test]
+fn rich_indentation_absolute() {
+    let spaces = PrintOptions::default();
+    let zero = PrintOptions {
+        indent_width: 0.try_into().unwrap(),
+        ..spaces
+    };
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..spaces
+    };
+
+    let output = rich_indentation_document(spaces, |w| {
+        w.indent(|w| {
+            w.mark_as_root(|w| {
+                w.align_text("> ", |w| {
+                    w.mark_as_root(|w| {
+                        w.absolute_indent(2, |w| {
+                            w.hard_line();
+                            w.text("x");
+                        })
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n  >   x");
+
+    let output = rich_indentation_document(zero, |w| {
+        w.mark_as_root(|w| {
+            w.absolute_indent(3, |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        })
+    });
+    assert_eq!(output, "\n   x");
+
+    let output = rich_indentation_document(tabs, |w| {
+        w.align_text("|", |w| {
+            w.mark_as_root(|w| {
+                w.absolute_indent(3, |w| {
+                    w.hard_line();
+                    w.text("x");
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\n|\t\tx");
+}
+
+#[test]
+fn rich_indentation_suffix_and_identity() {
+    let options = PrintOptions::default();
+    let output = rich_indentation_document(options, |w| {
+        w.align(3, |w| {
+            w.align_text("", |w| {
+                w.align(0, |w| {
+                    w.dedent(|w| {
+                        w.hard_line();
+                        w.text("x");
+                    })
+                })
+            })
+        })
+    });
+    assert_eq!(output, "\nx");
+
+    let output = rich_indentation_document(options, |w| {
+        w.align_text("> ", |w| {
+            w.line_suffix(|w| {
+                w.hard_line();
+                w.text("suffix");
+            });
+            w.hard_line();
+            w.text("next");
+        })
+    });
+    assert_eq!(output, "\n> suffix\n> next");
+}
+
+#[test]
+fn rich_indentation_layout_and_codec() {
+    let narrow = PrintOptions {
+        line_width: 4,
+        ..PrintOptions::default()
+    };
+    let output = rich_indentation_document(narrow, |w| {
+        w.align_text("界", |w| {
+            w.hard_line();
+            w.group(false, |w| {
+                w.text("a");
+                w.line();
+                w.text("b");
+            });
+        })
+    });
+    assert_eq!(output, "\n界a\n界b");
+
+    let windows = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..PrintOptions::default()
+    };
+    let output = rich_indentation_document(windows, |w| {
+        w.align_text(">\n", |w| {
+            w.hard_line();
+            w.text("x");
+        })
+    });
+    assert_eq!(output, "\r\n>\nx");
+
+    let output = rich_indentation_document(PrintOptions::default(), |w| {
+        let contents = record(w, |w| {
+            w.align_text("|", |w| {
+                w.hard_line();
+                w.text("x");
+            })
+        });
+        let state = record(w, |w| w.text("fallback"));
+        w.write_group_with_states(GroupRequest::Auto, None, contents, state, &[]);
+    });
+    assert_eq!(output, "\n|x");
+
+    let allocator = Allocator::new();
+    let bad_utf8 = document_buffer(&[&[23, 0, 0, 0, 0, 1, 0, 0, 0, 17, 23]], &[0xff]);
+    assert!(Doc::decode(&allocator, &bad_utf8).is_err());
+    let bad_end = document_buffer(&[&[24, 17, 25]], &[]);
+    assert!(Doc::decode(&allocator, &bad_end).is_err());
+    let bad_range = document_buffer(&[&[23, 1, 0, 0, 0, 1, 0, 0, 0, 17, 23]], &[]);
+    assert!(Doc::decode(&allocator, &bad_range).is_err());
+    let no_op = document_buffer(
+        &[&[
+            6, 0, 0, 0, 0, 4, 2, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4, 17, 6,
+        ]],
+        b"x",
+    );
+    let tabs = PrintOptions {
+        indent_style: IndentStyle::Tab,
+        ..PrintOptions::default()
+    };
+    assert_eq!(
+        Doc::decode(&allocator, &no_op).unwrap().print(tabs),
+        "\n\tx"
+    );
+}
+
 #[test]
 fn deep_indentation() {
     let allocator = Allocator::new();
@@ -1082,6 +1481,8 @@ fn deep_indentation() {
         allocator: &allocator,
         elements: &elements,
         group_count: 0,
+        group_states: false,
+        rich_indent: false,
     };
     let options = PrintOptions {
         indent_width: 64.try_into().unwrap(),
@@ -1118,6 +1519,59 @@ fn literal_lines() {
         writer.finish().print(PrintOptions::default()),
         "{\n  /* first \n original */\n  value;\n}"
     );
+}
+
+#[test]
+fn line_break_requests() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 0,
+        ..wide
+    };
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.hard_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = line_request_document(&allocator, |writer| {
+        writer.literal_line_without_break_parent();
+        writer.break_parent();
+    });
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let doc = indented_line_doc(&allocator, Writer::hard_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a\n  bF");
+
+    let doc = indented_line_doc(&allocator, Writer::literal_line_without_break_parent);
+    assert_eq!(doc.print(wide), "a \nbF");
+
+    let mut writer = Writer::new(&allocator);
+    let hard = record(&mut writer, Writer::hard_line_without_break_parent);
+    assert!(hard.can_break());
+    assert!(hard.has_intrinsic_lines());
+    assert!(!hard.preferred_breaks());
+    assert!(hard.try_flat().is_none());
+
+    let literal = record(&mut writer, Writer::literal_line_without_break_parent);
+    assert!(literal.can_break());
+    assert!(literal.has_intrinsic_lines());
+    assert!(!literal.preferred_breaks());
+    assert!(literal.try_flat().is_none());
 }
 
 #[test]
@@ -1545,8 +1999,8 @@ fn clean_fragment_width<'a>(writer: &mut Writer<'a>, fragment: Fragment<'a>) -> 
 #[test]
 fn complete_text_measurement() {
     assert_eq!(clean_parts_width(&["ASCII", "\u{7f}"]), Some(6));
-    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(1));
-    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(2));
+    assert_eq!(clean_parts_width(&["é\u{7f}"]), Some(2));
+    assert_eq!(clean_parts_width(&["a\u{7f}", "é"]), Some(3));
     assert_eq!(clean_parts_width(&["👩", "\u{200d}", "💻"]), Some(2));
     assert_eq!(clean_parts_width(&["©", "\u{fe0f}"]), Some(2));
     assert_eq!(clean_parts_width(&["🇺", "🇸"]), Some(2));
@@ -1574,11 +2028,11 @@ fn complete_text_measurement() {
 
 #[test]
 fn cached_text_columns() {
-    assert_eq!(pair_document("لا", "a", 8), "[لا, a];");
-    assert_eq!(pair_document("لا", "a", 7), "[\n  لا,\n  a,\n];");
-    assert_eq!(pair_document("a\u{200d}bcd", "a", 11), "[a\u{200d}bcd, a];");
+    assert_eq!(pair_document("لا", "a", 7), "[لا, a];");
+    assert_eq!(pair_document("لا", "a", 6), "[\n  لا,\n  a,\n];");
+    assert_eq!(pair_document("a\u{200d}bcd", "a", 10), "[a\u{200d}bcd, a];");
     assert_eq!(
-        pair_document("a\u{200d}bcd", "a", 10),
+        pair_document("a\u{200d}bcd", "a", 9),
         "[\n  a\u{200d}bcd,\n  a,\n];"
     );
     assert_eq!(pair_document("a\u{7f}b", "a", 9), "[a\u{7f}b, a];");
@@ -1589,9 +2043,8 @@ fn cached_text_columns() {
     assert_eq!(pair_document("👩\u{200d}💻", "a", 8), "[👩\u{200d}💻, a];");
 
     let tab = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(tab.clean_width(), Some(2));
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(0), (2, false));
+    assert_eq!(tab.clean_width(), Some(4));
+    assert_eq!(tab.advance_column(0), 4);
 }
 
 fn literal_text_continuation(text: &'static str) -> String {
@@ -1608,20 +2061,20 @@ fn literal_text_continuation(text: &'static str) -> String {
 #[test]
 fn text_line_measurement() {
     let ascii = super::text::Text::new("ASCII");
-    assert_eq!(ascii.last_line(3), (8, false));
+    assert_eq!(ascii.advance_column(3), 8);
 
     let unicode = super::text::Text::new("世界");
-    assert_eq!(unicode.last_line(3), (7, false));
+    assert_eq!(unicode.advance_column(3), 7);
 
     let controls = super::text::Text::new("a\u{7f}\té");
-    assert_eq!(controls.last_line(3), (5, false));
+    assert_eq!(controls.advance_column(3), 7);
 
     let tab = super::text::Text::new("a\tb");
-    assert_eq!(tab.first_line(0), (2, false));
-    assert_eq!(tab.last_line(3), (5, false));
+    assert_eq!(tab.advance_column(0), 3);
+    assert_eq!(tab.advance_column(3), 6);
 
     let separators = super::text::Text::new("a\u{2028}b\u{2029}c");
-    assert_eq!(separators.last_line(3), (8, false));
+    assert_eq!(separators.advance_column(3), 8);
 
     assert_eq!(
         literal_text_continuation("é\r\n\u{7f}b"),
@@ -1642,6 +2095,85 @@ fn text_line_measurement() {
         literal_text_continuation("head\r\ntail\n"),
         "prehead\ntail\n next"
     );
+}
+
+#[test]
+fn ordinary_text_lines() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb cF");
+
+    let doc = text_layout_document(&allocator, |writer| writer.text("a\nb"));
+    assert_eq!(doc.print(narrow), "a\nb\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\nb"));
+    assert_eq!(doc.print(wide), "a\nb\ncB");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("aa\n");
+    writer.group(false, |writer| {
+        writer.text("bb");
+        writer.line();
+        writer.text("cc");
+    });
+    let doc = writer.finish();
+    assert_eq!(doc.print(narrow), "aa\nbb\ncc");
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("a");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.text("x\ny");
+    writer.hard_line();
+    writer.text("z");
+    let output = writer.finish().print(wide);
+    assert_eq!(output, "ax\ny!\nz");
+
+    let mut writer = Writer::new(&allocator);
+    let text = record(&mut writer, |writer| writer.text("a\nb"));
+    assert!(text.has_intrinsic_lines());
+    assert!(text.can_break());
+    assert!(!text.preferred_breaks());
+    assert!(text.try_flat().is_none());
+    assert!(text.try_neutral().is_none());
+    assert_eq!(super::text::Text::new("a\nb").clean_width(), None);
+}
+
+#[test]
+fn text_line_endings() {
+    let allocator = Allocator::new();
+    let lf = PrintOptions::default();
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..lf
+    };
+    let cr = PrintOptions {
+        line_ending: LineEnding::Cr,
+        ..lf
+    };
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(lf), "\n  a \n\tb\r\nc\rd\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(crlf), "\r\n  a \r\n\tb\r\r\nc\rd\r\nend");
+
+    let doc = indented_text_document(&allocator, "a \n\tb\r\nc\rd\n");
+    assert_eq!(doc.print(cr), "\r  a \r\tb\r\rc\rd\rend");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(lf), "a\nb\nc\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(crlf), "a\r\nb\r\nc\r\ncB");
+
+    let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+    assert_eq!(doc.print(cr), "a\rb\rc\rcB");
 }
 
 fn recorded_fill_document(width: u16, inherited: bool, nested: bool) -> String {
@@ -2040,6 +2572,64 @@ fn named_indent_projection(printed: bool, retained: bool) -> String {
         writer.hard_line();
         writer.text("z");
     })
+}
+
+fn named_indent_suffix_projection(binding: Option<bool>, retained: bool, nested: bool) -> String {
+    flat_width_document(80, |writer| {
+        let group = writer.next_group_id();
+        if let Some(expand) = binding {
+            writer.group_with_id(expand.into(), Some(group), |writer| writer.text("g"));
+            writer.literal_line();
+        }
+        writer.text("a");
+        writer.line_suffix(|writer| writer.text("S"));
+        let write = |writer: &mut Writer<'_>| {
+            writer.indent_if_break(group, |writer| {
+                let body = |writer: &mut Writer<'_>| {
+                    writer.line_suffix_boundary();
+                    writer.text("x");
+                };
+                if nested {
+                    writer.indent_if_break(group, body);
+                } else {
+                    body(writer);
+                }
+            });
+        };
+        if retained {
+            let fragment = record(writer, write);
+            writer.write_flat_fragment(fragment.try_flat().unwrap());
+        } else {
+            writer.flat(write);
+        }
+        writer.hard_line();
+        writer.text("z");
+    })
+}
+
+#[test]
+fn named_indent_suffix_bindings() {
+    for retained in [false, true] {
+        assert_eq!(
+            named_indent_suffix_projection(None, retained, false),
+            "aS\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(false), retained, false),
+            "g\naS\nx\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(true), retained, false),
+            "g\naS\n  x\nz"
+        );
+
+        assert_eq!(
+            named_indent_suffix_projection(Some(true), retained, true),
+            "g\naS\n    x\nz"
+        );
+    }
 }
 
 #[test]
@@ -3730,4 +4320,563 @@ fn fill_measurement_invalidation() {
     );
 
     assert_eq!(remeasured_fill_after_measurement(), "first\na force\n{}");
+}
+
+#[test]
+fn decode_document() {
+    let allocator = Allocator::new();
+    let expected = independent_document(&allocator).print(PrintOptions::default());
+    let bytes = independent_document(&allocator).encode();
+    let actual = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(actual, expected);
+
+    let mut writer = Writer::new(&allocator);
+    let (shared, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("世界");
+            writer.line();
+            writer.text("other");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.group(false, |writer| {
+        writer.write_fragment(shared);
+        writer.line();
+        writer.write_fragment(shared);
+    });
+    let doc = writer.finish();
+    let bytes = Doc {
+        allocator: doc.allocator,
+        elements: doc.elements,
+        group_count: doc.group_count,
+        group_states: doc.group_states,
+        rich_indent: doc.rich_indent,
+    }
+    .encode();
+    let actual = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    let expected = doc.print(PrintOptions::default());
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn decode_invalid_document() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.text("hello");
+    let bytes = writer.finish().encode();
+
+    for end in 0..bytes.len() {
+        assert!(Doc::decode(&allocator, &bytes[..end]).is_err());
+    }
+
+    let mut unsupported = bytes.clone();
+    unsupported[4] = 1;
+    assert!(matches!(
+        Doc::decode(&allocator, &unsupported),
+        Err(super::DocumentBufferError::UnsupportedVersion(1))
+    ));
+
+    let mut invalid = bytes.clone();
+    invalid[20] = 255;
+    assert!(Doc::decode(&allocator, &invalid).is_err());
+
+    let cycle = [
+        b'S', b'W', b'C', b'D', 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 9, 0, 0, 0, 0,
+    ];
+    assert!(Doc::decode(&allocator, &cycle).is_err());
+}
+
+fn assert_decoded_prints(doc: Doc<'_>, options: PrintOptions) {
+    let allocator = doc.allocator;
+    let encoded = Doc {
+        allocator,
+        elements: doc.elements,
+        group_count: doc.group_count,
+        group_states: doc.group_states,
+        rich_indent: doc.rich_indent,
+    }
+    .encode();
+    let decoded = Doc::decode(allocator, &encoded).unwrap().print(options);
+    assert_eq!(decoded, doc.print(options));
+}
+
+fn states_layout(width: u16, request: GroupRequest, states: usize) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| writer.text("CONTENTS"));
+    let first = record(&mut writer, |writer| writer.text("0"));
+    let middle = record(&mut writer, |writer| writer.text("M"));
+    let last = record(&mut writer, |writer| writer.text("LAST"));
+    let rest = if states == 1 {
+        &[][..]
+    } else {
+        &[middle, last][..]
+    };
+    writer.write_group_with_states(request, None, contents, first, rest);
+    let doc = writer.finish();
+    let options = PrintOptions {
+        line_width: width,
+        ..PrintOptions::default()
+    };
+    assert_decoded_prints(Doc { ..doc }, options);
+    doc.print(options)
+}
+
+#[test]
+fn group_states_layout() {
+    assert_eq!(states_layout(80, GroupRequest::Auto, 3), "CONTENTS");
+    assert_eq!(states_layout(1, GroupRequest::Auto, 3), "M");
+    assert_eq!(states_layout(1, GroupRequest::Expanded, 3), "LAST");
+    assert_eq!(states_layout(1, GroupRequest::Auto, 1), "0");
+    assert_eq!(states_layout(80, GroupRequest::Auto, 1), "CONTENTS");
+}
+
+fn shared_states_layout(shared: bool) -> String {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (recorded, ()) = writer
+        .record_group_with_value(|writer| {
+            writer.group(false, |writer| {
+                writer.text("a");
+                writer.line();
+                writer.text("b");
+                writer.break_parent();
+            });
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let state = if shared {
+        recorded.contents()
+    } else {
+        record(&mut writer, |writer| writer.text("state"))
+    };
+    let fallback = record(&mut writer, |writer| writer.text("fallback"));
+    writer.write_group_with_states(
+        GroupRequest::Auto,
+        None,
+        recorded.grouped(),
+        state,
+        &[fallback],
+    );
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    doc.print(PrintOptions::default())
+}
+
+#[test]
+fn group_states_shared_propagation() {
+    assert_eq!(shared_states_layout(false), "a b");
+    assert_eq!(shared_states_layout(true), "a\nb");
+}
+
+#[test]
+fn group_states_modes_and_barriers() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let id = writer.next_group_id();
+    let contents = record(&mut writer, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.if_break_for(ConditionTarget::Group(id), "B");
+        writer.if_flat_for(ConditionTarget::Group(id), "F");
+    });
+    let state = record(&mut writer, |writer| {
+        writer.text("s");
+        writer.line();
+        writer.if_break_for(ConditionTarget::Group(id), "B");
+    });
+    writer.write_group_with_states(GroupRequest::Expanded, Some(id), contents, state, &[]);
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "s\nB");
+
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| writer.text("C"));
+    let state = record(&mut writer, Writer::break_parent);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.write_group_with_states(GroupRequest::Auto, None, contents, state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "a C");
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.line();
+        writer.write_group_with_states(GroupRequest::Expanded, None, contents, state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "a\n");
+}
+
+#[test]
+fn group_states_shared_parent_propagation() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let inner = record(&mut writer, |writer| {
+        writer.group(false, |writer| {
+            writer.text("a");
+            writer.line();
+            writer.text("b");
+            writer.break_parent();
+        });
+    });
+    let contents = record(&mut writer, |writer| writer.text("C"));
+    writer.write_group_with_states(GroupRequest::Auto, None, contents, inner, &[]);
+    writer.group(false, |writer| {
+        writer.line();
+        writer.write_fragment(inner);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "C\na\nb");
+}
+
+#[test]
+fn group_states_inherited_flat() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let contents = record(&mut writer, |writer| {
+        writer.text("C");
+        writer.line();
+        writer.text("D");
+    });
+    let fallback = record(&mut writer, |writer| writer.text("LAST"));
+    let inner = record(&mut writer, |writer| {
+        writer.write_group_with_states(GroupRequest::Expanded, None, contents, fallback, &[]);
+    });
+    let outer_state = record(&mut writer, |writer| writer.text("state"));
+    writer.group(false, |writer| {
+        writer.write_group_with_states(GroupRequest::Auto, None, inner, outer_state, &[]);
+    });
+    let doc = writer.finish();
+    assert_decoded_prints(Doc { ..doc }, PrintOptions::default());
+    assert_eq!(doc.print(PrintOptions::default()), "C\nD");
+}
+
+#[test]
+fn group_states_invalid_buffers() {
+    let allocator = Allocator::new();
+    let invalid_flags = document_buffer(&[&[22, 4, 0, 0, 0, 0, 0, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &invalid_flags).is_err());
+    let empty = document_buffer(&[&[22, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], &[]], &[]);
+    assert!(Doc::decode(&allocator, &empty).is_err());
+    let cycle = document_buffer(&[&[22, 0, 0, 0, 0, 0, 0, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &cycle).is_err());
+    let missing_ref = document_buffer(&[&[22, 2, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], &[]], &[]);
+    assert!(Doc::decode(&allocator, &missing_ref).is_err());
+    let no_states = document_buffer(&[&[22, 0, 0, 0, 0, 0, 1, 0, 0, 0], &[2, 0]], &[]);
+    assert_eq!(
+        Doc::decode(&allocator, &no_states)
+            .unwrap()
+            .print(PrintOptions::default()),
+        " "
+    );
+}
+
+#[test]
+fn group_request_codec() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.break_parent();
+        writer.line();
+    });
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    assert_eq!(&bytes[20..], &[3, 0, 0, 0, 0, 0, 16, 2, 0, 17, 3]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(true, Writer::line);
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    assert_eq!(&bytes[20..], &[3, 1, 0, 0, 0, 0, 2, 0, 17, 3]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+
+    let mut writer = Writer::new(&allocator);
+    let child = record(&mut writer, |writer| {
+        writer.break_parent();
+        writer.line();
+    });
+    let grouped = writer.group_fragment(false, child);
+    writer.write_fragment(grouped);
+    let doc = writer.finish();
+    let bytes = Doc { ..doc }.encode();
+    // The root references the grouped fragment; its opening scope begins in fragment 1.
+    let root_len = u32::from_le_bytes(bytes[16..20].try_into().unwrap()) as usize;
+    let group_start = 20 + root_len + 4;
+    assert_eq!(&bytes[group_start..group_start + 6], &[3, 0, 0, 0, 0, 0]);
+    let decoded = Doc::decode(&allocator, &bytes).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), bytes);
+    assert_eq!(decoded.print(PrintOptions::default()), "\n");
+    assert_eq!(doc.print(PrintOptions::default()), "\n");
+}
+
+#[test]
+fn decode_line_requests() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 0,
+        ..wide
+    };
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..wide
+    };
+    for options in [wide, narrow, crlf] {
+        let doc = line_request_document(&allocator, Writer::hard_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = line_request_document(&allocator, Writer::literal_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = indented_line_doc(&allocator, Writer::hard_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+
+        let doc = indented_line_doc(&allocator, Writer::literal_line_without_break_parent);
+        assert_decoded_prints(doc, options);
+    }
+}
+
+#[test]
+fn decode_multiline_text() {
+    let allocator = Allocator::new();
+    let wide = PrintOptions::default();
+    let narrow = PrintOptions {
+        line_width: 5,
+        ..wide
+    };
+    let crlf = PrintOptions {
+        line_ending: LineEnding::CrLf,
+        ..narrow
+    };
+    let cr = PrintOptions {
+        line_ending: LineEnding::Cr,
+        ..narrow
+    };
+    for options in [wide, narrow, crlf, cr] {
+        let doc = text_layout_document(&allocator, |writer| writer.text("a\r\nb\rc"));
+        assert_decoded_prints(doc, options);
+
+        let doc = text_layout_document(&allocator, |writer| writer.literal_text("a\r\nb\rc"));
+        assert_decoded_prints(doc, options);
+
+        let mut writer = Writer::new(&allocator);
+        let shared = record(&mut writer, |writer| writer.text_copied("界\nλ"));
+        writer.write_fragment(shared);
+        writer.group(false, |writer| {
+            writer.if_flat("x\ny");
+            writer.if_break("b\rc");
+            writer.write_fragment(shared);
+        });
+        assert_decoded_prints(writer.finish(), options);
+    }
+}
+
+#[test]
+fn decode_layout_scopes() {
+    let allocator = Allocator::new();
+    let options = PrintOptions {
+        line_width: 5,
+        ..PrintOptions::default()
+    };
+
+    let mut writer = Writer::new(&allocator);
+    writer.group(false, |writer| {
+        writer.text("a");
+        writer.indent(|writer| {
+            writer.line();
+            writer.text("bcde");
+        });
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    let id = writer.named_group(false, |writer| {
+        writer.text("abc");
+        writer.line();
+        writer.text("def");
+    });
+    writer.indent_if_break(id, |writer| {
+        writer.line();
+        writer.text("x");
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    writer.fill(|writer| {
+        writer.fill_entry(|writer| writer.text("abc"));
+        writer.fill_entry(|writer| writer.line());
+        writer.fill_entry(|writer| writer.text("def"));
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    writer.text("abc");
+    writer.line_suffix(|writer| writer.text("!"));
+    writer.line_suffix_boundary();
+    writer.text("def");
+    assert_decoded_prints(writer.finish(), options);
+}
+
+#[test]
+fn decode_branch_documents() {
+    let allocator = Allocator::new();
+    let options = PrintOptions {
+        line_width: 3,
+        ..PrintOptions::default()
+    };
+
+    let mut writer = Writer::new(&allocator);
+    let (broken, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("broken");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let (flat, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("flat");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.group(false, |writer| {
+        writer.if_break_doc(ConditionTarget::Current, broken, flat)
+    });
+    assert_decoded_prints(writer.finish(), options);
+
+    let mut writer = Writer::new(&allocator);
+    let (first, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("long");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    let (fallback, ()) = writer
+        .record_with_value(|writer| {
+            writer.text("a");
+            writer.hard_line();
+            writer.text("b");
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.write_alternatives(&[first], fallback);
+    assert_decoded_prints(writer.finish(), options);
+}
+
+fn document_buffer(fragments: &[&[u8]], pool: &[u8]) -> Vec<u8> {
+    let mut bytes = b"SWCD".to_vec();
+    bytes.extend(0u32.to_le_bytes());
+    bytes.extend((fragments.len() as u32).to_le_bytes());
+    bytes.extend((pool.len() as u32).to_le_bytes());
+    for fragment in fragments {
+        bytes.extend((fragment.len() as u32).to_le_bytes());
+        bytes.extend(*fragment);
+    }
+    bytes.extend(pool);
+    bytes
+}
+
+#[test]
+fn decode_invalid_wire_scopes() {
+    let allocator = Allocator::new();
+
+    let bytes = document_buffer(&[&[3, 2, 0, 0, 0, 0, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[2, 7]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[4, 17, 3]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[], &[9, 1, 0, 0, 0]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[0, 0, 0, 0, 0, 1, 0, 0, 0]], &[0xff]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[12, 17, 12]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+
+    let bytes = document_buffer(&[&[11, 14, 12, 17, 12, 17, 14, 17, 11]], &[]);
+    assert!(Doc::decode(&allocator, &bytes).is_err());
+}
+
+#[test]
+fn decode_shared_fill_entries() {
+    let allocator = Allocator::new();
+    let mut writer = Writer::new(&allocator);
+    let (entry, ()) = writer
+        .record_with_value(|writer| {
+            writer.fill_entry(|writer| writer.text("item"));
+            Ok::<_, std::convert::Infallible>(())
+        })
+        .unwrap();
+    writer.fill(|writer| writer.write_fragment(entry));
+    assert_decoded_prints(writer.finish(), PrintOptions::default());
+}
+
+#[test]
+fn decode_sparse_group_ids() {
+    let allocator = Allocator::new();
+    let bytes = document_buffer(
+        &[&[7, 0, 255, 255, 255, 255, 0, 0, 0, 0, 0, 1, 0, 0, 0, 17, 4]],
+        b"x",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "");
+}
+
+#[test]
+fn decode_text_work_limit() {
+    let allocator = Allocator::new();
+
+    let bytes = document_buffer(
+        &[&[0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]],
+        b"abc",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "abbc");
+
+    let mut fragment = Vec::new();
+    for start in 0u32..40 {
+        fragment.push(0);
+        fragment.extend(start.to_le_bytes());
+        fragment.extend(200u32.to_le_bytes());
+    }
+    let bytes = document_buffer(&[&fragment], &vec![b'a'; 240]);
+    assert!(matches!(
+        Doc::decode(&allocator, &bytes),
+        Err(super::DocumentBufferError::LimitExceeded)
+    ));
+
+    let bytes = document_buffer(
+        &[&[0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0]],
+        b"ab",
+    );
+    let decoded = Doc::decode(&allocator, &bytes)
+        .unwrap()
+        .print(PrintOptions::default());
+    assert_eq!(decoded, "abab");
 }
