@@ -3607,7 +3607,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         else {
             unreachable!("parse_index_signature always creates a TS index signature")
         };
-        if self.current_token.tag() == TokenTag::Semicolon {
+        if matches!(
+            self.current_token.tag(),
+            TokenTag::Semicolon | TokenTag::Comma
+        ) {
             self.extend_span_to(signature, self.current_token.end());
             self.advance()?;
         }
