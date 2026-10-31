@@ -3332,7 +3332,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         let (super_class, super_type_arguments) = if self.eat(TokenTag::Extends)? {
-            let mut super_class = self.parse_left_hand_side_expression(LhsContext::Expression)?;
+            let mut super_class = self.parse_left_hand_side_expression::<false>()?;
             let type_arguments = if self.lang.is_typescript() {
                 if let ExprData::TsInstantiationExpression(instantiation) =
                     self.ast.expr_data(super_class)
@@ -4051,21 +4051,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !self.expect(TokenTag::At, "Expected '@' to start a decorator", None) {
             return None;
         }
-        let expression = self.parse_left_hand_side_expression(LhsContext::Decorator)?;
+        let expression = self.parse_left_hand_side_expression::<true>()?;
         Some(
             self.ast
                 .decorator(Span::new(start, expression.span(&self.ast).end), expression),
         )
     }
 
-    fn parse_left_hand_side_expression(&mut self, context: LhsContext) -> Option<Expr> {
+    fn parse_left_hand_side_expression<const DECORATOR: bool>(&mut self) -> Option<Expr> {
         let expression = match self.current_token.tag() {
             TokenTag::LeftParen => self.parse_parenthesized_expression()?,
             TokenTag::New => self.parse_new_expression()?,
             TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(Precedence::Primary)?,
         };
-        let expression = self.parse_postfix_expression(expression, context)?;
+        let expression = self.parse_postfix_expression::<false, DECORATOR>(expression)?;
         Some(expression.expression)
     }
 
@@ -9034,7 +9034,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && max_left_precedence(left, &self.ast) >= Precedence::Call
         {
             left = self
-                .parse_postfix_expression(left, LhsContext::Expression)?
+                .parse_postfix_expression::<false, false>(left)?
                 .expression;
         }
 
@@ -9111,7 +9111,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 if self.lang.is_typescript() && !token.has_line_terminator_before() =>
             {
                 return Some(
-                    self.parse_postfix_expression(left, LhsContext::Expression)?
+                    self.parse_postfix_expression::<false, false>(left)?
                         .expression,
                 );
             }
@@ -11860,11 +11860,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     // Ordinary suffixes only carry the expression and optional-chain state.
     // Type arguments are resolved separately when their opening token is found.
-    fn parse_postfix_expression(
+    // Fix the grammar context at each call site to remove per-suffix context checks.
+    fn parse_postfix_expression<const NEW_CALLEE: bool, const DECORATOR: bool>(
         &mut self,
         mut expression: Expr,
-        context: LhsContext,
     ) -> Option<PostfixExpression> {
+        let context = if NEW_CALLEE {
+            LhsContext::NewCallee
+        } else if DECORATOR {
+            LhsContext::Decorator
+        } else {
+            LhsContext::Expression
+        };
         let mut in_optional_chain = false;
         let type_arguments = loop {
             expression = match self.current_token.tag() {
@@ -12150,7 +12157,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let PostfixExpression {
             expression: callee,
             type_arguments,
-        } = self.parse_postfix_expression(callee, LhsContext::NewCallee)?;
+        } = self.parse_postfix_expression::<true, false>(callee)?;
         if self.ast.node_kind(callee.node_id()) == NodeKind::Super {
             self.report(
                 callee.span(&self.ast),
