@@ -204,8 +204,53 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
+    ///
+    /// Only identifiers and single-byte punctuation are scanned inline at
+    /// parser advances. Line breaks, numbers, dots, operators, and JSX tags
+    /// go through out-of-line helpers so the many inlined call sites stay
+    /// small.
     #[inline(always)]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
+        if self.mode == LexerMode::Normal {
+            let mut start = self.cursor;
+            if let Some(mut byte) = self.source.get(start as usize).copied() {
+                if byte == b' ' {
+                    start += 1;
+                    byte = match self.source.get(start as usize) {
+                        Some(&next) => next,
+                        None => return false,
+                    };
+                } else if byte == b'\n' {
+                    return self.try_next_token_on_new_line(target);
+                }
+                match FAST_CLASS[byte as usize] {
+                    FastClass::Identifier => {
+                        self.clear_token_flags();
+                        if !self.scan_ascii_identifier(start, target) {
+                            return false;
+                        }
+                        self.handle_fast_token(*target);
+                        return true;
+                    }
+                    FastClass::Punctuation => {
+                        self.clear_token_flags();
+                        self.cursor = start;
+                        *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
+                        self.handle_fast_token(*target);
+                        return true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.try_next_token_outlined(target)
+    }
+
+    /// The remainder of [`Self::try_next_token`]: numbers, dots, operators,
+    /// and JSX tags. Kept out of line to limit code size at the inlined
+    /// parser advance sites.
+    #[inline(never)]
+    fn try_next_token_outlined(&mut self, target: &mut Token) -> bool {
         if self.mode != LexerMode::Normal {
             return self.try_next_jsx_tag_token(target);
         }
@@ -225,17 +270,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         match FAST_CLASS[byte as usize] {
-            FastClass::Identifier => {
-                self.clear_token_flags();
-                if !self.scan_ascii_identifier(start, target) {
-                    return false;
-                }
-            }
-            FastClass::Punctuation => {
-                self.clear_token_flags();
-                self.cursor = start;
-                *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
-            }
+            // `try_next_token` scans these inline before calling this function.
+            FastClass::Identifier | FastClass::Punctuation => return false,
             FastClass::Digit => {
                 if !self.scan_decimal_integer(start, target) {
                     return false;
@@ -331,7 +367,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scan a line feed, blank lines, and space or tab indentation without
     /// entering the trivia scanner. Leave the cursor at the first line feed
     /// when the following token needs the slow path.
-    #[inline]
+    #[inline(never)]
     fn try_next_token_on_new_line(&mut self, target: &mut Token) -> bool {
         let line_feed = self.cursor;
         let mut start = line_feed as usize + 1;
