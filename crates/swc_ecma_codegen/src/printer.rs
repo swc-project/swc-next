@@ -520,9 +520,7 @@ impl<'a> Printer<'a> {
                 break;
             }
             self.advance_comment();
-            if attached || important {
-                self.print_comment(comment, statement);
-            }
+            self.print_comment(comment, statement);
         }
     }
 
@@ -541,16 +539,8 @@ impl<'a> Printer<'a> {
                 [b'@' | b'#', rest @ ..]
                     if rest.starts_with(b"__PURE__") || rest.starts_with(b"__NO_SIDE_EFFECTS__")
             );
-        // Statement comments get their own line, except annotations and ts
-        // directives whose original line boundaries determine their scope.
-        let own_line = statement
-            && !self.options.minify
-            && !annotation
-            && (comment.kind == CommentKind::Line || !value.contains("@ts-"));
-        if comment.newlines.contains(CommentNewlines::LEADING)
-            || own_line
-            || (statement && self.js.last() == Some(&b'\n'))
-        {
+        let own_line = statement && !self.options.minify && !annotation;
+        if own_line || (statement && self.js.last() == Some(&b'\n')) {
             while matches!(self.js.last(), Some(b' ' | b'\t')) {
                 self.js.pop();
             }
@@ -580,7 +570,7 @@ impl<'a> Printer<'a> {
                 } else {
                     self.print_indented_block_comment(value.as_bytes());
                 }
-                if comment.newlines.contains(CommentNewlines::TRAILING) || own_line {
+                if own_line {
                     self.print("\n");
                     if !statement {
                         self.print_indent();
@@ -656,7 +646,7 @@ impl<'a> Printer<'a> {
         self.print_bytes(&text[start..]);
     }
 
-    fn print_attached_trailing_comments(&mut self, attached_to: u32) {
+    fn print_attached_trailing_comments(&mut self, attached_to: u32, statement: bool) {
         let mut trim_trailing_space = false;
         while attached_to != 0
             && let Some(comment) = self.comments.get(self.next_comment).copied()
@@ -665,7 +655,7 @@ impl<'a> Printer<'a> {
                 break;
             }
             self.advance_comment();
-            self.print_comment(comment, false);
+            self.print_comment(comment, statement);
             trim_trailing_space =
                 comment.kind == CommentKind::Block && !self.comment_has_line_terminator(comment);
         }
@@ -995,7 +985,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
                 self.print_statement_semicolon();
-                self.print_attached_trailing_comments(s.span(self.ast).end);
+                self.print_attached_trailing_comments(s.span(self.ast).end, true);
                 self.print_newline_after_comments();
                 self.print_comments_at(s.span(self.ast).end, true);
             }
@@ -1367,7 +1357,7 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
-        for id in cases.iter() {
+        for (index, id) in cases.iter().enumerate() {
             self.print_semicolon_if_needed();
             let case = self.ast.get_node_in_sub_range(id);
             self.print_comments_at(case.span(self.ast).start, true);
@@ -1397,6 +1387,11 @@ impl<'a> Printer<'a> {
                 self.print_semicolon_if_needed();
                 self.print_stmt(self.ast.get_node_in_sub_range(id));
             }
+            let end = cases
+                .get(index + 1)
+                .map(|id| self.ast.get_node_in_sub_range(id).span(self.ast).start)
+                .unwrap_or_else(|| s.span(self.ast).end.saturating_sub(1));
+            self.print_comments_at(end, true);
             self.indent -= 1;
         }
         self.print_comments_at(s.span(self.ast).end.saturating_sub(1), true);
@@ -1499,7 +1494,7 @@ impl<'a> Printer<'a> {
             self.print_newline();
         } else if matches!(data, DeclData::VariableDeclaration(_)) {
             self.print_statement_semicolon();
-            self.print_attached_trailing_comments(decl.span(self.ast).end);
+            self.print_attached_trailing_comments(decl.span(self.ast).end, true);
             self.print_newline_after_comments();
         } else {
             self.print_semicolon_after_statement();
@@ -1567,7 +1562,7 @@ impl<'a> Printer<'a> {
         }
         self.print_space();
         self.print_function_body(f.body(self.ast));
-        self.print_attached_trailing_comments(f.body(self.ast).span(self.ast).end);
+        self.print_attached_trailing_comments(f.body(self.ast).span(self.ast).end, false);
         if wrap {
             self.print(")");
         }
@@ -1820,7 +1815,7 @@ impl<'a> Printer<'a> {
     }
 
     fn comment_has_line_terminator(&self, comment: Comment) -> bool {
-        if !comment.newlines.is_empty() {
+        if comment.kind == CommentKind::Line {
             return true;
         }
         self.ast
@@ -2771,14 +2766,20 @@ impl<'a> Printer<'a> {
                 .object_property_kind_data(self.ast.get_node_in_sub_range(id))
             {
                 ObjectPropertyKindData::SpreadElement(s) => {
-                    self.print_attached_trailing_comments(s.argument(self.ast).span(self.ast).end);
+                    self.print_attached_trailing_comments(
+                        s.argument(self.ast).span(self.ast).end,
+                        false,
+                    );
                 }
                 ObjectPropertyKindData::ObjectProperty(p)
                     if !p.method(self.ast)
                         && p.kind(self.ast) == PropertyKind::Init
                         && !self.can_use_shorthand_property(p) =>
                 {
-                    self.print_attached_trailing_comments(p.value(self.ast).span(self.ast).end);
+                    self.print_attached_trailing_comments(
+                        p.value(self.ast).span(self.ast).end,
+                        false,
+                    );
                 }
                 _ => {}
             }
@@ -2834,7 +2835,7 @@ impl<'a> Printer<'a> {
             let body = f.body(self.ast);
             self.print_function_body(body);
             if matches!(kind, PropertyKind::Get | PropertyKind::Set) {
-                self.print_attached_trailing_comments(body.span(self.ast).end);
+                self.print_attached_trailing_comments(body.span(self.ast).end, false);
             }
             return;
         }
@@ -3319,18 +3320,18 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("{");
                 let body = b.body(self.ast);
-                if !body.is_empty() {
+                if !body.is_empty() || !self.options.minify {
                     self.print_newline();
-                    self.indent += 1;
-                    for id in body.iter() {
-                        self.print_semicolon_if_needed();
-                        self.print_stmt(self.ast.get_node_in_sub_range(id));
-                    }
-                    self.needs_semicolon = false;
-                    self.indent -= 1;
-                    self.print_indent();
-                } else if !self.options.minify {
-                    self.print_newline();
+                }
+                self.indent += 1;
+                for id in body.iter() {
+                    self.print_semicolon_if_needed();
+                    self.print_stmt(self.ast.get_node_in_sub_range(id));
+                }
+                self.needs_semicolon = false;
+                self.print_comments_at(element.span(self.ast).end.saturating_sub(1), true);
+                self.indent -= 1;
+                if !body.is_empty() || !self.options.minify {
                     self.print_indent();
                 }
                 self.add_source_mapping(element.span(self.ast).end.saturating_sub(1));
@@ -3391,7 +3392,7 @@ impl<'a> Printer<'a> {
             if wrap {
                 self.print(")");
             }
-            self.print_attached_trailing_comments(decorator.span(self.ast).end);
+            self.print_attached_trailing_comments(decorator.span(self.ast).end, false);
             self.print_space();
             self.print_space_before_identifier();
         }
@@ -5068,6 +5069,7 @@ impl<'a> Printer<'a> {
             let statement = self.ast.get_node_in_sub_range(id);
             self.print_stmt_with_context(statement, index == 0);
         }
+        self.print_comments_at(b.span(self.ast).end.saturating_sub(1), true);
         self.needs_semicolon = false;
         self.indent -= 1;
         self.print_indent();

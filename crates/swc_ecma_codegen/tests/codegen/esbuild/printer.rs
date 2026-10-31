@@ -197,7 +197,7 @@ fn test_new() {
     );
     expect_printed(
         "new Worker(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "new Worker(\n/* multi\n * line\n * webpackBar: */ \"path\");\n",
+        "new Worker( /* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "new Worker(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
@@ -432,7 +432,7 @@ fn test_object() {
 fn test_switch() {
     expect_printed(
         "switch (x) { case 1: /* 2 */ case 2: /* default */ default: break }",
-        "switch (x) {\n  case 1:\n  /* 2 */\n  case 2:\n  /* default */\n  default:\n    break;\n}\n",
+        "switch (x) {\n  case 1:\n    /* 2 */\n  case 2:\n    /* default */\n  default:\n    break;\n}\n",
     );
 }
 
@@ -742,7 +742,7 @@ fn test_import() {
     );
     expect_printed(
         "import(\n    /* multi\n     * line\n     * webpackBar: */ 'path');",
-        "import(\n/* multi\n * line\n * webpackBar: */ \"path\");\n",
+        "import( /* multi\n * line\n * webpackBar: */ \"path\");\n",
     );
     expect_printed(
         "import(/* webpackFoo: 1 */ 'path' /* webpackBar:2 */);",
@@ -973,7 +973,7 @@ fn test_minify() {
     expect_printed_minify("//!single\nthrow 1 + 2", "//!single\nthrow 1+2;");
     expect_printed_minify(
         "/*!multi-\nline*/\nthrow 1 + 2",
-        "/*!multi-\nline*/\nthrow 1+2;",
+        "/*!multi-\nline*/throw 1+2;",
     );
 }
 

@@ -45,8 +45,8 @@ use {
 };
 
 use crate::{
-    Ast, Comment, CommentKind, CommentNewlines, CommentPosition, Diagnostic, ExtraData, Lang,
-    NodeId, NodeKind, NodePayload, SourceType, Span,
+    Ast, Comment, CommentKind, CommentPosition, Diagnostic, ExtraData, Lang, NodeId, NodeKind,
+    NodePayload, SourceType, Span,
 };
 
 const HEADER_SIZE: usize = 40;
@@ -76,13 +76,11 @@ const _: () = {
     assert!(align_of::<ExtraData>() <= 8);
     assert!(size_of::<CommentKind>() == 1);
     assert!(size_of::<CommentPosition>() == 1);
-    assert!(size_of::<CommentNewlines>() == 1);
     assert!(size_of::<Comment>() == COMMENT_SIZE);
     assert!(offset_of!(Comment, span) == 0);
     assert!(offset_of!(Comment, attached_to) == 8);
     assert!(offset_of!(Comment, kind) == 12);
     assert!(offset_of!(Comment, position) == 13);
-    assert!(offset_of!(Comment, newlines) == 14);
 };
 
 /// Return the exact number of bytes required to serialize `tree` and `diagnostics`.

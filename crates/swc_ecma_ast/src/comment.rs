@@ -1,19 +1,6 @@
 use crate::AstUtf8;
 use crate::Span;
 
-bitflags::bitflags! {
-    /// Line terminators in the trivia surrounding a comment.
-    #[repr(transparent)]
-    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-    pub struct CommentNewlines: u8 {
-        /// The trivia before the comment contains a line terminator.
-        const LEADING = 1 << 0;
-        /// The trivia after the comment contains a line terminator.
-        /// Line comments always set this flag, including at the end of a file.
-        const TRAILING = 1 << 1;
-    }
-}
-
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentKind {
@@ -35,7 +22,6 @@ pub struct Comment {
     pub attached_to: u32,
     pub kind: CommentKind,
     pub position: CommentPosition,
-    pub newlines: CommentNewlines,
 }
 
 impl Comment {
@@ -45,11 +31,6 @@ impl Comment {
             kind,
             attached_to: 0,
             position: CommentPosition::Trailing,
-            newlines: if kind == CommentKind::Line {
-                CommentNewlines::TRAILING
-            } else {
-                CommentNewlines::empty()
-            },
         }
     }
 
