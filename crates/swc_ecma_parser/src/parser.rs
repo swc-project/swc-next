@@ -7938,22 +7938,38 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    /// Most references have no type arguments. Check for them before
+    /// entering the argument-list parser.
+    #[inline]
     fn parse_type_reference(&mut self, start: u32, type_name: TsTypeName) -> Option<TsType> {
-        let type_arguments = if is_angle_open(self.current_token.tag())
+        if is_angle_open(self.current_token.tag())
             && !self.current_token.has_line_terminator_before()
         {
-            if self.type_argument_speculation_depth != 0 {
-                return self.parse_type_reference_chain(start, type_name);
-            }
-            Some(self.parse_type_argument_list(AngleClose::Peel)?)
-        } else {
-            None
-        };
+            return self.parse_type_reference_with_arguments(start, type_name);
+        }
         let end = self.lexer.state.prev_token_end;
         Some(
             self.ast
-                .ts_type_ts_type_reference(Span::new(start, end), type_name, type_arguments),
+                .ts_type_ts_type_reference(Span::new(start, end), type_name, None),
         )
+    }
+
+    #[inline(never)]
+    fn parse_type_reference_with_arguments(
+        &mut self,
+        start: u32,
+        type_name: TsTypeName,
+    ) -> Option<TsType> {
+        if self.type_argument_speculation_depth != 0 {
+            return self.parse_type_reference_chain(start, type_name);
+        }
+        let type_arguments = self.parse_type_argument_list(AngleClose::Peel)?;
+        let end = self.lexer.state.prev_token_end;
+        Some(self.ast.ts_type_ts_type_reference(
+            Span::new(start, end),
+            type_name,
+            Some(type_arguments),
+        ))
     }
 
     /// A flat comparison list can look like an arbitrarily deep chain of type
@@ -8082,7 +8098,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })
     }
 
+    /// Most primaries complete their type. Check for a postfix, binary, or
+    /// conditional continuation before entering the continuation parser.
+    #[inline]
     fn parse_type_from_primary(&mut self, primary: TsType) -> Option<TsType> {
+        if matches!(
+            self.current_token.tag(),
+            TokenTag::LeftBracket
+                | TokenTag::Question
+                | TokenTag::LogicalNot
+                | TokenTag::BitwiseAnd
+                | TokenTag::BitwiseOr
+                | TokenTag::Extends
+        ) {
+            self.parse_type_continuation(primary)
+        } else {
+            Some(primary)
+        }
+    }
+
+    #[inline(never)]
+    fn parse_type_continuation(&mut self, primary: TsType) -> Option<TsType> {
         let start = primary.span(&self.ast).start;
         let mut ty = self.parse_postfix_type_with(|_| Some(primary))?;
         if self.current_token.tag() == TokenTag::BitwiseAnd {
