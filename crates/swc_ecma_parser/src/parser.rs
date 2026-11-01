@@ -9076,8 +9076,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         loop {
             let token = self.current_token;
+            // Line-terminator adjustments only lower precedence, so tokens below
+            // `minimum`, such as argument commas, can end the loop without them.
+            if token.tag().precedence() < minimum {
+                break;
+            }
             let precedence = Self::infix_precedence(token, is_ts);
-            if precedence < minimum || precedence == Precedence::Lowest {
+            if precedence == Precedence::Lowest {
                 break;
             }
             if precedence > max_left_precedence(left, &self.ast) {
