@@ -105,7 +105,10 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Whether Annex B HTML-like comments are recognized.
     allow_html_like_comments: bool,
     collect_comments: bool,
-    pub(crate) hashbang: Option<Hashbang>,
+    /// Length of the hashbang comment, which always starts at offset 2. Leaving
+    /// out the start keeps the lexer at 128 bytes, which keeps it at the start of
+    /// the parser, where the parser passes it to the lexer without an offset.
+    hashbang_len: Option<u16>,
 
     pub(crate) config: C,
     pub(crate) tokens: ArenaVec<'a, Token>,
@@ -120,6 +123,9 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
     mode: LexerMode,
+    /// Fast-path byte classes for `mode`. Selecting the table on mode changes
+    /// keeps the mode check out of [`Self::try_next_token`].
+    fast_class: &'static [FastClass; 256],
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
@@ -159,12 +165,13 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             fast_len: source.len() as u32,
             cursor: 0,
             allow_html_like_comments,
-            hashbang: None,
+            hashbang_len: None,
             state: LexerState::default(),
             mode: LexerMode::Normal,
+            fast_class: &FAST_CLASS,
         };
         lexer.skip_hashbang();
-        if lexer.hashbang.is_some() {
+        if lexer.hashbang_len.is_some() {
             lexer.state.prev_token_end = lexer.cursor;
         }
         lexer
@@ -186,16 +193,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 }
                 end += 1;
             }
-            self.hashbang = Some(Hashbang {
-                start: 2,
-                len: (end - 2) as u16,
-            });
+            self.hashbang_len = Some((end - 2) as u16);
             self.cursor = end;
         }
     }
 
-    /// Reads the next token into `target`. `target` must hold the last token
-    /// read, or an `Eof` placeholder before the first token.
+    pub(crate) fn hashbang(&self) -> Option<Hashbang> {
+        self.hashbang_len.map(|len| Hashbang { start: 2, len })
+    }
+
     #[inline]
     pub(crate) fn mode(&self) -> LexerMode {
         self.mode
@@ -204,12 +210,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     pub(crate) fn set_mode(&mut self, mode: LexerMode) {
         self.mode = mode;
-        self.fast_len = match mode {
-            LexerMode::Normal => self.source.len() as u32,
-            LexerMode::JsxTag => 0,
+        self.fast_class = match mode {
+            LexerMode::Normal => &FAST_CLASS,
+            LexerMode::JsxTag => &JSX_TAG_FAST_CLASS,
         };
     }
 
+    /// Reads the next token into `target`. `target` must hold the last token
+    /// read, or an `Eof` placeholder before the first token.
     #[inline]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
@@ -226,11 +234,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
-        // `fast_len` is zero outside the normal mode.
         if start >= self.fast_len {
-            if self.mode != LexerMode::Normal {
-                return self.try_next_jsx_tag_token(target);
-            }
             return false;
         }
         // SAFETY: `start < fast_len <= source.len()`.
@@ -263,7 +267,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         byte: u8,
     ) -> bool {
         let flags = fast_token_flags(LINE_BREAK);
-        match FAST_CLASS[byte as usize] {
+        match self.fast_class[byte as usize] {
             FastClass::Identifier => return self.try_identifier_token::<LINE_BREAK>(target, start),
             FastClass::Punctuation => {
                 self.cursor = start + 1;
@@ -299,6 +303,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
             }
             FastClass::Quote => return self.try_string_token::<LINE_BREAK>(target, start),
+            FastClass::JsxTag => return self.try_jsx_tag_token::<LINE_BREAK>(target, start, byte),
             FastClass::Slow => return false,
         }
         self.handle_fast_token(*target);
@@ -371,28 +376,36 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
     /// `/`, `{`, and attribute strings. On failure, the cursor is unchanged.
+
+    /// `start` and `byte` follow the trivia [`Self::try_next_token`] skipped, which
+    /// included a line break if `LINE_BREAK` is set.
     #[inline(never)]
-    fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
+    fn try_jsx_tag_token<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        mut start: u32,
+        mut byte: u8,
+    ) -> bool {
         debug_assert_eq!(self.mode, LexerMode::JsxTag);
         let src = self.source;
-        let mut start = self.cursor;
-        let Some(mut byte) = src.get(start as usize).copied() else {
-            return false;
-        };
-        while matches!(byte, b' ' | b'\t') {
-            start += 1;
-            let Some(&next) = src.get(start as usize) else {
-                return false;
-            };
-            byte = next;
-        }
-        let line_break = byte == b'\n';
-        if line_break {
-            let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
-                return false;
-            };
-            start = next_start;
-            byte = next;
+        let mut line_break = LINE_BREAK;
+        // After a line break, `byte` is already past all spaces, tabs, and line feeds.
+        if !LINE_BREAK {
+            while matches!(byte, b' ' | b'\t') {
+                start += 1;
+                let Some(&next) = src.get(start as usize) else {
+                    return false;
+                };
+                byte = next;
+            }
+            line_break = byte == b'\n';
+            if line_break {
+                let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
+                    return false;
+                };
+                start = next_start;
+                byte = next;
+            }
         }
 
         let start = start as usize;
@@ -1807,7 +1820,7 @@ const OPERATOR_EXTENDS: [bool; 256] = {
     table
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FastClass {
     Slow,
     Identifier,
@@ -1816,6 +1829,8 @@ enum FastClass {
     Dot,
     Operator,
     Quote,
+    /// Every byte inside a JSX tag, which uses [`Lexer::try_jsx_tag_token`].
+    JsxTag,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1850,6 +1865,8 @@ const FAST_CLASS: [FastClass; 256] = {
     }
     table
 };
+
+const JSX_TAG_FAST_CLASS: [FastClass; 256] = [FastClass::JsxTag; 256];
 
 const IDENTIFIER_BATCH_SIZE: usize = 32;
 

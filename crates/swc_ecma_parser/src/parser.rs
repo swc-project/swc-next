@@ -1601,7 +1601,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Create the root node and set it as the AST's root.
         let end = self.current_token.end();
         let root_span = Span::new(0, end);
-        let hashbang = self.lexer.hashbang.map(|hashbang| {
+        let hashbang = self.lexer.hashbang().map(|hashbang| {
             let start = hashbang.start;
             let end = start + u32::from(hashbang.len);
             let value = self.ast.source_slice(start, end);
@@ -1640,7 +1640,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut self,
         fragment_context: FragmentContext,
     ) -> Result<Ast<'a>, Vec<Diagnostic<'a>>> {
-        if let Some(hashbang) = self.lexer.hashbang {
+        if let Some(hashbang) = self.lexer.hashbang() {
             let end = hashbang.start + u32::from(hashbang.len);
             self.report(
                 Span::new(0, end),
