@@ -3046,6 +3046,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // INLINE: This is a small and hot function.
+    // Variable declarators bind identifiers directly, so inline the identifier
+    // path into them and leave destructuring in its own call.
+    #[inline(always)]
     fn parse_binding_pattern(&mut self) -> Option<BindingPattern> {
         self.parse_formal_parameter_pattern().map(Into::into)
     }
