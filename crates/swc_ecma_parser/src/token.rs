@@ -511,11 +511,12 @@ pub fn flag_mask(flag: TokenFlag) -> u8 {
     1 << (flag as u8)
 }
 
-const END_SHIFT: u32 = 32;
-const TAG_SHIFT: u32 = 64;
-const FLAGS_SHIFT: u32 = 96;
+const START_SHIFT: u32 = 64;
+const END_SHIFT: u32 = 96;
+const FLAGS_SHIFT: u32 = 32;
 
-// Bits 0..32: start, 32..64: end, 64..96: tag, 96..104: flags.
+// Bits 0..32: tag, 32..40: flags, 64..96: start, 96..128: end.
+// The tag needs no shift, and the high word has the layout of a span.
 // The remaining bits are always zero.
 #[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(transparent)]
@@ -535,16 +536,16 @@ impl Token {
     #[inline]
     pub const fn new(start: u32, end: u32, tag: TokenTag, flags: u8) -> Self {
         Self(
-            start as u128
+            ((start as u128) << START_SHIFT)
                 | ((end as u128) << END_SHIFT)
-                | ((tag as u128) << TAG_SHIFT)
+                | (tag as u128)
                 | ((flags as u128) << FLAGS_SHIFT),
         )
     }
 
     #[inline]
     pub const fn start(self) -> u32 {
-        self.0 as u32
+        (self.0 >> START_SHIFT) as u32
     }
 
     #[inline]
@@ -564,7 +565,7 @@ impl Token {
     pub const fn tag(self) -> TokenTag {
         // SAFETY: TokenTag has repr(u32), and only `new` writes these bits,
         // using the discriminant of a valid TokenTag.
-        unsafe { std::mem::transmute::<u32, TokenTag>((self.0 >> TAG_SHIFT) as u32) }
+        unsafe { std::mem::transmute::<u32, TokenTag>(self.0 as u32) }
     }
 
     #[inline]
