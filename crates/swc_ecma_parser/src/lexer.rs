@@ -233,23 +233,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         start: u32,
         byte: u8,
     ) -> bool {
-        let flags = if LINE_BREAK {
-            flag_mask(TokenFlag::LineTerminatorBefore)
-        } else {
-            0
-        };
+        let flags = fast_token_flags(LINE_BREAK);
         match FAST_CLASS[byte as usize] {
-            FastClass::Identifier => {
-                if !self.scan_ascii_identifier(start, flags, target) {
-                    return false;
-                }
-            }
+            FastClass::Identifier => return self.try_identifier_token::<LINE_BREAK>(target, start),
             FastClass::Punctuation => {
                 self.cursor = start + 1;
                 *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
             }
             FastClass::Digit => {
-                if !self.scan_decimal_integer(start, flags, target) {
+                if !self.scan_decimal_integer(start, byte, flags, target) {
                     return false;
                 }
             }
@@ -264,17 +256,44 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 self.cursor = start + 1;
                 *target = Token::new(start, start + 1, TokenTag::Dot, flags);
             }
-            FastClass::Operator => {
-                // HTML comments still need the trivia scanner.
-                if byte == b'<' && self.source[start as usize..].starts_with(b"<!--") {
-                    return false;
-                }
-                self.cursor = start;
-                self.state.token_flags = flags;
-                *target = self.scan_punctuation();
-            }
+            FastClass::Operator => return self.try_operator_token::<LINE_BREAK>(target, start),
             FastClass::Slow => return false,
         }
+        self.handle_fast_token(*target);
+        true
+    }
+
+    /// Reads an ASCII identifier or keyword at `start`. Identifier and operator scans need more
+    /// registers than the other fast paths, so they are tail-called to keep callee-saved register
+    /// saves out of [`Self::try_next_token`].
+    #[inline(never)]
+    fn try_identifier_token<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+    ) -> bool {
+        let flags = fast_token_flags(LINE_BREAK);
+        if !self.scan_ascii_identifier(start, flags, target) {
+            return false;
+        }
+        self.handle_fast_token(*target);
+        true
+    }
+
+    /// Reads an operator at `start`. See [`Self::try_identifier_token`].
+    #[inline(never)]
+    fn try_operator_token<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+    ) -> bool {
+        // HTML comments still need the trivia scanner.
+        if self.source[start as usize..].starts_with(b"<!--") {
+            return false;
+        }
+        self.cursor = start;
+        self.state.token_flags = fast_token_flags(LINE_BREAK);
+        *target = self.scan_punctuation();
         self.handle_fast_token(*target);
         true
     }
@@ -385,10 +404,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Scans a decimal integer without a fraction, exponent, separator,
     /// suffix, or legacy octal digits. Other numbers use [`Self::scan_number`].
+    /// `byte` is the digit at `start`.
     #[inline(always)]
-    fn scan_decimal_integer(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
+    fn scan_decimal_integer(
+        &mut self,
+        start: u32,
+        byte: u8,
+        flags: u8,
+        target: &mut Token,
+    ) -> bool {
+        debug_assert_eq!(self.source[start as usize], byte);
         let mut end = start as usize + 1;
-        if self.source[start as usize] != b'0' {
+        if byte != b'0' {
             while self.source.get(end).is_some_and(u8::is_ascii_digit) {
                 end += 1;
             }
@@ -1732,6 +1759,16 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
     }
     table
 };
+
+/// Returns the token flags of a fast-path token, which may only follow a line break.
+#[inline(always)]
+fn fast_token_flags(line_break: bool) -> u8 {
+    if line_break {
+        flag_mask(TokenFlag::LineTerminatorBefore)
+    } else {
+        0
+    }
+}
 
 // This is a very hot path. Inline this loop too
 // to avoid losing the single-call-site bonus and
