@@ -29238,10 +29238,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Program {
         let action = walk_mut_program(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29257,10 +29262,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Stmt {
         let action = walk_mut_stmt(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29276,10 +29286,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Decl {
         let action = walk_mut_decl(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29295,10 +29310,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Expr {
         let action = walk_mut_expr(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29314,10 +29334,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingPattern {
         let action = walk_mut_binding_pattern(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29333,10 +29358,15 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentTarget {
         let action = walk_mut_assignment_target(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29352,10 +29382,15 @@ impl<'a, State> TraverseMutWith<'a, State> for SimpleAssignmentTarget {
         let action = walk_mut_simple_assignment_target(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29371,10 +29406,15 @@ impl<'a, State> TraverseMutWith<'a, State> for PropertyKey {
         let action = walk_mut_property_key(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29390,10 +29430,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ModuleExportName {
         let action = walk_mut_module_export_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29409,10 +29454,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Argument {
         let action = walk_mut_argument(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29428,10 +29478,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectPropertyKind {
         let action = walk_mut_object_property_kind(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29447,10 +29502,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatementInit {
         let action = walk_mut_for_statement_init(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29466,10 +29526,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatementLeft {
         let action = walk_mut_for_statement_left(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29485,10 +29550,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionBody {
         let action = walk_mut_arrow_function_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29504,10 +29574,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterItem {
         let action = walk_mut_formal_parameter_item(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29523,10 +29598,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterPattern {
         let action = walk_mut_formal_parameter_pattern(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29542,10 +29622,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ClassElement {
         let action = walk_mut_class_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29561,10 +29646,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDeclarationSpecifier {
         let action = walk_mut_import_declaration_specifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29580,10 +29670,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclarationKind {
         let action = walk_mut_export_default_declaration_kind(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29599,10 +29694,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Super {
         let action = walk_mut_super(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29618,10 +29718,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ThisExpression {
         let action = walk_mut_this_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29637,10 +29742,15 @@ impl<'a, State> TraverseMutWith<'a, State> for StringLiteral {
         let action = walk_mut_string_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29656,10 +29766,15 @@ impl<'a, State> TraverseMutWith<'a, State> for NumericLiteral {
         let action = walk_mut_numeric_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29675,10 +29790,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BigIntLiteral {
         let action = walk_mut_big_int_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29694,10 +29814,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BooleanLiteral {
         let action = walk_mut_boolean_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29713,10 +29838,15 @@ impl<'a, State> TraverseMutWith<'a, State> for NullLiteral {
         let action = walk_mut_null_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29732,10 +29862,15 @@ impl<'a, State> TraverseMutWith<'a, State> for RegExpLiteral {
         let action = walk_mut_reg_exp_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29751,10 +29886,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TemplateLiteral {
         let action = walk_mut_template_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29770,10 +29910,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TemplateElement {
         let action = walk_mut_template_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29789,10 +29934,15 @@ impl<'a, State> TraverseMutWith<'a, State> for IdentifierReference {
         let action = walk_mut_identifier_reference(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29808,10 +29958,15 @@ impl<'a, State> TraverseMutWith<'a, State> for PrivateIdentifier {
         let action = walk_mut_private_identifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29827,10 +29982,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingIdentifier {
         let action = walk_mut_binding_identifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29846,10 +30006,15 @@ impl<'a, State> TraverseMutWith<'a, State> for IdentifierName {
         let action = walk_mut_identifier_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29865,10 +30030,15 @@ impl<'a, State> TraverseMutWith<'a, State> for LabelIdentifier {
         let action = walk_mut_label_identifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29884,10 +30054,15 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentPattern {
         let action = walk_mut_assignment_pattern(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29903,10 +30078,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingRestElement {
         let action = walk_mut_binding_rest_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29922,10 +30102,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrayPattern {
         let action = walk_mut_array_pattern(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29941,10 +30126,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectPattern {
         let action = walk_mut_object_pattern(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29960,10 +30150,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BindingProperty {
         let action = walk_mut_binding_property(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29979,10 +30174,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BinaryExpression {
         let action = walk_mut_binary_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -29998,10 +30198,15 @@ impl<'a, State> TraverseMutWith<'a, State> for LogicalExpression {
         let action = walk_mut_logical_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30017,10 +30222,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ConditionalExpression {
         let action = walk_mut_conditional_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30036,10 +30246,15 @@ impl<'a, State> TraverseMutWith<'a, State> for UnaryExpression {
         let action = walk_mut_unary_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30055,10 +30270,15 @@ impl<'a, State> TraverseMutWith<'a, State> for UpdateExpression {
         let action = walk_mut_update_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30074,10 +30294,15 @@ impl<'a, State> TraverseMutWith<'a, State> for AssignmentExpression {
         let action = walk_mut_assignment_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30093,10 +30318,15 @@ impl<'a, State> TraverseMutWith<'a, State> for VariableDeclaration {
         let action = walk_mut_variable_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30112,10 +30342,15 @@ impl<'a, State> TraverseMutWith<'a, State> for VariableDeclarator {
         let action = walk_mut_variable_declarator(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30131,10 +30366,15 @@ impl<'a, State> TraverseMutWith<'a, State> for IfStatement {
         let action = walk_mut_if_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30150,10 +30390,15 @@ impl<'a, State> TraverseMutWith<'a, State> for SwitchStatement {
         let action = walk_mut_switch_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30169,10 +30414,15 @@ impl<'a, State> TraverseMutWith<'a, State> for SwitchCase {
         let action = walk_mut_switch_case(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30188,10 +30438,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ForStatement {
         let action = walk_mut_for_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30207,10 +30462,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ForInStatement {
         let action = walk_mut_for_in_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30226,10 +30486,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ForOfStatement {
         let action = walk_mut_for_of_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30245,10 +30510,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TryStatement {
         let action = walk_mut_try_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30264,10 +30534,15 @@ impl<'a, State> TraverseMutWith<'a, State> for CatchClause {
         let action = walk_mut_catch_clause(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30283,10 +30558,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BreakStatement {
         let action = walk_mut_break_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30302,10 +30582,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ContinueStatement {
         let action = walk_mut_continue_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30321,10 +30606,15 @@ impl<'a, State> TraverseMutWith<'a, State> for LabeledStatement {
         let action = walk_mut_labeled_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30340,10 +30630,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExpressionStatement {
         let action = walk_mut_expression_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30359,10 +30654,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ReturnStatement {
         let action = walk_mut_return_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30378,10 +30678,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ThrowStatement {
         let action = walk_mut_throw_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30397,10 +30702,15 @@ impl<'a, State> TraverseMutWith<'a, State> for DebuggerStatement {
         let action = walk_mut_debugger_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30416,10 +30726,15 @@ impl<'a, State> TraverseMutWith<'a, State> for EmptyStatement {
         let action = walk_mut_empty_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30435,10 +30750,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Directive {
         let action = walk_mut_directive(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30454,10 +30774,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Decorator {
         let action = walk_mut_decorator(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30473,10 +30798,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Class {
         let action = walk_mut_class(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30492,10 +30822,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ClassBody {
         let action = walk_mut_class_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30511,10 +30846,15 @@ impl<'a, State> TraverseMutWith<'a, State> for MethodDefinition {
         let action = walk_mut_method_definition(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30530,10 +30870,15 @@ impl<'a, State> TraverseMutWith<'a, State> for PropertyDefinition {
         let action = walk_mut_property_definition(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30549,10 +30894,15 @@ impl<'a, State> TraverseMutWith<'a, State> for StaticBlock {
         let action = walk_mut_static_block(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30568,10 +30918,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Function {
         let action = walk_mut_function(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30587,10 +30942,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FunctionBody {
         let action = walk_mut_function_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30606,10 +30966,15 @@ impl<'a, State> TraverseMutWith<'a, State> for BlockStatement {
         let action = walk_mut_block_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30625,10 +30990,15 @@ impl<'a, State> TraverseMutWith<'a, State> for WhileStatement {
         let action = walk_mut_while_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30644,10 +31014,15 @@ impl<'a, State> TraverseMutWith<'a, State> for DoWhileStatement {
         let action = walk_mut_do_while_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30663,10 +31038,15 @@ impl<'a, State> TraverseMutWith<'a, State> for WithStatement {
         let action = walk_mut_with_statement(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30682,10 +31062,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameters {
         let action = walk_mut_formal_parameters(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30701,10 +31086,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameter {
         let action = walk_mut_formal_parameter(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30720,10 +31110,15 @@ impl<'a, State> TraverseMutWith<'a, State> for FormalParameterRest {
         let action = walk_mut_formal_parameter_rest(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30739,10 +31134,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrayExpression {
         let action = walk_mut_array_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30758,10 +31158,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectExpression {
         let action = walk_mut_object_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30777,10 +31182,15 @@ impl<'a, State> TraverseMutWith<'a, State> for SpreadElement {
         let action = walk_mut_spread_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30796,10 +31206,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ObjectProperty {
         let action = walk_mut_object_property(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30815,10 +31230,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ParenthesizedExpression {
         let action = walk_mut_parenthesized_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30834,10 +31254,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ArrowFunctionExpression {
         let action = walk_mut_arrow_function_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30853,10 +31278,15 @@ impl<'a, State> TraverseMutWith<'a, State> for SequenceExpression {
         let action = walk_mut_sequence_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30872,10 +31302,15 @@ impl<'a, State> TraverseMutWith<'a, State> for MemberExpression {
         let action = walk_mut_member_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30891,10 +31326,15 @@ impl<'a, State> TraverseMutWith<'a, State> for CallExpression {
         let action = walk_mut_call_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30910,10 +31350,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ChainExpression {
         let action = walk_mut_chain_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30929,10 +31374,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TaggedTemplateExpression {
         let action = walk_mut_tagged_template_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30948,10 +31398,15 @@ impl<'a, State> TraverseMutWith<'a, State> for NewExpression {
         let action = walk_mut_new_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30967,10 +31422,15 @@ impl<'a, State> TraverseMutWith<'a, State> for AwaitExpression {
         let action = walk_mut_await_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -30986,10 +31446,15 @@ impl<'a, State> TraverseMutWith<'a, State> for YieldExpression {
         let action = walk_mut_yield_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31005,10 +31470,15 @@ impl<'a, State> TraverseMutWith<'a, State> for MetaProperty {
         let action = walk_mut_meta_property(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31024,10 +31494,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportExpression {
         let action = walk_mut_import_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31043,10 +31518,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDeclaration {
         let action = walk_mut_import_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31062,10 +31542,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportSpecifier {
         let action = walk_mut_import_specifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31081,10 +31566,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportDefaultSpecifier {
         let action = walk_mut_import_default_specifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31100,10 +31590,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportNamespaceSpecifier {
         let action = walk_mut_import_namespace_specifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31119,10 +31614,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ImportAttribute {
         let action = walk_mut_import_attribute(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31138,10 +31638,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportNamedDeclaration {
         let action = walk_mut_export_named_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31157,10 +31662,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportDefaultDeclaration {
         let action = walk_mut_export_default_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31176,10 +31686,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportAllDeclaration {
         let action = walk_mut_export_all_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31195,10 +31710,15 @@ impl<'a, State> TraverseMutWith<'a, State> for ExportSpecifier {
         let action = walk_mut_export_specifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31214,10 +31734,15 @@ impl<'a, State> TraverseMutWith<'a, State> for Hashbang {
         let action = walk_mut_hashbang(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31233,10 +31758,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsType {
         let action = walk_mut_ts_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31252,10 +31782,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeName {
         let action = walk_mut_ts_type_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31271,10 +31806,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedNameLeft {
         let action = walk_mut_ts_qualified_name_left(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31290,10 +31830,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportTypeQualifier {
         let action = walk_mut_ts_import_type_qualifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31309,10 +31854,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeQueryExprName {
         let action = walk_mut_ts_type_query_expr_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31328,10 +31878,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsLiteral {
         let action = walk_mut_ts_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31347,10 +31902,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTupleElement {
         let action = walk_mut_ts_tuple_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31366,10 +31926,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeElement {
         let action = walk_mut_ts_type_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31385,10 +31950,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicateName {
         let action = walk_mut_ts_type_predicate_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31404,10 +31974,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumMemberName {
         let action = walk_mut_ts_enum_member_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31423,10 +31998,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleName {
         let action = walk_mut_ts_module_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31442,10 +32022,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleBody {
         let action = walk_mut_ts_module_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31461,10 +32046,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleReference {
         let action = walk_mut_ts_module_reference(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31480,10 +32070,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsFunction {
         let action = walk_mut_ts_function(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31499,10 +32094,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMethodDefinition {
         let action = walk_mut_ts_method_definition(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31518,10 +32118,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAnnotation {
         let action = walk_mut_ts_type_annotation(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31537,10 +32142,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsAnyKeyword {
         let action = walk_mut_ts_any_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31556,10 +32166,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUnknownKeyword {
         let action = walk_mut_ts_unknown_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31575,10 +32190,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNeverKeyword {
         let action = walk_mut_ts_never_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31594,10 +32214,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsVoidKeyword {
         let action = walk_mut_ts_void_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31613,10 +32238,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNullKeyword {
         let action = walk_mut_ts_null_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31632,10 +32262,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUndefinedKeyword {
         let action = walk_mut_ts_undefined_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31651,10 +32286,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsStringKeyword {
         let action = walk_mut_ts_string_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31670,10 +32310,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNumberKeyword {
         let action = walk_mut_ts_number_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31689,10 +32334,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsBigIntKeyword {
         let action = walk_mut_ts_big_int_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31708,10 +32358,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsBooleanKeyword {
         let action = walk_mut_ts_boolean_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31727,10 +32382,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsSymbolKeyword {
         let action = walk_mut_ts_symbol_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31746,10 +32406,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsObjectKeyword {
         let action = walk_mut_ts_object_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31765,10 +32430,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIntrinsicKeyword {
         let action = walk_mut_ts_intrinsic_keyword(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31784,10 +32454,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsThisType {
         let action = walk_mut_ts_this_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31803,10 +32478,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeReference {
         let action = walk_mut_ts_type_reference(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31822,10 +32502,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsQualifiedName {
         let action = walk_mut_ts_qualified_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31841,10 +32526,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeQuery {
         let action = walk_mut_ts_type_query(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31860,10 +32550,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportType {
         let action = walk_mut_ts_import_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31879,10 +32574,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameter {
         let action = walk_mut_ts_type_parameter(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31898,10 +32598,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterDeclaration {
         let action = walk_mut_ts_type_parameter_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31917,10 +32622,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeParameterInstantiation {
         let action = walk_mut_ts_type_parameter_instantiation(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31936,10 +32646,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsLiteralType {
         let action = walk_mut_ts_literal_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31955,10 +32670,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTemplateLiteralType {
         let action = walk_mut_ts_template_literal_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31974,10 +32694,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsArrayType {
         let action = walk_mut_ts_array_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -31993,10 +32718,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexedAccessType {
         let action = walk_mut_ts_indexed_access_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32012,10 +32742,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTupleType {
         let action = walk_mut_ts_tuple_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32031,10 +32766,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNamedTupleMember {
         let action = walk_mut_ts_named_tuple_member(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32050,10 +32790,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsOptionalType {
         let action = walk_mut_ts_optional_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32069,10 +32814,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsRestType {
         let action = walk_mut_ts_rest_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32088,10 +32838,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNullableType {
         let action = walk_mut_ts_js_doc_nullable_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32107,10 +32862,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocNonNullableType {
         let action = walk_mut_ts_js_doc_non_nullable_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32126,10 +32886,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsJsDocUnknownType {
         let action = walk_mut_ts_js_doc_unknown_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32145,10 +32910,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsUnionType {
         let action = walk_mut_ts_union_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32164,10 +32934,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIntersectionType {
         let action = walk_mut_ts_intersection_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32183,10 +32958,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConditionalType {
         let action = walk_mut_ts_conditional_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32202,10 +32982,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInferType {
         let action = walk_mut_ts_infer_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32221,10 +33006,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeOperator {
         let action = walk_mut_ts_type_operator(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32240,10 +33030,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsParenthesizedType {
         let action = walk_mut_ts_parenthesized_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32259,10 +33054,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsFunctionType {
         let action = walk_mut_ts_function_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32278,10 +33078,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConstructorType {
         let action = walk_mut_ts_constructor_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32297,10 +33102,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypePredicate {
         let action = walk_mut_ts_type_predicate(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32316,10 +33126,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeLiteral {
         let action = walk_mut_ts_type_literal(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32335,10 +33150,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMappedType {
         let action = walk_mut_ts_mapped_type(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32354,10 +33174,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsPropertySignature {
         let action = walk_mut_ts_property_signature(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32373,10 +33198,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsMethodSignature {
         let action = walk_mut_ts_method_signature(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32392,10 +33222,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsCallSignatureDeclaration {
         let action = walk_mut_ts_call_signature_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32411,10 +33246,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsConstructSignatureDeclaration {
         let action = walk_mut_ts_construct_signature_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32430,10 +33270,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexSignature {
         let action = walk_mut_ts_index_signature(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32449,10 +33294,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAliasDeclaration {
         let action = walk_mut_ts_type_alias_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32468,10 +33318,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceDeclaration {
         let action = walk_mut_ts_interface_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32487,10 +33342,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceBody {
         let action = walk_mut_ts_interface_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32506,10 +33366,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInterfaceHeritage {
         let action = walk_mut_ts_interface_heritage(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32525,10 +33390,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsClassImplements {
         let action = walk_mut_ts_class_implements(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32544,10 +33414,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumDeclaration {
         let action = walk_mut_ts_enum_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32563,10 +33438,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumBody {
         let action = walk_mut_ts_enum_body(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32582,10 +33462,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsEnumMember {
         let action = walk_mut_ts_enum_member(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32601,10 +33486,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleDeclaration {
         let action = walk_mut_ts_module_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32620,10 +33510,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsModuleBlock {
         let action = walk_mut_ts_module_block(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32639,10 +33534,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsGlobalDeclaration {
         let action = walk_mut_ts_global_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32658,10 +33558,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsParameterProperty {
         let action = walk_mut_ts_parameter_property(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32677,10 +33582,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsThisParameter {
         let action = walk_mut_ts_this_parameter(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32696,10 +33606,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsAsExpression {
         let action = walk_mut_ts_as_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32715,10 +33630,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsSatisfiesExpression {
         let action = walk_mut_ts_satisfies_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32734,10 +33654,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsTypeAssertion {
         let action = walk_mut_ts_type_assertion(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32753,10 +33678,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNonNullExpression {
         let action = walk_mut_ts_non_null_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32772,10 +33702,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsInstantiationExpression {
         let action = walk_mut_ts_instantiation_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32791,10 +33726,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsExportAssignment {
         let action = walk_mut_ts_export_assignment(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32810,10 +33750,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsNamespaceExportDeclaration {
         let action = walk_mut_ts_namespace_export_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32829,10 +33774,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsImportEqualsDeclaration {
         let action = walk_mut_ts_import_equals_declaration(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32848,10 +33798,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsExternalModuleReference {
         let action = walk_mut_ts_external_module_reference(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32867,10 +33822,15 @@ impl<'a, State> TraverseMutWith<'a, State> for TsIndexSignatureParameter {
         let action = walk_mut_ts_index_signature_parameter(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32886,10 +33846,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxElementName {
         let action = walk_mut_jsx_element_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32905,10 +33870,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpressionObject {
         let action = walk_mut_jsx_member_expression_object(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32924,10 +33894,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeName {
         let action = walk_mut_jsx_attribute_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32943,10 +33918,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeItem {
         let action = walk_mut_jsx_attribute_item(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32962,10 +33942,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttributeValue {
         let action = walk_mut_jsx_attribute_value(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -32981,10 +33966,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxExpression {
         let action = walk_mut_jsx_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33000,10 +33990,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxChild {
         let action = walk_mut_jsx_child(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33019,10 +34014,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxElement {
         let action = walk_mut_jsx_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33038,10 +34038,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningElement {
         let action = walk_mut_jsx_opening_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33057,10 +34062,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxClosingElement {
         let action = walk_mut_jsx_closing_element(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33076,10 +34086,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxFragment {
         let action = walk_mut_jsx_fragment(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33095,10 +34110,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxOpeningFragment {
         let action = walk_mut_jsx_opening_fragment(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33114,10 +34134,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxClosingFragment {
         let action = walk_mut_jsx_closing_fragment(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33133,10 +34158,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxIdentifier {
         let action = walk_mut_jsx_identifier(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33152,10 +34182,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxNamespacedName {
         let action = walk_mut_jsx_namespaced_name(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33171,10 +34206,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxMemberExpression {
         let action = walk_mut_jsx_member_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33190,10 +34230,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxAttribute {
         let action = walk_mut_jsx_attribute(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33209,10 +34254,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadAttribute {
         let action = walk_mut_jsx_spread_attribute(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33228,10 +34278,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxExpressionContainer {
         let action = walk_mut_jsx_expression_container(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33247,10 +34302,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxEmptyExpression {
         let action = walk_mut_jsx_empty_expression(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33266,10 +34326,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxText {
         let action = walk_mut_jsx_text(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33285,10 +34350,15 @@ impl<'a, State> TraverseMutWith<'a, State> for JsxSpreadChild {
         let action = walk_mut_jsx_spread_child(self, traverser, ctx);
         traverser.exit_node(original, ctx);
         match action {
-            std::ops::ControlFlow::Continue(false)
-            | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-            std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-            std::ops::ControlFlow::Break(action) => action,
+            std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+            action => {
+                std::hint::cold_path();
+                match action {
+                    std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                    std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                    std::ops::ControlFlow::Break(action) => action,
+                }
+            }
         }
     }
 }
@@ -33306,6 +34376,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Directive> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33326,6 +34397,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Stmt> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33359,6 +34431,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TemplateElement> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33379,6 +34452,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Expr> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33412,6 +34486,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<BindingPattern>> 
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33445,6 +34520,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<BindingProperty> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33465,6 +34541,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<VariableDeclarator> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33524,6 +34601,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<SwitchCase> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33596,6 +34674,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Decorator> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33655,6 +34734,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsClassImplements> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33675,6 +34755,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ClassElement> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33708,6 +34789,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<FormalParameterItem> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33754,6 +34836,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Option<Argument>> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33774,6 +34857,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ObjectPropertyKind> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33794,6 +34878,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Argument> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33814,6 +34899,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportDeclarationSpecifi
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33834,6 +34920,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ImportAttribute> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33867,6 +34954,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<ExportSpecifier> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33939,6 +35027,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeParameter> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33959,6 +35048,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsType> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33979,6 +35069,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTupleElement> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -33999,6 +35090,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsTypeElement> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34019,6 +35111,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsIndexSignatureParamete
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34039,6 +35132,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsInterfaceHeritage> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34059,6 +35153,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<TsEnumMember> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34092,6 +35187,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxChild> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34125,6 +35221,7 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<JsxAttributeItem> {
                 ctx,
                 |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
             ) {
+                std::hint::cold_path();
                 return TraverseAction::Stop;
             }
         }
@@ -34152,7 +35249,10 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Program>, bool> {
     match traverser.enter_program(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -34161,11 +35261,13 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -34174,13 +35276,17 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_hashbang(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_program(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34191,7 +35297,10 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Stmt>, bool> {
     match traverser.enter_stmt(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BlockStatement => {
@@ -34299,12 +35408,16 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_stmt(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34315,7 +35428,10 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Decl>, bool> {
     match traverser.enter_decl(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
@@ -34356,12 +35472,16 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_decl(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34372,7 +35492,10 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Expr>, bool> {
     match traverser.enter_expr(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
@@ -34517,12 +35640,16 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_expr(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34533,7 +35660,10 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BindingPattern>, bool> {
     match traverser.enter_binding_pattern(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
@@ -34565,12 +35695,16 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_binding_pattern(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34581,7 +35715,10 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<AssignmentTarget>, bool> {
     match traverser.enter_assignment_target(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
@@ -34601,12 +35738,16 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_assignment_target(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34617,7 +35758,10 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<SimpleAssignmentTarget>, bool> {
     match traverser.enter_simple_assignment_target(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
@@ -34648,12 +35792,16 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_simple_assignment_target(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34664,7 +35812,10 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<PropertyKey>, bool> {
     match traverser.enter_property_key(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
@@ -34716,12 +35867,16 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_property_key(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34732,7 +35887,10 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ModuleExportName>, bool> {
     match traverser.enter_module_export_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
@@ -34745,12 +35903,16 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_module_export_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34761,7 +35923,10 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Argument>, bool> {
     match traverser.enter_argument(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
@@ -34811,12 +35976,16 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_argument(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34827,7 +35996,10 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ObjectPropertyKind>, bool> {
     match traverser.enter_object_property_kind(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::ObjectProperty => {
@@ -34840,12 +36012,16 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_object_property_kind(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34856,7 +36032,10 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ForStatementInit>, bool> {
     match traverser.enter_for_statement_init(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
@@ -34908,12 +36087,16 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_for_statement_init(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34924,7 +36107,10 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ForStatementLeft>, bool> {
     match traverser.enter_for_statement_left(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::VariableDeclaration => {
@@ -34946,12 +36132,16 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_for_statement_left(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -34962,7 +36152,10 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ArrowFunctionBody>, bool> {
     match traverser.enter_arrow_function_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::FunctionBody => walk_mut_function_body(FunctionBody(node.0), traverser, ctx)
@@ -35012,12 +36205,16 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_arrow_function_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35028,7 +36225,10 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<FormalParameterItem>, bool> {
     match traverser.enter_formal_parameter_item(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::FormalParameter => {
@@ -35043,12 +36243,16 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_formal_parameter_item(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35059,7 +36263,10 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<FormalParameterPattern>, bool> {
     match traverser.enter_formal_parameter_pattern(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
@@ -35074,12 +36281,16 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_formal_parameter_pattern(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35090,7 +36301,10 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ClassElement>, bool> {
     match traverser.enter_class_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::MethodDefinition => {
@@ -35115,12 +36329,16 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_class_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35131,7 +36349,10 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
 ) -> std::ops::ControlFlow<TraverseAction<ImportDeclarationSpecifier>, bool> {
     match traverser.enter_import_declaration_specifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::ImportSpecifier => {
@@ -35152,12 +36373,16 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_import_declaration_specifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35168,7 +36393,10 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
 ) -> std::ops::ControlFlow<TraverseAction<ExportDefaultDeclarationKind>, bool> {
     match traverser.enter_export_default_declaration_kind(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::Function => {
@@ -35242,12 +36470,16 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_export_default_declaration_kind(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35258,12 +36490,18 @@ fn walk_mut_super<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Super>, bool> {
     match traverser.enter_super(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_super(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35274,12 +36512,18 @@ fn walk_mut_this_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ThisExpression>, bool> {
     match traverser.enter_this_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_this_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35290,12 +36534,18 @@ fn walk_mut_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<StringLiteral>, bool> {
     match traverser.enter_string_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_string_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35306,12 +36556,18 @@ fn walk_mut_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<NumericLiteral>, bool> {
     match traverser.enter_numeric_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_numeric_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35322,12 +36578,18 @@ fn walk_mut_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BigIntLiteral>, bool> {
     match traverser.enter_big_int_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_big_int_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35338,12 +36600,18 @@ fn walk_mut_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BooleanLiteral>, bool> {
     match traverser.enter_boolean_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_boolean_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35354,12 +36622,18 @@ fn walk_mut_null_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<NullLiteral>, bool> {
     match traverser.enter_null_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_null_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35370,12 +36644,18 @@ fn walk_mut_reg_exp_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<RegExpLiteral>, bool> {
     match traverser.enter_reg_exp_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_reg_exp_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35386,12 +36666,16 @@ fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TemplateLiteral>, bool> {
     match traverser.enter_template_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasis(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35400,13 +36684,17 @@ fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expressions(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_template_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35417,12 +36705,18 @@ fn walk_mut_template_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TemplateElement>, bool> {
     match traverser.enter_template_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_template_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35433,12 +36727,18 @@ fn walk_mut_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<IdentifierReference>, bool> {
     match traverser.enter_identifier_reference(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_identifier_reference(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35449,12 +36749,18 @@ fn walk_mut_private_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<PrivateIdentifier>, bool> {
     match traverser.enter_private_identifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_private_identifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35465,12 +36771,18 @@ fn walk_mut_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BindingIdentifier>, bool> {
     match traverser.enter_binding_identifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_binding_identifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35481,12 +36793,18 @@ fn walk_mut_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<IdentifierName>, bool> {
     match traverser.enter_identifier_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_identifier_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35497,12 +36815,18 @@ fn walk_mut_label_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<LabelIdentifier>, bool> {
     match traverser.enter_label_identifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_label_identifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35513,24 +36837,32 @@ fn walk_mut_assignment_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<AssignmentPattern>, bool> {
     match traverser.enter_assignment_pattern(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_assignment_pattern(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35541,7 +36873,10 @@ fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BindingRestElement>, bool> {
     match traverser.enter_binding_rest_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35550,13 +36885,17 @@ fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_binding_rest_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35567,7 +36906,10 @@ fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ArrayPattern>, bool> {
     match traverser.enter_array_pattern(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35576,18 +36918,23 @@ fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_elements(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_array_pattern(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35598,7 +36945,10 @@ fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ObjectPattern>, bool> {
     match traverser.enter_object_pattern(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35607,18 +36957,23 @@ fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_properties(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_object_pattern(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35629,24 +36984,32 @@ fn walk_mut_binding_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BindingProperty>, bool> {
     match traverser.enter_binding_property(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_binding_property(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35657,24 +37020,32 @@ fn walk_mut_binary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BinaryExpression>, bool> {
     match traverser.enter_binary_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_binary_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35685,24 +37056,32 @@ fn walk_mut_logical_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<LogicalExpression>, bool> {
     match traverser.enter_logical_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_logical_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35713,12 +37092,16 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<ConditionalExpression>, bool> {
     match traverser.enter_conditional_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35727,6 +37110,7 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35735,13 +37119,17 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_alternate(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_conditional_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35752,7 +37140,10 @@ fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<UnaryExpression>, bool> {
     match traverser.enter_unary_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35761,13 +37152,17 @@ fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_unary_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35778,7 +37173,10 @@ fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<UpdateExpression>, bool> {
     match traverser.enter_update_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35787,13 +37185,17 @@ fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_update_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35804,24 +37206,32 @@ fn walk_mut_assignment_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<AssignmentExpression>, bool> {
     match traverser.enter_assignment_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_assignment_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35832,7 +37242,10 @@ fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<VariableDeclaration>, bool> {
     match traverser.enter_variable_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35841,13 +37254,17 @@ fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_declarators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_variable_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35858,12 +37275,16 @@ fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<VariableDeclarator>, bool> {
     match traverser.enter_variable_declarator(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35872,18 +37293,23 @@ fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_init(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_variable_declarator(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35894,12 +37320,16 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<IfStatement>, bool> {
     match traverser.enter_if_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35908,6 +37338,7 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35916,13 +37347,17 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_alternate(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_if_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35933,7 +37368,10 @@ fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<SwitchStatement>, bool> {
     match traverser.enter_switch_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -35942,18 +37380,23 @@ fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_discriminant(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.cases(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_cases(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_switch_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35964,12 +37407,16 @@ fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<SwitchCase>, bool> {
     match traverser.enter_switch_case(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -35978,13 +37425,17 @@ fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_switch_case(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -35995,34 +37446,44 @@ fn walk_mut_for_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ForStatement>, bool> {
     match traverser.enter_for_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_init(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.update(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_update(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_for_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36033,29 +37494,38 @@ fn walk_mut_for_in_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ForInStatement>, bool> {
     match traverser.enter_for_in_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_for_in_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36066,29 +37536,38 @@ fn walk_mut_for_of_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ForOfStatement>, bool> {
     match traverser.enter_for_of_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_for_of_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36099,17 +37578,22 @@ fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TryStatement>, bool> {
     match traverser.enter_try_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.block(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_block(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.handler(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_handler(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36118,13 +37602,17 @@ fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_finalizer(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_try_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36135,12 +37623,16 @@ fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<CatchClause>, bool> {
     match traverser.enter_catch_clause(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.param(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_param(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36149,18 +37641,23 @@ fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_catch_clause(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36171,19 +37668,26 @@ fn walk_mut_break_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BreakStatement>, bool> {
     match traverser.enter_break_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_break_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36194,19 +37698,26 @@ fn walk_mut_continue_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ContinueStatement>, bool> {
     match traverser.enter_continue_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_continue_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36217,24 +37728,32 @@ fn walk_mut_labeled_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<LabeledStatement>, bool> {
     match traverser.enter_labeled_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_labeled_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36245,7 +37764,10 @@ fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ExpressionStatement>, bool> {
     match traverser.enter_expression_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36254,13 +37776,17 @@ fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_expression_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36271,7 +37797,10 @@ fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ReturnStatement>, bool> {
     match traverser.enter_return_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36280,13 +37809,17 @@ fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_return_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36297,7 +37830,10 @@ fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ThrowStatement>, bool> {
     match traverser.enter_throw_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36306,13 +37842,17 @@ fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_throw_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36323,12 +37863,18 @@ fn walk_mut_debugger_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<DebuggerStatement>, bool> {
     match traverser.enter_debugger_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_debugger_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36339,12 +37885,18 @@ fn walk_mut_empty_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<EmptyStatement>, bool> {
     match traverser.enter_empty_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_empty_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36355,7 +37907,10 @@ fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Directive>, bool> {
     match traverser.enter_directive(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36364,13 +37919,17 @@ fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_directive(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36381,7 +37940,10 @@ fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Decorator>, bool> {
     match traverser.enter_decorator(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36390,13 +37952,17 @@ fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_decorator(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36407,7 +37973,10 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Class>, bool> {
     match traverser.enter_class(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36416,11 +37985,13 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36429,6 +38000,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36437,6 +38009,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_super_class(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36445,6 +38018,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_super_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36453,18 +38027,23 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_implements(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_class(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36475,19 +38054,26 @@ fn walk_mut_class_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ClassBody>, bool> {
     match traverser.enter_class_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_class_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36498,7 +38084,10 @@ fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<MethodDefinition>, bool> {
     match traverser.enter_method_definition(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36507,23 +38096,29 @@ fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_method_definition(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36534,7 +38129,10 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<PropertyDefinition>, bool> {
     match traverser.enter_property_definition(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36543,11 +38141,13 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36556,18 +38156,23 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_property_definition(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36578,19 +38183,26 @@ fn walk_mut_static_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<StaticBlock>, bool> {
     match traverser.enter_static_block(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_static_block(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36601,12 +38213,16 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Function>, bool> {
     match traverser.enter_function(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36615,6 +38231,7 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36623,11 +38240,13 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36636,18 +38255,23 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_function(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36658,7 +38282,10 @@ fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<FunctionBody>, bool> {
     match traverser.enter_function_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36667,18 +38294,23 @@ fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_function_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36689,19 +38321,26 @@ fn walk_mut_block_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<BlockStatement>, bool> {
     match traverser.enter_block_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_block_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36712,24 +38351,32 @@ fn walk_mut_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<WhileStatement>, bool> {
     match traverser.enter_while_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_while_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36740,24 +38387,32 @@ fn walk_mut_do_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<DoWhileStatement>, bool> {
     match traverser.enter_do_while_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_do_while_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36768,24 +38423,32 @@ fn walk_mut_with_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<WithStatement>, bool> {
     match traverser.enter_with_statement(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_with_statement(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36796,24 +38459,32 @@ fn walk_mut_formal_parameters<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<FormalParameters>, bool> {
     match traverser.enter_formal_parameters(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.items(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_items(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_formal_parameters(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36824,7 +38495,10 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<FormalParameter>, bool> {
     match traverser.enter_formal_parameter(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36833,11 +38507,13 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.pattern(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_pattern(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36846,6 +38522,7 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36854,13 +38531,17 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_initializer(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_formal_parameter(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36871,7 +38552,10 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<FormalParameterRest>, bool> {
     match traverser.enter_formal_parameter_rest(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36880,6 +38564,7 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36888,6 +38573,7 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -36896,13 +38582,17 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_formal_parameter_rest(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36913,7 +38603,10 @@ fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ArrayExpression>, bool> {
     match traverser.enter_array_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36922,13 +38615,17 @@ fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_elements(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_array_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36939,7 +38636,10 @@ fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ObjectExpression>, bool> {
     match traverser.enter_object_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36948,13 +38648,17 @@ fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_properties(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_object_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36965,7 +38669,10 @@ fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<SpreadElement>, bool> {
     match traverser.enter_spread_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -36974,13 +38681,17 @@ fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_spread_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -36991,24 +38702,32 @@ fn walk_mut_object_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ObjectProperty>, bool> {
     match traverser.enter_object_property(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_object_property(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37019,7 +38738,10 @@ fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<ParenthesizedExpression>, bool> {
     match traverser.enter_parenthesized_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37028,13 +38750,17 @@ fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_parenthesized_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37045,7 +38771,10 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
 ) -> std::ops::ControlFlow<TraverseAction<ArrowFunctionExpression>, bool> {
     match traverser.enter_arrow_function_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37054,11 +38783,13 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37067,18 +38798,23 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_arrow_function_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37089,7 +38825,10 @@ fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<SequenceExpression>, bool> {
     match traverser.enter_sequence_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37098,13 +38837,17 @@ fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expressions(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_sequence_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37115,12 +38858,16 @@ fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<MemberExpression>, bool> {
     match traverser.enter_member_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37129,13 +38876,17 @@ fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_member_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37146,12 +38897,16 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<CallExpression>, bool> {
     match traverser.enter_call_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_callee(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37160,6 +38915,7 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37168,13 +38924,17 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_call_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37185,7 +38945,10 @@ fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ChainExpression>, bool> {
     match traverser.enter_chain_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37194,13 +38957,17 @@ fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_chain_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37211,12 +38978,16 @@ fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, St
 ) -> std::ops::ControlFlow<TraverseAction<TaggedTemplateExpression>, bool> {
     match traverser.enter_tagged_template_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.tag(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_tag(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37225,18 +38996,23 @@ fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, St
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.quasi(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasi(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_tagged_template_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37247,12 +39023,16 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<NewExpression>, bool> {
     match traverser.enter_new_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_callee(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37261,6 +39041,7 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37269,13 +39050,17 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_new_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37286,7 +39071,10 @@ fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<AwaitExpression>, bool> {
     match traverser.enter_await_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37295,13 +39083,17 @@ fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_await_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37312,7 +39104,10 @@ fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<YieldExpression>, bool> {
     match traverser.enter_yield_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37321,13 +39116,17 @@ fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_yield_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37338,12 +39137,16 @@ fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<MetaProperty>, bool> {
     match traverser.enter_meta_property(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.meta(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_meta(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37352,13 +39155,17 @@ fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_meta_property(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37369,24 +39176,32 @@ fn walk_mut_import_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ImportExpression>, bool> {
     match traverser.enter_import_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_options(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37397,7 +39212,10 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ImportDeclaration>, bool> {
     match traverser.enter_import_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37406,11 +39224,13 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37419,13 +39239,17 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37436,7 +39260,10 @@ fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ImportSpecifier>, bool> {
     match traverser.enter_import_specifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37445,18 +39272,23 @@ fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_imported(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_specifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37467,19 +39299,26 @@ fn walk_mut_import_default_specifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<ImportDefaultSpecifier>, bool> {
     match traverser.enter_import_default_specifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_default_specifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37490,19 +39329,26 @@ fn walk_mut_import_namespace_specifier<'a, State, T: ?Sized + TraverseMut<'a, St
 ) -> std::ops::ControlFlow<TraverseAction<ImportNamespaceSpecifier>, bool> {
     match traverser.enter_import_namespace_specifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_namespace_specifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37513,24 +39359,32 @@ fn walk_mut_import_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ImportAttribute>, bool> {
     match traverser.enter_import_attribute(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_import_attribute(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37541,7 +39395,10 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<ExportNamedDeclaration>, bool> {
     match traverser.enter_export_named_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37550,6 +39407,7 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_declaration(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37558,11 +39416,13 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37571,13 +39431,17 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_export_named_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37588,7 +39452,10 @@ fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, St
 ) -> std::ops::ControlFlow<TraverseAction<ExportDefaultDeclaration>, bool> {
     match traverser.enter_export_default_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37597,13 +39464,17 @@ fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, St
             ctx,
             |ctx, replacement| node.set_declaration(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_export_default_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37614,7 +39485,10 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<ExportAllDeclaration>, bool> {
     match traverser.enter_export_all_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -37623,11 +39497,13 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_exported(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37636,13 +39512,17 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_export_all_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37653,12 +39533,16 @@ fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<ExportSpecifier>, bool> {
     match traverser.enter_export_specifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -37667,13 +39551,17 @@ fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_exported(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_export_specifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37684,12 +39572,18 @@ fn walk_mut_hashbang<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<Hashbang>, bool> {
     match traverser.enter_hashbang(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_hashbang(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37700,7 +39594,10 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsType>, bool> {
     match traverser.enter_ts_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsAnyKeyword => walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx)
@@ -37831,12 +39728,16 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37847,7 +39748,10 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeName>, bool> {
     match traverser.enter_ts_type_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
@@ -37862,12 +39766,16 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_type_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37878,7 +39786,10 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<TsQualifiedNameLeft>, bool> {
     match traverser.enter_ts_qualified_name_left(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference => {
@@ -37905,12 +39816,16 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_qualified_name_left(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37921,7 +39836,10 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<TsImportTypeQualifier>, bool> {
     match traverser.enter_ts_import_type_qualifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
@@ -37936,12 +39854,16 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_import_type_qualifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37952,7 +39874,10 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeQueryExprName>, bool> {
     match traverser.enter_ts_type_query_expr_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
@@ -37969,12 +39894,16 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_type_query_expr_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -37985,7 +39914,10 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsLiteral>, bool> {
     match traverser.enter_ts_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
@@ -38012,12 +39944,16 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38028,7 +39964,10 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTupleElement>, bool> {
     match traverser.enter_ts_tuple_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsAnyKeyword
@@ -38078,12 +40017,16 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_tuple_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38094,7 +40037,10 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeElement>, bool> {
     match traverser.enter_ts_type_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsPropertySignature => {
@@ -38125,12 +40071,16 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_type_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38141,7 +40091,10 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<TsTypePredicateName>, bool> {
     match traverser.enter_ts_type_predicate_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
@@ -38154,12 +40107,16 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_type_predicate_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38170,7 +40127,10 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsEnumMemberName>, bool> {
     match traverser.enter_ts_enum_member_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierName => {
@@ -38187,12 +40147,16 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_enum_member_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38203,7 +40167,10 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsModuleName>, bool> {
     match traverser.enter_ts_module_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::BindingIdentifier => {
@@ -38220,12 +40187,16 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_module_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38236,7 +40207,10 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsModuleBody>, bool> {
     match traverser.enter_ts_module_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::TsModuleBlock => walk_mut_ts_module_block(TsModuleBlock(node.0), traverser, ctx)
@@ -38249,12 +40223,16 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_module_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38265,7 +40243,10 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsModuleReference>, bool> {
     match traverser.enter_ts_module_reference(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
@@ -38280,12 +40261,16 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_ts_module_reference(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38296,12 +40281,16 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsFunction>, bool> {
     match traverser.enter_ts_function(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38310,6 +40299,7 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38318,11 +40308,13 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38331,13 +40323,17 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_function(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38348,7 +40344,10 @@ fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsMethodDefinition>, bool> {
     match traverser.enter_ts_method_definition(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38357,23 +40356,29 @@ fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_method_definition(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38384,7 +40389,10 @@ fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeAnnotation>, bool> {
     match traverser.enter_ts_type_annotation(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38393,13 +40401,17 @@ fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_annotation(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38410,12 +40422,18 @@ fn walk_mut_ts_any_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsAnyKeyword>, bool> {
     match traverser.enter_ts_any_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_any_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38426,12 +40444,18 @@ fn walk_mut_ts_unknown_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsUnknownKeyword>, bool> {
     match traverser.enter_ts_unknown_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_unknown_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38442,12 +40466,18 @@ fn walk_mut_ts_never_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsNeverKeyword>, bool> {
     match traverser.enter_ts_never_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_never_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38458,12 +40488,18 @@ fn walk_mut_ts_void_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsVoidKeyword>, bool> {
     match traverser.enter_ts_void_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_void_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38474,12 +40510,18 @@ fn walk_mut_ts_null_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsNullKeyword>, bool> {
     match traverser.enter_ts_null_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_null_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38490,12 +40532,18 @@ fn walk_mut_ts_undefined_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsUndefinedKeyword>, bool> {
     match traverser.enter_ts_undefined_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_undefined_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38506,12 +40554,18 @@ fn walk_mut_ts_string_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsStringKeyword>, bool> {
     match traverser.enter_ts_string_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_string_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38522,12 +40576,18 @@ fn walk_mut_ts_number_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsNumberKeyword>, bool> {
     match traverser.enter_ts_number_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_number_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38538,12 +40598,18 @@ fn walk_mut_ts_big_int_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsBigIntKeyword>, bool> {
     match traverser.enter_ts_big_int_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_big_int_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38554,12 +40620,18 @@ fn walk_mut_ts_boolean_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsBooleanKeyword>, bool> {
     match traverser.enter_ts_boolean_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_boolean_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38570,12 +40642,18 @@ fn walk_mut_ts_symbol_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsSymbolKeyword>, bool> {
     match traverser.enter_ts_symbol_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_symbol_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38586,12 +40664,18 @@ fn walk_mut_ts_object_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsObjectKeyword>, bool> {
     match traverser.enter_ts_object_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_object_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38602,12 +40686,18 @@ fn walk_mut_ts_intrinsic_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsIntrinsicKeyword>, bool> {
     match traverser.enter_ts_intrinsic_keyword(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_intrinsic_keyword(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38618,12 +40708,18 @@ fn walk_mut_ts_this_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsThisType>, bool> {
     match traverser.enter_ts_this_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_this_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38634,7 +40730,10 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeReference>, bool> {
     match traverser.enter_ts_type_reference(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38643,6 +40742,7 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_name(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38651,13 +40751,17 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_reference(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38668,24 +40772,32 @@ fn walk_mut_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsQualifiedName>, bool> {
     match traverser.enter_ts_qualified_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_qualified_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38696,7 +40808,10 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeQuery>, bool> {
     match traverser.enter_ts_type_query(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38705,6 +40820,7 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expr_name(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38713,13 +40829,17 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_query(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38730,17 +40850,22 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsImportType>, bool> {
     match traverser.enter_ts_import_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_options(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38749,6 +40874,7 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_qualifier(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38757,13 +40883,17 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_import_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38774,12 +40904,16 @@ fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeParameter>, bool> {
     match traverser.enter_ts_type_parameter(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38788,18 +40922,23 @@ fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_constraint(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.default(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_default(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_parameter(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38810,19 +40949,26 @@ fn walk_mut_ts_type_parameter_declaration<'a, State, T: ?Sized + TraverseMut<'a,
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeParameterDeclaration>, bool> {
     match traverser.enter_ts_type_parameter_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_parameter_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38833,19 +40979,26 @@ fn walk_mut_ts_type_parameter_instantiation<'a, State, T: ?Sized + TraverseMut<'
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeParameterInstantiation>, bool> {
     match traverser.enter_ts_type_parameter_instantiation(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_parameter_instantiation(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38856,19 +41009,26 @@ fn walk_mut_ts_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsLiteralType>, bool> {
     match traverser.enter_ts_literal_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.literal(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_literal(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_literal_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38879,24 +41039,32 @@ fn walk_mut_ts_template_literal_type<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<TsTemplateLiteralType>, bool> {
     match traverser.enter_ts_template_literal_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasis(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_template_literal_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38907,7 +41075,10 @@ fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsArrayType>, bool> {
     match traverser.enter_ts_array_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38916,13 +41087,17 @@ fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_element_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_array_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38933,7 +41108,10 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<TsIndexedAccessType>, bool> {
     match traverser.enter_ts_indexed_access_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38942,6 +41120,7 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_object_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -38950,13 +41129,17 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_index_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_indexed_access_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38967,7 +41150,10 @@ fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTupleType>, bool> {
     match traverser.enter_ts_tuple_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -38976,13 +41162,17 @@ fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_element_types(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_tuple_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -38993,12 +41183,16 @@ fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsNamedTupleMember>, bool> {
     match traverser.enter_ts_named_tuple_member(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39007,13 +41201,17 @@ fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_element_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_named_tuple_member(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39024,7 +41222,10 @@ fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsOptionalType>, bool> {
     match traverser.enter_ts_optional_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39033,13 +41234,17 @@ fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_optional_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39050,7 +41255,10 @@ fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsRestType>, bool> {
     match traverser.enter_ts_rest_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39059,13 +41267,17 @@ fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_rest_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39076,7 +41288,10 @@ fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State
 ) -> std::ops::ControlFlow<TraverseAction<TsJsDocNullableType>, bool> {
     match traverser.enter_ts_js_doc_nullable_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39085,13 +41300,17 @@ fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_js_doc_nullable_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39102,7 +41321,10 @@ fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, S
 ) -> std::ops::ControlFlow<TraverseAction<TsJsDocNonNullableType>, bool> {
     match traverser.enter_ts_js_doc_non_nullable_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39111,13 +41333,17 @@ fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, S
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_js_doc_non_nullable_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39128,12 +41354,18 @@ fn walk_mut_ts_js_doc_unknown_type<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<TsJsDocUnknownType>, bool> {
     match traverser.enter_ts_js_doc_unknown_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_ts_js_doc_unknown_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39144,19 +41376,26 @@ fn walk_mut_ts_union_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsUnionType>, bool> {
     match traverser.enter_ts_union_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_union_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39167,19 +41406,26 @@ fn walk_mut_ts_intersection_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsIntersectionType>, bool> {
     match traverser.enter_ts_intersection_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_intersection_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39190,7 +41436,10 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsConditionalType>, bool> {
     match traverser.enter_ts_conditional_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39199,6 +41448,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_check_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39207,6 +41457,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_extends_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39215,6 +41466,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_true_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39223,13 +41475,17 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_false_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_conditional_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39240,7 +41496,10 @@ fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsInferType>, bool> {
     match traverser.enter_ts_infer_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39249,13 +41508,17 @@ fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameter(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_infer_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39266,7 +41529,10 @@ fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeOperator>, bool> {
     match traverser.enter_ts_type_operator(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39275,13 +41541,17 @@ fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_operator(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39292,7 +41562,10 @@ fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsParenthesizedType>, bool> {
     match traverser.enter_ts_parenthesized_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39301,13 +41574,17 @@ fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_parenthesized_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39318,7 +41595,10 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsFunctionType>, bool> {
     match traverser.enter_ts_function_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39327,6 +41607,7 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39335,11 +41616,13 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39348,13 +41631,17 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_function_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39365,7 +41652,10 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsConstructorType>, bool> {
     match traverser.enter_ts_constructor_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39374,11 +41664,13 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39387,13 +41679,17 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_constructor_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39404,7 +41700,10 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypePredicate>, bool> {
     match traverser.enter_ts_type_predicate(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39413,6 +41712,7 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_parameter_name(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39421,13 +41721,17 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_predicate(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39438,19 +41742,26 @@ fn walk_mut_ts_type_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeLiteral>, bool> {
     match traverser.enter_ts_type_literal(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_members(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_literal(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39461,12 +41772,16 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsMappedType>, bool> {
     match traverser.enter_ts_mapped_type(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39475,6 +41790,7 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_constraint(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39483,6 +41799,7 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_name_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39491,13 +41808,17 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_mapped_type(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39508,12 +41829,16 @@ fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsPropertySignature>, bool> {
     match traverser.enter_ts_property_signature(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39522,13 +41847,17 @@ fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_property_signature(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39539,12 +41868,16 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsMethodSignature>, bool> {
     match traverser.enter_ts_method_signature(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39553,6 +41886,7 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39561,11 +41895,13 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39574,13 +41910,17 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_method_signature(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39591,7 +41931,10 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
 ) -> std::ops::ControlFlow<TraverseAction<TsCallSignatureDeclaration>, bool> {
     match traverser.enter_ts_call_signature_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39600,6 +41943,7 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39608,11 +41952,13 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             ctx,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39621,13 +41967,17 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_call_signature_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39638,7 +41988,10 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
 ) -> std::ops::ControlFlow<TraverseAction<TsConstructSignatureDeclaration>, bool> {
     match traverser.enter_ts_construct_signature_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39647,11 +42000,13 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39660,13 +42015,17 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
             ctx,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_construct_signature_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39677,7 +42036,10 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsIndexSignature>, bool> {
     match traverser.enter_ts_index_signature(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39686,6 +42048,7 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39694,13 +42057,17 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_index_signature(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39711,12 +42078,16 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeAliasDeclaration>, bool> {
     match traverser.enter_ts_type_alias_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39725,6 +42096,7 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39733,13 +42105,17 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_alias_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39750,12 +42126,16 @@ fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<TsInterfaceDeclaration>, bool> {
     match traverser.enter_ts_interface_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39764,23 +42144,29 @@ fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.extends(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_extends(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_interface_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39791,19 +42177,26 @@ fn walk_mut_ts_interface_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsInterfaceBody>, bool> {
     match traverser.enter_ts_interface_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_interface_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39814,7 +42207,10 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsInterfaceHeritage>, bool> {
     match traverser.enter_ts_interface_heritage(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39823,6 +42219,7 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39831,13 +42228,17 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_interface_heritage(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39848,7 +42249,10 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsClassImplements>, bool> {
     match traverser.enter_ts_class_implements(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -39857,6 +42261,7 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39865,13 +42270,17 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_class_implements(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39882,24 +42291,32 @@ fn walk_mut_ts_enum_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsEnumDeclaration>, bool> {
     match traverser.enter_ts_enum_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_enum_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39910,19 +42327,26 @@ fn walk_mut_ts_enum_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsEnumBody>, bool> {
     match traverser.enter_ts_enum_body(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_members(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_enum_body(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39933,12 +42357,16 @@ fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsEnumMember>, bool> {
     match traverser.enter_ts_enum_member(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -39947,13 +42375,17 @@ fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_initializer(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_enum_member(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39964,24 +42396,32 @@ fn walk_mut_ts_module_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsModuleDeclaration>, bool> {
     match traverser.enter_ts_module_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_module_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -39992,7 +42432,10 @@ fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsModuleBlock>, bool> {
     match traverser.enter_ts_module_block(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40001,18 +42444,23 @@ fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_module_block(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40023,24 +42471,32 @@ fn walk_mut_ts_global_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsGlobalDeclaration>, bool> {
     match traverser.enter_ts_global_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_global_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40051,7 +42507,10 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<TsParameterProperty>, bool> {
     match traverser.enter_ts_parameter_property(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40060,6 +42519,7 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40068,13 +42528,17 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_parameter(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_parameter_property(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40085,7 +42549,10 @@ fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsThisParameter>, bool> {
     match traverser.enter_ts_this_parameter(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40094,13 +42561,17 @@ fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_this_parameter(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40111,7 +42582,10 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsAsExpression>, bool> {
     match traverser.enter_ts_as_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40120,6 +42594,7 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40128,13 +42603,17 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_as_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40145,7 +42624,10 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
 ) -> std::ops::ControlFlow<TraverseAction<TsSatisfiesExpression>, bool> {
     match traverser.enter_ts_satisfies_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40154,6 +42636,7 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40162,13 +42645,17 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_satisfies_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40179,7 +42666,10 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsTypeAssertion>, bool> {
     match traverser.enter_ts_type_assertion(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40188,6 +42678,7 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40196,13 +42687,17 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_type_assertion(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40213,7 +42708,10 @@ fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
 ) -> std::ops::ControlFlow<TraverseAction<TsNonNullExpression>, bool> {
     match traverser.enter_ts_non_null_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40222,13 +42720,17 @@ fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_non_null_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40239,7 +42741,10 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
 ) -> std::ops::ControlFlow<TraverseAction<TsInstantiationExpression>, bool> {
     match traverser.enter_ts_instantiation_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40248,6 +42753,7 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40256,13 +42762,17 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_instantiation_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40273,7 +42783,10 @@ fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<TsExportAssignment>, bool> {
     match traverser.enter_ts_export_assignment(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40282,13 +42795,17 @@ fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_export_assignment(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40299,19 +42816,26 @@ fn walk_mut_ts_namespace_export_declaration<'a, State, T: ?Sized + TraverseMut<'
 ) -> std::ops::ControlFlow<TraverseAction<TsNamespaceExportDeclaration>, bool> {
     match traverser.enter_ts_namespace_export_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_namespace_export_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40322,12 +42846,16 @@ fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, 
 ) -> std::ops::ControlFlow<TraverseAction<TsImportEqualsDeclaration>, bool> {
     match traverser.enter_ts_import_equals_declaration(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40336,13 +42864,17 @@ fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, 
             ctx,
             |ctx, replacement| node.set_module_reference(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_import_equals_declaration(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40353,7 +42885,10 @@ fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, 
 ) -> std::ops::ControlFlow<TraverseAction<TsExternalModuleReference>, bool> {
     match traverser.enter_ts_external_module_reference(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40362,13 +42897,17 @@ fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, 
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_external_module_reference(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40379,12 +42918,16 @@ fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, 
 ) -> std::ops::ControlFlow<TraverseAction<TsIndexSignatureParameter>, bool> {
     match traverser.enter_ts_index_signature_parameter(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40393,13 +42936,17 @@ fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, 
             ctx,
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_ts_index_signature_parameter(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40410,7 +42957,10 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxElementName>, bool> {
     match traverser.enter_jsx_element_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
@@ -40427,12 +42977,16 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_element_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40443,7 +42997,10 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
 ) -> std::ops::ControlFlow<TraverseAction<JsxMemberExpressionObject>, bool> {
     match traverser.enter_jsx_member_expression_object(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
@@ -40456,12 +43013,16 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_member_expression_object(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40472,7 +43033,10 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxAttributeName>, bool> {
     match traverser.enter_jsx_attribute_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
@@ -40485,12 +43049,16 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_attribute_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40501,7 +43069,10 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxAttributeItem>, bool> {
     match traverser.enter_jsx_attribute_item(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::JsxAttribute => walk_mut_jsx_attribute(JsxAttribute(node.0), traverser, ctx)
@@ -40514,12 +43085,16 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_attribute_item(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40530,7 +43105,10 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxAttributeValue>, bool> {
     match traverser.enter_jsx_attribute_value(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
@@ -40547,12 +43125,16 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_attribute_value(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40563,7 +43145,10 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxExpression>, bool> {
     match traverser.enter_jsx_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::IdentifierReference
@@ -40615,12 +43200,16 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40631,7 +43220,10 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxChild>, bool> {
     match traverser.enter_jsx_child(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = match match ctx.ast.node_kind(node.node_id()) {
         NodeKind::JsxText => walk_mut_jsx_text(JsxText(node.0), traverser, ctx)
@@ -40652,12 +43244,16 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
+            std::hint::cold_path();
             return std::ops::ControlFlow::Break(action);
         }
     };
     match traverser.exit_jsx_child(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40668,7 +43264,10 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxElement>, bool> {
     match traverser.enter_jsx_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40677,6 +43276,7 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_opening_element(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40685,6 +43285,7 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_children(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40693,13 +43294,17 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_closing_element(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40710,12 +43315,16 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxOpeningElement>, bool> {
     match traverser.enter_jsx_opening_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40724,6 +43333,7 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40732,13 +43342,17 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_opening_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40749,19 +43363,26 @@ fn walk_mut_jsx_closing_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxClosingElement>, bool> {
     match traverser.enter_jsx_closing_element(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_closing_element(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40772,7 +43393,10 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxFragment>, bool> {
     match traverser.enter_jsx_fragment(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40781,6 +43405,7 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_opening_fragment(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40789,6 +43414,7 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_children(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40797,13 +43423,17 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_closing_fragment(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_fragment(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40814,12 +43444,18 @@ fn walk_mut_jsx_opening_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxOpeningFragment>, bool> {
     match traverser.enter_jsx_opening_fragment(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_jsx_opening_fragment(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40830,12 +43466,18 @@ fn walk_mut_jsx_closing_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxClosingFragment>, bool> {
     match traverser.enter_jsx_closing_fragment(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_jsx_closing_fragment(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40846,12 +43488,18 @@ fn walk_mut_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxIdentifier>, bool> {
     match traverser.enter_jsx_identifier(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_jsx_identifier(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40862,7 +43510,10 @@ fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxNamespacedName>, bool> {
     match traverser.enter_jsx_namespaced_name(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40871,18 +43522,23 @@ fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_namespace(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_namespaced_name(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40893,12 +43549,16 @@ fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
 ) -> std::ops::ControlFlow<TraverseAction<JsxMemberExpression>, bool> {
     match traverser.enter_jsx_member_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(
@@ -40907,13 +43567,17 @@ fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
             ctx,
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_member_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40924,24 +43588,32 @@ fn walk_mut_jsx_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxAttribute>, bool> {
     match traverser.enter_jsx_attribute(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_attribute(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40952,7 +43624,10 @@ fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxSpreadAttribute>, bool> {
     match traverser.enter_jsx_spread_attribute(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40961,13 +43636,17 @@ fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_spread_attribute(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -40978,7 +43657,10 @@ fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, Stat
 ) -> std::ops::ControlFlow<TraverseAction<JsxExpressionContainer>, bool> {
     match traverser.enter_jsx_expression_container(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -40987,13 +43669,17 @@ fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, Stat
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_expression_container(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -41004,12 +43690,18 @@ fn walk_mut_jsx_empty_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxEmptyExpression>, bool> {
     match traverser.enter_jsx_empty_expression(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_jsx_empty_expression(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -41020,12 +43712,18 @@ fn walk_mut_jsx_text<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxText>, bool> {
     match traverser.enter_jsx_text(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = false;
     match traverser.exit_jsx_text(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }
 #[inline]
@@ -41036,7 +43734,10 @@ fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
 ) -> std::ops::ControlFlow<TraverseAction<JsxSpreadChild>, bool> {
     match traverser.enter_jsx_spread_child(node, ctx) {
         TraverseAction::Continue => {}
-        action => return std::ops::ControlFlow::Break(action),
+        action => {
+            std::hint::cold_path();
+            return std::ops::ControlFlow::Break(action);
+        }
     }
     let stopped = 'children: {
         if traverse_mut_slot(
@@ -41045,12 +43746,16 @@ fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
+            std::hint::cold_path();
             break 'children true;
         }
         false
     };
     match traverser.exit_jsx_spread_child(node, ctx) {
         TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-        action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+        action => {
+            std::hint::cold_path();
+            std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+        }
     }
 }

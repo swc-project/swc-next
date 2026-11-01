@@ -786,6 +786,7 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                                     node.#getter(ctx.ast), traverser, ctx,
                                     |ctx, replacement| node.#setter(ctx.ast, replacement),
                                 ) {
+                                    std::hint::cold_path();
                                     break 'children true;
                                 }
                             });
@@ -806,7 +807,10 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         quote! {
                             match #dispatch {
                                 std::ops::ControlFlow::Continue(stopped) => stopped,
-                                std::ops::ControlFlow::Break(action) => return std::ops::ControlFlow::Break(action),
+                                std::ops::ControlFlow::Break(action) => {
+                                    std::hint::cold_path();
+                                    return std::ops::ControlFlow::Break(action);
+                                }
                             }
                         }
                     }
@@ -819,12 +823,18 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                     ) -> std::ops::ControlFlow<TraverseAction<#ty_ident>, bool> {
                         match traverser.#enter(node, ctx) {
                             TraverseAction::Continue => {},
-                            action => return std::ops::ControlFlow::Break(action),
+                            action => {
+                                std::hint::cold_path();
+                                return std::ops::ControlFlow::Break(action);
+                            }
                         }
                         let stopped = #children;
                         match traverser.#exit(node, ctx) {
                             TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-                            action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+                            action => {
+                                std::hint::cold_path();
+                                std::ops::ControlFlow::Break(if stopped { action.stop() } else { action })
+                            }
                         }
                     }
                 });
@@ -834,10 +844,16 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                     let action = #walk(self, traverser, ctx);
                     traverser.exit_node(original, ctx);
                     match action {
-                        std::ops::ControlFlow::Continue(false)
-                        | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-                        std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-                        std::ops::ControlFlow::Break(action) => action,
+                        std::ops::ControlFlow::Continue(false) => TraverseAction::Continue,
+                        action => {
+                            std::hint::cold_path();
+                            match action {
+                                // `Continue(false)` was handled above, so only a descendant stop remains.
+                                std::ops::ControlFlow::Continue(_) => TraverseAction::Stop,
+                                std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
+                                std::ops::ControlFlow::Break(action) => action,
+                            }
+                        }
                     }
                 }
             }
@@ -853,6 +869,7 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         ctx.ast.get_node_in_sub_range(slot), traverser, ctx,
                         |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
                     ) {
+                        std::hint::cold_path();
                         return TraverseAction::Stop;
                     }
                 }
