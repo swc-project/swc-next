@@ -52,7 +52,7 @@ gh workflow run gungraun.yml --ref <workflow-branch> \
 ```
 
 - `--ref` selects the workflow revision. Keep it fixed across the incremental and cumulative runs. `base_ref` is required; `head_ref` defaults to the dispatch revision, and an omitted or empty `filter` runs the whole suite.
-- Run incremental comparisons of the attempt against its parent SHA, and cumulative comparisons of the integration branch plus the attempt against the frozen starting trunk SHA. Reuse a run when both bases are identical.
+- Run standalone comparisons of the attempt against its parent SHA, marginal comparisons of the integration branch plus the attempt against the integration SHA, and cumulative comparisons of the integration branch plus the attempt against the frozen starting trunk SHA. Reuse a run when both bases are identical.
 - Record dispatch time and workflow branch SHA. Find the matching `workflow_dispatch` run with `gh run list --workflow gungraun.yml --event workflow_dispatch --branch <workflow-branch> --json databaseId,headSha,createdAt,status,url`, then wait with `gh run watch <run-id> --exit-status` and download with `gh run download <run-id>`. Confirm artifact metadata `comparison.base_sha`, `comparison.compare_sha`, and `benchmark.filter` before accepting the result. If concurrent runs are candidates, inspect their metadata rather than guessing from list order.
 - Resolve refs once to commit SHAs before benchmarking. Use the same quoted filter argument for both runs. The existing PR trigger continues to compare the event's base SHA with its merge SHA; it does not replace the exact-head manual evidence.
 - Preserve reporting scripts from the workflow checkout before switching revisions so older benchmark revisions do not need the current reporting code.
@@ -88,7 +88,7 @@ See the official [baseline guide](https://gungraun.github.io/gungraun/latest/htm
 
 Use a temporary harness only when existing measurement plumbing is insufficient. Keep it on task-owned measurement branches with no PRs.
 
-- Create a harness branch from the frozen trunk SHA. Commit only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes. Record the branch, commit, paths, and exact manifest hunks. This harness-only revision is the baseline for cumulative comparisons and for independent attempts.
+- Create a harness branch from the frozen trunk SHA. Commit only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes. Record the branch, commit, paths, and exact manifest hunks. This harness-only revision is the baseline for cumulative comparisons and for independent attempts. Marginal comparisons use the measured integration branch as their baseline.
 - Push it with `git push <remote> <branch>` and dispatch the workflow on it. Establish initial profiles before editing production code. Do not create a pull request for it.
 - Create each measured attempt from the harness branch, or from the measured counterpart of its dependency for a dependent attempt. Keep a measured integration branch that contains the harness and every accepted optimization. Both sides of each comparison must have identical benchmark definitions, inputs, features, and toolchain. Only bootstrap plumbing onto unchanged production code whose API supports it.
 - After each acceptance, create the publication branch from trunk for an independent optimization, or from the dependency's publication branch for a dependent one. Cherry-pick only that accepted production optimization commit. Verify one commit per branch, matching production diffs, no harness ancestry or hunks, and correctness before you publish it immediately as the skill describes.
@@ -112,7 +112,7 @@ See the official [machine-readable output](https://gungraun.github.io/gungraun/l
 - Grant `contents: read` by default. Grant `pull-requests: write` only when the workflow publishes a comment.
 - Publish or update a marker-based PR comment only for trusted same-repository branches. Skip write operations for forks and restricted automation users.
 - Make job summary and artifact upload work without write permissions so fork pull requests retain useful results.
-- Use concurrency keyed by PR number for PR runs and by run ID for manual runs. Manual incremental and cumulative runs must not cancel each other. Associate every result with its resolved comparison SHAs and ignore cancelled runs.
+- Use concurrency keyed by PR number for PR runs and by run ID for manual runs. Manual standalone, marginal, and cumulative runs must not cancel each other. Associate every result with its resolved comparison SHAs and ignore cancelled runs.
 - Capture the benchmark exit status before rendering or uploading reports, perform reporting under `always()`, and finally return the original benchmark failure when the harness itself failed.
 
 ## Permanent JavaScript API CI
