@@ -1803,22 +1803,44 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
     table
 };
 
-/// Whether a pair of bytes contains a byte that is not an ASCII identifier part,
-/// indexed by `u16::from_le_bytes(pair)`. One 64 KiB table lookup tests two
-/// bytes of an identifier scan.
-static ASCII_IDENTIFIER_PAIR_STOPS: [bool; 1 << 16] = {
-    let mut table = [false; 1 << 16];
+/// Marks a [`IdentifierClass::Slow`] stop in [`IdentifierPairTables::end`].
+const ASCII_IDENTIFIER_SLOW_STOP: u8 = 0x80;
+
+/// Per-pair tables for the ASCII identifier scan, indexed by
+/// `u16::from_le_bytes(pair)`. Both are in one static so a scan keeps one base
+/// register. One 64 KiB table lookup tests two bytes of the scan.
+struct IdentifierPairTables {
+    /// Whether the pair contains a byte that is not an ASCII identifier part.
+    stops: [bool; 1 << 16],
+    /// The end of the identifier part in a stopping pair: the low bit is the
+    /// zero-based offset of the first byte that is not an ASCII identifier part,
+    /// with [`ASCII_IDENTIFIER_SLOW_STOP`] set when that byte needs the full
+    /// identifier scanner. A stop then ends the scan without classifying either
+    /// byte again.
+    end: [u8; 1 << 16],
+}
+
+static ASCII_IDENTIFIER_PAIRS: IdentifierPairTables = {
+    let mut stops = [false; 1 << 16];
+    let mut end = [0u8; 1 << 16];
     let mut pair = 0;
     while pair < 1 << 16 {
         let first = ASCII_IDENTIFIER_CLASS[pair & 0xFF];
         let second = ASCII_IDENTIFIER_CLASS[pair >> 8];
-        table[pair] = !matches!(
+        stops[pair] = !matches!(
             (first, second),
             (IdentifierClass::Continue, IdentifierClass::Continue)
         );
+        end[pair] = match (first, second) {
+            (IdentifierClass::Continue, IdentifierClass::Continue) => 0,
+            (IdentifierClass::Continue, IdentifierClass::End) => 1,
+            (IdentifierClass::Continue, IdentifierClass::Slow) => ASCII_IDENTIFIER_SLOW_STOP | 1,
+            (IdentifierClass::End, _) => 0,
+            (IdentifierClass::Slow, _) => ASCII_IDENTIFIER_SLOW_STOP,
+        };
         pair += 1;
     }
-    table
+    IdentifierPairTables { stops, end }
 };
 
 /// Returns the token flags of a fast-path token, which may only follow a line break.
@@ -1853,16 +1875,13 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
         let batch = unsafe { source.get_unchecked(position..batch_end) };
         let (pairs, _) = batch.as_chunks::<2>();
         for (index, pair) in pairs.iter().enumerate() {
-            let pair = u16::from_le_bytes(*pair);
-            if ASCII_IDENTIFIER_PAIR_STOPS[usize::from(pair)] {
-                // Taking the bytes from `pair` keeps a single 16-bit load in the scan loop.
-                let (first, second) = (pair as u8, (pair >> 8) as u8);
-                let position = position + 2 * index;
-                return if ASCII_IDENTIFIER_CLASS[first as usize] != IdentifierClass::Continue {
-                    ascii_identifier_end(first, position)
-                } else {
-                    ascii_identifier_end(second, position + 1)
-                };
+            let pair = usize::from(u16::from_le_bytes(*pair));
+            if ASCII_IDENTIFIER_PAIRS.stops[pair] {
+                let end = ASCII_IDENTIFIER_PAIRS.end[pair];
+                if end >= ASCII_IDENTIFIER_SLOW_STOP {
+                    return None;
+                }
+                return Some((position + 2 * index) as u32 + u32::from(end));
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
