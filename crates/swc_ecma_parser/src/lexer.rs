@@ -1782,7 +1782,10 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
     // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
     let mut position = start as usize;
 
-    while source.len() - position >= IDENTIFIER_BATCH_SIZE {
+    // Comparing the batch end instead of the remaining length keeps no extra counter live, so
+    // the scan fits in caller-saved registers. `position + IDENTIFIER_BATCH_SIZE` cannot overflow
+    // because a slice length is at most `isize::MAX`.
+    while position + IDENTIFIER_BATCH_SIZE <= source.len() {
         let batch_end = position + IDENTIFIER_BATCH_SIZE;
         // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
         // guarantees that `batch_end` is within `source`.
