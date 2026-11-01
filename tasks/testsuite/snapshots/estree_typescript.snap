@@ -9,7 +9,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/correlatedUnions.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitCommonJsModuleReferencedType.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationsWithRecursiveInternalTypesProduceUniqueTypeParams.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declareAlreadySeen.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportAssignmentWithDeclareAndExportModifiers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportAssignmentWithDeclareModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportDestructuringIterator.ts

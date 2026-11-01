@@ -16411,8 +16411,7 @@ mod tests {
         let recovered = recovered_class("abstract abstract class Foo { abstract m(): void; }");
         assert_eq!(recovered, (false, false, true, 1, 1));
 
-        let recovered =
-            recovered_class("declare abstract declare class Foo { abstract m(): void; }");
+        let recovered = recovered_class("declare abstract declare class Foo { m(): void; }");
         assert_eq!(recovered, (false, true, true, 1, 1));
 
         let recovered = recovered_class("abstract export class Foo { abstract m(): void; }");
@@ -16424,12 +16423,10 @@ mod tests {
         let recovered = recovered_class("export declare export class Foo { m(): void; }");
         assert_eq!(recovered, (true, true, false, 1, 1));
 
-        let recovered =
-            recovered_class("abstract export declare class Foo { abstract m(): void; }");
+        let recovered = recovered_class("abstract export declare class Foo { m(): void; }");
         assert_eq!(recovered, (true, true, true, 1, 1));
 
-        let recovered =
-            recovered_class("declare export abstract class Foo { abstract m(): void; }");
+        let recovered = recovered_class("declare export abstract class Foo { m(): void; }");
         assert_eq!(recovered, (true, true, true, 1, 1));
     }
 
