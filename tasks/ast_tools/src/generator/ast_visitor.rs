@@ -772,6 +772,8 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         TraverseAction::Continue
                     }
                 });
+                // Children evaluate to `Continue` or `Stopped`, so an exit hook
+                // that continues passes that result through unchanged.
                 let children = match ty {
                     AstType::Struct(node) => {
                         let mut fields = TokenStream::new();
@@ -787,17 +789,17 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                                     |ctx, replacement| node.#setter(ctx.ast, replacement),
                                 ) {
                                     std::hint::cold_path();
-                                    break 'children true;
+                                    break 'children WalkMut::Stopped;
                                 }
                             });
                         }
                         if fields.is_empty() {
-                            quote!(false)
+                            quote!(WalkMut::Continue)
                         } else {
                             quote! {
                                 'children: {
                                     #fields
-                                    false
+                                    WalkMut::Continue
                                 }
                             }
                         }
@@ -806,8 +808,7 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         let dispatch = generate_mut_enum_dispatch(node, schema);
                         quote! {
                             match #dispatch {
-                                WalkMut::Continue => false,
-                                WalkMut::Stopped => true,
+                                children @ (WalkMut::Continue | WalkMut::Stopped) => children,
                                 result => {
                                     std::hint::cold_path();
                                     return result;
@@ -829,12 +830,12 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                                 return WalkMut::enter(action);
                             }
                         }
-                        let stopped = #children;
+                        let children = #children;
                         match traverser.#exit(node, ctx) {
-                            TraverseAction::Continue => WalkMut::children(stopped),
+                            TraverseAction::Continue => children,
                             action => {
                                 std::hint::cold_path();
-                                WalkMut::exit(action, stopped)
+                                WalkMut::exit(action, children)
                             }
                         }
                     }

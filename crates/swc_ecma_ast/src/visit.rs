@@ -61,16 +61,6 @@ pub(crate) enum WalkMut {
 }
 
 impl WalkMut {
-    /// Result of a node whose hooks all returned `Continue`.
-    #[inline]
-    pub(crate) fn children(stopped: bool) -> Self {
-        if stopped {
-            Self::Stopped
-        } else {
-            Self::Continue
-        }
-    }
-
     /// Result of an enter hook that did not return `Continue`.
     #[inline]
     pub(crate) fn enter<T: AstNode>(action: TraverseAction<T>) -> Self {
@@ -84,10 +74,12 @@ impl WalkMut {
         }
     }
 
-    /// Result of an exit hook that did not return `Continue`. A descendant's
-    /// stop is preserved, but the exit hook can still replace its node.
+    /// Result of an exit hook that did not return `Continue`. `children` is
+    /// `Stopped` when a descendant stopped the traversal. The stop is
+    /// preserved, but the exit hook can still replace its node.
     #[inline]
-    pub(crate) fn exit<T: AstNode>(action: TraverseAction<T>, stopped: bool) -> Self {
+    pub(crate) fn exit<T: AstNode>(action: TraverseAction<T>, children: Self) -> Self {
+        let stopped = matches!(children, Self::Stopped);
         match action {
             TraverseAction::ReplaceContinue(node) | TraverseAction::ReplaceSkip(node)
                 if stopped =>
@@ -222,3 +214,125 @@ dummy_visit_mut_impl!(TsTypeOperatorKind);
 dummy_visit_mut_impl!(TsMethodSignatureKind);
 dummy_visit_mut_impl!(TsModuleDeclarationKind);
 dummy_visit_mut_impl!(TsMappedTypeModifier);
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+
+    use crate::{
+        Ast, BinaryExpression, BinaryOperator, DUMMY_SP, Expr, ExpressionStatement,
+        IdentifierReference, NodeKind, TraverseAction, TraverseMut, TraverseMutCtx,
+        TraverseMutWith,
+    };
+
+    /// Stops at the first identifier and records the hooks that still run.
+    struct StopAtIdentifier {
+        replace_binary: bool,
+        hooks: Vec<&'static str>,
+    }
+
+    impl<'a> TraverseMut<'a> for StopAtIdentifier {
+        fn enter_identifier_reference(
+            &mut self,
+            _node: IdentifierReference,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<IdentifierReference> {
+            self.hooks.push("enter_identifier_reference");
+            TraverseAction::Stop
+        }
+
+        fn exit_binary_expression(
+            &mut self,
+            _node: BinaryExpression,
+            ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<BinaryExpression> {
+            self.hooks.push("exit_binary_expression");
+            if self.replace_binary {
+                let left = Expr::NullLiteral(ctx.ast.null_literal(DUMMY_SP));
+                let right = Expr::NullLiteral(ctx.ast.null_literal(DUMMY_SP));
+                let replacement =
+                    ctx.ast
+                        .binary_expression(DUMMY_SP, left, right, BinaryOperator::Add);
+                TraverseAction::ReplaceContinue(replacement)
+            } else {
+                TraverseAction::Continue
+            }
+        }
+
+        fn exit_expr(
+            &mut self,
+            _node: Expr,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<Expr> {
+            self.hooks.push("exit_expr");
+            TraverseAction::Continue
+        }
+
+        fn exit_expression_statement(
+            &mut self,
+            _node: ExpressionStatement,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<ExpressionStatement> {
+            self.hooks.push("exit_expression_statement");
+            TraverseAction::Continue
+        }
+    }
+
+    fn statement(ast: &mut Ast<'_>) -> ExpressionStatement {
+        let a = ast.add_utf8("a");
+        let a = Expr::IdentifierReference(ast.identifier_reference(DUMMY_SP, a));
+        let b = ast.add_utf8("b");
+        let b = Expr::IdentifierReference(ast.identifier_reference(DUMMY_SP, b));
+        let binary = ast.binary_expression(DUMMY_SP, a, b, BinaryOperator::Add);
+        ast.expression_statement(DUMMY_SP, Expr::BinaryExpression(binary))
+    }
+
+    fn traverse(
+        ast: &mut Ast<'_>,
+        stmt: ExpressionStatement,
+        replace_binary: bool,
+    ) -> (TraverseAction<ExpressionStatement>, Vec<&'static str>) {
+        let mut traverser = StopAtIdentifier {
+            replace_binary,
+            hooks: Vec::new(),
+        };
+        let mut ctx = TraverseMutCtx::new(ast, ());
+        let action = stmt.traverse_mut_with(&mut traverser, &mut ctx);
+        (action, traverser.hooks)
+    }
+
+    #[test]
+    fn traverse_mut_descendant_stop() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+
+        let stmt = statement(&mut ast);
+        let (action, hooks) = traverse(&mut ast, stmt, false);
+        assert_eq!(action, TraverseAction::Stop);
+        assert_eq!(
+            hooks,
+            [
+                "enter_identifier_reference",
+                "exit_binary_expression",
+                "exit_expr",
+                "exit_expression_statement"
+            ]
+        );
+
+        let stmt = statement(&mut ast);
+        let original = stmt.expression(&ast).node_id();
+        let (action, hooks) = traverse(&mut ast, stmt, true);
+        assert_eq!(action, TraverseAction::Stop);
+        assert_eq!(
+            hooks,
+            [
+                "enter_identifier_reference",
+                "exit_binary_expression",
+                "exit_expression_statement"
+            ]
+        );
+        let replacement = stmt.expression(&ast).node_id();
+        assert_ne!(replacement, original);
+        assert_eq!(ast.node_kind(replacement), NodeKind::BinaryExpression);
+    }
+}

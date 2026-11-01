@@ -34398,7 +34398,7 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.directives(ctx.ast),
             traverser,
@@ -34406,13 +34406,13 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.hashbang(ctx.ast),
@@ -34421,15 +34421,15 @@ fn walk_mut_program<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_hashbang(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_program(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34446,7 +34446,7 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BlockStatement => {
             walk_mut_block_statement(BlockStatement(node.0), traverser, ctx)
         }
@@ -34525,18 +34525,17 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         ),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_stmt(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34553,7 +34552,7 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
         }
@@ -34580,18 +34579,17 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_decl(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34608,7 +34606,7 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
         }
@@ -34709,18 +34707,17 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_expr(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34737,7 +34734,7 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
         }
@@ -34759,18 +34756,17 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_binding_pattern(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34787,7 +34783,7 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::MemberExpression
         | NodeKind::TsAsExpression
@@ -34800,18 +34796,17 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_assignment_target(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34828,7 +34823,7 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
         }
@@ -34849,18 +34844,17 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_simple_assignment_target(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34877,7 +34871,7 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
         }
@@ -34923,18 +34917,17 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_property_key(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34951,25 +34944,24 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
         }
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_module_export_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -34986,7 +34978,7 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -35030,18 +35022,17 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_argument(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35058,25 +35049,24 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::ObjectProperty => {
             walk_mut_object_property(ObjectProperty(node.0), traverser, ctx)
         }
         NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_object_property_kind(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35093,7 +35083,7 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
         }
@@ -35139,18 +35129,17 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_for_statement_init(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35167,7 +35156,7 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
         }
@@ -35183,18 +35172,17 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_for_statement_left(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35211,7 +35199,7 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::FunctionBody => walk_mut_function_body(FunctionBody(node.0), traverser, ctx),
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
@@ -35255,18 +35243,17 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_arrow_function_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35283,7 +35270,7 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::FormalParameter => {
             walk_mut_formal_parameter(FormalParameter(node.0), traverser, ctx)
         }
@@ -35292,18 +35279,17 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_formal_parameter_item(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35320,7 +35306,7 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
         }
@@ -35328,18 +35314,17 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_formal_parameter_pattern(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35356,7 +35341,7 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::MethodDefinition => {
             walk_mut_method_definition(MethodDefinition(node.0), traverser, ctx)
         }
@@ -35372,18 +35357,17 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_class_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35400,7 +35384,7 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::ImportSpecifier => {
             walk_mut_import_specifier(ImportSpecifier(node.0), traverser, ctx)
         }
@@ -35412,18 +35396,17 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_import_declaration_specifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35440,7 +35423,7 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::Function => {
             let concrete = Function(node.0);
             if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
@@ -35501,18 +35484,17 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_export_default_declaration_kind(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35529,12 +35511,12 @@ fn walk_mut_super<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_super(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35551,12 +35533,12 @@ fn walk_mut_this_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_this_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35573,12 +35555,12 @@ fn walk_mut_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_string_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35595,12 +35577,12 @@ fn walk_mut_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_numeric_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35617,12 +35599,12 @@ fn walk_mut_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_big_int_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35639,12 +35621,12 @@ fn walk_mut_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_boolean_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35661,12 +35643,12 @@ fn walk_mut_null_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_null_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35683,12 +35665,12 @@ fn walk_mut_reg_exp_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_reg_exp_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35705,12 +35687,12 @@ fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasis(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.expressions(ctx.ast),
@@ -35719,15 +35701,15 @@ fn walk_mut_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expressions(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_template_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35744,12 +35726,12 @@ fn walk_mut_template_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_template_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35766,12 +35748,12 @@ fn walk_mut_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_identifier_reference(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35788,12 +35770,12 @@ fn walk_mut_private_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_private_identifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35810,12 +35792,12 @@ fn walk_mut_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_binding_identifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35832,12 +35814,12 @@ fn walk_mut_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_identifier_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35854,12 +35836,12 @@ fn walk_mut_label_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_label_identifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35876,26 +35858,26 @@ fn walk_mut_assignment_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_assignment_pattern(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35912,7 +35894,7 @@ fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -35920,15 +35902,15 @@ fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_binding_rest_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35945,7 +35927,7 @@ fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.elements(ctx.ast),
             traverser,
@@ -35953,21 +35935,21 @@ fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_elements(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_array_pattern(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -35984,7 +35966,7 @@ fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.properties(ctx.ast),
             traverser,
@@ -35992,21 +35974,21 @@ fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_properties(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_object_pattern(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36023,26 +36005,26 @@ fn walk_mut_binding_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_binding_property(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36059,26 +36041,26 @@ fn walk_mut_binary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_binary_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36095,26 +36077,26 @@ fn walk_mut_logical_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_logical_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36131,12 +36113,12 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.consequent(ctx.ast),
@@ -36145,7 +36127,7 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.alternate(ctx.ast),
@@ -36154,15 +36136,15 @@ fn walk_mut_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_alternate(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_conditional_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36179,7 +36161,7 @@ fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -36187,15 +36169,15 @@ fn walk_mut_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_unary_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36212,7 +36194,7 @@ fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -36220,15 +36202,15 @@ fn walk_mut_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_update_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36245,26 +36227,26 @@ fn walk_mut_assignment_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_assignment_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36281,7 +36263,7 @@ fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.declarators(ctx.ast),
             traverser,
@@ -36289,15 +36271,15 @@ fn walk_mut_variable_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_declarators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_variable_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36314,12 +36296,12 @@ fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -36328,21 +36310,21 @@ fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_init(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_variable_declarator(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36359,12 +36341,12 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.consequent(ctx.ast),
@@ -36373,7 +36355,7 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.alternate(ctx.ast),
@@ -36382,15 +36364,15 @@ fn walk_mut_if_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_alternate(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_if_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36407,7 +36389,7 @@ fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.discriminant(ctx.ast),
             traverser,
@@ -36415,21 +36397,21 @@ fn walk_mut_switch_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_discriminant(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.cases(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_cases(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_switch_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36446,12 +36428,12 @@ fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.consequent(ctx.ast),
@@ -36460,15 +36442,15 @@ fn walk_mut_switch_case<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_consequent(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_switch_case(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36485,38 +36467,38 @@ fn walk_mut_for_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.init(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_init(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.update(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_update(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_for_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36533,32 +36515,32 @@ fn walk_mut_for_in_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_for_in_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36575,32 +36557,32 @@ fn walk_mut_for_of_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_for_of_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36617,18 +36599,18 @@ fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.block(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_block(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.handler(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_handler(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.finalizer(ctx.ast),
@@ -36637,15 +36619,15 @@ fn walk_mut_try_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_finalizer(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_try_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36662,12 +36644,12 @@ fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.param(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_param(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -36676,21 +36658,21 @@ fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_catch_clause(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36707,20 +36689,20 @@ fn walk_mut_break_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_break_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36737,20 +36719,20 @@ fn walk_mut_continue_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_continue_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36767,26 +36749,26 @@ fn walk_mut_labeled_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_labeled_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36803,7 +36785,7 @@ fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -36811,15 +36793,15 @@ fn walk_mut_expression_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_expression_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36836,7 +36818,7 @@ fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -36844,15 +36826,15 @@ fn walk_mut_return_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_return_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36869,7 +36851,7 @@ fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -36877,15 +36859,15 @@ fn walk_mut_throw_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_throw_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36902,12 +36884,12 @@ fn walk_mut_debugger_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_debugger_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36924,12 +36906,12 @@ fn walk_mut_empty_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_empty_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36946,7 +36928,7 @@ fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -36954,15 +36936,15 @@ fn walk_mut_directive<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_directive(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -36979,7 +36961,7 @@ fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -36987,15 +36969,15 @@ fn walk_mut_decorator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_decorator(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37012,7 +36994,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -37020,13 +37002,13 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -37035,7 +37017,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.super_class(ctx.ast),
@@ -37044,7 +37026,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_super_class(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.super_type_arguments(ctx.ast),
@@ -37053,7 +37035,7 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_super_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.implements(ctx.ast),
@@ -37062,21 +37044,21 @@ fn walk_mut_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_implements(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_class(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37093,20 +37075,20 @@ fn walk_mut_class_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_class_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37123,7 +37105,7 @@ fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -37131,27 +37113,27 @@ fn walk_mut_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_method_definition(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37168,7 +37150,7 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -37176,13 +37158,13 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -37191,21 +37173,21 @@ fn walk_mut_property_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_property_definition(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37222,20 +37204,20 @@ fn walk_mut_static_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_static_block(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37252,12 +37234,12 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -37266,7 +37248,7 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.this_param(ctx.ast),
@@ -37275,13 +37257,13 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -37290,21 +37272,21 @@ fn walk_mut_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_function(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37321,7 +37303,7 @@ fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.directives(ctx.ast),
             traverser,
@@ -37329,21 +37311,21 @@ fn walk_mut_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_function_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37360,20 +37342,20 @@ fn walk_mut_block_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_block_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37390,26 +37372,26 @@ fn walk_mut_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_while_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37426,26 +37408,26 @@ fn walk_mut_do_while_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.test(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_test(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_do_while_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37462,26 +37444,26 @@ fn walk_mut_with_statement<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_with_statement(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37498,26 +37480,26 @@ fn walk_mut_formal_parameters<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.items(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_items(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_formal_parameters(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37534,7 +37516,7 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -37542,13 +37524,13 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.pattern(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_pattern(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -37557,7 +37539,7 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.initializer(ctx.ast),
@@ -37566,15 +37548,15 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_initializer(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_formal_parameter(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37591,7 +37573,7 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -37599,7 +37581,7 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.argument(ctx.ast),
@@ -37608,7 +37590,7 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -37617,15 +37599,15 @@ fn walk_mut_formal_parameter_rest<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_formal_parameter_rest(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37642,7 +37624,7 @@ fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.elements(ctx.ast),
             traverser,
@@ -37650,15 +37632,15 @@ fn walk_mut_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_elements(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_array_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37675,7 +37657,7 @@ fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.properties(ctx.ast),
             traverser,
@@ -37683,15 +37665,15 @@ fn walk_mut_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_properties(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_object_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37708,7 +37690,7 @@ fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -37716,15 +37698,15 @@ fn walk_mut_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_spread_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37741,26 +37723,26 @@ fn walk_mut_object_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_object_property(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37777,7 +37759,7 @@ fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -37785,15 +37767,15 @@ fn walk_mut_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_parenthesized_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37810,7 +37792,7 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
             traverser,
@@ -37818,13 +37800,13 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -37833,21 +37815,21 @@ fn walk_mut_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, Sta
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_arrow_function_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37864,7 +37846,7 @@ fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expressions(ctx.ast),
             traverser,
@@ -37872,15 +37854,15 @@ fn walk_mut_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expressions(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_sequence_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37897,12 +37879,12 @@ fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.property(ctx.ast),
@@ -37911,15 +37893,15 @@ fn walk_mut_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_member_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37936,12 +37918,12 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_callee(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -37950,7 +37932,7 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.arguments(ctx.ast),
@@ -37959,15 +37941,15 @@ fn walk_mut_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_call_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -37984,7 +37966,7 @@ fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -37992,15 +37974,15 @@ fn walk_mut_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_chain_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38017,12 +37999,12 @@ fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, St
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.tag(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_tag(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -38031,21 +38013,21 @@ fn walk_mut_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, St
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.quasi(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasi(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_tagged_template_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38062,12 +38044,12 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.callee(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_callee(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -38076,7 +38058,7 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.arguments(ctx.ast),
@@ -38085,15 +38067,15 @@ fn walk_mut_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_new_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38110,7 +38092,7 @@ fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -38118,15 +38100,15 @@ fn walk_mut_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_await_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38143,7 +38125,7 @@ fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -38151,15 +38133,15 @@ fn walk_mut_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_yield_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38176,12 +38158,12 @@ fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.meta(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_meta(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.property(ctx.ast),
@@ -38190,15 +38172,15 @@ fn walk_mut_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_meta_property(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38215,26 +38197,26 @@ fn walk_mut_import_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_options(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38251,7 +38233,7 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.specifiers(ctx.ast),
             traverser,
@@ -38259,13 +38241,13 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.attributes(ctx.ast),
@@ -38274,15 +38256,15 @@ fn walk_mut_import_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38299,7 +38281,7 @@ fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.imported(ctx.ast),
             traverser,
@@ -38307,21 +38289,21 @@ fn walk_mut_import_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_imported(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_specifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38338,20 +38320,20 @@ fn walk_mut_import_default_specifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_default_specifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38368,20 +38350,20 @@ fn walk_mut_import_namespace_specifier<'a, State, T: ?Sized + TraverseMut<'a, St
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_namespace_specifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38398,26 +38380,26 @@ fn walk_mut_import_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_import_attribute(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38434,7 +38416,7 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.declaration(ctx.ast),
             traverser,
@@ -38442,7 +38424,7 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_declaration(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.specifiers(ctx.ast),
@@ -38451,13 +38433,13 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_specifiers(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.attributes(ctx.ast),
@@ -38466,15 +38448,15 @@ fn walk_mut_export_named_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_export_named_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38491,7 +38473,7 @@ fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, St
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.declaration(ctx.ast),
             traverser,
@@ -38499,15 +38481,15 @@ fn walk_mut_export_default_declaration<'a, State, T: ?Sized + TraverseMut<'a, St
             |ctx, replacement| node.set_declaration(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_export_default_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38524,7 +38506,7 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.exported(ctx.ast),
             traverser,
@@ -38532,13 +38514,13 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_exported(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.attributes(ctx.ast),
@@ -38547,15 +38529,15 @@ fn walk_mut_export_all_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_export_all_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38572,12 +38554,12 @@ fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.local(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_local(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.exported(ctx.ast),
@@ -38586,15 +38568,15 @@ fn walk_mut_export_specifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_exported(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_export_specifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38611,12 +38593,12 @@ fn walk_mut_hashbang<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_hashbang(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38633,7 +38615,7 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsAnyKeyword => walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx),
         NodeKind::TsUnknownKeyword => {
             walk_mut_ts_unknown_keyword(TsUnknownKeyword(node.0), traverser, ctx)
@@ -38722,18 +38704,17 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::TsMappedType => walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38750,7 +38731,7 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
         }
@@ -38759,18 +38740,17 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_type_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38787,7 +38767,7 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
         }
@@ -38805,18 +38785,17 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_qualified_name_left(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38833,7 +38812,7 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
         }
@@ -38842,18 +38821,17 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_import_type_qualifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38870,7 +38848,7 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
             walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
         }
@@ -38880,18 +38858,17 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
         NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_type_query_expr_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38908,7 +38885,7 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
         NodeKind::NumericLiteral => {
             walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx)
@@ -38925,18 +38902,17 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -38953,7 +38929,7 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsAnyKeyword
         | NodeKind::TsUnknownKeyword
         | NodeKind::TsNeverKeyword
@@ -38997,18 +38973,17 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_tuple_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39025,7 +39000,7 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsPropertySignature => {
             walk_mut_ts_property_signature(TsPropertySignature(node.0), traverser, ctx)
         }
@@ -39047,18 +39022,17 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_type_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39075,25 +39049,24 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
         }
         NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_type_predicate_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39110,7 +39083,7 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
         }
@@ -39120,18 +39093,17 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_enum_member_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39148,7 +39120,7 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
         }
@@ -39158,18 +39130,17 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_module_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39186,25 +39157,24 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsModuleBlock => walk_mut_ts_module_block(TsModuleBlock(node.0), traverser, ctx),
         NodeKind::TsModuleDeclaration => {
             walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_module_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39221,7 +39191,7 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
             walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
         }
@@ -39230,18 +39200,17 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_ts_module_reference(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39258,12 +39227,12 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -39272,7 +39241,7 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.this_param(ctx.ast),
@@ -39281,13 +39250,13 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -39296,15 +39265,15 @@ fn walk_mut_ts_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_function(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39321,7 +39290,7 @@ fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -39329,27 +39298,27 @@ fn walk_mut_ts_method_definition<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_method_definition(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39366,7 +39335,7 @@ fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -39374,15 +39343,15 @@ fn walk_mut_ts_type_annotation<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_annotation(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39399,12 +39368,12 @@ fn walk_mut_ts_any_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_any_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39421,12 +39390,12 @@ fn walk_mut_ts_unknown_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_unknown_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39443,12 +39412,12 @@ fn walk_mut_ts_never_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_never_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39465,12 +39434,12 @@ fn walk_mut_ts_void_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_void_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39487,12 +39456,12 @@ fn walk_mut_ts_null_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_null_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39509,12 +39478,12 @@ fn walk_mut_ts_undefined_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_undefined_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39531,12 +39500,12 @@ fn walk_mut_ts_string_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_string_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39553,12 +39522,12 @@ fn walk_mut_ts_number_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_number_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39575,12 +39544,12 @@ fn walk_mut_ts_big_int_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_big_int_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39597,12 +39566,12 @@ fn walk_mut_ts_boolean_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_boolean_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39619,12 +39588,12 @@ fn walk_mut_ts_symbol_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_symbol_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39641,12 +39610,12 @@ fn walk_mut_ts_object_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_object_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39663,12 +39632,12 @@ fn walk_mut_ts_intrinsic_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_intrinsic_keyword(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39685,12 +39654,12 @@ fn walk_mut_ts_this_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_this_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39707,7 +39676,7 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_name(ctx.ast),
             traverser,
@@ -39715,7 +39684,7 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_name(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -39724,15 +39693,15 @@ fn walk_mut_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_reference(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39749,26 +39718,26 @@ fn walk_mut_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.left(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_left(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.right(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_right(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_qualified_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39785,7 +39754,7 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expr_name(ctx.ast),
             traverser,
@@ -39793,7 +39762,7 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expr_name(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -39802,15 +39771,15 @@ fn walk_mut_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_query(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39827,18 +39796,18 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.source(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_source(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.options(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_options(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.qualifier(ctx.ast),
@@ -39847,7 +39816,7 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_qualifier(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -39856,15 +39825,15 @@ fn walk_mut_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_import_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39881,12 +39850,12 @@ fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.constraint(ctx.ast),
@@ -39895,21 +39864,21 @@ fn walk_mut_ts_type_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_constraint(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.default(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_default(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_parameter(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39926,20 +39895,20 @@ fn walk_mut_ts_type_parameter_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_parameter_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39956,20 +39925,20 @@ fn walk_mut_ts_type_parameter_instantiation<'a, State, T: ?Sized + TraverseMut<'
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_parameter_instantiation(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -39986,20 +39955,20 @@ fn walk_mut_ts_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.literal(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_literal(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_literal_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40016,26 +39985,26 @@ fn walk_mut_ts_template_literal_type<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.quasis(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_quasis(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_template_literal_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40052,7 +40021,7 @@ fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.element_type(ctx.ast),
             traverser,
@@ -40060,15 +40029,15 @@ fn walk_mut_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_element_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_array_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40085,7 +40054,7 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.object_type(ctx.ast),
             traverser,
@@ -40093,7 +40062,7 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_object_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.index_type(ctx.ast),
@@ -40102,15 +40071,15 @@ fn walk_mut_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_index_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_indexed_access_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40127,7 +40096,7 @@ fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.element_types(ctx.ast),
             traverser,
@@ -40135,15 +40104,15 @@ fn walk_mut_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_element_types(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_tuple_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40160,12 +40129,12 @@ fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.label(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_label(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.element_type(ctx.ast),
@@ -40174,15 +40143,15 @@ fn walk_mut_ts_named_tuple_member<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_element_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_named_tuple_member(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40199,7 +40168,7 @@ fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40207,15 +40176,15 @@ fn walk_mut_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_optional_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40232,7 +40201,7 @@ fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40240,15 +40209,15 @@ fn walk_mut_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_rest_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40265,7 +40234,7 @@ fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40273,15 +40242,15 @@ fn walk_mut_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_js_doc_nullable_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40298,7 +40267,7 @@ fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, S
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40306,15 +40275,15 @@ fn walk_mut_ts_js_doc_non_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, S
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_js_doc_non_nullable_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40331,12 +40300,12 @@ fn walk_mut_ts_js_doc_unknown_type<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_ts_js_doc_unknown_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40353,20 +40322,20 @@ fn walk_mut_ts_union_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_union_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40383,20 +40352,20 @@ fn walk_mut_ts_intersection_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.types(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_types(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_intersection_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40413,7 +40382,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.check_type(ctx.ast),
             traverser,
@@ -40421,7 +40390,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_check_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.extends_type(ctx.ast),
@@ -40430,7 +40399,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_extends_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.true_type(ctx.ast),
@@ -40439,7 +40408,7 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_true_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.false_type(ctx.ast),
@@ -40448,15 +40417,15 @@ fn walk_mut_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_false_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_conditional_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40473,7 +40442,7 @@ fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameter(ctx.ast),
             traverser,
@@ -40481,15 +40450,15 @@ fn walk_mut_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameter(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_infer_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40506,7 +40475,7 @@ fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40514,15 +40483,15 @@ fn walk_mut_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_operator(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40539,7 +40508,7 @@ fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -40547,15 +40516,15 @@ fn walk_mut_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_parenthesized_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40572,7 +40541,7 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
             traverser,
@@ -40580,7 +40549,7 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.this_param(ctx.ast),
@@ -40589,13 +40558,13 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -40604,15 +40573,15 @@ fn walk_mut_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_function_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40629,7 +40598,7 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
             traverser,
@@ -40637,13 +40606,13 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -40652,15 +40621,15 @@ fn walk_mut_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_constructor_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40677,7 +40646,7 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.parameter_name(ctx.ast),
             traverser,
@@ -40685,7 +40654,7 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_parameter_name(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -40694,15 +40663,15 @@ fn walk_mut_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_predicate(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40719,20 +40688,20 @@ fn walk_mut_ts_type_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_members(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_literal(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40749,12 +40718,12 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.constraint(ctx.ast),
@@ -40763,7 +40732,7 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_constraint(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.name_type(ctx.ast),
@@ -40772,7 +40741,7 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_name_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -40781,15 +40750,15 @@ fn walk_mut_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_mapped_type(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40806,12 +40775,12 @@ fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -40820,15 +40789,15 @@ fn walk_mut_ts_property_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_property_signature(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40845,12 +40814,12 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.key(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_key(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -40859,7 +40828,7 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.this_param(ctx.ast),
@@ -40868,13 +40837,13 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -40883,15 +40852,15 @@ fn walk_mut_ts_method_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_method_signature(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40908,7 +40877,7 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
             traverser,
@@ -40916,7 +40885,7 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.this_param(ctx.ast),
@@ -40925,13 +40894,13 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             |ctx, replacement| node.set_this_param(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -40940,15 +40909,15 @@ fn walk_mut_ts_call_signature_declaration<'a, State, T: ?Sized + TraverseMut<'a,
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_call_signature_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -40965,7 +40934,7 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
             traverser,
@@ -40973,13 +40942,13 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.params(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_params(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.return_type(ctx.ast),
@@ -40988,15 +40957,15 @@ fn walk_mut_ts_construct_signature_declaration<'a, State, T: ?Sized + TraverseMu
             |ctx, replacement| node.set_return_type(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_construct_signature_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41013,7 +40982,7 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.parameters(ctx.ast),
             traverser,
@@ -41021,7 +40990,7 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -41030,15 +40999,15 @@ fn walk_mut_ts_index_signature<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_index_signature(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41055,12 +41024,12 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -41069,7 +41038,7 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -41078,15 +41047,15 @@ fn walk_mut_ts_type_alias_declaration<'a, State, T: ?Sized + TraverseMut<'a, Sta
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_alias_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41103,12 +41072,12 @@ fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_parameters(ctx.ast),
@@ -41117,27 +41086,27 @@ fn walk_mut_ts_interface_declaration<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_type_parameters(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.extends(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_extends(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_interface_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41154,20 +41123,20 @@ fn walk_mut_ts_interface_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_interface_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41184,7 +41153,7 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41192,7 +41161,7 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -41201,15 +41170,15 @@ fn walk_mut_ts_interface_heritage<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_interface_heritage(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41226,7 +41195,7 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41234,7 +41203,7 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -41243,15 +41212,15 @@ fn walk_mut_ts_class_implements<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_class_implements(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41268,26 +41237,26 @@ fn walk_mut_ts_enum_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_enum_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41304,20 +41273,20 @@ fn walk_mut_ts_enum_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.members(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_members(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_enum_body(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41334,12 +41303,12 @@ fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.initializer(ctx.ast),
@@ -41348,15 +41317,15 @@ fn walk_mut_ts_enum_member<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_initializer(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_enum_member(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41373,26 +41342,26 @@ fn walk_mut_ts_module_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_module_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41409,7 +41378,7 @@ fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.directives(ctx.ast),
             traverser,
@@ -41417,21 +41386,21 @@ fn walk_mut_ts_module_block<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_directives(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_module_block(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41448,26 +41417,26 @@ fn walk_mut_ts_global_declaration<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.body(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_body(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_global_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41484,7 +41453,7 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.decorators(ctx.ast),
             traverser,
@@ -41492,7 +41461,7 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_decorators(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.parameter(ctx.ast),
@@ -41501,15 +41470,15 @@ fn walk_mut_ts_parameter_property<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_parameter(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_parameter_property(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41526,7 +41495,7 @@ fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -41534,15 +41503,15 @@ fn walk_mut_ts_this_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_this_parameter(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41559,7 +41528,7 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41567,7 +41536,7 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -41576,15 +41545,15 @@ fn walk_mut_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_as_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41601,7 +41570,7 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41609,7 +41578,7 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -41618,15 +41587,15 @@ fn walk_mut_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_satisfies_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41643,7 +41612,7 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
             traverser,
@@ -41651,7 +41620,7 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.expression(ctx.ast),
@@ -41660,15 +41629,15 @@ fn walk_mut_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_type_assertion(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41685,7 +41654,7 @@ fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41693,15 +41662,15 @@ fn walk_mut_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_non_null_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41718,7 +41687,7 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41726,7 +41695,7 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -41735,15 +41704,15 @@ fn walk_mut_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, S
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_instantiation_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41760,7 +41729,7 @@ fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41768,15 +41737,15 @@ fn walk_mut_ts_export_assignment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_export_assignment(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41793,20 +41762,20 @@ fn walk_mut_ts_namespace_export_declaration<'a, State, T: ?Sized + TraverseMut<'
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_namespace_export_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41823,12 +41792,12 @@ fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.module_reference(ctx.ast),
@@ -41837,15 +41806,15 @@ fn walk_mut_ts_import_equals_declaration<'a, State, T: ?Sized + TraverseMut<'a, 
             |ctx, replacement| node.set_module_reference(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_import_equals_declaration(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41862,7 +41831,7 @@ fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -41870,15 +41839,15 @@ fn walk_mut_ts_external_module_reference<'a, State, T: ?Sized + TraverseMut<'a, 
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_external_module_reference(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41895,12 +41864,12 @@ fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_annotation(ctx.ast),
@@ -41909,15 +41878,15 @@ fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, 
             |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_ts_index_signature_parameter(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41934,7 +41903,7 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
         NodeKind::JsxNamespacedName => {
             walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
@@ -41944,18 +41913,17 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_element_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -41972,25 +41940,24 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
         NodeKind::JsxMemberExpression => {
             walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_member_expression_object(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42007,25 +41974,24 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
         NodeKind::JsxNamespacedName => {
             walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_attribute_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42042,25 +42008,24 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxAttribute => walk_mut_jsx_attribute(JsxAttribute(node.0), traverser, ctx),
         NodeKind::JsxSpreadAttribute => {
             walk_mut_jsx_spread_attribute(JsxSpreadAttribute(node.0), traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_attribute_item(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42077,7 +42042,7 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
         NodeKind::JsxExpressionContainer => {
             walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
@@ -42086,18 +42051,17 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_attribute_value(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42114,7 +42078,7 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -42160,18 +42124,17 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42188,7 +42151,7 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxText => walk_mut_jsx_text(JsxText(node.0), traverser, ctx),
         NodeKind::JsxExpressionContainer => {
             walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
@@ -42200,18 +42163,17 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
     } {
-        WalkMut::Continue => false,
-        WalkMut::Stopped => true,
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
     match traverser.exit_jsx_child(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42228,7 +42190,7 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.opening_element(ctx.ast),
             traverser,
@@ -42236,7 +42198,7 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_opening_element(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.children(ctx.ast),
@@ -42245,7 +42207,7 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_children(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.closing_element(ctx.ast),
@@ -42254,15 +42216,15 @@ fn walk_mut_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_closing_element(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42279,12 +42241,12 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.type_arguments(ctx.ast),
@@ -42293,7 +42255,7 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_type_arguments(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.attributes(ctx.ast),
@@ -42302,15 +42264,15 @@ fn walk_mut_jsx_opening_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_attributes(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_opening_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42327,20 +42289,20 @@ fn walk_mut_jsx_closing_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_closing_element(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42357,7 +42319,7 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.opening_fragment(ctx.ast),
             traverser,
@@ -42365,7 +42327,7 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_opening_fragment(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.children(ctx.ast),
@@ -42374,7 +42336,7 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_children(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.closing_fragment(ctx.ast),
@@ -42383,15 +42345,15 @@ fn walk_mut_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_closing_fragment(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_fragment(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42408,12 +42370,12 @@ fn walk_mut_jsx_opening_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_jsx_opening_fragment(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42430,12 +42392,12 @@ fn walk_mut_jsx_closing_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_jsx_closing_fragment(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42452,12 +42414,12 @@ fn walk_mut_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_jsx_identifier(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42474,7 +42436,7 @@ fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.namespace(ctx.ast),
             traverser,
@@ -42482,21 +42444,21 @@ fn walk_mut_jsx_namespaced_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_namespace(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_namespaced_name(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42513,12 +42475,12 @@ fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.object(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_object(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(
             node.property(ctx.ast),
@@ -42527,15 +42489,15 @@ fn walk_mut_jsx_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>
             |ctx, replacement| node.set_property(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_member_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42552,26 +42514,26 @@ fn walk_mut_jsx_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(node.name(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_name(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
         if traverse_mut_slot(node.value(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_value(ctx.ast, replacement)
         }) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_attribute(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42588,7 +42550,7 @@ fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.argument(ctx.ast),
             traverser,
@@ -42596,15 +42558,15 @@ fn walk_mut_jsx_spread_attribute<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_spread_attribute(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42621,7 +42583,7 @@ fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -42629,15 +42591,15 @@ fn walk_mut_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, Stat
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_expression_container(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42654,12 +42616,12 @@ fn walk_mut_jsx_empty_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_jsx_empty_expression(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42676,12 +42638,12 @@ fn walk_mut_jsx_text<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = false;
+    let children = WalkMut::Continue;
     match traverser.exit_jsx_text(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
@@ -42698,7 +42660,7 @@ fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let stopped = 'children: {
+    let children = 'children: {
         if traverse_mut_slot(
             node.expression(ctx.ast),
             traverser,
@@ -42706,15 +42668,15 @@ fn walk_mut_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             |ctx, replacement| node.set_expression(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
-            break 'children true;
+            break 'children WalkMut::Stopped;
         }
-        false
+        WalkMut::Continue
     };
     match traverser.exit_jsx_spread_child(node, ctx) {
-        TraverseAction::Continue => WalkMut::children(stopped),
+        TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
-            WalkMut::exit(action, stopped)
+            WalkMut::exit(action, children)
         }
     }
 }
