@@ -1,0 +1,209 @@
+name: Paired Wall-Time Benchmarks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/paired-walltime.yml'
+      - '.github/scripts/paired-walltime.mjs'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'tasks/benchmark/**'
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base branch, tag, or full commit SHA
+        required: true
+        type: string
+      head:
+        description: Head branch, tag, or full commit SHA
+        required: true
+        type: string
+      rounds:
+        description: Number of base/head rounds
+        default: 5
+        type: number
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paired-walltime-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  measure:
+    name: Compare base and head wall time
+    if: >-
+      github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'Codspeed') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'Codspeed'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Resolve revisions and preserve the benchmark script
+        id: revisions
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_BASE: ${{ inputs.base }}
+          INPUT_HEAD: ${{ inputs.head }}
+        run: |
+          cp .github/scripts/paired-walltime.mjs "$RUNNER_TEMP/paired-walltime.mjs"
+
+          resolve_remote() {
+            git fetch --no-tags -- origin "$1" || return $?
+            git rev-parse --verify 'FETCH_HEAD^{commit}'
+          }
+
+          # A push compares the pushed commit with its first parent. A pull
+          # request compares its merge commit with the base branch commit. A
+          # manual run compares the two selected revisions.
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              base_sha="$(git rev-parse --verify "${EVENT_SHA}^1^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              ;;
+            pull_request)
+              base_sha="$(git rev-parse --verify "${PR_BASE_SHA}^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              ;;
+            workflow_dispatch)
+              base_sha="$(resolve_remote "$INPUT_BASE")"
+              head_sha="$(resolve_remote "$INPUT_HEAD")"
+              # Use the head revision's toolchain for both builds.
+              git checkout --detach "$head_sha"
+              ;;
+          esac
+          {
+            echo "BASE_SHA=$base_sha"
+            echo "HEAD_SHA=$head_sha"
+            echo "SCRIPT=$RUNNER_TEMP/paired-walltime.mjs"
+            echo "RESULTS_DIR=$RUNNER_TEMP/paired-walltime"
+          } >> "$GITHUB_ENV"
+          echo "Base: $base_sha, head: $head_sha"
+
+      - name: Setup rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          cache-save-if: ${{ github.event_name == 'push' }}
+
+      - name: Keep the same Rust toolchain for base and head
+        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+
+      - name: Build base benchmarks
+        run: |
+          git checkout --detach "$BASE_SHA"
+          node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/base"
+
+      - name: Build head benchmarks
+        run: |
+          git checkout --detach "$HEAD_SHA"
+          node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/head"
+
+      - name: Run base and head benchmarks in rounds
+        env:
+          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 5 }}
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          node "$SCRIPT" run \
+            "$RUNNER_TEMP/paired-walltime-bin/base" \
+            "$RUNNER_TEMP/paired-walltime-bin/head" \
+            "$RESULTS_DIR/results.json"
+          node "$SCRIPT" render "$RESULTS_DIR/results.json" > "$RESULTS_DIR/summary.md"
+          cat "$RESULTS_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paired-walltime
+          path: |
+            ${{ runner.temp }}/paired-walltime/results.json
+            ${{ runner.temp }}/paired-walltime/summary.md
+          if-no-files-found: error
+          retention-days: 90
+
+  comment-pull-request:
+    name: Comment on pull request
+    needs: measure
+    # Fork pull requests get only the job summary.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: paired-walltime
+          path: ${{ runner.temp }}/paired-walltime
+      - name: Create or update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          marker='<!-- paired-walltime-benchmark -->'
+          comment="$RUNNER_TEMP/comment.md"
+          {
+            echo "$marker"
+            cat "$RUNNER_TEMP/paired-walltime/summary.md"
+            echo
+            echo "[Workflow run]($RUN_URL)"
+          } > "$comment"
+
+          comment_ids="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+              --jq ".[] | select(.body | contains(\"$marker\")) | .id"
+          )"
+          comment_id="${comment_ids%%$'\n'*}"
+          if [[ -n "$comment_id" ]]
+          then
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -F body=@"$comment" > /dev/null
+          else
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -F body=@"$comment" > /dev/null
+          fi
+
+  comment-commit:
+    name: Comment on commit
+    needs: measure
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: paired-walltime
+          path: ${{ runner.temp }}/paired-walltime
+      - name: Create the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          comment="$RUNNER_TEMP/comment.md"
+          {
+            cat "$RUNNER_TEMP/paired-walltime/summary.md"
+            echo
+            echo "[Workflow run]($RUN_URL)"
+          } > "$comment"
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -F body=@"$comment" > /dev/null
