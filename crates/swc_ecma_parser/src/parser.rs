@@ -2234,7 +2234,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         result
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_statement_inner(&mut self) -> Option<Stmt> {
         if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
             return self.parse_ts_declaration();
