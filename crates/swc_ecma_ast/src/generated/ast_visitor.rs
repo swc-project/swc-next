@@ -35302,7 +35302,7 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BlockStatement => {
             walk_mut_block_statement(BlockStatement(node.0), traverser, ctx)
                 .map_break(|action| action.map(Stmt::BlockStatement))
@@ -35404,7 +35404,7 @@ fn walk_mut_stmt<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             ctx,
         )
         .map_break(|action| action.map(Stmt::TsNamespaceExportDeclaration)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35433,7 +35433,7 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
                 .map_break(|action| action.map(Decl::VariableDeclaration))
@@ -35468,7 +35468,7 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_import_equals_declaration(TsImportEqualsDeclaration(node.0), traverser, ctx)
                 .map_break(|action| action.map(Decl::TsImportEqualsDeclaration))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35497,7 +35497,7 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
                 .map_break(|action| action.map(Expr::IdentifierReference))
@@ -35636,7 +35636,7 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(Expr::JsxElement)),
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
             .map_break(|action| action.map(Expr::JsxFragment)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35665,7 +35665,7 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
                 .map_break(|action| action.map(BindingPattern::BindingIdentifier))
@@ -35691,7 +35691,7 @@ fn walk_mut_binding_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(BindingPattern::ArrayPattern)),
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
             .map_break(|action| action.map(BindingPattern::ObjectPattern)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35720,7 +35720,7 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::MemberExpression
         | NodeKind::TsAsExpression
@@ -35734,7 +35734,7 @@ fn walk_mut_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(AssignmentTarget::ArrayAssignmentTarget)),
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
             .map_break(|action| action.map(AssignmentTarget::ObjectAssignmentTarget)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35763,7 +35763,7 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
                 .map_break(|action| action.map(SimpleAssignmentTarget::IdentifierReference))
@@ -35788,7 +35788,7 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
             walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx)
                 .map_break(|action| action.map(SimpleAssignmentTarget::TsNonNullExpression))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35817,7 +35817,7 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
                 .map_break(|action| action.map(PropertyKey::IdentifierName))
@@ -35863,7 +35863,7 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxElement
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
             .map_break(|action| action.map(PropertyKey::Expr)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35892,14 +35892,14 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
                 .map_break(|action| action.map(ModuleExportName::IdentifierName))
         }
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
             .map_break(|action| action.map(ModuleExportName::StringLiteral)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -35928,7 +35928,7 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -35972,7 +35972,7 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(Argument::Expr)),
         NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx)
             .map_break(|action| action.map(Argument::SpreadElement)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36001,14 +36001,14 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::ObjectProperty => {
             walk_mut_object_property(ObjectProperty(node.0), traverser, ctx)
                 .map_break(|action| action.map(ObjectPropertyKind::ObjectProperty))
         }
         NodeKind::SpreadElement => walk_mut_spread_element(SpreadElement(node.0), traverser, ctx)
             .map_break(|action| action.map(ObjectPropertyKind::SpreadElement)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36037,7 +36037,7 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
                 .map_break(|action| action.map(ForStatementInit::VariableDeclaration))
@@ -36083,7 +36083,7 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxElement
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
             .map_break(|action| action.map(ForStatementInit::Expr)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36112,7 +36112,7 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
             walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
                 .map_break(|action| action.map(ForStatementLeft::VariableDeclaration))
@@ -36128,7 +36128,7 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_assignment_target(AssignmentTarget(node.0), traverser, ctx)
                 .map_break(|action| action.map(ForStatementLeft::AssignmentTarget))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36157,7 +36157,7 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::FunctionBody => walk_mut_function_body(FunctionBody(node.0), traverser, ctx)
             .map_break(|action| action.map(ArrowFunctionBody::FunctionBody)),
         NodeKind::IdentifierReference
@@ -36201,7 +36201,7 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::JsxElement
         | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx)
             .map_break(|action| action.map(ArrowFunctionBody::Expr)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36230,7 +36230,7 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::FormalParameter => {
             walk_mut_formal_parameter(FormalParameter(node.0), traverser, ctx)
                 .map_break(|action| action.map(FormalParameterItem::FormalParameter))
@@ -36239,7 +36239,7 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
             walk_mut_ts_parameter_property(TsParameterProperty(node.0), traverser, ctx)
                 .map_break(|action| action.map(FormalParameterItem::TsParameterProperty))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36268,7 +36268,7 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
                 .map_break(|action| action.map(FormalParameterPattern::BindingIdentifier))
@@ -36277,7 +36277,7 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
             .map_break(|action| action.map(FormalParameterPattern::ArrayPattern)),
         NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx)
             .map_break(|action| action.map(FormalParameterPattern::ObjectPattern)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36306,7 +36306,7 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::MethodDefinition => {
             walk_mut_method_definition(MethodDefinition(node.0), traverser, ctx)
                 .map_break(|action| action.map(ClassElement::MethodDefinition))
@@ -36325,7 +36325,7 @@ fn walk_mut_class_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx)
                 .map_break(|action| action.map(ClassElement::TsIndexSignature))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36354,7 +36354,7 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::ImportSpecifier => {
             walk_mut_import_specifier(ImportSpecifier(node.0), traverser, ctx)
                 .map_break(|action| action.map(ImportDeclarationSpecifier::ImportSpecifier))
@@ -36369,7 +36369,7 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
                     action.map(ImportDeclarationSpecifier::ImportNamespaceSpecifier)
                 })
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -36398,7 +36398,7 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::Function => {
             let concrete = Function(node.0);
             if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
@@ -36466,7 +36466,7 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
                     action.map(ExportDefaultDeclarationKind::TsInterfaceDeclaration)
                 })
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39599,7 +39599,7 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsAnyKeyword => walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx)
             .map_break(|action| action.map(TsType::TsAnyKeyword)),
         NodeKind::TsUnknownKeyword => {
@@ -39724,7 +39724,7 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(TsType::TsTypeLiteral)),
         NodeKind::TsMappedType => walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx)
             .map_break(|action| action.map(TsType::TsMappedType)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39753,7 +39753,7 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypeName::IdentifierReference))
@@ -39762,7 +39762,7 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypeName::TsQualifiedName))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39791,7 +39791,7 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
             walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsQualifiedNameLeft::IdentifierReference))
@@ -39812,7 +39812,7 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
             walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsQualifiedNameLeft::TsQualifiedName))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39841,7 +39841,7 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsImportTypeQualifier::IdentifierName))
@@ -39850,7 +39850,7 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
             walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsImportTypeQualifier::TsQualifiedName))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39879,7 +39879,7 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
             walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypeQueryExprName::TsTypeName))
@@ -39890,7 +39890,7 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
         }
         NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx)
             .map_break(|action| action.map(TsTypeQueryExprName::TsImportType)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39919,7 +39919,7 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
             .map_break(|action| action.map(TsLiteral::StringLiteral)),
         NodeKind::NumericLiteral => {
@@ -39940,7 +39940,7 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsLiteral::UnaryExpression))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -39969,7 +39969,7 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsAnyKeyword
         | NodeKind::TsUnknownKeyword
         | NodeKind::TsNeverKeyword
@@ -40013,7 +40013,7 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_named_tuple_member(TsNamedTupleMember(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTupleElement::TsNamedTupleMember))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40042,7 +40042,7 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsPropertySignature => {
             walk_mut_ts_property_signature(TsPropertySignature(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypeElement::TsPropertySignature))
@@ -40067,7 +40067,7 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_index_signature(TsIndexSignature(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypeElement::TsIndexSignature))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40096,14 +40096,14 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsTypePredicateName::IdentifierName))
         }
         NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx)
             .map_break(|action| action.map(TsTypePredicateName::TsThisType)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40132,7 +40132,7 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
             walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsEnumMemberName::IdentifierName))
@@ -40143,7 +40143,7 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsEnumMemberName::TemplateLiteral))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40172,7 +40172,7 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
             walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsModuleName::BindingIdentifier))
@@ -40183,7 +40183,7 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsModuleName::TsQualifiedName))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40212,14 +40212,14 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsModuleBlock => walk_mut_ts_module_block(TsModuleBlock(node.0), traverser, ctx)
             .map_break(|action| action.map(TsModuleBody::TsModuleBlock)),
         NodeKind::TsModuleDeclaration => {
             walk_mut_ts_module_declaration(TsModuleDeclaration(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsModuleBody::TsModuleDeclaration))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -40248,7 +40248,7 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
             walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsModuleReference::TsTypeName))
@@ -40257,7 +40257,7 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_ts_external_module_reference(TsExternalModuleReference(node.0), traverser, ctx)
                 .map_break(|action| action.map(TsModuleReference::TsExternalModuleReference))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -42962,7 +42962,7 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxElementName::JsxIdentifier)),
         NodeKind::JsxNamespacedName => {
@@ -42973,7 +42973,7 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
                 .map_break(|action| action.map(JsxElementName::JsxMemberExpression))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43002,14 +43002,14 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxMemberExpressionObject::JsxIdentifier)),
         NodeKind::JsxMemberExpression => {
             walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
                 .map_break(|action| action.map(JsxMemberExpressionObject::JsxMemberExpression))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43038,14 +43038,14 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxAttributeName::JsxIdentifier)),
         NodeKind::JsxNamespacedName => {
             walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
                 .map_break(|action| action.map(JsxAttributeName::JsxNamespacedName))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43074,14 +43074,14 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxAttribute => walk_mut_jsx_attribute(JsxAttribute(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxAttributeItem::JsxAttribute)),
         NodeKind::JsxSpreadAttribute => {
             walk_mut_jsx_spread_attribute(JsxSpreadAttribute(node.0), traverser, ctx)
                 .map_break(|action| action.map(JsxAttributeItem::JsxSpreadAttribute))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43110,7 +43110,7 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxAttributeValue::StringLiteral)),
         NodeKind::JsxExpressionContainer => {
@@ -43121,7 +43121,7 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(JsxAttributeValue::JsxElement)),
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxAttributeValue::JsxFragment)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43150,7 +43150,7 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -43196,7 +43196,7 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             walk_mut_jsx_empty_expression(JsxEmptyExpression(node.0), traverser, ctx)
                 .map_break(|action| action.map(JsxExpression::JsxEmptyExpression))
         }
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {
@@ -43225,7 +43225,7 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return std::ops::ControlFlow::Break(action);
         }
     }
-    let stopped = match match ctx.ast.node_kind(node.node_id()) {
+    let stopped = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::JsxText => walk_mut_jsx_text(JsxText(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxChild::JsxText)),
         NodeKind::JsxExpressionContainer => {
@@ -43240,7 +43240,7 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             .map_break(|action| action.map(JsxChild::JsxElement)),
         NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx)
             .map_break(|action| action.map(JsxChild::JsxFragment)),
-        _ => unreachable!("invalid node kind for traversal union"),
+        _ => unsafe { std::hint::unreachable_unchecked() },
     } {
         std::ops::ControlFlow::Continue(stopped) => stopped,
         std::ops::ControlFlow::Break(action) => {

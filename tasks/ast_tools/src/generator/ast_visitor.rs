@@ -974,10 +974,13 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
             arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
         }
     }
+    // SAFETY: Typed wrappers can only be created by typed AST constructors for
+    // this AST, so their node ID indexes initialized node data and its kind
+    // belongs to this union. This matches the `Traverse` and `VisitMut` dispatch.
     quote! {
-        match ctx.ast.node_kind(node.node_id()) {
+        match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
             #arms
-            _ => unreachable!("invalid node kind for traversal union"),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
