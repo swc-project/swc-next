@@ -1771,6 +1771,24 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
     table
 };
 
+/// Whether a pair of bytes contains a byte that is not an ASCII identifier part,
+/// indexed by `u16::from_le_bytes(pair)`. One 64 KiB table lookup tests two
+/// bytes of an identifier scan.
+static ASCII_IDENTIFIER_PAIR_STOPS: [bool; 1 << 16] = {
+    let mut table = [false; 1 << 16];
+    let mut pair = 0;
+    while pair < 1 << 16 {
+        let first = ASCII_IDENTIFIER_CLASS[pair & 0xFF];
+        let second = ASCII_IDENTIFIER_CLASS[pair >> 8];
+        table[pair] = !matches!(
+            (first, second),
+            (IdentifierClass::Continue, IdentifierClass::Continue)
+        );
+        pair += 1;
+    }
+    table
+};
+
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
 fn fast_token_flags(line_break: bool) -> u8 {
@@ -1801,9 +1819,18 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
         // SAFETY: `position <= source.len()` by the caller invariant above, and the loop condition
         // guarantees that `batch_end` is within `source`.
         let batch = unsafe { source.get_unchecked(position..batch_end) };
-        for (offset, byte) in batch.iter().enumerate() {
-            if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
-                return ascii_identifier_end(*byte, position + offset);
+        let (pairs, _) = batch.as_chunks::<2>();
+        for (index, pair) in pairs.iter().enumerate() {
+            let pair = u16::from_le_bytes(*pair);
+            if ASCII_IDENTIFIER_PAIR_STOPS[usize::from(pair)] {
+                // Taking the bytes from `pair` keeps a single 16-bit load in the scan loop.
+                let (first, second) = (pair as u8, (pair >> 8) as u8);
+                let position = position + 2 * index;
+                return if ASCII_IDENTIFIER_CLASS[first as usize] != IdentifierClass::Continue {
+                    ascii_identifier_end(first, position)
+                } else {
+                    ascii_identifier_end(second, position + 1)
+                };
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
