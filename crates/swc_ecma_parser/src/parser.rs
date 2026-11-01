@@ -12388,16 +12388,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn parse_jsx_element(&mut self, context: JsxElementContext) -> Option<Expr> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
         let start = self.current_token.start();
         self.enter_jsx_tag();
-        if self
-            .peek_ahead()
-            .is_some_and(|token| token.tag() == TokenTag::GreaterThan)
-        {
+        self.advance()?;
+        if self.current_token.tag() == TokenTag::GreaterThan {
             return self.parse_jsx_fragment(start, context);
         }
 
-        let opening = self.parse_jsx_opening_element(context)?;
+        let opening = self.parse_jsx_opening_element(start, context)?;
         if opening.self_closing(&self.ast) {
             let children = SubRange::empty();
             return Some(Expr::JsxElement(self.ast.jsx_element(
@@ -12417,13 +12416,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         )))
     }
 
+    /// Parses an opening element whose `<` at `start` is already consumed.
     fn parse_jsx_opening_element(
         &mut self,
+        start: u32,
         context: JsxElementContext,
     ) -> Option<JsxOpeningElement> {
-        debug_assert_eq!(self.current_token.tag(), TokenTag::LessThan);
-        let start = self.current_token.start();
-        self.advance()?;
         let name = self.parse_jsx_element_name()?;
 
         let type_arguments = if self.lang.is_typescript() && is_angle_open(self.current_token.tag())
@@ -12596,21 +12594,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
+    /// Parses a fragment whose `<` at `start` is already consumed; the current
+    /// token is the `>` that follows it.
     fn parse_jsx_fragment(&mut self, start: u32, context: JsxElementContext) -> Option<Expr> {
-        self.advance()?;
-        if self.current_token.tag() != TokenTag::GreaterThan {
-            self.report_expected(
-                self.current_token.span(),
-                "Expected '>' to close JSX opening fragment",
-                ReportOptions {
-                    help: Some(Cow::Borrowed(
-                        "Add '>' to complete the fragment opening tag",
-                    )),
-                    ..ReportOptions::default()
-                },
-            );
-            return None;
-        }
+        debug_assert_eq!(self.current_token.tag(), TokenTag::GreaterThan);
         let opening_end = self.current_token.end();
         let opening = self.ast.jsx_opening_fragment(Span::new(start, opening_end));
         let children = self.parse_jsx_children()?;
@@ -12672,7 +12659,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         self.scratch_b.append(jsx_text);
                     }
                     TokenTag::LessThan => {
-                        if self.peek_ahead()?.tag() == TokenTag::Slash {
+                        if self.jsx_child_starts_closing_tag()? {
                             break;
                         }
                         let child = self.parse_jsx_element(JsxElementContext::Child)?;
@@ -12697,6 +12684,21 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.scratch_b.reset(checkpoint);
         result
+    }
+
+    /// Returns whether the `<` read as a JSX child is followed by `/`. The next
+    /// bytes decide it when no trivia or non-ASCII text can come first.
+    fn jsx_child_starts_closing_tag(&mut self) -> Option<bool> {
+        let source = self.source.as_bytes();
+        let next = self.current_token.end() as usize;
+        match source.get(next) {
+            Some(b'/') if !matches!(source.get(next + 1), Some(b'/' | b'*' | b'=')) => {
+                return Some(true);
+            }
+            Some(b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' | b'>') => return Some(false),
+            _ => {}
+        }
+        Some(self.peek_ahead()?.tag() == TokenTag::Slash)
     }
 
     // JSXChild :
