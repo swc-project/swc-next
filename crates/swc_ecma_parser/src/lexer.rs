@@ -376,7 +376,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
     /// `/`, `{`, and attribute strings. On failure, the cursor is unchanged.
-
+    ///
     /// `start` and `byte` follow the trivia [`Self::try_next_token`] skipped, which
     /// included a line break if `LINE_BREAK` is set.
     #[inline(never)]
