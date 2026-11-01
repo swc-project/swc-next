@@ -331,7 +331,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     }
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
-    /// `/>`, `{`, and attribute strings. On failure, the cursor is unchanged.
+    /// `/`, `{`, and attribute strings. On failure, the cursor is unchanged.
     #[inline(never)]
     fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.mode, LexerMode::JsxTag);
@@ -376,7 +376,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             b'=' if matches!(src.get(start + 1), Some(b'{' | b'"' | b'\'')) => {
                 (TokenTag::Assign, start + 1)
             }
-            b'/' if src.get(start + 1) == Some(&b'>') => (TokenTag::Slash, start + 1),
+            // Comments and `/=` need the full scanner.
+            b'/' if !matches!(src.get(start + 1), None | Some(b'/' | b'*' | b'=')) => {
+                (TokenTag::Slash, start + 1)
+            }
             b'"' | b'\'' => {
                 let Some(offset) = memchr(byte, &src[start + 1..]) else {
                     return false;
