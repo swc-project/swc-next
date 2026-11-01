@@ -1237,6 +1237,8 @@ struct Checkpoint {
 
 struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     lexer: &'peek mut Lexer<'a, C>,
+    /// The last token read, which [`Lexer::next_token`] needs as its target.
+    token: Token,
     state: LexerState,
     cursor: u32,
     comments_len: usize,
@@ -1247,8 +1249,9 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
 }
 
 impl<'peek, 'a, C: ParserConfig> Peek<'peek, 'a, C> {
-    fn new(lexer: &'peek mut Lexer<'a, C>) -> Self {
+    fn new(lexer: &'peek mut Lexer<'a, C>, token: Token) -> Self {
         Self {
+            token,
             state: lexer.state,
             cursor: lexer.cursor,
             comments_len: lexer.comments.len(),
@@ -1289,11 +1292,10 @@ impl<C: ParserConfig> Iterator for Peek<'_, '_, C> {
 
     fn next(&mut self) -> Option<Self::Item> {
         debug_assert!(self.active);
-        let mut token = Token::eof(self.lexer.cursor);
-        if !self.lexer.try_next_token(&mut token) {
-            self.lexer.next_token(&mut token).ok()?;
+        if !self.lexer.try_next_token(&mut self.token) {
+            self.lexer.next_token(&mut self.token).ok()?;
         }
-        Some(token)
+        Some(self.token)
     }
 }
 
@@ -2083,7 +2085,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn begin_peek(&mut self) -> Peek<'_, 'a, C> {
-        Peek::new(&mut self.lexer)
+        Peek::new(&mut self.lexer, self.current_token)
     }
 
     /// Peeks at the token immediately after `current_token` without advancing.
@@ -6834,7 +6836,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             peek.lexer.next_token(&mut next).ok()?;
         }
         let named = if next.tag() == TokenTag::Question {
-            let mut after_question = Peek::new(peek.lexer);
+            let mut after_question = Peek::new(peek.lexer, next);
             after_question.next()?.tag() == TokenTag::Colon
         } else {
             next.tag() == TokenTag::Colon
@@ -13839,9 +13841,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     /// Advance without reporting lexical errors, restoring lexer state on failure.
     fn try_advance(&mut self) -> bool {
         let previous_end = self.current_token.end();
+        let mut next = self.current_token;
         let peek = self.begin_peek();
         peek.lexer.state.prev_token_end = previous_end;
-        let mut next = Token::eof(peek.lexer.cursor);
         if !peek.lexer.try_next_token(&mut next) && peek.lexer.next_token(&mut next).is_err() {
             return false;
         }

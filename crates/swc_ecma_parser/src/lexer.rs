@@ -59,6 +59,10 @@ pub enum HandleTokenMode {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct LexerState {
     pub token_flags: u8,
+    /// Tag of the token before the one being read, used only by the trivia
+    /// scanner. Fast paths do not update it; [`Lexer::next_token`] takes it
+    /// from its target instead. An `Eof` target is a placeholder unless
+    /// [`Lexer::handle_token`] already recorded `Eof` here.
     previous_token_tag: Option<TokenTag>,
     /// End offset of the most recently consumed token.
     pub(super) prev_token_end: u32,
@@ -183,6 +187,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
     }
 
+    /// Reads the next token into `target`. `target` must hold the last token
+    /// read, or an `Eof` placeholder before the first token.
     #[inline]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
@@ -433,6 +439,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     fn read_next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         debug_assert!((self.cursor as usize) <= self.source.len());
+        if target.tag() != TokenTag::Eof {
+            self.state.previous_token_tag = Some(target.tag());
+        }
         self.clear_token_flags();
         self.skip_ws_and_comments()?;
 
@@ -496,7 +505,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if self.config.tokens() {
             self.tokens.push(token);
         }
-        self.state.previous_token_tag = Some(token.tag());
     }
 
     /// Restores a compound token removed by a failed speculative rescan.
