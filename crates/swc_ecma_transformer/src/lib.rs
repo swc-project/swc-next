@@ -620,8 +620,9 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
     }
 
     fn exit_node(&mut self, node: NodeId, ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>) {
-        let popped = ctx.state.path.pop();
-        debug_assert_eq!(popped, Some(node));
+        // SAFETY: the walk encloses every node visit in enter_node/exit_node,
+        // so this pops the id pushed by the matching enter_node.
+        unsafe { ctx.state.path.pop(node) };
     }
 
     fn enter_switch_case(

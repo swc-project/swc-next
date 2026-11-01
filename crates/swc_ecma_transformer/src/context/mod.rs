@@ -3,11 +3,13 @@ use swc_next_ecma_ast::{Ast, GetSpan, NodeId, NodeKindData, ScopeId, Stmt, Trave
 mod comments;
 mod container;
 mod helpers;
+mod path;
 mod semantic;
 mod statement_injector;
 
 pub(crate) use comments::CommentState;
 pub(crate) use container::{Container, ContainerOwner, ContainerOwnerChild};
+pub(crate) use path::NodePath;
 pub(crate) use semantic::BoundIdentifier;
 pub(crate) use statement_injector::StatementInjector;
 
@@ -17,7 +19,7 @@ use swc_next_ecma_semantic::{ScopeModel, SymbolFlags};
 /// Configuration, caches and pending work for a single transform.
 /// Passes access state through the context's mutation APIs.
 pub(crate) struct TransformerState<'a> {
-    pub(crate) path: Vec<NodeId>,
+    pub(crate) path: NodePath,
     pub(crate) scope_stack: Vec<ScopeId>,
     pub(crate) semantic: ScopeModel<'a>,
     pub(crate) helpers: Helpers,
@@ -30,7 +32,7 @@ pub(crate) struct TransformerState<'a> {
 impl<'a> TransformerState<'a> {
     pub(crate) fn new(semantic: ScopeModel<'a>) -> Self {
         Self {
-            path: Vec::with_capacity(64),
+            path: NodePath::with_capacity(64),
             scope_stack: Vec::with_capacity(64),
             semantic,
             helpers: Helpers::default(),
@@ -73,11 +75,11 @@ impl<'c, 'a> TransformCtx<'c, 'a> {
     }
 
     pub(crate) fn parent(&self) -> Option<NodeId> {
-        self.state.path.iter().rev().nth(1).copied()
+        self.state.path.as_slice().iter().rev().nth(1).copied()
     }
 
     pub(crate) fn ancestors(&self) -> impl DoubleEndedIterator<Item = NodeId> + '_ {
-        self.state.path.iter().rev().copied()
+        self.state.path.as_slice().iter().rev().copied()
     }
 
     pub(crate) fn program_scope(&self) -> ScopeId {
@@ -169,11 +171,12 @@ impl TransformCtx<'_, '_> {
         let index = self
             .state
             .path
+            .as_slice()
             .iter()
             .rposition(|&node| node == path)
             .expect("insert_after target must be on the current traversal path");
         let mut anchor = path;
-        let mut parents = self.state.path[..index].iter().rev().copied();
+        let mut parents = self.state.path.as_slice()[..index].iter().rev().copied();
         let (container, anchor) = loop {
             let parent = parents
                 .next()
