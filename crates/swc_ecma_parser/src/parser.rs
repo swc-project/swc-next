@@ -5776,20 +5776,24 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         // Scan the modifier shape only: `declare`, `abstract`, and a
         // misplaced `export` in any order or repetition. The declaration
         // parser diagnoses duplicates and ordering; here the shape must
-        // still end at an unambiguous declaration. Every modifier must be
-        // followed on the same line.
+        // still end at an unambiguous declaration. Only contextual
+        // modifiers require the next token on the same line.
         loop {
-            if current.tag() == TokenTag::Declare {
+            let consumed = current.tag();
+            if consumed == TokenTag::Declare {
                 has_declare = true;
-            } else if current.tag() == TokenTag::Abstract {
+            } else if consumed == TokenTag::Abstract {
                 has_abstract = true;
-            } else if current.tag() == TokenTag::Export {
+            } else if consumed == TokenTag::Export {
                 has_export = true;
             } else {
                 break;
             }
             current = peek.next()?;
-            if current.has_line_terminator_before() {
+            // The same-line requirement applies after the contextual
+            // modifiers; `export` may be separated from its declaration
+            // by a line terminator, as in the normal export path.
+            if consumed != TokenTag::Export && current.has_line_terminator_before() {
                 peek.end();
                 return Some(false);
             }
@@ -16428,6 +16432,12 @@ mod tests {
 
         let recovered = recovered_class("declare export abstract class Foo { m(): void; }");
         assert_eq!(recovered, (true, true, true, 1, 1));
+
+        let recovered = recovered_class("abstract export\nclass Foo { m(): void; }");
+        assert_eq!(recovered, (true, false, true, 1, 1));
+
+        let recovered = recovered_class("declare export\nclass Foo { m(): void; }");
+        assert_eq!(recovered, (true, true, false, 1, 1));
     }
 
     #[test]
