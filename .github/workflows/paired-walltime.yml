@@ -32,10 +32,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: paired-walltime-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   measure:
     name: Compare base and head wall time
@@ -43,6 +39,11 @@ jobs:
       github.event_name != 'pull_request' ||
       (contains(github.event.pull_request.labels.*.name, 'Codspeed') &&
       (github.event.action != 'labeled' || github.event.label.name == 'Codspeed'))
+    # Job-level concurrency: a run that skips this job, such as one for an
+    # unrelated label, must not cancel a measurement in progress.
+    concurrency:
+      group: paired-walltime-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -141,6 +142,10 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository
+    # Serialize updates so that two runs cannot both create a comment.
+    concurrency:
+      group: paired-walltime-comment-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     permissions:
       pull-requests: write
@@ -164,10 +169,12 @@ jobs:
             echo "[Workflow run]($RUN_URL)"
           } > "$comment"
 
+          # Update only the comment that this workflow created, so every
+          # push to the pull request edits the same comment.
           comment_ids="$(
             gh api --paginate \
               "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
-              --jq ".[] | select(.body | contains(\"$marker\")) | .id"
+              --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id"
           )"
           comment_id="${comment_ids%%$'\n'*}"
           if [[ -n "$comment_id" ]]
