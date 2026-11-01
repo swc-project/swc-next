@@ -263,6 +263,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 *target = Token::new(start, start + 1, TokenTag::Dot, flags);
             }
             FastClass::Operator => return self.try_operator_token::<LINE_BREAK>(target, start),
+            FastClass::Quote => return self.try_string_token::<LINE_BREAK>(target, start),
             FastClass::Slow => return false,
         }
         self.handle_fast_token(*target);
@@ -300,6 +301,31 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         self.cursor = start;
         self.state.token_flags = fast_token_flags(LINE_BREAK);
         *target = self.scan_punctuation();
+        self.handle_fast_token(*target);
+        true
+    }
+
+    /// Reads a string literal without escapes at `start`. See [`Self::try_identifier_token`].
+    #[inline(never)]
+    fn try_string_token<const LINE_BREAK: bool>(&mut self, target: &mut Token, start: u32) -> bool {
+        let quote = self.source[start as usize];
+        let body = start as usize + 1;
+        // Escapes and unterminated strings still need the full string scanner.
+        let Some(offset) = memchr4(quote, b'\\', b'\n', b'\r', &self.source[body..]) else {
+            return false;
+        };
+        let end = body + offset;
+        if self.source[end] != quote {
+            return false;
+        }
+        let end = end as u32 + 1;
+        self.cursor = end;
+        *target = Token::new(
+            start,
+            end,
+            TokenTag::StringLiteral,
+            fast_token_flags(LINE_BREAK),
+        );
         self.handle_fast_token(*target);
         true
     }
@@ -1705,6 +1731,7 @@ enum FastClass {
     Digit,
     Dot,
     Operator,
+    Quote,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1728,6 +1755,8 @@ const FAST_CLASS: [FastClass; 256] = {
         digit += 1;
     }
     table[b'.' as usize] = FastClass::Dot;
+    table[b'"' as usize] = FastClass::Quote;
+    table[b'\'' as usize] = FastClass::Quote;
     // Slash and minus can start comments and retain the trivia path.
     let operators = b"+*%<>=!&|^?";
     let mut operator = 0;
