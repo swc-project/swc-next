@@ -1412,10 +1412,18 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
 
             self.cursor = pos as u32;
-            if pos == src.len()
-                || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF)
-                || !self.skip_ws_and_comments_slow(at_start_of_source)?
-            {
+            if pos == src.len() || !matches!(src[pos], b'/' | b'<' | b'-' | 0x80..=0xFF) {
+                return Ok(());
+            }
+            // Scan ordinary comments here to avoid a call per comment. The cold
+            // scanner keeps HTML-like comments and non-ASCII whitespace.
+            if src[pos] == b'/' {
+                match src.get(pos + 1) {
+                    Some(b'*') => self.scan_block_comment()?,
+                    Some(b'/') => self.scan_line_comment()?,
+                    _ => return Ok(()),
+                }
+            } else if !self.skip_ws_and_comments_slow(at_start_of_source)? {
                 return Ok(());
             }
         }
@@ -1432,11 +1440,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         debug_assert!(pos < src.len());
 
         match src[pos] {
-            b'/' => match src.get(pos + 1).copied() {
-                Some(b'/') => self.scan_line_comment()?,
-                Some(b'*') => self.scan_block_comment()?,
-                _ => return Ok(false),
-            },
             b'<' => {
                 if !self.allow_html_like_comments
                     || pos + 3 >= src.len()
