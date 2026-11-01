@@ -1,8 +1,9 @@
 # swc_ecma_minifier
 
 JavaScript AST optimization for SWC Next. Compression folds constant
-expressions, shortens booleans and unshadowed global constants, simplifies safe
-local `typeof` comparisons, and removes unused local variables.
+expressions, removes branches that constant conditions never run, shortens
+booleans and unshadowed global constants, simplifies safe local `typeof`
+comparisons, and removes unused local variables.
 
 Use `Minifier::minify(&mut ast, options)` on a valid JavaScript Program AST.
 Parsing, TypeScript/JSX lowering, and printing are separate operations. Print

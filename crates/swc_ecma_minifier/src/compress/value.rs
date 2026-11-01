@@ -255,7 +255,7 @@ impl<'a> Value<'a> {
     }
 }
 
-fn skip_parentheses(ast: &Ast<'_>, mut expr: Expr) -> Expr {
+pub(super) fn skip_parentheses(ast: &Ast<'_>, mut expr: Expr) -> Expr {
     while let ExprData::ParenthesizedExpression(parenthesized) = ast.expr_data(expr) {
         expr = parenthesized.expression(ast);
     }
