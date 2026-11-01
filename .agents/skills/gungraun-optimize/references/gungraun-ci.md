@@ -8,7 +8,7 @@ Use this reference only when creating, auditing, or repairing a Gungraun harness
 - Reproducible benchmark design
 - Version and runner setup
 - Base and head comparison
-- Temporary harness stack
+- Temporary harness branches
 - Profiles and machine-readable output
 - GitHub security and reporting
 
@@ -44,7 +44,7 @@ See the official [CI installation guide](https://gungraun.github.io/gungraun/lat
 
 Use `workflow_dispatch` to measure experiments before creating a PR. The workflow must exist on the repository's default branch before manual dispatch is available. Land the permanent dispatch support first; if it is unavailable, report the blocker instead of opening experiment PRs to trigger measurements. See the [GitHub manual workflow documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow?tool=cli).
 
-Push the task-owned stack with `gh stack push`, then dispatch with immutable comparison SHAs:
+Push the task-owned branches with `git push <remote> <branch>`, then dispatch with immutable comparison SHAs:
 
 ```bash
 gh workflow run gungraun.yml --ref <workflow-branch> \
@@ -52,7 +52,7 @@ gh workflow run gungraun.yml --ref <workflow-branch> \
 ```
 
 - `--ref` selects the workflow revision. Keep it fixed across the incremental and cumulative runs. `base_ref` is required; `head_ref` defaults to the dispatch revision, and an omitted or empty `filter` runs the whole suite.
-- Run incremental comparisons against the previous accepted SHA and cumulative comparisons against the frozen starting trunk SHA. Reuse a run when both bases are identical.
+- Run incremental comparisons of the attempt against its parent SHA, and cumulative comparisons of the integration branch plus the attempt against the frozen starting trunk SHA. Reuse a run when both bases are identical.
 - Record dispatch time and workflow branch SHA. Find the matching `workflow_dispatch` run with `gh run list --workflow gungraun.yml --event workflow_dispatch --branch <workflow-branch> --json databaseId,headSha,createdAt,status,url`, then wait with `gh run watch <run-id> --exit-status` and download with `gh run download <run-id>`. Confirm artifact metadata `comparison.base_sha`, `comparison.compare_sha`, and `benchmark.filter` before accepting the result. If concurrent runs are candidates, inspect their metadata rather than guessing from list order.
 - Resolve refs once to commit SHAs before benchmarking. Use the same quoted filter argument for both runs. The existing PR trigger continues to compare the event's base SHA with its merge SHA; it does not replace the exact-head manual evidence.
 - Preserve reporting scripts from the workflow checkout before switching revisions so older benchmark revisions do not need the current reporting code.
@@ -80,20 +80,20 @@ cargo bench --quiet -p <package> --bench <bench> -- \
 - Do not add `--callgrind-limits`, `--cachegrind-limits`, or `--dhat-limits` to a new reporting-only workflow.
 - Preserve existing regression limits unless the user asks to change them. Distinguish their exit code from build or harness errors.
 - When bootstrapping a new harness against a base that lacks it, restore only benchmark plumbing from head after checking out base. Never restore the optimized production source. Confirm that the harness calls an API available on base.
-- If benchmark source, features, or inputs differ between revisions, stop and establish identical plumbing in a separate temporary measurement stack before optimizing. Do not make that layer permanent unless the user explicitly requests a permanent harness.
+- If benchmark source, features, or inputs differ between revisions, stop and establish identical plumbing on separate temporary measurement branches before optimizing. Do not make that plumbing permanent unless the user explicitly requests a permanent harness.
 
 See the official [baseline guide](https://gungraun.github.io/gungraun/latest/html/cli_and_env/baselines.html) and [basic CLI reference](https://gungraun.github.io/gungraun/latest/html/cli_and_env/basics.html).
 
-## Temporary harness stack
+## Temporary harness branches
 
-Use a temporary harness only when existing measurement plumbing is insufficient. Keep it in a separate task-owned measurement stack with no PRs.
+Use a temporary harness only when existing measurement plumbing is insufficient. Keep it on task-owned measurement branches with no PRs.
 
-- Initialize it with `gh stack init --base <trunk> <temporary-ci-branch>`. Commit only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes. Record the branch, commit, paths, and exact manifest hunks.
-- Push with `gh stack push` and dispatch the workflow on the measurement branch. Establish initial profiles before editing production code. Do not call `gh stack submit` on this stack.
-- Keep a harness-only counterpart of starting trunk for cumulative comparisons, and use the last accepted measurement revision for incremental comparisons. Both sides must have identical benchmark definitions, inputs, features, and toolchain. Only bootstrap plumbing onto unchanged production code whose API supports it.
-- After each acceptance, switch to the separate publication stack. Create its first layer with `gh stack init --base <trunk> <accepted-branch>` or add later layers with `gh stack add <accepted-branch>`. Cherry-pick only that accepted production optimization commit. Verify one commit per layer, matching production diffs, no harness ancestry or hunks, and correctness before immediately calling `gh stack submit --auto`.
-- Record measured-to-published SHA mappings and attach the comparison evidence to each PR. If transferring the change requires production edits, remeasure that revised patch before publishing it. Continue experiments on the measurement stack.
-- At the end, retain run links and artifacts, remove the task-owned measurement stack with `gh stack modify`, and delete its remote branches. Verify all published diffs and ancestry exclude temporary plumbing. There are no temporary PRs to close.
+- Create a harness branch from the frozen trunk SHA. Commit only benchmark definitions, workflow steps, reporting code, fixtures, and required manifest changes. Record the branch, commit, paths, and exact manifest hunks. This harness-only revision is the baseline for cumulative comparisons and for independent attempts.
+- Push it with `git push <remote> <branch>` and dispatch the workflow on it. Establish initial profiles before editing production code. Do not create a pull request for it.
+- Create each measured attempt from the harness branch, or from the measured counterpart of its dependency for a dependent attempt. Keep a measured integration branch that contains the harness and every accepted optimization. Both sides of each comparison must have identical benchmark definitions, inputs, features, and toolchain. Only bootstrap plumbing onto unchanged production code whose API supports it.
+- After each acceptance, create the publication branch from trunk for an independent optimization, or from the dependency's publication branch for a dependent one. Cherry-pick only that accepted production optimization commit. Verify one commit per branch, matching production diffs, no harness ancestry or hunks, and correctness before you publish it immediately as the skill describes.
+- Record measured-to-published SHA mappings and attach the comparison evidence to each PR. If transferring the change requires production edits, remeasure that revised patch before publishing it. Continue experiments on the measurement branches.
+- At the end, retain run links and artifacts and delete the local and remote measurement branches. Verify all published diffs and ancestry exclude temporary plumbing. There are no temporary PRs to close.
 
 ## Profiles and machine-readable output
 
