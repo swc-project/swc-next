@@ -297,34 +297,40 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     fn try_next_jsx_tag_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.mode, LexerMode::JsxTag);
         let src = self.source;
-        let mut start = self.cursor as usize;
-        let mut line_break = false;
-        loop {
-            match src.get(start) {
-                Some(b' ' | b'\t') => start += 1,
-                Some(b'\n') => {
-                    line_break = true;
-                    start += 1;
-                }
-                Some(_) => break,
-                None => return false,
-            }
+        let mut start = self.cursor;
+        let Some(mut byte) = src.get(start as usize).copied() else {
+            return false;
+        };
+        while matches!(byte, b' ' | b'\t') {
+            start += 1;
+            let Some(&next) = src.get(start as usize) else {
+                return false;
+            };
+            byte = next;
+        }
+        let line_break = byte == b'\n';
+        if line_break {
+            let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
+                return false;
+            };
+            start = next_start;
+            byte = next;
         }
 
-        let byte = src[start];
+        let start = start as usize;
         let (tag, end) = match byte {
             b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' => {
-                let mut end = start + 1;
-                while let Some(&byte) = src.get(end) {
-                    match ASCII_IDENTIFIER_CLASS[byte as usize] {
-                        IdentifierClass::Continue => {}
-                        IdentifierClass::End if byte == b'-' => {}
-                        IdentifierClass::End => break,
-                        IdentifierClass::Slow => return false,
-                    }
-                    end += 1;
+                // JSX names may contain hyphens between identifier parts.
+                let mut end = scan_ascii_identifier_continue(src, start as u32 + 1);
+                while src.get(end as usize) == Some(&b'-') {
+                    end = scan_ascii_identifier_continue(src, end + 1);
                 }
-                (TokenTag::JsxIdentifier, end)
+                if src.get(end as usize).is_some_and(|byte| {
+                    ASCII_IDENTIFIER_CLASS[*byte as usize] == IdentifierClass::Slow
+                }) {
+                    return false;
+                }
+                (TokenTag::JsxIdentifier, end as usize)
             }
             b'>' => (TokenTag::GreaterThan, start + 1),
             b'{' => (TokenTag::LeftBrace, start + 1),
