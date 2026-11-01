@@ -2881,6 +2881,7 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "tempfile",
+ "zmij_ecma",
 ]
 
 [[package]]

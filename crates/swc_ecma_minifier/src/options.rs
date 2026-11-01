@@ -27,7 +27,8 @@ pub struct CompressOptions {
     pub global_defs: bool,
     /// Shorten undefined typeof comparisons for local var bindings. Enabled by default.
     pub typeofs: bool,
-    /// Remove unused local variables with inert initializers. Enabled by default.
+    /// Remove unused local variables whose initializers have no side effects.
+    /// Enabled by default.
     pub unused: bool,
 }
 

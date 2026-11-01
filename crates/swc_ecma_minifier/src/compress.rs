@@ -11,6 +11,12 @@ use swc_next_ecma_semantic::{
 
 use crate::CompressOptions;
 
+mod effects;
+mod value;
+
+use effects::may_have_side_effects;
+use value::Value;
+
 #[derive(Default)]
 struct Candidates {
     globals: FxHashMap<NodeId, Global>,
@@ -140,17 +146,11 @@ struct TypeofRewrite {
     span: Span,
 }
 
+/// Whether a declared binding starts with a known primitive value.
 fn primitive_initializer(ast: &Ast<'_>, declarator: VariableDeclarator) -> bool {
-    declarator.init(ast).is_none_or(|expr| {
-        matches!(
-            ast.expr_data(expr),
-            ExprData::BooleanLiteral(_)
-                | ExprData::NumericLiteral(_)
-                | ExprData::StringLiteral(_)
-                | ExprData::NullLiteral(_)
-                | ExprData::BigIntLiteral(_)
-        )
-    })
+    declarator
+        .init(ast)
+        .is_none_or(|expr| Value::of(ast, expr).is_some())
 }
 
 fn number(ast: &mut Ast<'_>, span: Span, value: f64) -> Expr {
@@ -172,7 +172,9 @@ impl Compressor {
         matches!(ast.binding_pattern_data(declarator.id(ast)),
             BindingPatternData::BindingIdentifier(binding)
             if self.candidates.unused.contains(&binding.node_id()))
-            && primitive_initializer(ast, declarator)
+            && declarator
+                .init(ast)
+                .is_none_or(|expr| !may_have_side_effects(ast, expr))
     }
 
     fn typeof_argument(&self, ast: &Ast<'_>, expr: Expr) -> Option<Expr> {
@@ -396,14 +398,14 @@ mod tests {
 
     use crate::{Minifier, MinifierOptions};
 
-    fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
+    pub(super) fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
         let result =
             Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
         result.ast
     }
 
-    fn expression(ast: &Ast<'_>) -> Expr {
+    pub(super) fn expression(ast: &Ast<'_>) -> Expr {
         let statement =
             ast.get_node_in_sub_range(ast.root_program().body(ast).iter().next().unwrap());
         let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {
