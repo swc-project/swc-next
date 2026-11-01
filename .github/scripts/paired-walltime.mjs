@@ -244,20 +244,23 @@ function renderEnvironment(env) {
 
 function render(path) {
   const results = JSON.parse(readFileSync(path, "utf8"));
-  const icons = { slower: "🔴 Slower", faster: "🟢 Faster", unchanged: "⚪ Unchanged" };
+  const icons = { slower: "🔴 Slower", faster: "🟢 Faster" };
   const counts = { slower: 0, faster: 0, unchanged: 0 };
-  const rows = results.benchmarks.map(bench => {
+  // Show only changed benchmarks to keep comments short. The artifact's
+  // results.json keeps every measurement.
+  const rows = results.benchmarks.flatMap(bench => {
     const ratios = bench.head.map((head, i) => head / bench.base[i]);
     const verdict = classify(ratios, results.threshold);
     counts[verdict]++;
-    return [
+    if (verdict === "unchanged") return [];
+    return [[
       `\`${bench.id}\``,
       formatTime(median(bench.base)),
       formatTime(median(bench.head)),
       `**${formatChange(median(ratios))}**`,
       `${formatChange(Math.min(...ratios))} … ${formatChange(Math.max(...ratios))}`,
       icons[verdict],
-    ];
+    ]];
   });
 
   const short = sha => (sha ? `\`${sha.slice(0, 12)}\`` : "unknown");
@@ -267,9 +270,13 @@ function render(path) {
     `Base ${short(results.base_sha)} → head ${short(results.head_sha)}: ` +
       `${counts.slower} slower, ${counts.faster} faster, ${counts.unchanged} unchanged.`,
     "",
-    "| Benchmark | Base median | Head median | Change | Range of rounds | Result |",
-    "| --- | ---: | ---: | ---: | --- | --- |",
-    ...rows.map(row => `| ${row.join(" | ")} |`),
+    ...(rows.length
+      ? [
+          "| Benchmark | Base median | Head median | Change | Range of rounds | Result |",
+          "| --- | ---: | ---: | ---: | --- | --- |",
+          ...rows.map(row => `| ${row.join(" | ")} |`),
+        ]
+      : ["No benchmark changed."]),
     "",
   ];
   lines.push(...renderEnvironment(results.environment), "");
@@ -282,7 +289,8 @@ function render(path) {
     `Each of ${results.rounds} rounds runs every benchmark with the base binary and then with the head binary ` +
       `in the same job (Criterion, ${results.warm_up_seconds} s warm-up, ${results.measurement_seconds} s measurement). ` +
       "Change is the median of the per-round head/base ratios of the Criterion median times. " +
-      `A benchmark is marked slower or faster only when all rounds agree on the direction and the change is at least ${(results.threshold * 100).toFixed(0)}%.`,
+      `A benchmark is marked slower or faster only when all rounds agree on the direction and the change is at least ${(results.threshold * 100).toFixed(0)}%. ` +
+      "Unchanged benchmarks are not listed; the `paired-walltime` artifact has all results.",
     "",
     "</details>",
   );
