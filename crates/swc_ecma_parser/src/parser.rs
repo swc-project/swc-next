@@ -2225,6 +2225,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             || terminator.is_some_and(|tag| self.current_token.tag() == tag)
     }
 
+    // Dispatch directly from statement lists and bodies without a call per statement.
+    #[inline(always)]
     fn parse_statement(&mut self, statement_context: StatementContext) -> Option<Stmt> {
         let statement_context = mem::replace(&mut self.statement_context, statement_context);
         let result = self.parse_statement_inner();
