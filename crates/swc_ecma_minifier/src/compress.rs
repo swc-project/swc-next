@@ -1,9 +1,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    Ast, BinaryExpression, BinaryOperator, BindingPatternData, DeclData, Expr, ExprData, GetSpan,
-    NodeId, ObjectProperty, Program, Span, Stmt, StmtData, TraverseAction, TraverseMut,
-    TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclarator,
-    VariableKind,
+    Ast, BinaryExpression, BinaryOperator, BindingPatternData, BooleanLiteral, DeclData, Expr,
+    ExprData, GetSpan, NodeId, ObjectProperty, Program, Span, Stmt, StmtData, TraverseAction,
+    TraverseMut, TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator,
+    VariableDeclarator, VariableKind,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
@@ -146,6 +146,14 @@ fn primitive_initializer(ast: &Ast<'_>, declarator: VariableDeclarator) -> bool 
         .is_none_or(|expr| Value::of(ast, expr).is_some())
 }
 
+/// Rewrites a boolean literal to `!0` or `!1`.
+#[inline(never)]
+fn boolean(ast: &mut Ast<'_>, node: Expr, literal: BooleanLiteral) -> Expr {
+    let span = node.span(ast);
+    let argument = number(ast, span, if literal.value(ast) { 0.0 } else { 1.0 });
+    Expr::UnaryExpression(ast.unary_expression(span, argument, UnaryOperator::LogicalNot))
+}
+
 fn number(ast: &mut Ast<'_>, span: Span, value: f64) -> Expr {
     Expr::NumericLiteral(ast.numeric_literal(span, value, None))
 }
@@ -211,6 +219,7 @@ impl Compressor {
         });
     }
 
+    #[inline(never)]
     fn global(&self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
         if self.delete_depth != 0 {
             return None;
@@ -491,6 +500,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         TraverseAction::Continue
     }
 
+    #[inline]
     fn exit_expr(
         &mut self,
         node: Expr,
@@ -505,13 +515,7 @@ impl<'ast> TraverseMut<'ast> for Compressor {
                 self.fold(ast, node)
             }
             ExprData::BooleanLiteral(literal) if self.options.booleans => {
-                let span = node.span(ast);
-                let argument = number(ast, span, if literal.value(ast) { 0.0 } else { 1.0 });
-                Some(Expr::UnaryExpression(ast.unary_expression(
-                    span,
-                    argument,
-                    UnaryOperator::LogicalNot,
-                )))
+                Some(boolean(ast, node, literal))
             }
             _ => None,
         };

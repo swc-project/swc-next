@@ -34662,6 +34662,890 @@ fn walk_mut_decl<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_expr_as_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_this_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_super<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_super(Super(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_meta_property<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_meta_property(MetaProperty(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_null_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_null_literal(NullLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_reg_exp_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_reg_exp_literal(RegExpLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_binary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_binary_expression(BinaryExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_logical_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_logical_expression(LogicalExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_update_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_update_expression(UpdateExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_assignment_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_assignment_expression(AssignmentExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_conditional_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_conditional_expression(ConditionalExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_sequence_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_sequence_expression(SequenceExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_member_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_member_expression(MemberExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_call_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_call_expression(CallExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_chain_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_chain_expression(ChainExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_new_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_new_expression(NewExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_tagged_template_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_tagged_template_expression(TaggedTemplateExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_arrow_function_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_arrow_function_expression(ArrowFunctionExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_array_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_array_expression(ArrayExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_object_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_object_expression(ObjectExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_parenthesized_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_parenthesized_expression(ParenthesizedExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_function<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_function(Function(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_class<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_class(Class(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_import_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_import_expression(ImportExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_await_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_await_expression(AwaitExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_yield_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_yield_expression(YieldExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_private_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_private_identifier(PrivateIdentifier(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_ts_as_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_ts_satisfies_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_ts_type_assertion<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_ts_non_null_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_ts_instantiation_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_ts_instantiation_expression(TsInstantiationExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_expr_as_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Expr,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_expr(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: Expr,
@@ -34675,119 +35559,66 @@ fn walk_mut_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+            walk_mut_expr_as_identifier_reference(node, traverser, ctx)
         }
-        NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
-        }
-        NodeKind::Super => walk_mut_super(Super(node.0), traverser, ctx),
-        NodeKind::MetaProperty => walk_mut_meta_property(MetaProperty(node.0), traverser, ctx),
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
-        NodeKind::NumericLiteral => {
-            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::BigIntLiteral => walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx),
-        NodeKind::BooleanLiteral => {
-            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::NullLiteral => walk_mut_null_literal(NullLiteral(node.0), traverser, ctx),
-        NodeKind::RegExpLiteral => walk_mut_reg_exp_literal(RegExpLiteral(node.0), traverser, ctx),
-        NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::BinaryExpression => {
-            walk_mut_binary_expression(BinaryExpression(node.0), traverser, ctx)
-        }
-        NodeKind::LogicalExpression => {
-            walk_mut_logical_expression(LogicalExpression(node.0), traverser, ctx)
-        }
-        NodeKind::UnaryExpression => {
-            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx)
-        }
-        NodeKind::UpdateExpression => {
-            walk_mut_update_expression(UpdateExpression(node.0), traverser, ctx)
-        }
+        NodeKind::ThisExpression => walk_mut_expr_as_this_expression(node, traverser, ctx),
+        NodeKind::Super => walk_mut_expr_as_super(node, traverser, ctx),
+        NodeKind::MetaProperty => walk_mut_expr_as_meta_property(node, traverser, ctx),
+        NodeKind::StringLiteral => walk_mut_expr_as_string_literal(node, traverser, ctx),
+        NodeKind::NumericLiteral => walk_mut_expr_as_numeric_literal(node, traverser, ctx),
+        NodeKind::BigIntLiteral => walk_mut_expr_as_big_int_literal(node, traverser, ctx),
+        NodeKind::BooleanLiteral => walk_mut_expr_as_boolean_literal(node, traverser, ctx),
+        NodeKind::NullLiteral => walk_mut_expr_as_null_literal(node, traverser, ctx),
+        NodeKind::RegExpLiteral => walk_mut_expr_as_reg_exp_literal(node, traverser, ctx),
+        NodeKind::TemplateLiteral => walk_mut_expr_as_template_literal(node, traverser, ctx),
+        NodeKind::BinaryExpression => walk_mut_expr_as_binary_expression(node, traverser, ctx),
+        NodeKind::LogicalExpression => walk_mut_expr_as_logical_expression(node, traverser, ctx),
+        NodeKind::UnaryExpression => walk_mut_expr_as_unary_expression(node, traverser, ctx),
+        NodeKind::UpdateExpression => walk_mut_expr_as_update_expression(node, traverser, ctx),
         NodeKind::AssignmentExpression => {
-            walk_mut_assignment_expression(AssignmentExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_assignment_expression(node, traverser, ctx)
         }
         NodeKind::ConditionalExpression => {
-            walk_mut_conditional_expression(ConditionalExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_conditional_expression(node, traverser, ctx)
         }
-        NodeKind::SequenceExpression => {
-            walk_mut_sequence_expression(SequenceExpression(node.0), traverser, ctx)
-        }
-        NodeKind::MemberExpression => {
-            walk_mut_member_expression(MemberExpression(node.0), traverser, ctx)
-        }
-        NodeKind::CallExpression => {
-            walk_mut_call_expression(CallExpression(node.0), traverser, ctx)
-        }
-        NodeKind::ChainExpression => {
-            walk_mut_chain_expression(ChainExpression(node.0), traverser, ctx)
-        }
-        NodeKind::NewExpression => walk_mut_new_expression(NewExpression(node.0), traverser, ctx),
+        NodeKind::SequenceExpression => walk_mut_expr_as_sequence_expression(node, traverser, ctx),
+        NodeKind::MemberExpression => walk_mut_expr_as_member_expression(node, traverser, ctx),
+        NodeKind::CallExpression => walk_mut_expr_as_call_expression(node, traverser, ctx),
+        NodeKind::ChainExpression => walk_mut_expr_as_chain_expression(node, traverser, ctx),
+        NodeKind::NewExpression => walk_mut_expr_as_new_expression(node, traverser, ctx),
         NodeKind::TaggedTemplateExpression => {
-            walk_mut_tagged_template_expression(TaggedTemplateExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_tagged_template_expression(node, traverser, ctx)
         }
         NodeKind::ArrowFunctionExpression => {
-            walk_mut_arrow_function_expression(ArrowFunctionExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_arrow_function_expression(node, traverser, ctx)
         }
-        NodeKind::ArrayExpression => {
-            walk_mut_array_expression(ArrayExpression(node.0), traverser, ctx)
-        }
-        NodeKind::ObjectExpression => {
-            walk_mut_object_expression(ObjectExpression(node.0), traverser, ctx)
-        }
+        NodeKind::ArrayExpression => walk_mut_expr_as_array_expression(node, traverser, ctx),
+        NodeKind::ObjectExpression => walk_mut_expr_as_object_expression(node, traverser, ctx),
         NodeKind::ParenthesizedExpression => {
-            walk_mut_parenthesized_expression(ParenthesizedExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_parenthesized_expression(node, traverser, ctx)
         }
-        NodeKind::Function => walk_mut_function(Function(node.0), traverser, ctx),
-        NodeKind::Class => walk_mut_class(Class(node.0), traverser, ctx),
-        NodeKind::ImportExpression => {
-            walk_mut_import_expression(ImportExpression(node.0), traverser, ctx)
-        }
-        NodeKind::AwaitExpression => {
-            walk_mut_await_expression(AwaitExpression(node.0), traverser, ctx)
-        }
-        NodeKind::YieldExpression => {
-            walk_mut_yield_expression(YieldExpression(node.0), traverser, ctx)
-        }
-        NodeKind::PrivateIdentifier => {
-            walk_mut_private_identifier(PrivateIdentifier(node.0), traverser, ctx)
-        }
-        NodeKind::TsAsExpression => {
-            walk_mut_ts_as_expression(TsAsExpression(node.0), traverser, ctx)
-        }
+        NodeKind::Function => walk_mut_expr_as_function(node, traverser, ctx),
+        NodeKind::Class => walk_mut_expr_as_class(node, traverser, ctx),
+        NodeKind::ImportExpression => walk_mut_expr_as_import_expression(node, traverser, ctx),
+        NodeKind::AwaitExpression => walk_mut_expr_as_await_expression(node, traverser, ctx),
+        NodeKind::YieldExpression => walk_mut_expr_as_yield_expression(node, traverser, ctx),
+        NodeKind::PrivateIdentifier => walk_mut_expr_as_private_identifier(node, traverser, ctx),
+        NodeKind::TsAsExpression => walk_mut_expr_as_ts_as_expression(node, traverser, ctx),
         NodeKind::TsSatisfiesExpression => {
-            walk_mut_ts_satisfies_expression(TsSatisfiesExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_ts_satisfies_expression(node, traverser, ctx)
         }
-        NodeKind::TsTypeAssertion => {
-            walk_mut_ts_type_assertion(TsTypeAssertion(node.0), traverser, ctx)
-        }
+        NodeKind::TsTypeAssertion => walk_mut_expr_as_ts_type_assertion(node, traverser, ctx),
         NodeKind::TsNonNullExpression => {
-            walk_mut_ts_non_null_expression(TsNonNullExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_ts_non_null_expression(node, traverser, ctx)
         }
         NodeKind::TsInstantiationExpression => {
-            walk_mut_ts_instantiation_expression(TsInstantiationExpression(node.0), traverser, ctx)
+            walk_mut_expr_as_ts_instantiation_expression(node, traverser, ctx)
         }
-        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx),
-        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
+        NodeKind::JsxElement => walk_mut_expr_as_jsx_element(node, traverser, ctx),
+        NodeKind::JsxFragment => walk_mut_expr_as_jsx_fragment(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_expr(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -34956,6 +35787,50 @@ fn walk_mut_simple_assignment_target<'a, State, T: ?Sized + TraverseMut<'a, Stat
         }
     }
 }
+#[inline(never)]
+fn walk_mut_property_key_as_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: PropertyKey,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_property_key(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_property_key_as_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: PropertyKey,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_property_key(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: PropertyKey,
@@ -34969,10 +35844,8 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
-        }
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::IdentifierName => walk_mut_property_key_as_identifier_name(node, traverser, ctx),
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -35012,16 +35885,47 @@ fn walk_mut_property_key<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => walk_mut_property_key_as_expr(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_module_export_name_as_identifier_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ModuleExportName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_property_key(node, ctx) {
+    match traverser.exit_module_export_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_module_export_name_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ModuleExportName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_module_export_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -35042,20 +35946,53 @@ fn walk_mut_module_export_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+            walk_mut_module_export_name_as_identifier_name(node, traverser, ctx)
         }
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
+        NodeKind::StringLiteral => {
+            walk_mut_module_export_name_as_string_literal(node, traverser, ctx)
+        }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_argument_as_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Argument,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_module_export_name(node, ctx) {
+    match traverser.exit_argument(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_argument_as_spread_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: Argument,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_spread_element(SpreadElement(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_argument(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -35076,7 +36013,7 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -35116,25 +36053,12 @@ fn walk_mut_argument<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => walk_mut_argument_as_expr(node, traverser, ctx),
         NodeKind::SpreadElement => {
             std::hint::cold_path();
-            walk_mut_spread_element(SpreadElement(node.0), traverser, ctx)
+            walk_mut_argument_as_spread_element(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_argument(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -35171,6 +36095,54 @@ fn walk_mut_object_property_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_for_statement_init_as_variable_declaration<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ForStatementInit,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_for_statement_init(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_for_statement_init_as_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ForStatementInit,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_for_statement_init(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ForStatementInit,
@@ -35184,9 +36156,9 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::VariableDeclaration => {
-            walk_mut_variable_declaration(VariableDeclaration(node.0), traverser, ctx)
+            walk_mut_for_statement_init_as_variable_declaration(node, traverser, ctx)
         }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
@@ -35227,21 +36199,8 @@ fn walk_mut_for_statement_init<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => walk_mut_for_statement_init_as_expr(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_for_statement_init(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -35337,6 +36296,50 @@ fn walk_mut_for_statement_left<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_arrow_function_body_as_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ArrowFunctionBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_function_body(FunctionBody(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_arrow_function_body(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_arrow_function_body_as_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: ArrowFunctionBody,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_arrow_function_body(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ArrowFunctionBody,
@@ -35350,8 +36353,10 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::FunctionBody => walk_mut_function_body(FunctionBody(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::FunctionBody => {
+            walk_mut_arrow_function_body_as_function_body(node, traverser, ctx)
+        }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -35391,21 +36396,8 @@ fn walk_mut_arrow_function_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => walk_mut_arrow_function_body_as_expr(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_arrow_function_body(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -35444,6 +36436,84 @@ fn walk_mut_formal_parameter_item<'a, State, T: ?Sized + TraverseMut<'a, State>>
         }
     }
 }
+#[inline(never)]
+fn walk_mut_formal_parameter_pattern_as_binding_identifier<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: FormalParameterPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_formal_parameter_pattern(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_formal_parameter_pattern_as_array_pattern<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: FormalParameterPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_formal_parameter_pattern(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_formal_parameter_pattern_as_object_pattern<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: FormalParameterPattern,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_formal_parameter_pattern(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: FormalParameterPattern,
@@ -35457,26 +36527,17 @@ fn walk_mut_formal_parameter_pattern<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+            walk_mut_formal_parameter_pattern_as_binding_identifier(node, traverser, ctx)
         }
-        NodeKind::ArrayPattern => walk_mut_array_pattern(ArrayPattern(node.0), traverser, ctx),
-        NodeKind::ObjectPattern => walk_mut_object_pattern(ObjectPattern(node.0), traverser, ctx),
+        NodeKind::ArrayPattern => {
+            walk_mut_formal_parameter_pattern_as_array_pattern(node, traverser, ctx)
+        }
+        NodeKind::ObjectPattern => {
+            walk_mut_formal_parameter_pattern_as_object_pattern(node, traverser, ctx)
+        }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_formal_parameter_pattern(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -35561,6 +36622,151 @@ fn walk_mut_import_declaration_specifier<'a, State, T: ?Sized + TraverseMut<'a, 
         }
     }
 }
+#[inline(never)]
+fn walk_mut_export_default_declaration_kind_as_expr_function<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ExportDefaultDeclarationKind,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = {
+        let concrete = Function(node.0);
+        if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
+            walk_mut_function(concrete, traverser, ctx)
+        } else {
+            walk_mut_expr(Expr(node.0), traverser, ctx)
+        }
+    };
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_export_default_declaration_kind_as_expr_class<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ExportDefaultDeclarationKind,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = {
+        let concrete = Class(node.0);
+        if concrete.class_type(ctx.ast) == ClassType::ClassDeclaration {
+            walk_mut_class(concrete, traverser, ctx)
+        } else {
+            walk_mut_expr(Expr(node.0), traverser, ctx)
+        }
+    };
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_export_default_declaration_kind_as_expr<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ExportDefaultDeclarationKind,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_export_default_declaration_kind_as_ts_function<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ExportDefaultDeclarationKind,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_function(TsFunction(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_export_default_declaration_kind_as_ts_interface_declaration<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: ExportDefaultDeclarationKind,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_export_default_declaration_kind(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: ExportDefaultDeclarationKind,
@@ -35574,22 +36780,12 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::Function => {
-            let concrete = Function(node.0);
-            if concrete.function_type(ctx.ast) == FunctionType::FunctionDeclaration {
-                walk_mut_function(concrete, traverser, ctx)
-            } else {
-                walk_mut_expr(Expr(node.0), traverser, ctx)
-            }
+            walk_mut_export_default_declaration_kind_as_expr_function(node, traverser, ctx)
         }
         NodeKind::Class => {
-            let concrete = Class(node.0);
-            if concrete.class_type(ctx.ast) == ClassType::ClassDeclaration {
-                walk_mut_class(concrete, traverser, ctx)
-            } else {
-                walk_mut_expr(Expr(node.0), traverser, ctx)
-            }
+            walk_mut_export_default_declaration_kind_as_expr_class(node, traverser, ctx)
         }
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
@@ -35628,25 +36824,18 @@ fn walk_mut_export_default_declaration_kind<'a, State, T: ?Sized + TraverseMut<'
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
-        NodeKind::TsFunction => walk_mut_ts_function(TsFunction(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => {
+            walk_mut_export_default_declaration_kind_as_expr(node, traverser, ctx)
+        }
+        NodeKind::TsFunction => {
+            walk_mut_export_default_declaration_kind_as_ts_function(node, traverser, ctx)
+        }
         NodeKind::TsInterfaceDeclaration => {
-            walk_mut_ts_interface_declaration(TsInterfaceDeclaration(node.0), traverser, ctx)
+            walk_mut_export_default_declaration_kind_as_ts_interface_declaration(
+                node, traverser, ctx,
+            )
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_export_default_declaration_kind(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -38753,6 +39942,847 @@ fn walk_mut_hashbang<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_any_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_unknown_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_unknown_keyword(TsUnknownKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_never_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_never_keyword(TsNeverKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_void_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_void_keyword(TsVoidKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_null_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_null_keyword(TsNullKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_undefined_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_undefined_keyword(TsUndefinedKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_string_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_string_keyword(TsStringKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_number_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_number_keyword(TsNumberKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_big_int_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_big_int_keyword(TsBigIntKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_boolean_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_boolean_keyword(TsBooleanKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_symbol_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_symbol_keyword(TsSymbolKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_object_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_object_keyword(TsObjectKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_intrinsic_keyword<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_intrinsic_keyword(TsIntrinsicKeyword(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_this_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_type_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_reference(TsTypeReference(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_type_query<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_query(TsTypeQuery(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_import_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_literal_type(TsLiteralType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_template_literal_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_template_literal_type(TsTemplateLiteralType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_array_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_array_type(TsArrayType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_indexed_access_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_indexed_access_type(TsIndexedAccessType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_tuple_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_tuple_type(TsTupleType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_optional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_optional_type(TsOptionalType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_rest_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_rest_type(TsRestType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_js_doc_nullable_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_js_doc_nullable_type(TsJsDocNullableType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_js_doc_non_nullable_type<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_js_doc_unknown_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_js_doc_unknown_type(TsJsDocUnknownType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_union_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_union_type(TsUnionType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_intersection_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_intersection_type(TsIntersectionType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_conditional_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_conditional_type(TsConditionalType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_infer_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_infer_type(TsInferType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_type_operator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_operator(TsTypeOperator(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_parenthesized_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_parenthesized_type(TsParenthesizedType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_function_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_function_type(TsFunctionType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_constructor_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_constructor_type(TsConstructorType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_type_predicate<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_predicate(TsTypePredicate(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_type_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_literal(TsTypeLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_as_ts_mapped_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsType,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsType,
@@ -38766,102 +40796,107 @@ fn walk_mut_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::TsAnyKeyword => walk_mut_ts_any_keyword(TsAnyKeyword(node.0), traverser, ctx),
-        NodeKind::TsUnknownKeyword => {
-            walk_mut_ts_unknown_keyword(TsUnknownKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsNeverKeyword => {
-            walk_mut_ts_never_keyword(TsNeverKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsVoidKeyword => walk_mut_ts_void_keyword(TsVoidKeyword(node.0), traverser, ctx),
-        NodeKind::TsNullKeyword => walk_mut_ts_null_keyword(TsNullKeyword(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::TsAnyKeyword => walk_mut_ts_type_as_ts_any_keyword(node, traverser, ctx),
+        NodeKind::TsUnknownKeyword => walk_mut_ts_type_as_ts_unknown_keyword(node, traverser, ctx),
+        NodeKind::TsNeverKeyword => walk_mut_ts_type_as_ts_never_keyword(node, traverser, ctx),
+        NodeKind::TsVoidKeyword => walk_mut_ts_type_as_ts_void_keyword(node, traverser, ctx),
+        NodeKind::TsNullKeyword => walk_mut_ts_type_as_ts_null_keyword(node, traverser, ctx),
         NodeKind::TsUndefinedKeyword => {
-            walk_mut_ts_undefined_keyword(TsUndefinedKeyword(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_undefined_keyword(node, traverser, ctx)
         }
-        NodeKind::TsStringKeyword => {
-            walk_mut_ts_string_keyword(TsStringKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsNumberKeyword => {
-            walk_mut_ts_number_keyword(TsNumberKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsBigIntKeyword => {
-            walk_mut_ts_big_int_keyword(TsBigIntKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsBooleanKeyword => {
-            walk_mut_ts_boolean_keyword(TsBooleanKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsSymbolKeyword => {
-            walk_mut_ts_symbol_keyword(TsSymbolKeyword(node.0), traverser, ctx)
-        }
-        NodeKind::TsObjectKeyword => {
-            walk_mut_ts_object_keyword(TsObjectKeyword(node.0), traverser, ctx)
-        }
+        NodeKind::TsStringKeyword => walk_mut_ts_type_as_ts_string_keyword(node, traverser, ctx),
+        NodeKind::TsNumberKeyword => walk_mut_ts_type_as_ts_number_keyword(node, traverser, ctx),
+        NodeKind::TsBigIntKeyword => walk_mut_ts_type_as_ts_big_int_keyword(node, traverser, ctx),
+        NodeKind::TsBooleanKeyword => walk_mut_ts_type_as_ts_boolean_keyword(node, traverser, ctx),
+        NodeKind::TsSymbolKeyword => walk_mut_ts_type_as_ts_symbol_keyword(node, traverser, ctx),
+        NodeKind::TsObjectKeyword => walk_mut_ts_type_as_ts_object_keyword(node, traverser, ctx),
         NodeKind::TsIntrinsicKeyword => {
-            walk_mut_ts_intrinsic_keyword(TsIntrinsicKeyword(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_intrinsic_keyword(node, traverser, ctx)
         }
-        NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx),
-        NodeKind::TsTypeReference => {
-            walk_mut_ts_type_reference(TsTypeReference(node.0), traverser, ctx)
-        }
-        NodeKind::TsTypeQuery => walk_mut_ts_type_query(TsTypeQuery(node.0), traverser, ctx),
-        NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx),
-        NodeKind::TsLiteralType => walk_mut_ts_literal_type(TsLiteralType(node.0), traverser, ctx),
+        NodeKind::TsThisType => walk_mut_ts_type_as_ts_this_type(node, traverser, ctx),
+        NodeKind::TsTypeReference => walk_mut_ts_type_as_ts_type_reference(node, traverser, ctx),
+        NodeKind::TsTypeQuery => walk_mut_ts_type_as_ts_type_query(node, traverser, ctx),
+        NodeKind::TsImportType => walk_mut_ts_type_as_ts_import_type(node, traverser, ctx),
+        NodeKind::TsLiteralType => walk_mut_ts_type_as_ts_literal_type(node, traverser, ctx),
         NodeKind::TsTemplateLiteralType => {
-            walk_mut_ts_template_literal_type(TsTemplateLiteralType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_template_literal_type(node, traverser, ctx)
         }
-        NodeKind::TsArrayType => walk_mut_ts_array_type(TsArrayType(node.0), traverser, ctx),
+        NodeKind::TsArrayType => walk_mut_ts_type_as_ts_array_type(node, traverser, ctx),
         NodeKind::TsIndexedAccessType => {
-            walk_mut_ts_indexed_access_type(TsIndexedAccessType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_indexed_access_type(node, traverser, ctx)
         }
-        NodeKind::TsTupleType => walk_mut_ts_tuple_type(TsTupleType(node.0), traverser, ctx),
-        NodeKind::TsOptionalType => {
-            walk_mut_ts_optional_type(TsOptionalType(node.0), traverser, ctx)
-        }
-        NodeKind::TsRestType => walk_mut_ts_rest_type(TsRestType(node.0), traverser, ctx),
+        NodeKind::TsTupleType => walk_mut_ts_type_as_ts_tuple_type(node, traverser, ctx),
+        NodeKind::TsOptionalType => walk_mut_ts_type_as_ts_optional_type(node, traverser, ctx),
+        NodeKind::TsRestType => walk_mut_ts_type_as_ts_rest_type(node, traverser, ctx),
         NodeKind::TsJsDocNullableType => {
-            walk_mut_ts_js_doc_nullable_type(TsJsDocNullableType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_js_doc_nullable_type(node, traverser, ctx)
         }
         NodeKind::TsJsDocNonNullableType => {
-            walk_mut_ts_js_doc_non_nullable_type(TsJsDocNonNullableType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_js_doc_non_nullable_type(node, traverser, ctx)
         }
         NodeKind::TsJsDocUnknownType => {
-            walk_mut_ts_js_doc_unknown_type(TsJsDocUnknownType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_js_doc_unknown_type(node, traverser, ctx)
         }
-        NodeKind::TsUnionType => walk_mut_ts_union_type(TsUnionType(node.0), traverser, ctx),
+        NodeKind::TsUnionType => walk_mut_ts_type_as_ts_union_type(node, traverser, ctx),
         NodeKind::TsIntersectionType => {
-            walk_mut_ts_intersection_type(TsIntersectionType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_intersection_type(node, traverser, ctx)
         }
         NodeKind::TsConditionalType => {
-            walk_mut_ts_conditional_type(TsConditionalType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_conditional_type(node, traverser, ctx)
         }
-        NodeKind::TsInferType => walk_mut_ts_infer_type(TsInferType(node.0), traverser, ctx),
-        NodeKind::TsTypeOperator => {
-            walk_mut_ts_type_operator(TsTypeOperator(node.0), traverser, ctx)
-        }
+        NodeKind::TsInferType => walk_mut_ts_type_as_ts_infer_type(node, traverser, ctx),
+        NodeKind::TsTypeOperator => walk_mut_ts_type_as_ts_type_operator(node, traverser, ctx),
         NodeKind::TsParenthesizedType => {
-            walk_mut_ts_parenthesized_type(TsParenthesizedType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_parenthesized_type(node, traverser, ctx)
         }
-        NodeKind::TsFunctionType => {
-            walk_mut_ts_function_type(TsFunctionType(node.0), traverser, ctx)
-        }
+        NodeKind::TsFunctionType => walk_mut_ts_type_as_ts_function_type(node, traverser, ctx),
         NodeKind::TsConstructorType => {
-            walk_mut_ts_constructor_type(TsConstructorType(node.0), traverser, ctx)
+            walk_mut_ts_type_as_ts_constructor_type(node, traverser, ctx)
         }
-        NodeKind::TsTypePredicate => {
-            walk_mut_ts_type_predicate(TsTypePredicate(node.0), traverser, ctx)
-        }
-        NodeKind::TsTypeLiteral => walk_mut_ts_type_literal(TsTypeLiteral(node.0), traverser, ctx),
-        NodeKind::TsMappedType => walk_mut_ts_mapped_type(TsMappedType(node.0), traverser, ctx),
+        NodeKind::TsTypePredicate => walk_mut_ts_type_as_ts_type_predicate(node, traverser, ctx),
+        NodeKind::TsTypeLiteral => walk_mut_ts_type_as_ts_type_literal(node, traverser, ctx),
+        NodeKind::TsMappedType => walk_mut_ts_type_as_ts_mapped_type(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_name_as_identifier_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_type(node, ctx) {
+    match traverser.exit_ts_type_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_name_as_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTypeName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -38882,22 +40917,139 @@ fn walk_mut_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+            walk_mut_ts_type_name_as_identifier_reference(node, traverser, ctx)
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+            walk_mut_ts_type_name_as_ts_qualified_name(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_qualified_name_left_as_identifier_reference<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsQualifiedNameLeft,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_type_name(node, ctx) {
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_qualified_name_left_as_identifier_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsQualifiedNameLeft,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_qualified_name_left_as_binding_identifier<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsQualifiedNameLeft,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_qualified_name_left_as_this_expression<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsQualifiedNameLeft,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_qualified_name_left_as_ts_qualified_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsQualifiedNameLeft,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_qualified_name_left(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -38918,31 +41070,70 @@ fn walk_mut_ts_qualified_name_left<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference => {
-            walk_mut_identifier_reference(IdentifierReference(node.0), traverser, ctx)
+            walk_mut_ts_qualified_name_left_as_identifier_reference(node, traverser, ctx)
         }
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+            walk_mut_ts_qualified_name_left_as_identifier_name(node, traverser, ctx)
         }
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+            walk_mut_ts_qualified_name_left_as_binding_identifier(node, traverser, ctx)
         }
         NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
+            walk_mut_ts_qualified_name_left_as_this_expression(node, traverser, ctx)
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+            walk_mut_ts_qualified_name_left_as_ts_qualified_name(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_import_type_qualifier_as_identifier_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsImportTypeQualifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_qualified_name_left(node, ctx) {
+    match traverser.exit_ts_import_type_qualifier(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_import_type_qualifier_as_ts_qualified_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsImportTypeQualifier,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_import_type_qualifier(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -38963,22 +41154,87 @@ fn walk_mut_ts_import_type_qualifier<'a, State, T: ?Sized + TraverseMut<'a, Stat
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+            walk_mut_ts_import_type_qualifier_as_identifier_name(node, traverser, ctx)
         }
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+            walk_mut_ts_import_type_qualifier_as_ts_qualified_name(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_query_expr_name_as_ts_type_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTypeQueryExprName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_import_type_qualifier(node, ctx) {
+    match traverser.exit_ts_type_query_expr_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_query_expr_name_as_this_expression<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTypeQueryExprName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_this_expression(ThisExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type_query_expr_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_query_expr_name_as_ts_import_type<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTypeQueryExprName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type_query_expr_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -38999,23 +41255,144 @@ fn walk_mut_ts_type_query_expr_name<'a, State, T: ?Sized + TraverseMut<'a, State
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
-            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
+            walk_mut_ts_type_query_expr_name_as_ts_type_name(node, traverser, ctx)
         }
         NodeKind::ThisExpression => {
-            walk_mut_this_expression(ThisExpression(node.0), traverser, ctx)
+            walk_mut_ts_type_query_expr_name_as_this_expression(node, traverser, ctx)
         }
-        NodeKind::TsImportType => walk_mut_ts_import_type(TsImportType(node.0), traverser, ctx),
+        NodeKind::TsImportType => {
+            walk_mut_ts_type_query_expr_name_as_ts_import_type(node, traverser, ctx)
+        }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_type_query_expr_name(node, ctx) {
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_numeric_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_big_int_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_boolean_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_template_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_literal_as_unary_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsLiteral,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_literal(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -39036,30 +41413,57 @@ fn walk_mut_ts_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
-        NodeKind::NumericLiteral => {
-            walk_mut_numeric_literal(NumericLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::BigIntLiteral => walk_mut_big_int_literal(BigIntLiteral(node.0), traverser, ctx),
-        NodeKind::BooleanLiteral => {
-            walk_mut_boolean_literal(BooleanLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
-        }
-        NodeKind::UnaryExpression => {
-            walk_mut_unary_expression(UnaryExpression(node.0), traverser, ctx)
-        }
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::StringLiteral => walk_mut_ts_literal_as_string_literal(node, traverser, ctx),
+        NodeKind::NumericLiteral => walk_mut_ts_literal_as_numeric_literal(node, traverser, ctx),
+        NodeKind::BigIntLiteral => walk_mut_ts_literal_as_big_int_literal(node, traverser, ctx),
+        NodeKind::BooleanLiteral => walk_mut_ts_literal_as_boolean_literal(node, traverser, ctx),
+        NodeKind::TemplateLiteral => walk_mut_ts_literal_as_template_literal(node, traverser, ctx),
+        NodeKind::UnaryExpression => walk_mut_ts_literal_as_unary_expression(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_tuple_element_as_ts_type<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsTupleElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type(TsType(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_literal(node, ctx) {
+    match traverser.exit_ts_tuple_element(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_tuple_element_as_ts_named_tuple_member<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTupleElement,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_named_tuple_member(TsNamedTupleMember(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_tuple_element(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -39080,7 +41484,7 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::TsAnyKeyword
         | NodeKind::TsUnknownKeyword
         | NodeKind::TsNeverKeyword
@@ -39118,24 +41522,11 @@ fn walk_mut_ts_tuple_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsConstructorType
         | NodeKind::TsTypePredicate
         | NodeKind::TsTypeLiteral
-        | NodeKind::TsMappedType => walk_mut_ts_type(TsType(node.0), traverser, ctx),
+        | NodeKind::TsMappedType => walk_mut_ts_tuple_element_as_ts_type(node, traverser, ctx),
         NodeKind::TsNamedTupleMember => {
-            walk_mut_ts_named_tuple_member(TsNamedTupleMember(node.0), traverser, ctx)
+            walk_mut_ts_tuple_element_as_ts_named_tuple_member(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_ts_tuple_element(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -39187,6 +41578,58 @@ fn walk_mut_ts_type_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_ts_type_predicate_name_as_identifier_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTypePredicateName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type_predicate_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_type_predicate_name_as_ts_this_type<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsTypePredicateName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_type_predicate_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsTypePredicateName,
@@ -39200,20 +41643,83 @@ fn walk_mut_ts_type_predicate_name<'a, State, T: ?Sized + TraverseMut<'a, State>
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+            walk_mut_ts_type_predicate_name_as_identifier_name(node, traverser, ctx)
         }
-        NodeKind::TsThisType => walk_mut_ts_this_type(TsThisType(node.0), traverser, ctx),
+        NodeKind::TsThisType => {
+            walk_mut_ts_type_predicate_name_as_ts_this_type(node, traverser, ctx)
+        }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_enum_member_name_as_identifier_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsEnumMemberName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_type_predicate_name(node, ctx) {
+    match traverser.exit_ts_enum_member_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_enum_member_name_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsEnumMemberName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_enum_member_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_enum_member_name_as_template_literal<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsEnumMemberName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_enum_member_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -39234,23 +41740,78 @@ fn walk_mut_ts_enum_member_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierName => {
-            walk_mut_identifier_name(IdentifierName(node.0), traverser, ctx)
+            walk_mut_ts_enum_member_name_as_identifier_name(node, traverser, ctx)
         }
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
+        NodeKind::StringLiteral => {
+            walk_mut_ts_enum_member_name_as_string_literal(node, traverser, ctx)
+        }
         NodeKind::TemplateLiteral => {
-            walk_mut_template_literal(TemplateLiteral(node.0), traverser, ctx)
+            walk_mut_ts_enum_member_name_as_template_literal(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_module_name_as_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_ts_enum_member_name(node, ctx) {
+    match traverser.exit_ts_module_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_module_name_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_module_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_module_name_as_ts_qualified_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_module_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -39271,28 +41832,15 @@ fn walk_mut_ts_module_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::BindingIdentifier => {
-            walk_mut_binding_identifier(BindingIdentifier(node.0), traverser, ctx)
+            walk_mut_ts_module_name_as_binding_identifier(node, traverser, ctx)
         }
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
+        NodeKind::StringLiteral => walk_mut_ts_module_name_as_string_literal(node, traverser, ctx),
         NodeKind::TsQualifiedName => {
-            walk_mut_ts_qualified_name(TsQualifiedName(node.0), traverser, ctx)
+            walk_mut_ts_module_name_as_ts_qualified_name(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_ts_module_name(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -39329,6 +41877,55 @@ fn walk_mut_ts_module_body<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_ts_module_reference_as_ts_type_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: TsModuleReference,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_module_reference(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_ts_module_reference_as_ts_external_module_reference<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: TsModuleReference,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_ts_external_module_reference(TsExternalModuleReference(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_ts_module_reference(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: TsModuleReference,
@@ -39342,27 +41939,14 @@ fn walk_mut_ts_module_reference<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference | NodeKind::TsQualifiedName => {
-            walk_mut_ts_type_name(TsTypeName(node.0), traverser, ctx)
+            walk_mut_ts_module_reference_as_ts_type_name(node, traverser, ctx)
         }
         NodeKind::TsExternalModuleReference => {
-            walk_mut_ts_external_module_reference(TsExternalModuleReference(node.0), traverser, ctx)
+            walk_mut_ts_module_reference_as_ts_external_module_reference(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_ts_module_reference(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -42041,6 +44625,80 @@ fn walk_mut_ts_index_signature_parameter<'a, State, T: ?Sized + TraverseMut<'a, 
         }
     }
 }
+#[inline(never)]
+fn walk_mut_jsx_element_name_as_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxElementName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_element_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_element_name_as_jsx_namespaced_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxElementName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_element_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_element_name_as_jsx_member_expression<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxElementName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_element_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxElementName,
@@ -42054,23 +44712,64 @@ fn walk_mut_jsx_element_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::JsxIdentifier => {
+            walk_mut_jsx_element_name_as_jsx_identifier(node, traverser, ctx)
+        }
         NodeKind::JsxNamespacedName => {
-            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
+            walk_mut_jsx_element_name_as_jsx_namespaced_name(node, traverser, ctx)
         }
         NodeKind::JsxMemberExpression => {
-            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
+            walk_mut_jsx_element_name_as_jsx_member_expression(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_member_expression_object_as_jsx_identifier<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxMemberExpressionObject,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_jsx_element_name(node, ctx) {
+    match traverser.exit_jsx_member_expression_object(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_member_expression_object_as_jsx_member_expression<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxMemberExpressionObject,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_member_expression_object(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -42091,20 +44790,57 @@ fn walk_mut_jsx_member_expression_object<'a, State, T: ?Sized + TraverseMut<'a, 
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::JsxIdentifier => {
+            walk_mut_jsx_member_expression_object_as_jsx_identifier(node, traverser, ctx)
+        }
         NodeKind::JsxMemberExpression => {
-            walk_mut_jsx_member_expression(JsxMemberExpression(node.0), traverser, ctx)
+            walk_mut_jsx_member_expression_object_as_jsx_member_expression(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_attribute_name_as_jsx_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxAttributeName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_jsx_member_expression_object(node, ctx) {
+    match traverser.exit_jsx_attribute_name(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_attribute_name_as_jsx_namespaced_name<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxAttributeName,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_attribute_name(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -42125,25 +44861,14 @@ fn walk_mut_jsx_attribute_name<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::JsxIdentifier => walk_mut_jsx_identifier(JsxIdentifier(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::JsxIdentifier => {
+            walk_mut_jsx_attribute_name_as_jsx_identifier(node, traverser, ctx)
+        }
         NodeKind::JsxNamespacedName => {
-            walk_mut_jsx_namespaced_name(JsxNamespacedName(node.0), traverser, ctx)
+            walk_mut_jsx_attribute_name_as_jsx_namespaced_name(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_jsx_attribute_name(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]
@@ -42180,6 +44905,99 @@ fn walk_mut_jsx_attribute_item<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         }
     }
 }
+#[inline(never)]
+fn walk_mut_jsx_attribute_value_as_string_literal<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxAttributeValue,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_string_literal(StringLiteral(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_attribute_value_as_jsx_expression_container<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxAttributeValue,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_attribute_value_as_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxAttributeValue,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_attribute_value_as_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxAttributeValue,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_attribute_value(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
 #[inline]
 fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
     node: JsxAttributeValue,
@@ -42193,22 +45011,59 @@ fn walk_mut_jsx_attribute_value<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::StringLiteral => walk_mut_string_literal(StringLiteral(node.0), traverser, ctx),
-        NodeKind::JsxExpressionContainer => {
-            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::StringLiteral => {
+            walk_mut_jsx_attribute_value_as_string_literal(node, traverser, ctx)
         }
-        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx),
-        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
+        NodeKind::JsxExpressionContainer => {
+            walk_mut_jsx_attribute_value_as_jsx_expression_container(node, traverser, ctx)
+        }
+        NodeKind::JsxElement => walk_mut_jsx_attribute_value_as_jsx_element(node, traverser, ctx),
+        NodeKind::JsxFragment => walk_mut_jsx_attribute_value_as_jsx_fragment(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_expression_as_expr<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_expr(Expr(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_jsx_attribute_value(node, ctx) {
+    match traverser.exit_jsx_expression(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_expression_as_jsx_empty_expression<
+    'a,
+    State,
+    T: ?Sized + TraverseMut<'a, State>,
+>(
+    node: JsxExpression,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_empty_expression(JsxEmptyExpression(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_expression(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -42229,7 +45084,7 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
         NodeKind::IdentifierReference
         | NodeKind::ThisExpression
         | NodeKind::Super
@@ -42269,19 +45124,117 @@ fn walk_mut_jsx_expression<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         | NodeKind::TsNonNullExpression
         | NodeKind::TsInstantiationExpression
         | NodeKind::JsxElement
-        | NodeKind::JsxFragment => walk_mut_expr(Expr(node.0), traverser, ctx),
+        | NodeKind::JsxFragment => walk_mut_jsx_expression_as_expr(node, traverser, ctx),
         NodeKind::JsxEmptyExpression => {
-            walk_mut_jsx_empty_expression(JsxEmptyExpression(node.0), traverser, ctx)
+            walk_mut_jsx_expression_as_jsx_empty_expression(node, traverser, ctx)
         }
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_child_as_jsx_text<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_text(JsxText(node.0), traverser, ctx);
+    let children = match children {
         children @ (WalkMut::Continue | WalkMut::Stopped) => children,
         result => {
             std::hint::cold_path();
             return result;
         }
     };
-    match traverser.exit_jsx_expression(node, ctx) {
+    match traverser.exit_jsx_child(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_child_as_jsx_expression_container<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children =
+        walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_child(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_child_as_jsx_spread_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_spread_child(JsxSpreadChild(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_child(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_child_as_jsx_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_element(JsxElement(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_child(node, ctx) {
+        TraverseAction::Continue => children,
+        action => {
+            std::hint::cold_path();
+            WalkMut::exit(action, children)
+        }
+    }
+}
+#[inline(never)]
+fn walk_mut_jsx_child_as_jsx_fragment<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+    node: JsxChild,
+    traverser: &mut T,
+    ctx: &mut TraverseMutCtx<'_, 'a, State>,
+) -> WalkMut {
+    let children = walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx);
+    let children = match children {
+        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+        result => {
+            std::hint::cold_path();
+            return result;
+        }
+    };
+    match traverser.exit_jsx_child(node, ctx) {
         TraverseAction::Continue => children,
         action => {
             std::hint::cold_path();
@@ -42302,30 +45255,15 @@ fn walk_mut_jsx_child<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = match match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
-        NodeKind::JsxText => walk_mut_jsx_text(JsxText(node.0), traverser, ctx),
+    match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
+        NodeKind::JsxText => walk_mut_jsx_child_as_jsx_text(node, traverser, ctx),
         NodeKind::JsxExpressionContainer => {
-            walk_mut_jsx_expression_container(JsxExpressionContainer(node.0), traverser, ctx)
+            walk_mut_jsx_child_as_jsx_expression_container(node, traverser, ctx)
         }
-        NodeKind::JsxSpreadChild => {
-            walk_mut_jsx_spread_child(JsxSpreadChild(node.0), traverser, ctx)
-        }
-        NodeKind::JsxElement => walk_mut_jsx_element(JsxElement(node.0), traverser, ctx),
-        NodeKind::JsxFragment => walk_mut_jsx_fragment(JsxFragment(node.0), traverser, ctx),
+        NodeKind::JsxSpreadChild => walk_mut_jsx_child_as_jsx_spread_child(node, traverser, ctx),
+        NodeKind::JsxElement => walk_mut_jsx_child_as_jsx_element(node, traverser, ctx),
+        NodeKind::JsxFragment => walk_mut_jsx_child_as_jsx_fragment(node, traverser, ctx),
         _ => unsafe { std::hint::unreachable_unchecked() },
-    } {
-        children @ (WalkMut::Continue | WalkMut::Stopped) => children,
-        result => {
-            std::hint::cold_path();
-            return result;
-        }
-    };
-    match traverser.exit_jsx_child(node, ctx) {
-        TraverseAction::Continue => children,
-        action => {
-            std::hint::cold_path();
-            WalkMut::exit(action, children)
-        }
     }
 }
 #[inline]

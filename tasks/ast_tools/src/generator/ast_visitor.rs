@@ -804,8 +804,8 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                             }
                         }
                     }
-                    AstType::Enum(node) => {
-                        let dispatch = generate_mut_enum_dispatch(node, schema);
+                    AstType::Enum(node) if !has_outlined_arms(node, schema) => {
+                        let dispatch = generate_mut_enum_dispatch(node, schema, None);
                         quote! {
                             match #dispatch {
                                 children @ (WalkMut::Continue | WalkMut::Stopped) => children,
@@ -815,6 +815,37 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                                 }
                             }
                         }
+                    }
+                    AstType::Enum(node) => {
+                        // Each arm finishes the visit in its own function, so the
+                        // dispatch tail-calls it and the recursive walk only saves
+                        // the registers that the visited kind needs.
+                        let dispatch = generate_mut_enum_dispatch(
+                            node,
+                            schema,
+                            Some(OutlinedArms {
+                                ty_ident: &ty_ident,
+                                name: &name,
+                                exit: &exit,
+                                walks: &mut walks,
+                            }),
+                        );
+                        walks.extend(quote! {
+                            #[inline]
+                            fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+                                node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+                            ) -> WalkMut {
+                                match traverser.#enter(node, ctx) {
+                                    TraverseAction::Continue => {},
+                                    action => {
+                                        std::hint::cold_path();
+                                        return WalkMut::enter(action);
+                                    }
+                                }
+                                #dispatch
+                            }
+                        });
+                        TokenStream::new()
                     }
                     _ => unreachable!(),
                 };
@@ -855,28 +886,30 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         }
                     });
                 }
-                walks.extend(quote! {
-                    #[inline]
-                    fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
-                        node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
-                    ) -> WalkMut {
-                        match traverser.#enter(node, ctx) {
-                            TraverseAction::Continue => {},
-                            action => {
-                                std::hint::cold_path();
-                                return WalkMut::enter(action);
+                if !children.is_empty() {
+                    walks.extend(quote! {
+                        #[inline]
+                        fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+                            node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+                        ) -> WalkMut {
+                            match traverser.#enter(node, ctx) {
+                                TraverseAction::Continue => {},
+                                action => {
+                                    std::hint::cold_path();
+                                    return WalkMut::enter(action);
+                                }
+                            }
+                            let children = #children;
+                            match traverser.#exit(node, ctx) {
+                                TraverseAction::Continue => children,
+                                action => {
+                                    std::hint::cold_path();
+                                    WalkMut::exit(action, children)
+                                }
                             }
                         }
-                        let children = #children;
-                        match traverser.#exit(node, ctx) {
-                            TraverseAction::Continue => children,
-                            action => {
-                                std::hint::cold_path();
-                                WalkMut::exit(action, children)
-                            }
-                        }
-                    }
-                });
+                    });
+                }
                 quote! {
                     let original = self.node_id();
                     traverser.enter_node(original, ctx);
@@ -957,9 +990,86 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
     }
 }
 
-fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) -> TokenStream {
+/// Where a union walk emits its outlined arm functions.
+struct OutlinedArms<'g> {
+    ty_ident: &'g TokenStream,
+    name: &'g str,
+    exit: &'g proc_macro2::Ident,
+    walks: &'g mut TokenStream,
+}
+
+/// Whether a union walk tail-calls one function per arm. The saving comes from
+/// kinds without visitable children, which then skip the callee-saved
+/// registers of the larger arms, so only unions where such leaf kinds are
+/// common split their walk. Others, such as `Stmt`, keep their arms inline.
+fn has_outlined_arms(node: &crate::schema::AstEnum, schema: &Schema) -> bool {
+    let kinds: HashSet<String> = node
+        .variants
+        .iter()
+        .filter_map(|variant| variant.type_id)
+        .flat_map(|type_id| concrete_node_kinds(type_id, schema))
+        .collect();
+    let leaves = schema
+        .types
+        .iter()
+        .filter(|ty| match ty {
+            AstType::Struct(ast) => {
+                kinds.contains(&ast.name)
+                    && !ast
+                        .fields
+                        .iter()
+                        .any(|field| should_visit_type(field.type_id, schema))
+            }
+            _ => false,
+        })
+        .count();
+    leaves * 5 >= kinds.len()
+}
+
+fn generate_mut_enum_dispatch(
+    node: &crate::schema::AstEnum,
+    schema: &Schema,
+    mut outlined: Option<OutlinedArms<'_>>,
+) -> TokenStream {
     let mut arms = TokenStream::new();
     let mut seen = HashSet::new();
+    // Emits a function that walks one arm and then runs the union's exit hook,
+    // or keeps the arm inline when the union does not outline its arms.
+    let mut arm_fn = |suffix: &str, body: TokenStream| {
+        let Some(OutlinedArms {
+            ty_ident,
+            name,
+            exit,
+            walks,
+        }) = &mut outlined
+        else {
+            return quote!({ #body });
+        };
+        let arm = format_ident!("walk_mut_{name}_as_{suffix}");
+        walks.extend(quote! {
+            #[inline(never)]
+            fn #arm<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+                node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+            ) -> WalkMut {
+                let children = #body;
+                let children = match children {
+                    children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+                    result => {
+                        std::hint::cold_path();
+                        return result;
+                    }
+                };
+                match traverser.#exit(node, ctx) {
+                    TraverseAction::Continue => children,
+                    action => {
+                        std::hint::cold_path();
+                        WalkMut::exit(action, children)
+                    }
+                }
+            }
+        });
+        quote!(#arm(node, traverser, ctx))
+    };
     for variant in &node.variants {
         let Some(type_id) = variant.type_id else {
             continue;
@@ -969,15 +1079,18 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
         let walk = format_ident!("walk_mut_{}", ty.name().to_case(Case::Snake));
         let dispatch = quote!(#walk(#inner(node.0), traverser, ctx));
         let flattened = is_flattened_union(type_id, schema);
+        let variant_name = variant.name.to_case(Case::Snake);
         let mut kinds = Vec::new();
         for kind in concrete_node_kinds(type_id, schema) {
             if !seen.insert(kind.clone()) {
                 continue;
             }
             let concrete = format_ident!("{kind}");
+            let kind_suffix = format!("{variant_name}_{}", kind.to_case(Case::Snake));
             if flattened {
                 let walk = nested_union_walk(type_id, &kind, schema);
-                arms.extend(quote! { NodeKind::#concrete => { #walk } });
+                let call = arm_fn(&kind_suffix, walk);
+                arms.extend(quote! { NodeKind::#concrete => #call, });
             } else if node.name == "ExportDefaultDeclarationKind"
                 && variant.name == "Expr"
                 && matches!(kind.as_str(), "Function" | "Class")
@@ -994,19 +1107,22 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
                         quote!(ClassType::ClassDeclaration),
                     )
                 };
-                arms.extend(quote! {
-                    NodeKind::#concrete => {
+                let call = arm_fn(
+                    &kind_suffix,
+                    quote! {{
                         let concrete = #concrete(node.0);
                         if concrete.#getter(ctx.ast) == #declaration {
                             #concrete_walk(concrete, traverser, ctx)
                         } else { #dispatch }
-                    }
-                });
+                    }},
+                );
+                arms.extend(quote! { NodeKind::#concrete => #call, });
             } else {
                 kinds.push(concrete);
             }
         }
         if !kinds.is_empty() {
+            let call = arm_fn(&variant_name, dispatch);
             // Spread arguments are rare. Keeping their walk, which contains a
             // second expression slot, out of the argument slot lets the slot be
             // inlined into its call and `new` expression loops.
@@ -1014,11 +1130,11 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
                 arms.extend(quote! {
                     #(NodeKind::#kinds)|* => {
                         std::hint::cold_path();
-                        #dispatch
+                        #call
                     }
                 });
             } else {
-                arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
+                arms.extend(quote! { #(NodeKind::#kinds)|* => #call, });
             }
         }
     }
