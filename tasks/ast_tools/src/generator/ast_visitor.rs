@@ -818,6 +818,43 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                     }
                     _ => unreachable!(),
                 };
+                if let AstType::Enum(_) = ty
+                    && is_flattened_union(type_id, schema)
+                {
+                    // Outer unions that already matched a concrete kind call this
+                    // directly around that kind's walk, so the union hooks run
+                    // without a second kind dispatch.
+                    let walk_with = format_ident!("walk_mut_{name}_with");
+                    walks.extend(quote! {
+                        #[inline(always)]
+                        fn #walk_with<'a, State, T: ?Sized + TraverseMut<'a, State>>(
+                            node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
+                            children: impl FnOnce(&mut T, &mut TraverseMutCtx<'_, 'a, State>) -> WalkMut,
+                        ) -> WalkMut {
+                            match traverser.#enter(node, ctx) {
+                                TraverseAction::Continue => {},
+                                action => {
+                                    std::hint::cold_path();
+                                    return WalkMut::enter(action);
+                                }
+                            }
+                            let children = match children(traverser, ctx) {
+                                children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+                                result => {
+                                    std::hint::cold_path();
+                                    return result;
+                                }
+                            };
+                            match traverser.#exit(node, ctx) {
+                                TraverseAction::Continue => children,
+                                action => {
+                                    std::hint::cold_path();
+                                    WalkMut::exit(action, children)
+                                }
+                            }
+                        }
+                    });
+                }
                 walks.extend(quote! {
                     #[inline]
                     fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
@@ -931,13 +968,17 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
         let inner = ty.repr_ident(schema);
         let walk = format_ident!("walk_mut_{}", ty.name().to_case(Case::Snake));
         let dispatch = quote!(#walk(#inner(node.0), traverser, ctx));
+        let flattened = is_flattened_union(type_id, schema);
         let mut kinds = Vec::new();
         for kind in concrete_node_kinds(type_id, schema) {
             if !seen.insert(kind.clone()) {
                 continue;
             }
             let concrete = format_ident!("{kind}");
-            if node.name == "ExportDefaultDeclarationKind"
+            if flattened {
+                let walk = nested_union_walk(type_id, &kind, schema);
+                arms.extend(quote! { NodeKind::#concrete => { #walk } });
+            } else if node.name == "ExportDefaultDeclarationKind"
                 && variant.name == "Expr"
                 && matches!(kind.as_str(), "Function" | "Class")
             {
@@ -966,7 +1007,19 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
             }
         }
         if !kinds.is_empty() {
-            arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
+            // Spread arguments are rare. Keeping their walk, which contains a
+            // second expression slot, out of the argument slot lets the slot be
+            // inlined into its call and `new` expression loops.
+            if node.name == "Argument" && variant.name == "SpreadElement" {
+                arms.extend(quote! {
+                    #(NodeKind::#kinds)|* => {
+                        std::hint::cold_path();
+                        #dispatch
+                    }
+                });
+            } else {
+                arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
+            }
         }
     }
     // SAFETY: Typed wrappers can only be created by typed AST constructors for
@@ -977,6 +1030,65 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
             #arms
             _ => unsafe { std::hint::unreachable_unchecked() },
         }
+    }
+}
+
+/// A union nested in exactly one outer union is dispatched by that outer
+/// union: each concrete kind runs the inner union's hooks around its walk
+/// directly, without a second kind dispatch. Large unions and unions shared by
+/// several outer unions, such as `Expr`, keep their own walk so their concrete
+/// walks are not duplicated into every outer union.
+fn is_flattened_union(type_id: TypeId, schema: &Schema) -> bool {
+    const MAX_FLATTENED_KINDS: usize = 16;
+    matches!(schema.types[type_id], AstType::Enum(_))
+        && concrete_node_kinds(type_id, schema).len() <= MAX_FLATTENED_KINDS
+        && schema
+            .types
+            .iter()
+            .filter(|ty| match ty {
+                AstType::Enum(outer) => outer
+                    .variants
+                    .iter()
+                    .any(|variant| variant.type_id == Some(type_id)),
+                _ => false,
+            })
+            .count()
+            == 1
+}
+
+/// Walk `node.0`, whose concrete kind is already known to be `kind`, as
+/// `type_id`, running the hooks of every flattened union on the way.
+fn nested_union_walk(type_id: TypeId, kind: &str, schema: &Schema) -> TokenStream {
+    let ty = &schema.types[type_id];
+    let ty_ident = ty.repr_ident(schema);
+    let name = ty.name().to_case(Case::Snake);
+    match ty {
+        AstType::Struct(_) => {
+            let walk = format_ident!("walk_mut_{name}");
+            quote!(#walk(#ty_ident(node.0), traverser, ctx))
+        }
+        AstType::Enum(node) if is_flattened_union(type_id, schema) => {
+            // The inner union's own dispatch uses the first variant containing
+            // `kind`, so pick the same one here.
+            let variant = node
+                .variants
+                .iter()
+                .filter_map(|variant| variant.type_id)
+                .find(|&variant| {
+                    concrete_node_kinds(variant, schema)
+                        .iter()
+                        .any(|k| k == kind)
+                })
+                .expect("concrete kind must belong to the union");
+            let walk_with = format_ident!("walk_mut_{name}_with");
+            let inner = nested_union_walk(variant, kind, schema);
+            quote!(#walk_with(#ty_ident(node.0), traverser, ctx, |traverser, ctx| #inner))
+        }
+        AstType::Enum(_) => {
+            let walk = format_ident!("walk_mut_{name}");
+            quote!(#walk(#ty_ident(node.0), traverser, ctx))
+        }
+        _ => unreachable!("AST enum variants must contain AST nodes"),
     }
 }
 
