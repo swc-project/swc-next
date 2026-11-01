@@ -204,17 +204,20 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
     /// Reads common tokens without entering the full trivia and token scanner.
     /// On failure, the cursor is unchanged so trivia keeps its original context.
+    ///
+    /// Token flags are kept in a local instead of [`LexerState::token_flags`],
+    /// which stays clear between tokens.
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         if self.mode != LexerMode::Normal {
             return self.try_next_jsx_tag_token(target);
         }
 
+        debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
         let Some(mut byte) = self.source.get(start as usize).copied() else {
             return false;
         };
-        self.clear_token_flags();
         if byte == b' ' {
             start += 1;
             let Some(next) = self.source.get(start as usize).copied() else {
@@ -225,30 +228,40 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
                 return false;
             };
-            start = next_start;
-            byte = next;
-            self.set_token_flag(TokenFlag::LineTerminatorBefore);
+            // Every scanner below leaves the cursor unchanged on failure, so a line
+            // feed is rescanned by the trivia scanner with its original context.
+            return self.try_next_token_at::<true>(target, next_start, next);
         }
 
-        // Every scanner below leaves the cursor unchanged on failure, so a line
-        // feed is rescanned by the trivia scanner with its original context.
-        self.try_next_token_at(target, start, byte)
+        self.try_next_token_at::<false>(target, start, byte)
     }
 
+    /// Reads a fast-path token at `start`. `LINE_BREAK` is a constant so each
+    /// copy builds its token flags without keeping them in a register.
     #[inline(always)]
-    fn try_next_token_at(&mut self, target: &mut Token, start: u32, byte: u8) -> bool {
+    fn try_next_token_at<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+        byte: u8,
+    ) -> bool {
+        let flags = if LINE_BREAK {
+            flag_mask(TokenFlag::LineTerminatorBefore)
+        } else {
+            0
+        };
         match FAST_CLASS[byte as usize] {
             FastClass::Identifier => {
-                if !self.scan_ascii_identifier(start, target) {
+                if !self.scan_ascii_identifier(start, flags, target) {
                     return false;
                 }
             }
             FastClass::Punctuation => {
-                self.cursor = start;
-                *target = self.punc_token(1, SIMPLE_PUNCT_TAG[byte as usize], start);
+                self.cursor = start + 1;
+                *target = Token::new(start, start + 1, SIMPLE_PUNCT_TAG[byte as usize], flags);
             }
             FastClass::Digit => {
-                if !self.scan_decimal_integer(start, target) {
+                if !self.scan_decimal_integer(start, flags, target) {
                     return false;
                 }
             }
@@ -260,8 +273,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 {
                     return false;
                 }
-                self.cursor = start;
-                *target = self.punc_token(1, TokenTag::Dot, start);
+                self.cursor = start + 1;
+                *target = Token::new(start, start + 1, TokenTag::Dot, flags);
             }
             FastClass::Operator => {
                 // HTML comments still need the trivia scanner.
@@ -269,6 +282,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                     return false;
                 }
                 self.cursor = start;
+                self.state.token_flags = flags;
                 *target = self.scan_punctuation();
             }
             FastClass::Slow => return false,
@@ -361,8 +375,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         Some((start as u32, byte))
     }
 
+    /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
-    fn scan_ascii_identifier(&mut self, start: u32, target: &mut Token) -> bool {
+    fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
         let pos = scan_ascii_identifier_continue(self.source, start + 1);
         if self
             .source
@@ -375,14 +390,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         // after it that is at most `source.len()`.
         let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
         self.cursor = pos;
-        *target = self.create_token(get_keyword_type(lexeme), start, pos);
+        *target = Token::new(start, pos, get_keyword_type(lexeme), flags);
         true
     }
 
     /// Scans a decimal integer without a fraction, exponent, separator,
     /// suffix, or legacy octal digits. Other numbers use [`Self::scan_number`].
     #[inline(always)]
-    fn scan_decimal_integer(&mut self, start: u32, target: &mut Token) -> bool {
+    fn scan_decimal_integer(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
         let mut end = start as usize + 1;
         if self.source[start as usize] != b'0' {
             while self.source.get(end).is_some_and(u8::is_ascii_digit) {
@@ -395,7 +410,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return false;
         }
         self.cursor = end as u32;
-        *target = self.create_token(TokenTag::NumericLiteral, start, end as u32);
+        *target = Token::new(start, end as u32, TokenTag::NumericLiteral, flags);
         true
     }
 
@@ -412,7 +427,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         let current_char = self.source[self.cursor as usize];
         if is_ident_start_ascii(current_char) && self.mode == LexerMode::Normal {
-            if !self.scan_ascii_identifier(self.cursor, target) {
+            if self.scan_ascii_identifier(self.cursor, self.state.token_flags, target) {
+                self.clear_token_flags();
+            } else {
                 *target = self.scan_identifier_or_keyword()?;
             }
             return Ok(());
