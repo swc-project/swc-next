@@ -321,14 +321,14 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         let (tag, end) = match byte {
             b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' => {
                 // JSX names may contain hyphens between identifier parts.
-                let mut end = scan_ascii_identifier_continue(src, start as u32 + 1);
-                while src.get(end as usize) == Some(&b'-') {
-                    end = scan_ascii_identifier_continue(src, end + 1);
-                }
-                if src.get(end as usize).is_some_and(|byte| {
-                    ASCII_IDENTIFIER_CLASS[*byte as usize] == IdentifierClass::Slow
-                }) {
+                let Some(mut end) = scan_ascii_identifier_continue(src, start as u32 + 1) else {
                     return false;
+                };
+                while src.get(end as usize) == Some(&b'-') {
+                    let Some(next) = scan_ascii_identifier_continue(src, end + 1) else {
+                        return false;
+                    };
+                    end = next;
                 }
                 (TokenTag::JsxIdentifier, end as usize)
             }
@@ -384,14 +384,9 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
-        let pos = scan_ascii_identifier_continue(self.source, start + 1);
-        if self
-            .source
-            .get(pos as usize)
-            .is_some_and(|byte| ASCII_IDENTIFIER_CLASS[*byte as usize] == IdentifierClass::Slow)
-        {
+        let Some(pos) = scan_ascii_identifier_continue(self.source, start + 1) else {
             return false;
-        }
+        };
         // SAFETY: `start` indexes the identifier start byte, and the scan returns a position
         // after it that is at most `source.len()`.
         let lexeme = unsafe { self.source.get_unchecked(start as usize..pos as usize) };
@@ -1762,8 +1757,10 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
 // This is a very hot path. Inline this loop too
 // to avoid losing the single-call-site bonus and
 // introducing a new helper call.
+/// Returns the end of the ASCII identifier part at `start`, or `None` if an
+/// escape or a non-ASCII byte follows it and the full scanner is needed.
 #[inline(always)]
-fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
+fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> Option<u32> {
     debug_assert!(u32::try_from(source.len()).is_ok());
     debug_assert!((start as usize) <= source.len());
     // `scan_ascii_identifier` passes the byte after a start byte it already read from `source`.
@@ -1776,20 +1773,32 @@ fn scan_ascii_identifier_continue(source: &[u8], start: u32) -> u32 {
         let batch = unsafe { source.get_unchecked(position..batch_end) };
         for (offset, byte) in batch.iter().enumerate() {
             if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
-                return (position + offset) as u32;
+                return ascii_identifier_end(*byte, position + offset);
             }
         }
         position += IDENTIFIER_BATCH_SIZE;
     }
-    while position < source.len()
-        && ASCII_IDENTIFIER_CLASS[source[position] as usize] == IdentifierClass::Continue
-    {
+    while let Some(byte) = source.get(position) {
+        if ASCII_IDENTIFIER_CLASS[*byte as usize] != IdentifierClass::Continue {
+            return ascii_identifier_end(*byte, position);
+        }
         position += 1;
     }
 
     debug_assert!(position >= start as usize);
     debug_assert!(position <= source.len());
-    position as u32
+    Some(position as u32)
+}
+
+/// Ends an ASCII identifier part at `position`, where `byte` is not an
+/// identifier part. Returns `None` for `\\` and non-ASCII bytes, which are the
+/// [`IdentifierClass::Slow`] bytes. Testing the byte instead of the table keeps
+/// the scan loop from holding the class of each byte.
+#[inline(always)]
+fn ascii_identifier_end(byte: u8, position: usize) -> Option<u32> {
+    // `\\` maps to zero and non-ASCII bytes stay negative.
+    let slow = (byte ^ b'\\') as i8 <= 0;
+    (!slow).then_some(position as u32)
 }
 
 #[inline]
