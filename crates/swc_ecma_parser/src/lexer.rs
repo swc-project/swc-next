@@ -363,16 +363,25 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             };
             byte = next;
         }
-        let line_break = byte == b'\n';
-        if line_break {
+        if byte == b'\n' {
             let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
                 return false;
             };
-            start = next_start;
-            byte = next;
+            return self.try_jsx_tag_token_at::<true>(target, next_start as usize, next);
         }
+        self.try_jsx_tag_token_at::<false>(target, start as usize, byte)
+    }
 
-        let start = start as usize;
+    /// Reads a JSX tag token at `start`. `LINE_BREAK` is a constant so each
+    /// copy builds its token flags without keeping them in a register.
+    #[inline(always)]
+    fn try_jsx_tag_token_at<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: usize,
+        byte: u8,
+    ) -> bool {
+        let src = self.source;
         let (tag, end) = match byte {
             b'a'..=b'z' | b'A'..=b'Z' | b'_' | b'$' => {
                 // JSX names may contain hyphens between identifier parts.
@@ -396,15 +405,38 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             b'/' if !matches!(src.get(start + 1), None | Some(b'/' | b'*' | b'=')) => {
                 (TokenTag::Slash, start + 1)
             }
-            b'"' | b'\'' => {
-                let Some(offset) = memchr(byte, &src[start + 1..]) else {
-                    return false;
-                };
-                (TokenTag::StringLiteral, start + offset + 2)
-            }
+            b'"' | b'\'' => return self.try_jsx_string_token(target, start, byte, LINE_BREAK),
             _ => return false,
         };
+        self.finish_jsx_tag_token(target, tag, start, end, LINE_BREAK)
+    }
 
+    /// Reads a JSX attribute string at `start`. See [`Self::try_next_jsx_tag_token`].
+    /// The `memchr` call is kept out of line so other tag tokens do not save registers.
+    #[inline(never)]
+    fn try_jsx_string_token(
+        &mut self,
+        target: &mut Token,
+        start: usize,
+        quote: u8,
+        line_break: bool,
+    ) -> bool {
+        let Some(offset) = memchr(quote, &self.source[start + 1..]) else {
+            return false;
+        };
+        let end = start + offset + 2;
+        self.finish_jsx_tag_token(target, TokenTag::StringLiteral, start, end, line_break)
+    }
+
+    #[inline(always)]
+    fn finish_jsx_tag_token(
+        &mut self,
+        target: &mut Token,
+        tag: TokenTag,
+        start: usize,
+        end: usize,
+        line_break: bool,
+    ) -> bool {
         self.clear_token_flags();
         if line_break {
             self.set_token_flag(TokenFlag::LineTerminatorBefore);
