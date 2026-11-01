@@ -5771,22 +5771,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let mut has_declare = false;
         let mut has_abstract = false;
 
-        if current.tag() == TokenTag::Declare {
+        // `declare` and `abstract` may appear in either order, at most once
+        // each. Every modifier must be followed on the same line.
+        loop {
+            if current.tag() == TokenTag::Declare && !has_declare {
+                has_declare = true;
+            } else if current.tag() == TokenTag::Abstract && !has_abstract {
+                has_abstract = true;
+            } else {
+                break;
+            }
             current = peek.next()?;
             if current.has_line_terminator_before() {
                 peek.end();
                 return Some(false);
             }
-            has_declare = true;
         }
-        if current.tag() == TokenTag::Abstract {
-            let next = peek.next()?;
-            if next.has_line_terminator_before() || next.tag() != TokenTag::Class {
-                peek.end();
-                return Some(false);
-            }
-            current = next;
-            has_abstract = true;
+        if has_abstract && current.tag() != TokenTag::Class {
+            peek.end();
+            return Some(false);
         }
         let result = match current.tag() {
             // `const enum` is detected after advancing past `const`; see
@@ -5851,6 +5854,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         if self.eat(TokenTag::Abstract)? {
             modifiers.r#abstract = true;
+        }
+        // The modifiers may appear in either order: `abstract declare`.
+        if modifiers.r#abstract && !modifiers.declare && self.eat(TokenTag::Declare)? {
+            modifiers.declare = true;
         }
         if self.current_token.tag() == TokenTag::Const {
             let next = self.peek_ahead()?;
@@ -16750,6 +16757,40 @@ mod tests {
         assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "foo");
         assert!(function.params(&ast).items(&ast).is_empty());
         assert!(function.return_type(&ast).is_some());
+    }
+
+    #[test]
+    fn abstract_declare_class_order() {
+        fn class_flags(source: &str) -> (bool, bool) {
+            let allocator = Allocator::new();
+            let (ast, declaration) = parse_typescript_declaration(&allocator, source);
+            let class = declaration.as_class(&ast).unwrap();
+            (class.declare(&ast), class.r#abstract(&ast))
+        }
+
+        let typescript = Options {
+            lang: Lang::Ts,
+            source_type: SourceType::Module,
+            ..Options::default()
+        };
+
+        assert_eq!(class_flags("abstract declare class A {}"), (true, true));
+
+        assert_eq!(class_flags("declare abstract class A {}"), (true, true));
+
+        assert_eq!(
+            class_flags("export abstract declare class A {}"),
+            (true, true)
+        );
+
+        assert_eq!(
+            class_flags("export declare abstract class A {}"),
+            (true, true)
+        );
+
+        assert!(has_errors("abstract export class A {}", typescript));
+
+        assert!(has_errors("declare export class A {}", typescript));
     }
 
     #[test]
