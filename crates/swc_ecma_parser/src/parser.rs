@@ -2433,7 +2433,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.report(
             span,
-            "'await using' is only valid in async functions or modules",
+            "'await using' is only valid in async functions or at the top level of modules",
             ReportOptions::default(),
         );
     }
@@ -4104,6 +4104,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if count == expected && !has_rest {
             return;
         }
+        let (msg, help) = if expected == 1 && count == 0 && has_rest {
+            (
+                "Setter parameter cannot be a rest parameter",
+                "Replace the rest parameter with a single parameter.",
+            )
+        } else {
+            (msg, help)
+        };
         self.report(
             params.span(&self.ast),
             msg,
@@ -4227,7 +4235,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn recover_rest_parameter_end(&mut self, span: Span) -> Option<()> {
         self.report(
             span,
-            "Rest parameter must be the last parameter",
+            if self.current_token.tag() == TokenTag::RightParen {
+                "A rest parameter cannot have a trailing comma"
+            } else {
+                "Rest parameter must be the last parameter"
+            },
             ReportOptions::default(),
         );
         (self.current_token.tag() == TokenTag::RightParen).then_some(())
@@ -7813,7 +7825,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.report(
             self.current_token.span(),
-            "An index signature must have exactly one parameter",
+            "An index signature must have exactly one parameter and no trailing comma",
             ReportOptions::default(),
         );
         let checkpoint = self.scratch_a.begin();
@@ -8444,7 +8456,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if !self.context.contains(Context::AWAIT) {
                 self.report(
                     self.current_token.span(),
-                    "'for await' is only valid in async functions or modules",
+                    "'for await' is only valid in async functions or at the top level of modules",
                     ReportOptions::default(),
                 );
             }
@@ -9983,7 +9995,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         if cover.has_trailing_comma {
                             self.report(
                                 spread.span(&self.ast),
-                                "Rest parameter must be last formal parameter",
+                                "A rest parameter cannot have a trailing comma",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
                                         "Remove the trailing comma after the rest parameter",
@@ -12310,7 +12322,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             _ => {
                 self.report(
                     property.span(),
-                    "The only valid meta properties for 'import' are 'import.meta', 'import.source()', or 'import.defer()'",
+                    "Expected 'import.meta', 'import.source()', 'import.defer()', or 'import.sync()'",
                     ReportOptions::default(),
                 );
                 return self.parse_meta_property(import_name);
@@ -13847,7 +13859,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.report(
             span,
             Cow::Owned(format!(
-                "'await' is reserved in an async/module context and cannot be used as {as_what}"
+                "'await' cannot be used as {as_what} in this context"
             )),
             ReportOptions::default(),
         );
@@ -14568,6 +14580,27 @@ mod tests {
         assert_eq!(errors, ["_"]);
 
         let errors = error_spans("10._e1;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("10_", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0b00_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0o00_;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x00_n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0.0_e0;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0e+0_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x_1;", Options::default());
         assert_eq!(errors, ["_"]);
     }
 
