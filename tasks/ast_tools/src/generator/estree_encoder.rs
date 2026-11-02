@@ -165,7 +165,7 @@ pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
     for (is_ts, suffix, name) in [(false, "js", "encodeJs"), (true, "ts", "encodeTs")] {
         let pretty_path = format!("{OUTPUT_DIR}/encode-{suffix}.pretty.js");
         let minified_path = format!("{OUTPUT_DIR}/encode-{suffix}.js");
-        let output = encoder_source(schema, is_ts, name);
+        let output = encoder_source(schema, is_ts, name, false);
         let minified = minify_encoder(&output, &pretty_path);
         outputs.push(RawOutput {
             path: pretty_path,
@@ -183,7 +183,20 @@ pub fn estree_encoder(schema: &Schema) -> Vec<RawOutput> {
     outputs
 }
 
-fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
+pub(super) fn ffi2_encoder(schema: &Schema) -> Vec<RawOutput> {
+    [
+        (false, "js", "encodeEditsJs"),
+        (true, "ts", "encodeEditsTs"),
+    ]
+    .into_iter()
+    .map(|(is_ts, suffix, name)| RawOutput {
+        path: format!("packages/ast/encode-{suffix}.js"),
+        content: encoder_source(schema, is_ts, name, true).into_bytes(),
+    })
+    .collect()
+}
+
+fn encoder_source(schema: &Schema, is_ts: bool, name: &str, edits: bool) -> String {
     let encoder_enums: Vec<_> = ENUMS
         .iter()
         .copied()
@@ -197,9 +210,27 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         writeln!(enums, "  [{}], // {name}", values.join(", ")).unwrap();
     }
     enums.push_str("]);\n");
-    let mut output = PREAMBLE.replace("__ENUMS__", &enums);
-    let mut helpers = String::from(HELPERS);
+    // The transfer encoder uses the shared module-level template. The FFI2 edit
+    // encoder reuses the same constants and helpers inside a reusable closure, so
+    // its tables stay relative to the base AST.
+    let mut output = if edits {
+        edit_preamble().replace("__ENUMS__", &enums).replace(
+            "function encode(program, meta = {})",
+            &format!("function {name}(program, meta = {{}})"),
+        )
+    } else {
+        PREAMBLE.replace("__ENUMS__", &enums)
+    };
+    if !is_ts {
+        output = output.replace("let isTs = false;", "const isTs = false;");
+    }
     let dispatch = EncoderDispatch::new(schema, is_ts);
+    // The FFI2 edit preamble already emits the helper bodies.
+    let mut helpers = if edits {
+        String::new()
+    } else {
+        String::from(HELPERS)
+    };
     for (kind, ast) in schema
         .types
         .iter()
@@ -212,14 +243,47 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
         if !is_ts && ast.name.starts_with("Ts") {
             continue;
         }
-        write_struct_encoder(&mut helpers, kind, ast, schema, &dispatch);
+        write_struct_encoder(&mut helpers, kind, ast, schema, &dispatch, edits);
     }
     write_enum_encoders(&mut helpers, &dispatch);
-    for line in helpers.lines() {
-        writeln!(output, "{}", line.strip_prefix("  ").unwrap_or(line)).unwrap();
+    if edits {
+        output.push_str(&helpers);
+        output.push_str("  const nativeEncoders = [\n");
+        for ast in schema.types.iter().filter_map(|ty| match ty {
+            AstType::Struct(ast) => Some(ast),
+            _ => None,
+        }) {
+            if !is_ts && ast.name.starts_with("Ts") {
+                writeln!(output, "    null, // {}", ast.name).unwrap();
+            } else {
+                writeln!(output, "    enc{},", ast.name).unwrap();
+            }
+        }
+        output.push_str("  ];\n\n");
+        if is_ts {
+            output.push_str(EDIT_POSTAMBLE);
+        } else {
+            output.push_str(&EDIT_POSTAMBLE.replace("      isTs = false;\n", ""));
+        }
+        let node_name = if is_ts {
+            "encodeNodeTs"
+        } else {
+            "encodeNodeJs"
+        };
+        writeln!(output, "function {node_name}(node, meta, transaction, kind) {{\n  const encoder = idleEncoders.pop() ?? createEncoder();\n  try {{\n    return encoder(node, meta, transaction, kind);\n  }} finally {{\n    if (idleEncoders.length < 4) idleEncoders.push(encoder);\n  }}\n}}\n").unwrap();
+        writeln!(output, "export {{ {name}, {node_name} }};").unwrap();
+        output = output.replace(
+            &format!("function {name}(program, meta = {{}})"),
+            &format!("function {name}(program, meta, transaction)"),
+        );
+    } else {
+        // Per-node encoders follow the helpers, so lift both to module scope.
+        for line in helpers.lines() {
+            writeln!(output, "{}", line.strip_prefix("  ").unwrap_or(line)).unwrap();
+        }
+        output.push_str(&ENCODE_START.replace("encode(program)", &format!("{name}(program)")));
+        output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     }
-    output.push_str(&ENCODE_START.replace("encode(program)", &format!("{name}(program)")));
-    output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     // Assign indices from the same table used to emit the enum arrays.
     for (index, (name, _)) in encoder_enums.iter().enumerate() {
         output = output.replace(
@@ -241,6 +305,7 @@ fn write_struct_encoder(
     ast: &AstStruct,
     schema: &Schema,
     dispatch: &EncoderDispatch,
+    edits: bool,
 ) {
     let name = &ast.name;
     let parameters = if name == "FormalParameters" {
@@ -249,10 +314,16 @@ fn write_struct_encoder(
         "n"
     };
     writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
+    if edits {
+        writeln!(output, "    const existing = transaction.reuse(n, {kind});\n    if (existing !== undefined) return existing;\n    transaction.enter(n, {kind});\n    try {{").unwrap();
+        if copies_native_ancestors(name) {
+            writeln!(output, "    const sourceId = transaction.copySource(n, {kind});\n    if (sourceId !== undefined) return copy{name}(sourceId);").unwrap();
+        }
+    }
     if name.starts_with("Ts") {
         output.push_str("    isTs = true;\n");
     }
-    write_special_prelude(output, name, dispatch.is_ts);
+    write_special_prelude(output, name, dispatch.is_ts, edits);
 
     let layout = &ast.layout;
     let mut fields = Vec::with_capacity(ast.fields.len());
@@ -302,20 +373,339 @@ fn write_struct_encoder(
         )
         .unwrap();
     }
-    let (start, end) = span_expression(name);
-    writeln!(
-        output,
-        "    const index = allocNode({kind}, {start}, {end});"
-    )
-    .unwrap();
+    let (start, end) = if edits && name == "FormalParameters" {
+        ("_values?.[from]?.start", "_values?.[_length - 1]?.end")
+    } else {
+        span_expression(name)
+    };
+    if edits {
+        writeln!(output, "    const _span = transaction.span(n, {kind}, () => [{start}, {end}]);\n    const index = allocNode({kind}, _span[0], _span[1]);").unwrap();
+    } else {
+        writeln!(
+            output,
+            "    const index = allocNode({kind}, {start}, {end});"
+        )
+        .unwrap();
+    }
     if let Some(offset) = layout.extra_start_offset() {
         writeln!(output, "    setPayloadU32(index, {offset}, extraId);").unwrap();
     }
     for (ty, local, source, length, location) in fields {
-        write_value(output, ty, schema, &local, &source, length, location);
+        if edits {
+            let mut field = String::new();
+            write_value(&mut field, ty, schema, &local, &source, length, location);
+            output.push_str(
+                &field
+                    .replace("index * 16", "(index - nodeBase) * 16")
+                    .replace("extra, (extraId +", "extra, (extraId - extraBase +"),
+            );
+        } else {
+            write_value(output, ty, schema, &local, &source, length, location);
+        }
     }
+    output.push_str("    return index;\n");
+    if edits {
+        writeln!(output, "    }} finally {{ transaction.leave(n, {kind}); }}").unwrap();
+    }
+    output.push_str("  }\n\n");
+    if edits && copies_native_ancestors(name) {
+        write_native_copy_encoder(output, kind, ast, schema, dispatch);
+    }
+}
+
+// These fields have the same ownership in the native and ESTree layouts.
+// Parameter, directive, rest-pattern and computed-key projections need their
+// ordinary encoders even when only a descendant was edited.
+fn copies_native_ancestors(name: &str) -> bool {
+    matches!(
+        name,
+        "JsxElement"
+            | "JsxFragment"
+            | "JsxOpeningElement"
+            | "JsxClosingElement"
+            | "JsxAttribute"
+            | "JsxExpressionContainer"
+            | "JsxSpreadAttribute"
+            | "JsxSpreadChild"
+            | "BlockStatement"
+            | "ExpressionStatement"
+            | "ReturnStatement"
+            | "ConditionalExpression"
+            | "BinaryExpression"
+            | "LogicalExpression"
+            | "CallExpression"
+            | "ArrayExpression"
+    )
+}
+
+fn write_native_copy_encoder(
+    output: &mut String,
+    kind: usize,
+    ast: &AstStruct,
+    schema: &Schema,
+    dispatch: &EncoderDispatch,
+) {
+    writeln!(output, "  function copy{}(sourceId) {{", ast.name).unwrap();
+    output.push_str("    const ast = transaction.ast;\n    const view = ast._view;\n    const source = ast.offset(sourceId);\n");
+    let layout = &ast.layout;
+    if let Some(pointer) = layout.extra_start_offset() {
+        writeln!(output, "    const sourceExtraStart = view.getUint32(source + {pointer}, true);\n    if (sourceExtraStart + {} > ast._extraCount) throw new RangeError(\"AST extra-data reference out of bounds\");\n    const sourceExtra = ast._extra + sourceExtraStart * 8;", layout.extra_count).unwrap();
+    }
+    let mut patches = String::new();
+    for (field_index, field) in ast.fields.iter().enumerate() {
+        let ty = &schema.types[field.type_id];
+        let location = layout.fields[field_index];
+        let source = match location {
+            FieldLocation::Payload { offset, .. } => format!("source + {offset}"),
+            FieldLocation::Extra { index } => format!("sourceExtra + {}", index * 8),
+        };
+        let (inner, optional) = match ty {
+            AstType::Option(option) => (&schema.types[option.inner_type_id], true),
+            inner => (inner, false),
+        };
+        let (value, length) = if !dispatch.is_ts && is_ts_field(&ast.name, &field.name, ty, schema)
+        {
+            let value = if optional { "NULL" } else { "0" };
+            (value.to_owned(), Some("0".to_owned()))
+        } else {
+            match inner {
+                AstType::Struct(_) | AstType::Enum(_) => (
+                    format!(
+                        "remapChild(sourceId, {source}, {}, {optional})",
+                        encoder_name(inner, dispatch)
+                    ),
+                    None,
+                ),
+                AstType::SubRange(range) => {
+                    let (item, holes) = match &schema.types[range.inner_type_id] {
+                        AstType::Option(option) => (&schema.types[option.inner_type_id], true),
+                        item => (item, false),
+                    };
+                    (
+                        format!(
+                            "remapList(sourceId, {source}, {}, {holes})",
+                            encoder_name(item, dispatch)
+                        ),
+                        Some(format!(
+                            "view.getUint32({source} + 4, true) - view.getUint32({source}, true)"
+                        )),
+                    )
+                }
+                _ => continue,
+            }
+        };
+        let local = format!("v_{field_index}");
+        writeln!(output, "    const {local} = {value};").unwrap();
+        write_value(
+            &mut patches,
+            ty,
+            schema,
+            &local,
+            &source,
+            length.as_deref(),
+            location,
+        );
+    }
+    // Children may grow the destination buffers. Allocate and copy the parent
+    // afterward, then patch its references through the current DataViews.
+    if layout.extra_count != 0 {
+        writeln!(
+            output,
+            "    const extraId = allocExtra({});",
+            layout.extra_count
+        )
+        .unwrap();
+        for slot in 0..layout.extra_count {
+            for offset in [0, 4] {
+                writeln!(output, "    setExtraU32(extraId + {slot}, {offset}, view.getUint32(sourceExtra + {}, true));", slot * 8 + offset).unwrap();
+            }
+        }
+    }
+    writeln!(
+        output,
+        "    const index = allocNode({kind}, ast.byteStart(sourceId), ast.byteEnd(sourceId));"
+    )
+    .unwrap();
+    for offset in [0, 4, 8, 12] {
+        writeln!(
+            output,
+            "    setPayloadU32(index, {offset}, view.getUint32(source + {offset}, true));"
+        )
+        .unwrap();
+    }
+    if let Some(pointer) = layout.extra_start_offset() {
+        writeln!(output, "    setPayloadU32(index, {pointer}, extraId);").unwrap();
+    }
+    output.push_str(
+        &patches
+            .replace("index * 16", "(index - nodeBase) * 16")
+            .replace("extra, (extraId +", "extra, (extraId - extraBase +"),
+    );
     output.push_str("    return index;\n  }\n\n");
 }
+
+/// Build the FFI2 edit encoder from the shared template pieces.
+///
+/// Its buffers belong to a reusable closure instead of the module, because every
+/// incremental edit writes tables that are offset by the base AST allocations.
+fn edit_preamble() -> String {
+    let shared = &PREAMBLE[..PREAMBLE.find("// Maximum combined capacity").unwrap()];
+    let helpers = &HELPERS[HELPERS.find("  function enumValue").unwrap()..];
+    let mut output = format!("{shared}{EDIT_PREAMBLE}{helpers}");
+    output = output
+        .replace(
+            "    return index;\n  }\n  function allocExtra",
+            "    return nodeBase + index;\n  }\n  function allocExtra",
+        )
+        .replace(
+            "    return start;\n  }\n  function setPayload",
+            "    return extraBase + start;\n  }\n  function setPayload",
+        )
+        .replace("i * 16 + o", "(i - nodeBase) * 16 + o")
+        .replace("i * 8 + o", "(i - extraBase) * 8 + o");
+    let start = output.find("  function encStr(").unwrap();
+    let end = output.find("  function writeWtf8(").unwrap();
+    let strings = output[start..end]
+        .replace(
+            "view.setUint32(offset, start, true)",
+            "view.setUint32(offset, stringBase + start, true)",
+        )
+        .replace(
+            "view.setUint32(offset + 4, end, true)",
+            "view.setUint32(offset + 4, stringBase + end, true)",
+        )
+        .replace(
+            "view.setUint32(offset + 4, poolLength, true)",
+            "view.setUint32(offset + 4, stringBase + poolLength, true)",
+        );
+    output.replace_range(start..end, &strings);
+    output = output.replace(
+        "required > 0x7fffffff",
+        "stringBase + required >= 0xffffffff",
+    );
+    output
+}
+
+const EDIT_PREAMBLE: &str = r#"// Keep codec functions alive across encodes without retaining their input data.
+const idleEncoders = [];
+
+function encode(program, meta = {}) {
+  const encoder = idleEncoders.pop() ?? createEncoder();
+  try {
+    return encoder(program, meta, transaction);
+  } finally {
+    if (idleEncoders.length < 4) idleEncoders.push(encoder);
+  }
+}
+
+function createEncoder() {
+  let transaction = null;
+  let nodeBase = 0;
+  let extraBase = 0;
+  let stringBase = 0;
+  let nodeCapacity = 0;
+  let spans = null;
+  let kinds = null;
+  let payloadBuffer = null;
+  let payload = null;
+  let nodeCount = 0;
+
+  let extraCapacity = 0;
+  let extraBuffer = null;
+  let extra = null;
+  let extraCount = 0;
+
+  let poolCapacity = 0;
+  let pool = null;
+  let poolLength = 0;
+  let hasWtf8 = false;
+  let firstNonAsciiPos = NULL;
+  let isTs = false;
+
+  function remapChild(parent, offset, encoder, optional) {
+    const ast = transaction.ast;
+    const child = ast.childAt(parent, offset, optional);
+    if (child === NULL) return NULL;
+    return transaction.dirty.has(child) ? encoder(ast.node(child)) : ast.rawId(child);
+  }
+
+  function remapList(parent, offset, encoder, holes) {
+    const ast = transaction.ast;
+    const view = ast._view;
+    const start = view.getUint32(offset, true);
+    const end = view.getUint32(offset + 4, true);
+    if (start > end || end > ast._extraCount) throw new RangeError("AST list out of bounds");
+    let copied = NULL;
+    for (let index = start; index < end; index++) {
+      const child = ast.childAt(parent, ast._extra + index * 8, holes);
+      let value = child === NULL ? NULL : ast.rawId(child);
+      if (child !== NULL && transaction.dirty.has(child)) {
+        if (copied === NULL) {
+          copied = allocExtra(end - start);
+          for (let prefix = start; prefix < index; prefix++) {
+            setExtraU32(copied + prefix - start, 0, view.getUint32(ast._extra + prefix * 8, true));
+          }
+        }
+        value = encoder(ast.node(child));
+      }
+      if (copied !== NULL) setExtraU32(copied + index - start, 0, value);
+    }
+    return copied === NULL ? start : copied;
+  }
+
+"#;
+
+const EDIT_POSTAMBLE: &str = r#"  function encNativeRoot(node, kind) {
+    const encoder = Number.isInteger(kind) && kind >= 0 && kind < nativeEncoders.length
+      ? nativeEncoders[kind]
+      : null;
+    if (encoder === null) throw new RangeError("Unsupported AST node kind for this encoder");
+    return encoder(node);
+  }
+
+  return function runEncoder(program, meta, nextTransaction, rootKind) {
+    try {
+      transaction = nextTransaction;
+      nodeBase = transaction.nodeBase;
+      extraBase = transaction.extraBase;
+      stringBase = transaction.stringBase;
+      // Most incremental edits touch only a short path through the original tree.
+      // Existing growth helpers handle larger replacement subtrees as usual.
+      nodeCapacity = Math.max(16, Math.min(512, transaction.dirty.size));
+      spans = new Uint32Array(nodeCapacity * 2);
+      kinds = new Uint8Array(nodeCapacity);
+      payloadBuffer = new ArrayBuffer(nodeCapacity * 16);
+      payload = new DataView(payloadBuffer);
+      nodeCount = 0;
+
+      extraCapacity = Math.max(64, Math.min(512, transaction.dirty.size * 2));
+      extraBuffer = new ArrayBuffer(extraCapacity * 8);
+      extra = new DataView(extraBuffer);
+      extraCount = 0;
+
+      poolCapacity = nodeCapacity >= 128 ? 4096 : 256;
+      pool = new Uint8Array(poolCapacity);
+      poolLength = 0;
+      hasWtf8 = false;
+      firstNonAsciiPos = NULL;
+      isTs = false;
+
+      const root = rootKind === undefined ? encProgram(program) : encNativeRoot(program, rootKind);
+      const sourceType = enumValue("SourceType", meta.sourceType ?? program.sourceType);
+      const lang = meta.lang ?? (isTs ? "ts" : "js");
+      return transaction.finish({ root, flags: sourceType | (enumValue("Lang", lang) << 2),
+        spans, kinds, payload: new Uint8Array(payloadBuffer, 0, nodeCount * 16),
+        nodeCount, extra: new Uint8Array(extraBuffer, 0, extraCount * 8), extraCount,
+        strings: pool.subarray(0, poolLength) });
+    } finally {
+      // Each call owns fresh output buffers; the idle context owns only functions.
+      transaction = null;
+      nodeBase = extraBase = stringBase = 0;
+      spans = kinds = payloadBuffer = payload = extraBuffer = extra = pool = null;
+    }
+  };
+}
+"#;
 
 fn write_value(
     output: &mut String,
@@ -715,7 +1105,7 @@ fn span_expression(node: &str) -> (&'static str, &'static str) {
     }
 }
 
-fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
+fn write_special_prelude(output: &mut String, name: &str, is_ts: bool, edits: bool) {
     match name {
         "Program" | "FunctionBody" | "TsModuleBlock" => output.push_str(
             r#"    const _body = n.body;
@@ -743,7 +1133,7 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
       _directiveRaw.startsWith(n.directive, 1) &&
       directiveRawValue(_directiveRaw, n.directive) === n.expression?.value
         ? n.expression
-        : { ...n.expression, raw: "" };
+        : literalWith(n.expression, { raw: "" });
 "#,
         ),
         "BigIntLiteral" => output.push_str(
@@ -755,7 +1145,7 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
         start: n.start,
         end: n.end,
         operator: "-",
-        argument: { ...n, value: absolute, bigint: String(absolute), raw: null },
+        argument: literalWith(n, { value: absolute, bigint: String(absolute), raw: null }),
       });
     }
 "#,
@@ -778,7 +1168,7 @@ fn write_special_prelude(output: &mut String, name: &str, is_ts: bool) {
 "#,
         ),
         "FormalParameters" => {
-            write_rest_array_prelude(output, "n", "from", "encFormalParameterItem", true)
+            write_rest_array_prelude(output, "n", "from", "encFormalParameterItem", !edits)
         }
         "ArrayPattern" => write_array_pattern_prelude(output),
         "ObjectPattern" => {
@@ -963,7 +1353,7 @@ fn write_enum_encoders(output: &mut String, dispatch: &EncoderDispatch) {
         let name = &current.name;
         writeln!(output, "  function enc{name}(n) {{").unwrap();
         if name == "JsxAttributeValue" {
-            output.push_str("    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n");
+            output.push_str("    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral(literalWith(n, { raw: jsxStringRaw(n) }));\n");
         }
         let mut cases = Vec::new();
         for estree in &current.direct.order {
@@ -1448,7 +1838,12 @@ const HELPERS: &str = r#"  function clearState() {
     if (node?.type !== "Literal" ||
         (node.bigint == null && typeof node.value !== "bigint") ||
         bigIntValue(node) >= 0n) return node;
-    return { ...node, value: String(bigIntValue(node)), bigint: null, raw: "" };
+    return literalWith(node, { value: String(bigIntValue(node)), bigint: null, raw: "" });
+  }
+
+  function literalWith(node, overrides) {
+    return { type: node.type, start: node.start, end: node.end, value: node.value,
+      raw: node.raw, bigint: node.bigint, regex: node.regex, ...overrides };
   }
 
   function hexDigit(code) {

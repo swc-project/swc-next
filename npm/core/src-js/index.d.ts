@@ -1,6 +1,9 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 export * from "@swc-next/walker";
+export { readAst, AstView, NodeView, NodeKind } from "@swc-next/ast";
+export type { AstComment, AstDiagnostic } from "@swc-next/ast";
+import type { AstView } from "@swc-next/ast";
 
 import type {
   GeneratorConfig,
@@ -56,7 +59,26 @@ export declare function parseSync(
   options?: ParseApiOptions | undefined | null,
 ): ParseResult;
 
+/** Serialize source, native AST and diagnostics into one self-contained FFI2 buffer. */
+export declare function parseBufferSync(
+  source: string,
+  options?: Omit<ParseApiOptions, "errorRecovery"> | undefined | null,
+): Uint8Array;
+
+/** Editable views over FFI2. Source offsets convert to UTF-16 lazily on access. */
+export declare function parseAstSync(
+  source: string,
+  options?: ParseApiOptions | undefined | null,
+): AstView;
+
 export declare function generateSync(
   program: Program,
+  options?: GenerateApiOptions | undefined | null,
+): GenerateOutput;
+
+/** Generate a validated FFI2 base/extension pair produced by AstView.encode(). */
+export declare function generateBuffersSync(
+  buffer: Uint8Array,
+  extension?: Uint8Array,
   options?: GenerateApiOptions | undefined | null,
 ): GenerateOutput;

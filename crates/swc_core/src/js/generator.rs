@@ -1,5 +1,5 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::ffi::ast;
+use swc_next_ecma_ast::{ffi::ast, ffi2};
 use swc_next_ecma_codegen::{Options, generate};
 
 #[cfg(feature = "bridge")]
@@ -68,6 +68,35 @@ pub unsafe fn generate_from_buffer(
     let allocator = Allocator::default();
     // SAFETY: The caller guarantees a valid, immutable AST transfer buffer.
     let tree = unsafe { ast::deserialize_from(buffer, &allocator) }?;
+    let result = generate(&tree, options.unwrap_or_default().into());
+    Ok(GenerateOutput { code: result.code })
+}
+
+/// Generate from an FFI2 base buffer and its optional edit extension.
+/// Both byte buffers are validated before native AST fields are accessed.
+pub fn generate_from_buffers(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree = ffi2::deserialize(base, extension, &allocator)?;
+    let result = generate(&tree, options.unwrap_or_default().into());
+    Ok(GenerateOutput { code: result.code })
+}
+
+/// Generate from FFI2 tables produced by the matching parser and incremental encoder.
+///
+/// # Safety
+/// Both buffers must obey [`ffi2::deserialize_unchecked`]'s validity and immutability
+/// contract. In particular, callers must not mutate a parser-produced base.
+pub unsafe fn generate_from_buffers_unchecked(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree = unsafe { ffi2::deserialize_unchecked(base, extension, &allocator) }?;
     let result = generate(&tree, options.unwrap_or_default().into());
     Ok(GenerateOutput { code: result.code })
 }

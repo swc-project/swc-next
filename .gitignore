@@ -27,3 +27,4 @@ dist
 .idea/
 .codex/
 .DS_Store
+.pnpm-store/

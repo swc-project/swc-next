@@ -1,5 +1,6 @@
 import { childVisitors, nodeWalkers, dispatchNode } from "./child-visitors.js";
 import { visitorKeys } from "./visitor-keys.js";
+import { NodeView } from "@swc-next/ast";
 
 export { visitorKeys };
 
@@ -132,6 +133,85 @@ function walkLeave(node, walker, parent, key, list, index) {
   return walker.visitLeaveHooks(node, parent, key, list, index);
 }
 
+// Private traversal state, never returned as an AST list. One cursor is reused
+// per recursion depth; public list access and edits switch it to the real array.
+class ListCursor {
+  ast = null;
+  parent = null;
+  key = null;
+  _fieldKey = -1;
+  array = null;
+  start0 = 0;
+  end0 = 0;
+  owner0 = 0;
+  start1 = 0;
+  end1 = 0;
+  owner1 = 0;
+  prefix = -1;
+  suffix = -1;
+  total = 0;
+  version = 0;
+  reset(parent, key) {
+    this.ast = parent.ast;
+    this.parent = parent;
+    this.key = key;
+    this._fieldKey = -1;
+    this.array = null;
+    // The range reader overwrites part zero. Unused owners and the previous
+    // total are never observed before finish(), so only reset optional parts.
+    this.start1 = this.end1 = 0;
+    this.prefix = this.suffix = -1;
+    this.version = this.ast._listVersion;
+  }
+  get fieldKey() {
+    if (this._fieldKey === -1) this._fieldKey = this.ast.mirrorKey(this.parent.nodeId, this.key);
+    return this._fieldKey;
+  }
+  setRange(part, owner, start, end) {
+    if (part === 0) { this.owner0 = owner; this.start0 = start; this.end0 = end; }
+    else { this.owner1 = owner; this.start1 = start; this.end1 = end; }
+  }
+  finish() {
+    if (this.start0 === this.end0) {
+      this.start0 = this.start1; this.end0 = this.end1; this.owner0 = this.owner1;
+      this.start1 = this.end1 = 0;
+    }
+    this.total = this.end0 - this.start0 + this.end1 - this.start1
+      + (this.prefix !== -1) + (this.suffix !== -1);
+  }
+  sync() {
+    if (this.array !== null || this.version === this.ast._listVersion) return;
+    this.version = this.ast._listVersion;
+    const state = this.ast._watchedLists.get(this.fieldKey);
+    if (state) this.array = state.value;
+  }
+  get length() { return this.array === null ? this.total : this.array.length; }
+  at(index) {
+    if (this.array !== null) return this.array[index];
+    const ast = this.ast;
+    if (this.prefix !== -1) {
+      if (index === 0) return ast.node(this.prefix);
+      index--;
+    }
+    const first = this.end0 - this.start0;
+    if (index < first) return ast.node(ast.extraChild(this.owner0, this.start0 + index, true));
+    index -= first;
+    if (index < this.end1 - this.start1) return ast.node(ast.extraChild(this.owner1, this.start1 + index, true));
+    return this.suffix === -1 ? null : ast.node(this.suffix);
+  }
+  materialize() {
+    this.sync();
+    if (this.array === null) {
+      if (this.ast._edits?.get(this.parent.nodeId)?.has(this.key)) {
+        throw new Error("The current node's container was changed outside the walk context");
+      }
+      this.array = this.parent[this.key];
+    }
+    return this.array;
+  }
+  clear() { this.ast = this.parent = this.key = this.array = null; this._fieldKey = -1; }
+}
+
 // One context per walk, with prototype methods instead of per-hook closures.
 // A retained reference aliases later hooks; callers must not store it.
 class WalkContext {
@@ -139,6 +219,7 @@ class WalkContext {
   #phase;
   #state;
   #ancestors = [];
+  #listCursors = [];
   // Reuse depth slots instead of shrinking/growing the array for every node.
   // Only the live prefix is exposed; reset releases retained references.
   #depth = 0;
@@ -158,11 +239,16 @@ class WalkContext {
   stopped = false;
 
   constructor(state, compiled) {
+    this.initialize(state, compiled);
+  }
+
+  initialize(state, compiled) {
     this.#state = state;
     this.#dispatch = compiled.dispatch;
     this.#walkers = compiled.walkers;
     this.#globalEnter = compiled.globalEnter;
     this.#globalLeave = compiled.globalLeave;
+    this.stopped = false;
   }
 
   #check() {
@@ -178,6 +264,7 @@ class WalkContext {
       throw new Error("The current node has been removed");
     if (!frame.parent)
       throw new Error("Cannot structurally edit the walk root");
+    if (frame.list instanceof ListCursor) frame.list = frame.list.materialize();
     if (frame.list && frame.parent[frame.key] !== frame.list) {
       throw new Error(
         "The current node's container was changed outside the walk context",
@@ -186,7 +273,7 @@ class WalkContext {
     const current = frame.list
       ? frame.list[frame.index]
       : frame.parent[frame.key];
-    if (current !== frame.node)
+    if (!NodeView.isSame(current, frame.node))
       throw new Error(
         "The current node's container was changed outside the walk context",
       );
@@ -227,19 +314,27 @@ class WalkContext {
   replace(node) {
     const frame = this.#editable();
     assertNode(node);
-    if (node === frame.node) return;
+    if (NodeView.isSame(node, frame.node)) return;
     // Only the replacement root inherits missing positions.
     if (node.start == null) node.start = frame.node.start;
     if (node.end == null) node.end = frame.node.end;
-    if (frame.list) frame.list[frame.index] = node;
-    else frame.parent[frame.key] = node;
-    frame.node = node;
+    if (frame.list) {
+      frame.list[frame.index] = node;
+      if (frame.parent instanceof NodeView)
+        frame.parent.ast.commitList(frame.parent.nodeId, frame.key, frame.list);
+      frame.node = frame.list[frame.index];
+    } else {
+      frame.parent[frame.key] = node;
+      frame.node = frame.parent[frame.key];
+    }
     frame.flags |= REPLACED;
   }
   remove() {
     const frame = this.#editable();
     if (!frame.list) throw new Error("Removal requires an array element");
     frame.list.splice(frame.index, 1);
+    if (frame.parent instanceof NodeView)
+      frame.parent.ast.commitList(frame.parent.nodeId, frame.key, frame.list);
     frame.index--;
     frame.flags |= REMOVED;
   }
@@ -259,6 +354,8 @@ class WalkContext {
     }
     if (after) frame.after += count;
     else frame.index += count;
+    if (frame.parent instanceof NodeView)
+      frame.parent.ast.commitList(frame.parent.nodeId, frame.key, frame.list);
   }
   insertBefore(nodes) {
     this.#insert(nodes, false);
@@ -289,7 +386,11 @@ class WalkContext {
 
   reset() {
     this.#frame = undefined;
+    this.#phase = undefined;
+    this.#state = undefined;
     this.#ancestors.length = 0;
+    for (const cursor of this.#listCursors) cursor?.clear();
+    if (this.#listCursors.length > 128) this.#listCursors.length = 128;
     this.#depth = 0;
     this.#storage.node = this.#storage.parent = this.#storage.list = null;
     this.#dispatch =
@@ -315,6 +416,47 @@ class WalkContext {
     this.visit(value, parent, key, null, 0);
     this.#depth--;
     return this.stopped;
+  }
+
+  visitListField(parent, key, dispatch = null) {
+    if (!(parent instanceof NodeView)) {
+      const value = parent[key];
+      return value == null ? false : dispatch === null
+        ? this.visitList(value, parent, key) : this.visitListKnown(value, parent, key, dispatch);
+    }
+    let cursor = this.#listCursors[this.#depth];
+    if (!cursor) this.#listCursors[this.#depth] = cursor = new ListCursor();
+    cursor.reset(parent, key);
+    if (!parent.ast.readListCursor(parent.nodeId, key, cursor)) {
+      cursor.clear();
+      const value = parent[key];
+      return value == null ? false : dispatch === null
+        ? this.visitList(value, parent, key) : this.visitListKnown(value, parent, key, dispatch);
+    }
+    cursor.finish();
+    if (cursor.total === 0) {
+      cursor.clear();
+      return false;
+    }
+    this.#ancestors[this.#depth++] = parent;
+    try {
+      for (let i = 0; i < cursor.length; i++) {
+        const child = cursor.at(i);
+        if (child != null) {
+          if (dispatch === null) i = this.visit(child, parent, key, cursor, i);
+          else {
+            if (typeof child !== "object") assertNode(child);
+            i = dispatch(child, this, parent, key, cursor, i, this.#walkers);
+          }
+        }
+        if (this.stopped) return true;
+        cursor.sync();
+      }
+      return false;
+    } finally {
+      this.#depth--;
+      cursor.clear();
+    }
   }
 
   visitListKnown(value, parent, key, dispatch) {
@@ -344,6 +486,10 @@ class WalkContext {
 
   visit(node, parent, key, list, index) {
     if (typeof node !== "object") assertNode(node);
+    // A global enter hook uses the same entry path for every supported type.
+    // Resolve its handlers once inside visitHooks instead of dispatching twice.
+    if (this.#globalEnter !== null)
+      return this.visitHooks(node, parent, key, list, index);
     return dispatchNode(node, this, parent, key, list, index, this.#walkers);
   }
 
@@ -358,8 +504,8 @@ class WalkContext {
   }
 
   visitLeaveHooks(node, parent, key, list, index) {
-    const handlers = this.#dispatch[node.type];
     const type = node.type;
+    const handlers = this.#dispatch[type];
     if (handlers.children !== null) {
       handlers.children(node, this);
       if (this.stopped) return index;
@@ -372,10 +518,11 @@ class WalkContext {
   }
 
   visitHooks(node, parent, key, list, index) {
-    let handlers = this.#dispatch[node.type];
+    let type = node.type;
+    let handlers = this.#dispatch[type];
+    if (handlers === undefined) assertNode(node);
     const enter = handlers.enter ?? this.#globalEnter;
     const frame = this.#storage;
-    let type = node.type;
     let after = 0;
     let skip = false;
     if (enter !== null) {
@@ -386,8 +533,9 @@ class WalkContext {
       node = frame.node;
       after = frame.after;
       skip = frame.flags & SKIP;
-      if (node.type !== type) {
-        type = node.type;
+      const enteredType = node.type;
+      if (enteredType !== type) {
+        type = enteredType;
         handlers = this.#dispatch[type];
         if (handlers === undefined) assertNode(node);
       }
@@ -396,8 +544,9 @@ class WalkContext {
       handlers.children(node, this);
       if (this.stopped) return index;
     }
-    if (node.type !== type) {
-      handlers = this.#dispatch[node.type];
+    const finalType = node.type;
+    if (finalType !== type) {
+      handlers = this.#dispatch[finalType];
       if (handlers === undefined) assertNode(node);
     }
     const leave = handlers.leave ?? this.#globalLeave;
@@ -410,12 +559,19 @@ class WalkContext {
   }
 }
 
+// Reuse cleared traversal state across calls. Nested walks acquire a different
+// context; the pool retains no nodes, buffers, handlers or caller state.
+const contexts = [];
+
 function runWalk(root, compiled, state) {
-  const ctx = new WalkContext(state, compiled);
+  let ctx = contexts.pop();
+  if (ctx === undefined) ctx = new WalkContext(state, compiled);
+  else ctx.initialize(state, compiled);
   try {
     ctx.visit(root, null, null, null, 0);
   } finally {
     ctx.reset();
+    if (contexts.length < 4) contexts.push(ctx);
   }
   return root;
 }

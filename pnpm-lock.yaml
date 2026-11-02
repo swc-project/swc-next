@@ -295,6 +295,9 @@ importers:
 
   npm/core:
     dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../../packages/ast
       '@swc-next/decoder':
         specifier: workspace:*
         version: link:../../packages/decoder
@@ -370,6 +373,12 @@ importers:
         specifier: 'catalog:'
         version: 26.1.1
 
+  packages/ast:
+    dependencies:
+      '@swc-next/types':
+        specifier: workspace:*
+        version: link:../types
+
   packages/decoder:
     dependencies:
       '@swc-next/types':
@@ -384,7 +393,11 @@ importers:
 
   packages/types: {}
 
-  packages/walker: {}
+  packages/walker:
+    dependencies:
+      '@swc-next/ast':
+        specifier: workspace:*
+        version: link:../ast
 
   website/docs:
     devDependencies:

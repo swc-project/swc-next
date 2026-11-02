@@ -1,7 +1,29 @@
 use swc_next_bridge::bridge;
 use swc_next_core::js::generator::{
-    DeserializeError, GenerateOutput, JsGeneratorConfig as GeneratorConfig, generate_from_parts,
+    DeserializeError, GenerateOutput, JsGeneratorConfig as GeneratorConfig, generate_from_buffers,
+    generate_from_buffers_unchecked, generate_from_parts,
 };
+
+#[bridge]
+/// Generate a validated FFI2 base buffer and its edit extension.
+pub fn generate_buffers_sync(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<GeneratorConfig>,
+) -> Result<GenerateOutput, swc_next_ecma_ast::ffi2::DeserializeError> {
+    generate_from_buffers(base, extension, options)
+}
+
+#[bridge]
+/// # Safety
+/// Buffers must come from the matching parser/AST encoder and stay immutable.
+pub unsafe fn generate_buffers_trusted_sync(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<GeneratorConfig>,
+) -> Result<GenerateOutput, swc_next_ecma_ast::ffi2::DeserializeError> {
+    unsafe { generate_from_buffers_unchecked(base, extension, options) }
+}
 
 #[bridge]
 /// # Safety

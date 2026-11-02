@@ -73,6 +73,15 @@ export type SourceType =  'module'|
 'script'|
 'commonjs'|
 'unambiguous';
+/** Generate a validated FFI2 base buffer and its edit extension. */
+export declare function generateBuffersSync(base: Buffer, extension: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
+
+/**
+ * # Safety
+ * Buffers must come from the matching parser/AST encoder and stay immutable.
+ */
+export declare function generateBuffersTrustedSync(base: Buffer, extension: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
+
 /**
  * # Safety
  *
@@ -83,6 +92,13 @@ export type SourceType =  'module'|
 export declare function generateSync(header: Buffer, spans: Buffer, kinds: Buffer, payloads: Buffer, extra: Buffer, strings: Buffer, options?: GeneratorConfig | undefined | null): GenerateOutput
 
 export declare function langFromPath(path: string): Lang
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ */
+export declare function parseBufferSync(source: Buffer, options?: ParserConfig | undefined | null): Buffer
 
 /**
  * # Safety

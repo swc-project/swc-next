@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Lang, SourceType,
+    AstCtx, Diagnostic, Lang, SourceType,
     ffi::ast::{buffer_size, serialize_into},
 };
 use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
@@ -170,6 +170,25 @@ pub unsafe fn parse_to_buffer(
     buffer
 }
 
+/// Parse into a self-contained FFI2 buffer with UTF-8 byte spans.
+///
+/// # Safety
+///
+/// The caller must ensure that `source` contains valid UTF-8.
+pub unsafe fn parse_to_buffer2(source: &[u8], options: Option<JsParseApiOptions>) -> Vec<u8> {
+    let Ok(buffer) = unsafe {
+        // SAFETY: The caller guarantees valid UTF-8 source, and the context is only
+        // read to serialize it, so none of its handles outlives the call.
+        parse_and_serialize(source, options, |ast, diagnostics| {
+            Ok::<_, std::convert::Infallible>(
+                swc_next_ecma_ast::ffi2::serialize(ast.ast(), diagnostics)
+                    .expect("parser AST must fit the FFI2 format and be acyclic"),
+            )
+        })
+    };
+    buffer
+}
+
 /// Parse directly into a Node-owned buffer using the packed JavaScript options.
 ///
 /// # Safety
@@ -211,6 +230,23 @@ unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
     options: Option<JsParseApiOptions>,
     allocate: impl FnOnce(usize) -> Result<T, E>,
 ) -> Result<T, E> {
+    unsafe {
+        parse_and_serialize(source, options, |ast, diagnostics| {
+            let buffer_size = buffer_size(ast, diagnostics);
+            let mut buffer = allocate(buffer_size)?;
+            let bytes = buffer.as_mut();
+            assert!(bytes.len() >= buffer_size);
+            serialize_into(ast, diagnostics, bytes, source_utf16_len as usize);
+            Ok(buffer)
+        })
+    }
+}
+
+unsafe fn parse_and_serialize<T, E>(
+    source: &[u8],
+    options: Option<JsParseApiOptions>,
+    serialize: impl FnOnce(&AstCtx<'_>, &[Diagnostic]) -> Result<T, E>,
+) -> Result<T, E> {
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let allocator = Allocator::default();
     let options = options.unwrap_or_default();
@@ -221,12 +257,7 @@ unsafe fn parse_with_buffer<T: AsMut<[u8]>, E>(
         diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
     }
 
-    let buffer_size = buffer_size(&result.ast, &diagnostics);
-    let mut buffer = allocate(buffer_size)?;
-    let bytes = buffer.as_mut();
-    assert!(bytes.len() >= buffer_size);
-    serialize_into(&result.ast, &diagnostics, bytes, source_utf16_len as usize);
-    Ok(buffer)
+    serialize(&result.ast, &diagnostics)
 }
 
 #[cfg(feature = "bridge")]
