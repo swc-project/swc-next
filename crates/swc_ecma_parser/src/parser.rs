@@ -14557,6 +14557,112 @@ mod tests {
         Parser::init(allocator, source, options, TokenParserConfig).parse()
     }
 
+    /// AST node types that tests can look up by type with [`find_only`].
+    trait Findable: Sized {
+        fn from_kind_data(node: NodeKindData) -> Option<Self>;
+    }
+
+    macro_rules! findable {
+        ($($ty:ident),* $(,)?) => {$(
+            impl Findable for $ty {
+                fn from_kind_data(node: NodeKindData) -> Option<Self> {
+                    match node {
+                        NodeKindData::$ty(node) => Some(node),
+                        _ => None,
+                    }
+                }
+            }
+        )*};
+    }
+
+    findable!(
+        ArrayExpression,
+        ArrayPattern,
+        ArrowFunctionExpression,
+        AssignmentPattern,
+        BindingIdentifier,
+        BindingProperty,
+        BindingRestElement,
+        Class,
+        ClassBody,
+        Decorator,
+        ExportDefaultDeclaration,
+        ExportNamedDeclaration,
+        ExpressionStatement,
+        ForOfStatement,
+        FormalParameter,
+        FormalParameters,
+        Function,
+        FunctionBody,
+        IdentifierReference,
+        JsxText,
+        LabelIdentifier,
+        MethodDefinition,
+        NewExpression,
+        ParenthesizedExpression,
+        PropertyDefinition,
+        ReturnStatement,
+        Super,
+        TemplateElement,
+        ThrowStatement,
+        TryStatement,
+        TsEnumDeclaration,
+        TsEnumMember,
+        TsFunction,
+        TsFunctionType,
+        TsGlobalDeclaration,
+        TsInferType,
+        TsInterfaceDeclaration,
+        TsMethodDefinition,
+        TsNamedTupleMember,
+        TsNamespaceExportDeclaration,
+        TsQualifiedName,
+        TsTypeAliasDeclaration,
+        TsTypeParameter,
+        TsTypeParameterInstantiation,
+        TsTypePredicate,
+        VariableDeclaration,
+        VariableDeclarator,
+    );
+
+    /// Returns all nodes of type `T` reachable from the program, in source order.
+    fn find_all<T: Findable>(ast: &Ast<'_>) -> Vec<T> {
+        struct Collector<'b, 'a, T> {
+            ast: &'b Ast<'a>,
+            found: Vec<T>,
+        }
+
+        impl<'a, T: Findable> Visit<'a> for Collector<'_, 'a, T> {
+            fn ast(&self) -> &Ast<'a> {
+                self.ast
+            }
+
+            fn enter_node(&mut self, node: NodeKindData) {
+                self.found.extend(T::from_kind_data(node));
+            }
+        }
+
+        let mut collector = Collector {
+            ast,
+            found: Vec::new(),
+        };
+        ast.root_program().visit_with(&mut collector);
+        collector.found
+    }
+
+    /// Returns the only node of type `T` reachable from the program.
+    #[track_caller]
+    fn find_only<T: Findable + Copy>(ast: &Ast<'_>) -> T {
+        match find_all::<T>(ast)[..] {
+            [node] => node,
+            ref nodes => panic!(
+                "expected one {}, found {}",
+                std::any::type_name::<T>(),
+                nodes.len()
+            ),
+        }
+    }
+
     fn token_texts<'a>(source: &'a str, tokens: &[Token]) -> Vec<&'a str> {
         tokens
             .iter()
@@ -14640,15 +14746,7 @@ mod tests {
     #[test]
     fn type_entry_recovery() {
         fn alias(ast: &Ast<'_>) -> TsType {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_type_alias_declaration(ast)
-                .unwrap()
-                .type_annotation(ast)
+            find_only::<TsTypeAliasDeclaration>(ast).type_annotation(ast)
         }
 
         fn reference_name<'a>(ast: &'a Ast<'_>, ty: TsType) -> &'a str {
@@ -14674,25 +14772,8 @@ mod tests {
         }
 
         fn argument(ast: &Ast<'_>) -> TsType {
-            alias(ast)
-                .as_ts_type_reference(ast)
-                .unwrap()
-                .type_arguments(ast)
-                .unwrap()
-                .params(ast)
-                .get_node(ast, 0)
-                .unwrap()
-        }
-
-        fn member(ast: &Ast<'_>) -> TsNamedTupleMember {
-            alias(ast)
-                .as_ts_tuple_type(ast)
-                .unwrap()
-                .element_types(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_ts_named_tuple_member(ast)
-                .unwrap()
+            let arguments = find_only::<TsTypeParameterInstantiation>(ast);
+            arguments.params(ast).get_node(ast, 0).unwrap()
         }
 
         let allocator = Allocator::new();
@@ -14791,7 +14872,7 @@ mod tests {
 
         let (ast, errors) = parse("type T = [br\\u0065ak?: number];");
         assert!(errors);
-        let member = member(&ast);
+        let member = find_only::<TsNamedTupleMember>(&ast);
         assert_eq!(ast.get_utf8(member.label(&ast).name(&ast)), "break");
         assert!(member.optional(&ast));
         assert!(member.element_type(&ast).is_ts_number_keyword(&ast));
@@ -14819,13 +14900,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let declaration = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_ts_namespace_export_declaration(ast)
-                .unwrap();
+            let declaration = find_only::<TsNamespaceExportDeclaration>(ast);
             (
                 !parsed.diagnostics.is_empty(),
                 ast.get_utf8(declaration.id(ast).name(ast)).to_owned(),
@@ -14836,21 +14911,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let declaration = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_import_equals_declaration(ast)
-                .unwrap();
-            let name = declaration
-                .module_reference(ast)
-                .as_ts_type_name(ast)
-                .unwrap()
-                .as_ts_qualified_name(ast)
-                .unwrap();
+            let name = find_only::<TsQualifiedName>(ast);
             (
                 !parsed.diagnostics.is_empty(),
                 ast.get_utf8(name.right(ast).name(ast)).to_owned(),
@@ -14940,21 +15001,10 @@ mod tests {
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let declaration = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap();
-            let span = if let Some(alias) = declaration.as_ts_type_alias_declaration(ast) {
+            let span = if let [alias] = find_all::<TsTypeAliasDeclaration>(ast)[..] {
                 alias.type_annotation(ast).span(ast)
             } else {
-                declaration
-                    .as_ts_interface_declaration(ast)
-                    .unwrap()
-                    .body(ast)
-                    .span(ast)
+                find_only::<TsInterfaceDeclaration>(ast).body(ast).span(ast)
             };
             let comments = ast
                 .comments()
@@ -15021,25 +15071,9 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let declaration = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_variable_declaration(ast)
-                .unwrap();
-            let pattern = declaration
-                .declarators(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .id(ast)
-                .as_object_pattern(ast)
-                .unwrap();
-            let property = pattern.properties(ast).get_node(ast, 0).unwrap();
-            let value = property.value(ast).as_assignment_pattern(ast).unwrap();
-            let identifier = value.left(ast).as_binding_identifier(ast).unwrap();
+            let property = find_only::<BindingProperty>(ast);
+            let value = find_only::<AssignmentPattern>(ast);
+            let identifier = find_only::<BindingIdentifier>(ast);
             (
                 !parsed.diagnostics.is_empty(),
                 ast.get_utf8(identifier.name(ast)).to_owned(),
@@ -15068,7 +15102,7 @@ mod tests {
 
     #[test]
     fn contextual_labels() {
-        fn labels(source: &str) -> (String, Option<String>) {
+        fn labels(source: &str) -> Vec<String> {
             let allocator = Allocator::new();
             let options = Options {
                 source_type: SourceType::Script,
@@ -15077,42 +15111,20 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let label = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_labeled_statement(ast)
-                .unwrap();
-            let target = label.body(ast).as_while_statement(ast).map(|statement| {
-                let body = statement
-                    .body(ast)
-                    .as_block_statement(ast)
-                    .unwrap()
-                    .body(ast)
-                    .get_node(ast, 0)
-                    .unwrap();
-                let identifier = if let Some(statement) = body.as_break_statement(ast) {
-                    statement.label(ast).unwrap()
-                } else {
-                    body.as_continue_statement(ast).unwrap().label(ast).unwrap()
-                };
-                ast.get_utf8(identifier.name(ast)).to_owned()
-            });
-            (ast.get_utf8(label.label(ast).name(ast)).to_owned(), target)
+            find_all::<LabelIdentifier>(ast)
+                .into_iter()
+                .map(|label| ast.get_utf8(label.name(ast)).to_owned())
+                .collect()
         }
 
-        let (label, target) = labels("async: while (1) { break as\\u0079nc; }");
-        assert_eq!(label, "async");
-        assert_eq!(target.as_deref(), Some("async"));
+        let names = labels("async: while (1) { break as\\u0079nc; }");
+        assert_eq!(names, ["async", "async"]);
 
-        let (label, target) = labels("let: while (1) { continue l\\u0065t; }");
-        assert_eq!(label, "let");
-        assert_eq!(target.as_deref(), Some("let"));
+        let names = labels("let: while (1) { continue l\\u0065t; }");
+        assert_eq!(names, ["let", "let"]);
 
-        let (label, target) = labels("using: 1;");
-        assert_eq!(label, "using");
-        assert_eq!(target, None);
+        let names = labels("using: 1;");
+        assert_eq!(names, ["using"]);
     }
 
     #[test]
@@ -15122,21 +15134,9 @@ mod tests {
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let statement = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_for_of_statement(ast)
-                .unwrap();
-            let declaration = statement.left(ast).as_variable_declaration(ast).unwrap();
-            let identifier = declaration
-                .declarators(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .id(ast)
-                .as_binding_identifier(ast)
-                .unwrap();
+            let statement = find_only::<ForOfStatement>(ast);
+            let declaration = find_only::<VariableDeclaration>(ast);
+            let identifier = find_only::<BindingIdentifier>(ast);
             (
                 declaration.kind(ast),
                 ast.get_utf8(identifier.name(ast)).to_owned(),
@@ -15165,18 +15165,11 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let body = ast.root_program().body(ast);
-            let alias = body
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_type_alias_declaration(ast)
-                .unwrap();
+            let alias = find_only::<TsTypeAliasDeclaration>(ast);
             (
                 !parsed.diagnostics.is_empty(),
                 ast.node_kind(alias.type_annotation(ast).node_id()),
-                body.len(),
+                ast.root_program().body(ast).len(),
             )
         }
 
@@ -15213,23 +15206,7 @@ mod tests {
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let class = if let Some(export) = statement.as_export_named_declaration(ast) {
-                export.declaration(ast).unwrap().as_class(ast).unwrap()
-            } else {
-                statement
-                    .as_export_default_declaration(ast)
-                    .unwrap()
-                    .declaration(ast)
-                    .as_class(ast)
-                    .unwrap()
-            };
-            assert_eq!(class.decorators(ast).len(), 1);
-            let expression = class
-                .decorators(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .expression(ast);
+            let expression = find_only::<Decorator>(ast).expression(ast);
             ast.node_kind(expression.node_id())
         }
 
@@ -15329,16 +15306,8 @@ mod tests {
             Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
         let ast = &parsed.ast;
-        let function = ast
-            .root_program()
-            .body(ast)
-            .get_node(ast, 0)
-            .unwrap()
-            .as_declaration(ast)
-            .unwrap()
-            .as_function(ast)
-            .unwrap();
-        let expressions = expression_kinds(ast, function.body(ast).body(ast));
+        let body = find_only::<FunctionBody>(ast);
+        let expressions = expression_kinds(ast, body.body(ast));
         assert_eq!(
             expressions,
             [NodeKind::AssignmentExpression, NodeKind::CallExpression]
@@ -15351,28 +15320,8 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let body = ast.root_program().body(ast);
-            assert_eq!(body.len(), 1);
-            let statement = body.get_node(ast, 0).unwrap();
-            let declaration = if let Some(declaration) = statement.as_declaration(ast) {
-                declaration.as_variable_declaration(ast).unwrap()
-            } else if let Some(statement) = statement.as_for_statement(ast) {
-                statement
-                    .init(ast)
-                    .unwrap()
-                    .as_variable_declaration(ast)
-                    .unwrap()
-            } else if let Some(statement) = statement.as_for_in_statement(ast) {
-                statement.left(ast).as_variable_declaration(ast).unwrap()
-            } else {
-                statement
-                    .as_for_of_statement(ast)
-                    .unwrap()
-                    .left(ast)
-                    .as_variable_declaration(ast)
-                    .unwrap()
-            };
-            let declarator = declaration.declarators(ast).get_node(ast, 0).unwrap();
+            assert_eq!(ast.root_program().body(ast).len(), 1);
+            let declarator = find_only::<VariableDeclarator>(ast);
             assert!(declarator.definite(ast));
             let text = |span: Span| &source[span.start as usize..span.end as usize];
             let errors = parsed
@@ -15426,21 +15375,11 @@ mod tests {
         }
 
         fn expression(ast: &Ast<'_>) -> Expr {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast)
+            find_only::<ExpressionStatement>(ast).expression(ast)
         }
 
         fn array_length(ast: &Ast<'_>) -> usize {
-            expression(ast)
-                .as_array_expression(ast)
-                .unwrap()
-                .elements(ast)
-                .len()
+            find_only::<ArrayExpression>(ast).elements(ast).len()
         }
 
         fn expression_kind(ast: &Ast<'_>) -> NodeKind {
@@ -15455,15 +15394,7 @@ mod tests {
         }
 
         fn type_argument_depth(ast: &Ast<'_>) -> usize {
-            let call = expression(ast).as_call_expression(ast).unwrap();
-            let mut arguments = call.type_arguments(ast);
-            let mut depth = 0;
-            while let Some(list) = arguments {
-                depth += 1;
-                let ty = list.params(ast).get_node(ast, 0).unwrap();
-                arguments = ty.as_ts_type_reference(ast).unwrap().type_arguments(ast);
-            }
-            depth
+            find_all::<TsTypeParameterInstantiation>(ast).len()
         }
 
         let typescript = Options {
@@ -15558,14 +15489,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let variable = statement
-                .as_declaration(ast)
-                .unwrap()
-                .as_variable_declaration(ast)
-                .unwrap();
-            let declarator = variable.declarators(ast).get_node(ast, 0).unwrap();
-            let pattern = declarator.id(ast).as_array_pattern(ast).unwrap();
+            let pattern = find_only::<ArrayPattern>(ast);
             let errors = parsed
                 .diagnostics
                 .iter()
@@ -15601,38 +15525,18 @@ mod tests {
 
     #[test]
     fn cover_trailing_commas() {
-        struct Rests<'ast, 'a> {
-            ast: &'ast Ast<'a>,
-            spans: Vec<Span>,
-        }
-
-        impl<'a> Visit<'a> for Rests<'_, 'a> {
-            fn ast(&self) -> &Ast<'a> {
-                self.ast
-            }
-
-            fn visit_binding_rest_element(&mut self, rest: BindingRestElement) {
-                self.spans.push(rest.span(self.ast));
-                rest.visit_children_with(self);
-            }
-        }
-
         fn parse(source: &str) -> (Vec<std::ops::Range<u32>>, Vec<&str>, String) {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
-            let mut rests = Rests {
-                ast: &parsed.ast,
-                spans: Vec::new(),
-            };
-            parsed.ast.root_program().visit_with(&mut rests);
+            let ast = &parsed.ast;
             let errors = parsed
                 .diagnostics
                 .iter()
                 .map(|diagnostic| diagnostic.span.start..diagnostic.span.end)
                 .collect();
-            let rests = rests
-                .spans
-                .iter()
+            let rests = find_all::<BindingRestElement>(ast)
+                .into_iter()
+                .map(|rest| rest.span(ast))
                 .map(|span| &source[span.start as usize..span.end as usize])
                 .collect();
             (errors, rests, token_texts(source, &parsed.tokens).join(" "))
@@ -15817,15 +15721,8 @@ mod tests {
     #[test]
     fn error_recovery() {
         fn throw_argument(ast: &Ast<'_>) -> IdentifierReference {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_throw_statement(ast)
-                .unwrap()
-                .argument(ast)
-                .as_identifier_reference(ast)
-                .unwrap()
+            let argument = find_only::<ThrowStatement>(ast).argument(ast);
+            argument.as_identifier_reference(ast).unwrap()
         }
 
         let allocator = Allocator::new();
@@ -15872,16 +15769,9 @@ mod tests {
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, throw_argument(ast).span(ast));
         assert_eq!(ast.get_utf8(throw_argument(ast).name(ast)), "value");
-        let body = ast.root_program().body(ast);
-        assert_eq!(body.len(), 2);
-        let after = body
-            .get_node(ast, 1)
-            .unwrap()
-            .as_expression_statement(ast)
-            .unwrap()
-            .expression(ast)
-            .as_identifier_reference(ast)
-            .unwrap();
+        assert_eq!(ast.root_program().body(ast).len(), 2);
+        let after = find_only::<ExpressionStatement>(ast).expression(ast);
+        let after = after.as_identifier_reference(ast).unwrap();
         assert_eq!(ast.get_utf8(after.name(ast)), "after");
         assert_eq!(
             token_texts(source, &parsed.tokens),
@@ -15909,15 +15799,6 @@ mod tests {
 
     #[test]
     fn try_recovery() {
-        fn first_try(ast: &Ast<'_>) -> TryStatement {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_try_statement(ast)
-                .unwrap()
-        }
-
         fn expression_name<'a>(ast: &Ast<'a>, statement: Stmt) -> &'a str {
             let identifier = statement
                 .as_expression_statement(ast)
@@ -15934,7 +15815,7 @@ mod tests {
         let ast = &parsed.ast;
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(16, 21));
-        let statement = first_try(ast);
+        let statement = find_only::<TryStatement>(ast);
         assert!(statement.handler(ast).is_none());
         assert!(statement.finalizer(ast).is_none());
         let block = statement.block(ast).body(ast);
@@ -15959,7 +15840,7 @@ mod tests {
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(6, 6));
         assert_eq!(ast.root_program().body(ast).len(), 1);
-        let statement = first_try(ast);
+        let statement = find_only::<TryStatement>(ast);
         assert!(statement.block(ast).body(ast).is_empty());
         assert!(statement.handler(ast).is_none());
         assert!(statement.finalizer(ast).is_none());
@@ -15977,10 +15858,8 @@ mod tests {
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
     }
 
-    fn parse_typescript_declaration<'a>(
-        allocator: &'a Allocator,
-        source: &'a str,
-    ) -> (Ast<'a>, Decl) {
+    /// Parses a TypeScript module that must contain one statement without errors.
+    fn parse_typescript_statement<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
         let options = Options {
             lang: Lang::Ts,
             source_type: SourceType::Module,
@@ -15988,29 +15867,18 @@ mod tests {
         };
         let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
-        let ast = parsed.ast;
-        let body = ast.root_program().body(&ast);
-        assert_eq!(body.len(), 1);
-        let statement = body.get_node(&ast, 0).unwrap();
-        let declaration = statement.as_declaration(&ast).unwrap_or_else(|| {
-            statement
-                .as_export_named_declaration(&ast)
-                .unwrap()
-                .declaration(&ast)
-                .unwrap()
-        });
-        (ast, declaration)
+        assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 1);
+        parsed.ast
     }
 
     #[test]
     fn ambient_variables() {
         fn parse_variable(source: &str) -> (VariableKind, String) {
             let allocator = Allocator::new();
-            let (ast, declaration) = parse_typescript_declaration(&allocator, source);
-            let variable = declaration.as_variable_declaration(&ast).unwrap();
+            let ast = parse_typescript_statement(&allocator, source);
+            let variable = find_only::<VariableDeclaration>(&ast);
             assert!(variable.declare(&ast));
-            assert_eq!(variable.declarators(&ast).len(), 1);
-            let declarator = variable.declarators(&ast).get_node(&ast, 0).unwrap();
+            let declarator = find_only::<VariableDeclarator>(&ast);
             assert!(declarator.type_annotation(&ast).is_some());
             assert!(declarator.init(&ast).is_none());
             let binding = declarator.id(&ast);
@@ -16057,8 +15925,8 @@ mod tests {
     fn const_enums() {
         fn is_ambient(source: &str) -> bool {
             let allocator = Allocator::new();
-            let (ast, declaration) = parse_typescript_declaration(&allocator, source);
-            let enumeration = declaration.as_ts_enum_declaration(&ast).unwrap();
+            let ast = parse_typescript_statement(&allocator, source);
+            let enumeration = find_only::<TsEnumDeclaration>(&ast);
             assert!(enumeration.is_const(&ast));
             assert_eq!(ast.get_utf8(enumeration.id(&ast).name(&ast)), "E");
             assert_eq!(enumeration.body(&ast).members(&ast).len(), 1);
@@ -16093,14 +15961,9 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let declaration = statement.as_declaration(ast).unwrap();
-            let enumeration = declaration.as_ts_enum_declaration(ast).unwrap();
             let errors = parsed.diagnostics.iter().map(|diagnostic| diagnostic.span);
-            let members = enumeration.body(ast).members(ast);
-            let members = members
-                .iter()
-                .map(|id| ast.get_node_in_sub_range(id).id(ast).span(ast));
+            let members = find_all::<TsEnumMember>(ast);
+            let members = members.into_iter().map(|member| member.id(ast).span(ast));
             (texts(source, errors), texts(source, members))
         }
 
@@ -16119,19 +15982,12 @@ mod tests {
     fn global_augmentations() {
         fn interface_name(source: &str) -> String {
             let allocator = Allocator::new();
-            let (ast, declaration) = parse_typescript_declaration(&allocator, source);
-            let global = declaration.as_ts_global_declaration(&ast).unwrap();
+            let ast = parse_typescript_statement(&allocator, source);
+            let global = find_only::<TsGlobalDeclaration>(&ast);
             assert!(global.declare(&ast));
             assert_eq!(ast.get_utf8(global.id(&ast).name(&ast)), "global");
-            let body = global.body(&ast).body(&ast);
-            assert_eq!(body.len(), 1);
-            let interface = body
-                .get_node(&ast, 0)
-                .unwrap()
-                .as_declaration(&ast)
-                .unwrap()
-                .as_ts_interface_declaration(&ast)
-                .unwrap();
+            assert_eq!(global.body(&ast).body(&ast).len(), 1);
+            let interface = find_only::<TsInterfaceDeclaration>(&ast);
             ast.get_utf8(interface.id(&ast).name(&ast)).to_owned()
         }
 
@@ -16149,8 +16005,8 @@ mod tests {
     fn named_declarations() {
         fn class_flags(source: &str) -> (bool, bool, usize) {
             let allocator = Allocator::new();
-            let (ast, declaration) = parse_typescript_declaration(&allocator, source);
-            let class = declaration.as_class(&ast).unwrap();
+            let ast = parse_typescript_statement(&allocator, source);
+            let class = find_only::<Class>(&ast);
             assert_eq!(class.class_type(&ast), ClassType::ClassDeclaration);
             assert_eq!(ast.get_utf8(class.id(&ast).unwrap().name(&ast)), "Foo");
             (
@@ -16193,9 +16049,8 @@ mod tests {
         assert_eq!(flags, (false, true, 1));
 
         let allocator = Allocator::new();
-        let (ast, declaration) =
-            parse_typescript_declaration(&allocator, "declare function\nfoo(): void;");
-        let function = declaration.as_ts_function(&ast).unwrap();
+        let ast = parse_typescript_statement(&allocator, "declare function\nfoo(): void;");
+        let function = find_only::<TsFunction>(&ast);
         assert!(function.declare(&ast));
         assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "foo");
         assert!(function.params(&ast).items(&ast).is_empty());
@@ -16204,16 +16059,7 @@ mod tests {
 
     #[test]
     fn ambient_function_recovery() {
-        fn function_name(ast: &Ast<'_>, statement: Stmt) -> String {
-            let function = statement
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_function(ast)
-                .unwrap();
-            ast.get_utf8(function.id(ast).unwrap().name(ast)).to_owned()
-        }
-
-        fn recovered_names(source: &str, lang: Lang) -> Vec<String> {
+        fn recovered_functions(source: &str, lang: Lang) -> Vec<(String, bool)> {
             let allocator = Allocator::new();
             let options = Options {
                 lang,
@@ -16223,38 +16069,41 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert_eq!(parsed.diagnostics.len(), 1);
             let ast = &parsed.ast;
-            let body = ast.root_program().body(ast);
-            assert_eq!(body.len(), 2);
-            let declaration = body.get_node(ast, 0).unwrap().as_declaration(ast).unwrap();
-            let functions = if let Some(module) = declaration.as_ts_module_declaration(ast) {
-                assert_eq!(function_name(ast, body.get_node(ast, 1).unwrap()), "after");
-                module
-                    .body(ast)
-                    .unwrap()
-                    .as_ts_module_block(ast)
-                    .unwrap()
-                    .body(ast)
-            } else {
-                assert!(declaration.as_ts_function(ast).unwrap().declare(ast));
-                body
-            };
-            functions
-                .iter()
-                .map(|id| function_name(ast, ast.get_node_in_sub_range(id)))
+            assert_eq!(ast.root_program().body(ast).len(), 2);
+            find_all::<TsFunction>(ast)
+                .into_iter()
+                .map(|function| {
+                    let name = ast.get_utf8(function.id(ast).unwrap().name(ast));
+                    (name.to_owned(), function.declare(ast))
+                })
                 .collect()
         }
 
         let source = "declare namespace N { function bad() {} function good(): void; } declare function after(): void;";
-        let names = recovered_names(source, Lang::Ts);
-        assert_eq!(names, ["bad", "good"]);
+        let functions = recovered_functions(source, Lang::Ts);
+        assert_eq!(
+            functions,
+            [
+                ("bad".into(), false),
+                ("good".into(), false),
+                ("after".into(), true)
+            ]
+        );
 
         let source = "declare module \"pkg\" { function bad() {} function good(): void; } declare function after(): void;";
-        let names = recovered_names(source, Lang::Ts);
-        assert_eq!(names, ["bad", "good"]);
+        let functions = recovered_functions(source, Lang::Ts);
+        assert_eq!(
+            functions,
+            [
+                ("bad".into(), false),
+                ("good".into(), false),
+                ("after".into(), true)
+            ]
+        );
 
         let source = "declare function bad() {} declare function good(): void;";
-        let names = recovered_names(source, Lang::Dts);
-        assert_eq!(names, ["bad", "good"]);
+        let functions = recovered_functions(source, Lang::Dts);
+        assert_eq!(functions, [("bad".into(), true), ("good".into(), true)]);
     }
 
     #[test]
@@ -16265,17 +16114,7 @@ mod tests {
                 Parser::init(&allocator, source, Options::default(), NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let expression = statement
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast);
-            let template = match ast.expr_data(expression) {
-                ExprData::TemplateLiteral(template) => template,
-                ExprData::TaggedTemplateExpression(tagged) => tagged.quasi(ast),
-                _ => panic!("expected a template expression"),
-            };
-            let quasi = template.quasis(ast).get_node(ast, 0).unwrap();
+            let quasi = find_only::<TemplateElement>(ast);
             let raw = ast.get_utf8(quasi.raw(ast)).to_owned();
             let cooked = (!quasi.is_cooked_undefined(ast)).then(|| {
                 ast.get_wtf8(quasi.cooked(ast))
@@ -16308,18 +16147,8 @@ mod tests {
             allocator: &'a Allocator,
             source: &'a str,
         ) -> (Ast<'a>, TsTypeParameter) {
-            let (ast, declaration) = parse_typescript_declaration(allocator, source);
-            let alias = declaration.as_ts_type_alias_declaration(&ast).unwrap();
-            let parameters = if let Some(parameters) = alias.type_parameters(&ast) {
-                parameters
-            } else {
-                let function = alias
-                    .type_annotation(&ast)
-                    .as_ts_function_type(&ast)
-                    .unwrap();
-                function.type_parameters(&ast).unwrap()
-            };
-            let parameter = parameters.params(&ast).get_node(&ast, 0).unwrap();
+            let ast = parse_typescript_statement(allocator, source);
+            let parameter = find_only::<TsTypeParameter>(&ast);
             (ast, parameter)
         }
 
@@ -16390,14 +16219,7 @@ mod tests {
     #[test]
     fn infer_constraints() {
         fn constraint(ast: &Ast<'_>) -> TsType {
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let declaration = statement.as_declaration(ast).unwrap();
-            let alias = declaration.as_ts_type_alias_declaration(ast).unwrap();
-            let conditional = alias
-                .type_annotation(ast)
-                .as_ts_conditional_type(ast)
-                .unwrap();
-            let infer = conditional.extends_type(ast).as_ts_infer_type(ast).unwrap();
+            let infer = find_only::<TsInferType>(ast);
             infer.type_parameter(ast).constraint(ast).unwrap()
         }
 
@@ -16446,19 +16268,7 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let alias = statement
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_type_alias_declaration(ast)
-                .unwrap();
-            let function = alias.type_annotation(ast).as_ts_function_type(ast).unwrap();
-            let predicate = function
-                .return_type(ast)
-                .type_annotation(ast)
-                .as_ts_type_predicate(ast)
-                .unwrap();
-            let name = predicate
+            let name = find_only::<TsTypePredicate>(ast)
                 .parameter_name(ast)
                 .as_identifier_name(ast)
                 .unwrap();
@@ -16523,8 +16333,7 @@ mod tests {
     #[test]
     fn default_export_declarations() {
         fn declaration(ast: &Ast<'_>) -> ExportDefaultDeclarationKindData {
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let export = statement.as_export_default_declaration(ast).unwrap();
+            let export = find_only::<ExportDefaultDeclaration>(ast);
             ast.export_default_declaration_kind_data(export.declaration(ast))
         }
 
@@ -16580,8 +16389,7 @@ mod tests {
             assert!(function.generator(&ast));
             assert_eq!(ast.get_utf8(function.id(&ast).unwrap().name(&ast)), "f");
             assert_eq!(ast.root_program().body(&ast).len(), 2);
-            let export = ast.root_program().body(&ast).get_node(&ast, 1).unwrap();
-            assert!(export.as_export_named_declaration(&ast).is_some());
+            find_only::<ExportNamedDeclaration>(&ast);
 
             let ast = parse("export default async\nfunction f() {}");
             let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
@@ -16599,18 +16407,12 @@ mod tests {
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
                 let ast = result.ast;
-                let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
+                let ExportDefaultDeclarationKindData::Expr(_) = declaration(&ast) else {
                     panic!("expected a default-exported expression");
                 };
-                let expression = if preserve_parens {
-                    expression
-                        .as_parenthesized_expression(&ast)
-                        .unwrap()
-                        .expression(&ast)
-                } else {
-                    expression
-                };
-                let function = expression.as_function(&ast).unwrap();
+                let parentheses = find_all::<ParenthesizedExpression>(&ast).len();
+                assert_eq!(parentheses, usize::from(preserve_parens));
+                let function = find_only::<Function>(&ast);
                 assert_eq!(
                     function.function_type(&ast),
                     FunctionType::FunctionExpression
@@ -16631,21 +16433,11 @@ mod tests {
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
             let ast = &parsed.ast;
             let body = ast.root_program().body(ast);
-            let arrow = body
-                .get_node(ast, 0)
-                .unwrap()
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast)
-                .as_arrow_function_expression(ast)
+            let parameters = find_all::<FormalParameter>(ast);
+            let binding = parameters[0]
+                .pattern(ast)
+                .as_binding_identifier(ast)
                 .unwrap();
-            let parameters = arrow.params(ast).items(ast);
-            let first = parameters
-                .get_node(ast, 0)
-                .unwrap()
-                .as_formal_parameter(ast)
-                .unwrap();
-            let binding = first.pattern(ast).as_binding_identifier(ast).unwrap();
             let name = ast.get_utf8(binding.name(ast)).to_owned();
             let last = body.get_node(ast, 1).unwrap().span(ast);
             let after = source[last.start as usize..last.end as usize].to_owned();
@@ -16699,36 +16491,7 @@ mod tests {
 
     #[test]
     fn formal_parameters() {
-        fn class_members(ast: &Ast<'_>) -> SubRange<ClassElement> {
-            let class = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_class(ast)
-                .unwrap();
-            class.body(ast).body(ast)
-        }
-
         fn parameter_kinds(source: &str) -> Vec<FormalParameterKind> {
-            struct Parameters<'ast, 'a> {
-                ast: &'ast Ast<'a>,
-                kinds: Vec<FormalParameterKind>,
-            }
-
-            impl<'a> Visit<'a> for Parameters<'_, 'a> {
-                fn ast(&self) -> &Ast<'a> {
-                    self.ast
-                }
-
-                fn visit_formal_parameters(&mut self, parameters: FormalParameters) {
-                    self.kinds.push(parameters.kind(self.ast));
-                    parameters.visit_children_with(self);
-                }
-            }
-
             let allocator = Allocator::new();
             let options = Options {
                 source_type: SourceType::Script,
@@ -16736,12 +16499,12 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
-            let mut visitor = Parameters {
-                ast: &parsed.ast,
-                kinds: Vec::new(),
-            };
-            parsed.ast.root_program().visit_with(&mut visitor);
-            visitor.kinds
+            let ast = &parsed.ast;
+            let parameters = find_all::<FormalParameters>(ast);
+            parameters
+                .iter()
+                .map(|parameters| parameters.kind(ast))
+                .collect()
         }
 
         let kinds = parameter_kinds("function f(a,a){}");
@@ -16786,24 +16549,12 @@ mod tests {
         let ast = &parsed.ast;
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(22, 26));
-        let body = ast.root_program().body(ast);
-        assert_eq!(body.len(), 2);
-        let after = body
-            .get_node(ast, 1)
-            .unwrap()
-            .as_expression_statement(ast)
-            .unwrap()
-            .expression(ast)
-            .as_identifier_reference(ast)
-            .unwrap();
+        assert_eq!(ast.root_program().body(ast).len(), 2);
+        let after = find_only::<ExpressionStatement>(ast).expression(ast);
+        let after = after.as_identifier_reference(ast).unwrap();
         assert_eq!(ast.get_utf8(after.name(ast)), "after");
-        let members = class_members(ast);
-        assert_eq!(members.len(), 1);
-        let method = members
-            .get_node(ast, 0)
-            .unwrap()
-            .as_method_definition(ast)
-            .unwrap();
+        assert_eq!(find_only::<ClassBody>(ast).body(ast).len(), 1);
+        let method = find_only::<MethodDefinition>(ast);
         assert_eq!(method.kind(ast), MethodDefinitionKind::Constructor);
         let function = method.value(ast);
         let receiver = function.this_param(ast).unwrap();
@@ -16812,35 +16563,18 @@ mod tests {
         let params = function.params(ast);
         assert_eq!(params.items(ast).len(), 1);
         assert!(params.rest(ast).is_none());
-        let parameter = params
-            .items(ast)
-            .get_node(ast, 0)
-            .unwrap()
-            .as_formal_parameter(ast)
-            .unwrap();
+        let parameter = find_only::<FormalParameter>(ast);
         let binding = parameter.pattern(ast).as_binding_identifier(ast).unwrap();
         assert_eq!(ast.get_utf8(binding.name(ast)), "value");
-        let statements = function.body(ast).body(ast);
-        assert_eq!(statements.len(), 1);
-        assert!(
-            statements
-                .get_node(ast, 0)
-                .unwrap()
-                .as_return_statement(ast)
-                .is_some()
-        );
+        assert_eq!(function.body(ast).body(ast).len(), 1);
+        find_only::<ReturnStatement>(ast);
 
         let parsed = parse_tokens(&allocator, "class C { constructor(this: C, ...args); }");
         let ast = &parsed.ast;
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.root_program().body(ast).len(), 1);
-        let members = class_members(ast);
-        assert_eq!(members.len(), 1);
-        let method = members
-            .get_node(ast, 0)
-            .unwrap()
-            .as_ts_method_definition(ast)
-            .unwrap();
+        assert_eq!(find_only::<ClassBody>(ast).body(ast).len(), 1);
+        let method = find_only::<TsMethodDefinition>(ast);
         assert_eq!(method.kind(ast), MethodDefinitionKind::Constructor);
         let function = method.value(ast);
         let receiver = function.this_param(ast).unwrap();
@@ -16920,35 +16654,14 @@ mod tests {
             assert!(result.diagnostics.is_empty());
             let ast = &result.ast;
             assert_eq!(ast.root_program().body(ast).len(), 1);
-            let declaration = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_variable_declaration(ast)
-                .unwrap();
-            let expression = declaration
-                .declarators(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .init(ast)
-                .unwrap();
-            let children = if let Some(element) = expression.as_jsx_element(ast) {
-                element.children(ast)
-            } else {
-                expression.as_jsx_fragment(ast).unwrap().children(ast)
-            };
-            children
-                .iter()
-                .filter_map(|id| {
-                    let text = ast.get_node_in_sub_range(id).as_jsx_text(ast)?;
+            find_all::<JsxText>(ast)
+                .into_iter()
+                .map(|text| {
                     let span = text.span(ast);
-                    Some((
+                    (
                         ast.get_utf8(text.value(ast)).to_owned(),
                         source[span.start as usize..span.end as usize].to_owned(),
-                    ))
+                    )
                 })
                 .collect()
         }
@@ -17014,16 +16727,6 @@ mod tests {
 
     #[test]
     fn super_recovery() {
-        fn expression(ast: &Ast<'_>, index: usize) -> Expr {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, index)
-                .unwrap()
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast)
-        }
-
         let allocator = Allocator::new();
         let source = "super;\nafter;";
         let parsed = parse_tokens(&allocator, source);
@@ -17031,8 +16734,8 @@ mod tests {
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 6));
         assert_eq!(ast.root_program().body(ast).len(), 2);
-        assert!(expression(ast, 0).is_super(ast));
-        let after = expression(ast, 1).as_identifier_reference(ast).unwrap();
+        find_only::<Super>(ast);
+        let after = find_only::<IdentifierReference>(ast);
         assert_eq!(ast.get_utf8(after.name(ast)), "after");
         assert_eq!(
             token_texts(source, &parsed.tokens),
@@ -17043,8 +16746,8 @@ mod tests {
         let ast = &parsed.ast;
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(ast.root_program().body(ast).len(), 2);
-        assert!(expression(ast, 0).is_super(ast));
-        let after = expression(ast, 1).as_identifier_reference(ast).unwrap();
+        find_only::<Super>(ast);
+        let after = find_only::<IdentifierReference>(ast);
         assert_eq!(ast.get_utf8(after.name(ast)), "after");
 
         let parsed = parse_tokens(&allocator, "super");
@@ -17052,7 +16755,7 @@ mod tests {
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 5));
         assert_eq!(ast.root_program().body(ast).len(), 1);
-        assert!(expression(ast, 0).is_super(ast));
+        find_only::<Super>(ast);
 
         let parsed = parse_tokens(&allocator, "super value;\nafter;");
         assert!(!parsed.diagnostics.is_empty());
@@ -17317,16 +17020,7 @@ mod tests {
                 Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
             let ast = result.ast;
-            let statement = ast.root_program().body(&ast).get_node(&ast, 0).unwrap();
-            let StmtData::Declaration(declaration) = ast.stmt_data(statement) else {
-                panic!("expected a class declaration");
-            };
-            let DeclData::Class(class) = ast.decl_data(declaration) else {
-                panic!("expected a class declaration");
-            };
-            let superclass = class
-                .super_class(&ast)
-                .expect("class must have a heritage expression");
+            let superclass = find_only::<Class>(&ast).super_class(&ast).unwrap();
             (ast, superclass)
         }
 
@@ -17373,14 +17067,9 @@ mod tests {
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
             let ast = &result.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let declaration = statement.as_declaration(ast).unwrap();
-            let class = declaration.as_class(ast).unwrap();
-            let body = class.body(ast).body(ast);
-            body.iter()
-                .map(|id| {
-                    let element = ast.get_node_in_sub_range(id);
-                    let field = element.as_property_definition(ast).unwrap();
+            find_all::<PropertyDefinition>(ast)
+                .into_iter()
+                .map(|field| {
                     let key = field.key(ast).as_identifier_name(ast).unwrap();
                     let name = ast.get_utf8(key.name(ast)).to_owned();
                     (name, field.r#static(ast))
@@ -17879,23 +17568,18 @@ mod tests {
             parser.parse()
         }
 
-        fn first_function_body(ast: &Ast<'_>) -> FunctionBody {
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let declaration = statement.as_declaration(ast).unwrap();
-            let function = declaration.as_function(ast).unwrap();
-            function.body(ast)
-        }
-
         let allocator = Allocator::new();
         let result = parse(&allocator, "function f() { await value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
-        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+        let body = find_only::<FunctionBody>(&result.ast);
+        assert_eq!(body.body(&result.ast).len(), 1);
 
         let result = parse(&allocator, "function f() { yield value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
-        assert_eq!(first_function_body(&result.ast).body(&result.ast).len(), 1);
+        let body = find_only::<FunctionBody>(&result.ast);
+        assert_eq!(body.body(&result.ast).len(), 1);
 
         let result = parse(&allocator, "return 1; function f() { await value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
@@ -18875,15 +18559,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let ast = &parsed.ast;
-            let alias = ast
-                .root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_declaration(ast)
-                .unwrap()
-                .as_ts_type_alias_declaration(ast)
-                .unwrap();
+            let alias = find_only::<TsTypeAliasDeclaration>(ast);
             let errors = parsed
                 .diagnostics
                 .iter()
@@ -18902,12 +18578,7 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let expression = statement
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast);
-            let arrow = expression.as_arrow_function_expression(ast).unwrap();
+            let arrow = find_only::<ArrowFunctionExpression>(ast);
             let ty = arrow.return_type(ast).unwrap().type_annotation(ast);
             ast.node_kind(ty.node_id())
         }
@@ -18927,14 +18598,8 @@ mod tests {
         assert_eq!(kind, NodeKind::TsLiteralType);
 
         let allocator = Allocator::new();
-        let (ast, declaration) =
-            parse_typescript_declaration(&allocator, "type F = (this) => void;");
-        let function = declaration
-            .as_ts_type_alias_declaration(&ast)
-            .unwrap()
-            .type_annotation(&ast)
-            .as_ts_function_type(&ast)
-            .unwrap();
+        let ast = parse_typescript_statement(&allocator, "type F = (this) => void;");
+        let function = find_only::<TsFunctionType>(&ast);
         assert!(function.this_param(&ast).is_some());
         assert!(function.params(&ast).items(&ast).is_empty());
 
@@ -18971,11 +18636,7 @@ mod tests {
             };
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let ast = &parsed.ast;
-            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
-            let mut expression = statement
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast);
+            let mut expression = find_only::<ExpressionStatement>(ast).expression(ast);
             let mut consequents = Vec::new();
             loop {
                 consequents.push(ast.node_kind(expression.node_id()));
@@ -19022,15 +18683,8 @@ mod tests {
         }
 
         fn conditional(ast: &Ast<'_>) -> ConditionalExpression {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast)
-                .as_conditional_expression(ast)
-                .unwrap()
+            let expression = find_only::<ExpressionStatement>(ast).expression(ast);
+            expression.as_conditional_expression(ast).unwrap()
         }
 
         fn assert_identifier(ast: &Ast<'_>, expression: Expr, expected: &str) {
@@ -19218,26 +18872,8 @@ mod tests {
         assert_parenthesized_a(&ast, arrow.body(&ast).as_expr(&ast).unwrap());
 
         let ast = parse(&allocator, "function* f(){return c ? yield(a) : b=>b}", ts);
-        let declaration = ast
-            .root_program()
-            .body(&ast)
-            .get_node(&ast, 0)
-            .unwrap()
-            .as_declaration(&ast)
-            .unwrap();
-        let function = declaration.as_function(&ast).unwrap();
-        let statement = function
-            .body(&ast)
-            .body(&ast)
-            .get_node(&ast, 0)
-            .unwrap()
-            .as_return_statement(&ast)
-            .unwrap();
-        let expression = statement
-            .argument(&ast)
-            .unwrap()
-            .as_conditional_expression(&ast)
-            .unwrap();
+        let argument = find_only::<ReturnStatement>(&ast).argument(&ast).unwrap();
+        let expression = argument.as_conditional_expression(&ast).unwrap();
         assert_alternate(&ast, expression);
         let yielded = expression
             .consequent(&ast)
@@ -19256,16 +18892,7 @@ mod tests {
     #[test]
     fn async_primary() {
         fn constructor(ast: &Ast<'_>) -> Expr {
-            ast.root_program()
-                .body(ast)
-                .get_node(ast, 0)
-                .unwrap()
-                .as_expression_statement(ast)
-                .unwrap()
-                .expression(ast)
-                .as_new_expression(ast)
-                .unwrap()
-                .callee(ast)
+            find_only::<NewExpression>(ast).callee(ast)
         }
 
         let options = Options::default();
@@ -19367,13 +18994,7 @@ mod tests {
         let identifier = constructor(&ast).as_identifier_reference(&ast).unwrap();
         assert_eq!(ast.get_utf8(identifier.name(&ast)), "async");
         assert_eq!(ast.root_program().body(&ast).len(), 2);
-        let declaration = ast.root_program().body(&ast).get_node(&ast, 1).unwrap();
-        let function = declaration
-            .as_declaration(&ast)
-            .unwrap()
-            .as_function(&ast)
-            .unwrap();
-        assert!(!function.r#async(&ast));
+        assert!(!find_only::<Function>(&ast).r#async(&ast));
     }
 
     #[test]
