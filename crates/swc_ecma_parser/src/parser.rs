@@ -3278,6 +3278,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         decorators: SubRange<Decorator>,
     ) -> Option<Class> {
         let start = start_from_param.unwrap_or(self.current_token.start());
+        // Undecorated `declare class` is parsed by `parse_ts_declaration`; only
+        // decorators can lead here before `declare`, for example `@dec declare class C {}`.
+        if self.current_token.tag() == TokenTag::Declare
+            && !opts.is_declare
+            && !decorators.is_empty()
+            && !opts.is_expression
+            && !opts.is_default_export
+            && self.lang.is_typescript()
+            && self.is_declare_class_next()?
+        {
+            self.advance()?;
+            let ambient = self.ts_context.ambient();
+            self.ts_context.set(TsContext::AMBIENT, true);
+            let class = self.parse_class_decorated(
+                ParseClassOpts {
+                    is_declare: true,
+                    ..opts
+                },
+                Some(start),
+                decorators,
+            );
+            self.ts_context.set(TsContext::AMBIENT, ambient);
+            return class;
+        }
         let mut is_abstract = opts.is_abstract;
         if self.current_token.tag() == TokenTag::Abstract
             && !is_abstract
@@ -5187,6 +5211,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn is_abstract_class_next(&mut self) -> Option<bool> {
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Class && !next.has_line_terminator_before())
+    }
+
+    /// Returns whether the current `declare` starts `declare class` or
+    /// `declare abstract class` on the same line.
+    fn is_declare_class_next(&mut self) -> Option<bool> {
+        let mut peek = self.begin_peek();
+        let next = peek.next()?;
+        let result = if next.has_line_terminator_before() {
+            false
+        } else if next.tag() == TokenTag::Class {
+            true
+        } else if next.tag() == TokenTag::Abstract {
+            let class = peek.next()?;
+            class.tag() == TokenTag::Class && !class.has_line_terminator_before()
+        } else {
+            false
+        };
+        peek.end();
+        Some(result)
     }
 
     fn is_legacy_accessibility_import(&mut self) -> Option<bool> {
@@ -16165,6 +16208,15 @@ mod tests {
 
         let flags = class_flags("export declare class /* marker\n continued */ Foo {}");
         assert_eq!(flags, (true, false, 0));
+
+        let flags = class_flags("@dec declare class Foo {}");
+        assert_eq!(flags, (true, false, 0));
+
+        let flags = class_flags("export @dec declare class Foo {}");
+        assert_eq!(flags, (true, false, 0));
+
+        let flags = class_flags("@dec export declare abstract class Foo {}");
+        assert_eq!(flags, (true, true, 0));
 
         let flags = class_flags(
             "abstract class\nFoo { protected abstract readonly foo: number; public static method() {} }",
