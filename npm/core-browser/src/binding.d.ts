@@ -76,6 +76,14 @@ export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, op
 /**
  * # Safety
  *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function parseTransformSync(source: Uint8Array, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string): Uint8Array
+
+/**
+ * # Safety
+ *
  * Sections must be produced by the matching JavaScript encoder and satisfy
  * the validity, alignment, and immutability contracts of
  * `swc_next_bridge::print_from_parts`.
@@ -83,3 +91,31 @@ export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, op
 export declare function printSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options?: CodegenOptions | undefined | null): CodegenOutput
 
 export declare function sourceTypeFromPath(path: string): SourceType
+
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_from_parts`.
+ */
+export declare function transformAstSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: string): Uint8Array
+
+/**
+ * # Safety
+ *
+ * Sections must be produced by the matching JavaScript encoder and satisfy
+ * the validity, alignment, and immutability contracts of
+ * `swc_next_bridge::transform_print_from_parts`.
+ */
+export declare function transformPrintSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: string, codegenOptions?: CodegenOptions | undefined | null): Uint8Array
+
+/**
+ * # Safety
+ *
+ * The caller must ensure that `source` contains valid UTF-8.
+ * `source_utf16_len` must match the UTF-16 code unit length of `source`.
+ */
+export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, parserOptions: ParserOptions | undefined | null, transformOptions: string, codegenOptions?: CodegenOptions | undefined | null): Uint8Array
+
+export declare function validateTransformOptions(options: string): void

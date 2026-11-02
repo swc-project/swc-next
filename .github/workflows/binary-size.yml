@@ -17,6 +17,8 @@ jobs:
     name: Compare binary sizes
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      COMPONENTS: core parser codegen transform
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -55,7 +57,10 @@ jobs:
           git checkout --detach "$BASE_SHA"
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
-          for component in core parser codegen; do
+          for component in $COMPONENTS; do
+            if [[ ! -f "npm/$component/package.json" ]]; then
+              continue
+            fi
             bytes=$(stat --format=%s "npm/$component/src-js/swc-next-$component.linux-x64-gnu.node")
             echo "$component=$bytes" >> "$GITHUB_OUTPUT"
           done
@@ -68,7 +73,10 @@ jobs:
           git checkout --detach "$COMPARE_SHA"
           pnpm install --frozen-lockfile
           pnpm build --release --target x86_64-unknown-linux-gnu -- --locked
-          for component in core parser codegen; do
+          for component in $COMPONENTS; do
+            if [[ ! -f "npm/$component/package.json" ]]; then
+              continue
+            fi
             bytes=$(stat --format=%s "npm/$component/src-js/swc-next-$component.linux-x64-gnu.node")
             echo "$component=$bytes" >> "$GITHUB_OUTPUT"
           done
@@ -98,12 +106,14 @@ jobs:
           if (process.env.BUILD_RESULT === "success") {
             const base = JSON.parse(process.env.BASE_SIZES);
             const merge = JSON.parse(process.env.MERGE_SIZES);
-            const components = ["core", "parser", "codegen"];
-            if (![base, merge].every(sizes => sizes && Object.keys(sizes).length === components.length && components.every(component => {
-              const value = sizes[component];
-              const bytes = Number(value);
-              return typeof value === "string" && Number.isSafeInteger(bytes) && bytes > 0 && String(bytes) === value;
-            }))) {
+            const components = process.env.COMPONENTS.trim().split(/\s+/);
+            const validSizes = sizes => sizes && typeof sizes === "object" && !Array.isArray(sizes) &&
+              Object.entries(sizes).every(([component, value]) => {
+                const bytes = Number(value);
+                return components.includes(component) && typeof value === "string" &&
+                  Number.isSafeInteger(bytes) && bytes > 0 && String(bytes) === value;
+              });
+            if (!validSizes(base) || !validSizes(merge)) {
               throw new Error("Invalid binary size measurements");
             }
             const formatSize = bytes => `${(bytes / 1024).toLocaleString("en-US", {
@@ -114,6 +124,17 @@ jobs:
               "| --- | ---: | ---: | ---: | ---: |",
             );
             for (const component of components) {
+              const hasBase = Object.hasOwn(base, component);
+              const hasMerge = Object.hasOwn(merge, component);
+              if (!hasBase && !hasMerge) continue;
+              if (!hasBase) {
+                lines.push(`| \`@swc-next/${component}\` | ${formatSize(Number(merge[component]))} | — | New | — |`);
+                continue;
+              }
+              if (!hasMerge) {
+                lines.push(`| \`@swc-next/${component}\` | — | ${formatSize(Number(base[component]))} | Removed | — |`);
+                continue;
+              }
               const before = Number(base[component]);
               const after = Number(merge[component]);
               const delta = after - before;

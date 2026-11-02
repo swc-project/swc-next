@@ -16,7 +16,7 @@ test-codec = ["dep:swc_next_allocator", "dep:swc_next_ecma_codegen", "dep:swc_ne
 
 [dependencies]
 swc_next_allocator    = { workspace = true, optional = true }
-swc_next_bridge       = { workspace = true, features = ["codegen", "parser"] }
+swc_next_bridge       = { workspace = true, features = ["codegen", "parser", "transformer"] }
 swc_next_ecma_ast     = { workspace = true }
 swc_next_ecma_codegen = { workspace = true, optional = true }
 swc_next_ecma_parser  = { workspace = true, optional = true }
