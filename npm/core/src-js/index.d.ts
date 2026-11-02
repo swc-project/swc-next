@@ -1,6 +1,9 @@
 import type { Program } from "@swc-next/types";
 export type * from "@swc-next/types";
 export * from "@swc-next/walker";
+export { readAst, AstView, NodeView, NodeKind } from "@swc-next/ast";
+export type { AstComment, AstDiagnostic } from "@swc-next/ast";
+import type { AstView } from "@swc-next/ast";
 
 import type {
   CodegenOptions,
@@ -56,8 +59,17 @@ export declare function parseSync(
   options?: ParserOptions | undefined | null,
 ): ParseResult;
 
+/** Serialize source, native AST and diagnostics into one self-contained FFI2 buffer. */
+export declare function parseBufferSync(source: string, options?: Omit<ParserOptions, 'errorRecovery'> | null): Uint8Array;
+
+/** Editable views over FFI2. Source offsets convert to UTF-16 lazily on access. */
+export declare function parseAstSync(source: string, options?: ParserOptions | null): AstView;
+
 export declare function printSync(
   program: Program,
   options?: CodegenOptions | undefined | null,
   meta?: Partial<AstMeta>,
 ): CodegenOutput;
+
+/** Print a validated FFI2 base/extension pair produced by AstView.encode(). */
+export declare function printBuffersSync(buffer: Uint8Array, extension?: Uint8Array, options?: CodegenOptions | null): CodegenOutput;

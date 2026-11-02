@@ -305,7 +305,12 @@ function encodeJs(program, meta = {}) {
     if (node?.type !== "Literal" ||
         (node.bigint == null && typeof node.value !== "bigint") ||
         bigIntValue(node) >= 0n) return node;
-    return { ...node, value: String(bigIntValue(node)), bigint: null, raw: "" };
+    return literalWith(node, { value: String(bigIntValue(node)), bigint: null, raw: "" });
+  }
+
+  function literalWith(node, overrides) {
+    return { type: node.type, start: node.start, end: node.end, value: node.value,
+      raw: node.raw, bigint: node.bigint, regex: node.regex, ...overrides };
   }
 
   function hexDigit(code) {
@@ -456,7 +461,7 @@ function encodeJs(program, meta = {}) {
         start: n.start,
         end: n.end,
         operator: "-",
-        argument: { ...n, value: absolute, bigint: String(absolute), raw: null },
+        argument: literalWith(n, { value: absolute, bigint: String(absolute), raw: null }),
       });
     }
     const v_0 = bigIntRaw(n);
@@ -865,7 +870,7 @@ function encodeJs(program, meta = {}) {
       _directiveRaw.startsWith(n.directive, 1) &&
       directiveRawValue(_directiveRaw, n.directive) === n.expression?.value
         ? n.expression
-        : { ...n.expression, raw: "" };
+        : literalWith(n.expression, { raw: "" });
     const v_0 = encStringLiteral(_directiveExpression);
     const v_1 = n.directive;
     const index = allocNode(45, n.start, n.end);
@@ -1858,7 +1863,7 @@ function encodeJs(program, meta = {}) {
   }
 
   function encJsxAttributeValue(n) {
-    if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });
+    if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral(literalWith(n, { raw: jsxStringRaw(n) }));
     switch (n.type) {
       case "Literal":
         return encStringLiteral(n);

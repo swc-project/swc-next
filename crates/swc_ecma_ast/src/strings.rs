@@ -128,6 +128,11 @@ impl<'a> StringPool<'a> {
         &self.extra
     }
 
+    /// Append validated transfer data while retaining its existing string offsets.
+    pub(crate) fn extend_extra(&mut self, bytes: &[u8]) {
+        self.extra.extend_from_slice(bytes);
+    }
+
     /// Returns a slice of the source string corresponding to the given start and end offsets.
     /// Actually this function should be unsafe because it does not check if the offsets are valid.
     /// So external crates should be better not use this function directly.

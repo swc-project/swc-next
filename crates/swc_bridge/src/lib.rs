@@ -14,13 +14,16 @@ pub use wire::{BridgeDecode, BridgeEncode, BridgeWire};
 #[cfg(feature = "parser")]
 mod parser;
 #[cfg(feature = "parser")]
-pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer};
+pub use parser::{CommentMode, Lang, ParserOptions, SourceType, parse_to_buffer, parse_to_buffer2};
 
 #[cfg(feature = "codegen")]
 mod codegen;
 #[cfg(feature = "codegen")]
 pub use {
-    codegen::{CodegenOptions, CodegenOutput, print_from_buffer, print_from_parts},
+    codegen::{
+        CodegenOptions, CodegenOutput, print_from_buffer, print_from_buffers,
+        print_from_buffers_unchecked, print_from_parts,
+    },
     swc_next_ecma_ast::ffi::ast::DeserializeError,
 };
 
