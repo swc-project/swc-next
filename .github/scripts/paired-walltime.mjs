@@ -6,8 +6,10 @@
 //
 // `build` compiles the benchmark targets of the current checkout and copies the
 // executables to <bin-dir>. `run` measures every benchmark that exists in both
-// builds in rounds; each round runs the base binary and then the head binary on
-// the same machine, so both see the same runner noise. `render` prints Markdown.
+// builds in rounds; each round runs the base binary and the head binary on the
+// same machine, so both see the same runner noise. The order alternates between
+// rounds (base first, then head first), so an even number of rounds cancels the
+// effect of the run order. `render` prints Markdown.
 //
 // This file must not import repository files: the workflow copies it out of the
 // checkout before it checks out the base revision.
@@ -139,12 +141,13 @@ function describeEnvironment() {
 }
 
 function runComparison(baseDir, headDir, output) {
-  const rounds = Number(env("PAIRED_WALLTIME_ROUNDS", "5"));
+  const rounds = Number(env("PAIRED_WALLTIME_ROUNDS", "6"));
   const timing = {
     warmUp: env("PAIRED_WALLTIME_WARM_UP", "1"),
     measurement: env("PAIRED_WALLTIME_MEASUREMENT", "2"),
   };
-  assert(Number.isInteger(rounds) && rounds > 0, "PAIRED_WALLTIME_ROUNDS must be a positive integer");
+  // Each binary must run first in the same number of rounds.
+  assert(Number.isInteger(rounds) && rounds > 0 && rounds % 2 === 0, "PAIRED_WALLTIME_ROUNDS must be a positive even integer");
 
   const work = resolve(output, "..", "criterion");
   const benchmarks = [];
@@ -164,11 +167,14 @@ function runComparison(baseDir, headDir, output) {
   assert(benchmarks.length > 0, "no benchmark exists in both builds");
 
   for (let round = 1; round <= rounds; round++) {
-    console.log(`Round ${round}/${rounds}`);
+    const order = round % 2 ? ["base", "head"] : ["head", "base"];
+    console.log(`Round ${round}/${rounds} (${order.join(" first, then ")})`);
     for (const bench of benchmarks) {
-      const home = side => join(work, `round-${round}`, side, bench.target);
-      bench.base.push(measure(join(baseDir, bench.target), bench.id, home("base"), timing));
-      bench.head.push(measure(join(headDir, bench.target), bench.id, home("head"), timing));
+      const dirs = { base: baseDir, head: headDir };
+      for (const side of order) {
+        const home = join(work, `round-${round}`, side, bench.target);
+        bench[side].push(measure(join(dirs[side], bench.target), bench.id, home, timing));
+      }
       const change = (bench.head.at(-1) / bench.base.at(-1) - 1) * 100;
       console.log(`  ${bench.id}: ${change >= 0 ? "+" : ""}${change.toFixed(2)}%`);
     }
@@ -286,8 +292,9 @@ function render(path) {
     "<details>",
     "<summary>Method</summary>",
     "",
-    `Each of ${results.rounds} rounds runs every benchmark with the base binary and then with the head binary ` +
+    `Each of ${results.rounds} rounds runs every benchmark with the base binary and with the head binary ` +
       `in the same job (Criterion, ${results.warm_up_seconds} s warm-up, ${results.measurement_seconds} s measurement). ` +
+      "Odd rounds run base first and even rounds run head first, so the run order does not bias the change. " +
       "Change is the median of the per-round head/base ratios of the Criterion median times. " +
       `A benchmark is marked slower or faster only when all rounds agree on the direction and the change is at least ${(results.threshold * 100).toFixed(0)}%. ` +
       "Unchanged benchmarks are not listed; the `paired-walltime` artifact has all results.",
