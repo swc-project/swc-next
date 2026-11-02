@@ -467,6 +467,14 @@ impl<'a> Printer<'a> {
 
     #[inline]
     fn print_comments_at(&mut self, offset: u32, statement: bool) {
+        let comment = self.comments.get(self.next_comment);
+        if comment.is_some_and(|comment| comment.attached_to <= offset) {
+            self.print_comments_at_slow(offset, statement);
+        }
+    }
+
+    #[inline(never)]
+    fn print_comments_at_slow(&mut self, offset: u32, statement: bool) {
         while let Some(comment) = self.comments.get(self.next_comment).copied() {
             if comment.attached_to > offset {
                 break;
