@@ -9202,6 +9202,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LogicalNot if !is_typescript || token.has_line_terminator_before() => {
                 Precedence::Lowest
             }
+            // A non-null assertion continues a left-hand-side expression, so it
+            // takes the precedence of `(` and `?.` and cannot follow `a++`.
+            TokenTag::LogicalNot => Precedence::Call,
             _ => precedence,
         }
     }
