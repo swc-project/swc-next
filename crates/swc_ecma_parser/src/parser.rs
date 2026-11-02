@@ -4167,12 +4167,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
 
                 if self.current_token.tag() == TokenTag::Spread {
-                    rest = Some(self.parse_formal_parameter_rest(kind, decorators)?);
+                    let parameter = self.parse_formal_parameter_rest(kind, decorators)?;
+                    rest = Some(parameter);
+                    let comma_end = self.current_token.end();
                     if self.eat(TokenTag::Comma)?
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
                     {
-                        self.recover_rest_parameter_end()?;
+                        self.recover_rest_parameter_end(Span::new(
+                            parameter.span(&self.ast).start,
+                            comma_end,
+                        ))?;
                     }
                     break;
                 }
@@ -4219,9 +4224,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn recover_rest_parameter_end(&mut self) -> Option<()> {
+    fn recover_rest_parameter_end(&mut self, span: Span) -> Option<()> {
         self.report(
-            self.current_token.span(),
+            span,
             "Rest parameter must be the last parameter",
             ReportOptions::default(),
         );
@@ -14558,6 +14563,15 @@ mod tests {
     }
 
     #[test]
+    fn numeric_literals() {
+        let errors = error_spans("10._1;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("10._e1;", Options::default());
+        assert_eq!(errors, ["_"]);
+    }
+
+    #[test]
     fn token_lookahead() {
         let allocator = Allocator::new();
         let options = Options {
@@ -16818,6 +16832,15 @@ mod tests {
         let parsed = parse_tokens(&allocator, source);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let errors = error_spans("function f(...a,) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
+
+        let errors = error_spans("async function f(...a,) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
+
+        let errors = error_spans("function f(...a, b) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
     }
 
     #[test]
