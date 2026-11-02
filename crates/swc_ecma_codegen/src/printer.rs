@@ -802,15 +802,9 @@ impl<'a> Printer<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn print_identifier(&mut self, name: &str) {
         self.print_space_before_identifier();
-        self.print_identifier_text(name);
-    }
-
-    /// Prints `name` when the separator before an identifier was already handled.
-    #[inline(always)]
-    fn print_identifier_text(&mut self, name: &str) {
         if !self.options.ascii_only || name.is_ascii() {
             self.print_bytes(name);
         } else {
@@ -1652,7 +1646,7 @@ impl<'a> Printer<'a> {
         let name = self.ast.get_utf8(id.name(self.ast));
         self.print_space_before_identifier();
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
-        self.print_identifier_text(name);
+        self.print_identifier(name);
     }
 
     fn print_binding(&mut self, binding: BindingPattern) {
