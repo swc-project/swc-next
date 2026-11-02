@@ -154,3 +154,8 @@ export declare function sourceTypeFromPath(path: string): SourceType
  * `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
  */
 export declare function transformSync(source: Uint8Array, sourceUtf16Len: number, options: Uint8Array): string | Uint8Array
+
+// Additional AST buffer protocol.
+export declare function parseSync2(source: Uint8Array, sourceUtf16Len: number, options: number): Uint8Array
+export declare function generateSync2(base: Uint8Array, extension: Uint8Array, options: number): string
+export declare function generateSync2Unchecked(base: Uint8Array, extension: Uint8Array, options: number): string

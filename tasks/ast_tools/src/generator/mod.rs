@@ -10,3 +10,8 @@ pub(crate) mod estree_visitor_keys;
 
 mod estree;
 pub(crate) mod estree_types;
+
+pub(crate) mod estree_visitor_keys2;
+pub(crate) mod ffi2;
+mod ffi2_projection_spec;
+mod ffi2_protocol;

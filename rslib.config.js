@@ -18,11 +18,11 @@ const pifeHint = "@swc-next-pife-(start|end)";
 const pifeComment = new RegExp(`/\\* ${pifeHint} \\*/`, "g");
 
 const baseConfig = defineConfig({
-  lib: components.map((component) => {
+  lib: components.flatMap((component) => {
     const directory = path.join(root, "npm", component);
     const source = path.join(directory, "src-js");
     const eagerDecoder = component === "core" || component === "parser";
-    return {
+    const legacy = {
       id: component,
       format: "esm",
       bundle: true,
@@ -65,6 +65,25 @@ const baseConfig = defineConfig({
         },
       },
     };
+    if (!["core", "parser", "generator", "core-browser"].includes(component)) return [legacy];
+    // Keep FFI2 separate so adding it cannot extract shared chunks from the
+    // legacy bundle or change the legacy decoder compilation hints.
+    return [legacy, {
+      id: `${component}-ffi2`,
+      format: "esm",
+      bundle: true,
+      syntax: "es2022",
+      source: { entry: { ffi2: path.join(source, "ffi2.js") } },
+      output: {
+        ...legacy.output,
+        target: component === "core-browser" ? "web" : "node",
+        externals: [...legacy.output.externals, "@swc-next/ast2", "@swc-next/walker2"],
+        minify: { jsOptions: { minimizerOptions: {
+          compress: { module: true, toplevel: false, inline: 0, reduce_vars: false },
+          mangle: { toplevel: false },
+        } } },
+      },
+    }];
   }),
 });
 

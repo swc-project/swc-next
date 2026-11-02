@@ -61,5 +61,11 @@ fn main() -> std::io::Result<()> {
     for output in generator::estree_visitor_keys::estree_visitor_keys(&schema) {
         output.write_to_file()?;
     }
+    for output in generator::ffi2::ffi2(&schema) {
+        output.write_to_file()?;
+    }
+    for output in generator::estree_visitor_keys2::estree_visitor_keys(&schema) {
+        output.write_to_file()?;
+    }
     Ok(())
 }

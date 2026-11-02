@@ -1,0 +1,45 @@
+{
+  "name": "@swc-next/ast2",
+  "version": "0.4.1",
+  "description": "Editable AST views with zero-copy reads and incremental two-buffer encoding",
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "default": "./dist/internal.js"
+    }
+  },
+  "files": [
+    "dist",
+    "index.d.ts",
+    "node-kinds.d.ts",
+    "README.md"
+  ],
+  "dependencies": {
+    "@swc-next/types": "workspace:*"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/ast2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

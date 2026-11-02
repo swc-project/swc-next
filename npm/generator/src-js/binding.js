@@ -576,3 +576,5 @@ if (!nativeBinding) {
 
 const { generateSync } = nativeBinding
 export { generateSync }
+
+export const { generateSync2 } = nativeBinding

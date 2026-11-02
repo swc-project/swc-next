@@ -39,6 +39,10 @@ console.log(diagnostics);
 console.log(generateSync(program).code);
 ```
 
+To opt into buffer-backed AST views, use the `@swc-next/core/ffi2` entry point
+with [`@swc-next/ast2`](packages/ast2).
+The default JavaScript API still accepts and returns plain ESTree objects.
+
 ## Roadmap
 
 As a ground-up rewrite, SWC Next is being developed in a separate repository and published as separate packages. We are gradually bringing its capabilities in line with SWC, with the long-term goal of becoming SWC's next major version and merging back into the SWC repository.

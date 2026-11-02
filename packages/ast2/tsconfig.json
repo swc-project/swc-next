@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "types": [],
+    "skipLibCheck": false
+  },
+  "include": ["*.ts"],
+  "exclude": ["*.d.ts", "dist"]
+}

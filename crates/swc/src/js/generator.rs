@@ -1,5 +1,5 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::ffi::ast;
+use swc_next_ecma_ast::{ffi::ast, ffi2};
 use swc_next_ecma_codegen::{Options, generate};
 
 #[cfg(feature = "bridge")]
@@ -9,6 +9,7 @@ use swc_next_bridge::{BridgeDecodeOptional, BridgeEncode, bridge};
 use swc_next_bridge::napi;
 
 pub use ast::DeserializeError;
+pub use ffi2::DeserializeError as DeserializeError2;
 
 /// JavaScript code generation options.
 ///
@@ -133,6 +134,36 @@ pub unsafe fn generate_from_parts(
         // SAFETY: The trusted sections now form an aligned transfer buffer.
         unsafe { generate_from_buffer(buffer, options) }
     }
+}
+
+/// Generate from a base buffer and its optional edit extension.
+/// Both byte buffers are validated before native AST fields are accessed.
+pub fn generate_from_buffers(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree = ffi2::deserialize(base, extension, &allocator)?;
+    let result = generate(&tree, options.unwrap_or_default().into());
+    Ok(GenerateOutput { code: result.code })
+}
+
+/// Generate from AST tables produced by the matching parser and incremental encoder.
+///
+/// # Safety
+/// Both buffers must obey [`ffi2::deserialize_unchecked`]'s validity and immutability
+/// contract, including any edits made by the matching incremental encoder. They
+/// must remain unchanged throughout this call.
+pub unsafe fn generate_from_buffers_unchecked(
+    base: &[u8],
+    extension: &[u8],
+    options: Option<JsGenerateApiOptions>,
+) -> Result<GenerateOutput, ffi2::DeserializeError> {
+    let allocator = Allocator::default();
+    let tree = unsafe { ffi2::deserialize_unchecked(base, extension, &allocator) }?;
+    let result = generate(&tree, options.unwrap_or_default().into());
+    Ok(GenerateOutput { code: result.code })
 }
 
 #[cfg(feature = "bridge")]

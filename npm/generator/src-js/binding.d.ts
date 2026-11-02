@@ -29,3 +29,6 @@ export interface GeneratorConfig {
  * `swc_next::js::generator::generate_from_parts`.
  */
 export declare function generateSync(header: Uint8Array, spans: Uint8Array, kinds: Uint8Array, payloads: Uint8Array, extra: Uint8Array, strings: Uint8Array, options: number): string
+
+// Additional AST buffer protocol.
+export declare function generateSync2(base: Uint8Array, extension: Uint8Array, options: number): string

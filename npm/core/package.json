@@ -14,13 +14,20 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./ffi2": {
+      "types": "./dist/ffi2.d.ts",
+      "import": "./dist/ffi2.js",
+      "default": "./dist/ffi2.js"
     }
   },
   "files": [
     "dist/binding.d.ts",
     "dist/binding.js",
     "dist/index.d.ts",
-    "dist/index.js"
+    "dist/index.js",
+    "dist/ffi2.js",
+    "dist/ffi2.d.ts"
   ],
   "publishConfig": {
     "access": "public",
@@ -28,7 +35,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:js": "pnpm -w exec rslib build --lib core",
+    "build:js": "pnpm --filter @swc-next/ast2 build && pnpm -w exec rslib build --lib core --lib core-ffi2",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir dist",
     "test": "pnpm -w build:js && node --test test/*.test.js && pnpm test:walk",
     "test:walk": "rstest run --include \"test/walk/*.test.js\"",
@@ -63,7 +70,8 @@
   },
   "dependencies": {
     "@swc-next/types": "workspace:*",
-    "@swc-next/walker": "workspace:*"
+    "@swc-next/walker": "workspace:*",
+    "@swc-next/ast2": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-core",

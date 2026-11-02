@@ -242,6 +242,57 @@ pub mod bridge {
         Ok(buffer)
     }
 
+    /// Parse into a self-contained AST buffer with UTF-8 byte spans.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `source` contains valid UTF-8 and that
+    /// `source_utf16_len` is its UTF-16 code unit length.
+    pub unsafe fn parse_to_buffer2(
+        source: &[u8],
+        source_utf16_len: u32,
+        options: Option<JsParseApiOptions>,
+    ) -> Vec<u8> {
+        // SAFETY: The caller guarantees valid UTF-8 source.
+        let source = unsafe { std::str::from_utf8_unchecked(source) };
+        let allocator = Allocator::default();
+        let options = options.unwrap_or_default();
+        let result = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
+        let mut diagnostics = result.diagnostics;
+        if options.semantic_errors.unwrap_or(false) {
+            diagnostics.extend(check_syntax(&result.ast, SyntaxChecks::all()));
+        }
+        // SAFETY: Serialization only reads the parser context during this call.
+        swc_next_ecma_ast::ffi2::serialize(
+            unsafe { result.ast.ast() },
+            &diagnostics,
+            source_utf16_len as usize,
+        )
+        .expect("parser AST must fit the AST buffer format")
+    }
+
+    /// Parse into a Node buffer backed by the serialized vector without copying.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `source` contains valid UTF-8 and that
+    /// `source_utf16_len` is its UTF-16 code unit length.
+    #[cfg(not(target_family = "wasm"))]
+    pub unsafe fn parse_to_node_buffer2(
+        source: &[u8],
+        source_utf16_len: u32,
+        options: u32,
+    ) -> napi::Result<napi::bindgen_prelude::Buffer> {
+        let options = <Option<ParserConfig> as BridgeDecode>::decode(options).ok_or_else(|| {
+            napi::Error::new(
+                napi::Status::InvalidArg,
+                "invalid bridge value for `options`",
+            )
+        })?;
+        let buffer = unsafe { parse_to_buffer2(source, source_utf16_len, options) };
+        Ok(napi::bindgen_prelude::Buffer::from(buffer))
+    }
+
     // Internal option word paired with packages/protocol/parser.js. Update both
     // ends together; cross-version compatibility is not guaranteed.
     const OPTIONS_PRESENT: u32 = 1 << 0;

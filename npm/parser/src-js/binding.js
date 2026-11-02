@@ -581,3 +581,5 @@ export { SourceType }
 export { langFromPath }
 export { parseSync }
 export { sourceTypeFromPath }
+
+export const { parseSync2 } = nativeBinding
