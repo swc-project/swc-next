@@ -1988,9 +1988,7 @@ pub fn lexical_error_message(error_type: LexicalError) -> &'static str {
             "Hexadecimal literal must contain at least one hex digit"
         }
         LexicalError::InvalidExponentPart => "Exponent part is missing a number",
-        LexicalError::NumericSeparatorMisuse => {
-            "Numeric separator cannot appear at the end of a numeric literal"
-        }
+        LexicalError::NumericSeparatorMisuse => "Numeric separators must appear between digits",
         LexicalError::ConsecutiveNumericSeparators => {
             "Numeric literal cannot contain consecutive separators"
         }
@@ -2055,7 +2053,7 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
             "Try adding digits here after the exponent (e.g., e10, e-5, E+2)"
         }
         LexicalError::NumericSeparatorMisuse => {
-            "Try removing the trailing underscore here or adding more digits after it"
+            "Remove the separator or place it between two digits"
         }
         LexicalError::ConsecutiveNumericSeparators => {
             "Try removing one of the consecutive underscores here"
