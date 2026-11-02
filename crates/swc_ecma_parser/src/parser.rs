@@ -14604,12 +14604,12 @@ mod tests {
         TemplateElement,
         ThrowStatement,
         TryStatement,
+        TsConditionalType,
         TsEnumDeclaration,
         TsEnumMember,
         TsFunction,
         TsFunctionType,
         TsGlobalDeclaration,
-        TsInferType,
         TsInterfaceDeclaration,
         TsMethodDefinition,
         TsModuleBlock,
@@ -16272,7 +16272,8 @@ mod tests {
     #[test]
     fn infer_constraints() {
         fn constraint(ast: &Ast<'_>) -> TsType {
-            let infer = find_only::<TsInferType>(ast);
+            let conditional = find_only::<TsConditionalType>(ast);
+            let infer = conditional.extends_type(ast).as_ts_infer_type(ast).unwrap();
             infer.type_parameter(ast).constraint(ast).unwrap()
         }
 
