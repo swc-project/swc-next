@@ -14541,6 +14541,14 @@ mod tests {
         serde_json::from_str(&ast.to_json()).unwrap()
     }
 
+    #[track_caller]
+    fn array(value: &Value) -> &[Value] {
+        let Value::Array(elements) = value else {
+            panic!("expected a JSON array");
+        };
+        elements
+    }
+
     fn parse_json(source: &str, options: Options) -> (Value, Vec<Diagnostic<'static>>) {
         let allocator = Allocator::new();
         let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
@@ -14549,7 +14557,9 @@ mod tests {
 
     fn node_text<'a>(source: &'a str, node: &Value) -> &'a str {
         let span = &node["span"];
-        &source[span["start"].as_u64().unwrap() as usize..span["end"].as_u64().unwrap() as usize]
+        let [start, end]: [usize; 2] =
+            serde_json::from_value(json!([span["start"], span["end"]])).unwrap();
+        &source[start..end]
     }
 
     fn parse_tokens<'a>(allocator: &'a Allocator, source: &'a str) -> ParseReturn<'a> {
@@ -14646,7 +14656,7 @@ mod tests {
 
         let (ast, errors) = parse("type T = A<if>; after;");
         assert!(errors);
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(
             alias(&ast)["type_arguments"]["params"][0]["type_name"]["name"],
             "if"
@@ -14713,7 +14723,7 @@ mod tests {
 
         let (ast, errors) = parse("type T = A extends B C : D; after;");
         assert!(errors);
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         let conditional = alias(&ast);
         assert_eq!(conditional["type"], "TsConditionalType");
         assert_eq!(conditional["extends_type"]["type_name"]["name"], "B");
@@ -14722,7 +14732,7 @@ mod tests {
 
         let (ast, errors) = parse("type T = A extends B ? C D; after;");
         assert!(errors);
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         let conditional = alias(&ast);
         assert_eq!(conditional["type"], "TsConditionalType");
         assert_eq!(conditional["true_type"]["type_name"]["name"], "C");
@@ -14973,7 +14983,7 @@ mod tests {
 
     #[test]
     fn contextual_labels() {
-        fn labels(source: &str) -> (Value, Option<String>) {
+        fn labels(source: &str) -> (Value, Value) {
             let options = Options {
                 source_type: SourceType::Script,
                 ..Options::default()
@@ -14984,33 +14994,29 @@ mod tests {
             assert_eq!(label["type"], "LabeledStatement");
             let target = if label["body"]["type"] == "WhileStatement" {
                 assert_eq!(label["body"]["body"]["type"], "BlockStatement");
-                assert!(matches!(
-                    label["body"]["body"]["body"][0]["type"].as_str(),
-                    Some("BreakStatement" | "ContinueStatement")
-                ));
-                Some(
-                    label["body"]["body"]["body"][0]["label"]["name"]
-                        .as_str()
-                        .unwrap()
-                        .to_owned(),
-                )
+                let statement = &label["body"]["body"]["body"][0];
+                assert!(
+                    statement["type"] == "BreakStatement"
+                        || statement["type"] == "ContinueStatement"
+                );
+                statement["label"]["name"].clone()
             } else {
-                None
+                Value::Null
             };
             (label["label"]["name"].clone(), target)
         }
 
         let (label, target) = labels("async: while (1) { break as\\u0079nc; }");
         assert_eq!(label, "async");
-        assert_eq!(target.as_deref(), Some("async"));
+        assert_eq!(target, "async");
 
         let (label, target) = labels("let: while (1) { continue l\\u0065t; }");
         assert_eq!(label, "let");
-        assert_eq!(target.as_deref(), Some("let"));
+        assert_eq!(target, "let");
 
         let (label, target) = labels("using: 1;");
         assert_eq!(label, "using");
-        assert_eq!(target, None);
+        assert!(target.is_null());
     }
 
     #[test]
@@ -15056,7 +15062,7 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = ast_json(&parsed.ast);
-            let body = ast["body"].as_array().unwrap();
+            let body = array(&ast["body"]);
             assert_eq!(body[0]["type"], "TsTypeAliasDeclaration");
             (
                 !parsed.diagnostics.is_empty(),
@@ -15099,12 +15105,13 @@ mod tests {
             assert!(parsed.diagnostics.is_empty());
             let ast = ast_json(&parsed.ast);
             let class = &ast["body"][0]["declaration"];
-            assert!(matches!(
-                ast["body"][0]["type"].as_str(),
-                Some("ExportNamedDeclaration" | "ExportDefaultDeclaration")
-            ));
+            let export_type = &ast["body"][0]["type"];
+            assert!(
+                export_type == "ExportNamedDeclaration"
+                    || export_type == "ExportDefaultDeclaration"
+            );
             assert_eq!(class["type"], "Class");
-            assert_eq!(class["decorators"].as_array().unwrap().len(), 1);
+            assert_eq!(array(&class["decorators"]).len(), 1);
             class["decorators"][0]["expression"]["type"].clone()
         }
 
@@ -15124,18 +15131,17 @@ mod tests {
 
     #[test]
     fn expression_boundaries() {
-        fn expression_kinds(body: &Value) -> Vec<String> {
-            body.as_array()
-                .unwrap()
+        fn expression_kinds(body: &Value) -> Vec<Value> {
+            array(body)
                 .iter()
                 .map(|statement| {
                     assert_eq!(statement["type"], "ExpressionStatement");
-                    statement["expression"]["type"].as_str().unwrap().to_owned()
+                    statement["expression"]["type"].clone()
                 })
                 .collect()
         }
 
-        fn parse(source: &str, options: Options) -> (Vec<Span>, Vec<String>) {
+        fn parse(source: &str, options: Options) -> (Vec<Span>, Vec<Value>) {
             let (ast, errors) = parse_json(source, options);
             (
                 errors.iter().map(|error| error.span).collect(),
@@ -15200,14 +15206,18 @@ mod tests {
             let allocator = Allocator::new();
             let parsed = parse_tokens(&allocator, source);
             let ast = ast_json(&parsed.ast);
-            let body = ast["body"].as_array().unwrap();
+            let body = array(&ast["body"]);
             assert_eq!(body.len(), 1);
             let statement = &body[0];
-            let declaration = match statement["type"].as_str().unwrap() {
-                "VariableDeclaration" => statement,
-                "ForStatement" => &statement["init"],
-                "ForInStatement" | "ForOfStatement" => &statement["left"],
-                _ => panic!("expected a variable declaration or for statement"),
+            let declaration = if statement["type"] == "VariableDeclaration" {
+                statement
+            } else if statement["type"] == "ForStatement" {
+                &statement["init"]
+            } else {
+                assert!(
+                    statement["type"] == "ForInStatement" || statement["type"] == "ForOfStatement"
+                );
+                &statement["left"]
             };
             assert_eq!(declaration["type"], "VariableDeclaration");
             let declarator = &declaration["declarators"][0];
@@ -15263,22 +15273,19 @@ mod tests {
 
         fn array_length(expression: &Value) -> usize {
             assert_eq!(expression["type"], "ArrayExpression");
-            expression["elements"].as_array().unwrap().len()
+            array(&expression["elements"]).len()
         }
 
         fn expression_kind(expression: &Value) -> Value {
             expression["type"].clone()
         }
 
-        fn arguments(expression: &Value) -> (usize, String) {
+        fn arguments(expression: &Value) -> (usize, Value) {
             assert_eq!(expression["type"], "CallExpression");
-            let arguments = expression["arguments"].as_array().unwrap();
+            let arguments = array(&expression["arguments"]);
             (
                 arguments.len(),
-                arguments.last().unwrap()["type"]
-                    .as_str()
-                    .unwrap()
-                    .to_owned(),
+                arguments[arguments.len() - 1]["type"].clone(),
             )
         }
 
@@ -15391,9 +15398,7 @@ mod tests {
                 .iter()
                 .map(|error| &source[error.span.start as usize..error.span.end as usize])
                 .collect();
-            let elements = pattern["elements"]
-                .as_array()
-                .unwrap()
+            let elements = array(&pattern["elements"])
                 .iter()
                 .map(|element| node_text(source, element))
                 .collect();
@@ -15694,7 +15699,7 @@ mod tests {
             json!({"start": span.start, "end": span.end})
         );
         assert_eq!(argument["name"], "value");
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(ast["body"][1]["expression"]["name"], "after");
         assert_eq!(
             token_texts(source, &parsed.tokens),
@@ -15732,10 +15737,10 @@ mod tests {
         assert_eq!(statement["type"], "TryStatement");
         assert!(statement["handler"].is_null());
         assert!(statement["finalizer"].is_null());
-        let block = statement["block"]["body"].as_array().unwrap();
+        let block = array(&statement["block"]["body"]);
         assert_eq!(block.len(), 1);
         assert_eq!(block[0]["expression"]["name"], "inside");
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(ast["body"][1]["expression"]["name"], "after");
         assert_eq!(
             token_texts(source, &parsed.tokens),
@@ -15746,7 +15751,7 @@ mod tests {
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(6, 6));
-        assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&ast["body"]).len(), 1);
         let statement = &ast["body"][0];
         assert_eq!(statement["type"], "TryStatement");
         assert_eq!(statement["block"]["body"], json!([]));
@@ -15774,7 +15779,7 @@ mod tests {
         };
         let (ast, errors) = parse_json(source, options);
         assert!(errors.is_empty());
-        assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&ast["body"]).len(), 1);
         let statement = &ast["body"][0];
         if statement["type"] == "ExportNamedDeclaration" {
             assert!(!statement["declaration"].is_null());
@@ -15786,22 +15791,24 @@ mod tests {
 
     #[test]
     fn ambient_variables() {
-        fn parse_variable(source: &str) -> (Value, String) {
+        fn parse_variable(source: &str) -> (Value, Value) {
             let variable = parse_typescript_declaration(source);
             assert_eq!(variable["type"], "VariableDeclaration");
             assert_eq!(variable["declare"], true);
-            assert_eq!(variable["declarators"].as_array().unwrap().len(), 1);
+            assert_eq!(array(&variable["declarators"]).len(), 1);
             let declarator = &variable["declarators"][0];
             assert!(!declarator["type_annotation"].is_null());
             assert!(declarator["init"].is_null());
             let binding = &declarator["id"];
-            let name = match binding["type"].as_str().unwrap() {
-                "BindingIdentifier" => binding["name"].as_str().unwrap(),
-                "ArrayPattern" => "array",
-                "ObjectPattern" => "object",
-                _ => panic!("expected a binding pattern"),
+            let name = if binding["type"] == "BindingIdentifier" {
+                binding["name"].clone()
+            } else if binding["type"] == "ArrayPattern" {
+                json!("array")
+            } else {
+                assert_eq!(binding["type"], "ObjectPattern");
+                json!("object")
             };
-            (variable["kind"].clone(), name.to_owned())
+            (variable["kind"].clone(), name)
         }
 
         let variable = parse_variable("declare var /* marker\n continued */ foo: string;");
@@ -15834,29 +15841,29 @@ mod tests {
 
     #[test]
     fn const_enums() {
-        fn is_ambient(source: &str) -> bool {
+        fn is_ambient(source: &str) -> Value {
             let enumeration = parse_typescript_declaration(source);
             assert_eq!(enumeration["type"], "TsEnumDeclaration");
             assert_eq!(enumeration["is_const"], true);
             assert_eq!(enumeration["id"]["name"], "E");
-            assert_eq!(enumeration["body"]["members"].as_array().unwrap().len(), 1);
-            enumeration["declare"].as_bool().unwrap()
+            assert_eq!(array(&enumeration["body"]["members"]).len(), 1);
+            enumeration["declare"].clone()
         }
 
         let ambient = is_ambient("const\nenum E { A = 1 }");
-        assert!(!ambient);
+        assert_eq!(ambient, false);
 
         let ambient = is_ambient("const // marker\nenum E { A = 1 }");
-        assert!(!ambient);
+        assert_eq!(ambient, false);
 
         let ambient = is_ambient("const /* marker\n continued */ enum E { A = 1 }");
-        assert!(!ambient);
+        assert_eq!(ambient, false);
 
         let ambient = is_ambient("declare const // marker\nenum E { A = 1 }");
-        assert!(ambient);
+        assert_eq!(ambient, true);
 
         let ambient = is_ambient("export const /* marker\n continued */ enum E { A = 1 }");
-        assert!(!ambient);
+        assert_eq!(ambient, false);
     }
 
     #[test]
@@ -15872,9 +15879,7 @@ mod tests {
                 .iter()
                 .map(|error| &source[error.span.start as usize..error.span.end as usize])
                 .collect();
-            let members = enumeration["body"]["members"]
-                .as_array()
-                .unwrap()
+            let members = array(&enumeration["body"]["members"])
                 .iter()
                 .map(|member| node_text(source, &member["id"]))
                 .collect();
@@ -15899,7 +15904,7 @@ mod tests {
             assert_eq!(global["type"], "TsGlobalDeclaration");
             assert_eq!(global["declare"], true);
             assert_eq!(global["id"]["name"], "global");
-            let body = global["body"]["body"].as_array().unwrap();
+            let body = array(&global["body"]["body"]);
             assert_eq!(body.len(), 1);
             assert_eq!(body[0]["type"], "TsInterfaceDeclaration");
             body[0]["id"]["name"].clone()
@@ -15917,49 +15922,49 @@ mod tests {
 
     #[test]
     fn named_declarations() {
-        fn class_flags(source: &str) -> (bool, bool, usize) {
+        fn class_flags(source: &str) -> Value {
             let class = parse_typescript_declaration(source);
             assert_eq!(class["type"], "Class");
             assert_eq!(class["class_type"], "ClassDeclaration");
             assert_eq!(class["id"]["name"], "Foo");
-            (
-                class["declare"].as_bool().unwrap(),
-                class["abstract"].as_bool().unwrap(),
-                class["body"]["body"].as_array().unwrap().len(),
-            )
+            json!([
+                class["declare"],
+                class["abstract"],
+                array(&class["body"]["body"]).len()
+            ])
         }
 
         let flags = class_flags("declare class // marker\nFoo {}");
-        assert_eq!(flags, (true, false, 0));
+        assert_eq!(flags, json!([true, false, 0]));
 
         let flags = class_flags("export declare class /* marker\n continued */ Foo {}");
-        assert_eq!(flags, (true, false, 0));
+        assert_eq!(flags, json!([true, false, 0]));
 
         let flags = class_flags(
             "abstract class\nFoo { protected abstract readonly foo: number; public static method() {} }",
         );
-        assert_eq!(flags, (false, true, 2));
+        assert_eq!(flags, json!([false, true, 2]));
 
         let flags = class_flags(
             "abstract class // marker\nFoo { protected abstract readonly foo: number; public static method() {} }",
         );
-        assert_eq!(flags, (false, true, 2));
+        assert_eq!(flags, json!([false, true, 2]));
 
         let flags = class_flags(
             "abstract class /* marker\n continued */ Foo { protected abstract readonly foo: number; public static method() {} }",
         );
-        assert_eq!(flags, (false, true, 2));
+        assert_eq!(flags, json!([false, true, 2]));
 
         let flags = class_flags("abstract class\nFoo { abstract method<T>(x: T): T; }");
-        assert_eq!(flags, (false, true, 1));
+        assert_eq!(flags, json!([false, true, 1]));
 
         let flags = class_flags("abstract class // marker\nFoo { abstract method<T>(x: T): T; }");
-        assert_eq!(flags, (false, true, 1));
+        assert_eq!(flags, json!([false, true, 1]));
 
         let flags = class_flags(
             "abstract class /* marker\n continued */ Foo { abstract method<T>(x: T): T; }",
         );
-        assert_eq!(flags, (false, true, 1));
+        assert_eq!(flags, json!([false, true, 1]));
 
         let function = parse_typescript_declaration("declare function\nfoo(): void;");
         assert_eq!(function["type"], "TsFunction");
@@ -15971,7 +15976,7 @@ mod tests {
 
     #[test]
     fn ambient_function_recovery() {
-        fn recovered_names(source: &str, lang: Lang) -> Vec<String> {
+        fn recovered_names(source: &str, lang: Lang) -> Vec<Value> {
             let options = Options {
                 lang,
                 source_type: SourceType::Module,
@@ -15979,13 +15984,13 @@ mod tests {
             };
             let (ast, errors) = parse_json(source, options);
             assert_eq!(errors.len(), 1);
-            let body = ast["body"].as_array().unwrap();
+            let body = array(&ast["body"]);
             assert_eq!(body.len(), 2);
             let functions = if body[0]["type"] == "TsModuleDeclaration" {
                 assert_eq!(body[0]["body"]["type"], "TsModuleBlock");
                 assert_eq!(body[1]["type"], "TsFunction");
                 assert_eq!(body[1]["id"]["name"], "after");
-                body[0]["body"]["body"].as_array().unwrap()
+                array(&body[0]["body"]["body"])
             } else {
                 assert_eq!(body[0]["declare"], true);
                 body
@@ -15994,7 +15999,7 @@ mod tests {
                 .iter()
                 .map(|function| {
                     assert_eq!(function["type"], "TsFunction");
-                    function["id"]["name"].as_str().unwrap().to_owned()
+                    function["id"]["name"].clone()
                 })
                 .collect()
         }
@@ -16014,37 +16019,40 @@ mod tests {
 
     #[test]
     fn template_raw_values() {
-        fn values(source: &str) -> (String, Option<String>) {
+        fn values(source: &str) -> (Value, Value) {
             let (ast, errors) = parse_json(source, Options::default());
             assert!(errors.is_empty());
             let expression = &ast["body"][0]["expression"];
-            let template = match expression["type"].as_str().unwrap() {
-                "TemplateLiteral" => expression,
-                "TaggedTemplateExpression" => &expression["quasi"],
-                _ => panic!("expected a template expression"),
+            let template = if expression["type"] == "TemplateLiteral" {
+                expression
+            } else {
+                assert_eq!(expression["type"], "TaggedTemplateExpression");
+                &expression["quasi"]
             };
             let quasi = &template["quasis"][0];
-            let raw = quasi["raw"].as_str().unwrap().to_owned();
-            let cooked = (quasi["is_cooked_undefined"] == false)
-                .then(|| quasi["cooked"].as_str().unwrap().to_owned());
-            (raw, cooked)
+            let cooked = if quasi["is_cooked_undefined"] == false {
+                quasi["cooked"].clone()
+            } else {
+                Value::Null
+            };
+            (quasi["raw"].clone(), cooked)
         }
 
         let (raw, cooked) = values("`a\rb\r\nc\r\r\n`");
         assert_eq!(raw, "a\nb\nc\n\n");
-        assert_eq!(cooked.as_deref(), Some("a\nb\nc\n\n"));
+        assert_eq!(cooked, "a\nb\nc\n\n");
 
         let (raw, cooked) = values("tag`\\unicode\r\ntext`");
         assert_eq!(raw, "\\unicode\ntext");
-        assert!(cooked.is_none());
+        assert!(cooked.is_null());
 
         let (raw, cooked) = values("`a\u{2028}b\u{2029}c`");
         assert_eq!(raw, "a\u{2028}b\u{2029}c");
-        assert_eq!(cooked.as_deref(), Some("a\u{2028}b\u{2029}c"));
+        assert_eq!(cooked, "a\u{2028}b\u{2029}c");
 
         let (raw, cooked) = values("`a\\rb`");
         assert_eq!(raw, "a\\rb");
-        assert_eq!(cooked.as_deref(), Some("a\rb"));
+        assert_eq!(cooked, "a\rb");
     }
 
     #[test]
@@ -16152,13 +16160,7 @@ mod tests {
             let ast = parse("type T<A> = A extends infer U extends <V>() => V ? U : never;");
             let function = constraint(&ast);
             assert_eq!(function["type"], "TsFunctionType");
-            assert_eq!(
-                function["type_parameters"]["params"]
-                    .as_array()
-                    .unwrap()
-                    .len(),
-                1
-            );
+            assert_eq!(array(&function["type_parameters"]["params"]).len(), 1);
 
             let ast = parse("type T<A> = A extends infer U extends new () => object ? U : never;");
             let constructor = constraint(&ast);
@@ -16176,7 +16178,7 @@ mod tests {
 
     #[test]
     fn predicate_parameter_names() {
-        fn parsed_name(source: &str) -> (bool, String) {
+        fn parsed_name(source: &str) -> (bool, Value) {
             let options = Options {
                 lang: Lang::Ts,
                 ..Options::default()
@@ -16189,13 +16191,10 @@ mod tests {
             assert_eq!(predicate["type"], "TsTypePredicate");
             let name = &predicate["parameter_name"];
             assert_eq!(name["type"], "IdentifierName");
-            (
-                !errors.is_empty(),
-                name["name"].as_str().unwrap().to_owned(),
-            )
+            (!errors.is_empty(), name["name"].clone())
         }
 
-        fn name(source: &str) -> String {
+        fn name(source: &str) -> Value {
             let (errors, name) = parsed_name(source);
             assert!(!errors);
             name
@@ -16288,12 +16287,12 @@ mod tests {
             assert_eq!(function["async"], true);
             assert_eq!(function["generator"], true);
             assert_eq!(function["id"]["name"], "f");
-            assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+            assert_eq!(array(&ast["body"]).len(), 2);
             assert_eq!(ast["body"][1]["type"], "ExportNamedDeclaration");
 
             let ast = parse("export default async\nfunction f() {}");
             assert_eq!(ast["body"][0]["declaration"]["type"], "IdentifierReference");
-            assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+            assert_eq!(array(&ast["body"]).len(), 2);
 
             for preserve_parens in [false, true] {
                 let options = Options {
@@ -16321,19 +16320,19 @@ mod tests {
         fn recovery(
             source: &str,
             options: Options,
-        ) -> (Vec<Span>, usize, usize, String, String, String) {
+        ) -> (Vec<Span>, usize, usize, Value, String, String) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, TokenParserConfig).parse();
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
             let ast = ast_json(&parsed.ast);
-            let body = ast["body"].as_array().unwrap();
+            let body = array(&ast["body"]);
             let arrow = &body[0]["expression"];
             assert_eq!(arrow["type"], "ArrowFunctionExpression");
-            let parameters = arrow["params"]["items"].as_array().unwrap();
+            let parameters = array(&arrow["params"]["items"]);
             let first = &parameters[0];
             assert_eq!(first["type"], "FormalParameter");
             assert_eq!(first["pattern"]["type"], "BindingIdentifier");
-            let name = first["pattern"]["name"].as_str().unwrap().to_owned();
+            let name = first["pattern"]["name"].clone();
             let after = node_text(source, &body[1]).to_owned();
             let tokens = token_texts(source, &parsed.tokens).join(" ");
             (errors, body.len(), parameters.len(), name, after, tokens)
@@ -16459,9 +16458,9 @@ mod tests {
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(22, 26));
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(ast["body"][1]["expression"]["name"], "after");
-        let members = ast["body"][0]["body"]["body"].as_array().unwrap();
+        let members = array(&ast["body"][0]["body"]["body"]);
         assert_eq!(ast["body"][0]["type"], "Class");
         assert_eq!(members.len(), 1);
         let method = &members[0];
@@ -16472,22 +16471,22 @@ mod tests {
         assert_eq!(receiver["span"], json!({"start": 22, "end": 29}));
         assert!(!receiver["type_annotation"].is_null());
         let params = &function["params"];
-        assert_eq!(params["items"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&params["items"]).len(), 1);
         assert!(params["rest"].is_null());
         let parameter = &params["items"][0];
         assert_eq!(parameter["type"], "FormalParameter");
         assert_eq!(parameter["pattern"]["type"], "BindingIdentifier");
         assert_eq!(parameter["pattern"]["name"], "value");
-        let statements = function["body"]["body"].as_array().unwrap();
+        let statements = array(&function["body"]["body"]);
         assert_eq!(statements.len(), 1);
         assert_eq!(statements[0]["type"], "ReturnStatement");
 
         let parsed = parse_tokens(&allocator, "class C { constructor(this: C, ...args); }");
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&ast["body"]).len(), 1);
         assert_eq!(ast["body"][0]["type"], "Class");
-        let members = ast["body"][0]["body"]["body"].as_array().unwrap();
+        let members = array(&ast["body"][0]["body"]["body"]);
         assert_eq!(members.len(), 1);
         let method = &members[0];
         assert_eq!(method["type"], "TsMethodDefinition");
@@ -16526,7 +16525,7 @@ mod tests {
         fn parse(source: &str, options: Options) -> (bool, usize) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
-            let statements = ast_json(&parsed.ast)["body"].as_array().unwrap().len();
+            let statements = array(&ast_json(&parsed.ast)["body"]).len();
             (!parsed.diagnostics.is_empty(), statements)
         }
 
@@ -16554,7 +16553,7 @@ mod tests {
 
     #[test]
     fn jsx_text() {
-        fn parse_text(source: &str, lang: Lang) -> Vec<(String, String)> {
+        fn parse_text(source: &str, lang: Lang) -> Vec<Value> {
             let options = Options {
                 lang,
                 source_type: SourceType::Module,
@@ -16562,44 +16561,37 @@ mod tests {
             };
             let (ast, errors) = parse_json(source, options);
             assert!(errors.is_empty());
-            assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+            assert_eq!(array(&ast["body"]).len(), 1);
             let declaration = &ast["body"][0];
             assert_eq!(declaration["type"], "VariableDeclaration");
             let expression = &declaration["declarators"][0]["init"];
             assert!(expression["type"] == "JsxElement" || expression["type"] == "JsxFragment");
-            expression["children"]
-                .as_array()
-                .unwrap()
+            array(&expression["children"])
                 .iter()
                 .filter(|child| child["type"] == "JsxText")
-                .map(|text| {
-                    (
-                        text["value"].as_str().unwrap().to_owned(),
-                        node_text(source, text).to_owned(),
-                    )
-                })
+                .map(|text| json!([text["value"], node_text(source, text)]))
                 .collect()
         }
 
         let text = parse_text("const node = <span>=</span>;", Lang::Tsx);
-        assert_eq!(text, [("=".into(), "=".into())]);
+        assert_eq!(text, [json!(["=", "="])]);
 
         let text = parse_text("const node = <span>=</span>;", Lang::Jsx);
-        assert_eq!(text, [("=".into(), "=".into())]);
+        assert_eq!(text, [json!(["=", "="])]);
 
         let text = parse_text("const node = <>=</>;", Lang::Tsx);
-        assert_eq!(text, [("=".into(), "=".into())]);
+        assert_eq!(text, [json!(["=", "="])]);
 
         let text = parse_text("const node = <span><br/>=</span>;", Lang::Tsx);
-        assert_eq!(text, [("=".into(), "=".into())]);
+        assert_eq!(text, [json!(["=", "="])]);
 
         let text = parse_text("const node = <Component<T>>=</Component>;", Lang::Tsx);
-        assert_eq!(text, [("=".into(), "=".into())]);
+        assert_eq!(text, [json!(["=", "="])]);
     }
 
     #[test]
     fn jsx_attributes() {
-        fn parse_tag_ends(source: &str, lang: Lang) -> (u64, u64) {
+        fn parse_tag_ends(source: &str, lang: Lang) -> Value {
             let allocator = Allocator::new();
             let options = Options {
                 lang,
@@ -16612,7 +16604,7 @@ mod tests {
             let element = ast_json(&ast);
             assert_eq!(element["type"], "JsxElement");
             let opening = &element["opening_element"];
-            let attributes = opening["attributes"].as_array().unwrap();
+            let attributes = array(&opening["attributes"]);
             assert_eq!(attributes.len(), 1);
             assert_eq!(attributes[0]["type"], "JsxAttribute");
             let value = &attributes[0]["value"];
@@ -16621,17 +16613,17 @@ mod tests {
             assert_eq!(value["opening_element"]["name"]["name"], "e");
             assert_eq!(value["children"], json!([]));
             assert_eq!(element["children"], json!([]));
-            (
-                value["closing_element"]["span"]["end"].as_u64().unwrap(),
-                opening["span"]["end"].as_u64().unwrap(),
-            )
+            json!([
+                value["closing_element"]["span"]["end"],
+                opening["span"]["end"]
+            ])
         }
 
         let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Jsx);
-        assert_eq!(ends, (17, 18));
+        assert_eq!(ends, json!([17, 18]));
 
         let ends = parse_tag_ends("<div attr=<e></e>></div>", Lang::Tsx);
-        assert_eq!(ends, (17, 18));
+        assert_eq!(ends, json!([17, 18]));
     }
 
     #[test]
@@ -16642,7 +16634,7 @@ mod tests {
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 6));
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(ast["body"][0]["expression"]["type"], "Super");
         assert_eq!(ast["body"][1]["expression"]["type"], "IdentifierReference");
         assert_eq!(ast["body"][1]["expression"]["name"], "after");
@@ -16654,7 +16646,7 @@ mod tests {
         let parsed = parse_tokens(&allocator, "super\nafter;");
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         assert_eq!(ast["body"][0]["expression"]["type"], "Super");
         assert_eq!(ast["body"][1]["expression"]["type"], "IdentifierReference");
         assert_eq!(ast["body"][1]["expression"]["name"], "after");
@@ -16663,7 +16655,7 @@ mod tests {
         let ast = ast_json(&parsed.ast);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert_eq!(parsed.diagnostics[0].span, Span::new(5, 5));
-        assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&ast["body"]).len(), 1);
         assert_eq!(ast["body"][0]["expression"]["type"], "Super");
 
         let parsed = parse_tokens(&allocator, "super value;\nafter;");
@@ -16708,7 +16700,7 @@ mod tests {
 
         let expression = parse("new async(1)", options);
         assert_eq!(expression["callee"]["type"], "IdentifierReference");
-        assert_eq!(expression["arguments"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&expression["arguments"]).len(), 1);
 
         let expression = parse("new async function*(){}.constructor(1)", options);
         let member = &expression["callee"];
@@ -16718,7 +16710,7 @@ mod tests {
         assert_eq!(function["async"], true);
         assert_eq!(function["generator"], true);
         assert_eq!(function["span"], json!({"start": 4, "end": 23}));
-        assert_eq!(expression["arguments"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&expression["arguments"]).len(), 1);
     }
 
     #[test]
@@ -16855,7 +16847,7 @@ mod tests {
                 let new = parse(&allocator, "new f<T>`x`(y)", options).unwrap();
                 assert_eq!(new["type"], "NewExpression");
                 assert_eq!(new["callee"]["type"], "TaggedTemplateExpression");
-                assert_eq!(new["arguments"].as_array().unwrap().len(), 1);
+                assert_eq!(array(&new["arguments"]).len(), 1);
 
                 let new = parse(&allocator, "new f<T>`x`.y", options).unwrap();
                 assert_eq!(new["type"], "NewExpression");
@@ -16868,7 +16860,7 @@ mod tests {
                 assert_eq!(tag["type"], "TaggedTemplateExpression");
                 assert!(!new["type_arguments"].is_null());
                 assert!(!tag["type_arguments"].is_null());
-                assert_eq!(new["arguments"].as_array().unwrap().len(), 1);
+                assert_eq!(array(&new["arguments"]).len(), 1);
 
                 let comparison = parse(&allocator, "new f<T>[0]", options).unwrap();
                 assert_eq!(comparison["type"], "BinaryExpression");
@@ -16956,13 +16948,13 @@ mod tests {
         let class = &expression["callee"];
         assert_eq!(class["type"], "Class");
         assert_eq!(class["class_type"], "ClassExpression");
-        assert_eq!(class["decorators"].as_array().unwrap().len(), 1);
-        assert_eq!(expression["arguments"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&class["decorators"]).len(), 1);
+        assert_eq!(array(&expression["arguments"]).len(), 1);
     }
 
     #[test]
     fn class_modifiers() {
-        fn parse_fields(source: &str, lang: Lang) -> Vec<(String, bool)> {
+        fn parse_fields(source: &str, lang: Lang) -> Vec<Value> {
             let options = Options {
                 lang,
                 ..Options::default()
@@ -16971,41 +16963,36 @@ mod tests {
             assert!(errors.is_empty());
             let class = &ast["body"][0];
             assert_eq!(class["type"], "Class");
-            class["body"]["body"]
-                .as_array()
-                .unwrap()
+            array(&class["body"]["body"])
                 .iter()
                 .map(|field| {
                     assert_eq!(field["type"], "PropertyDefinition");
                     assert_eq!(field["key"]["type"], "IdentifierName");
-                    (
-                        field["key"]["name"].as_str().unwrap().to_owned(),
-                        field["static"].as_bool().unwrap(),
-                    )
+                    json!([field["key"]["name"], field["static"]])
                 })
                 .collect()
         }
 
         let fields = parse_fields("class A { st\\u0061tic\nfoo }", Lang::Js);
-        assert_eq!(fields, [("static".into(), false), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["static", false]), json!(["foo", false])]);
 
         let fields = parse_fields("class A { st\\u0061tic\nfoo }", Lang::Ts);
-        assert_eq!(fields, [("static".into(), false), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["static", false]), json!(["foo", false])]);
 
         let fields = parse_fields("class A { static\nfoo }", Lang::Js);
-        assert_eq!(fields, [("foo".into(), true)]);
+        assert_eq!(fields, [json!(["foo", true])]);
 
         let fields = parse_fields("class A { static st\\u0061tic\nfoo }", Lang::Js);
-        assert_eq!(fields, [("static".into(), true), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["static", true]), json!(["foo", false])]);
 
         let fields = parse_fields("class A { g\\u0065t\nfoo }", Lang::Js);
-        assert_eq!(fields, [("get".into(), false), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["get", false]), json!(["foo", false])]);
 
         let fields = parse_fields("class A { s\\u0065t\nfoo }", Lang::Js);
-        assert_eq!(fields, [("set".into(), false), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["set", false]), json!(["foo", false])]);
 
         let fields = parse_fields("class A { a\\u0073ync\nfoo }", Lang::Js);
-        assert_eq!(fields, [("async".into(), false), ("foo".into(), false)]);
+        assert_eq!(fields, [json!(["async", false]), json!(["foo", false])]);
     }
 
     #[test]
@@ -17106,7 +17093,7 @@ mod tests {
         let source = "import 'x'\nassert ({});";
         let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
-        assert_eq!(ast_json(&result.ast)["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast_json(&result.ast)["body"]).len(), 2);
     }
 
     #[test]
@@ -17482,10 +17469,7 @@ mod tests {
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
         assert_eq!(
-            ast_json(&result.ast)["body"][0]["body"]["body"]
-                .as_array()
-                .unwrap()
-                .len(),
+            array(&ast_json(&result.ast)["body"][0]["body"]["body"]).len(),
             1
         );
 
@@ -17493,17 +17477,14 @@ mod tests {
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert_eq!(result.diagnostics.len(), 1);
         assert_eq!(
-            ast_json(&result.ast)["body"][0]["body"]["body"]
-                .as_array()
-                .unwrap()
-                .len(),
+            array(&ast_json(&result.ast)["body"][0]["body"]["body"]).len(),
             1
         );
 
         let result = parse(&allocator, "return 1; function f() { await value; }");
         assert_eq!(result.ast.source_type(), SourceType::Module);
         assert!(!result.diagnostics.is_empty());
-        assert_eq!(ast_json(&result.ast)["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast_json(&result.ast)["body"]).len(), 2);
 
         let allocator = Allocator::new();
         let result = parse(&allocator, "value + await \"unterminated");
@@ -17518,7 +17499,7 @@ mod tests {
         let result = parse(&allocator, "value\n<!-- comment");
         assert!(result.diagnostics.is_empty(), "{:#?}", result.diagnostics);
         assert_eq!(result.ast.source_type(), SourceType::Script);
-        assert_eq!(ast_json(&result.ast)["body"].as_array().unwrap().len(), 1);
+        assert_eq!(array(&ast_json(&result.ast)["body"]).len(), 1);
 
         let allocator = Allocator::new();
         let result = parse(&allocator, "value\n<!-- comment\nexport {};");
@@ -17528,13 +17509,11 @@ mod tests {
 
     #[test]
     fn unambiguous_recovery() {
-        fn parse(source: &str, options: Options) -> (Vec<Span>, SourceType, Vec<String>) {
+        fn parse(source: &str, options: Options) -> (Vec<Span>, SourceType, Vec<Value>) {
             let allocator = Allocator::new();
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             let ast = ast_json(&parsed.ast);
-            let nodes = ast["body"]
-                .as_array()
-                .unwrap()
+            let nodes = array(&ast["body"])
                 .iter()
                 .map(|statement| {
                     let node = if statement["type"] == "ExpressionStatement" {
@@ -17542,7 +17521,7 @@ mod tests {
                     } else {
                         statement
                     };
-                    node["type"].as_str().unwrap().to_owned()
+                    node["type"].clone()
                 })
                 .collect();
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
@@ -17917,7 +17896,7 @@ mod tests {
                         .collect::<Vec<_>>(),
                     [Span::new(0, 6), Span::new(8, 20)]
                 );
-                assert_eq!(ast_json(&parsed.ast)["body"].as_array().unwrap().len(), 2);
+                assert_eq!(array(&ast_json(&parsed.ast)["body"]).len(), 2);
                 assert_eq!(
                     token_texts(source, &parsed.tokens),
                     ["return", ";", "export", "{", "}", ";"]
@@ -18538,7 +18517,7 @@ mod tests {
 
     #[test]
     fn conditional_arrow_recovery() {
-        fn parse(source: &str) -> (bool, Vec<String>) {
+        fn parse(source: &str) -> (bool, Vec<Value>) {
             let options = Options {
                 lang: Lang::Ts,
                 preserve_parens: false,
@@ -18548,8 +18527,8 @@ mod tests {
             let mut expression = &ast["body"][0]["expression"];
             let mut consequents = Vec::new();
             loop {
-                let kind = expression["type"].as_str().unwrap();
-                consequents.push(kind.to_owned());
+                let kind = &expression["type"];
+                consequents.push(kind.clone());
                 if kind != "ConditionalExpression" {
                     break;
                 }
@@ -18586,7 +18565,7 @@ mod tests {
         fn parse(source: &str, options: Options) -> Value {
             let (ast, errors) = parse_json(source, options);
             assert!(errors.is_empty());
-            assert_eq!(ast["body"].as_array().unwrap().len(), 1);
+            assert_eq!(array(&ast["body"]).len(), 1);
             ast
         }
 
@@ -18609,7 +18588,7 @@ mod tests {
         fn assert_alternate(expression: &Value) {
             let arrow = &expression["alternate"];
             assert_eq!(arrow["type"], "ArrowFunctionExpression");
-            let params = arrow["params"]["items"].as_array().unwrap();
+            let params = array(&arrow["params"]["items"]);
             assert_eq!(params.len(), 1);
             assert_eq!(params[0]["type"], "FormalParameter");
             assert_eq!(params[0]["pattern"]["type"], "BindingIdentifier");
@@ -18617,8 +18596,8 @@ mod tests {
             assert!(arrow["return_type"].is_null());
         }
 
-        fn return_types(expression: &Value) -> Vec<String> {
-            fn collect(node: &Value, types: &mut Vec<String>) {
+        fn return_types(expression: &Value) -> Vec<Value> {
+            fn collect(node: &Value, types: &mut Vec<Value>) {
                 match node {
                     Value::Object(fields) => {
                         if node["type"] == "ArrowFunctionExpression"
@@ -18627,7 +18606,7 @@ mod tests {
                             let ty = &node["return_type"]["type_annotation"];
                             assert_eq!(ty["type"], "TsTypeReference");
                             assert_eq!(ty["type_name"]["type"], "IdentifierReference");
-                            types.push(ty["type_name"]["name"].as_str().unwrap().to_owned());
+                            types.push(ty["type_name"]["name"].clone());
                         }
                         for value in fields.values() {
                             collect(value, types);
@@ -18647,7 +18626,7 @@ mod tests {
             types
         }
 
-        fn parse_boundary(source: &str, options: Options) -> Vec<String> {
+        fn parse_boundary(source: &str, options: Options) -> Vec<Value> {
             let plain_source = format!("cond ? {source} : undefined;");
             let ast = parse(&plain_source, options);
             let expression = conditional(&ast);
@@ -18876,7 +18855,7 @@ mod tests {
         let identifier = constructor(&ast);
         assert_eq!(identifier["type"], "IdentifierReference");
         assert_eq!(identifier["name"], "async");
-        assert_eq!(ast["body"].as_array().unwrap().len(), 2);
+        assert_eq!(array(&ast["body"]).len(), 2);
         let function = &ast["body"][1];
         assert_eq!(function["type"], "Function");
         assert_eq!(function["async"], false);
@@ -19123,13 +19102,7 @@ mod tests {
 
         let expression = parse("f<T>(<Component />)");
         assert_eq!(expression["type"], "CallExpression");
-        assert_eq!(
-            expression["type_arguments"]["params"]
-                .as_array()
-                .unwrap()
-                .len(),
-            1
-        );
+        assert_eq!(array(&expression["type_arguments"]["params"]).len(), 1);
         assert_eq!(expression["arguments"][0]["type"], "JsxElement");
 
         let expression = parse("(value as T) ? <Yes /> : <No />");
