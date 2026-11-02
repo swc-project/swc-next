@@ -14599,7 +14599,6 @@ mod tests {
         LabelIdentifier,
         MethodDefinition,
         NewExpression,
-        ParenthesizedExpression,
         PropertyDefinition,
         ReturnStatement,
         Super,
@@ -16440,12 +16439,18 @@ mod tests {
                 let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
                 assert!(result.diagnostics.is_empty());
                 let ast = result.ast;
-                let ExportDefaultDeclarationKindData::Expr(_) = declaration(&ast) else {
+                let ExportDefaultDeclarationKindData::Expr(expression) = declaration(&ast) else {
                     panic!("expected a default-exported expression");
                 };
-                let parentheses = find_all::<ParenthesizedExpression>(&ast).len();
-                assert_eq!(parentheses, usize::from(preserve_parens));
-                let function = find_only::<Function>(&ast);
+                let expression = if preserve_parens {
+                    expression
+                        .as_parenthesized_expression(&ast)
+                        .unwrap()
+                        .expression(&ast)
+                } else {
+                    expression
+                };
+                let function = expression.as_function(&ast).unwrap();
                 assert_eq!(
                     function.function_type(&ast),
                     FunctionType::FunctionExpression
