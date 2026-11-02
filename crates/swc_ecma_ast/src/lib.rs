@@ -5,6 +5,7 @@ mod comment;
 mod derive;
 mod diagnostic;
 pub mod ffi;
+pub mod ffi2;
 mod node_id;
 mod semantic;
 mod strings;

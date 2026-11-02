@@ -305,6 +305,12 @@ pub struct BorrowedAst<'a> {
     ast: AstCtx<'a>,
 }
 
+impl<'a> BorrowedAst<'a> {
+    pub(crate) fn from_ast(ast: Ast<'a>) -> Self {
+        Self { ast: ast.into() }
+    }
+}
+
 impl<'a> Deref for BorrowedAst<'a> {
     type Target = AstCtx<'a>;
 

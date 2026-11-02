@@ -39,6 +39,9 @@ console.log(diagnostics);
 console.log(printSync(program).code);
 ```
 
+For buffer-backed AST access, `parseAstSync` returns lazy views over a single
+buffer. See [`@swc-next/ast`](packages/ast) for usage and constraints.
+
 ## Roadmap
 
 As a ground-up rewrite, SWC Next is being developed in a separate repository and published as separate packages. We are gradually bringing its capabilities in line with SWC, with the long-term goal of becoming SWC's next major version and merging back into the SWC repository.
