@@ -1,7 +1,7 @@
 name: Profile Performance
 
-# Measures base and head in one x86_64 job that shares one Cargo build:
-# Gungraun instruction counts and paired Criterion wall times.
+# Builds base and head once in an x86_64 job. Separate jobs then run the built
+# benchmarks: Gungraun instruction counts and paired Criterion wall times.
 
 on:
   push:
@@ -42,9 +42,15 @@ on:
 permissions:
   contents: read
 
+# Unrelated label events get their own group, so they cannot cancel a
+# measurement in progress.
+concurrency:
+  group: profile-perf-${{ (github.event.action == 'labeled' && github.event.label.name != 'Codspeed') && github.run_id || github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  measure:
-    name: Profile base and head
+  build:
+    name: Build base and head
     # Gungraun runs for every pull request. Wall time runs for pushes to main
     # and for pull requests with the Codspeed label. Other label events do
     # nothing.
@@ -52,16 +58,18 @@ jobs:
       github.event_name != 'pull_request' ||
       github.event.action != 'labeled' ||
       github.event.label.name == 'Codspeed'
-    # Job-level concurrency: a run that skips this job, such as one for an
-    # unrelated label, must not cancel a measurement in progress.
-    concurrency:
-      group: profile-perf-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 100
+    timeout-minutes: 60
+    outputs:
+      base-sha: ${{ steps.revisions.outputs.base-sha }}
+      head-sha: ${{ steps.revisions.outputs.head-sha }}
+      walltime: ${{ steps.revisions.outputs.walltime }}
+      gungraun: ${{ steps.revisions.outputs.gungraun }}
+      gungraun-built: ${{ steps.gungraun-base.outcome == 'success' && steps.gungraun-head.outcome == 'success' }}
+      rustc: ${{ steps.toolchain.outputs.rustc }}
+      cargo: ${{ steps.toolchain.outputs.cargo }}
     env:
       BENCHMARK_FILTER: ${{ inputs.filter }}
-      GUNGRAUN_ARTIFACT_NAME: gungraun-valgrind-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -69,7 +77,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Resolve revisions and preserve the measurement scripts
+      - name: Resolve revisions and preserve the build script
         id: revisions
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -80,9 +88,8 @@ jobs:
           INPUT_SUITE: ${{ inputs.suite }}
         run: |
           cp .github/scripts/paired-walltime.mjs "$RUNNER_TEMP/paired-walltime.mjs"
-          cp .github/scripts/render-gungraun-summary.mjs "$RUNNER_TEMP/render-gungraun-summary.mjs"
 
-          # Cargo appends --bench, so a second -- cannot delimit the filter.
+          # The filter is a positional benchmark argument, not an option.
           if [[ "$BENCHMARK_FILTER" == -* ]]
           then
             echo 'filter must be a benchmark pattern, not an option' >&2
@@ -125,6 +132,8 @@ jobs:
               ;;
           esac
           {
+            echo "base-sha=$base_sha"
+            echo "head-sha=$head_sha"
             echo "walltime=$walltime"
             echo "gungraun=$gungraun"
           } >> "$GITHUB_OUTPUT"
@@ -132,13 +141,9 @@ jobs:
             echo "BASE_SHA=$base_sha"
             echo "HEAD_SHA=$head_sha"
             echo "SCRIPT=$RUNNER_TEMP/paired-walltime.mjs"
-            echo "RESULTS_DIR=$RUNNER_TEMP/paired-walltime"
-            echo "COMMENTS_DIR=$RUNNER_TEMP/comments"
+            echo "WALLTIME_BIN=$RUNNER_TEMP/walltime-bin"
+            echo "GUNGRAUN_BIN=$RUNNER_TEMP/gungraun-bin"
           } >> "$GITHUB_ENV"
-          {
-            echo "Base SHA: $base_sha"
-            echo "Compare SHA: $head_sha"
-          } > "$RUNNER_TEMP/gungraun-revisions.txt"
           echo "Base: $base_sha, head: $head_sha, wall time: $walltime, Gungraun: $gungraun"
 
       - name: Setup rust toolchain and cache
@@ -147,71 +152,165 @@ jobs:
           cache-save-if: ${{ github.event_name == 'push' }}
 
       - name: Keep the same Rust toolchain for base and head
-        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
-
-      - name: Install Valgrind
-        if: steps.revisions.outputs.gungraun == 'true'
+        id: toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes valgrind
-          valgrind --version
+          echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+          {
+            echo "rustc=$(rustc --version)"
+            echo "cargo=$(cargo --version)"
+          } >> "$GITHUB_OUTPUT"
 
       # Each revision is checked out once. Its wall-time and Gungraun benchmarks
       # use the same `bench` profile and target directory, so Cargo compiles
-      # the dependencies once per revision.
+      # the dependencies once per revision. The measurement jobs run the
+      # uploaded executables and do not compile.
       - name: Check out base
         run: git checkout --detach "$BASE_SHA"
 
       - name: Build base wall-time benchmarks
         if: steps.revisions.outputs.walltime == 'true'
-        run: node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/base"
+        run: node "$SCRIPT" build "$WALLTIME_BIN/base"
 
-      - name: Save base Gungraun benchmark
+      - name: Build base Gungraun benchmark
         id: gungraun-base
         if: steps.revisions.outputs.gungraun == 'true'
-        # A Gungraun failure must not prevent the wall-time measurement. The
-        # last step fails the job after the results are uploaded.
+        # A Gungraun build failure must not prevent the wall-time measurement.
+        # The Gungraun job fails instead.
         continue-on-error: true
-        env:
-          GUNGRAUN_COLOR: never
         run: |
           set -o pipefail
+          bin="$GUNGRAUN_BIN/base"
+          mkdir -p "$bin"
 
           runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
           cargo install --locked --version "$runner_version" gungraun-runner
-          gungraun-runner --version
+          cp "$(command -v gungraun-runner)" "$bin/gungraun-runner"
 
-          filter_args=()
-          if [[ -n "$BENCHMARK_FILTER" ]]
-          then
-            filter_args+=("$BENCHMARK_FILTER")
-          fi
-          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
-            --home="$RUNNER_TEMP/gungraun" \
-            --callgrind-metrics=Ir \
-            --save-baseline=base "${filter_args[@]}" 2>&1 | tee "$RUNNER_TEMP/gungraun-base.txt"
+          executable="$(cargo bench --locked -p benchmark --bench gungraun --no-run --message-format=json |
+            jq -er 'select(.executable != null and .target.name == "gungraun") | .executable')"
+          cp "$executable" "$bin/gungraun"
 
       - name: Check out head
         run: git checkout --detach "$HEAD_SHA"
 
       - name: Build head wall-time benchmarks
         if: steps.revisions.outputs.walltime == 'true'
-        run: node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/head"
+        run: node "$SCRIPT" build "$WALLTIME_BIN/head"
 
-      - name: Compare head Gungraun benchmark
+      - name: Build head Gungraun benchmark
         id: gungraun-head
-        if: >-
-          steps.revisions.outputs.gungraun == 'true' &&
-          steps.gungraun-base.outcome == 'success'
+        if: steps.gungraun-base.outcome == 'success'
         continue-on-error: true
-        env:
-          GUNGRAUN_COLOR: never
-          GUNGRAUN_SHOW_INTERMEDIATE: true
         run: |
+          set -o pipefail
+          bin="$GUNGRAUN_BIN/head"
+          mkdir -p "$bin"
+
           runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
           cargo install --locked --version "$runner_version" gungraun-runner
-          gungraun-runner --version
+          cp "$(command -v gungraun-runner)" "$bin/gungraun-runner"
 
+          executable="$(cargo bench --locked -p benchmark --bench gungraun --no-run --message-format=json |
+            jq -er 'select(.executable != null and .target.name == "gungraun") | .executable')"
+          cp "$executable" "$bin/gungraun"
+
+      # Artifacts do not keep the executable bit, so the binaries go in a tar file.
+      - name: Package wall-time benchmarks
+        if: steps.revisions.outputs.walltime == 'true'
+        run: tar -czf "$RUNNER_TEMP/walltime-bin.tar.gz" -C "$RUNNER_TEMP" walltime-bin
+
+      - name: Upload wall-time benchmarks
+        if: steps.revisions.outputs.walltime == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: profile-perf-walltime-bin
+          path: ${{ runner.temp }}/walltime-bin.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+      - name: Package Gungraun benchmarks
+        if: steps.gungraun-head.outcome == 'success'
+        run: tar -czf "$RUNNER_TEMP/gungraun-bin.tar.gz" -C "$RUNNER_TEMP" gungraun-bin
+
+      - name: Upload Gungraun benchmarks
+        if: steps.gungraun-head.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: profile-perf-gungraun-bin
+          path: ${{ runner.temp }}/gungraun-bin.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  gungraun:
+    name: Measure Gungraun instruction counts
+    needs: build
+    if: needs.build.outputs.gungraun == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      BASE_SHA: ${{ needs.build.outputs.base-sha }}
+      HEAD_SHA: ${{ needs.build.outputs.head-sha }}
+      BENCHMARK_FILTER: ${{ inputs.filter }}
+      GUNGRAUN_ARTIFACT_NAME: gungraun-valgrind-${{ github.run_id }}-${{ github.run_attempt }}
+      # Keep the data layout of `cargo bench`, which sets this variable.
+      CARGO_PKG_NAME: benchmark
+      GUNGRAUN_COLOR: never
+    steps:
+      # The measurement scripts come from the workflow revision.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Fail when the Gungraun build failed
+        if: needs.build.outputs.gungraun-built != 'true'
+        run: |
+          echo 'The Gungraun benchmark build failed. See the Gungraun steps of the build job.' >&2
+          exit 1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: profile-perf-gungraun-bin
+          path: ${{ runner.temp }}
+
+      - name: Install Valgrind and unpack the benchmarks
+        id: prepare
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes valgrind
+          valgrind --version
+
+          tar -xzf "$RUNNER_TEMP/gungraun-bin.tar.gz" -C "$RUNNER_TEMP"
+          echo "GUNGRAUN_BIN=$RUNNER_TEMP/gungraun-bin" >> "$GITHUB_ENV"
+          {
+            echo "Base SHA: $BASE_SHA"
+            echo "Compare SHA: $HEAD_SHA"
+          } > "$RUNNER_TEMP/gungraun-revisions.txt"
+
+      # Each revision runs with its own `gungraun-runner`. An explicit
+      # workspace root keeps Gungraun from running `cargo metadata`.
+      - name: Save base Gungraun benchmark
+        run: |
+          set -o pipefail
+
+          filter_args=()
+          if [[ -n "$BENCHMARK_FILTER" ]]
+          then
+            filter_args+=("$BENCHMARK_FILTER")
+          fi
+          PATH="$GUNGRAUN_BIN/base:$PATH" "$GUNGRAUN_BIN/base/gungraun" --bench \
+            --workspace-root="$GITHUB_WORKSPACE" \
+            --home="$RUNNER_TEMP/gungraun" \
+            --callgrind-metrics=Ir \
+            --save-baseline=base "${filter_args[@]}" 2>&1 | tee "$RUNNER_TEMP/gungraun-base.txt"
+
+      - name: Compare head Gungraun benchmark
+        env:
+          GUNGRAUN_SHOW_INTERMEDIATE: true
+        run: |
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
           filter_args=()
@@ -220,14 +319,15 @@ jobs:
             filter_args+=("$BENCHMARK_FILTER")
           fi
           set +e
-          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
+          PATH="$GUNGRAUN_BIN/head:$PATH" "$GUNGRAUN_BIN/head/gungraun" --bench \
+            --workspace-root="$GITHUB_WORKSPACE" \
             --home="$RUNNER_TEMP/gungraun" \
             --baseline=base \
             --callgrind-metrics=Ir \
             --save-summary=json "${filter_args[@]}" 2>&1 | tee "$report"
           benchmark_status="${PIPESTATUS[0]}"
 
-          node "$RUNNER_TEMP/render-gungraun-summary.mjs" \
+          node .github/scripts/render-gungraun-summary.mjs \
             "$RUNNER_TEMP/gungraun" > "$summary"
           summary_status="$?"
           set -e
@@ -261,32 +361,8 @@ jobs:
           fi
           exit "$summary_status"
 
-      - name: Run base and head wall-time benchmarks in rounds
-        if: steps.revisions.outputs.walltime == 'true'
-        env:
-          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 6 }}
-        run: |
-          mkdir -p "$RESULTS_DIR"
-          node "$SCRIPT" run \
-            "$RUNNER_TEMP/paired-walltime-bin/base" \
-            "$RUNNER_TEMP/paired-walltime-bin/head" \
-            "$RESULTS_DIR/results.json"
-          node "$SCRIPT" render "$RESULTS_DIR/results.json" > "$RESULTS_DIR/summary.md"
-          cat "$RESULTS_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload wall-time results
-        if: steps.revisions.outputs.walltime == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: paired-walltime
-          path: |
-            ${{ runner.temp }}/paired-walltime/results.json
-            ${{ runner.temp }}/paired-walltime/summary.md
-          if-no-files-found: error
-          retention-days: 90
-
       - name: Prepare Valgrind artifact metadata
-        if: always() && steps.revisions.outputs.gungraun == 'true'
+        if: always() && steps.prepare.outcome == 'success'
         env:
           BASE_REF: ${{ inputs.base || github.event.pull_request.base.ref }}
           HEAD_REF: ${{ inputs.head || github.event.pull_request.head.ref || github.ref }}
@@ -297,12 +373,12 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUNNER_ARCH: ${{ runner.arch }}
           RUNNER_OS: ${{ runner.os }}
+          RUSTC_VERSION: ${{ needs.build.outputs.rustc }}
+          CARGO_VERSION: ${{ needs.build.outputs.cargo }}
         run: |
           metadata="$RUNNER_TEMP/gungraun-metadata.json"
           generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          rustc_version="$(rustc --version 2>/dev/null || echo unavailable)"
-          cargo_version="$(cargo --version 2>/dev/null || echo unavailable)"
-          gungraun_version="$(gungraun-runner --version 2>/dev/null || echo unavailable)"
+          gungraun_version="$("$GUNGRAUN_BIN/head/gungraun-runner" --version 2>/dev/null || echo unavailable)"
           valgrind_version="$(valgrind --version 2>/dev/null || echo unavailable)"
 
           jq -n \
@@ -311,10 +387,11 @@ jobs:
             --arg base_sha "$BASE_SHA" \
             --arg benchmark_filter "$BENCHMARK_FILTER" \
             --arg benchmark_home "$RUNNER_TEMP/gungraun" \
-            --arg cargo_version "$cargo_version" \
+            --arg cargo_version "${CARGO_VERSION:-unavailable}" \
             --arg compare_sha "$HEAD_SHA" \
             --arg event_name "$GITHUB_EVENT_NAME" \
             --arg generated_at "$generated_at" \
+            --arg gungraun_bin "$GUNGRAUN_BIN" \
             --arg gungraun_version "$gungraun_version" \
             --arg head_ref "$HEAD_REF" \
             --arg job_status "$JOB_STATUS" \
@@ -326,9 +403,10 @@ jobs:
             --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             --arg runner_arch "$RUNNER_ARCH" \
             --arg runner_os "$RUNNER_OS" \
-            --arg rustc_version "$rustc_version" \
+            --arg rustc_version "${RUSTC_VERSION:-unavailable}" \
             --arg valgrind_version "$valgrind_version" \
             --arg workflow_name "$GITHUB_WORKFLOW" \
+            --arg workspace_root "$GITHUB_WORKSPACE" \
             '{
               schema_version: 2,
               repository: $repository,
@@ -369,8 +447,8 @@ jobs:
                 bench: "gungraun",
                 baseline: "base",
                 filter: $benchmark_filter,
-                base_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--callgrind-metrics=Ir", "--save-baseline=base"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" ")),
-                compare_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--baseline=base", "--callgrind-metrics=Ir", "--save-summary=json"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" "))
+                base_command: ([$gungraun_bin + "/base/gungraun", "--bench", "--workspace-root=" + $workspace_root, "--home=" + $benchmark_home, "--callgrind-metrics=Ir", "--save-baseline=base"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" ")),
+                compare_command: ([$gungraun_bin + "/head/gungraun", "--bench", "--workspace-root=" + $workspace_root, "--home=" + $benchmark_home, "--baseline=base", "--callgrind-metrics=Ir", "--save-summary=json"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" "))
               },
               files: {
                 data_root: "gungraun",
@@ -400,7 +478,7 @@ jobs:
 
       - name: Upload Valgrind analysis bundle
         id: upload-valgrind
-        if: always() && steps.revisions.outputs.gungraun == 'true'
+        if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ env.GUNGRAUN_ARTIFACT_NAME }}
@@ -428,14 +506,14 @@ jobs:
             echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The comment jobs post these bodies, so this job never gets a write token.
-      - name: Prepare comment bodies
+      # The comment jobs post this body, so this job never gets a write token.
+      - name: Prepare comment body
         if: always() && github.event_name != 'workflow_dispatch'
         env:
           ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          mkdir -p "$COMMENTS_DIR"
+          comments="$RUNNER_TEMP/comments"
+          mkdir -p "$comments"
 
           report="$RUNNER_TEMP/gungraun-diff.txt"
           summary="$RUNNER_TEMP/gungraun-summary.md"
@@ -465,43 +543,93 @@ jobs:
               cat "$report"
               echo '```'
               echo '</details>'
-            } > "$COMMENTS_DIR/gungraun.md"
+            } > "$comments/gungraun.md"
           fi
 
-          if [[ -s "$RESULTS_DIR/summary.md" ]]
-          then
-            {
-              cat "$RESULTS_DIR/summary.md"
-              echo
-              echo "[Workflow run]($RUN_URL)"
-            } > "$COMMENTS_DIR/paired-walltime.md"
-          fi
-
-      - name: Upload comment bodies
+      - name: Upload comment body
         if: always() && github.event_name != 'workflow_dispatch'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: profile-perf-comments
+          name: profile-perf-comments-gungraun
           path: ${{ runner.temp }}/comments
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Fail when Gungraun failed
-        if: >-
-          always() &&
-          (steps.gungraun-base.outcome == 'failure' ||
-          steps.gungraun-head.outcome == 'failure')
+  walltime:
+    name: Measure wall time
+    needs: build
+    if: needs.build.outputs.walltime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      # The measurement scripts come from the workflow revision.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: profile-perf-walltime-bin
+          path: ${{ runner.temp }}
+
+      - name: Run base and head wall-time benchmarks in rounds
+        env:
+          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 6 }}
+          # This job has no Rust toolchain; report the one that built both revisions.
+          PAIRED_WALLTIME_RUSTC: ${{ needs.build.outputs.rustc }}
         run: |
-          echo 'The Gungraun comparison failed. See the Gungraun steps above.' >&2
-          exit 1
+          tar -xzf "$RUNNER_TEMP/walltime-bin.tar.gz" -C "$RUNNER_TEMP"
+          results="$RUNNER_TEMP/paired-walltime"
+          mkdir -p "$results"
+          node .github/scripts/paired-walltime.mjs run \
+            "$RUNNER_TEMP/walltime-bin/base" \
+            "$RUNNER_TEMP/walltime-bin/head" \
+            "$results/results.json"
+          node .github/scripts/paired-walltime.mjs render "$results/results.json" > "$results/summary.md"
+          cat "$results/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload wall-time results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paired-walltime
+          path: |
+            ${{ runner.temp }}/paired-walltime/results.json
+            ${{ runner.temp }}/paired-walltime/summary.md
+          if-no-files-found: error
+          retention-days: 90
+
+      # The comment jobs post this body, so this job never gets a write token.
+      - name: Prepare comment body
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/comments"
+          {
+            cat "$RUNNER_TEMP/paired-walltime/summary.md"
+            echo
+            echo "[Workflow run]($RUN_URL)"
+          } > "$RUNNER_TEMP/comments/paired-walltime.md"
+
+      - name: Upload comment body
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: profile-perf-comments-walltime
+          path: ${{ runner.temp }}/comments
+          if-no-files-found: error
+          retention-days: 7
 
   comment-pull-request:
     name: Comment on pull request
-    needs: measure
+    needs: [gungraun, walltime]
     # Fork and Dependabot pull requests get only the job summary.
     if: >-
       always() &&
-      (needs.measure.result == 'success' || needs.measure.result == 'failure') &&
+      (needs.gungraun.result == 'success' || needs.gungraun.result == 'failure' ||
+      needs.walltime.result == 'success' || needs.walltime.result == 'failure') &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]'
@@ -514,10 +642,11 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        # The measure job uploads no bodies when it fails early.
+        # A measurement job uploads no body when it fails early or does not run.
         continue-on-error: true
         with:
-          name: profile-perf-comments
+          pattern: profile-perf-comments-*
+          merge-multiple: true
           path: ${{ runner.temp }}/comments
       - name: Create or update the comments
         env:
@@ -565,7 +694,7 @@ jobs:
 
   comment-commit:
     name: Comment on commit
-    needs: measure
+    needs: walltime
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     permissions:
@@ -573,7 +702,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: profile-perf-comments
+          name: profile-perf-comments-walltime
           path: ${{ runner.temp }}/comments
       - name: Create the comment
         env:
