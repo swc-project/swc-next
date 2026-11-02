@@ -62,8 +62,7 @@ type ScopeMap<'a> = ArenaHashMap<'a, &'a [u8], SymbolId>;
 type ScopeMaps<'a> = IndexSlice<ScopeId, [ScopeMap<'a>]>;
 // Most scopes have no var declarations hoisting through them.
 // Keep the var declaration, since its symbol may also contain functions.
-type HoistingMap<'a> =
-    Option<swc_next_allocator::boxed::Box<'a, ArenaHashMap<'a, &'a [u8], DeclarationId>>>;
+type HoistingMap<'a> = Option<ArenaHashMap<'a, &'a [u8], DeclarationId>>;
 type Redeclarations<'a> = ArenaHashMap<'a, SymbolId, ArenaVec<'a, DeclarationId>>;
 
 /// JSX syntax whose implicit factory dependencies can be resolved by a consumer.
@@ -430,7 +429,7 @@ impl<'a> Semantic<'a> {
             .copied()
             .or_else(|| {
                 self.hoisting_variables[scope_id]
-                    .as_deref()
+                    .as_ref()
                     .and_then(|bindings| bindings.get(name).copied())
                     .map(|declaration| self.declarations[declaration].symbol)
             })

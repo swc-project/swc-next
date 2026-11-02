@@ -3431,9 +3431,7 @@ impl<'a> SymbolTracker<'a> {
                     break;
                 }
                 self.hoisting_variables[scope_id]
-                    .get_or_insert_with(|| {
-                        self.allocator.boxed(ArenaHashMap::new_in(self.allocator))
-                    })
+                    .get_or_insert_with(|| ArenaHashMap::new_in(self.allocator))
                     .entry(name)
                     .or_insert(declaration_id);
                 if tree.node_kind(scope.get(scope_id).node) == NodeKind::CatchClause
@@ -4203,7 +4201,7 @@ impl<'a> SymbolTracker<'a> {
     fn hoisting_declaration(&self, scope: ScopeId, name: &[u8]) -> Option<DeclarationId> {
         self.hoisting_variables
             .get(scope)
-            .and_then(Option::as_deref)
+            .and_then(Option::as_ref)
             .and_then(|map| map.get(name).copied())
     }
 
