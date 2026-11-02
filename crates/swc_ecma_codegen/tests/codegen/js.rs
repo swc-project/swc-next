@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange, UnaryOperator,
+    Ast, BinaryOperator, DUMMY_SP, ExprData, Lang, ObjectPropertyKind, PropertyKey, PropertyKind,
+    Stmt, StmtData, SubRange, UnaryOperator,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -10,6 +10,17 @@ use crate::{
     expect_printed, expect_printed_jsx, expect_printed_jsx_minify, expect_printed_minify,
     expect_printed_script, expect_printed_with_options, expect_stable,
 };
+
+#[test]
+fn test_comparison_expression_boundaries() {
+    expect_printed("(a < b) > (c == d);", "a < b > (c == d);\n");
+
+    expect_printed_minify("(a < b) > (c == d);", "a<b>(c==d);");
+
+    expect_printed("f((a < b), c > (d, e));", "f(a < b, c > (d, e));\n");
+
+    expect_printed_minify("f((a < b), c > (d, e));", "f(a<b,c>(d,e));");
+}
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
@@ -696,6 +707,57 @@ fn test_directive_string_value() {
 }
 
 #[test]
+fn test_directive_expression_quotes() {
+    for lang in [Lang::Js, Lang::Ts] {
+        let stripped = ParseOptions {
+            lang,
+            preserve_parens: false,
+            ..ParseOptions::default()
+        };
+        let preserved = ParseOptions {
+            preserve_parens: true,
+            ..stripped
+        };
+        for ascii_only in [false, true] {
+            let pretty = PrintOptions {
+                ascii_only,
+                ..PrintOptions::default()
+            };
+            let minified = PrintOptions {
+                minify: true,
+                ..pretty.clone()
+            };
+
+            expect_stable_with_options(r#"("a\"'");"#, "`a\"'`;", stripped, &minified);
+
+            expect_stable_with_options(
+                r#"function f() { ("a\"'"); }"#,
+                "function f(){`a\"'`}",
+                stripped,
+                &minified,
+            );
+
+            expect_stable_with_options(r#"x; ("a\"'");"#, "x;`a\"'`;", stripped, &minified);
+
+            expect_stable_with_options(r#"("a'");"#, r#"("a'");"#, stripped, &minified);
+
+            expect_stable_with_options(r#"("a\"'");"#, "(\"a\\\"'\");\n", stripped, &pretty);
+
+            expect_stable_with_options(
+                r#"function f() { ("a\"'"); }"#,
+                "function f() {\n  (\"a\\\"'\");\n}\n",
+                stripped,
+                &pretty,
+            );
+
+            expect_stable_with_options(r#"("a\"'");"#, "(`a\"'`);", preserved, &minified);
+
+            expect_stable_with_options(r#"("a\"'");"#, "(\"a\\\"'\");\n", preserved, &pretty);
+        }
+    }
+}
+
+#[test]
 fn test_computed_key_comments() {
     expect_printed(
         "({ [/* @__PURE__ */ 'x']: make() })",
@@ -820,11 +882,21 @@ fn test_parenthesized_comments() {
 
 #[track_caller]
 fn expect_stable_with_parens(source: &str, expected: &str, print_options: &PrintOptions) {
-    let allocator = Allocator::new();
     let parse_options = ParseOptions {
         preserve_parens: true,
         ..ParseOptions::default()
     };
+    expect_stable_with_options(source, expected, parse_options, print_options);
+}
+
+#[track_caller]
+fn expect_stable_with_options(
+    source: &str,
+    expected: &str,
+    parse_options: ParseOptions,
+    print_options: &PrintOptions,
+) {
+    let allocator = Allocator::new();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
     let printed = print(&original.ast, print_options.clone());

@@ -1,4 +1,9 @@
 use swc_next_allocator::wtf8::Wtf8;
+use swc_next_ecma_ast::{
+    ArrowFunctionExpression, Ast, BindingIdentifier, BindingPattern, BindingPatternData,
+    BindingProperty, CommentKind, Expr, NewExpression, Precedence, PropertyKeyData,
+    SimpleAssignmentTarget, SimpleAssignmentTargetData,
+};
 use swc_next_simd::prelude::*;
 
 const HEX: &[u8; 16] = b"0123456789ABCDEF";
@@ -197,4 +202,136 @@ pub(crate) fn next_code_point(bytes: &[u8], i: usize) -> (u32, usize) {
         }
         _ => (0xfffd, 1),
     }
+}
+
+pub(crate) fn choose_quote(value: &Wtf8, allow_backtick: bool) -> u8 {
+    let bytes = value.as_bytes();
+    let single_cost = bytes.iter().filter(|&&byte| byte == b'\'').count();
+    let double_cost = bytes.iter().filter(|&&byte| byte == b'"').count();
+    let (mut quote, quote_cost) = if double_cost > single_cost {
+        (b'\'', single_cost)
+    } else {
+        (b'"', double_cost)
+    };
+    if allow_backtick {
+        let backtick_cost = bytes.iter().filter(|&&byte| byte == b'`').count()
+            + bytes.windows(2).filter(|pair| *pair == b"${").count();
+        if backtick_cost < quote_cost {
+            quote = b'`';
+        }
+    }
+    quote
+}
+
+pub(crate) fn simple_assignment_target_expression(
+    ast: &Ast<'_>,
+    target: SimpleAssignmentTarget,
+) -> Expr {
+    match ast.simple_assignment_target_data(target) {
+        SimpleAssignmentTargetData::IdentifierReference(expression) => {
+            Expr::IdentifierReference(expression)
+        }
+        SimpleAssignmentTargetData::MemberExpression(expression) => {
+            Expr::MemberExpression(expression)
+        }
+        SimpleAssignmentTargetData::TsAsExpression(expression) => Expr::TsAsExpression(expression),
+        SimpleAssignmentTargetData::TsSatisfiesExpression(expression) => {
+            Expr::TsSatisfiesExpression(expression)
+        }
+        SimpleAssignmentTargetData::TsTypeAssertion(expression) => {
+            Expr::TsTypeAssertion(expression)
+        }
+        SimpleAssignmentTargetData::TsNonNullExpression(expression) => {
+            Expr::TsNonNullExpression(expression)
+        }
+    }
+}
+
+pub(crate) fn bare_arrow_parameter(
+    ast: &Ast<'_>,
+    arrow: ArrowFunctionExpression,
+    allow_bare: bool,
+) -> Option<BindingIdentifier> {
+    if !allow_bare || arrow.type_parameters(ast).is_some() || arrow.return_type(ast).is_some() {
+        return None;
+    }
+    let params = arrow.params(ast);
+    let items = params.items(ast);
+    if items.len() != 1 || params.rest(ast).is_some() {
+        return None;
+    }
+    let item = items.get_node(ast, 0)?;
+    let param = item.as_formal_parameter(ast)?;
+    let identifier = param.pattern(ast).as_binding_identifier(ast)?;
+    if !param.decorators(ast).is_empty()
+        || param.type_annotation(ast).is_some()
+        || param.initializer(ast).is_some()
+        || param.optional(ast)
+    {
+        return None;
+    }
+    Some(identifier)
+}
+
+// These annotations are emitted as single-line block comments. Return the
+// normalized bytes so emission and line-break prediction use the same rule.
+pub(crate) fn pure_comment_annotation(kind: CommentKind, value: &[u8]) -> Option<&[u8]> {
+    if kind != CommentKind::Block {
+        return None;
+    }
+    let trimmed = value.trim_ascii();
+    matches!(
+        trimmed,
+        b"@__PURE__" | b"#__PURE__" | b"@__NO_SIDE_EFFECTS__" | b"#__NO_SIDE_EFFECTS__"
+    )
+    .then_some(trimmed)
+}
+
+/// Whether the printer emits a constructor argument list in this context.
+pub(crate) fn new_expression_has_argument_list(
+    ast: &Ast<'_>,
+    node: NewExpression,
+    minify: bool,
+    level: Precedence,
+) -> bool {
+    !minify
+        || !node.arguments(ast).is_empty()
+        || node.type_arguments(ast).is_some()
+        || level >= Precedence::Postfix
+}
+
+pub(crate) fn binding_identifier_name<'a>(
+    ast: &'a Ast<'_>,
+    binding: BindingPattern,
+) -> Option<&'a str> {
+    match ast.binding_pattern_data(binding) {
+        BindingPatternData::BindingIdentifier(identifier) => {
+            Some(ast.get_utf8(identifier.name(ast)))
+        }
+        BindingPatternData::SimpleAssignmentTarget(target) => {
+            match ast.simple_assignment_target_data(target) {
+                SimpleAssignmentTargetData::IdentifierReference(identifier) => {
+                    Some(ast.get_utf8(identifier.name(ast)))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn can_shorten_binding_property(
+    ast: &Ast<'_>,
+    property: BindingProperty,
+    minify: bool,
+) -> bool {
+    minify
+        && !property.computed(ast)
+        && match ast.property_key_data(property.key(ast)) {
+            PropertyKeyData::IdentifierName(key) => {
+                binding_identifier_name(ast, property.value(ast))
+                    == Some(ast.get_utf8(key.name(ast)))
+            }
+            _ => false,
+        }
 }
