@@ -14586,7 +14586,6 @@ mod tests {
         CallExpression,
         Class,
         ClassBody,
-        Decorator,
         ExportDefaultDeclaration,
         ExportNamedDeclaration,
         ExpressionStatement,
@@ -15208,7 +15207,23 @@ mod tests {
             let parsed = parse_tokens(&allocator, source);
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            let expression = find_only::<Decorator>(ast).expression(ast);
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let class = if let Some(export) = statement.as_export_named_declaration(ast) {
+                export.declaration(ast).unwrap().as_class(ast).unwrap()
+            } else {
+                statement
+                    .as_export_default_declaration(ast)
+                    .unwrap()
+                    .declaration(ast)
+                    .as_class(ast)
+                    .unwrap()
+            };
+            assert_eq!(class.decorators(ast).len(), 1);
+            let expression = class
+                .decorators(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .expression(ast);
             ast.node_kind(expression.node_id())
         }
 
