@@ -11829,7 +11829,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_member_property(&mut self, object: Expr, optional: bool) -> Option<Expr> {
         let start = object.span(&self.ast).start;
         let token = self.current_token;
-        if !token.tag().is_identifier_like() && token.tag() != TokenTag::PrivateIdentifier {
+        // An identifier-like tag is all an IdentifierName property needs, so
+        // build it directly instead of revalidating the token.
+        let property = if token.tag().is_identifier_like() {
+            self.advance_without_escape_check()?;
+            let name = self.identifier_name(token);
+            PropertyKey::IdentifierName(self.ast.identifier_name(token.span(), name))
+        } else if token.tag() == TokenTag::PrivateIdentifier {
+            PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
+        } else {
             self.report_expected(
                 self.current_token.span(),
                 "Expected property name after '.'",
@@ -11841,11 +11849,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 },
             );
             return None;
-        }
-        let property = if token.tag() == TokenTag::PrivateIdentifier {
-            PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
-        } else {
-            PropertyKey::IdentifierName(self.parse_identifier_name()?)
         };
         Some(self.ast.expr_member_expression(
             Span::new(start, token.end()),
