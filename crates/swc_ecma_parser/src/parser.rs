@@ -4091,8 +4091,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(Precedence::Primary)?,
         };
-        let expression = self.parse_postfix_expression::<false, DECORATOR>(expression)?;
-        Some(expression.expression)
+        self.parse_postfix_expression::<DECORATOR>(expression)
     }
 
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
@@ -9136,9 +9135,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             || is_ts && (is_angle_open(tag) || tag == TokenTag::LogicalNot))
             && max_left_precedence(left, &self.ast) >= Precedence::Call
         {
-            left = self
-                .parse_postfix_expression::<false, false>(left)?
-                .expression;
+            left = self.parse_postfix_expression::<false>(left)?;
         }
 
         loop {
@@ -9218,10 +9215,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LogicalNot
                 if self.lang.is_typescript() && !token.has_line_terminator_before() =>
             {
-                return Some(
-                    self.parse_postfix_expression::<false, false>(left)?
-                        .expression,
-                );
+                return self.parse_postfix_expression::<false>(left);
             }
             _ => {}
         }
@@ -11905,7 +11899,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let property = if token.tag() == TokenTag::PrivateIdentifier {
             PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
         } else {
-            PropertyKey::IdentifierName(self.parse_identifier_name()?)
+            // The tag check above already validated the name, so consume it
+            // directly instead of repeating the identifier-name checks.
+            self.advance_without_escape_check()?;
+            let name = self.identifier_name(token);
+            PropertyKey::IdentifierName(self.ast.identifier_name(token.span(), name))
         };
         Some(self.ast.expr_member_expression(
             Span::new(start, token.end()),
@@ -11968,10 +11966,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // Only a `new` callee can end with pending type arguments, so other
+    // contexts return the bare expression in registers.
+    fn parse_postfix_expression<const DECORATOR: bool>(
+        &mut self,
+        expression: Expr,
+    ) -> Option<Expr> {
+        Some(
+            self.parse_postfix_chain::<false, DECORATOR>(expression)?
+                .expression,
+        )
+    }
+
+    fn parse_new_callee_postfix(&mut self, callee: Expr) -> Option<PostfixExpression> {
+        self.parse_postfix_chain::<true, false>(callee)
+    }
+
     // Ordinary suffixes only carry the expression and optional-chain state.
     // Type arguments are resolved separately when their opening token is found.
     // Fix the grammar context at each call site to remove per-suffix context checks.
-    fn parse_postfix_expression<const NEW_CALLEE: bool, const DECORATOR: bool>(
+    #[inline(always)]
+    fn parse_postfix_chain<const NEW_CALLEE: bool, const DECORATOR: bool>(
         &mut self,
         mut expression: Expr,
     ) -> Option<PostfixExpression> {
@@ -12267,7 +12282,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let PostfixExpression {
             expression: callee,
             type_arguments,
-        } = self.parse_postfix_expression::<true, false>(callee)?;
+        } = self.parse_new_callee_postfix(callee)?;
         if self.ast.node_kind(callee.node_id()) == NodeKind::Super {
             self.report(
                 callee.span(&self.ast),
