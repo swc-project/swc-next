@@ -11,8 +11,10 @@ version               = "0.4.1"
 [dependencies]
 rustc-hash = { workspace = true }
 serde      = { workspace = true, features = ["derive"] }
+zmij_ecma  = { workspace = true }
 
-swc_next_ecma_ast = { workspace = true }
+swc_next_allocator     = { workspace = true }
+swc_next_ecma_ast      = { workspace = true }
 swc_next_ecma_semantic = { workspace = true }
 
 [dev-dependencies]
@@ -20,7 +22,6 @@ libtest-mimic = { workspace = true }
 serde_json    = { workspace = true }
 tempfile      = { workspace = true }
 
-swc_next_allocator     = { workspace = true }
 swc_next_ecma_codegen  = { workspace = true }
 swc_next_ecma_parser   = { workspace = true }
 

@@ -11,18 +11,17 @@ use swc_next_ecma_semantic::{
 
 use crate::CompressOptions;
 
+mod effects;
+mod value;
+
+use effects::may_have_side_effects;
+use value::Value;
+
 #[derive(Default)]
 struct Candidates {
-    globals: FxHashMap<NodeId, Global>,
+    globals: FxHashMap<NodeId, Value<'static>>,
     typeofs: FxHashMap<NodeId, NodeId>,
     unused: FxHashSet<NodeId>,
-}
-
-#[derive(Clone, Copy)]
-enum Global {
-    Undefined,
-    Infinity,
-    Nan,
 }
 
 impl Candidates {
@@ -84,9 +83,9 @@ impl Candidates {
                     if options.global_defs && reference.flags.is_read_only() =>
                 {
                     let global = match ast.get_utf8(reference.name).as_bytes() {
-                        b"undefined" => Global::Undefined,
-                        b"Infinity" => Global::Infinity,
-                        b"NaN" => Global::Nan,
+                        b"undefined" => Value::Undefined,
+                        b"Infinity" => Value::Number(f64::INFINITY),
+                        b"NaN" => Value::Number(f64::NAN),
                         _ => continue,
                     };
                     candidates.globals.insert(reference.node, global);
@@ -140,17 +139,11 @@ struct TypeofRewrite {
     span: Span,
 }
 
+/// Whether a declared binding starts with a known primitive value.
 fn primitive_initializer(ast: &Ast<'_>, declarator: VariableDeclarator) -> bool {
-    declarator.init(ast).is_none_or(|expr| {
-        matches!(
-            ast.expr_data(expr),
-            ExprData::BooleanLiteral(_)
-                | ExprData::NumericLiteral(_)
-                | ExprData::StringLiteral(_)
-                | ExprData::NullLiteral(_)
-                | ExprData::BigIntLiteral(_)
-        )
-    })
+    declarator
+        .init(ast)
+        .is_none_or(|expr| Value::of(ast, expr).is_some())
 }
 
 fn number(ast: &mut Ast<'_>, span: Span, value: f64) -> Expr {
@@ -172,7 +165,9 @@ impl Compressor {
         matches!(ast.binding_pattern_data(declarator.id(ast)),
             BindingPatternData::BindingIdentifier(binding)
             if self.candidates.unused.contains(&binding.node_id()))
-            && primitive_initializer(ast, declarator)
+            && declarator
+                .init(ast)
+                .is_none_or(|expr| !may_have_side_effects(ast, expr))
     }
 
     fn typeof_argument(&self, ast: &Ast<'_>, expr: Expr) -> Option<Expr> {
@@ -220,17 +215,103 @@ impl Compressor {
         if self.delete_depth != 0 {
             return None;
         }
-        let global = *self.candidates.globals.get(&node.node_id())?;
+        let value = *self.candidates.globals.get(&node.node_id())?;
         let span = node.span(ast);
-        Some(match global {
-            Global::Undefined => undefined(ast, span),
-            Global::Infinity | Global::Nan => {
-                let numerator = if matches!(global, Global::Infinity) {
-                    1.0
-                } else {
-                    0.0
+        self.value_expr(ast, span, value)
+    }
+
+    /// Folds a unary or binary expression whose operands are constant.
+    ///
+    /// Operands are compressed before this runs, so a constant operand is
+    /// already in a form `Value::of` reads. The result replaces the
+    /// expression only if it prints shorter, which also stops canonical
+    /// forms such as `!0`, `-1`, and `void 0` from being rebuilt.
+    fn fold(&self, ast: &mut Ast<'_>, node: Expr) -> Option<Expr> {
+        let (value, cost) = match ast.expr_data(node) {
+            ExprData::UnaryExpression(unary) => {
+                let operator = unary.operator(ast);
+                let argument = Value::of(ast, unary.argument(ast))?;
+                // A non-finite argument prints as a parenthesized division.
+                let parentheses = match argument {
+                    Value::Number(value) if !value.is_finite() => 2,
+                    _ => 0,
                 };
-                let left = number(ast, span, numerator);
+                (
+                    Value::unary(operator, argument)?,
+                    unary_operator_cost(operator) + self.cost(argument) + parentheses,
+                )
+            }
+            ExprData::BinaryExpression(binary) => {
+                let operator = binary.operator(ast);
+                let left = Value::of(ast, binary.left(ast))?;
+                let right = Value::of(ast, binary.right(ast))?;
+                (
+                    Value::binary(ast, operator, left, right)?,
+                    self.cost(left) + binary_operator_cost(operator) + self.cost(right),
+                )
+            }
+            _ => return None,
+        };
+        if self.cost(value) >= cost {
+            return None;
+        }
+        let span = node.span(ast);
+        self.value_expr(ast, span, value)
+    }
+
+    /// Approximate printed length of the expression `value_expr` builds.
+    fn cost(&self, value: Value<'_>) -> usize {
+        match value {
+            Value::Undefined => "void 0".len(),
+            Value::Null => "null".len(),
+            Value::Boolean(_) if self.options.booleans => "!0".len(),
+            Value::Boolean(value) => if value { "true" } else { "false" }.len(),
+            Value::Number(value) if value.is_nan() => "0/0".len(),
+            Value::Number(value) if value.is_infinite() => usize::from(value < 0.0) + "1/0".len(),
+            Value::Number(value) => {
+                usize::from(value.is_sign_negative())
+                    + zmij_ecma::Buffer::new().format_finite(value.abs()).len()
+            }
+            // Quotes; escapes are not counted.
+            Value::String(value) => value.len() + 2,
+            // BigInt values are never built. Comparisons that consume one,
+            // such as `1n === 1`, still fold.
+            Value::BigInt => usize::MAX / 4,
+        }
+    }
+
+    /// Builds the shortest expression for a constant value. Returns `None`
+    /// for BigInt, whose value is not tracked.
+    fn value_expr(&self, ast: &mut Ast<'_>, span: Span, value: Value<'_>) -> Option<Expr> {
+        Some(match value {
+            Value::Undefined => undefined(ast, span),
+            Value::Null => Expr::NullLiteral(ast.null_literal(span)),
+            Value::Boolean(value) if self.options.booleans => {
+                let argument = number(ast, span, if value { 0.0 } else { 1.0 });
+                Expr::UnaryExpression(ast.unary_expression(
+                    span,
+                    argument,
+                    UnaryOperator::LogicalNot,
+                ))
+            }
+            Value::Boolean(value) => Expr::BooleanLiteral(ast.boolean_literal(span, value)),
+            Value::Number(value) if value.is_finite() => {
+                let literal = number(ast, span, value.abs());
+                if !value.is_sign_negative() {
+                    return Some(literal);
+                }
+                Expr::UnaryExpression(ast.unary_expression(span, literal, UnaryOperator::Negate))
+            }
+            Value::Number(value) => {
+                let numerator = if value.is_nan() { 0.0 } else { 1.0 };
+                let mut left = number(ast, span, numerator);
+                if value == f64::NEG_INFINITY {
+                    left = Expr::UnaryExpression(ast.unary_expression(
+                        span,
+                        left,
+                        UnaryOperator::Negate,
+                    ));
+                }
                 let right = number(ast, span, 0.0);
                 Expr::BinaryExpression(ast.binary_expression(
                     span,
@@ -239,7 +320,52 @@ impl Compressor {
                     BinaryOperator::Divide,
                 ))
             }
+            Value::String(value) => {
+                let value = ast.add_wtf8(value);
+                let raw = ast.empty_utf8();
+                Expr::StringLiteral(ast.string_literal(span, value, raw))
+            }
+            Value::BigInt => return None,
         })
+    }
+}
+
+fn unary_operator_cost(operator: UnaryOperator) -> usize {
+    match operator {
+        UnaryOperator::Typeof => "typeof ".len(),
+        UnaryOperator::Void => "void ".len(),
+        UnaryOperator::Delete => "delete ".len(),
+        UnaryOperator::Negate
+        | UnaryOperator::Positive
+        | UnaryOperator::LogicalNot
+        | UnaryOperator::BitwiseNot => 1,
+    }
+}
+
+fn binary_operator_cost(operator: BinaryOperator) -> usize {
+    match operator {
+        BinaryOperator::StrictEqual
+        | BinaryOperator::StrictNotEqual
+        | BinaryOperator::UnsignedRightShift => 3,
+        BinaryOperator::Equal
+        | BinaryOperator::NotEqual
+        | BinaryOperator::LessThanOrEqual
+        | BinaryOperator::GreaterThanOrEqual
+        | BinaryOperator::Exponent
+        | BinaryOperator::LeftShift
+        | BinaryOperator::RightShift
+        | BinaryOperator::In => 2,
+        BinaryOperator::Instanceof => " instanceof ".len(),
+        BinaryOperator::LessThan
+        | BinaryOperator::GreaterThan
+        | BinaryOperator::Add
+        | BinaryOperator::Subtract
+        | BinaryOperator::Multiply
+        | BinaryOperator::Divide
+        | BinaryOperator::Modulo
+        | BinaryOperator::BitwiseOr
+        | BinaryOperator::BitwiseXor
+        | BinaryOperator::BitwiseAnd => 1,
     }
 }
 
@@ -373,6 +499,11 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         let ast = &mut *ctx.ast;
         let replacement = match ast.expr_data(node) {
             ExprData::IdentifierReference(_) => self.global(ast, node),
+            ExprData::UnaryExpression(_) | ExprData::BinaryExpression(_)
+                if self.options.evaluate =>
+            {
+                self.fold(ast, node)
+            }
             ExprData::BooleanLiteral(literal) if self.options.booleans => {
                 let span = node.span(ast);
                 let argument = number(ast, span, if literal.value(ast) { 0.0 } else { 1.0 });
@@ -396,14 +527,14 @@ mod tests {
 
     use crate::{Minifier, MinifierOptions};
 
-    fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
+    pub(super) fn parse<'a>(allocator: &'a Allocator, source: &'a str) -> Ast<'a> {
         let result =
             Parser::init(allocator, source, Options::default(), NoTokenParserConfig).parse();
         assert!(result.diagnostics.is_empty());
         result.ast
     }
 
-    fn expression(ast: &Ast<'_>) -> Expr {
+    pub(super) fn expression(ast: &Ast<'_>) -> Expr {
         let statement =
             ast.get_node_in_sub_range(ast.root_program().body(ast).iter().next().unwrap());
         let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {

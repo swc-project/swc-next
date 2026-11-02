@@ -1,7 +1,7 @@
 use crate::{
-    Accessibility, AssignmentOperator, Ast, AstUtf8, AstWtf8, BinaryOperator, ClassType,
+    Accessibility, AssignmentOperator, Ast, AstNode, AstUtf8, AstWtf8, BinaryOperator, ClassType,
     FormalParameterKind, FunctionType, ImportOrExportKind, ImportPhase, LogicalOperator,
-    MethodDefinitionKind, PropertyKind, SourceType, Span, TsMappedTypeModifier,
+    MethodDefinitionKind, NodeId, PropertyKind, SourceType, Span, TsMappedTypeModifier,
     TsMethodSignatureKind, TsModuleDeclarationKind, TsTypeOperatorKind, UnaryOperator,
     UpdateOperator, VariableKind, Visit, VisitMut, VisitMutWith, VisitWith,
 };
@@ -37,16 +37,70 @@ impl<T> TraverseAction<T> {
             Self::ReplaceStop(node) => TraverseAction::ReplaceStop(f(node)),
         }
     }
+}
 
-    /// Preserve a descendant's stop while allowing an ancestor exit to replace
-    /// its node. The replacement is attached, but it must not be revisited.
+/// Untyped result of a generated `walk_mut_*` function.
+///
+/// Every AST handle wraps a [`NodeId`], so walks share this representation and
+/// enum dispatch passes inner results through without re-tagging them. The
+/// public [`TraverseAction`] is restored only at the `traverse_mut_with`
+/// boundary.
+#[derive(Clone, Copy)]
+pub(crate) enum WalkMut {
+    /// All hooks ran, and no descendant stopped.
+    Continue,
+    /// A hook skipped the rest of the node.
+    Skip,
+    /// A hook stopped the traversal.
+    Stop,
+    ReplaceContinue(NodeId),
+    ReplaceSkip(NodeId),
+    ReplaceStop(NodeId),
+    /// All hooks ran, and a descendant stopped the traversal.
+    Stopped,
+}
+
+impl WalkMut {
+    /// Result of an enter hook that did not return `Continue`.
     #[inline]
-    pub(crate) fn stop(self) -> Self {
-        match self {
-            Self::ReplaceContinue(node) | Self::ReplaceSkip(node) | Self::ReplaceStop(node) => {
-                Self::ReplaceStop(node)
+    pub(crate) fn enter<T: AstNode>(action: TraverseAction<T>) -> Self {
+        match action {
+            TraverseAction::Continue => Self::Continue,
+            TraverseAction::Skip => Self::Skip,
+            TraverseAction::Stop => Self::Stop,
+            TraverseAction::ReplaceContinue(node) => Self::ReplaceContinue(node.node_id()),
+            TraverseAction::ReplaceSkip(node) => Self::ReplaceSkip(node.node_id()),
+            TraverseAction::ReplaceStop(node) => Self::ReplaceStop(node.node_id()),
+        }
+    }
+
+    /// Result of an exit hook that did not return `Continue`. `children` is
+    /// `Stopped` when a descendant stopped the traversal. The stop is
+    /// preserved, but the exit hook can still replace its node.
+    #[inline]
+    pub(crate) fn exit<T: AstNode>(action: TraverseAction<T>, children: Self) -> Self {
+        let stopped = matches!(children, Self::Stopped);
+        match action {
+            TraverseAction::ReplaceContinue(node) | TraverseAction::ReplaceSkip(node)
+                if stopped =>
+            {
+                Self::ReplaceStop(node.node_id())
             }
-            Self::Continue | Self::Skip | Self::Stop => Self::Stop,
+            TraverseAction::Continue | TraverseAction::Skip if stopped => Self::Stop,
+            action => Self::enter(action),
+        }
+    }
+
+    /// Convert to the owning slot's action. A skip is consumed at the node
+    /// boundary.
+    #[inline]
+    pub(crate) fn into_action<T>(self, wrap: impl FnOnce(NodeId) -> T) -> TraverseAction<T> {
+        match self {
+            Self::Continue | Self::Skip => TraverseAction::Continue,
+            Self::Stop | Self::Stopped => TraverseAction::Stop,
+            Self::ReplaceContinue(node) => TraverseAction::ReplaceContinue(wrap(node)),
+            Self::ReplaceSkip(node) => TraverseAction::ReplaceSkip(wrap(node)),
+            Self::ReplaceStop(node) => TraverseAction::ReplaceStop(wrap(node)),
         }
     }
 }
@@ -160,3 +214,125 @@ dummy_visit_mut_impl!(TsTypeOperatorKind);
 dummy_visit_mut_impl!(TsMethodSignatureKind);
 dummy_visit_mut_impl!(TsModuleDeclarationKind);
 dummy_visit_mut_impl!(TsMappedTypeModifier);
+
+#[cfg(test)]
+mod tests {
+    use swc_next_allocator::Allocator;
+
+    use crate::{
+        Ast, BinaryExpression, BinaryOperator, DUMMY_SP, Expr, ExpressionStatement,
+        IdentifierReference, NodeKind, TraverseAction, TraverseMut, TraverseMutCtx,
+        TraverseMutWith,
+    };
+
+    /// Stops at the first identifier and records the hooks that still run.
+    struct StopAtIdentifier {
+        replace_binary: bool,
+        hooks: Vec<&'static str>,
+    }
+
+    impl<'a> TraverseMut<'a> for StopAtIdentifier {
+        fn enter_identifier_reference(
+            &mut self,
+            _node: IdentifierReference,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<IdentifierReference> {
+            self.hooks.push("enter_identifier_reference");
+            TraverseAction::Stop
+        }
+
+        fn exit_binary_expression(
+            &mut self,
+            _node: BinaryExpression,
+            ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<BinaryExpression> {
+            self.hooks.push("exit_binary_expression");
+            if self.replace_binary {
+                let left = Expr::NullLiteral(ctx.ast.null_literal(DUMMY_SP));
+                let right = Expr::NullLiteral(ctx.ast.null_literal(DUMMY_SP));
+                let replacement =
+                    ctx.ast
+                        .binary_expression(DUMMY_SP, left, right, BinaryOperator::Add);
+                TraverseAction::ReplaceContinue(replacement)
+            } else {
+                TraverseAction::Continue
+            }
+        }
+
+        fn exit_expr(
+            &mut self,
+            _node: Expr,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<Expr> {
+            self.hooks.push("exit_expr");
+            TraverseAction::Continue
+        }
+
+        fn exit_expression_statement(
+            &mut self,
+            _node: ExpressionStatement,
+            _ctx: &mut TraverseMutCtx<'_, 'a>,
+        ) -> TraverseAction<ExpressionStatement> {
+            self.hooks.push("exit_expression_statement");
+            TraverseAction::Continue
+        }
+    }
+
+    fn statement(ast: &mut Ast<'_>) -> ExpressionStatement {
+        let a = ast.add_utf8("a");
+        let a = Expr::IdentifierReference(ast.identifier_reference(DUMMY_SP, a));
+        let b = ast.add_utf8("b");
+        let b = Expr::IdentifierReference(ast.identifier_reference(DUMMY_SP, b));
+        let binary = ast.binary_expression(DUMMY_SP, a, b, BinaryOperator::Add);
+        ast.expression_statement(DUMMY_SP, Expr::BinaryExpression(binary))
+    }
+
+    fn traverse(
+        ast: &mut Ast<'_>,
+        stmt: ExpressionStatement,
+        replace_binary: bool,
+    ) -> (TraverseAction<ExpressionStatement>, Vec<&'static str>) {
+        let mut traverser = StopAtIdentifier {
+            replace_binary,
+            hooks: Vec::new(),
+        };
+        let mut ctx = TraverseMutCtx::new(ast, ());
+        let action = stmt.traverse_mut_with(&mut traverser, &mut ctx);
+        (action, traverser.hooks)
+    }
+
+    #[test]
+    fn traverse_mut_descendant_stop() {
+        let allocator = Allocator::new();
+        let mut ast = Ast::new("", &allocator);
+
+        let stmt = statement(&mut ast);
+        let (action, hooks) = traverse(&mut ast, stmt, false);
+        assert_eq!(action, TraverseAction::Stop);
+        assert_eq!(
+            hooks,
+            [
+                "enter_identifier_reference",
+                "exit_binary_expression",
+                "exit_expr",
+                "exit_expression_statement"
+            ]
+        );
+
+        let stmt = statement(&mut ast);
+        let original = stmt.expression(&ast).node_id();
+        let (action, hooks) = traverse(&mut ast, stmt, true);
+        assert_eq!(action, TraverseAction::Stop);
+        assert_eq!(
+            hooks,
+            [
+                "enter_identifier_reference",
+                "exit_binary_expression",
+                "exit_expression_statement"
+            ]
+        );
+        let replacement = stmt.expression(&ast).node_id();
+        assert_ne!(replacement, original);
+        assert_eq!(ast.node_kind(replacement), NodeKind::BinaryExpression);
+    }
+}

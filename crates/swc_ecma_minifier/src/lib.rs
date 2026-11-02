@@ -4,9 +4,10 @@
 //! `swc_next_ecma_parser` and `swc_next_ecma_codegen`. Use the code generator's
 //! `minify` option to print the optimized AST compactly.
 //!
-//! Compression shortens booleans, unshadowed global constants, and safe local
-//! `typeof` comparisons, and removes unused local variables. Enabled semantic
-//! optimizations share one analysis and one compression traversal.
+//! Compression folds constant expressions, shortens booleans, unshadowed
+//! global constants, and safe local `typeof` comparisons, and removes unused
+//! local variables. Enabled semantic optimizations share one analysis and one
+//! compression traversal.
 
 #![deny(clippy::all)]
 #![deny(unused)]
