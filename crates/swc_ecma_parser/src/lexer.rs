@@ -225,7 +225,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
         debug_assert_eq!(self.state.token_flags, 0);
-        let mut start = self.cursor;
+        let start = self.cursor;
         // `fast_len` is zero outside the normal mode.
         if start >= self.fast_len {
             if self.mode != LexerMode::Normal {
@@ -234,29 +234,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             return false;
         }
         // SAFETY: `start < fast_len <= source.len()`.
-        let mut byte = unsafe { *self.source.get_unchecked(start as usize) };
-        if byte == b' ' {
-            start += 1;
-            let Some(next) = self.source.get(start as usize).copied() else {
-                return false;
-            };
-            byte = next;
-        } else if byte == b'\n' {
-            let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
-                return false;
-            };
-            // Every scanner below leaves the cursor unchanged on failure, so a line
-            // feed is rescanned by the trivia scanner with its original context.
-            return self.try_next_token_at::<true>(target, next_start, next);
-        }
-
-        self.try_next_token_at::<false>(target, start, byte)
+        let byte = unsafe { *self.source.get_unchecked(start as usize) };
+        self.try_next_token_at::<false, true>(target, start, byte)
     }
 
     /// Reads a fast-path token at `start`. `LINE_BREAK` is a constant so each
     /// copy builds its token flags without keeping them in a register.
+    /// `SKIP_TRIVIA` lets the class dispatch skip one space or a line feed with
+    /// its indentation before the token, so a token without leading trivia
+    /// needs no separate whitespace checks.
     #[inline(always)]
-    fn try_next_token_at<const LINE_BREAK: bool>(
+    fn try_next_token_at<const LINE_BREAK: bool, const SKIP_TRIVIA: bool>(
         &mut self,
         target: &mut Token,
         start: u32,
@@ -264,6 +252,27 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     ) -> bool {
         let flags = fast_token_flags(LINE_BREAK);
         match FAST_CLASS[byte as usize] {
+            FastClass::Space => {
+                if !SKIP_TRIVIA {
+                    return false;
+                }
+                let start = start + 1;
+                let Some(next) = self.source.get(start as usize).copied() else {
+                    return false;
+                };
+                return self.try_next_token_at::<LINE_BREAK, false>(target, start, next);
+            }
+            FastClass::LineFeed => {
+                if !SKIP_TRIVIA {
+                    return false;
+                }
+                let Some((next_start, next)) = self.skip_line_feed_indentation(start) else {
+                    return false;
+                };
+                // Every scanner below leaves the cursor unchanged on failure, so a line
+                // feed is rescanned by the trivia scanner with its original context.
+                return self.try_next_token_at::<true, false>(target, next_start, next);
+            }
             FastClass::Identifier => return self.try_identifier_token::<LINE_BREAK>(target, start),
             FastClass::Punctuation => {
                 self.cursor = start + 1;
@@ -449,10 +458,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             while let Some(word) = self.source.get(start..start + 8) {
                 let differing =
                     u64::from_le_bytes(word.try_into().unwrap()) ^ 0x2020_2020_2020_2020;
-                start += (differing.trailing_zeros() / 8) as usize;
                 if differing != 0 {
+                    start += (differing.trailing_zeros() / 8) as usize;
                     break;
                 }
+                start += 8;
             }
         }
         while matches!(self.source.get(start), Some(b' ' | b'\t' | b'\n')) {
@@ -1816,6 +1826,8 @@ enum FastClass {
     Dot,
     Operator,
     Quote,
+    Space,
+    LineFeed,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1841,6 +1853,8 @@ const FAST_CLASS: [FastClass; 256] = {
     table[b'.' as usize] = FastClass::Dot;
     table[b'"' as usize] = FastClass::Quote;
     table[b'\'' as usize] = FastClass::Quote;
+    table[b' ' as usize] = FastClass::Space;
+    table[b'\n' as usize] = FastClass::LineFeed;
     // Slash and minus can start comments and retain the trivia path.
     let operators = b"+*%<>=!&|^?";
     let mut operator = 0;
