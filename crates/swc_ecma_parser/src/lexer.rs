@@ -1453,15 +1453,19 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             let src = self.source;
             let mut pos = self.cursor as usize;
 
+            // A table lookup per byte is faster than a `match` when the compiler does
+            // not vectorize the loop, and the flag is set once per run.
+            let mut seen = 0;
             while pos < src.len() {
-                match src[pos] {
-                    b' ' | b'\t' | 0x0B | 0x0C => pos += 1,
-                    b'\n' | b'\r' => {
-                        self.set_token_flag(TokenFlag::LineTerminatorBefore);
-                        pos += 1;
-                    }
-                    _ => break,
+                let class = WHITESPACE_CLASS[src[pos] as usize];
+                if class == 0 {
+                    break;
                 }
+                seen |= class;
+                pos += 1;
+            }
+            if seen & WHITESPACE_LINE_BREAK != 0 {
+                self.set_token_flag(TokenFlag::LineTerminatorBefore);
             }
 
             self.cursor = pos as u32;
@@ -1765,6 +1769,21 @@ const OPERATOR_TAG: [TokenTag; 256] = {
     table[b'|' as usize] = TokenTag::BitwiseOr;
     table[b'^' as usize] = TokenTag::BitwiseXor;
     table[b'?' as usize] = TokenTag::Question;
+    table
+};
+
+const WHITESPACE_SPACE: u8 = 1;
+const WHITESPACE_LINE_BREAK: u8 = 2;
+
+/// ASCII whitespace classes, indexed by byte. Zero ends a whitespace run.
+const WHITESPACE_CLASS: [u8; 256] = {
+    let mut table = [0; 256];
+    table[b' ' as usize] = WHITESPACE_SPACE;
+    table[b'\t' as usize] = WHITESPACE_SPACE;
+    table[0x0B] = WHITESPACE_SPACE;
+    table[0x0C] = WHITESPACE_SPACE;
+    table[b'\n' as usize] = WHITESPACE_LINE_BREAK;
+    table[b'\r' as usize] = WHITESPACE_LINE_BREAK;
     table
 };
 
