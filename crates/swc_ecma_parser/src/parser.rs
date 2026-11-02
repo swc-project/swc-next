@@ -14583,6 +14583,7 @@ mod tests {
         BindingIdentifier,
         BindingProperty,
         BindingRestElement,
+        CallExpression,
         Class,
         ClassBody,
         Decorator,
@@ -15394,7 +15395,14 @@ mod tests {
         }
 
         fn type_argument_depth(ast: &Ast<'_>) -> usize {
-            find_all::<TsTypeParameterInstantiation>(ast).len()
+            let mut arguments = find_only::<CallExpression>(ast).type_arguments(ast);
+            let mut depth = 0;
+            while let Some(list) = arguments {
+                depth += 1;
+                let ty = list.params(ast).get_node(ast, 0).unwrap();
+                arguments = ty.as_ts_type_reference(ast).unwrap().type_arguments(ast);
+            }
+            depth
         }
 
         let typescript = Options {
