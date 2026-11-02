@@ -161,6 +161,8 @@ jobs:
         with:
           version: 0.14.1
 
+      # NAPI's bundled GCC does not support mimalloc's date-time warning flag.
+      # https://github.com/swc-project/swc-next/pull/1409
       - name: Set up Clang for GNU cross builds
         if: matrix.target_cc != ''
         shell: bash
