@@ -2889,6 +2889,7 @@ dependencies = [
  "indexmap",
  "memchr",
  "rustc-hash",
+ "serde_json",
  "swc_next_allocator",
  "swc_next_ecma_ast",
  "swc_next_simd",

@@ -22,4 +22,6 @@ swc_next_simd      = { workspace = true, features = ["memchr"] }
 unicode-id-start   = { workspace = true }
 
 [dev-dependencies]
-clap = { workspace = true }
+clap              = { workspace = true }
+serde_json        = { workspace = true }
+swc_next_ecma_ast = { workspace = true, features = ["json"] }
