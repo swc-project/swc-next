@@ -14581,6 +14581,27 @@ mod tests {
 
         let errors = error_spans("10._e1;", Options::default());
         assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("10_", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0b00_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0o00_;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x00_n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0.0_e0;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0e+0_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x_1;", Options::default());
+        assert_eq!(errors, ["_"]);
     }
 
     #[test]

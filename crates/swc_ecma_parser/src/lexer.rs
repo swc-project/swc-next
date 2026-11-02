@@ -992,6 +992,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         if last_was_separator {
+            // Report the separator rather than the character following it.
+            self.cursor -= 1;
             return Err(LexicalError::NumericSeparatorMisuse);
         }
         Ok(())
