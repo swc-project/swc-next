@@ -4,7 +4,6 @@ use hashbrown::HashMap;
 use rustc_hash::FxBuildHasher;
 use swc_next_allocator::{
     Allocator, IndexSlice,
-    boxed::Box as ArenaBox,
     hash_map::HashMap as ArenaHashMap,
     vec::{ArenaIndexVec, ArenaVec},
 };
@@ -960,7 +959,7 @@ pub(crate) struct TsMemberIndex<'a> {
     scope_views: Option<TsScopeViewIndex<'a>>,
     views: ArenaVec<'a, TsMemberView>,
     import_aliases: Option<TsImportAliasIndex<'a>>,
-    reference_values: Option<ArenaBox<'a, TsReferenceValues<'a>>>,
+    reference_values: Option<TsReferenceValues<'a>>,
 }
 
 impl TsMemberIndex<'_> {
@@ -4408,7 +4407,7 @@ impl<'a> SymbolTracker<'a> {
         let reference_values = if reference_values.ranges.is_empty() {
             None
         } else {
-            Some(self.allocator.boxed(reference_values))
+            Some(reference_values)
         };
 
         Semantic {
