@@ -14615,6 +14615,7 @@ mod tests {
         TsInferType,
         TsInterfaceDeclaration,
         TsMethodDefinition,
+        TsModuleBlock,
         TsNamedTupleMember,
         TsNamespaceExportDeclaration,
         TsQualifiedName,
@@ -16067,7 +16068,30 @@ mod tests {
 
     #[test]
     fn ambient_function_recovery() {
-        fn recovered_functions(source: &str, lang: Lang) -> Vec<(String, bool)> {
+        fn describe(ast: &Ast<'_>, statements: SubRange<Stmt>) -> Vec<String> {
+            statements
+                .iter()
+                .map(|id| {
+                    let statement = ast.get_node_in_sub_range(id);
+                    let function = statement
+                        .as_declaration(ast)
+                        .and_then(|declaration| declaration.as_ts_function(ast));
+                    let Some(function) = function else {
+                        return format!("{:?}", ast.node_kind(statement.node_id()));
+                    };
+                    let name = ast.get_utf8(function.id(ast).unwrap().name(ast));
+                    let declare = if function.declare(ast) {
+                        "declare "
+                    } else {
+                        ""
+                    };
+                    format!("{declare}{name}")
+                })
+                .collect()
+        }
+
+        /// Returns the top-level statements and the statements in the module block.
+        fn recovered_statements(source: &str, lang: Lang) -> (Vec<String>, Vec<String>) {
             let allocator = Allocator::new();
             let options = Options {
                 lang,
@@ -16077,41 +16101,27 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert_eq!(parsed.diagnostics.len(), 1);
             let ast = &parsed.ast;
-            assert_eq!(ast.root_program().body(ast).len(), 2);
-            find_all::<TsFunction>(ast)
+            let module = find_all::<TsModuleBlock>(ast)
                 .into_iter()
-                .map(|function| {
-                    let name = ast.get_utf8(function.id(ast).unwrap().name(ast));
-                    (name.to_owned(), function.declare(ast))
-                })
-                .collect()
+                .flat_map(|block| describe(ast, block.body(ast)))
+                .collect();
+            (describe(ast, ast.root_program().body(ast)), module)
         }
 
         let source = "declare namespace N { function bad() {} function good(): void; } declare function after(): void;";
-        let functions = recovered_functions(source, Lang::Ts);
-        assert_eq!(
-            functions,
-            [
-                ("bad".into(), false),
-                ("good".into(), false),
-                ("after".into(), true)
-            ]
-        );
+        let (top_level, module) = recovered_statements(source, Lang::Ts);
+        assert_eq!(top_level, ["TsModuleDeclaration", "declare after"]);
+        assert_eq!(module, ["bad", "good"]);
 
         let source = "declare module \"pkg\" { function bad() {} function good(): void; } declare function after(): void;";
-        let functions = recovered_functions(source, Lang::Ts);
-        assert_eq!(
-            functions,
-            [
-                ("bad".into(), false),
-                ("good".into(), false),
-                ("after".into(), true)
-            ]
-        );
+        let (top_level, module) = recovered_statements(source, Lang::Ts);
+        assert_eq!(top_level, ["TsModuleDeclaration", "declare after"]);
+        assert_eq!(module, ["bad", "good"]);
 
         let source = "declare function bad() {} declare function good(): void;";
-        let functions = recovered_functions(source, Lang::Dts);
-        assert_eq!(functions, [("bad".into(), true), ("good".into(), true)]);
+        let (top_level, module) = recovered_statements(source, Lang::Dts);
+        assert_eq!(top_level, ["declare bad", "declare good"]);
+        assert!(module.is_empty());
     }
 
     #[test]
