@@ -131,6 +131,7 @@ struct Printer<'a> {
     export_default_start: usize,
     arrow_expr_start: usize,
     for_of_init_start: usize,
+    for_init_start: usize,
 
     // State used to keep neighboring tokens lexically separate.
     prev_op_end: usize,
@@ -297,9 +298,7 @@ impl BinaryExprVisitor {
         if self.operator.is_keyword() {
             p.print_space_before_identifier();
             p.print(self.operator.as_str());
-            // This separator is syntactically required even when whitespace
-            // minification is enabled (`in this`, not `inthis`).
-            p.print(" ");
+            p.print_space();
         } else {
             match self.operator {
                 BinaryishOperator::Binary(operator) => {
@@ -345,6 +344,7 @@ impl<'a> Printer<'a> {
             export_default_start: usize::MAX,
             arrow_expr_start: usize::MAX,
             for_of_init_start: usize::MAX,
+            for_init_start: usize::MAX,
             prev_op_end: usize::MAX,
             prev_op: None,
             need_space_before_dot: usize::MAX,
@@ -909,7 +909,9 @@ impl<'a> Printer<'a> {
                     self.print_block(block);
                     self.print_space();
                 } else {
-                    if self.options.minify {
+                    if self.options.minify
+                        && !matches!(self.ast.stmt_data(body), StmtData::EmptyStatement(_))
+                    {
                         self.print(" ");
                     }
                     self.print_newline();
@@ -923,7 +925,10 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print("(");
                 self.print_expr(s.test(self.ast), Precedence::Lowest);
-                self.print(");");
+                self.print(")");
+                if !self.options.minify {
+                    self.print(";");
+                }
                 self.needs_semicolon = false;
                 self.print_newline();
             }
@@ -977,15 +982,25 @@ impl<'a> Printer<'a> {
                     self.indent += 1;
                     self.print_comments_before(comment_end, true, true);
                     self.print_indent();
+                    self.for_init_start = self.js.len();
                     self.print_for_left(left);
-                    self.print(" in ");
+                    self.print(" ");
+                    self.print("in");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
                     self.print_newline();
                     self.indent -= 1;
                     self.print_indent();
                 } else {
+                    self.for_init_start = self.js.len();
                     self.print_for_left(left);
-                    self.print(" in ");
+                    if self.options.minify {
+                        self.print_space_before_identifier();
+                    } else {
+                        self.print(" ");
+                    }
+                    self.print("in");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Lowest);
                 }
                 self.print(")");
@@ -1014,16 +1029,26 @@ impl<'a> Printer<'a> {
                     self.print_comments_before(comment_end, true, true);
                     self.print_indent();
                     self.for_of_init_start = self.js.len();
+                    self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
-                    self.print(" of ");
+                    self.print(" ");
+                    self.print("of");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                     self.print_newline();
                     self.indent -= 1;
                     self.print_indent();
                 } else {
                     self.for_of_init_start = self.js.len();
+                    self.for_init_start = self.js.len();
                     self.print_for_of_left(left, is_await);
-                    self.print(" of ");
+                    if self.options.minify {
+                        self.print_space_before_identifier();
+                    } else {
+                        self.print(" ");
+                    }
+                    self.print("of");
+                    self.print_space();
                     self.print_expr(s.right(self.ast), Precedence::Assignment);
                 }
                 self.print(")");
@@ -1035,6 +1060,7 @@ impl<'a> Printer<'a> {
                 self.print("for");
                 self.print_space();
                 self.print("(");
+                self.for_init_start = self.js.len();
                 if let Some(init) = s.init(self.ast) {
                     let old_forbid_in = self.forbid_in;
                     self.forbid_in = true;
@@ -1074,19 +1100,7 @@ impl<'a> Printer<'a> {
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("return");
                 if let Some(value) = s.argument(self.ast) {
-                    let can_omit_space = self.options.minify
-                        && matches!(
-                            self.ast.expr_data(value),
-                            ExprData::BinaryExpression(binary)
-                                if binary.operator(self.ast) == BinaryOperator::In
-                                    && matches!(
-                                        self.ast.expr_data(binary.left(self.ast)),
-                                        ExprData::PrivateIdentifier(_)
-                                    )
-                        );
-                    if !can_omit_space {
-                        self.print(" ");
-                    }
+                    self.print_space();
                     self.print_expr_without_leading_line_terminator(value, Precedence::Lowest);
                 }
                 self.print_semicolon_after_statement();
@@ -1143,10 +1157,10 @@ impl<'a> Printer<'a> {
                 self.print_indent();
                 self.add_source_mapping(stmt.span(self.ast).start);
                 self.print("export");
-                self.print_space();
                 if s.export_kind(self.ast) == ImportOrExportKind::Type {
-                    self.print("type ");
+                    self.print(" type");
                 }
+                self.print_space();
                 self.print("*");
                 if let Some(exported) = s.exported(self.ast) {
                     self.print_space();
@@ -1323,7 +1337,9 @@ impl<'a> Printer<'a> {
                 self.print_block(block);
                 self.print_newline();
             } else {
-                if self.options.minify {
+                if self.options.minify
+                    && !matches!(self.ast.stmt_data(alternate), StmtData::EmptyStatement(_))
+                {
                     self.print(" ");
                 }
                 self.print_body(alternate);
@@ -1985,12 +2001,16 @@ impl<'a> Printer<'a> {
     fn print_expr_leading_comments(&mut self, expr: Expr) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
+        let is_at_for_init_start = self.js.len() == self.for_init_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
         }
         if is_at_export_default_start {
             self.export_default_start = self.js.len();
+        }
+        if is_at_for_init_start {
+            self.for_init_start = self.js.len();
         }
     }
 
@@ -2189,7 +2209,7 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::NewExpression(e) => self.print_new(e, level),
+            ExprData::NewExpression(e) => self.print_new(e, level, context),
             ExprData::TaggedTemplateExpression(e) => {
                 let tag = e.tag(self.ast);
                 let type_arguments = e.type_arguments(self.ast);
@@ -2293,13 +2313,14 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
+                self.print_space_before_identifier();
                 self.add_source_mapping(expr.span(self.ast).start);
                 self.print("yield");
                 if e.delegate(self.ast) {
                     self.print("*");
                 }
                 if let Some(value) = e.argument(self.ast) {
-                    self.print(" ");
+                    self.print_space();
                     self.print_expr_without_leading_line_terminator(value, Precedence::Yield);
                 }
                 if wrap {
@@ -2496,7 +2517,7 @@ impl<'a> Printer<'a> {
             self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print(op);
-            self.print(" ");
+            self.print_space();
         } else {
             let operator_code = OperatorCode::Unary(operator);
             self.print_mapped_operator(operator_code, op, e.span(self.ast).start);
@@ -2541,6 +2562,9 @@ impl<'a> Printer<'a> {
         // begin a lexical declaration. A static member such as `let.foo`
         // doesn't have this ambiguity.
         let wrap_object = computed
+            && (!self.options.minify
+                || self.js.len() == self.stmt_start
+                || self.js.len() == self.for_init_start)
             && matches!(
                 object_data,
                 ExprData::IdentifierReference(identifier)
@@ -2624,7 +2648,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_new(&mut self, e: NewExpression, level: Precedence) {
+    fn print_new(&mut self, e: NewExpression, level: Precedence, context: ExprContext) {
         let wrap = level > Precedence::New;
         if wrap {
             self.print("(");
@@ -2635,21 +2659,24 @@ impl<'a> Printer<'a> {
         self.print_space();
         let callee = e.callee(self.ast);
         let type_arguments = e.type_arguments(self.ast);
-        self.print_expr_with_context(
-            callee,
-            Precedence::New,
-            ExprContext::NO_INSTANTIATION | ExprContext::IN_NEW_CALLEE,
+        let arguments = e.arguments(self.ast);
+        let print_arguments = !self.options.minify
+            || !arguments.is_empty()
+            || type_arguments.is_some() && level > Precedence::Assignment
+            || level >= Precedence::Postfix && !context.contains(ExprContext::OMIT_NESTED_NEW_ARGS);
+        let mut callee_context = ExprContext::NO_INSTANTIATION | ExprContext::IN_NEW_CALLEE;
+        // Keep the inner argument list so outer type arguments stay on the outer `new`.
+        callee_context.set(
+            ExprContext::OMIT_NESTED_NEW_ARGS,
+            !print_arguments && type_arguments.is_none(),
         );
+        self.print_expr_with_context(callee, Precedence::New, callee_context);
         if let Some(args) = type_arguments {
             self.print_ts_type_args(args);
         }
-        let arguments = e.arguments(self.ast);
-        // Generic constructors need `()` to disambiguate following operators.
-        if !self.options.minify
-            || !arguments.is_empty()
-            || type_arguments.is_some()
-            || level >= Precedence::Postfix
-        {
+        // Generic constructors need `()` before an enclosing operator, but
+        // delimiters such as `;`, `,` and `)` safely end the type arguments.
+        if print_arguments {
             self.print_arguments(arguments, e.span(self.ast).end.saturating_sub(1));
         }
         if wrap {
@@ -2808,8 +2835,18 @@ impl<'a> Printer<'a> {
     fn print_object_property(&mut self, p: ObjectProperty) {
         let kind = p.kind(self.ast);
         match kind {
-            PropertyKind::Get => self.print("get "),
-            PropertyKind::Set => self.print("set "),
+            PropertyKind::Get => {
+                self.print("get");
+                if self.property_key_needs_modifier_space(p.key(self.ast), p.computed(self.ast)) {
+                    self.print(" ");
+                }
+            }
+            PropertyKind::Set => {
+                self.print("set");
+                if self.property_key_needs_modifier_space(p.key(self.ast), p.computed(self.ast)) {
+                    self.print(" ");
+                }
+            }
             PropertyKind::Init => {}
         }
         if (p.method(self.ast) || kind != PropertyKind::Init)
@@ -2862,6 +2899,16 @@ impl<'a> Printer<'a> {
         } else {
             self.print_property_key_plain(key);
         }
+    }
+
+    fn property_key_needs_modifier_space(&self, key: PropertyKey, computed: bool) -> bool {
+        !self.options.minify
+            || !computed
+                && !matches!(
+                    self.ast.property_key_data(key),
+                    PropertyKeyData::Expr(expr)
+                        if matches!(self.ast.expr_data(expr), ExprData::StringLiteral(_))
+                )
     }
 
     fn print_property_key_expr(&mut self, key: PropertyKey, level: Precedence) {
@@ -2978,6 +3025,7 @@ impl<'a> Printer<'a> {
             self.forbid_in = false;
         }
         if e.r#async(self.ast) {
+            self.print_space_before_identifier();
             self.add_source_mapping(e.span(self.ast).start);
             self.print("async");
             self.print_space();
@@ -3072,7 +3120,8 @@ impl<'a> Printer<'a> {
             self.print_ts_type_params(t);
         }
         if let Some(s) = c.super_class(self.ast) {
-            self.print(" extends ");
+            self.print(" extends");
+            self.print_space();
             let type_arguments = c.super_type_arguments(self.ast);
             self.print_expr_with_context(s, Precedence::Postfix, ExprContext::NO_INSTANTIATION);
             if let Some(t) = type_arguments {
@@ -3132,7 +3181,21 @@ impl<'a> Printer<'a> {
                 self.print_decorators(m.decorators(self.ast));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
-                    self.print("static ");
+                    self.print("static");
+                    let f = m.value(self.ast);
+                    if !self.options.minify
+                        || m.r#abstract(self.ast)
+                        || m.r#override(self.ast)
+                        || f.r#async(self.ast)
+                        || (!f.generator(self.ast)
+                            && (!m.computed(self.ast)
+                                || matches!(
+                                    m.kind(self.ast),
+                                    MethodDefinitionKind::Get | MethodDefinitionKind::Set
+                                )))
+                    {
+                        self.print(" ");
+                    }
                 }
                 if m.r#abstract(self.ast) {
                     self.print("abstract ");
@@ -3145,8 +3208,19 @@ impl<'a> Printer<'a> {
                     self.print("async ");
                 }
                 match m.kind(self.ast) {
-                    MethodDefinitionKind::Get => self.print("get "),
-                    MethodDefinitionKind::Set => self.print("set "),
+                    MethodDefinitionKind::Get | MethodDefinitionKind::Set => {
+                        self.print(if m.kind(self.ast) == MethodDefinitionKind::Get {
+                            "get"
+                        } else {
+                            "set"
+                        });
+                        if self.property_key_needs_modifier_space(
+                            m.key(self.ast),
+                            m.computed(self.ast),
+                        ) {
+                            self.print(" ");
+                        }
+                    }
                     _ => {}
                 }
                 if f.generator(self.ast) {
@@ -3173,7 +3247,21 @@ impl<'a> Printer<'a> {
                 self.print_decorators(m.decorators(self.ast));
                 self.print_accessibility(m.accessibility(self.ast));
                 if m.r#static(self.ast) {
-                    self.print("static ");
+                    self.print("static");
+                    let f = m.value(self.ast);
+                    if !self.options.minify
+                        || m.r#abstract(self.ast)
+                        || m.r#override(self.ast)
+                        || f.r#async(self.ast)
+                        || (!f.generator(self.ast)
+                            && (!m.computed(self.ast)
+                                || matches!(
+                                    m.kind(self.ast),
+                                    MethodDefinitionKind::Get | MethodDefinitionKind::Set
+                                )))
+                    {
+                        self.print(" ");
+                    }
                 }
                 if m.r#abstract(self.ast) {
                     self.print("abstract ");
@@ -3186,8 +3274,19 @@ impl<'a> Printer<'a> {
                     self.print("async ");
                 }
                 match m.kind(self.ast) {
-                    MethodDefinitionKind::Get => self.print("get "),
-                    MethodDefinitionKind::Set => self.print("set "),
+                    MethodDefinitionKind::Get | MethodDefinitionKind::Set => {
+                        self.print(if m.kind(self.ast) == MethodDefinitionKind::Get {
+                            "get"
+                        } else {
+                            "set"
+                        });
+                        if self.property_key_needs_modifier_space(
+                            m.key(self.ast),
+                            m.computed(self.ast),
+                        ) {
+                            self.print(" ");
+                        }
+                    }
                     _ => {}
                 }
                 if f.generator(self.ast) {
@@ -3253,7 +3352,9 @@ impl<'a> Printer<'a> {
             ClassElementData::StaticBlock(b) => {
                 self.print_indent();
                 self.add_source_mapping(element.span(self.ast).start);
-                self.print("static {");
+                self.print("static");
+                self.print_space();
+                self.print("{");
                 let body = b.body(self.ast);
                 if !body.is_empty() {
                     self.print_newline();
@@ -3942,7 +4043,13 @@ impl<'a> Printer<'a> {
             ExportDefaultDeclarationKindData::Class(class)
                 if !class.decorators(self.ast).is_empty()
         );
-        if decorated_class {
+        if decorated_class
+            || matches!(
+                self.ast
+                    .export_default_declaration_kind_data(d.declaration(self.ast)),
+                ExportDefaultDeclarationKindData::Expr(_)
+            )
+        {
             self.print_space();
         } else {
             self.print(" ");
@@ -4851,7 +4958,7 @@ impl<'a> Printer<'a> {
             self.print_newline();
         }
         self.indent += 1;
-        for id in m.iter() {
+        for (index, id) in m.iter().enumerate() {
             let x = self.ast.get_node_in_sub_range(id);
             self.print_indent();
             self.add_source_mapping(x.span(self.ast).start);
@@ -4862,7 +4969,9 @@ impl<'a> Printer<'a> {
                 self.print_space();
                 self.print_expr(v, Precedence::Assignment);
             }
-            self.print(",");
+            if !self.options.minify || index + 1 < m.len() {
+                self.print(",");
+            }
             self.print_newline();
         }
         self.indent -= 1;

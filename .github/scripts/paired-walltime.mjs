@@ -136,7 +136,8 @@ function describeEnvironment() {
     kernel: release(),
     runner_image: image || null,
     runner_name: process.env.RUNNER_NAME ?? null,
-    rustc: read("rustc", ["--version"]).trim(),
+    // CI runs the binaries in a job without the toolchain that built them.
+    rustc: process.env.PAIRED_WALLTIME_RUSTC || read("rustc", ["--version"]).trim(),
   };
 }
 

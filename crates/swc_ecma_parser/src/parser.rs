@@ -1218,7 +1218,7 @@ struct Checkpoint {
     lexer_state: LexerState,
     lexer_mode: LexerMode,
     lexer_comments_len: usize,
-    lexer_processed_comments: u32,
+    lexer_processed_comments: usize,
     lexer_tokens_len: usize,
     // Parser token stream.
     current_token: Token,
@@ -1244,7 +1244,7 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     cursor: u32,
     comments_len: usize,
     module_mode_errors_len: usize,
-    processed_comments: u32,
+    processed_comments: usize,
     tokens_len: usize,
     active: bool,
 }
@@ -1931,7 +1931,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn set_lexer_mode(&mut self, mode: LexerMode) {
-        self.lexer.set_mode(mode);
+        self.lexer.mode = mode;
     }
 
     fn span_text(&self, span: Span) -> &'a str {
@@ -2033,7 +2033,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Checkpoint {
             lexer_cursor: self.lexer.cursor,
             lexer_state: self.lexer.state,
-            lexer_mode: self.lexer.mode(),
+            lexer_mode: self.lexer.mode,
             lexer_comments_len: self.lexer.comments.len(),
             lexer_processed_comments: self.lexer.processed_comments,
             lexer_tokens_len: self.lexer.tokens.len(),
@@ -2066,7 +2066,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
-        self.lexer.set_mode(checkpoint.lexer_mode);
+        self.lexer.mode = checkpoint.lexer_mode;
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
         self.lexer
             .rewind_module_mode_errors(checkpoint.lexer_cursor);
@@ -2433,7 +2433,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.report(
             span,
-            "'await using' is only valid in async functions or modules",
+            "'await using' is only valid in async functions or at the top level of modules",
             ReportOptions::default(),
         );
     }
@@ -3278,6 +3278,30 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         decorators: SubRange<Decorator>,
     ) -> Option<Class> {
         let start = start_from_param.unwrap_or(self.current_token.start());
+        // Undecorated `declare class` is parsed by `parse_ts_declaration`; only
+        // decorators can lead here before `declare`, for example `@dec declare class C {}`.
+        if self.current_token.tag() == TokenTag::Declare
+            && !opts.is_declare
+            && !decorators.is_empty()
+            && !opts.is_expression
+            && !opts.is_default_export
+            && self.lang.is_typescript()
+            && self.is_declare_class_next()?
+        {
+            self.advance()?;
+            let ambient = self.ts_context.ambient();
+            self.ts_context.set(TsContext::AMBIENT, true);
+            let class = self.parse_class_decorated(
+                ParseClassOpts {
+                    is_declare: true,
+                    ..opts
+                },
+                Some(start),
+                decorators,
+            );
+            self.ts_context.set(TsContext::AMBIENT, ambient);
+            return class;
+        }
         let mut is_abstract = opts.is_abstract;
         if self.current_token.tag() == TokenTag::Abstract
             && !is_abstract
@@ -4067,8 +4091,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Import => self.parse_import_expression()?,
             _ => self.parse_primary_expression(Precedence::Primary)?,
         };
-        let expression = self.parse_postfix_expression::<false, DECORATOR>(expression)?;
-        Some(expression.expression)
+        self.parse_postfix_expression::<DECORATOR>(expression)
     }
 
     fn prop_name_eq(&self, key: PropertyKey, expected: &str) -> Option<Span> {
@@ -4104,6 +4127,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if count == expected && !has_rest {
             return;
         }
+        let (msg, help) = if expected == 1 && count == 0 && has_rest {
+            (
+                "Setter parameter cannot be a rest parameter",
+                "Replace the rest parameter with a single parameter.",
+            )
+        } else {
+            (msg, help)
+        };
         self.report(
             params.span(&self.ast),
             msg,
@@ -4167,12 +4198,17 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     };
 
                 if self.current_token.tag() == TokenTag::Spread {
-                    rest = Some(self.parse_formal_parameter_rest(kind, decorators)?);
+                    let parameter = self.parse_formal_parameter_rest(kind, decorators)?;
+                    rest = Some(parameter);
+                    let comma_end = self.current_token.end();
                     if self.eat(TokenTag::Comma)?
                         && (!self.ts_context.ambient()
                             || self.current_token.tag() != TokenTag::RightParen)
                     {
-                        self.recover_rest_parameter_end()?;
+                        self.recover_rest_parameter_end(Span::new(
+                            parameter.span(&self.ast).start,
+                            comma_end,
+                        ))?;
                     }
                     break;
                 }
@@ -4219,10 +4255,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     #[cold]
     #[inline(never)]
-    fn recover_rest_parameter_end(&mut self) -> Option<()> {
+    fn recover_rest_parameter_end(&mut self, span: Span) -> Option<()> {
         self.report(
-            self.current_token.span(),
-            "Rest parameter must be the last parameter",
+            span,
+            if self.current_token.tag() == TokenTag::RightParen {
+                "A rest parameter cannot have a trailing comma"
+            } else {
+                "Rest parameter must be the last parameter"
+            },
             ReportOptions::default(),
         );
         (self.current_token.tag() == TokenTag::RightParen).then_some(())
@@ -5170,6 +5210,25 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn is_abstract_class_next(&mut self) -> Option<bool> {
         let next = self.peek_ahead()?;
         Some(next.tag() == TokenTag::Class && !next.has_line_terminator_before())
+    }
+
+    /// Returns whether the current `declare` starts `declare class` or
+    /// `declare abstract class` on the same line.
+    fn is_declare_class_next(&mut self) -> Option<bool> {
+        let mut peek = self.begin_peek();
+        let next = peek.next()?;
+        let result = if next.has_line_terminator_before() {
+            false
+        } else if next.tag() == TokenTag::Class {
+            true
+        } else if next.tag() == TokenTag::Abstract {
+            let class = peek.next()?;
+            class.tag() == TokenTag::Class && !class.has_line_terminator_before()
+        } else {
+            false
+        };
+        peek.end();
+        Some(result)
     }
 
     fn is_legacy_accessibility_import(&mut self) -> Option<bool> {
@@ -7808,7 +7867,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
         self.report(
             self.current_token.span(),
-            "An index signature must have exactly one parameter",
+            "An index signature must have exactly one parameter and no trailing comma",
             ReportOptions::default(),
         );
         let checkpoint = self.scratch_a.begin();
@@ -8439,7 +8498,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             if !self.context.contains(Context::AWAIT) {
                 self.report(
                     self.current_token.span(),
-                    "'for await' is only valid in async functions or modules",
+                    "'for await' is only valid in async functions or at the top level of modules",
                     ReportOptions::default(),
                 );
             }
@@ -9076,9 +9135,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             || is_ts && (is_angle_open(tag) || tag == TokenTag::LogicalNot))
             && max_left_precedence(left, &self.ast) >= Precedence::Call
         {
-            left = self
-                .parse_postfix_expression::<false, false>(left)?
-                .expression;
+            left = self.parse_postfix_expression::<false>(left)?;
         }
 
         loop {
@@ -9158,10 +9215,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::LogicalNot
                 if self.lang.is_typescript() && !token.has_line_terminator_before() =>
             {
-                return Some(
-                    self.parse_postfix_expression::<false, false>(left)?
-                        .expression,
-                );
+                return self.parse_postfix_expression::<false>(left);
             }
             _ => {}
         }
@@ -9978,7 +10032,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         if cover.has_trailing_comma {
                             self.report(
                                 spread.span(&self.ast),
-                                "Rest parameter must be last formal parameter",
+                                "A rest parameter cannot have a trailing comma",
                                 ReportOptions {
                                     help: Some(Cow::Borrowed(
                                         "Remove the trailing comma after the rest parameter",
@@ -11845,7 +11899,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let property = if token.tag() == TokenTag::PrivateIdentifier {
             PropertyKey::Expr(Expr::PrivateIdentifier(self.parse_private_identifier()?))
         } else {
-            PropertyKey::IdentifierName(self.parse_identifier_name()?)
+            // The tag check above already validated the name, so consume it
+            // directly instead of repeating the identifier-name checks.
+            self.advance_without_escape_check()?;
+            let name = self.identifier_name(token);
+            PropertyKey::IdentifierName(self.ast.identifier_name(token.span(), name))
         };
         Some(self.ast.expr_member_expression(
             Span::new(start, token.end()),
@@ -11908,10 +11966,27 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         ))
     }
 
+    // Only a `new` callee can end with pending type arguments, so other
+    // contexts return the bare expression in registers.
+    fn parse_postfix_expression<const DECORATOR: bool>(
+        &mut self,
+        expression: Expr,
+    ) -> Option<Expr> {
+        Some(
+            self.parse_postfix_chain::<false, DECORATOR>(expression)?
+                .expression,
+        )
+    }
+
+    fn parse_new_callee_postfix(&mut self, callee: Expr) -> Option<PostfixExpression> {
+        self.parse_postfix_chain::<true, false>(callee)
+    }
+
     // Ordinary suffixes only carry the expression and optional-chain state.
     // Type arguments are resolved separately when their opening token is found.
     // Fix the grammar context at each call site to remove per-suffix context checks.
-    fn parse_postfix_expression<const NEW_CALLEE: bool, const DECORATOR: bool>(
+    #[inline(always)]
+    fn parse_postfix_chain<const NEW_CALLEE: bool, const DECORATOR: bool>(
         &mut self,
         mut expression: Expr,
     ) -> Option<PostfixExpression> {
@@ -12207,7 +12282,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         let PostfixExpression {
             expression: callee,
             type_arguments,
-        } = self.parse_postfix_expression::<true, false>(callee)?;
+        } = self.parse_new_callee_postfix(callee)?;
         if self.ast.node_kind(callee.node_id()) == NodeKind::Super {
             self.report(
                 callee.span(&self.ast),
@@ -12305,7 +12380,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             _ => {
                 self.report(
                     property.span(),
-                    "The only valid meta properties for 'import' are 'import.meta', 'import.source()', or 'import.defer()'",
+                    "Expected 'import.meta', 'import.source()', 'import.defer()', or 'import.sync()'",
                     ReportOptions::default(),
                 );
                 return self.parse_meta_property(import_name);
@@ -13183,7 +13258,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 &self.speculation_key(),
                 TypeArgumentFailures::EXPRESSION | TypeArgumentFailures::PEEL,
             )
-            || self.lexer.mode() == LexerMode::Normal
+            || self.lexer.mode == LexerMode::Normal
                 && self
                     .type_argument_lookahead
                     .cannot_close(self.current_token.start())
@@ -13245,12 +13320,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: self.boundary_context,
             statement_context: self.statement_context as u8,
             module_detection: self.module_detection.speculation_key(),
-            lexer_mode: self.lexer.mode() as u8,
+            lexer_mode: self.lexer.mode as u8,
         }
     }
 
     fn type_arguments_can_close(&mut self) -> bool {
-        if self.lexer.mode() != LexerMode::Normal {
+        if self.lexer.mode != LexerMode::Normal {
             return true;
         }
         let mut lookahead = mem::take(&mut self.type_argument_lookahead);
@@ -13842,7 +13917,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.report(
             span,
             Cow::Owned(format!(
-                "'await' is reserved in an async/module context and cannot be used as {as_what}"
+                "'await' cannot be used as {as_what} in this context"
             )),
             ReportOptions::default(),
         );
@@ -14555,6 +14630,36 @@ mod tests {
             .iter()
             .map(|error| &source[error.span.start as usize..error.span.end as usize])
             .collect()
+    }
+
+    #[test]
+    fn numeric_literals() {
+        let errors = error_spans("10._1;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("10._e1;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("10_", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0b00_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0o00_;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x00_n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0.0_e0;", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0e+0_\n", Options::default());
+        assert_eq!(errors, ["_"]);
+
+        let errors = error_spans("0x_1;", Options::default());
+        assert_eq!(errors, ["_"]);
     }
 
     #[test]
@@ -16119,6 +16224,15 @@ mod tests {
         let flags = class_flags("export declare class /* marker\n continued */ Foo {}");
         assert_eq!(flags, (true, false, 0));
 
+        let flags = class_flags("@dec declare class Foo {}");
+        assert_eq!(flags, (true, false, 0));
+
+        let flags = class_flags("export @dec declare class Foo {}");
+        assert_eq!(flags, (true, false, 0));
+
+        let flags = class_flags("@dec export declare abstract class Foo {}");
+        assert_eq!(flags, (true, true, 0));
+
         let flags = class_flags(
             "abstract class\nFoo { protected abstract readonly foo: number; public static method() {} }",
         );
@@ -16818,6 +16932,15 @@ mod tests {
         let parsed = parse_tokens(&allocator, source);
         assert_eq!(parsed.diagnostics.len(), 1);
         assert!(parsed.ast.root_program().body(&parsed.ast).is_empty());
+
+        let errors = error_spans("function f(...a,) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
+
+        let errors = error_spans("async function f(...a,) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
+
+        let errors = error_spans("function f(...a, b) {}", Options::default());
+        assert_eq!(errors, ["...a,"]);
     }
 
     #[test]

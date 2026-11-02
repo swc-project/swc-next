@@ -48,8 +48,15 @@ jobs:
 
   release_crates:
     name: Release crates
-    if: inputs.release_crates
-    needs: validate
+    if: >-
+      inputs.release_crates && !cancelled() &&
+      needs.validate.result == 'success' &&
+      needs.build_npm.result == 'success' &&
+      needs.build_wasm.result == 'success'
+    needs:
+      - validate
+      - build_npm
+      - build_wasm
     runs-on: ubuntu-latest
     environment: crates
     permissions:
@@ -80,7 +87,7 @@ jobs:
 
   build_npm:
     name: Build ${{ matrix.target }}
-    if: inputs.release_npm
+    if: inputs.release_crates || inputs.release_npm
     needs: validate
     runs-on: ${{ matrix.os }}
     strategy:
@@ -96,12 +103,16 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             extra_args: --use-napi-cross
+            target_cc: /usr/bin/clang
+            llvm_target: aarch64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
             extra_args: --cross-compile
           - os: ubuntu-latest
             target: powerpc64le-unknown-linux-gnu
             extra_args: --use-napi-cross
+            target_cc: /usr/bin/clang
+            llvm_target: ppc64le
           - os: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
             extra_args: ""
@@ -111,6 +122,8 @@ jobs:
           - os: ubuntu-latest
             target: s390x-unknown-linux-gnu
             extra_args: --use-napi-cross
+            target_cc: /usr/bin/clang
+            llvm_target: systemz
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             extra_args: --use-napi-cross
@@ -147,6 +160,26 @@ jobs:
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: 0.14.1
+
+      # NAPI's bundled GCC does not support mimalloc's date-time warning flag.
+      # https://github.com/swc-project/swc-next/pull/1409
+      - name: Set up Clang for GNU cross builds
+        if: matrix.target_cc != ''
+        shell: bash
+        env:
+          TARGET_CC: ${{ matrix.target_cc }}
+          LLVM_TARGET: ${{ matrix.llvm_target }}
+        run: |
+          if ! command -v "$TARGET_CC" >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes clang
+          fi
+          "$TARGET_CC" --version
+          "$TARGET_CC" --print-targets | grep --word-regexp "$LLVM_TARGET" || {
+            echo "::error::Clang does not support the $LLVM_TARGET target"
+            exit 1
+          }
+          echo "TARGET_CC=$TARGET_CC" >> "$GITHUB_ENV"
 
       - name: Install RISC-V GNU cross compiler
         if: matrix.target == 'riscv64gc-unknown-linux-gnu'
@@ -201,7 +234,7 @@ jobs:
 
   build_wasm:
     name: Build wasm32-unknown-unknown
-    if: inputs.release_npm
+    if: inputs.release_crates || inputs.release_npm
     needs: validate
     runs-on: ubuntu-latest
     steps:
@@ -246,11 +279,17 @@ jobs:
 
   release_npm:
     name: Release NPM packages
-    if: inputs.release_npm
+    if: >-
+      inputs.release_npm && !cancelled() &&
+      needs.validate.result == 'success' &&
+      needs.build_npm.result == 'success' &&
+      needs.build_wasm.result == 'success' &&
+      (!inputs.release_crates || needs.release_crates.result == 'success')
     needs:
       - validate
       - build_npm
       - build_wasm
+      - release_crates
     runs-on: ubuntu-latest
     environment: npm
     permissions:

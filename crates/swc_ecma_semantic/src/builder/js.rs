@@ -291,7 +291,7 @@ pub(super) fn check_unary_expression(
         {
             builder.report(
                 builder.ast.span(expression.node_id()),
-                "Private fields cannot be deleted",
+                "Private properties cannot be deleted",
                 ReportOptions::default(),
             );
         }
@@ -386,13 +386,8 @@ pub(super) fn check_member_expression(
     {
         builder.report(
             builder.ast.span(expression.node_id()),
-            "'super' property access is only valid inside a method or class body",
-            ReportOptions {
-                help: Some(Cow::Borrowed(
-                    "Use an arrow function instead of a regular function to inherit the 'super' binding",
-                )),
-                ..ReportOptions::default()
-            },
+            "'super' property access is not allowed in this context",
+            ReportOptions::default(),
         );
     }
     let property = expression.property(builder.ast).node_id();

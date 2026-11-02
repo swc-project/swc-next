@@ -97,10 +97,6 @@ enum ConsumeUnicodeContext {
 #[derive(Clone, Debug)]
 pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     source: &'a [u8],
-    /// The source length in [`LexerMode::Normal`] and zero in other modes, so the
-    /// bounds check of [`Self::try_next_token`] also rejects other modes.
-    /// Never exceeds `source.len()`.
-    fast_len: u32,
 
     /// Whether Annex B HTML-like comments are recognized.
     allow_html_like_comments: bool,
@@ -113,13 +109,11 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Annex B comments which become errors if an unambiguous program resolves
     /// to a module.
     pub(crate) module_mode_errors: ArenaVec<'a, Span>,
-    /// A `u32` keeps the lexer at 128 bytes, so the parser lays it out first.
-    /// Each comment spans at least two source bytes, so the count fits.
-    pub(crate) processed_comments: u32,
+    pub(crate) processed_comments: usize,
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
-    mode: LexerMode,
+    pub(crate) mode: LexerMode,
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
@@ -156,7 +150,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             tokens,
             collect_comments,
             source: source.as_bytes(),
-            fast_len: source.len() as u32,
             cursor: 0,
             allow_html_like_comments,
             hashbang: None,
@@ -197,20 +190,6 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Reads the next token into `target`. `target` must hold the last token
     /// read, or an `Eof` placeholder before the first token.
     #[inline]
-    pub(crate) fn mode(&self) -> LexerMode {
-        self.mode
-    }
-
-    #[inline]
-    pub(crate) fn set_mode(&mut self, mode: LexerMode) {
-        self.mode = mode;
-        self.fast_len = match mode {
-            LexerMode::Normal => self.source.len() as u32,
-            LexerMode::JsxTag => 0,
-        };
-    }
-
-    #[inline]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
         self.handle_token(*target, HandleTokenMode::Append);
@@ -224,17 +203,15 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// which stays clear between tokens.
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
+        if self.mode != LexerMode::Normal {
+            return self.try_next_jsx_tag_token(target);
+        }
+
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
-        // `fast_len` is zero outside the normal mode.
-        if start >= self.fast_len {
-            if self.mode != LexerMode::Normal {
-                return self.try_next_jsx_tag_token(target);
-            }
+        let Some(mut byte) = self.source.get(start as usize).copied() else {
             return false;
-        }
-        // SAFETY: `start < fast_len <= source.len()`.
-        let mut byte = unsafe { *self.source.get_unchecked(start as usize) };
+        };
         if byte == b' ' {
             start += 1;
             let Some(next) = self.source.get(start as usize).copied() else {
@@ -591,7 +568,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
 
-        if (self.processed_comments as usize) < self.comments.len() {
+        if self.processed_comments < self.comments.len() {
             self.attach_pending_comments(token);
         }
         self.state.previous_token_tag = Some(token.tag());
@@ -601,7 +578,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// and the scanner that does attaches its comments to the token it reads.
     #[inline(always)]
     fn handle_fast_token(&mut self, token: Token) {
-        debug_assert_eq!(self.processed_comments as usize, self.comments.len());
+        debug_assert_eq!(self.processed_comments, self.comments.len());
         if self.config.tokens() {
             self.tokens.push(token);
         }
@@ -984,10 +961,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         if tag == TokenTag::NumericLiteral && self.peek(0) == b'.' {
             let next = self.peek(1);
+            self.cursor += 1;
             if next == b'_' {
                 return Err(LexicalError::NumericSeparatorMisuse);
             }
-            self.cursor += 1;
             has_decimal_or_exponent = true;
             if next.is_ascii_digit() {
                 self.consume_decimal_digits()?;
@@ -1047,6 +1024,8 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         }
 
         if last_was_separator {
+            // Report the separator rather than the character following it.
+            self.cursor -= 1;
             return Err(LexicalError::NumericSeparatorMisuse);
         }
         Ok(())
@@ -1627,10 +1606,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
-            for comment in &mut self.comments[self.processed_comments as usize..] {
+            for comment in &mut self.comments[self.processed_comments..] {
                 comment.attached_to = self.state.prev_token_end;
             }
-            self.processed_comments = self.comments.len() as u32 + 1;
+            self.processed_comments = self.comments.len() + 1;
         }
         self.comments.push(comment);
         Ok(())
@@ -1648,11 +1627,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             (CommentPosition::Leading, token.start())
         };
 
-        for comment in &mut self.comments[self.processed_comments as usize..] {
+        for comment in &mut self.comments[self.processed_comments..] {
             comment.position = position;
             comment.attached_to = attached_to;
         }
-        self.processed_comments = self.comments.len() as u32;
+        self.processed_comments = self.comments.len();
     }
 
     fn scan_line_comment(&mut self) -> Result<(), LexicalError> {
@@ -2043,9 +2022,7 @@ pub fn lexical_error_message(error_type: LexicalError) -> &'static str {
             "Hexadecimal literal must contain at least one hex digit"
         }
         LexicalError::InvalidExponentPart => "Exponent part is missing a number",
-        LexicalError::NumericSeparatorMisuse => {
-            "Numeric separator cannot appear at the end of a numeric literal"
-        }
+        LexicalError::NumericSeparatorMisuse => "Numeric separators must appear between digits",
         LexicalError::ConsecutiveNumericSeparators => {
             "Numeric literal cannot contain consecutive separators"
         }
@@ -2110,7 +2087,7 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
             "Try adding digits here after the exponent (e.g., e10, e-5, E+2)"
         }
         LexicalError::NumericSeparatorMisuse => {
-            "Try removing the trailing underscore here or adding more digits after it"
+            "Remove the separator or place it between two digits"
         }
         LexicalError::ConsecutiveNumericSeparators => {
             "Try removing one of the consecutive underscores here"
@@ -2133,98 +2110,183 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
+/// Keywords and contextual keywords with their token tags.
+const KEYWORDS: [(&[u8], TokenTag); 85] = [
+    (b"if", TokenTag::If),
+    (b"of", TokenTag::Of),
+    (b"in", TokenTag::In),
+    (b"do", TokenTag::Do),
+    (b"as", TokenTag::As),
+    (b"is", TokenTag::Is),
+    (b"any", TokenTag::Any),
+    (b"for", TokenTag::For),
+    (b"get", TokenTag::Get),
+    (b"let", TokenTag::Let),
+    (b"new", TokenTag::New),
+    (b"out", TokenTag::Out),
+    (b"set", TokenTag::Set),
+    (b"try", TokenTag::Try),
+    (b"var", TokenTag::Var),
+    (b"case", TokenTag::Case),
+    (b"this", TokenTag::This),
+    (b"else", TokenTag::Else),
+    (b"enum", TokenTag::Enum),
+    (b"void", TokenTag::Void),
+    (b"with", TokenTag::With),
+    (b"null", TokenTag::NullLiteral),
+    (b"type", TokenTag::Type),
+    (b"true", TokenTag::True),
+    (b"from", TokenTag::From),
+    (b"await", TokenTag::Await),
+    (b"async", TokenTag::Async),
+    (b"break", TokenTag::Break),
+    (b"const", TokenTag::Const),
+    (b"class", TokenTag::Class),
+    (b"catch", TokenTag::Catch),
+    (b"defer", TokenTag::Defer),
+    (b"false", TokenTag::False),
+    (b"infer", TokenTag::Infer),
+    (b"keyof", TokenTag::Keyof),
+    (b"never", TokenTag::Never),
+    (b"super", TokenTag::Super),
+    (b"throw", TokenTag::Throw),
+    (b"using", TokenTag::Using),
+    (b"while", TokenTag::While),
+    (b"yield", TokenTag::Yield),
+    (b"assert", TokenTag::Assert),
+    (b"bigint", TokenTag::Bigint),
+    (b"delete", TokenTag::Delete),
+    (b"export", TokenTag::Export),
+    (b"global", TokenTag::Global),
+    (b"import", TokenTag::Import),
+    (b"module", TokenTag::Module),
+    (b"number", TokenTag::Number),
+    (b"object", TokenTag::Object),
+    (b"public", TokenTag::Public),
+    (b"return", TokenTag::Return),
+    (b"source", TokenTag::Source),
+    (b"static", TokenTag::Static),
+    (b"string", TokenTag::String),
+    (b"switch", TokenTag::Switch),
+    (b"symbol", TokenTag::Symbol),
+    (b"typeof", TokenTag::Typeof),
+    (b"unique", TokenTag::Unique),
+    (b"boolean", TokenTag::Boolean),
+    (b"declare", TokenTag::Declare),
+    (b"default", TokenTag::Default),
+    (b"extends", TokenTag::Extends),
+    (b"finally", TokenTag::Finally),
+    (b"package", TokenTag::Package),
+    (b"private", TokenTag::Private),
+    (b"require", TokenTag::Require),
+    (b"unknown", TokenTag::Unknown),
+    (b"abstract", TokenTag::Abstract),
+    (b"continue", TokenTag::Continue),
+    (b"debugger", TokenTag::Debugger),
+    (b"function", TokenTag::Function),
+    (b"readonly", TokenTag::Readonly),
+    (b"satisfies", TokenTag::Satisfies),
+    (b"undefined", TokenTag::Undefined),
+    (b"accessor", TokenTag::Accessor),
+    (b"interface", TokenTag::Interface),
+    (b"namespace", TokenTag::Namespace),
+    (b"protected", TokenTag::Protected),
+    (b"asserts", TokenTag::Asserts),
+    (b"intrinsic", TokenTag::Intrinsic),
+    (b"override", TokenTag::Override),
+    (b"constructor", TokenTag::Constructor),
+    (b"implements", TokenTag::Implements),
+    (b"instanceof", TokenTag::Instanceof),
+];
+
+/// The length of the longest entry in [`KEYWORDS`].
+const MAX_KEYWORD_LEN: usize = 11;
+
+/// The multiplier of the keyword hash. It maps every entry in [`KEYWORDS`] to a
+/// different slot; [`build_keyword_table`] rejects a collision at compile time.
+const KEYWORD_HASH_MULTIPLIER: u64 = 0xf52b_5853_3d7a_32d9;
+
+/// A keyword hash table slot. `lo` holds bytes 0..8 and `hi` holds bytes 8..
+/// of the zero-padded keyword in little-endian order. Empty slots hold zero
+/// words, which no identifier matches.
+#[derive(Clone, Copy)]
+#[repr(align(16))]
+struct KeywordSlot {
+    lo: u64,
+    hi: u32,
+    tag: TokenTag,
+}
+
+static KEYWORD_TABLE: [KeywordSlot; 256] = build_keyword_table();
+
+#[inline(always)]
+const fn keyword_hash(lo: u64, hi: u32) -> usize {
+    (lo.wrapping_add(hi as u64)
+        .wrapping_mul(KEYWORD_HASH_MULTIPLIER)
+        >> 56) as usize
+}
+
+const fn build_keyword_table() -> [KeywordSlot; 256] {
+    let mut table = [KeywordSlot {
+        lo: 0,
+        hi: 0,
+        tag: TokenTag::Identifier,
+    }; 256];
+    let mut i = 0;
+    while i < KEYWORDS.len() {
+        let (keyword, tag) = KEYWORDS[i];
+        assert!(keyword.len() >= 2 && keyword.len() <= MAX_KEYWORD_LEN);
+        let mut bytes = [0u8; 16];
+        let mut j = 0;
+        while j < keyword.len() {
+            bytes[j] = keyword[j];
+            j += 1;
+        }
+        let lo = u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let hi = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+        let slot = keyword_hash(lo, hi);
+        assert!(table[slot].lo == 0, "keyword hash collision");
+        table[slot] = KeywordSlot { lo, hi, tag };
+        i += 1;
+    }
+    table
+}
+
 // INLINE: This is a very hot path. Reuse identifier bytes
 // already loaded by the caller and avoid preserving
 // token state across a separate keyword-lookup call.
 #[inline(always)]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
-    match lexeme {
-        b"if" => TokenTag::If,
-        b"of" => TokenTag::Of,
-        b"in" => TokenTag::In,
-        b"do" => TokenTag::Do,
-        b"as" => TokenTag::As,
-        b"is" => TokenTag::Is,
-        b"any" => TokenTag::Any,
-        b"for" => TokenTag::For,
-        b"get" => TokenTag::Get,
-        b"let" => TokenTag::Let,
-        b"new" => TokenTag::New,
-        b"out" => TokenTag::Out,
-        b"set" => TokenTag::Set,
-        b"try" => TokenTag::Try,
-        b"var" => TokenTag::Var,
-        b"case" => TokenTag::Case,
-        b"this" => TokenTag::This,
-        b"else" => TokenTag::Else,
-        b"enum" => TokenTag::Enum,
-        b"void" => TokenTag::Void,
-        b"with" => TokenTag::With,
-        b"null" => TokenTag::NullLiteral,
-        b"type" => TokenTag::Type,
-        b"true" => TokenTag::True,
-        b"from" => TokenTag::From,
-        b"await" => TokenTag::Await,
-        b"async" => TokenTag::Async,
-        b"break" => TokenTag::Break,
-        b"const" => TokenTag::Const,
-        b"class" => TokenTag::Class,
-        b"catch" => TokenTag::Catch,
-        b"defer" => TokenTag::Defer,
-        b"false" => TokenTag::False,
-        b"infer" => TokenTag::Infer,
-        b"keyof" => TokenTag::Keyof,
-        b"never" => TokenTag::Never,
-        b"super" => TokenTag::Super,
-        b"throw" => TokenTag::Throw,
-        b"using" => TokenTag::Using,
-        b"while" => TokenTag::While,
-        b"yield" => TokenTag::Yield,
-        b"assert" => TokenTag::Assert,
-        b"bigint" => TokenTag::Bigint,
-        b"delete" => TokenTag::Delete,
-        b"export" => TokenTag::Export,
-        b"global" => TokenTag::Global,
-        b"import" => TokenTag::Import,
-        b"module" => TokenTag::Module,
-        b"number" => TokenTag::Number,
-        b"object" => TokenTag::Object,
-        b"public" => TokenTag::Public,
-        b"return" => TokenTag::Return,
-        b"source" => TokenTag::Source,
-        b"static" => TokenTag::Static,
-        b"string" => TokenTag::String,
-        b"switch" => TokenTag::Switch,
-        b"symbol" => TokenTag::Symbol,
-        b"typeof" => TokenTag::Typeof,
-        b"unique" => TokenTag::Unique,
-        b"boolean" => TokenTag::Boolean,
-        b"declare" => TokenTag::Declare,
-        b"default" => TokenTag::Default,
-        b"extends" => TokenTag::Extends,
-        b"finally" => TokenTag::Finally,
-        b"package" => TokenTag::Package,
-        b"private" => TokenTag::Private,
-        b"require" => TokenTag::Require,
-        b"unknown" => TokenTag::Unknown,
-        b"abstract" => TokenTag::Abstract,
-        b"continue" => TokenTag::Continue,
-        b"debugger" => TokenTag::Debugger,
-        b"function" => TokenTag::Function,
-        b"readonly" => TokenTag::Readonly,
-        b"satisfies" => TokenTag::Satisfies,
-        b"undefined" => TokenTag::Undefined,
-        b"accessor" => TokenTag::Accessor,
-        b"interface" => TokenTag::Interface,
-        b"namespace" => TokenTag::Namespace,
-        b"protected" => TokenTag::Protected,
-        b"asserts" => TokenTag::Asserts,
-        b"intrinsic" => TokenTag::Intrinsic,
-        b"override" => TokenTag::Override,
-        b"constructor" => TokenTag::Constructor,
-        b"implements" => TokenTag::Implements,
-        b"instanceof" => TokenTag::Instanceof,
-        _ => TokenTag::Identifier,
+    let len = lexeme.len();
+    // Pack the lexeme into zero-padded little-endian words. Two overlapping
+    // loads cover every length in a class; their shared bytes are equal, so
+    // OR-ing the shifted end load onto the start load is exact.
+    let (lo, hi) = match len {
+        2..=3 => {
+            let start = u64::from(u16::from_le_bytes([lexeme[0], lexeme[1]]));
+            let end = u64::from(u16::from_le_bytes([lexeme[len - 2], lexeme[len - 1]]));
+            (start | (end << (8 * (len - 2))), 0)
+        }
+        4..=7 => {
+            let start = u64::from(u32::from_le_bytes(lexeme[..4].try_into().unwrap()));
+            let end = u64::from(u32::from_le_bytes(lexeme[len - 4..].try_into().unwrap()));
+            (start | (end << (8 * (len - 4))), 0)
+        }
+        8..=MAX_KEYWORD_LEN => {
+            let start = u64::from_le_bytes(lexeme[..8].try_into().unwrap());
+            let end = u64::from_le_bytes(lexeme[len - 8..].try_into().unwrap());
+            // Keep bytes 8..len, which are the top `len - 8` bytes of `end`.
+            (start, ((end >> (8 * (15 - len))) >> 8) as u32)
+        }
+        _ => return TokenTag::Identifier,
+    };
+    let slot = &KEYWORD_TABLE[keyword_hash(lo, hi)];
+    if slot.lo == lo && slot.hi == hi {
+        slot.tag
+    } else {
+        TokenTag::Identifier
     }
 }
 
@@ -2268,6 +2330,37 @@ mod tests {
 
         let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
         assert_eq!(ignoring.comments.capacity(), 0);
+    }
+
+    fn listed_keyword_type(lexeme: &[u8]) -> TokenTag {
+        KEYWORDS
+            .iter()
+            .find(|(keyword, _)| *keyword == lexeme)
+            .map_or(TokenTag::Identifier, |&(_, tag)| tag)
+    }
+
+    #[test]
+    fn keywords() {
+        for (keyword, tag) in KEYWORDS {
+            assert_eq!(get_keyword_type(keyword), tag);
+
+            let mut variants = vec![
+                keyword[..keyword.len() - 1].to_vec(),
+                [keyword, b"x"].concat(),
+            ];
+            for i in 0..keyword.len() {
+                let mut changed = keyword.to_vec();
+                changed[i] = b'_';
+                variants.push(changed);
+            }
+            for variant in variants {
+                assert_eq!(get_keyword_type(&variant), listed_keyword_type(&variant));
+            }
+        }
+
+        assert_eq!(get_keyword_type(b"a"), TokenTag::Identifier);
+
+        assert_eq!(get_keyword_type(b"constructors"), TokenTag::Identifier);
     }
 
     #[test]

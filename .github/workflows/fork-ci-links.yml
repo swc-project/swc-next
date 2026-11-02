@@ -2,7 +2,7 @@ name: Fork CI Links
 
 on:
   workflow_run:
-    workflows: [Binary Size, Gungraun Benchmarks, JavaScript API Gungraun]
+    workflows: [Binary Size, Profile Performance, JavaScript API Gungraun]
     types: [completed]
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
             const event = context.payload.workflow_run;
             const workflows = new Map([
               ['.github/workflows/binary-size.yml', 'Binary Size'],
-              ['.github/workflows/gungraun.yml', 'Gungraun Benchmarks'],
+              ['.github/workflows/profile-perf.yml', 'Profile Performance'],
               ['.github/workflows/gungraun-js.yml', 'JavaScript API Gungraun'],
             ]);
             const conclusions = new Set([

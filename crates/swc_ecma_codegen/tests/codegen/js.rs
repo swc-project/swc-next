@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange, UnaryOperator,
+    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind,
+    SourceType, Stmt, StmtData, SubRange, UnaryOperator,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -13,14 +13,16 @@ use crate::{
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
-    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+    expect_token_boundary_with_options(source, expected, ParseOptions::default());
+}
 
+#[track_caller]
+fn expect_token_boundary_with_options(source: &str, expected: &str, parse_options: ParseOptions) {
     let print_options = PrintOptions {
         minify: true,
         ..PrintOptions::default()
     };
     let allocator = Allocator::new();
-    let parse_options = ParseOptions::default();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
     let compact = print(&original.ast, print_options.clone());
@@ -88,6 +90,86 @@ fn test_print_result_ownership() {
 }
 
 #[test]
+fn test_minify_computed_properties() {
+    expect_printed_minify("({get [x](){}});", "({get[x](){}});");
+
+    expect_printed_minify("({set [x](v){}});", "({set[x](v){}});");
+
+    expect_printed_minify("({get \"0\"(){}});", "({get\"0\"(){}});");
+
+    expect_printed_minify("({set \"0\"(v){}});", "({set\"0\"(v){}});");
+
+    expect_printed_minify("class C{static get [x](){}}", "class C{static get[x](){}}");
+
+    expect_printed_minify("class C{get \"x\"(){}}", "class C{get\"x\"(){}}");
+
+    expect_printed_minify("class C{get x(){}}", "class C{get x(){}}");
+}
+
+#[test]
+fn test_minify_class_modifiers() {
+    expect_printed_minify("class C{static [x](){}}", "class C{static[x](){}}");
+
+    expect_printed_minify("class C{static *[x](){}}", "class C{static*[x](){}}");
+
+    expect_printed_minify("class C{static {}}", "class C{static{}}");
+}
+
+#[test]
+fn test_minify_keyword_expressions() {
+    expect_printed_minify("class C extends (a,b){}", "class C extends(a,b){}");
+
+    expect_printed_minify(
+        "export default \"x\" in value;",
+        "export default\"x\"in value;",
+    );
+}
+
+#[test]
+fn test_minify_empty_bodies() {
+    expect_printed_minify("do;while(false);", "do;while(false)");
+
+    expect_printed_minify("if(a)b();else;", "if(a)b();else;");
+}
+
+#[test]
+fn test_minify_iteration_spacing() {
+    expect_printed_minify("for (a in {});", "for(a in{});");
+
+    expect_printed_minify("for (a of []);", "for(a of[]);");
+
+    expect_printed_minify("`${\"x\" in {x:1}}`;", "`${\"x\"in{x:1}}`;");
+}
+
+#[test]
+fn test_minify_keyword_spacing() {
+    expect_printed_minify("function f(){return [1]}", "function f(){return[1]}");
+
+    expect_printed_minify("function* f(){yield [1]}", "function*f(){yield[1]}");
+
+    expect_printed_minify(
+        "function*g(){return yield*x}",
+        "function*g(){return yield*x}",
+    );
+
+    expect_printed_minify("typeof [];", "typeof[];");
+
+    expect_printed_minify("void [];", "void[];");
+
+    expect_printed_minify("delete (x+y).p;", "delete(x+y).p;");
+
+    expect_printed_minify("()=>{return async()=>0}", "()=>{return async()=>0};");
+
+    expect_printed_minify("function f(){return value}", "function f(){return value}");
+}
+
+#[test]
+#[ignore = "minified numeric member expressions do not choose the shortest literal"]
+fn test_minify_numeric_member() {
+    expect_printed_minify("4294967295 .x;", "0xffffffff.x;");
+}
+
+#[test]
 fn test_expression_token_boundaries() {
     expect_token_boundary("await true", "await true;");
 
@@ -110,7 +192,7 @@ fn test_expression_token_boundaries() {
 
     expect_token_boundary("new this", "new this;");
 
-    expect_token_boundary("new new C", "new new C();");
+    expect_token_boundary("new new C", "new new C;");
 
     expect_token_boundary("throw true", "throw true;");
 
@@ -294,10 +376,10 @@ fn test_empty_statement_delimiters() {
 
     expect_empty_statement(
         "function f(){do ; while(false);}",
-        "function f(){do ;while(false);}",
+        "function f(){do;while(false)}",
     );
 
-    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else ;}");
+    expect_empty_statement("function f(){if(a);else;}", "function f(){if(a);else;}");
 
     expect_printed_minify("function f(){x();}", "function f(){x()}");
 
@@ -797,6 +879,38 @@ fn test_update_expression_parentheses() {
 }
 
 #[test]
+#[ignore = "minified BigInt literals do not yet choose the shortest representation"]
+fn test_minify_bigint() {
+    expect_printed_minify("0x33333333n;", "858993459n;");
+
+    expect_printed_minify("0b1010n;", "10n;");
+
+    expect_printed_minify("0x0001n;", "1n;");
+
+    expect_printed_minify("123456789012345678901n;", "0x6b14e9f812f366c35n;");
+}
+
+#[test]
+fn test_minify_do_while() {
+    expect_printed_minify("do {} while (false);", "do{}while(false)");
+
+    expect_printed_minify(
+        "if (a) do {} while (b); else x();",
+        "if(a)do{}while(b)else x();",
+    );
+
+    expect_printed_minify(
+        "do {} while (false); /x/.test('x');",
+        "do{}while(false)/x/.test(\"x\");",
+    );
+
+    expect_printed_minify(
+        "do do; while (false); while (false);",
+        "do do;while(false)while(false)",
+    );
+}
+
+#[test]
 fn test_parenthesized_comments() {
     expect_stable(
         "function f() { (/* first */ /* second */ value); }",
@@ -864,13 +978,13 @@ fn test_yield_comments() {
 
     expect_stable_with_parens(
         "function* f() { yield* /*a\nb*/ xs; }",
-        "function*f(){yield* (/*a\nb*/xs)}",
+        "function*f(){yield*(/*a\nb*/xs)}",
         &minified,
     );
 
     expect_stable_with_parens(
         "function* f() { yield* // a\nxs; }",
-        "function*f(){yield* (// a\nxs)}",
+        "function*f(){yield*(// a\nxs)}",
         &minified,
     );
 }
@@ -950,21 +1064,21 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ class {} + 1) + 2;",
-        "export default /* a */(class{})+1+2;",
+        "export default/* a */(class{})+1+2;",
         minified.clone(),
         false,
     );
 
     expect_export_default_expression(
         "export default (/* a */ function(){} && 1) && 2;",
-        "export default /* a */(function(){})&&1&&2;",
+        "export default/* a */(function(){})&&1&&2;",
         minified.clone(),
         false,
     );
@@ -978,24 +1092,24 @@ fn test_export_default_comments() {
 
     expect_export_default_expression(
         "export default (/* a */ function(){} + 1) + 2;",
-        "export default (/* a */function(){}+1)+2;",
+        "export default(/* a */function(){}+1)+2;",
         minified,
         true,
     );
 
     expect_printed_minify(
         "export default (function(){} + 1) + 2;",
-        "export default (function(){})+1+2;",
+        "export default(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default /* a */ (function(){} + 1) + 2;",
-        "export default /* a */(function(){})+1+2;",
+        "export default/* a */(function(){})+1+2;",
     );
 
     expect_printed_minify(
         "export default (/* a */ function(){} + 1) * 2;",
-        "export default /* a */(function(){}+1)*2;",
+        "export default/* a */(function(){}+1)*2;",
     );
 
     expect_stable(
@@ -1063,26 +1177,26 @@ fn expect_statement_body(source: &str, expected: &str) {
 
 #[test]
 fn test_do_while_statement_bodies() {
-    expect_statement_body("do debugger; while(false);", "do debugger;while(false);");
+    expect_statement_body("do debugger; while(false);", "do debugger;while(false)");
 
-    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b);");
+    expect_statement_body("do if(a) break; while(b);", "do if(a)break;while(b)");
 
     expect_statement_body(
         "function f(){ do return 1; while(false); }",
-        "function f(){do return 1;while(false);}",
+        "function f(){do return 1;while(false)}",
     );
 
-    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b);");
+    expect_statement_body("do for(;a;) break; while(b);", "do for(;a;)break;while(b)");
 
-    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b);");
+    expect_statement_body("do while(a) break; while(b);", "do while(a)break;while(b)");
 
-    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b);");
+    expect_statement_body("do switch(a){} while(b);", "do switch(a){}while(b)");
 
-    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b);");
+    expect_statement_body("do try{} finally{} while(b);", "do try{}finally{}while(b)");
 
-    expect_statement_body("do break; while(false);", "do break;while(false);");
+    expect_statement_body("do break; while(false);", "do break;while(false)");
 
-    expect_statement_body("do continue; while(false);", "do continue;while(false);");
+    expect_statement_body("do continue; while(false);", "do continue;while(false)");
 }
 
 #[test]
@@ -1096,7 +1210,7 @@ fn test_else_statement_bodies() {
 
     expect_statement_body(
         "if(a) x(); else do y(); while(b);",
-        "if(a)x();else do y();while(b);",
+        "if(a)x();else do y();while(b)",
     );
 
     expect_statement_body(
@@ -1124,11 +1238,11 @@ fn test_else_statement_bodies() {
 
 #[test]
 fn test_statement_body_formatting() {
-    expect_statement_body("do x(); while(false);", "do x();while(false);");
+    expect_statement_body("do x(); while(false);", "do x();while(false)");
 
     expect_statement_body("if(a) x(); else y();", "if(a)x();else y();");
 
-    expect_statement_body("do { x(); } while(false);", "do{x()}while(false);");
+    expect_statement_body("do { x(); } while(false);", "do{x()}while(false)");
 
     expect_statement_body("if(a) { x(); } else { y(); }", "if(a){x()}else{y()}");
 
@@ -1193,6 +1307,26 @@ fn test_array_pattern_rest_after_elision() {
 }
 
 #[test]
+fn test_for_initializer_comments() {
+    let script_options = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    expect_token_boundary_with_options(
+        "for (/*keep*/(let)[0];false;);",
+        "for(/*keep*/(let)[0];false;);",
+        script_options,
+    );
+
+    expect_token_boundary_with_options(
+        "for (// keep\n(let)[0];false;);",
+        "for(// keep\n(let)[0];false;);",
+        script_options,
+    );
+}
+
+#[test]
 fn test_for_initializer_nested_in_context() {
     expect_stable(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
@@ -1200,11 +1334,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (obj = { get ["x" in empty]() {}, value: "x" in empty }; ;);"#,
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_printed_minify(
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
-        "for(obj={get [\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
+        "for(obj={get[\"x\"in empty](){},value:\"x\"in empty};;);",
     );
     expect_stable(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
@@ -1212,11 +1346,11 @@ fn test_for_initializer_nested_in_context() {
     );
     expect_printed_minify(
         r#"for (C = class { get ["x" in empty]() {} static set ["x" in empty](value) {} }; ;);"#,
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
     expect_printed_minify(
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
-        "for(C=class{get [\"x\"in empty](){}static set [\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
+        "for(C=class{get[\"x\"in empty](){}static set[\"x\"in empty](value){}};;);",
     );
 }
 

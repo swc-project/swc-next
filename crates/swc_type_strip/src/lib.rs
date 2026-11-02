@@ -1019,8 +1019,23 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             return;
         }
 
-        if declaration.is_some_and(|declaration| is_whole_type_declaration(declaration, self.ast)) {
-            self.erase_statement(container);
+        if let Some(declaration) = declaration
+            && is_whole_type_declaration(declaration, self.ast)
+        {
+            // Decorators before `export` (`@dec export declare class C {}`) precede
+            // the statement span and must be erased with it.
+            let start = declaration
+                .as_class(self.ast)
+                .and_then(|class| class.decorators(self.ast).first())
+                .map_or(container.start, |decorator| {
+                    let start = self
+                        .ast
+                        .get_node_in_sub_range(decorator)
+                        .span(self.ast)
+                        .start;
+                    start.min(container.start)
+                });
+            self.erase_statement(Span::new(start, container.end));
             return;
         }
 

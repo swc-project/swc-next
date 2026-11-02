@@ -132,17 +132,11 @@ const CONT_MASK: u8 = 0b0011_1111;
 /// This does **not** include the WTF-8 concatenation check.
 #[inline]
 pub fn push_code_point(string: &mut Wtf8Buf, code_point: CodePoint) {
-    let cur_len = string.len();
-    // This may use up to 4 bytes.
-    string.reserve(4);
-
-    unsafe {
-        // Attempt to not use an intermediate buffer by just pushing bytes
-        // directly onto this string.
-        let slice = slice::from_raw_parts_mut(string.bytes.as_mut_ptr().add(cur_len), 4);
-        let used = encode_utf8_raw(code_point.to_u32(), slice).unwrap_or(0);
-        string.bytes.set_len(cur_len + used);
-    }
+    // Encode into a stack buffer first: forming a `&mut [u8]` over the
+    // Vec's uninitialized spare capacity would be undefined behavior.
+    let mut buf = [0u8; 4];
+    let used = encode_utf8_raw(code_point.to_u32(), &mut buf).unwrap_or(0);
+    string.bytes.extend_from_slice(&buf[..used]);
 }
 
 /// Copied from core::str::StrPrelude::is_char_boundary
