@@ -51,9 +51,8 @@ jobs:
     if: >-
       inputs.release_crates && !cancelled() &&
       needs.validate.result == 'success' &&
-      (!inputs.release_npm ||
-        (needs.build_npm.result == 'success' &&
-         needs.build_wasm.result == 'success'))
+      needs.build_npm.result == 'success' &&
+      needs.build_wasm.result == 'success'
     needs:
       - validate
       - build_npm
@@ -88,7 +87,7 @@ jobs:
 
   build_npm:
     name: Build ${{ matrix.target }}
-    if: inputs.release_npm
+    if: inputs.release_crates || inputs.release_npm
     needs: validate
     runs-on: ${{ matrix.os }}
     strategy:
@@ -209,7 +208,7 @@ jobs:
 
   build_wasm:
     name: Build wasm32-unknown-unknown
-    if: inputs.release_npm
+    if: inputs.release_crates || inputs.release_npm
     needs: validate
     runs-on: ubuntu-latest
     steps:
