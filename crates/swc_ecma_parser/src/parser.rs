@@ -14598,7 +14598,6 @@ mod tests {
         JsxText,
         MethodDefinition,
         NewExpression,
-        PropertyDefinition,
         ReturnStatement,
         Super,
         TemplateElement,
@@ -17137,9 +17136,11 @@ mod tests {
             let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(result.diagnostics.is_empty());
             let ast = &result.ast;
-            find_all::<PropertyDefinition>(ast)
-                .into_iter()
-                .map(|field| {
+            let body = find_only::<Class>(ast).body(ast).body(ast);
+            body.iter()
+                .map(|id| {
+                    let element = ast.get_node_in_sub_range(id);
+                    let field = element.as_property_definition(ast).unwrap();
                     let key = field.key(ast).as_identifier_name(ast).unwrap();
                     let name = ast.get_utf8(key.name(ast)).to_owned();
                     (name, field.r#static(ast))
