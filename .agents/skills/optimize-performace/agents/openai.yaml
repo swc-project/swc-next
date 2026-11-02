@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optimize Performace"
+  short_description: "Optimize execution time with paired GitHub Actions benchmarks"
+  default_prompt: "Use $optimize-performace to optimize this code with paired wall-time CI measurements, publishing each accepted change as a separate draft PR and stacking only dependent changes."

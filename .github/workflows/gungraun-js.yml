@@ -34,14 +34,14 @@ jobs:
       matrix: ${{ steps.prepare.outputs.matrix }}
     env:
       BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
-      HEAD_REF: ${{ github.event.pull_request.head.sha || inputs.head }}
+      HEAD_REF: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
       JS_BENCH_FILTER: ${{ inputs.filter || '' }}
       JS_BENCH_SUITE: ${{ github.event_name == 'pull_request' && 'representative' || 'full' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || inputs.head }}
+          ref: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
           persist-credentials: false
       - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
         with:
@@ -98,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head }}
+          ref: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
@@ -136,7 +136,7 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head }}
+          ref: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
@@ -174,7 +174,7 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head }}
+          ref: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
@@ -201,7 +201,7 @@ jobs:
         env:
           ARTIFACT_URL: ${{ steps.upload-results.outputs.artifact-url }}
           BASE_REF: ${{ github.event.pull_request.base.sha || inputs.base }}
-          HEAD_REF: ${{ github.event.pull_request.head.sha || inputs.head }}
+          HEAD_REF: ${{ github.event_name == 'pull_request' && github.sha || inputs.head }}
         run: |
           summary="$RUNNER_TEMP/reports/summary.md"
           test -f "$summary" || exit 0

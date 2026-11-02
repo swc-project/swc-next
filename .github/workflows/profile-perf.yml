@@ -1,0 +1,584 @@
+name: Profile Performance
+
+# Measures base and head in one x86_64 job that shares one Cargo build:
+# Gungraun instruction counts and paired Criterion wall times.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/profile-perf.yml'
+      - '.github/scripts/paired-walltime.mjs'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'tasks/benchmark/**'
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base branch, tag, or full commit SHA
+        required: true
+        type: string
+      head:
+        description: Head branch, tag, or full commit SHA (defaults to the dispatch revision)
+        type: string
+      suite:
+        description: Measurements to run
+        default: all
+        type: choice
+        options: [all, walltime, gungraun]
+      rounds:
+        description: Number of wall-time base/head rounds (even; base and head alternate running first)
+        default: 6
+        type: number
+      filter:
+        description: Gungraun benchmark filter (empty runs all benchmarks)
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Profile base and head
+    # Gungraun runs for every pull request. Wall time runs for pushes to main
+    # and for pull requests with the Codspeed label. Other label events do
+    # nothing.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled' ||
+      github.event.label.name == 'Codspeed'
+    # Job-level concurrency: a run that skips this job, such as one for an
+    # unrelated label, must not cancel a measurement in progress.
+    concurrency:
+      group: profile-perf-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    env:
+      BENCHMARK_FILTER: ${{ inputs.filter }}
+      GUNGRAUN_ARTIFACT_NAME: gungraun-valgrind-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Resolve revisions and preserve the measurement scripts
+        id: revisions
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HAS_CODSPEED: ${{ contains(github.event.pull_request.labels.*.name, 'Codspeed') }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_BASE: ${{ inputs.base }}
+          INPUT_HEAD: ${{ inputs.head }}
+          INPUT_SUITE: ${{ inputs.suite }}
+        run: |
+          cp .github/scripts/paired-walltime.mjs "$RUNNER_TEMP/paired-walltime.mjs"
+          cp .github/scripts/render-gungraun-summary.mjs "$RUNNER_TEMP/render-gungraun-summary.mjs"
+
+          # Cargo appends --bench, so a second -- cannot delimit the filter.
+          if [[ "$BENCHMARK_FILTER" == -* ]]
+          then
+            echo 'filter must be a benchmark pattern, not an option' >&2
+            exit 1
+          fi
+
+          resolve_remote() {
+            git fetch --no-tags -- origin "$1" || return $?
+            git rev-parse --verify 'FETCH_HEAD^{commit}'
+          }
+
+          # A push compares the pushed commit with its first parent. A pull
+          # request compares its merge commit with the base branch commit. A
+          # manual run compares the two selected revisions.
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              base_sha="$(git rev-parse --verify "${EVENT_SHA}^1^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              walltime=true
+              gungraun=false
+              ;;
+            pull_request)
+              base_sha="$(git rev-parse --verify "${PR_BASE_SHA}^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              walltime="$PR_HAS_CODSPEED"
+              gungraun=true
+              ;;
+            workflow_dispatch)
+              base_sha="$(resolve_remote "$INPUT_BASE")"
+              if [[ -n "$INPUT_HEAD" ]]
+              then
+                head_sha="$(resolve_remote "$INPUT_HEAD")"
+              else
+                head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              fi
+              walltime="$([[ "$INPUT_SUITE" != gungraun ]] && echo true || echo false)"
+              gungraun="$([[ "$INPUT_SUITE" != walltime ]] && echo true || echo false)"
+              # Use the head revision's toolchain for both builds.
+              git checkout --detach "$head_sha"
+              ;;
+          esac
+          {
+            echo "walltime=$walltime"
+            echo "gungraun=$gungraun"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "BASE_SHA=$base_sha"
+            echo "HEAD_SHA=$head_sha"
+            echo "SCRIPT=$RUNNER_TEMP/paired-walltime.mjs"
+            echo "RESULTS_DIR=$RUNNER_TEMP/paired-walltime"
+            echo "COMMENTS_DIR=$RUNNER_TEMP/comments"
+          } >> "$GITHUB_ENV"
+          {
+            echo "Base SHA: $base_sha"
+            echo "Compare SHA: $head_sha"
+          } > "$RUNNER_TEMP/gungraun-revisions.txt"
+          echo "Base: $base_sha, head: $head_sha, wall time: $walltime, Gungraun: $gungraun"
+
+      - name: Setup rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          cache-save-if: ${{ github.event_name == 'push' }}
+
+      - name: Keep the same Rust toolchain for base and head
+        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+
+      - name: Install Valgrind
+        if: steps.revisions.outputs.gungraun == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes valgrind
+          valgrind --version
+
+      # Each revision is checked out once. Its wall-time and Gungraun benchmarks
+      # use the same `bench` profile and target directory, so Cargo compiles
+      # the dependencies once per revision.
+      - name: Check out base
+        run: git checkout --detach "$BASE_SHA"
+
+      - name: Build base wall-time benchmarks
+        if: steps.revisions.outputs.walltime == 'true'
+        run: node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/base"
+
+      - name: Save base Gungraun benchmark
+        id: gungraun-base
+        if: steps.revisions.outputs.gungraun == 'true'
+        # A Gungraun failure must not prevent the wall-time measurement. The
+        # last step fails the job after the results are uploaded.
+        continue-on-error: true
+        env:
+          GUNGRAUN_COLOR: never
+        run: |
+          set -o pipefail
+
+          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
+          cargo install --locked --version "$runner_version" gungraun-runner
+          gungraun-runner --version
+
+          filter_args=()
+          if [[ -n "$BENCHMARK_FILTER" ]]
+          then
+            filter_args+=("$BENCHMARK_FILTER")
+          fi
+          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
+            --home="$RUNNER_TEMP/gungraun" \
+            --callgrind-metrics=Ir \
+            --save-baseline=base "${filter_args[@]}" 2>&1 | tee "$RUNNER_TEMP/gungraun-base.txt"
+
+      - name: Check out head
+        run: git checkout --detach "$HEAD_SHA"
+
+      - name: Build head wall-time benchmarks
+        if: steps.revisions.outputs.walltime == 'true'
+        run: node "$SCRIPT" build "$RUNNER_TEMP/paired-walltime-bin/head"
+
+      - name: Compare head Gungraun benchmark
+        id: gungraun-head
+        if: >-
+          steps.revisions.outputs.gungraun == 'true' &&
+          steps.gungraun-base.outcome == 'success'
+        continue-on-error: true
+        env:
+          GUNGRAUN_COLOR: never
+          GUNGRAUN_SHOW_INTERMEDIATE: true
+        run: |
+          runner_version="$(cargo metadata --locked --format-version=1 | jq -er '.packages[] | select(.name == "gungraun-runner") | .version')"
+          cargo install --locked --version "$runner_version" gungraun-runner
+          gungraun-runner --version
+
+          report="$RUNNER_TEMP/gungraun-diff.txt"
+          summary="$RUNNER_TEMP/gungraun-summary.md"
+          filter_args=()
+          if [[ -n "$BENCHMARK_FILTER" ]]
+          then
+            filter_args+=("$BENCHMARK_FILTER")
+          fi
+          set +e
+          cargo bench --quiet --locked -p benchmark --bench gungraun -- \
+            --home="$RUNNER_TEMP/gungraun" \
+            --baseline=base \
+            --callgrind-metrics=Ir \
+            --save-summary=json "${filter_args[@]}" 2>&1 | tee "$report"
+          benchmark_status="${PIPESTATUS[0]}"
+
+          node "$RUNNER_TEMP/render-gungraun-summary.mjs" \
+            "$RUNNER_TEMP/gungraun" > "$summary"
+          summary_status="$?"
+          set -e
+
+          if [[ ! -s "$summary" ]]
+          then
+            {
+              echo "### Instruction-count changes"
+              echo
+              echo "⚠️ **The comparison summary could not be generated.** See the workflow log."
+            } > "$summary"
+          fi
+
+          {
+            echo "## Gungraun benchmark diff"
+            echo
+            cat "$RUNNER_TEMP/gungraun-revisions.txt"
+            echo
+            echo 'Values are shown as `compare / base`.'
+            echo
+            cat "$summary"
+            echo
+            echo '```text'
+            cat "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$benchmark_status" -ne 0 ]]
+          then
+            exit "$benchmark_status"
+          fi
+          exit "$summary_status"
+
+      - name: Run base and head wall-time benchmarks in rounds
+        if: steps.revisions.outputs.walltime == 'true'
+        env:
+          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 6 }}
+        run: |
+          mkdir -p "$RESULTS_DIR"
+          node "$SCRIPT" run \
+            "$RUNNER_TEMP/paired-walltime-bin/base" \
+            "$RUNNER_TEMP/paired-walltime-bin/head" \
+            "$RESULTS_DIR/results.json"
+          node "$SCRIPT" render "$RESULTS_DIR/results.json" > "$RESULTS_DIR/summary.md"
+          cat "$RESULTS_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload wall-time results
+        if: steps.revisions.outputs.walltime == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: paired-walltime
+          path: |
+            ${{ runner.temp }}/paired-walltime/results.json
+            ${{ runner.temp }}/paired-walltime/summary.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Prepare Valgrind artifact metadata
+        if: always() && steps.revisions.outputs.gungraun == 'true'
+        env:
+          BASE_REF: ${{ inputs.base || github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ inputs.head || github.event.pull_request.head.ref || github.ref }}
+          JOB_STATUS: ${{ job.status }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+          RUNNER_ARCH: ${{ runner.arch }}
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          metadata="$RUNNER_TEMP/gungraun-metadata.json"
+          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          rustc_version="$(rustc --version 2>/dev/null || echo unavailable)"
+          cargo_version="$(cargo --version 2>/dev/null || echo unavailable)"
+          gungraun_version="$(gungraun-runner --version 2>/dev/null || echo unavailable)"
+          valgrind_version="$(valgrind --version 2>/dev/null || echo unavailable)"
+
+          jq -n \
+            --arg artifact_name "$GUNGRAUN_ARTIFACT_NAME" \
+            --arg base_ref "$BASE_REF" \
+            --arg base_sha "$BASE_SHA" \
+            --arg benchmark_filter "$BENCHMARK_FILTER" \
+            --arg benchmark_home "$RUNNER_TEMP/gungraun" \
+            --arg cargo_version "$cargo_version" \
+            --arg compare_sha "$HEAD_SHA" \
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            --arg generated_at "$generated_at" \
+            --arg gungraun_version "$gungraun_version" \
+            --arg head_ref "$HEAD_REF" \
+            --arg job_status "$JOB_STATUS" \
+            --arg pr_head_sha "$PR_HEAD_SHA" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg run_attempt "$RUN_ATTEMPT" \
+            --arg run_id "$RUN_ID" \
+            --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --arg runner_arch "$RUNNER_ARCH" \
+            --arg runner_os "$RUNNER_OS" \
+            --arg rustc_version "$rustc_version" \
+            --arg valgrind_version "$valgrind_version" \
+            --arg workflow_name "$GITHUB_WORKFLOW" \
+            '{
+              schema_version: 2,
+              repository: $repository,
+              workflow: {
+                name: $workflow_name,
+                event: $event_name,
+                run_id: $run_id,
+                run_attempt: ($run_attempt | tonumber),
+                run_url: $run_url,
+                job_status: $job_status
+              },
+              comparison: {
+                base_ref: $base_ref,
+                head_ref: $head_ref,
+                base_sha: $base_sha,
+                compare_sha: $compare_sha
+              },
+              pull_request: (if $event_name == "pull_request" then {
+                number: ($pr_number | tonumber),
+                base_ref: $base_ref,
+                head_ref: $head_ref,
+                base_sha: $base_sha,
+                head_sha: $pr_head_sha,
+                compare_sha: $compare_sha
+              } else null end),
+              runner: {
+                os: $runner_os,
+                arch: $runner_arch
+              },
+              tools: {
+                rustc: $rustc_version,
+                cargo: $cargo_version,
+                gungraun_runner: $gungraun_version,
+                valgrind: $valgrind_version
+              },
+              benchmark: {
+                package: "benchmark",
+                bench: "gungraun",
+                baseline: "base",
+                filter: $benchmark_filter,
+                base_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--callgrind-metrics=Ir", "--save-baseline=base"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" ")),
+                compare_command: (["cargo", "bench", "--quiet", "--locked", "-p", "benchmark", "--bench", "gungraun", "--", "--home=" + $benchmark_home, "--baseline=base", "--callgrind-metrics=Ir", "--save-summary=json"] + (if $benchmark_filter == "" then [] else [$benchmark_filter] end) | map(@sh) | join(" "))
+              },
+              files: {
+                data_root: "gungraun",
+                base_report: "gungraun-base.txt",
+                revisions: "gungraun-revisions.txt",
+                diff_report: "gungraun-diff.txt",
+                rendered_summary: "gungraun-summary.md"
+              },
+              artifact: {
+                name: $artifact_name,
+                retention_days: 90
+              },
+              generated_at: $generated_at
+            }' > "$metadata"
+
+          jq -e \
+            --arg base_sha "$BASE_SHA" \
+            --arg compare_sha "$HEAD_SHA" \
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            '.schema_version == 2 and
+             .comparison.base_sha == $base_sha and
+             .comparison.compare_sha == $compare_sha and
+             (if $event_name == "pull_request" then .pull_request.number > 0 else .pull_request == null end) and
+             .files.data_root == "gungraun" and
+             .artifact.retention_days == 90' \
+            "$metadata" > /dev/null
+
+      - name: Upload Valgrind analysis bundle
+        id: upload-valgrind
+        if: always() && steps.revisions.outputs.gungraun == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.GUNGRAUN_ARTIFACT_NAME }}
+          path: |
+            ${{ runner.temp }}/gungraun
+            ${{ runner.temp }}/gungraun-base.txt
+            ${{ runner.temp }}/gungraun-revisions.txt
+            ${{ runner.temp }}/gungraun-diff.txt
+            ${{ runner.temp }}/gungraun-summary.md
+            ${{ runner.temp }}/gungraun-metadata.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
+
+      - name: Link Valgrind analysis bundle
+        if: >-
+          always() &&
+          steps.upload-valgrind.outputs.artifact-url != ''
+        env:
+          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
+        run: |
+          {
+            echo "### Valgrind analysis artifact"
+            echo
+            echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The comment jobs post these bodies, so this job never gets a write token.
+      - name: Prepare comment bodies
+        if: always() && github.event_name != 'workflow_dispatch'
+        env:
+          ARTIFACT_URL: ${{ steps.upload-valgrind.outputs.artifact-url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p "$COMMENTS_DIR"
+
+          report="$RUNNER_TEMP/gungraun-diff.txt"
+          summary="$RUNNER_TEMP/gungraun-summary.md"
+          if [[ -f "$report" ]]
+          then
+            {
+              echo '## Gungraun benchmark diff'
+              echo
+              cat "$RUNNER_TEMP/gungraun-revisions.txt"
+              echo
+              echo 'Values are shown as `compare / base`.'
+              echo
+              if [[ -n "$ARTIFACT_URL" ]]
+              then
+                echo "[Download the raw Gungraun and Valgrind data]($ARTIFACT_URL) (retained for 90 days)."
+                echo
+              fi
+              if [[ -s "$summary" ]]
+              then
+                cat "$summary"
+                echo
+              fi
+              echo '<details>'
+              echo '<summary>Benchmark results</summary>'
+              echo
+              echo '```text'
+              cat "$report"
+              echo '```'
+              echo '</details>'
+            } > "$COMMENTS_DIR/gungraun.md"
+          fi
+
+          if [[ -s "$RESULTS_DIR/summary.md" ]]
+          then
+            {
+              cat "$RESULTS_DIR/summary.md"
+              echo
+              echo "[Workflow run]($RUN_URL)"
+            } > "$COMMENTS_DIR/paired-walltime.md"
+          fi
+
+      - name: Upload comment bodies
+        if: always() && github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: profile-perf-comments
+          path: ${{ runner.temp }}/comments
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Fail when Gungraun failed
+        if: >-
+          always() &&
+          (steps.gungraun-base.outcome == 'failure' ||
+          steps.gungraun-head.outcome == 'failure')
+        run: |
+          echo 'The Gungraun comparison failed. See the Gungraun steps above.' >&2
+          exit 1
+
+  comment-pull-request:
+    name: Comment on pull request
+    needs: measure
+    # Fork and Dependabot pull requests get only the job summary.
+    if: >-
+      always() &&
+      (needs.measure.result == 'success' || needs.measure.result == 'failure') &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    # Serialize updates so that two runs cannot both create a comment.
+    concurrency:
+      group: profile-perf-comment-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        # The measure job uploads no bodies when it fails early.
+        continue-on-error: true
+        with:
+          name: profile-perf-comments
+          path: ${{ runner.temp }}/comments
+      - name: Create or update the comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Update only the comment that this workflow created, so every push
+          # to the pull request edits the same comment. Extra markers find
+          # comments created by earlier workflow versions.
+          upsert() {
+            local file="$RUNNER_TEMP/comments/$1"
+            local marker="$2"
+            local markers comment comment_id
+            [[ -s "$file" ]] || return 0
+            markers="$(printf '%s\n' "${@:2}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+            comment="$RUNNER_TEMP/comment.md"
+            {
+              echo "$marker"
+              cat "$file"
+            } > "$comment"
+
+            comment_id="$(
+              gh api --paginate \
+                "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" |
+                jq -r --argjson markers "$markers" \
+                  '.[] | select(.user.login == "github-actions[bot]" and (.body as $body | any($markers[]; . as $marker | $body | startswith($marker)))) | .id' |
+                head -n 1
+            )"
+            if [[ -n "$comment_id" ]]
+            then
+              gh api --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+                -F body=@"$comment" > /dev/null
+            else
+              gh api --method POST \
+                "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+                -F body=@"$comment" > /dev/null
+            fi
+          }
+
+          upsert gungraun.md \
+            '<!-- gungraun-benchmark-diff -->' \
+            '<!-- gungraun-parser-benchmark-diff -->'
+          upsert paired-walltime.md '<!-- paired-walltime-benchmark -->'
+
+  comment-commit:
+    name: Comment on commit
+    needs: measure
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: profile-perf-comments
+          path: ${{ runner.temp }}/comments
+      - name: Create the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -F body=@"$RUNNER_TEMP/comments/paired-walltime.md" > /dev/null

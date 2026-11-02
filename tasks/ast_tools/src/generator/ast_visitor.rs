@@ -433,7 +433,7 @@ pub fn ast_visitor(schema: &Schema) -> RawOutput {
             #![allow(unused, clippy::useless_conversion, clippy::single_match)]
             use crate::*;
             use swc_next_allocator::Idx;
-        use crate::visit::{TraverseCtx, TraverseMutCtx, traverse_mut_slot};
+        use crate::visit::{TraverseCtx, TraverseMutCtx, WalkMut, traverse_mut_slot};
 
             pub trait Visit<'a> {
                 #visit_functions
@@ -772,6 +772,8 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         TraverseAction::Continue
                     }
                 });
+                // Children evaluate to `Continue` or `Stopped`, so an exit hook
+                // that continues passes that result through unchanged.
                 let children = match ty {
                     AstType::Struct(node) => {
                         let mut fields = TokenStream::new();
@@ -786,17 +788,18 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                                     node.#getter(ctx.ast), traverser, ctx,
                                     |ctx, replacement| node.#setter(ctx.ast, replacement),
                                 ) {
-                                    break 'children true;
+                                    std::hint::cold_path();
+                                    break 'children WalkMut::Stopped;
                                 }
                             });
                         }
                         if fields.is_empty() {
-                            quote!(false)
+                            quote!(WalkMut::Continue)
                         } else {
                             quote! {
                                 'children: {
                                     #fields
-                                    false
+                                    WalkMut::Continue
                                 }
                             }
                         }
@@ -805,8 +808,11 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         let dispatch = generate_mut_enum_dispatch(node, schema);
                         quote! {
                             match #dispatch {
-                                std::ops::ControlFlow::Continue(stopped) => stopped,
-                                std::ops::ControlFlow::Break(action) => return std::ops::ControlFlow::Break(action),
+                                children @ (WalkMut::Continue | WalkMut::Stopped) => children,
+                                result => {
+                                    std::hint::cold_path();
+                                    return result;
+                                }
                             }
                         }
                     }
@@ -816,28 +822,35 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                     #[inline]
                     fn #walk<'a, State, T: ?Sized + TraverseMut<'a, State>>(
                         node: #ty_ident, traverser: &mut T, ctx: &mut TraverseMutCtx<'_, 'a, State>,
-                    ) -> std::ops::ControlFlow<TraverseAction<#ty_ident>, bool> {
+                    ) -> WalkMut {
                         match traverser.#enter(node, ctx) {
                             TraverseAction::Continue => {},
-                            action => return std::ops::ControlFlow::Break(action),
+                            action => {
+                                std::hint::cold_path();
+                                return WalkMut::enter(action);
+                            }
                         }
-                        let stopped = #children;
+                        let children = #children;
                         match traverser.#exit(node, ctx) {
-                            TraverseAction::Continue => std::ops::ControlFlow::Continue(stopped),
-                            action => std::ops::ControlFlow::Break(if stopped { action.stop() } else { action }),
+                            TraverseAction::Continue => children,
+                            action => {
+                                std::hint::cold_path();
+                                WalkMut::exit(action, children)
+                            }
                         }
                     }
                 });
                 quote! {
                     let original = self.node_id();
                     traverser.enter_node(original, ctx);
-                    let action = #walk(self, traverser, ctx);
+                    let result = #walk(self, traverser, ctx);
                     traverser.exit_node(original, ctx);
-                    match action {
-                        std::ops::ControlFlow::Continue(false)
-                        | std::ops::ControlFlow::Break(TraverseAction::Skip) => TraverseAction::Continue,
-                        std::ops::ControlFlow::Continue(true) => TraverseAction::Stop,
-                        std::ops::ControlFlow::Break(action) => action,
+                    match result {
+                        WalkMut::Continue => TraverseAction::Continue,
+                        result => {
+                            std::hint::cold_path();
+                            result.into_action(#ty_ident)
+                        }
                     }
                 }
             }
@@ -853,6 +866,7 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
                         ctx.ast.get_node_in_sub_range(slot), traverser, ctx,
                         |ctx, replacement| self.replace_slot(ctx.ast, slot, replacement),
                     ) {
+                        std::hint::cold_path();
                         return TraverseAction::Stop;
                     }
                 }
@@ -907,7 +921,6 @@ fn generate_traverse_mut(schema: &Schema) -> TokenStream {
 }
 
 fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) -> TokenStream {
-    let outer = format_ident!("{}", node.name);
     let mut arms = TokenStream::new();
     let mut seen = HashSet::new();
     for variant in &node.variants {
@@ -916,9 +929,8 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
         };
         let ty = &schema.types[type_id];
         let inner = ty.repr_ident(schema);
-        let variant_name = format_ident!("{}", variant.name);
         let walk = format_ident!("walk_mut_{}", ty.name().to_case(Case::Snake));
-        let dispatch = quote!(#walk(#inner(node.0), traverser, ctx).map_break(|action| action.map(#outer::#variant_name)));
+        let dispatch = quote!(#walk(#inner(node.0), traverser, ctx));
         let mut kinds = Vec::new();
         for kind in concrete_node_kinds(type_id, schema) {
             if !seen.insert(kind.clone()) {
@@ -945,7 +957,7 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
                     NodeKind::#concrete => {
                         let concrete = #concrete(node.0);
                         if concrete.#getter(ctx.ast) == #declaration {
-                            #concrete_walk(concrete, traverser, ctx).map_break(|action| action.map(#outer::#concrete))
+                            #concrete_walk(concrete, traverser, ctx)
                         } else { #dispatch }
                     }
                 });
@@ -957,10 +969,13 @@ fn generate_mut_enum_dispatch(node: &crate::schema::AstEnum, schema: &Schema) ->
             arms.extend(quote! { #(NodeKind::#kinds)|* => { #dispatch } });
         }
     }
+    // SAFETY: Typed wrappers can only be created by typed AST constructors for
+    // this AST, so their node ID indexes initialized node data and its kind
+    // belongs to this union. This matches the `Traverse` and `VisitMut` dispatch.
     quote! {
-        match ctx.ast.node_kind(node.node_id()) {
+        match unsafe { *ctx.ast.nodes.kind_unchecked(node.0) } {
             #arms
-            _ => unreachable!("invalid node kind for traversal union"),
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 }
