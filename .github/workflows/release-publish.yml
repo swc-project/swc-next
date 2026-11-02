@@ -103,24 +103,27 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             extra_args: --use-napi-cross
-            target_cc: clang
+            target_cc: /usr/bin/clang
+            llvm_target: aarch64
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
             extra_args: --cross-compile
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             target: powerpc64le-unknown-linux-gnu
             extra_args: --use-napi-cross
-            target_cc: clang-15
+            target_cc: /usr/bin/clang
+            llvm_target: ppc64le
           - os: ubuntu-latest
             target: riscv64gc-unknown-linux-gnu
             extra_args: ""
           - os: ubuntu-latest
             target: riscv64gc-unknown-linux-musl
             extra_args: --cross-compile
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             target: s390x-unknown-linux-gnu
             extra_args: --use-napi-cross
-            target_cc: clang-15
+            target_cc: /usr/bin/clang
+            llvm_target: systemz
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             extra_args: --use-napi-cross
@@ -163,11 +166,17 @@ jobs:
         shell: bash
         env:
           TARGET_CC: ${{ matrix.target_cc }}
+          LLVM_TARGET: ${{ matrix.llvm_target }}
         run: |
           if ! command -v "$TARGET_CC" >/dev/null; then
             sudo apt-get update
-            sudo apt-get install --yes "$TARGET_CC"
+            sudo apt-get install --yes clang
           fi
+          "$TARGET_CC" --version
+          "$TARGET_CC" --print-targets | grep --word-regexp "$LLVM_TARGET" || {
+            echo "::error::Clang does not support the $LLVM_TARGET target"
+            exit 1
+          }
           echo "TARGET_CC=$TARGET_CC" >> "$GITHUB_ENV"
 
       - name: Install RISC-V GNU cross compiler
