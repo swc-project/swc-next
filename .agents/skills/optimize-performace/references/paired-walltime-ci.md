@@ -1,6 +1,6 @@
 # Paired Wall-Time CI Reference
 
-Read this before dispatching, auditing, or extending `.github/workflows/paired-walltime.yml`.
+Read this before dispatching, auditing, or extending the paired wall-time measurement in `.github/workflows/profile-perf.yml`.
 The implementation is `.github/scripts/paired-walltime.mjs`; component usage is in
 [tasks/benchmark/README.md](../../../../tasks/benchmark/README.md).
 
@@ -9,8 +9,8 @@ The implementation is `.github/scripts/paired-walltime.mjs`; component usage is 
 - The script builds the `benchmark` package's available `parser`, `visit`, and `semantic` Criterion targets with `cargo bench --locked --no-run`. It measures cases present in both builds. Check `head_only` and `base_only`; a successful run can still omit required cases.
 - Each round runs each case once with each binary in the same job. Odd rounds run base first; even rounds run head first. Each recorded value is Criterion's median point estimate in nanoseconds, not process startup time or the workflow duration.
 - Defaults are 6 rounds, 1 second of warm-up, and 2 seconds of measurement. `rounds` must be a positive even integer. The script also reads `PAIRED_WALLTIME_WARM_UP` and `PAIRED_WALLTIME_MEASUREMENT`, but the existing workflow exposes neither as dispatch inputs.
-- The workflow runs on `ubuntu-24.04` (x86_64). It records CPU and environment information; hosted runners can differ across runs. Pair base/head on the same runner and retain each run's environment. Never compare a base time from one job with a head time from another.
-- The driver script comes from the dispatch revision and is copied outside the checkout before switching revisions. Manual runs use head's Rust toolchain for both builds. Benchmark definitions, fixtures, manifests, Cargo configuration, and features still come from each measured revision: inspect them for identical workloads and settings.
+- One `ubuntu-24.04` (x86_64) job checks out and builds each revision once. With `suite=all`, it also runs the Gungraun comparison from the same Cargo target directory; Gungraun finishes before the wall-time rounds start. A Gungraun failure does not stop the wall-time rounds, but it fails the job after the artifacts are uploaded; check the `paired-walltime` artifact before you treat such a run as a measurement failure. It records CPU and environment information; hosted runners can differ across runs. Pair base/head on the same runner and retain each run's environment. Never compare a base time from one job with a head time from another.
+- The driver scripts come from the dispatch revision and are copied outside the checkout before switching revisions. Manual runs use head's Rust toolchain for both builds. Benchmark definitions, fixtures, manifests, Cargo configuration, and features still come from each measured revision: inspect them for identical workloads and settings.
 - The artifact contains raw round estimates and a rendered summary. It does not include statistical confidence intervals, raw Criterion samples, flamegraphs, or allocation profiles. Use optional diagnostic tools separately when needed.
 
 ## Base and head comparison
@@ -20,16 +20,16 @@ The workflow must exist on the default branch for manual dispatch. If dispatch i
 Push task-owned branches, resolve comparison refs to immutable SHAs, and dispatch:
 
 ```bash
-gh workflow run paired-walltime.yml --ref <workflow-branch> \
-  -f base=<base-sha> -f head=<head-sha> -f rounds=6
+gh workflow run profile-perf.yml --ref <workflow-branch> \
+  -f base=<base-sha> -f head=<head-sha> -f rounds=6 -f suite=walltime
 ```
 
-- The inputs are `base`, `head`, and `rounds`. There are no `base_ref`, `head_ref`, or `filter` inputs. Keep the workflow branch at a recorded fixed revision across comparable runs.
+- The inputs are `base`, `head`, `rounds`, `suite` (`all`, `walltime`, or `gungraun`; default `all`), and `filter`. `filter` selects Gungraun benchmarks only; the wall-time suite has no filter. Use `suite=all` when Gungraun counts can help explain the result. Always pass `head` explicitly; it defaults to the dispatch revision. Keep the workflow branch at a recorded fixed revision across comparable runs.
 - Run standalone (attempt versus parent), marginal (integration plus attempt versus integration), and cumulative (integration plus attempt versus frozen trunk) comparisons. Reuse a run only when both base and head SHAs match exactly.
 - Record dispatch time and workflow revision. Identify the matching task-owned run by event, dispatch SHA, time, and run ID:
 
 ```bash
-gh run list --workflow paired-walltime.yml --event workflow_dispatch \
+gh run list --workflow profile-perf.yml --event workflow_dispatch \
   --branch <workflow-branch> --json databaseId,headSha,createdAt,status,url
 ```
 
@@ -39,9 +39,11 @@ gh run list --workflow paired-walltime.yml --event workflow_dispatch \
 gh run download <run-id> --name paired-walltime --dir <run-artifact-directory>
 ```
 
+- With `suite=all`, the run also uploads `gungraun-valgrind-<run-id>-<attempt>`, which contains Gungraun summaries and raw Callgrind data. Use it only as diagnostic evidence.
+
 - Verify full `base_sha` and `head_sha`, rounds, timing settings, and benchmark identities in `results.json`. The Actions run's `headSha` is the dispatch revision, which need not be the measured head. If concurrent dispatches are possible, inspect artifact identities; never choose the latest run by list order.
 - Retain `results.json`, `summary.md`, run URL, workflow/script revision, build settings, and any measured-to-published SHA mapping. Missing or failed baselines are measurement failures, not regressions.
-- PR runs require the `Codspeed` label and compare the PR merge SHA with its base SHA. Push runs on `main` compare the pushed commit with its first parent. Neither substitutes for an attempt's exact-SHA manual comparison.
+- PR wall-time runs require the `Codspeed` label; Gungraun runs for every PR. PR wall-time runs compare the PR merge SHA with its base SHA. Push runs on `main` compare the pushed commit with its first parent. Neither substitutes for an attempt's exact-SHA manual comparison.
 
 ## Read results and account for noise
 

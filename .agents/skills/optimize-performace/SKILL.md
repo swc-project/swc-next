@@ -24,9 +24,9 @@ Act as a performance engineer. Measure provisional changes in GitHub Actions wit
 
 ## Enforce the measurement contract
 
-- Use `.github/workflows/paired-walltime.yml` with exact base/head SHAs as the source of truth for execution-time comparisons. Both revisions must execute the evaluated path on the same runner in the same job.
+- Use the paired wall-time results of `.github/workflows/profile-perf.yml` with exact base/head SHAs as the source of truth for execution-time comparisons. Both revisions must execute the evaluated path on the same runner in the same job.
 - Use local runs only to check correctness or that a harness starts successfully. Never support a performance claim with local benchmark output.
-- Default to elapsed time. Gungraun instruction counts, simulated cache metrics, estimated cycles, and allocation profiles can explain a hypothesis, but cannot establish a speedup or override a wall-time regression. Profiling is optional; this workflow does not produce profiles.
+- Default to elapsed time. Gungraun instruction counts, simulated cache metrics, estimated cycles, and allocation profiles can explain a hypothesis, but cannot establish a speedup or override a wall-time regression. By default, the same run also uploads Gungraun instruction counts and Callgrind data from the same build as diagnostic evidence; dispatch with `suite=walltime` when you do not need them. Treat a Gungraun failure as diagnostic only when the wall-time results are complete and valid.
 - Read all measurements in `paired-walltime/results.json`, including cases omitted from `summary.md`. The summary reports a change only when every round agrees on its direction and the median paired change is at least 2%. Its `unchanged` label does not prove equivalence or absence of regressions.
 - Keep new CI reporting-only for performance changes. Do not add regression limits that fail CI. Preserve existing repository limits unless the user authorizes changing them.
 - Stop and ask for help instead of substituting uncontrolled measurements when GitHub authentication, permissions, runner availability, or a valid base/head comparison cannot be established.
@@ -42,7 +42,7 @@ Act as a performance engineer. Measure provisional changes in GitHub Actions wit
 
 ## Establish a valid CI harness
 
-Read [the paired wall-time CI reference](references/paired-walltime-ci.md) before dispatching or changing the harness. Reuse the existing workflow and harness when they cover the target. It currently measures the Rust `parser`, `visit`, and `semantic` Criterion targets; it has no dispatch filter and does not measure the public JavaScript API or every compiler pipeline.
+Read [the paired wall-time CI reference](references/paired-walltime-ci.md) before dispatching or changing the harness. Reuse the existing workflow and harness when they cover the target. Its wall-time suite currently measures the Rust `parser`, `visit`, and `semantic` Criterion targets; it has no wall-time filter (`filter` applies only to Gungraun) and does not measure the public JavaScript API or every compiler pipeline.
 
 - Check that the frozen target and related cases exercise the changed code. For uncovered code, add the smallest representative workload on temporary PR-free measurement branches. Extend the paired workflow/script only as needed; do not substitute Gungraun counts for elapsed time.
 - Keep setup and teardown outside the measured operation unless they are part of the requested boundary. Protect inputs and results with `std::hint::black_box`.
@@ -58,7 +58,7 @@ When temporary CI is required, follow the [temporary harness procedure](referenc
 
 ### 1. Analyze the current result
 
-- Run the full existing paired suite and analyze the frozen target and related cases. Do not invent a workflow filter input.
+- Run the full existing paired suite and analyze the frozen target and related cases. Do not invent a wall-time filter input.
 - Rank cases by frequency-weighted elapsed time. Inspect the measured paths for repeated work, avoidable allocations, poor locality, expensive conversions, or unnecessary calls. Use available profiles to locate costs when useful.
 - Before creating or measuring a provisional attempt, record and freeze the comparable target portfolio, related cases, user-designated or workload-critical protected cases, and case frequencies. Use trustworthy documented production frequencies when available; otherwise assign and disclose an equal frequency of one to every case. Do not change these classifications or weights after seeing provisional results without disclosing the reason and obtaining user approval.
 - Select one hypothesis supported by the measured workload and code inspection or available profiles. Before selecting a helper optimization, locate its original definition and callers across crates. Prefer changing that shared implementation and include affected callers in the related benchmark cases before freezing the comparison portfolio.
@@ -77,7 +77,7 @@ When temporary CI is required, follow the [temporary harness procedure](referenc
 ### 3. Push and measure without a pull request
 
 - Push only the task-owned attempt and integration branches with `git push <remote> <branch>`. Do not create a pull request for a provisional attempt or a temporary harness.
-- Dispatch `paired-walltime.yml` with exact `base` and `head` SHAs and the frozen positive even `rounds` count (default 6). Run a standalone comparison of the attempt against its parent, a marginal comparison of the integration branch plus the attempt against the integration branch, and a cumulative comparison of the integration branch plus the attempt against the frozen starting trunk revision. Reuse one run for two comparisons only when both their base and head SHAs are identical. Use the same harness for all comparisons, including harness-only counterparts when temporary plumbing is required.
+- Dispatch `profile-perf.yml` with exact `base` and `head` SHAs, the frozen positive even `rounds` count (default 6), and `suite=all` or `suite=walltime`. Run a standalone comparison of the attempt against its parent, a marginal comparison of the integration branch plus the attempt against the integration branch, and a cumulative comparison of the integration branch plus the attempt against the frozen starting trunk revision. Reuse one run for two comparisons only when both their base and head SHAs are identical. Use the same harness for all comparisons, including harness-only counterparts when temporary plumbing is required.
 - Follow the [manual dispatch procedure](references/paired-walltime-ci.md#base-and-head-comparison). Wait only for matching task-owned workflow runs. Match event, dispatch revision, run ID, and artifact `base_sha`, `head_sha`, rounds, timing settings, and benchmark identities; do not use the latest run without checking its identity. Ignore cancelled or superseded runs.
 - Download or inspect the saved `paired-walltime` artifact (`results.json` and `summary.md`). Treat new, removed, renamed, or failed benchmark cases as non-comparable until explained.
 - Record the run URL, base/head SHAs, benchmark identities, exact metrics, summary schema version, and artifact names.
