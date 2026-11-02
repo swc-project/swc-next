@@ -15404,6 +15404,65 @@ mod tests {
     }
 
     #[test]
+    fn non_null_continuations() {
+        fn expression(ast: &Ast<'_>, index: usize) -> Expr {
+            ast.root_program()
+                .body(ast)
+                .get_node(ast, index)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+        }
+
+        for lang in [Lang::Ts, Lang::Tsx] {
+            let allocator = Allocator::new();
+            let options = Options {
+                lang,
+                preserve_parens: true,
+                ..Options::default()
+            };
+            let parse = |source| {
+                let result = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+                assert!(result.diagnostics.is_empty());
+                result.ast
+            };
+
+            assert!(has_errors("a++!;", options));
+
+            assert!(has_errors("a--!;", options));
+
+            assert!(has_errors("a++!.b;", options));
+
+            assert!(has_errors("a++!(c);", options));
+
+            let ast = parse("(a++)!;");
+            let non_null = expression(&ast, 0).as_ts_non_null_expression(&ast).unwrap();
+            let operand = non_null.expression(&ast).as_parenthesized_expression(&ast);
+            let kind = ast.node_kind(operand.unwrap().expression(&ast).node_id());
+            assert_eq!(kind, NodeKind::UpdateExpression);
+
+            let ast = parse("a!++;");
+            let update = expression(&ast, 0).as_update_expression(&ast).unwrap();
+            let kind = ast.node_kind(update.argument(&ast).node_id());
+            assert_eq!(kind, NodeKind::TsNonNullExpression);
+
+            let ast = parse("a++\n!b;");
+            assert_eq!(ast.root_program().body(&ast).len(), 2);
+            assert!(expression(&ast, 0).as_update_expression(&ast).is_some());
+            assert!(expression(&ast, 1).as_unary_expression(&ast).is_some());
+
+            assert!(!has_errors("++a!;", options));
+
+            assert!(!has_errors("a!!;", options));
+
+            assert!(!has_errors("x = a! + b;", options));
+
+            assert!(!has_errors("x = typeof a!;", options));
+        }
+    }
+
+    #[test]
     fn definite_assignment_recovery() {
         fn parse(source: &str) -> (Vec<&str>, &str, Option<&str>, Option<&str>) {
             let allocator = Allocator::new();
