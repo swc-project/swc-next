@@ -14596,7 +14596,6 @@ mod tests {
         FunctionBody,
         IdentifierReference,
         JsxText,
-        LabelIdentifier,
         MethodDefinition,
         NewExpression,
         PropertyDefinition,
@@ -15102,7 +15101,7 @@ mod tests {
 
     #[test]
     fn contextual_labels() {
-        fn labels(source: &str) -> Vec<String> {
+        fn labels(source: &str) -> (String, Option<String>) {
             let allocator = Allocator::new();
             let options = Options {
                 source_type: SourceType::Script,
@@ -15111,20 +15110,42 @@ mod tests {
             let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
             assert!(parsed.diagnostics.is_empty());
             let ast = &parsed.ast;
-            find_all::<LabelIdentifier>(ast)
-                .into_iter()
-                .map(|label| ast.get_utf8(label.name(ast)).to_owned())
-                .collect()
+            let label = ast
+                .root_program()
+                .body(ast)
+                .get_node(ast, 0)
+                .unwrap()
+                .as_labeled_statement(ast)
+                .unwrap();
+            let target = label.body(ast).as_while_statement(ast).map(|statement| {
+                let body = statement
+                    .body(ast)
+                    .as_block_statement(ast)
+                    .unwrap()
+                    .body(ast)
+                    .get_node(ast, 0)
+                    .unwrap();
+                let identifier = if let Some(statement) = body.as_break_statement(ast) {
+                    statement.label(ast).unwrap()
+                } else {
+                    body.as_continue_statement(ast).unwrap().label(ast).unwrap()
+                };
+                ast.get_utf8(identifier.name(ast)).to_owned()
+            });
+            (ast.get_utf8(label.label(ast).name(ast)).to_owned(), target)
         }
 
-        let names = labels("async: while (1) { break as\\u0079nc; }");
-        assert_eq!(names, ["async", "async"]);
+        let (label, target) = labels("async: while (1) { break as\\u0079nc; }");
+        assert_eq!(label, "async");
+        assert_eq!(target.as_deref(), Some("async"));
 
-        let names = labels("let: while (1) { continue l\\u0065t; }");
-        assert_eq!(names, ["let", "let"]);
+        let (label, target) = labels("let: while (1) { continue l\\u0065t; }");
+        assert_eq!(label, "let");
+        assert_eq!(target.as_deref(), Some("let"));
 
-        let names = labels("using: 1;");
-        assert_eq!(names, ["using"]);
+        let (label, target) = labels("using: 1;");
+        assert_eq!(label, "using");
+        assert_eq!(target, None);
     }
 
     #[test]
