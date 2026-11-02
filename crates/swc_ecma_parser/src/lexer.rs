@@ -929,10 +929,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
 
         if tag == TokenTag::NumericLiteral && self.peek(0) == b'.' {
             let next = self.peek(1);
+            self.cursor += 1;
             if next == b'_' {
                 return Err(LexicalError::NumericSeparatorMisuse);
             }
-            self.cursor += 1;
             has_decimal_or_exponent = true;
             if next.is_ascii_digit() {
                 self.consume_decimal_digits()?;
