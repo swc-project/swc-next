@@ -1,7 +1,7 @@
 use crate::{
     derive::ast_clone_in::ast_clone_in,
     generator::{
-        ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
+        ast_builder::ast_builder, ast_compare::ast_compare, ast_json::ast_json, ast_node::ast_node,
         ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
         estree_decoder::estree_decoder, estree_encoder::estree_encoder, estree_types::estree_types,
     },
@@ -49,6 +49,7 @@ fn main() -> std::io::Result<()> {
     ast_visitor.write_to_file()?;
 
     ast_compare(&schema).write_to_file()?;
+    ast_json(&schema).write_to_file()?;
 
     for output in estree_decoder(&schema) {
         output.write_to_file()?;

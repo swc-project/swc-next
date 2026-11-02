@@ -2839,6 +2839,7 @@ version = "0.4.1"
 dependencies = [
  "cow-utils",
  "num-bigint 0.5.1",
+ "serde_json",
  "swc_next_allocator",
  "swc_next_ast_macros",
  "unicode-id-start",

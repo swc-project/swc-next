@@ -4,6 +4,8 @@ mod comment;
 mod derive;
 mod diagnostic;
 pub mod ffi;
+#[cfg(feature = "json")]
+pub mod json;
 mod node_id;
 mod semantic;
 mod strings;
@@ -13,6 +15,8 @@ mod visit;
 mod generated {
     mod ast_builder;
     mod ast_clone_in;
+    #[cfg(feature = "json")]
+    mod ast_json;
     pub mod ast_node;
     pub(crate) mod ast_payload;
     mod ast_property;

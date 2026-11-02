@@ -9,6 +9,7 @@ repository.workspace  = true
 version               = "0.4.1"
 
 [features]
+json = []
 shared_string_allocator = []
 
 [dependencies]
@@ -18,3 +19,6 @@ unicode-id-start = { workspace = true }
 
 swc_next_allocator  = { workspace = true }
 swc_next_ast_macros = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
