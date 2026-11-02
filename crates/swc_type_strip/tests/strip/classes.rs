@@ -60,6 +60,16 @@ fn heritage() {
         "class C<T> implements A<T> {}",
         "class C                    {}",
     );
+
+    assert_strip(
+        "class C extends B<T> /* implements X */ implements A {}",
+        "class C extends B    /* implements X */              {}",
+    );
+
+    assert_strip(
+        "export default class implements A {}",
+        "export default class              {}",
+    );
 }
 
 #[test]

@@ -49,6 +49,11 @@ fn imports() {
         "import { value,        /* comment */ } from 'm';",
     );
 
+    assert_strip(
+        "import { type A /* , } */, b } from 'm';",
+        "import {                   b } from 'm';",
+    );
+
     assert_strip_error(
         "import type Alias = Namespace.Member;\nrun();",
         ";                                    \nrun();",
@@ -75,6 +80,11 @@ fn exports() {
     assert_strip(
         "export { type A, type B, C };",
         "export {                 C };",
+    );
+
+    assert_strip(
+        "export { type 'a,}' as b, c } from 'm';",
+        "export {                  c } from 'm';",
     );
 
     assert_strip(

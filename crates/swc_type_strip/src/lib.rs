@@ -13,18 +13,19 @@ use swc_next_ecma_ast::{
     ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData, ForInStatement,
     ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan, IfStatement,
     ImportDeclaration, ImportOrExportKind, LabeledStatement, LogicalExpression, MemberExpression,
-    MethodDefinition, Program, PropertyDefinition, PropertyKey, Stmt, SubRange,
-    TaggedTemplateExpression, TsAsExpression, TsClassImplements, TsEnumDeclaration,
+    MethodDefinition, Program, PropertyDefinition, PropertyKey, ReturnStatement, Stmt, SubRange,
+    TaggedTemplateExpression, ThrowStatement, TsAsExpression, TsClassImplements, TsEnumDeclaration,
     TsExportAssignment, TsFunction, TsGlobalDeclaration, TsImportEqualsDeclaration,
     TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration, TsMethodDefinition,
     TsModuleDeclaration, TsNamespaceExportDeclaration, TsNonNullExpression, TsParameterProperty,
     TsSatisfiesExpression, TsThisParameter, TsTypeAliasDeclaration, TsTypeAnnotation,
     TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation, VariableDeclaration,
-    VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
+    VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement, YieldExpression,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, SourceType, Span};
 use swc_next_ecma_parser::{
-    CommentMode, Options as ParserOptions, ParseReturn, Parser, Token, TokenParserConfig, TokenTag,
+    CommentMode, NoTokenParserConfig, Options as ParserOptions, ParseReturn, Parser, Token,
+    TokenTag,
 };
 
 use crate::token_cursor::TokenCursor;
@@ -118,19 +119,20 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     }
 
     let allocator = Allocator::default();
-    let parse = Parser::init(&allocator, source, options.into(), TokenParserConfig).parse();
+    let parse = Parser::init(&allocator, source, options.into(), NoTokenParserConfig).parse();
     #[cfg(feature = "benchmarking")]
     let parse = benchmark_parse_boundary(parse);
     let ParseReturn {
         ast,
-        tokens,
         mut diagnostics,
+        ..
     } = parse;
 
     let program = ast.root_program();
     let mut eraser = TypeEraser {
         ast: &ast,
-        tokens: TokenCursor::new(source, tokens.as_slice()),
+        tokens: TokenCursor::new(&allocator, source, options.source_type),
+        restricted_argument: None,
         edits: EditPlan::default(),
         diagnostic: None,
         item_context: ItemContext::default(),
@@ -163,9 +165,12 @@ struct ItemContext {
     erased: bool,
 }
 
-struct TypeEraser<'ast, 'source, 'tokens> {
+struct TypeEraser<'ast, 'tokens> {
     ast: &'ast Ast<'ast>,
-    tokens: TokenCursor<'source, 'tokens>,
+    tokens: TokenCursor<'tokens>,
+    /// The `return`, `throw`, or `yield` keyword start and the start of its
+    /// argument, for the most recently visited keyword with an argument.
+    restricted_argument: Option<Span>,
     edits: EditPlan,
     diagnostic: Option<Diagnostic<'static>>,
     item_context: ItemContext,
@@ -184,7 +189,7 @@ enum ExprFrame {
 }
 
 impl ExprFrame {
-    fn visit_remaining(self, eraser: &mut TypeEraser<'_, '_, '_>) {
+    fn visit_remaining(self, eraser: &mut TypeEraser<'_, '_>) {
         let ast = eraser.ast;
         match self {
             Self::Expression(expression) => expression.visit_with(eraser),
@@ -211,7 +216,7 @@ impl ExprFrame {
     }
 }
 
-impl TypeEraser<'_, '_, '_> {
+impl TypeEraser<'_, '_> {
     fn visit_chain_operand(&mut self, mut node: Expr) {
         loop {
             match self.ast.expr_data(node) {
@@ -383,8 +388,7 @@ impl TypeEraser<'_, '_, '_> {
         let Some(previous) = self.item_context.previous_retained else {
             return false;
         };
-        let last = self.tokens.last_in_range(previous.start, previous.end);
-        !last.is_some_and(|token| token.tag() == TokenTag::Semicolon)
+        !self.tokens.ends_with_punctuator(previous, b';')
     }
 
     fn erase_suffix_expression(&mut self, expression: Expr, wrapper_span: Span) {
@@ -437,9 +441,10 @@ impl TypeEraser<'_, '_, '_> {
         {
             return;
         }
-        let Some(opening) =
-            self.tokens
-                .find_forward(parameters.start, parameters.end, TokenTag::LeftParen)
+        let Some(opening) = self
+            .tokens
+            .first_in_range(parameters.start, parameters.end)
+            .filter(|token| token.tag() == TokenTag::LeftParen)
         else {
             return;
         };
@@ -474,20 +479,22 @@ impl TypeEraser<'_, '_, '_> {
         {
             return;
         }
-        let Some(closing_parenthesis) =
-            self.tokens
-                .find_backward(parameters.start, parameters.end, TokenTag::RightParen)
-        else {
+        if !self.tokens.ends_with_punctuator(parameters, b')') {
             return;
-        };
+        }
         let Some(replacement_span) = self.tokens.trailing_character_span(return_span.end) else {
             return;
         };
 
         self.edits
-            .blank(Span::new(closing_parenthesis.start(), return_span.end));
+            .blank(Span::new(parameters.end - 1, return_span.end));
         self.edits
             .substitute(replacement_span, FixedSubstitution::RightParenthesis);
+    }
+
+    fn record_restricted_argument(&mut self, keyword_span: Span, argument: Expr) {
+        let argument_start = argument.span(self.ast).start;
+        self.restricted_argument = Some(Span::new(keyword_span.start, argument_start));
     }
 
     fn has_line_sensitive_arrow_prefix(&self, arrow: ArrowFunctionExpression) -> bool {
@@ -498,24 +505,14 @@ impl TypeEraser<'_, '_, '_> {
         let Some(type_parameters) = arrow.type_parameters(self.ast) else {
             return false;
         };
-        let type_parameters = type_parameters.span(self.ast);
-        let Some(opening) = self
-            .tokens
-            .first_in_range(type_parameters.start, type_parameters.end)
-        else {
-            return false;
-        };
-        if opening.has_line_terminator_before() {
-            return false;
-        }
-        self.tokens
-            .previous_before(opening.start())
-            .is_some_and(|token| {
-                matches!(
-                    token.tag(),
-                    TokenTag::Return | TokenTag::Throw | TokenTag::Yield
-                )
-            })
+        // The `<` directly follows the keyword on the same line.
+        let type_parameters_start = type_parameters.span(self.ast).start;
+        self.restricted_argument.is_some_and(|keyword_gap| {
+            keyword_gap.end == type_parameters_start
+                && !self
+                    .tokens
+                    .has_line_terminator(keyword_gap.start, keyword_gap.end)
+        })
     }
 
     fn separate_hazardous_class_element(
@@ -647,7 +644,7 @@ impl TypeEraser<'_, '_, '_> {
     }
 }
 
-impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
+impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     fn ast(&self) -> &Ast<'ast> {
         self.ast
     }
@@ -751,6 +748,27 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
         self.visit_required_statement(node.body(self.ast));
     }
 
+    fn visit_return_statement(&mut self, node: ReturnStatement) {
+        if let Some(argument) = node.argument(self.ast) {
+            self.record_restricted_argument(node.span(self.ast), argument);
+        }
+        node.visit_children_with(self);
+    }
+
+    fn visit_throw_statement(&mut self, node: ThrowStatement) {
+        self.record_restricted_argument(node.span(self.ast), node.argument(self.ast));
+        node.visit_children_with(self);
+    }
+
+    fn visit_yield_expression(&mut self, node: YieldExpression) {
+        if !node.delegate(self.ast)
+            && let Some(argument) = node.argument(self.ast)
+        {
+            self.record_restricted_argument(node.span(self.ast), argument);
+        }
+        node.visit_children_with(self);
+    }
+
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
         self.move_opening_parenthesis_across_multiline_type_parameters(node);
         self.move_closing_parenthesis_across_multiline_return_type(node);
@@ -759,9 +777,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
 
     fn visit_ts_this_parameter(&mut self, node: TsThisParameter) {
         let span = node.span(self.ast);
-        let next = self
-            .tokens
-            .first_in_range(span.end, self.ast.source().len() as u32);
+        let next = self.tokens.at_or_after(span.end);
         let end = next
             .filter(|token| token.tag() == TokenTag::Comma)
             .map_or(span.end, |token| token.end());
@@ -787,8 +803,8 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             || node.body(self.ast).span(self.ast).start,
             |id| id.span(self.ast).start,
         );
+        let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         if node.r#abstract(self.ast) {
-            let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
             self.erase_token(modifiers_start, identifier_start, TokenTag::Abstract);
         }
 
@@ -798,9 +814,23 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
             let last = self.ast.get_node_in_sub_range(last);
             let first_span = first.span(self.ast);
             let last_span = last.span(self.ast);
+            // Only keywords separate the last preceding header part from `implements`.
+            let header_end = [
+                node.id(self.ast).map(|id| id.span(self.ast).end),
+                node.type_parameters(self.ast)
+                    .map(|parameters| parameters.span(self.ast).end),
+                node.super_class(self.ast)
+                    .map(|super_class| super_class.span(self.ast).end),
+                node.super_type_arguments(self.ast)
+                    .map(|arguments| arguments.span(self.ast).end),
+            ]
+            .into_iter()
+            .flatten()
+            .max()
+            .unwrap_or(modifiers_start);
             if let Some(keyword) =
                 self.tokens
-                    .find_backward(span.start, first_span.start, TokenTag::Implements)
+                    .find_forward(header_end, first_span.start, TokenTag::Implements)
             {
                 self.edits.blank(Span::new(keyword.start(), last_span.end));
             }
@@ -1140,7 +1170,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
                 });
             if let Some(marker) =
                 self.tokens
-                    .find_backward(span.start, marker_end, TokenTag::LogicalNot)
+                    .find_forward(span.end, marker_end, TokenTag::LogicalNot)
             {
                 self.edits.blank(marker.span());
             }
