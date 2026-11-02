@@ -16493,11 +16493,21 @@ mod tests {
             let errors = parsed.diagnostics.iter().map(|error| error.span).collect();
             let ast = &parsed.ast;
             let body = ast.root_program().body(ast);
-            let parameters = find_all::<FormalParameter>(ast);
-            let binding = parameters[0]
-                .pattern(ast)
-                .as_binding_identifier(ast)
+            let arrow = body
+                .get_node(ast, 0)
+                .unwrap()
+                .as_expression_statement(ast)
+                .unwrap()
+                .expression(ast)
+                .as_arrow_function_expression(ast)
                 .unwrap();
+            let parameters = arrow.params(ast).items(ast);
+            let first = parameters
+                .get_node(ast, 0)
+                .unwrap()
+                .as_formal_parameter(ast)
+                .unwrap();
+            let binding = first.pattern(ast).as_binding_identifier(ast).unwrap();
             let name = ast.get_utf8(binding.name(ast)).to_owned();
             let last = body.get_node(ast, 1).unwrap().span(ast);
             let after = source[last.start as usize..last.end as usize].to_owned();
