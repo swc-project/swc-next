@@ -1218,7 +1218,7 @@ struct Checkpoint {
     lexer_state: LexerState,
     lexer_mode: LexerMode,
     lexer_comments_len: usize,
-    lexer_processed_comments: usize,
+    lexer_processed_comments: u32,
     lexer_tokens_len: usize,
     // Parser token stream.
     current_token: Token,
@@ -1244,7 +1244,7 @@ struct Peek<'peek, 'a, C: ParserConfig = NoTokenParserConfig> {
     cursor: u32,
     comments_len: usize,
     module_mode_errors_len: usize,
-    processed_comments: usize,
+    processed_comments: u32,
     tokens_len: usize,
     active: bool,
 }
@@ -1931,7 +1931,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     }
 
     fn set_lexer_mode(&mut self, mode: LexerMode) {
-        self.lexer.mode = mode;
+        self.lexer.set_mode(mode);
     }
 
     fn span_text(&self, span: Span) -> &'a str {
@@ -2033,7 +2033,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Checkpoint {
             lexer_cursor: self.lexer.cursor,
             lexer_state: self.lexer.state,
-            lexer_mode: self.lexer.mode,
+            lexer_mode: self.lexer.mode(),
             lexer_comments_len: self.lexer.comments.len(),
             lexer_processed_comments: self.lexer.processed_comments,
             lexer_tokens_len: self.lexer.tokens.len(),
@@ -2066,7 +2066,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn rewind(&mut self, checkpoint: Checkpoint) {
         self.lexer.cursor = checkpoint.lexer_cursor;
         self.lexer.state = checkpoint.lexer_state;
-        self.lexer.mode = checkpoint.lexer_mode;
+        self.lexer.set_mode(checkpoint.lexer_mode);
         self.lexer.comments.truncate(checkpoint.lexer_comments_len);
         self.lexer
             .rewind_module_mode_errors(checkpoint.lexer_cursor);
@@ -13183,7 +13183,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 &self.speculation_key(),
                 TypeArgumentFailures::EXPRESSION | TypeArgumentFailures::PEEL,
             )
-            || self.lexer.mode == LexerMode::Normal
+            || self.lexer.mode() == LexerMode::Normal
                 && self
                     .type_argument_lookahead
                     .cannot_close(self.current_token.start())
@@ -13245,12 +13245,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             boundary_context: self.boundary_context,
             statement_context: self.statement_context as u8,
             module_detection: self.module_detection.speculation_key(),
-            lexer_mode: self.lexer.mode as u8,
+            lexer_mode: self.lexer.mode() as u8,
         }
     }
 
     fn type_arguments_can_close(&mut self) -> bool {
-        if self.lexer.mode != LexerMode::Normal {
+        if self.lexer.mode() != LexerMode::Normal {
             return true;
         }
         let mut lookahead = mem::take(&mut self.type_argument_lookahead);

@@ -54,7 +54,19 @@ impl TransformCtx<'_, '_> {
         }
     }
 
+    /// Flushes statements queued for `container_id`. Most containers have
+    /// nothing queued, so skip the map lookups while both queues are empty.
+    #[inline]
     pub fn inject_statements_to(&mut self, container_id: NodeId) {
+        let injector = &self.state.statement_injector;
+        if injector.stmts.is_empty() && injector.vars.is_empty() {
+            return;
+        }
+        self.flush_injected_statements(container_id);
+    }
+
+    #[inline(never)]
+    fn flush_injected_statements(&mut self, container_id: NodeId) {
         let insertions = self
             .state
             .statement_injector

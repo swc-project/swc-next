@@ -97,6 +97,10 @@ enum ConsumeUnicodeContext {
 #[derive(Clone, Debug)]
 pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     source: &'a [u8],
+    /// The source length in [`LexerMode::Normal`] and zero in other modes, so the
+    /// bounds check of [`Self::try_next_token`] also rejects other modes.
+    /// Never exceeds `source.len()`.
+    fast_len: u32,
 
     /// Whether Annex B HTML-like comments are recognized.
     allow_html_like_comments: bool,
@@ -109,11 +113,13 @@ pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     /// Annex B comments which become errors if an unambiguous program resolves
     /// to a module.
     pub(crate) module_mode_errors: ArenaVec<'a, Span>,
-    pub(crate) processed_comments: usize,
+    /// A `u32` keeps the lexer at 128 bytes, so the parser lays it out first.
+    /// Each comment spans at least two source bytes, so the count fits.
+    pub(crate) processed_comments: u32,
 
     pub(crate) cursor: u32,
     pub(crate) state: LexerState,
-    pub(crate) mode: LexerMode,
+    mode: LexerMode,
 }
 
 impl<'a, C: ParserConfig> Lexer<'a, C> {
@@ -150,6 +156,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             tokens,
             collect_comments,
             source: source.as_bytes(),
+            fast_len: source.len() as u32,
             cursor: 0,
             allow_html_like_comments,
             hashbang: None,
@@ -190,6 +197,20 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Reads the next token into `target`. `target` must hold the last token
     /// read, or an `Eof` placeholder before the first token.
     #[inline]
+    pub(crate) fn mode(&self) -> LexerMode {
+        self.mode
+    }
+
+    #[inline]
+    pub(crate) fn set_mode(&mut self, mode: LexerMode) {
+        self.mode = mode;
+        self.fast_len = match mode {
+            LexerMode::Normal => self.source.len() as u32,
+            LexerMode::JsxTag => 0,
+        };
+    }
+
+    #[inline]
     pub fn next_token(&mut self, target: &mut Token) -> Result<(), LexicalError> {
         self.read_next_token(target)?;
         self.handle_token(*target, HandleTokenMode::Append);
@@ -203,15 +224,17 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// which stays clear between tokens.
     #[inline]
     pub(crate) fn try_next_token(&mut self, target: &mut Token) -> bool {
-        if self.mode != LexerMode::Normal {
-            return self.try_next_jsx_tag_token(target);
-        }
-
         debug_assert_eq!(self.state.token_flags, 0);
         let mut start = self.cursor;
-        let Some(mut byte) = self.source.get(start as usize).copied() else {
+        // `fast_len` is zero outside the normal mode.
+        if start >= self.fast_len {
+            if self.mode != LexerMode::Normal {
+                return self.try_next_jsx_tag_token(target);
+            }
             return false;
-        };
+        }
+        // SAFETY: `start < fast_len <= source.len()`.
+        let mut byte = unsafe { *self.source.get_unchecked(start as usize) };
         if byte == b' ' {
             start += 1;
             let Some(next) = self.source.get(start as usize).copied() else {
@@ -568,7 +591,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             }
         }
 
-        if self.processed_comments < self.comments.len() {
+        if (self.processed_comments as usize) < self.comments.len() {
             self.attach_pending_comments(token);
         }
         self.state.previous_token_tag = Some(token.tag());
@@ -578,7 +601,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// and the scanner that does attaches its comments to the token it reads.
     #[inline(always)]
     fn handle_fast_token(&mut self, token: Token) {
-        debug_assert_eq!(self.processed_comments, self.comments.len());
+        debug_assert_eq!(self.processed_comments as usize, self.comments.len());
         if self.config.tokens() {
             self.tokens.push(token);
         }
@@ -1604,10 +1627,10 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         if trailing {
             comment.position = CommentPosition::Trailing;
             comment.attached_to = self.state.prev_token_end;
-            for comment in &mut self.comments[self.processed_comments..] {
+            for comment in &mut self.comments[self.processed_comments as usize..] {
                 comment.attached_to = self.state.prev_token_end;
             }
-            self.processed_comments = self.comments.len() + 1;
+            self.processed_comments = self.comments.len() as u32 + 1;
         }
         self.comments.push(comment);
         Ok(())
@@ -1625,11 +1648,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             (CommentPosition::Leading, token.start())
         };
 
-        for comment in &mut self.comments[self.processed_comments..] {
+        for comment in &mut self.comments[self.processed_comments as usize..] {
             comment.position = position;
             comment.attached_to = attached_to;
         }
-        self.processed_comments = self.comments.len();
+        self.processed_comments = self.comments.len() as u32;
     }
 
     fn scan_line_comment(&mut self) -> Result<(), LexicalError> {
