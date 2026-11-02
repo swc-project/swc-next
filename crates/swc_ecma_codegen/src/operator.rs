@@ -136,6 +136,7 @@ bitflags::bitflags! {
         const IN_NEW_CALLEE = 1 << 0;
         const WRAP_TS_CAST = 1 << 1;
         const NO_INSTANTIATION = 1 << 2;
+        const OMIT_NESTED_NEW_ARGS = 1 << 3;
     }
 }
 

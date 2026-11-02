@@ -1,1 +1,1 @@
-function f(){var x;return ()=>x===void 0}
+function f(){var x;return()=>x===void 0}
