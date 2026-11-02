@@ -19,8 +19,9 @@ must allow this public repository to use Macro Runners.
 
 The [paired wall-time workflow](../../.github/workflows/paired-walltime.yml)
 uses the same triggers on an x86_64 GitHub runner. It builds the base and head
-revisions and runs each benchmark with the base binary and then the head binary,
-in several rounds in the same job. It writes the change to the job summary and
+revisions and runs each benchmark with the base binary and the head binary in an
+even number of rounds in the same job. Base runs first in odd rounds and head runs
+first in even rounds, so the run order does not bias the change. It writes the change to the job summary and
 comments on the pull request or the pushed `main` commit. It does not comment on
 pull requests from forks. The summary also records the runner's CPU and system.
 To compare any two revisions, run the workflow manually with `base` and `head`.

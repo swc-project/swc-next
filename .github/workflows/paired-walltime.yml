@@ -25,8 +25,8 @@ on:
         required: true
         type: string
       rounds:
-        description: Number of base/head rounds
-        default: 5
+        description: Number of base/head rounds (even; base and head alternate running first)
+        default: 6
         type: number
 
 permissions:
@@ -115,7 +115,7 @@ jobs:
 
       - name: Run base and head benchmarks in rounds
         env:
-          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 5 }}
+          PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 6 }}
         run: |
           mkdir -p "$RESULTS_DIR"
           node "$SCRIPT" run \
