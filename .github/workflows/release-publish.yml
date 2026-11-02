@@ -107,7 +107,7 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-musl
             extra_args: --cross-compile
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             target: powerpc64le-unknown-linux-gnu
             extra_args: --use-napi-cross
             target_cc: clang-15
@@ -117,7 +117,7 @@ jobs:
           - os: ubuntu-latest
             target: riscv64gc-unknown-linux-musl
             extra_args: --cross-compile
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             target: s390x-unknown-linux-gnu
             extra_args: --use-napi-cross
             target_cc: clang-15
