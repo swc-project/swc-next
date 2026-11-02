@@ -33,12 +33,11 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         span: Span,
     ) -> Stmt {
         let body = self.ast().function_body(DUMMY_SP, directives, statements);
-        let parameter_binding = self.ast().binding_identifier(DUMMY_SP, parameter);
+        let parameter_binding = self.ast().binding_identifier(DUMMY_SP, parameter, None);
         let parameter = self.ast().formal_parameter(
             DUMMY_SP,
             SubRange::empty(),
             FormalParameterPattern::BindingIdentifier(parameter_binding),
-            None,
             None,
             false,
         );

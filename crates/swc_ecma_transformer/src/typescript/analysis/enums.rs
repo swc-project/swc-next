@@ -161,7 +161,7 @@ impl EnumCollector {
         else {
             return;
         };
-        if declarator.type_annotation(ast).is_some() || declarator.init(ast).is_none() {
+        if identifier.type_annotation(ast).is_some() || declarator.init(ast).is_none() {
             return;
         }
         let Some(symbol) = semantic.symbol_of(identifier.node_id()) else {

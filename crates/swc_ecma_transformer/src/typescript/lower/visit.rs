@@ -136,7 +136,9 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         &mut self,
         parameter: FormalParameter,
     ) -> Option<FormalParameter> {
-        parameter.set_type_annotation(self.ast(), None);
+        parameter
+            .pattern(self.ast())
+            .set_type_annotation(self.ast(), None);
         parameter.set_optional(self.ast(), false);
         parameter.visit_mut_children_with(self)
     }
@@ -150,7 +152,9 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     }
 
     fn visit_mut_catch_clause(&mut self, clause: CatchClause) -> Option<CatchClause> {
-        clause.set_type_annotation(self.ast(), None);
+        if let Some(param) = clause.param(self.ast()) {
+            param.set_type_annotation(self.ast(), None);
+        }
         clause.visit_mut_children_with(self)
     }
 
@@ -167,7 +171,9 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         declarator: VariableDeclarator,
     ) -> Option<VariableDeclarator> {
         declarator.set_definite(self.ast(), false);
-        declarator.set_type_annotation(self.ast(), None);
+        declarator
+            .id(self.ast())
+            .set_type_annotation(self.ast(), None);
         declarator.visit_mut_children_with(self)
     }
 

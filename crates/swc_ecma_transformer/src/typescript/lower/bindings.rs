@@ -19,7 +19,6 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             span,
             BindingPattern::BindingIdentifier(binding),
             None,
-            None,
             false,
         );
         let declarators = self.ast().add_sub_range([declarator]);

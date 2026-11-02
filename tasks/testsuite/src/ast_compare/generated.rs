@@ -231,6 +231,10 @@ impl Compare for BindingIdentifier {
         let right = other.name(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "BindingIdentifier.name"))?;
+        let left = self.type_annotation(asts.left);
+        let right = other.type_annotation(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "BindingIdentifier.type_annotation"))?;
         Ok(())
     }
 }
@@ -262,6 +266,10 @@ impl Compare for AssignmentPattern {
         let right = other.right(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "AssignmentPattern.right"))?;
+        let left = self.type_annotation(asts.left);
+        let right = other.type_annotation(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "AssignmentPattern.type_annotation"))?;
         Ok(())
     }
 }
@@ -271,6 +279,10 @@ impl Compare for BindingRestElement {
         let right = other.argument(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "BindingRestElement.argument"))?;
+        let left = self.type_annotation(asts.left);
+        let right = other.type_annotation(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "BindingRestElement.type_annotation"))?;
         Ok(())
     }
 }
@@ -284,6 +296,10 @@ impl Compare for ArrayPattern {
         let right = other.rest(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "ArrayPattern.rest"))?;
+        let left = self.type_annotation(asts.left);
+        let right = other.type_annotation(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "ArrayPattern.type_annotation"))?;
         Ok(())
     }
 }
@@ -297,6 +313,10 @@ impl Compare for ObjectPattern {
         let right = other.rest(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "ObjectPattern.rest"))?;
+        let left = self.type_annotation(asts.left);
+        let right = other.type_annotation(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "ObjectPattern.type_annotation"))?;
         Ok(())
     }
 }
@@ -442,10 +462,6 @@ impl Compare for VariableDeclarator {
         let right = other.id(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "VariableDeclarator.id"))?;
-        let left = self.type_annotation(asts.left);
-        let right = other.type_annotation(asts.right);
-        left.compare(right, asts)
-            .map_err(|error| format!("{}.{error}", "VariableDeclarator.type_annotation"))?;
         let left = self.init(asts.left);
         let right = other.init(asts.right);
         left.compare(right, asts)
@@ -582,10 +598,6 @@ impl Compare for CatchClause {
         let right = other.param(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "CatchClause.param"))?;
-        let left = self.type_annotation(asts.left);
-        let right = other.type_annotation(asts.right);
-        left.compare(right, asts)
-            .map_err(|error| format!("{}.{error}", "CatchClause.type_annotation"))?;
         let left = self.body(asts.left);
         let right = other.body(asts.right);
         left.compare(right, asts)
@@ -981,10 +993,6 @@ impl Compare for FormalParameter {
         let right = other.pattern(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "FormalParameter.pattern"))?;
-        let left = self.type_annotation(asts.left);
-        let right = other.type_annotation(asts.right);
-        left.compare(right, asts)
-            .map_err(|error| format!("{}.{error}", "FormalParameter.type_annotation"))?;
         let left = self.initializer(asts.left);
         let right = other.initializer(asts.right);
         left.compare(right, asts)
@@ -1514,6 +1522,10 @@ impl Compare for TsFunction {
         let right = other.declare(asts.right);
         left.compare(right, asts)
             .map_err(|error| format!("{}.{error}", "TsFunction.declare"))?;
+        let left = self.is_method(asts.left);
+        let right = other.is_method(asts.right);
+        left.compare(right, asts)
+            .map_err(|error| format!("{}.{error}", "TsFunction.is_method"))?;
         Ok(())
     }
 }

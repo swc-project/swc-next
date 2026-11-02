@@ -710,6 +710,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         let node_flags = self.enter_node(node.node_id());
         self.visit_with_reference_flags(node.left(self.ast), node_flags);
         node.right(self.ast).visit_with(self);
+        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::AssignmentPattern(node));
     }
 
@@ -717,6 +718,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     fn visit_binding_rest_element(&mut self, node: BindingRestElement) {
         let node_flags = self.enter_node(node.node_id());
         self.visit_with_reference_flags(node.argument(self.ast), node_flags);
+        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::BindingRestElement(node));
     }
 
@@ -731,6 +733,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         if let Some(rest) = node.rest(self.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
+        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::ArrayPattern(node));
     }
 
@@ -744,6 +747,7 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         if let Some(rest) = node.rest(self.ast) {
             self.visit_with_reference_flags(rest, node_flags);
         }
+        node.type_annotation(self.ast).visit_with(self);
         self.leave_node(NodeKindData::ObjectPattern(node));
     }
 
