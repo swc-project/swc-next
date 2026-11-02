@@ -2078,98 +2078,183 @@ pub fn lexical_error_help(error_type: LexicalError) -> &'static str {
     }
 }
 
+/// Keywords and contextual keywords with their token tags.
+const KEYWORDS: [(&[u8], TokenTag); 85] = [
+    (b"if", TokenTag::If),
+    (b"of", TokenTag::Of),
+    (b"in", TokenTag::In),
+    (b"do", TokenTag::Do),
+    (b"as", TokenTag::As),
+    (b"is", TokenTag::Is),
+    (b"any", TokenTag::Any),
+    (b"for", TokenTag::For),
+    (b"get", TokenTag::Get),
+    (b"let", TokenTag::Let),
+    (b"new", TokenTag::New),
+    (b"out", TokenTag::Out),
+    (b"set", TokenTag::Set),
+    (b"try", TokenTag::Try),
+    (b"var", TokenTag::Var),
+    (b"case", TokenTag::Case),
+    (b"this", TokenTag::This),
+    (b"else", TokenTag::Else),
+    (b"enum", TokenTag::Enum),
+    (b"void", TokenTag::Void),
+    (b"with", TokenTag::With),
+    (b"null", TokenTag::NullLiteral),
+    (b"type", TokenTag::Type),
+    (b"true", TokenTag::True),
+    (b"from", TokenTag::From),
+    (b"await", TokenTag::Await),
+    (b"async", TokenTag::Async),
+    (b"break", TokenTag::Break),
+    (b"const", TokenTag::Const),
+    (b"class", TokenTag::Class),
+    (b"catch", TokenTag::Catch),
+    (b"defer", TokenTag::Defer),
+    (b"false", TokenTag::False),
+    (b"infer", TokenTag::Infer),
+    (b"keyof", TokenTag::Keyof),
+    (b"never", TokenTag::Never),
+    (b"super", TokenTag::Super),
+    (b"throw", TokenTag::Throw),
+    (b"using", TokenTag::Using),
+    (b"while", TokenTag::While),
+    (b"yield", TokenTag::Yield),
+    (b"assert", TokenTag::Assert),
+    (b"bigint", TokenTag::Bigint),
+    (b"delete", TokenTag::Delete),
+    (b"export", TokenTag::Export),
+    (b"global", TokenTag::Global),
+    (b"import", TokenTag::Import),
+    (b"module", TokenTag::Module),
+    (b"number", TokenTag::Number),
+    (b"object", TokenTag::Object),
+    (b"public", TokenTag::Public),
+    (b"return", TokenTag::Return),
+    (b"source", TokenTag::Source),
+    (b"static", TokenTag::Static),
+    (b"string", TokenTag::String),
+    (b"switch", TokenTag::Switch),
+    (b"symbol", TokenTag::Symbol),
+    (b"typeof", TokenTag::Typeof),
+    (b"unique", TokenTag::Unique),
+    (b"boolean", TokenTag::Boolean),
+    (b"declare", TokenTag::Declare),
+    (b"default", TokenTag::Default),
+    (b"extends", TokenTag::Extends),
+    (b"finally", TokenTag::Finally),
+    (b"package", TokenTag::Package),
+    (b"private", TokenTag::Private),
+    (b"require", TokenTag::Require),
+    (b"unknown", TokenTag::Unknown),
+    (b"abstract", TokenTag::Abstract),
+    (b"continue", TokenTag::Continue),
+    (b"debugger", TokenTag::Debugger),
+    (b"function", TokenTag::Function),
+    (b"readonly", TokenTag::Readonly),
+    (b"satisfies", TokenTag::Satisfies),
+    (b"undefined", TokenTag::Undefined),
+    (b"accessor", TokenTag::Accessor),
+    (b"interface", TokenTag::Interface),
+    (b"namespace", TokenTag::Namespace),
+    (b"protected", TokenTag::Protected),
+    (b"asserts", TokenTag::Asserts),
+    (b"intrinsic", TokenTag::Intrinsic),
+    (b"override", TokenTag::Override),
+    (b"constructor", TokenTag::Constructor),
+    (b"implements", TokenTag::Implements),
+    (b"instanceof", TokenTag::Instanceof),
+];
+
+/// The length of the longest entry in [`KEYWORDS`].
+const MAX_KEYWORD_LEN: usize = 11;
+
+/// The multiplier of the keyword hash. It maps every entry in [`KEYWORDS`] to a
+/// different slot; [`build_keyword_table`] rejects a collision at compile time.
+const KEYWORD_HASH_MULTIPLIER: u64 = 0xf52b_5853_3d7a_32d9;
+
+/// A keyword hash table slot. `lo` holds bytes 0..8 and `hi` holds bytes 8..
+/// of the zero-padded keyword in little-endian order. Empty slots hold zero
+/// words, which no identifier matches.
+#[derive(Clone, Copy)]
+#[repr(align(16))]
+struct KeywordSlot {
+    lo: u64,
+    hi: u32,
+    tag: TokenTag,
+}
+
+static KEYWORD_TABLE: [KeywordSlot; 256] = build_keyword_table();
+
+#[inline(always)]
+const fn keyword_hash(lo: u64, hi: u32) -> usize {
+    (lo.wrapping_add(hi as u64)
+        .wrapping_mul(KEYWORD_HASH_MULTIPLIER)
+        >> 56) as usize
+}
+
+const fn build_keyword_table() -> [KeywordSlot; 256] {
+    let mut table = [KeywordSlot {
+        lo: 0,
+        hi: 0,
+        tag: TokenTag::Identifier,
+    }; 256];
+    let mut i = 0;
+    while i < KEYWORDS.len() {
+        let (keyword, tag) = KEYWORDS[i];
+        assert!(keyword.len() >= 2 && keyword.len() <= MAX_KEYWORD_LEN);
+        let mut bytes = [0u8; 16];
+        let mut j = 0;
+        while j < keyword.len() {
+            bytes[j] = keyword[j];
+            j += 1;
+        }
+        let lo = u64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let hi = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+        let slot = keyword_hash(lo, hi);
+        assert!(table[slot].lo == 0, "keyword hash collision");
+        table[slot] = KeywordSlot { lo, hi, tag };
+        i += 1;
+    }
+    table
+}
+
 // INLINE: This is a very hot path. Reuse identifier bytes
 // already loaded by the caller and avoid preserving
 // token state across a separate keyword-lookup call.
 #[inline(always)]
 fn get_keyword_type(lexeme: &[u8]) -> TokenTag {
-    match lexeme {
-        b"if" => TokenTag::If,
-        b"of" => TokenTag::Of,
-        b"in" => TokenTag::In,
-        b"do" => TokenTag::Do,
-        b"as" => TokenTag::As,
-        b"is" => TokenTag::Is,
-        b"any" => TokenTag::Any,
-        b"for" => TokenTag::For,
-        b"get" => TokenTag::Get,
-        b"let" => TokenTag::Let,
-        b"new" => TokenTag::New,
-        b"out" => TokenTag::Out,
-        b"set" => TokenTag::Set,
-        b"try" => TokenTag::Try,
-        b"var" => TokenTag::Var,
-        b"case" => TokenTag::Case,
-        b"this" => TokenTag::This,
-        b"else" => TokenTag::Else,
-        b"enum" => TokenTag::Enum,
-        b"void" => TokenTag::Void,
-        b"with" => TokenTag::With,
-        b"null" => TokenTag::NullLiteral,
-        b"type" => TokenTag::Type,
-        b"true" => TokenTag::True,
-        b"from" => TokenTag::From,
-        b"await" => TokenTag::Await,
-        b"async" => TokenTag::Async,
-        b"break" => TokenTag::Break,
-        b"const" => TokenTag::Const,
-        b"class" => TokenTag::Class,
-        b"catch" => TokenTag::Catch,
-        b"defer" => TokenTag::Defer,
-        b"false" => TokenTag::False,
-        b"infer" => TokenTag::Infer,
-        b"keyof" => TokenTag::Keyof,
-        b"never" => TokenTag::Never,
-        b"super" => TokenTag::Super,
-        b"throw" => TokenTag::Throw,
-        b"using" => TokenTag::Using,
-        b"while" => TokenTag::While,
-        b"yield" => TokenTag::Yield,
-        b"assert" => TokenTag::Assert,
-        b"bigint" => TokenTag::Bigint,
-        b"delete" => TokenTag::Delete,
-        b"export" => TokenTag::Export,
-        b"global" => TokenTag::Global,
-        b"import" => TokenTag::Import,
-        b"module" => TokenTag::Module,
-        b"number" => TokenTag::Number,
-        b"object" => TokenTag::Object,
-        b"public" => TokenTag::Public,
-        b"return" => TokenTag::Return,
-        b"source" => TokenTag::Source,
-        b"static" => TokenTag::Static,
-        b"string" => TokenTag::String,
-        b"switch" => TokenTag::Switch,
-        b"symbol" => TokenTag::Symbol,
-        b"typeof" => TokenTag::Typeof,
-        b"unique" => TokenTag::Unique,
-        b"boolean" => TokenTag::Boolean,
-        b"declare" => TokenTag::Declare,
-        b"default" => TokenTag::Default,
-        b"extends" => TokenTag::Extends,
-        b"finally" => TokenTag::Finally,
-        b"package" => TokenTag::Package,
-        b"private" => TokenTag::Private,
-        b"require" => TokenTag::Require,
-        b"unknown" => TokenTag::Unknown,
-        b"abstract" => TokenTag::Abstract,
-        b"continue" => TokenTag::Continue,
-        b"debugger" => TokenTag::Debugger,
-        b"function" => TokenTag::Function,
-        b"readonly" => TokenTag::Readonly,
-        b"satisfies" => TokenTag::Satisfies,
-        b"undefined" => TokenTag::Undefined,
-        b"accessor" => TokenTag::Accessor,
-        b"interface" => TokenTag::Interface,
-        b"namespace" => TokenTag::Namespace,
-        b"protected" => TokenTag::Protected,
-        b"asserts" => TokenTag::Asserts,
-        b"intrinsic" => TokenTag::Intrinsic,
-        b"override" => TokenTag::Override,
-        b"constructor" => TokenTag::Constructor,
-        b"implements" => TokenTag::Implements,
-        b"instanceof" => TokenTag::Instanceof,
-        _ => TokenTag::Identifier,
+    let len = lexeme.len();
+    // Pack the lexeme into zero-padded little-endian words. Two overlapping
+    // loads cover every length in a class; their shared bytes are equal, so
+    // OR-ing the shifted end load onto the start load is exact.
+    let (lo, hi) = match len {
+        2..=3 => {
+            let start = u64::from(u16::from_le_bytes([lexeme[0], lexeme[1]]));
+            let end = u64::from(u16::from_le_bytes([lexeme[len - 2], lexeme[len - 1]]));
+            (start | (end << (8 * (len - 2))), 0)
+        }
+        4..=7 => {
+            let start = u64::from(u32::from_le_bytes(lexeme[..4].try_into().unwrap()));
+            let end = u64::from(u32::from_le_bytes(lexeme[len - 4..].try_into().unwrap()));
+            (start | (end << (8 * (len - 4))), 0)
+        }
+        8..=MAX_KEYWORD_LEN => {
+            let start = u64::from_le_bytes(lexeme[..8].try_into().unwrap());
+            let end = u64::from_le_bytes(lexeme[len - 8..].try_into().unwrap());
+            // Keep bytes 8..len, which are the top `len - 8` bytes of `end`.
+            (start, ((end >> (8 * (15 - len))) >> 8) as u32)
+        }
+        _ => return TokenTag::Identifier,
+    };
+    let slot = &KEYWORD_TABLE[keyword_hash(lo, hi)];
+    if slot.lo == lo && slot.hi == hi {
+        slot.tag
+    } else {
+        TokenTag::Identifier
     }
 }
 
@@ -2213,6 +2298,37 @@ mod tests {
 
         let ignoring = Lexer::init(&allocator, &large_source, false, false, NoTokenParserConfig);
         assert_eq!(ignoring.comments.capacity(), 0);
+    }
+
+    fn listed_keyword_type(lexeme: &[u8]) -> TokenTag {
+        KEYWORDS
+            .iter()
+            .find(|(keyword, _)| *keyword == lexeme)
+            .map_or(TokenTag::Identifier, |&(_, tag)| tag)
+    }
+
+    #[test]
+    fn keywords() {
+        for (keyword, tag) in KEYWORDS {
+            assert_eq!(get_keyword_type(keyword), tag);
+
+            let mut variants = vec![
+                keyword[..keyword.len() - 1].to_vec(),
+                [keyword, b"x"].concat(),
+            ];
+            for i in 0..keyword.len() {
+                let mut changed = keyword.to_vec();
+                changed[i] = b'_';
+                variants.push(changed);
+            }
+            for variant in variants {
+                assert_eq!(get_keyword_type(&variant), listed_keyword_type(&variant));
+            }
+        }
+
+        assert_eq!(get_keyword_type(b"a"), TokenTag::Identifier);
+
+        assert_eq!(get_keyword_type(b"constructors"), TokenTag::Identifier);
     }
 
     #[test]
