@@ -2661,7 +2661,11 @@ impl<'a> Printer<'a> {
             || type_arguments.is_some() && level > Precedence::Assignment
             || level >= Precedence::Postfix && !context.contains(ExprContext::OMIT_NESTED_NEW_ARGS);
         let mut callee_context = ExprContext::NO_INSTANTIATION | ExprContext::IN_NEW_CALLEE;
-        callee_context.set(ExprContext::OMIT_NESTED_NEW_ARGS, !print_arguments);
+        // Keep the inner argument list so outer type arguments stay on the outer `new`.
+        callee_context.set(
+            ExprContext::OMIT_NESTED_NEW_ARGS,
+            !print_arguments && type_arguments.is_none(),
+        );
         self.print_expr_with_context(callee, Precedence::New, callee_context);
         if let Some(args) = type_arguments {
             self.print_ts_type_args(args);

@@ -498,6 +498,16 @@ fn test_minify_nested_new() {
     expect_printed_ts_minify("new (new Foo())(1);", "new new Foo()(1);");
 
     expect_printed_ts_minify("new (new Foo(1))();", "new new Foo(1);");
+
+    expect_token_boundary(
+        "new (new Factory())<number>();",
+        "new new Factory()<number>;",
+    );
+
+    expect_token_boundary(
+        "new (new Factory<string>())<number>();",
+        "new new Factory<string>()<number>;",
+    );
 }
 
 #[test]
