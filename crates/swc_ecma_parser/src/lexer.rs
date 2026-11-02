@@ -299,6 +299,11 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
                 *target = Token::new(start, end, OPERATOR_TAG[byte as usize], flags);
             }
             FastClass::Quote => return self.try_string_token::<LINE_BREAK>(target, start),
+            FastClass::Slash => {
+                // Other slashes are operators or line comments, which need the full scanner.
+                return self.source.get(start as usize + 1) == Some(&b'*')
+                    && self.try_block_comment_token::<LINE_BREAK>(target, start);
+            }
             FastClass::Slow => return false,
         }
         self.handle_fast_token(*target);
@@ -367,6 +372,133 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
         );
         self.handle_fast_token(*target);
         true
+    }
+
+    /// Reads a block comment at `start` and the fast-path token after it. A
+    /// following punctuator is read here, and other tokens are tail-called to
+    /// [`Self::try_token_after_block_comment`]. Other trivia after the comment
+    /// still needs the full scanner, which then reads the comment again. See
+    /// [`Self::try_identifier_token`].
+    #[inline(never)]
+    fn try_block_comment_token<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+    ) -> bool {
+        debug_assert_eq!(&self.source[start as usize..start as usize + 2], b"/*");
+        let src = self.source;
+        // The full scanner takes the previous token tag of an `Eof` target from
+        // its state, which fast paths do not update.
+        if target.tag() == TokenTag::Eof || self.processed_comments as usize != self.comments.len()
+        {
+            return false;
+        }
+        let Some(end) = find_block_comment_end(src, start as usize + 2, LINE_BREAK) else {
+            return false;
+        };
+
+        let mut next_start = end;
+        let Some(&(mut byte)) = src.get(next_start) else {
+            return false;
+        };
+        let mut line_break = LINE_BREAK;
+        if byte == b' ' {
+            next_start += 1;
+            let Some(&next) = src.get(next_start) else {
+                return false;
+            };
+            byte = next;
+        } else if byte == b'\n' {
+            let Some((next_position, next)) = self.skip_line_feed_indentation(end as u32) else {
+                return false;
+            };
+            next_start = next_position as usize;
+            byte = next;
+            line_break = true;
+        }
+
+        let (end, next_start) = (end as u32, next_start as u32);
+        if FAST_CLASS[byte as usize] != FastClass::Punctuation {
+            return self.try_token_after_block_comment::<LINE_BREAK>(
+                target, start, end, next_start, line_break,
+            );
+        }
+        self.push_block_comment(target.tag(), LINE_BREAK, start, end, next_start);
+        self.cursor = next_start + 1;
+        *target = Token::new(
+            next_start,
+            next_start + 1,
+            SIMPLE_PUNCT_TAG[byte as usize],
+            fast_token_flags(line_break),
+        );
+        self.handle_fast_token(*target);
+        true
+    }
+
+    /// Records the block comment from `start` to `end` and reads the fast-path
+    /// token at `next_start`, removing the comment if the token needs the full
+    /// scanner. `LINE_BREAK` is the line break before the comment, and `line_break`
+    /// the one before the token. See [`Self::try_block_comment_token`].
+    #[inline(never)]
+    fn try_token_after_block_comment<const LINE_BREAK: bool>(
+        &mut self,
+        target: &mut Token,
+        start: u32,
+        end: u32,
+        next_start: u32,
+        line_break: bool,
+    ) -> bool {
+        let byte = self.source[next_start as usize];
+        // Another comment needs the full scanner.
+        if byte == b'/' {
+            return false;
+        }
+        let comment_count = self.comments.len();
+        self.push_block_comment(target.tag(), LINE_BREAK, start, end, next_start);
+        let read = if line_break {
+            self.try_next_token_at::<true>(target, next_start, byte)
+        } else {
+            self.try_next_token_at::<false>(target, next_start, byte)
+        };
+        if !read {
+            // No comment was pending before this one.
+            self.comments.truncate(comment_count);
+            self.processed_comments = comment_count as u32;
+        }
+        read
+    }
+
+    /// Records a block comment that a fast path reads between the `previous`
+    /// token and the token at `next_start`, attaching it as the full scanner
+    /// would. No other comment may be pending.
+    #[inline(always)]
+    fn push_block_comment(
+        &mut self,
+        previous: TokenTag,
+        line_break_before: bool,
+        start: u32,
+        end: u32,
+        next_start: u32,
+    ) {
+        debug_assert_eq!(self.processed_comments as usize, self.comments.len());
+        if !self.collect_comments {
+            return;
+        }
+        // Match `can_have_trailing_block_comment` and `attach_pending_comments`.
+        let (position, attached_to) = if !line_break_before
+            && (self.source[end as usize] == b';' || previous.can_have_trailing_comment())
+        {
+            (CommentPosition::Trailing, self.state.prev_token_end)
+        } else {
+            (CommentPosition::Leading, next_start)
+        };
+        self.comments.push(Comment {
+            span: Span::new(start, end),
+            attached_to,
+            kind: CommentKind::Block,
+            position,
+        });
+        self.processed_comments = self.comments.len() as u32;
     }
 
     /// Reads common tokens inside a JSX tag: names, `=` before a value, `>`,
@@ -1816,6 +1948,7 @@ enum FastClass {
     Dot,
     Operator,
     Quote,
+    Slash,
 }
 
 const FAST_CLASS: [FastClass; 256] = {
@@ -1841,7 +1974,8 @@ const FAST_CLASS: [FastClass; 256] = {
     table[b'.' as usize] = FastClass::Dot;
     table[b'"' as usize] = FastClass::Quote;
     table[b'\'' as usize] = FastClass::Quote;
-    // Slash and minus can start comments and retain the trivia path.
+    table[b'/' as usize] = FastClass::Slash;
+    // Minus can start an HTML-like comment and retains the trivia path.
     let operators = b"+*%<>=!&|^?";
     let mut operator = 0;
     while operator < operators.len() {
@@ -1883,6 +2017,35 @@ const ASCII_IDENTIFIER_CLASS: [IdentifierClass; 256] = {
     }
     table
 };
+
+/// Returns the end of the block comment whose body starts at `body`, or `None`
+/// if the comment is unterminated or has a line terminator that the token after
+/// it would need to record. A `line_break` before the comment is already recorded.
+#[inline(always)]
+fn find_block_comment_end(src: &[u8], body: usize, line_break: bool) -> Option<usize> {
+    let mut pos = body;
+    loop {
+        // A comment ends at the first `/` after a `*`, and `/` is rarer than `*`.
+        if line_break {
+            pos += memchr(b'/', &src[pos..])?;
+        } else {
+            pos += memchr4(b'/', b'\n', b'\r', 0xE2, &src[pos..])?;
+            match src[pos] {
+                b'/' => {}
+                0xE2 if unicode_separator_len(src, pos) == 0 => {
+                    pos += 1;
+                    continue;
+                }
+                _ => return None,
+            }
+        }
+        // The `*` of the opening `/*` cannot also close the comment.
+        if pos > body && src[pos - 1] == b'*' {
+            return Some(pos + 1);
+        }
+        pos += 1;
+    }
+}
 
 /// Returns the token flags of a fast-path token, which may only follow a line break.
 #[inline(always)]
