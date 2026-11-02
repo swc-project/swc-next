@@ -152,6 +152,16 @@ fn ambient_declarations() {
     );
 
     assert_strip(
+        "@dec declare class C {}\nrun();",
+        ";                      \nrun();",
+    );
+
+    assert_strip(
+        "@dec export declare class C {}\nrun();",
+        ";                             \nrun();",
+    );
+
+    assert_strip(
         "declare function f(): void;\nrun();",
         ";                          \nrun();",
     );
