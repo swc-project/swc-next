@@ -2295,15 +2295,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 decorators,
             )?)));
         }
-        self.parse_export_decorated(decorators)
+        self.parse_export_decorated(decorators_start, decorators)
     }
 
-    fn parse_export_decorated(&mut self, decorators: SubRange<Decorator>) -> Option<Stmt> {
+    fn parse_export_decorated(
+        &mut self,
+        decorators_start: u32,
+        decorators: SubRange<Decorator>,
+    ) -> Option<Stmt> {
         self.record_module_declaration();
-        let export_start = self.current_token.start();
         self.advance()?;
         let is_default = self.eat(TokenTag::Default)?;
-        self.parse_decorated_export_class(export_start, is_default, decorators)
+        self.parse_decorated_export_class(decorators_start, is_default, decorators)
     }
 
     fn parse_decorated_export_class(
@@ -2313,7 +2316,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         mut decorators: SubRange<Decorator>,
     ) -> Option<Stmt> {
         let before_export = !decorators.is_empty();
-        let mut class_start = None;
+        let mut class_start = before_export.then_some(export_start);
         while self.current_token.tag() == TokenTag::At {
             let (start, following) = self.parse_decorators()?;
             class_start = Some(start);
@@ -19683,5 +19686,97 @@ mod tests {
 
         let has_errors = errors("namespace N { await using x = null; }");
         assert!(has_errors);
+    }
+
+    #[test]
+    fn decorated_class_spans() {
+        struct SpanContainment<'ast, 'a> {
+            ast: &'ast Ast<'a>,
+            stack: Vec<Span>,
+        }
+
+        impl<'a> Visit<'a> for SpanContainment<'_, 'a> {
+            fn ast(&self) -> &Ast<'a> {
+                self.ast
+            }
+
+            fn enter_node(&mut self, node: NodeKindData) {
+                let span = self.ast.span(node.node_id());
+                if let Some(parent) = self.stack.last() {
+                    assert!(parent.start <= span.start && span.end <= parent.end);
+                }
+                self.stack.push(span);
+            }
+
+            fn leave_node(&mut self, _node: NodeKindData) {
+                self.stack.pop();
+            }
+        }
+
+        fn spans(source: &str) -> (Span, Span, Vec<Span>) {
+            let allocator = Allocator::new();
+            let parsed = parse_tokens(&allocator, source);
+            assert!(parsed.diagnostics.is_empty());
+            let ast = &parsed.ast;
+            let mut containment = SpanContainment {
+                ast,
+                stack: Vec::new(),
+            };
+            ast.root_program().visit_with(&mut containment);
+            let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+            let class = if let Some(export) = statement.as_export_named_declaration(ast) {
+                export.declaration(ast).unwrap().as_class(ast).unwrap()
+            } else if let Some(export) = statement.as_export_default_declaration(ast) {
+                export.declaration(ast).as_class(ast).unwrap()
+            } else {
+                statement
+                    .as_declaration(ast)
+                    .unwrap()
+                    .as_class(ast)
+                    .unwrap()
+            };
+            let decorators = class
+                .decorators(ast)
+                .iter()
+                .map(|id| ast.get_node_in_sub_range(id).span(ast))
+                .collect();
+            (statement.span(ast), class.span(ast), decorators)
+        }
+
+        let (statement, class, decorators) = spans("@dec export class A {}");
+        assert_eq!(statement, Span::new(0, 22));
+        assert_eq!(class, Span::new(0, 22));
+        assert_eq!(decorators, [Span::new(0, 4)]);
+
+        let (statement, class, decorators) = spans("@a @b export default class B {}");
+        assert_eq!(statement, Span::new(0, 31));
+        assert_eq!(class, Span::new(0, 31));
+        assert_eq!(decorators, [Span::new(0, 2), Span::new(3, 5)]);
+
+        let (statement, class, decorators) = spans("@dec export abstract class C {}");
+        assert_eq!(statement, Span::new(0, 31));
+        assert_eq!(class, Span::new(0, 31));
+        assert_eq!(decorators, [Span::new(0, 4)]);
+
+        let (statement, class, decorators) = spans("@dec class A {}");
+        assert_eq!(statement, Span::new(0, 15));
+        assert_eq!(class, Span::new(0, 15));
+        assert_eq!(decorators, [Span::new(0, 4)]);
+
+        let (statement, class, decorators) = spans("export @dec class B {}");
+        assert_eq!(statement, Span::new(0, 22));
+        assert_eq!(class, Span::new(7, 22));
+        assert_eq!(decorators, [Span::new(7, 11)]);
+
+        let (statement, class, decorators) = spans("export default @dec class C {}");
+        assert_eq!(statement, Span::new(0, 30));
+        assert_eq!(class, Span::new(15, 30));
+        assert_eq!(decorators, [Span::new(15, 19)]);
+
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        assert!(has_errors("@a export @b class A {}", options));
     }
 }
