@@ -2001,12 +2001,16 @@ impl<'a> Printer<'a> {
     fn print_expr_leading_comments(&mut self, expr: Expr) {
         let is_at_stmt_start = self.js.len() == self.stmt_start;
         let is_at_export_default_start = self.js.len() == self.export_default_start;
+        let is_at_for_init_start = self.js.len() == self.for_init_start;
         self.print_comments_before(expr.span(self.ast).start, false, true);
         if is_at_stmt_start {
             self.stmt_start = self.js.len();
         }
         if is_at_export_default_start {
             self.export_default_start = self.js.len();
+        }
+        if is_at_for_init_start {
+            self.for_init_start = self.js.len();
         }
     }
 

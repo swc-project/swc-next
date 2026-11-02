@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind, Stmt,
-    StmtData, SubRange, UnaryOperator,
+    Ast, BinaryOperator, DUMMY_SP, ExprData, ObjectPropertyKind, PropertyKey, PropertyKind,
+    SourceType, Stmt, StmtData, SubRange, UnaryOperator,
 };
 use swc_next_ecma_codegen::{NumberFormat, Options as PrintOptions, print};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
@@ -13,14 +13,16 @@ use crate::{
 
 #[track_caller]
 fn expect_token_boundary(source: &str, expected: &str) {
-    use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
+    expect_token_boundary_with_options(source, expected, ParseOptions::default());
+}
 
+#[track_caller]
+fn expect_token_boundary_with_options(source: &str, expected: &str, parse_options: ParseOptions) {
     let print_options = PrintOptions {
         minify: true,
         ..PrintOptions::default()
     };
     let allocator = Allocator::new();
-    let parse_options = ParseOptions::default();
     let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
     assert!(original.diagnostics.is_empty());
     let compact = print(&original.ast, print_options.clone());
@@ -1302,6 +1304,26 @@ fn test_array_pattern_rest_after_elision() {
         "function foo([, , ...rest]) {\n}\n",
     );
     expect_printed("([,,...rest] = value)", "[, , ...rest] = value;\n");
+}
+
+#[test]
+fn test_for_initializer_comments() {
+    let script_options = ParseOptions {
+        source_type: SourceType::Script,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    expect_token_boundary_with_options(
+        "for (/*keep*/(let)[0];false;);",
+        "for(/*keep*/(let)[0];false;);",
+        script_options,
+    );
+
+    expect_token_boundary_with_options(
+        "for (// keep\n(let)[0];false;);",
+        "for(// keep\n(let)[0];false;);",
+        script_options,
+    );
 }
 
 #[test]
