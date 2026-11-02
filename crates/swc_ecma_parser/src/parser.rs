@@ -14243,9 +14243,7 @@ fn assertion_erasure_changes_binary_grouping(
         ExprData::LogicalExpression(logical) => logical.operator(ast).precedence(),
         _ => return false,
     };
-    let next_precedence = next_operator.precedence();
-    next_precedence > current_precedence
-        || (next_precedence == current_precedence && next_operator == TokenTag::Exponent)
+    next_operator.precedence() > current_precedence
 }
 
 #[inline]
@@ -17733,19 +17731,47 @@ mod tests {
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let diagnostics = parse_typescript_diagnostics("2 ** 3 as number ** 2");
-        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let diagnostics = parse_typescript_diagnostics("2 ** 3 satisfies number ** 2");
-        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let diagnostics = parse_typescript_diagnostics("2 ** 3 as unknown as number ** 2");
-        assert!(!diagnostics.is_empty(), "{diagnostics:#?}");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let diagnostics = parse_typescript_diagnostics("1 * 1 as number + 2");
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let diagnostics = parse_typescript_diagnostics("1 as number * 2");
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("1 as number ** 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let diagnostics = parse_typescript_diagnostics("(2 ** 3 as number) ** 2");
+        assert!(diagnostics.is_empty(), "{diagnostics:#?}");
+
+        let allocator = Allocator::new();
+        let ast = Parser::init(
+            &allocator,
+            "2 ** 3 as number ** 2",
+            Options {
+                lang: Lang::Ts,
+                ..Options::default()
+            },
+            NoTokenParserConfig,
+        )
+        .parse_expression_fragment(FragmentContext::TopLevel)
+        .unwrap();
+        let outer = ast.root_expression().as_binary_expression(&ast).unwrap();
+        assert_eq!(outer.operator(&ast), BinaryOperator::Exponent);
+        let assertion = outer.left(&ast).as_ts_as_expression(&ast).unwrap();
+        let inner = assertion
+            .expression(&ast)
+            .as_binary_expression(&ast)
+            .unwrap();
+        assert_eq!(inner.operator(&ast), BinaryOperator::Exponent);
+        assert!(outer.right(&ast).is_numeric_literal(&ast));
     }
 
     #[test]
