@@ -17697,10 +17697,12 @@ mod tests {
 
     #[test]
     fn disallow_unerasable_assertions() {
-        fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
-            let allocator = Allocator::new();
+        fn typescript_parser<'a>(
+            allocator: &'a Allocator,
+            source: &'a str,
+        ) -> Parser<'a, NoTokenParserConfig> {
             Parser::init(
-                &allocator,
+                allocator,
                 source,
                 Options {
                     lang: Lang::Ts,
@@ -17708,8 +17710,11 @@ mod tests {
                 },
                 NoTokenParserConfig,
             )
-            .parse()
-            .diagnostics
+        }
+
+        fn parse_typescript_diagnostics(source: &str) -> Vec<Diagnostic<'static>> {
+            let allocator = Allocator::new();
+            typescript_parser(&allocator, source).parse().diagnostics
         }
 
         let diagnostics = parse_typescript_diagnostics("1 + 1 as number * 2");
@@ -17752,17 +17757,9 @@ mod tests {
         assert!(diagnostics.is_empty(), "{diagnostics:#?}");
 
         let allocator = Allocator::new();
-        let ast = Parser::init(
-            &allocator,
-            "2 ** 3 as number ** 2",
-            Options {
-                lang: Lang::Ts,
-                ..Options::default()
-            },
-            NoTokenParserConfig,
-        )
-        .parse_expression_fragment(FragmentContext::TopLevel)
-        .unwrap();
+        let ast = typescript_parser(&allocator, "2 ** 3 as number ** 2")
+            .parse_expression_fragment(FragmentContext::TopLevel)
+            .unwrap();
         let outer = ast.root_expression().as_binary_expression(&ast).unwrap();
         assert_eq!(outer.operator(&ast), BinaryOperator::Exponent);
         let assertion = outer.left(&ast).as_ts_as_expression(&ast).unwrap();

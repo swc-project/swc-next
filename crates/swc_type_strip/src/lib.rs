@@ -8,12 +8,12 @@ use std::borrow::Cow;
 use edit::{EditPlan, FixedSubstitution};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 use swc_next_ecma_ast::{
-    Accessibility, ArrowFunctionExpression, Ast, BinaryExpression, CallExpression, ChainExpression,
-    Class, ClassElement, Decl, DeclData, Decorator, DoWhileStatement, ExportAllDeclaration,
-    ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData, ForInStatement,
-    ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan, IfStatement,
-    ImportDeclaration, ImportOrExportKind, LabeledStatement, LogicalExpression, MemberExpression,
-    MethodDefinition, Program, PropertyDefinition, PropertyKey, Stmt, SubRange,
+    Accessibility, ArrowFunctionExpression, Ast, BinaryExpression, BinaryOperator, CallExpression,
+    ChainExpression, Class, ClassElement, Decl, DeclData, Decorator, DoWhileStatement,
+    ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData,
+    ForInStatement, ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan,
+    IfStatement, ImportDeclaration, ImportOrExportKind, LabeledStatement, LogicalExpression,
+    MemberExpression, MethodDefinition, Program, PropertyDefinition, PropertyKey, Stmt, SubRange,
     TaggedTemplateExpression, TsAsExpression, TsClassImplements, TsEnumDeclaration,
     TsExportAssignment, TsFunction, TsGlobalDeclaration, TsImportEqualsDeclaration,
     TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration, TsMethodDefinition,
@@ -36,6 +36,8 @@ mod token_cursor;
 const UNSUPPORTED_LANG_MESSAGE: &str = "TypeError: Unsupported lang variant";
 const ERASABLE_SYNTAX_ONLY_MESSAGE: &str =
     "SyntaxError: This syntax is not allowed when `erasableSyntaxOnly` is enabled";
+const EXPONENT_ASSERTION_MESSAGE: &str =
+    "SyntaxError: Type erasure would change exponentiation grouping";
 
 /// Options for [`strip_types`].
 ///
@@ -241,6 +243,32 @@ impl TypeEraser<'_, '_, '_> {
         }
     }
 
+    fn check_exponent_assertion(&mut self, binary: BinaryExpression) {
+        if binary.operator(self.ast) != BinaryOperator::Exponent {
+            return;
+        }
+        let mut left = binary.left(self.ast);
+        let assertion_span = left.span(self.ast);
+        let mut asserted = false;
+        loop {
+            left = match self.ast.expr_data(left) {
+                ExprData::TsAsExpression(assertion) => assertion.expression(self.ast),
+                ExprData::TsSatisfiesExpression(assertion) => assertion.expression(self.ast),
+                _ => break,
+            };
+            asserted = true;
+        }
+        if asserted
+            && matches!(self.ast.expr_data(left), ExprData::BinaryExpression(inner) if inner.operator(self.ast) == BinaryOperator::Exponent)
+            && self.diagnostic.is_none()
+        {
+            self.diagnostic = Some(Diagnostic::error(
+                EXPONENT_ASSERTION_MESSAGE,
+                assertion_span,
+            ));
+        }
+    }
+
     fn visit_expr_chain(&mut self, mut node: Expr) {
         // The parser builds long left-associative and postfix chains iteratively.
         // Only nested chain operands need an explicit stack; ordinary expressions
@@ -250,10 +278,13 @@ impl TypeEraser<'_, '_, '_> {
         loop {
             let (next, frame) = match self.ast.expr_data(node) {
                 ExprData::IdentifierReference(_) => break,
-                ExprData::BinaryExpression(binary) => (
-                    binary.left(self.ast),
-                    ExprFrame::Expression(binary.right(self.ast)),
-                ),
+                ExprData::BinaryExpression(binary) => {
+                    self.check_exponent_assertion(binary);
+                    (
+                        binary.left(self.ast),
+                        ExprFrame::Expression(binary.right(self.ast)),
+                    )
+                }
                 ExprData::LogicalExpression(logical) => (
                     logical.left(self.ast),
                     ExprFrame::Expression(logical.right(self.ast)),
@@ -659,6 +690,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     }
 
     fn visit_binary_expression(&mut self, node: BinaryExpression) {
+        self.check_exponent_assertion(node);
         self.visit_chain_operand(node.left(self.ast));
         node.right(self.ast).visit_with(self);
     }

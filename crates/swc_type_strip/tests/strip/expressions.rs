@@ -72,6 +72,25 @@ fn assertions() {
 }
 
 #[test]
+fn exponentiation_after_postfix_assertion_is_not_silently_regrouped() {
+    let result = strip_types("const value = 2 ** 3 as number ** 2;", options(Lang::Ts));
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+
+    let result = strip_types(
+        "const value = 2 ** 3 satisfies number ** 2;",
+        options(Lang::Ts),
+    );
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+
+    assert_strip(
+        "const value = (2 ** 3 as number) ** 2;",
+        "const value = (2 ** 3          ) ** 2;",
+    );
+}
+
+#[test]
 fn type_arguments() {
     assert_strip_error_at("hello<T>.world<U>;", "hello   .world   ;", ".");
 
