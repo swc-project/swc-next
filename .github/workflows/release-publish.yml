@@ -48,8 +48,16 @@ jobs:
 
   release_crates:
     name: Release crates
-    if: inputs.release_crates
-    needs: validate
+    if: >-
+      inputs.release_crates && !cancelled() &&
+      needs.validate.result == 'success' &&
+      (!inputs.release_npm ||
+        (needs.build_npm.result == 'success' &&
+         needs.build_wasm.result == 'success'))
+    needs:
+      - validate
+      - build_npm
+      - build_wasm
     runs-on: ubuntu-latest
     environment: crates
     permissions:
@@ -246,11 +254,17 @@ jobs:
 
   release_npm:
     name: Release NPM packages
-    if: inputs.release_npm
+    if: >-
+      inputs.release_npm && !cancelled() &&
+      needs.validate.result == 'success' &&
+      needs.build_npm.result == 'success' &&
+      needs.build_wasm.result == 'success' &&
+      (!inputs.release_crates || needs.release_crates.result == 'success')
     needs:
       - validate
       - build_npm
       - build_wasm
+      - release_crates
     runs-on: ubuntu-latest
     environment: npm
     permissions:
