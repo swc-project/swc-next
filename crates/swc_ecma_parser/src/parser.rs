@@ -2248,9 +2248,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
             }
             TokenTag::Const => {
-                // TypeScript const enums were handled by the declaration check above.
                 let start = self.current_token.start();
-                self.advance()?;
+                if self.lang.is_typescript() {
+                    if let Some(statement) = self.parse_const_enum_or_advance(start)? {
+                        return Some(statement);
+                    }
+                } else {
+                    self.advance()?;
+                }
                 self.parse_variable_declaration(VariableKind::Const, false, start)
                     .map(|declaration| Stmt::Declaration(Decl::VariableDeclaration(declaration)))
             }
@@ -5276,29 +5281,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     fn parse_export_with_declaration(&mut self, start: u32) -> Option<Stmt> {
         if self.lang.is_typescript() && self.is_start_of_ts_declaration()? {
             let statement = self.parse_ts_declaration()?;
-            let declaration = match self.ast.stmt_data(statement) {
-                StmtData::Declaration(declaration) => declaration,
-                _ => {
-                    self.report(
-                        statement.span(&self.ast),
-                        "expected a TypeScript declaration after 'export'",
-                        ReportOptions::default(),
-                    );
-                    return None;
-                }
-            };
-            let export_kind = self.export_kind_for_declaration(declaration);
-            let end = declaration.span(&self.ast).end;
-            let specifiers = SubRange::empty();
-            let attributes = SubRange::empty();
-            return Some(self.ast.stmt_export_named_declaration(
-                Span::new(start, end),
-                Some(declaration),
-                specifiers,
-                None,
-                attributes,
-                export_kind,
-            ));
+            return self.finish_export_ts_declaration(start, statement);
         }
         if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Import {
             let statement = self.parse_import_declaration()?;
@@ -5354,7 +5337,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::Var | TokenTag::Let | TokenTag::Const
         ) {
             let declaration_start = self.current_token.start();
-            let kind = self.parse_variable_kind()?;
+            let kind = if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Const {
+                if let Some(statement) = self.parse_const_enum_or_advance(declaration_start)? {
+                    return self.finish_export_ts_declaration(start, statement);
+                }
+                VariableKind::Const
+            } else {
+                self.parse_variable_kind()?
+            };
             let declaration = self.parse_variable_declaration(kind, false, declaration_start)?;
             let end = declaration.span(&self.ast).end;
             let specifiers = SubRange::empty();
@@ -5672,13 +5662,59 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         None
     }
 
+    fn finish_export_ts_declaration(&mut self, start: u32, statement: Stmt) -> Option<Stmt> {
+        let declaration = match self.ast.stmt_data(statement) {
+            StmtData::Declaration(declaration) => declaration,
+            _ => {
+                self.report(
+                    statement.span(&self.ast),
+                    "expected a TypeScript declaration after 'export'",
+                    ReportOptions::default(),
+                );
+                return None;
+            }
+        };
+        let export_kind = self.export_kind_for_declaration(declaration);
+        let end = declaration.span(&self.ast).end;
+        let specifiers = SubRange::empty();
+        let attributes = SubRange::empty();
+        Some(self.ast.stmt_export_named_declaration(
+            Span::new(start, end),
+            Some(declaration),
+            specifiers,
+            None,
+            attributes,
+            export_kind,
+        ))
+    }
+
+    /// Parses a TypeScript `const enum` declaration starting at the current `const`,
+    /// or advances past `const` and returns `Some(None)` for a variable declaration.
+    ///
+    /// The token after `const` is lexed once instead of peeked and lexed again.
+    fn parse_const_enum_or_advance(&mut self, start: u32) -> Option<Option<Stmt>> {
+        debug_assert_eq!(self.current_token.tag(), TokenTag::Const);
+        if self.try_advance_fast() {
+            if self.current_token.tag() != TokenTag::Enum {
+                return Some(None);
+            }
+            // Same as `parse_ts_declaration` without modifiers other than `const`.
+            return self.parse_enum_declaration(start, true, false).map(Some);
+        }
+        // Keep the lookahead on the slow path so lexical errors behave as before.
+        if is_const_enum_head(self.peek_ahead()?) {
+            return self.parse_ts_declaration().map(Some);
+        }
+        self.advance()?;
+        Some(None)
+    }
+
     fn is_start_of_ts_declaration(&mut self) -> Option<bool> {
         if !self.lang.is_typescript()
             || !matches!(
                 self.current_token.tag(),
                 TokenTag::Declare
                     | TokenTag::Abstract
-                    | TokenTag::Const
                     | TokenTag::Enum
                     | TokenTag::Type
                     | TokenTag::Interface
@@ -5712,7 +5748,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             has_abstract = true;
         }
         let result = match current.tag() {
-            TokenTag::Const => has_declare || is_const_enum_head(peek.next()?),
+            // `const enum` is detected after advancing past `const`; see
+            // `Parser::parse_const_enum_or_advance`.
+            TokenTag::Const => has_declare,
             TokenTag::Enum => {
                 let name = peek.next()?;
                 name.tag().is_identifier_like() && !name.tag().is_unconditionally_reserved()
@@ -13964,6 +14002,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             self.next_token()
         }
+    }
+
+    /// Advance through the lexer fast path only. On failure, nothing changes.
+    #[inline]
+    fn try_advance_fast(&mut self) -> bool {
+        let mut next = self.current_token;
+        if !self.lexer.try_next_token(&mut next) {
+            return false;
+        }
+        self.check_escaped_keyword();
+        self.lexer.state.prev_token_end = self.current_token.end();
+        self.current_token = next;
+        true
     }
 
     /// Advance without reporting lexical errors, restoring lexer state on failure.
