@@ -623,7 +623,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FormalParameterPatternData::ObjectPattern(_)
                     | FormalParameterPatternData::ArrayPattern(_) => SignatureParameterHug::Pattern,
                     FormalParameterPatternData::BindingIdentifier(_) if initializer.is_none() => {
-                        let annotation = node.type_annotation(ast)?;
+                        let annotation = node.pattern(ast).type_annotation(ast)?;
                         let type_node = annotation.type_annotation(ast);
                         if !self.parameter_has_object_type(type_node)
                             || !self
@@ -1551,9 +1551,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let (annotation, optional) = match node {
             CallableParameter::This(this) => (this.type_annotation(ast), false),
-            CallableParameter::Formal(parameter) => {
-                (parameter.type_annotation(ast), parameter.optional(ast))
-            }
+            CallableParameter::Formal(parameter) => (
+                parameter.pattern(ast).type_annotation(ast),
+                parameter.optional(ast),
+            ),
             CallableParameter::Rest(rest) => (rest.type_annotation(ast), false),
         };
         self.prepare_parameter_item(
@@ -2029,7 +2030,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let parameter = property.parameter(self.ast);
         self.prepare_parameter_item(
             CallableParameter::Formal(parameter),
-            parameter.type_annotation(self.ast),
+            parameter.pattern(self.ast).type_annotation(self.ast),
             parameter.optional(self.ast),
             ParameterConsumer::ConstructorProperty(property),
         )

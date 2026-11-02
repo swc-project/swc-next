@@ -80,7 +80,6 @@ impl OptionalChaining<'_, '_> {
             DUMMY_SP,
             BindingPattern::BindingIdentifier(binding),
             None,
-            None,
             false,
         ));
         Memo::Cache(binding)

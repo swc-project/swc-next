@@ -40,7 +40,6 @@ impl<'a> TraverseCtx<'a> {
             DUMMY_SP,
             BindingPattern::BindingIdentifier(binding),
             None,
-            None,
             false,
         );
         self.var_declarations.insert_var_declarator(declaration);

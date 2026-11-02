@@ -240,6 +240,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        is_method: bool,
     ) -> Stmt {
         Stmt::Declaration(Decl::TsFunction(
             self.ts_function(
@@ -252,6 +253,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                is_method,
             )
             .into(),
         ))
@@ -493,6 +495,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        is_method: bool,
     ) -> Decl {
         Decl::TsFunction(
             self.ts_function(
@@ -505,6 +508,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                is_method,
             )
             .into(),
         )
@@ -995,8 +999,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: AstUtf8,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingPattern {
-        BindingPattern::BindingIdentifier(self.binding_identifier(span, name).into())
+        BindingPattern::BindingIdentifier(
+            self.binding_identifier(span, name, type_annotation).into(),
+        )
     }
     #[inline]
     pub fn binding_pattern_simple_assignment_target_identifier_reference(
@@ -1074,16 +1081,24 @@ impl<'a> Ast<'a> {
         span: Span,
         left: BindingPattern,
         right: Expr,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingPattern {
-        BindingPattern::AssignmentPattern(self.assignment_pattern(span, left, right).into())
+        BindingPattern::AssignmentPattern(
+            self.assignment_pattern(span, left, right, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn binding_pattern_binding_rest_element(
         &mut self,
         span: Span,
         argument: BindingPattern,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingPattern {
-        BindingPattern::BindingRestElement(self.binding_rest_element(span, argument).into())
+        BindingPattern::BindingRestElement(
+            self.binding_rest_element(span, argument, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn binding_pattern_array_pattern(
@@ -1091,8 +1106,12 @@ impl<'a> Ast<'a> {
         span: Span,
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingPattern {
-        BindingPattern::ArrayPattern(self.array_pattern(span, elements, rest).into())
+        BindingPattern::ArrayPattern(
+            self.array_pattern(span, elements, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn binding_pattern_object_pattern(
@@ -1100,8 +1119,12 @@ impl<'a> Ast<'a> {
         span: Span,
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingPattern {
-        BindingPattern::ObjectPattern(self.object_pattern(span, properties, rest).into())
+        BindingPattern::ObjectPattern(
+            self.object_pattern(span, properties, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn assignment_target_simple_assignment_target_identifier_reference(
@@ -1179,8 +1202,12 @@ impl<'a> Ast<'a> {
         span: Span,
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> AssignmentTarget {
-        AssignmentTarget::ArrayAssignmentTarget(self.array_pattern(span, elements, rest).into())
+        AssignmentTarget::ArrayAssignmentTarget(
+            self.array_pattern(span, elements, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn assignment_target_object_pattern(
@@ -1188,8 +1215,12 @@ impl<'a> Ast<'a> {
         span: Span,
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> AssignmentTarget {
-        AssignmentTarget::ObjectAssignmentTarget(self.object_pattern(span, properties, rest).into())
+        AssignmentTarget::ObjectAssignmentTarget(
+            self.object_pattern(span, properties, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn simple_assignment_target_identifier_reference(
@@ -2857,9 +2888,11 @@ impl<'a> Ast<'a> {
         span: Span,
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ArrayAssignmentTarget(
-            self.array_pattern(span, elements, rest).into(),
+            self.array_pattern(span, elements, rest, type_annotation)
+                .into(),
         ))
     }
     #[inline]
@@ -2868,9 +2901,11 @@ impl<'a> Ast<'a> {
         span: Span,
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> ForStatementLeft {
         ForStatementLeft::AssignmentTarget(AssignmentTarget::ObjectAssignmentTarget(
-            self.object_pattern(span, properties, rest).into(),
+            self.object_pattern(span, properties, rest, type_annotation)
+                .into(),
         ))
     }
     #[inline]
@@ -3377,20 +3412,12 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: SubRange<Decorator>,
         pattern: FormalParameterPattern,
-        type_annotation: Option<TsTypeAnnotation>,
         initializer: Option<Expr>,
         optional: bool,
     ) -> FormalParameterItem {
         FormalParameterItem::FormalParameter(
-            self.formal_parameter(
-                span,
-                decorators,
-                pattern,
-                type_annotation,
-                initializer,
-                optional,
-            )
-            .into(),
+            self.formal_parameter(span, decorators, pattern, initializer, optional)
+                .into(),
         )
     }
     #[inline]
@@ -3420,8 +3447,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: AstUtf8,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> FormalParameterPattern {
-        FormalParameterPattern::BindingIdentifier(self.binding_identifier(span, name).into())
+        FormalParameterPattern::BindingIdentifier(
+            self.binding_identifier(span, name, type_annotation).into(),
+        )
     }
     #[inline]
     pub fn formal_parameter_pattern_array_pattern(
@@ -3429,8 +3459,12 @@ impl<'a> Ast<'a> {
         span: Span,
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> FormalParameterPattern {
-        FormalParameterPattern::ArrayPattern(self.array_pattern(span, elements, rest).into())
+        FormalParameterPattern::ArrayPattern(
+            self.array_pattern(span, elements, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn formal_parameter_pattern_object_pattern(
@@ -3438,8 +3472,12 @@ impl<'a> Ast<'a> {
         span: Span,
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> FormalParameterPattern {
-        FormalParameterPattern::ObjectPattern(self.object_pattern(span, properties, rest).into())
+        FormalParameterPattern::ObjectPattern(
+            self.object_pattern(span, properties, rest, type_annotation)
+                .into(),
+        )
     }
     #[inline]
     pub fn class_element_method_definition(
@@ -4170,6 +4208,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        is_method: bool,
     ) -> ExportDefaultDeclarationKind {
         ExportDefaultDeclarationKind::TsFunction(
             self.ts_function(
@@ -4182,6 +4221,7 @@ impl<'a> Ast<'a> {
                 generator,
                 r#async,
                 declare,
+                is_method,
             )
             .into(),
         )
@@ -4353,14 +4393,21 @@ impl<'a> Ast<'a> {
         ))
     }
     #[inline]
-    pub fn binding_identifier(&mut self, span: Span, name: AstUtf8) -> BindingIdentifier {
+    pub fn binding_identifier(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) -> BindingIdentifier {
         BindingIdentifier(self.add_node(
             span,
             NodeKind::BindingIdentifier,
             NodePayload {
                 binding_identifier: BindingIdentifierPayload {
                     name,
-                    _pad0: [0; 8usize],
+                    type_annotation:
+                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    _pad0: [0; 4usize],
                 },
             },
         ))
@@ -4397,6 +4444,7 @@ impl<'a> Ast<'a> {
         span: Span,
         left: BindingPattern,
         right: Expr,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> AssignmentPattern {
         AssignmentPattern(self.add_node(
             span,
@@ -4405,7 +4453,9 @@ impl<'a> Ast<'a> {
                 assignment_pattern: AssignmentPatternPayload {
                     left,
                     right,
-                    _pad0: [0; 8usize],
+                    type_annotation:
+                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    _pad0: [0; 4usize],
                 },
             },
         ))
@@ -4415,6 +4465,7 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         argument: BindingPattern,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> BindingRestElement {
         BindingRestElement(self.add_node(
             span,
@@ -4422,7 +4473,9 @@ impl<'a> Ast<'a> {
             NodePayload {
                 binding_rest_element: BindingRestElementPayload {
                     argument,
-                    _pad0: [0; 12usize],
+                    type_annotation:
+                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    _pad0: [0; 8usize],
                 },
             },
         ))
@@ -4433,6 +4486,7 @@ impl<'a> Ast<'a> {
         span: Span,
         elements: SubRange<Option<BindingPattern>>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> ArrayPattern {
         ArrayPattern(self.add_node(
             span,
@@ -4441,7 +4495,8 @@ impl<'a> Ast<'a> {
                 array_pattern: ArrayPatternPayload {
                     elements,
                     rest: rest.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    _pad0: [0; 4usize],
+                    type_annotation:
+                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
                 },
             },
         ))
@@ -4452,6 +4507,7 @@ impl<'a> Ast<'a> {
         span: Span,
         properties: SubRange<BindingProperty>,
         rest: Option<BindingRestElement>,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> ObjectPattern {
         ObjectPattern(self.add_node(
             span,
@@ -4460,7 +4516,8 @@ impl<'a> Ast<'a> {
                 object_pattern: ObjectPatternPayload {
                     properties,
                     rest: rest.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    _pad0: [0; 4usize],
+                    type_annotation:
+                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
                 },
             },
         ))
@@ -4638,7 +4695,6 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         id: BindingPattern,
-        type_annotation: Option<TsTypeAnnotation>,
         init: Option<Expr>,
         definite: bool,
     ) -> VariableDeclarator {
@@ -4648,11 +4704,9 @@ impl<'a> Ast<'a> {
             NodePayload {
                 variable_declarator: VariableDeclaratorPayload {
                     id,
-                    type_annotation:
-                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     init: init.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     definite,
-                    _pad0: [0; 3usize],
+                    _pad0: [0; 7usize],
                 },
             },
         ))
@@ -4808,7 +4862,6 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         param: Option<BindingPattern>,
-        type_annotation: Option<TsTypeAnnotation>,
         body: BlockStatement,
     ) -> CatchClause {
         CatchClause(self.add_node(
@@ -4817,10 +4870,8 @@ impl<'a> Ast<'a> {
             NodePayload {
                 catch_clause: CatchClausePayload {
                     param: param.map_or(u32::MAX, |node| node.node_id().index() as u32),
-                    type_annotation:
-                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     body,
-                    _pad0: [0; 4usize],
+                    _pad0: [0; 8usize],
                 },
             },
         ))
@@ -5303,7 +5354,6 @@ impl<'a> Ast<'a> {
         span: Span,
         decorators: SubRange<Decorator>,
         pattern: FormalParameterPattern,
-        type_annotation: Option<TsTypeAnnotation>,
         initializer: Option<Expr>,
         optional: bool,
     ) -> FormalParameter {
@@ -5313,14 +5363,7 @@ impl<'a> Ast<'a> {
             })
             .units
         };
-        let _extra_data = [
-            _extra_field0[0],
-            _extra_field0[1],
-            ExtraDataUnit {
-                optional_node_id: (initializer)
-                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
-            },
-        ];
+        let _extra_data = [_extra_field0[0], _extra_field0[1]];
         let _extra_data_start = self.add_extra_data_slice(&_extra_data);
         FormalParameter(self.add_node(
             span,
@@ -5328,8 +5371,7 @@ impl<'a> Ast<'a> {
             NodePayload {
                 formal_parameter: FormalParameterPayload {
                     pattern,
-                    type_annotation:
-                        type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32),
+                    initializer: initializer.map_or(u32::MAX, |node| node.node_id().index() as u32),
                     optional,
                     _pad0: [0; 3usize],
                     extra_data_start: _extra_data_start,
@@ -6246,8 +6288,11 @@ impl<'a> Ast<'a> {
         &mut self,
         span: Span,
         name: AstUtf8,
+        type_annotation: Option<TsTypeAnnotation>,
     ) -> TsQualifiedNameLeft {
-        TsQualifiedNameLeft::BindingIdentifier(self.binding_identifier(span, name).into())
+        TsQualifiedNameLeft::BindingIdentifier(
+            self.binding_identifier(span, name, type_annotation).into(),
+        )
     }
     #[inline]
     pub fn ts_qualified_name_left_this_expression(&mut self, span: Span) -> TsQualifiedNameLeft {
@@ -6852,8 +6897,13 @@ impl<'a> Ast<'a> {
         TsEnumMemberName::TemplateLiteral(self.template_literal(span, quasis, expressions).into())
     }
     #[inline]
-    pub fn ts_module_name_binding_identifier(&mut self, span: Span, name: AstUtf8) -> TsModuleName {
-        TsModuleName::BindingIdentifier(self.binding_identifier(span, name).into())
+    pub fn ts_module_name_binding_identifier(
+        &mut self,
+        span: Span,
+        name: AstUtf8,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) -> TsModuleName {
+        TsModuleName::BindingIdentifier(self.binding_identifier(span, name, type_annotation).into())
     }
     #[inline]
     pub fn ts_module_name_string_literal(
@@ -6940,6 +6990,7 @@ impl<'a> Ast<'a> {
         generator: bool,
         r#async: bool,
         declare: bool,
+        is_method: bool,
     ) -> TsFunction {
         let _extra_data = [
             ExtraDataUnit {
@@ -6966,7 +7017,7 @@ impl<'a> Ast<'a> {
                     generator,
                     r#async,
                     declare,
-                    _pad0: [0; 1usize],
+                    is_method,
                     extra_data_start: _extra_data_start,
                 },
             },

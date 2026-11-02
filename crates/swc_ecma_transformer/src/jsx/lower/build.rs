@@ -222,7 +222,7 @@ where
     for (imported, local) in specifiers {
         let imported = ast.add_utf8(imported);
         let imported = ModuleExportName::IdentifierName(ast.identifier_name(DUMMY_SP, imported));
-        let local = ast.binding_identifier(DUMMY_SP, local);
+        let local = ast.binding_identifier(DUMMY_SP, local, None);
         lowered.push(ImportDeclarationSpecifier::ImportSpecifier(
             ast.import_specifier(DUMMY_SP, imported, local, ImportOrExportKind::Value),
         ));
@@ -246,8 +246,8 @@ pub(super) fn require_statement(ast: &mut Ast<'_>, source: &str, local: AstUtf8)
     let source = string_expression(ast, DUMMY_SP, source);
     let arguments = ast.add_sub_range([Argument::Expr(source)]);
     let init = ast.expr_call_expression(DUMMY_SP, callee, None, arguments, false, false);
-    let id = ast.binding_pattern_binding_identifier(DUMMY_SP, local);
-    let declarator = ast.variable_declarator(DUMMY_SP, id, None, Some(init), false);
+    let id = ast.binding_pattern_binding_identifier(DUMMY_SP, local, None);
+    let declarator = ast.variable_declarator(DUMMY_SP, id, Some(init), false);
     let declarations = ast.add_sub_range([declarator]);
     let declaration = ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarations, false);
     Stmt::Declaration(Decl::VariableDeclaration(declaration))
@@ -258,8 +258,8 @@ pub(super) fn variable_declaration(
     local: AstUtf8,
     init: Expr,
 ) -> VariableDeclaration {
-    let id = ast.binding_pattern_binding_identifier(DUMMY_SP, local);
-    let declarator = ast.variable_declarator(DUMMY_SP, id, None, Some(init), false);
+    let id = ast.binding_pattern_binding_identifier(DUMMY_SP, local, None);
+    let declarator = ast.variable_declarator(DUMMY_SP, id, Some(init), false);
     let declarations = ast.add_sub_range([declarator]);
     ast.variable_declaration(DUMMY_SP, VariableKind::Var, declarations, false)
 }

@@ -84,6 +84,7 @@ fn copied_declarator_terminal(
         return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
     }
     declarator
+        .id(ast)
         .type_annotation(ast)
         .map_or(super::types::RawTypeTerminal::Closed, |annotation| {
             super::types::raw_type_terminal(annotation.type_annotation(ast), ast)
@@ -383,7 +384,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 operator_tail: None,
             });
         }
-        let annotation = declarator.type_annotation(ast);
+        let annotation = declarator.id(ast).type_annotation(ast);
         if annotation.is_some() || declarator.definite(ast) {
             return self.format_typed_variable_declarator(
                 declarator,

@@ -78,7 +78,7 @@ impl LoopHeadScope {
             .map(|binding| Some(BindingPattern::BindingIdentifier(binding)))
             .collect();
         let pattern = b::array_pattern(ast, bindings);
-        let declarator = ast.variable_declarator(DUMMY_SP, pattern, None, None, false);
+        let declarator = ast.variable_declarator(DUMMY_SP, pattern, None, false);
         let declarators = ast.add_sub_range([declarator]);
         let declaration = ast.variable_declaration(DUMMY_SP, VariableKind::Let, declarators, false);
         let reference = resolver.reference(ast, iterator);

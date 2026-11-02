@@ -805,7 +805,8 @@ impl<'a> CloneIn<'a> for BindingIdentifier {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let name = self.name(ast).clone_in(ast);
-        ast.binding_identifier(span, name)
+        let type_annotation = self.type_annotation(ast).clone_in(ast);
+        ast.binding_identifier(span, name, type_annotation)
     }
 }
 impl<'a> CloneIn<'a> for IdentifierName {
@@ -833,7 +834,8 @@ impl<'a> CloneIn<'a> for AssignmentPattern {
         let span = self.span(ast).clone_in(ast);
         let left = self.left(ast).clone_in(ast);
         let right = self.right(ast).clone_in(ast);
-        ast.assignment_pattern(span, left, right)
+        let type_annotation = self.type_annotation(ast).clone_in(ast);
+        ast.assignment_pattern(span, left, right, type_annotation)
     }
 }
 impl<'a> CloneIn<'a> for BindingRestElement {
@@ -842,7 +844,8 @@ impl<'a> CloneIn<'a> for BindingRestElement {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let argument = self.argument(ast).clone_in(ast);
-        ast.binding_rest_element(span, argument)
+        let type_annotation = self.type_annotation(ast).clone_in(ast);
+        ast.binding_rest_element(span, argument, type_annotation)
     }
 }
 impl<'a> CloneIn<'a> for ArrayPattern {
@@ -852,7 +855,8 @@ impl<'a> CloneIn<'a> for ArrayPattern {
         let span = self.span(ast).clone_in(ast);
         let elements = self.elements(ast).clone_in(ast);
         let rest = self.rest(ast).clone_in(ast);
-        ast.array_pattern(span, elements, rest)
+        let type_annotation = self.type_annotation(ast).clone_in(ast);
+        ast.array_pattern(span, elements, rest, type_annotation)
     }
 }
 impl<'a> CloneIn<'a> for ObjectPattern {
@@ -862,7 +866,8 @@ impl<'a> CloneIn<'a> for ObjectPattern {
         let span = self.span(ast).clone_in(ast);
         let properties = self.properties(ast).clone_in(ast);
         let rest = self.rest(ast).clone_in(ast);
-        ast.object_pattern(span, properties, rest)
+        let type_annotation = self.type_annotation(ast).clone_in(ast);
+        ast.object_pattern(span, properties, rest, type_annotation)
     }
 }
 impl<'a> CloneIn<'a> for BindingProperty {
@@ -959,10 +964,9 @@ impl<'a> CloneIn<'a> for VariableDeclarator {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let id = self.id(ast).clone_in(ast);
-        let type_annotation = self.type_annotation(ast).clone_in(ast);
         let init = self.init(ast).clone_in(ast);
         let definite = self.definite(ast).clone_in(ast);
-        ast.variable_declarator(span, id, type_annotation, init, definite)
+        ast.variable_declarator(span, id, init, definite)
     }
 }
 impl<'a> CloneIn<'a> for IfStatement {
@@ -1048,9 +1052,8 @@ impl<'a> CloneIn<'a> for CatchClause {
     fn clone_in(&self, ast: &mut Ast<'a>) -> Self::Cloned {
         let span = self.span(ast).clone_in(ast);
         let param = self.param(ast).clone_in(ast);
-        let type_annotation = self.type_annotation(ast).clone_in(ast);
         let body = self.body(ast).clone_in(ast);
-        ast.catch_clause(span, param, type_annotation, body)
+        ast.catch_clause(span, param, body)
     }
 }
 impl<'a> CloneIn<'a> for BreakStatement {
@@ -1354,17 +1357,9 @@ impl<'a> CloneIn<'a> for FormalParameter {
         let span = self.span(ast).clone_in(ast);
         let decorators = self.decorators(ast).clone_in(ast);
         let pattern = self.pattern(ast).clone_in(ast);
-        let type_annotation = self.type_annotation(ast).clone_in(ast);
         let initializer = self.initializer(ast).clone_in(ast);
         let optional = self.optional(ast).clone_in(ast);
-        ast.formal_parameter(
-            span,
-            decorators,
-            pattern,
-            type_annotation,
-            initializer,
-            optional,
-        )
+        ast.formal_parameter(span, decorators, pattern, initializer, optional)
     }
 }
 impl<'a> CloneIn<'a> for FormalParameterRest {
@@ -2006,6 +2001,7 @@ impl<'a> CloneIn<'a> for TsFunction {
         let generator = self.generator(ast).clone_in(ast);
         let r#async = self.r#async(ast).clone_in(ast);
         let declare = self.declare(ast).clone_in(ast);
+        let is_method = self.is_method(ast).clone_in(ast);
         ast.ts_function(
             span,
             id,
@@ -2016,6 +2012,7 @@ impl<'a> CloneIn<'a> for TsFunction {
             generator,
             r#async,
             declare,
+            is_method,
         )
     }
 }

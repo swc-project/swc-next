@@ -13,7 +13,6 @@ pub(crate) fn function(
         SubRange::empty(),
         FormalParameterPattern::BindingIdentifier(parameter),
         None,
-        None,
         false,
     );
     let items = ast.add_sub_range([FormalParameterItem::FormalParameter(parameter)]);
@@ -81,13 +80,8 @@ pub(crate) fn variable(
     init: Option<Expr>,
     span: Span,
 ) -> Decl {
-    let declarator = ast.variable_declarator(
-        span,
-        BindingPattern::BindingIdentifier(id),
-        None,
-        init,
-        false,
-    );
+    let declarator =
+        ast.variable_declarator(span, BindingPattern::BindingIdentifier(id), init, false);
     let declarations = ast.add_sub_range([declarator]);
     Decl::VariableDeclaration(ast.variable_declaration(span, kind, declarations, false))
 }
@@ -376,7 +370,7 @@ pub(crate) fn array_pattern(
         elements.pop();
     }
     let elements = ast.add_sub_range(elements);
-    BindingPattern::ArrayPattern(ast.array_pattern(DUMMY_SP, elements, rest))
+    BindingPattern::ArrayPattern(ast.array_pattern(DUMMY_SP, elements, rest, None))
 }
 
 pub(crate) fn parameters(
@@ -390,7 +384,6 @@ pub(crate) fn parameters(
                 DUMMY_SP,
                 SubRange::empty(),
                 FormalParameterPattern::BindingIdentifier(binding),
-                None,
                 None,
                 false,
             ))
@@ -437,7 +430,6 @@ pub(crate) fn declarator(
     ast.variable_declarator(
         DUMMY_SP,
         BindingPattern::BindingIdentifier(binding),
-        None,
         init,
         false,
     )

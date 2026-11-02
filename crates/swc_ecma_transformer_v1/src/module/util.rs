@@ -192,7 +192,6 @@ fn parameters(
                 SubRange::empty(),
                 FormalParameterPattern::BindingIdentifier(binding),
                 None,
-                None,
                 false,
             ))
         })

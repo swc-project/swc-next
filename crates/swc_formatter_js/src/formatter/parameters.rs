@@ -192,7 +192,7 @@ impl CallbackParameterShape {
         }
         let identifier = matches!(parameter,
             RuntimeParameter::Callable(CallableParameter::Formal(node))
-                if node.type_annotation(ast).is_none()
+                if node.pattern(ast).type_annotation(ast).is_none()
                     && node.initializer(ast).is_none()
                     && matches!(ast.formal_parameter_pattern_data(node.pattern(ast)),
                         FormalParameterPatternData::BindingIdentifier(_)));
@@ -417,7 +417,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ast.formal_parameter_pattern_data(parameter.pattern(ast)),
                     FormalParameterPatternData::BindingIdentifier(_)
                 ) && parameter.initializer(ast).is_none()
-                    && parameter.type_annotation(ast).is_none()
+                    && parameter.pattern(ast).type_annotation(ast).is_none()
                     && !parameter.optional(ast)
                     && first_head.is_none_or(|head| head.decorators.is_empty())
             })
@@ -555,7 +555,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(self.prepare_typed_formal_parameter(
                 parameter,
                 ContentMode::Formatted,
-                parameter.type_annotation(ast),
+                parameter.pattern(ast).type_annotation(ast),
                 parameter.optional(ast),
             )?)
         } else {
@@ -840,7 +840,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.prepare_typed_formal_parameter(
                     node,
                     mode,
-                    node.type_annotation(ast),
+                    node.pattern(ast).type_annotation(ast),
                     node.optional(ast),
                 )?,
                 node.pattern(ast).span(ast).start,
@@ -1056,7 +1056,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         if self.ast.is_ts() {
-            let annotation = parameter.type_annotation(self.ast);
+            let annotation = parameter.pattern(self.ast).type_annotation(self.ast);
             let optional = parameter.optional(self.ast);
             if annotation.is_some() || optional {
                 let prepared =

@@ -268,7 +268,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
-          typeAnnotation: null,
+          typeAnnotation: optionalNode(_i32[(payload + 8) >> 2]),
         };
         break;
       }
@@ -324,11 +324,9 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 28: {
         const f_id = node(_i32[(payload + 0) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
-        const f_definite = _dv.getUint8(payload + 12) !== 0;
-        f_id.typeAnnotation = f_typeAnnotation;
-        f_id.end = f_typeAnnotation?.end ?? f_id.end;
+        const f_init = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_definite = _dv.getUint8(payload + 8) !== 0;
+        f_id.end = f_id.typeAnnotation?.end ?? f_id.end;
         result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init, definite: f_definite };
         break;
       }
@@ -555,7 +553,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
-          typeAnnotation: null,
+          typeAnnotation: optionalNode(_i32[(payload + 8) >> 2]),
         };
         break;
       }
@@ -583,7 +581,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           right: node(_i32[(payload + 4) >> 2]),
           decorators: [],
           optional: false,
-          typeAnnotation: null,
+          typeAnnotation: optionalNode(_i32[(payload + 8) >> 2]),
         };
         break;
       }
@@ -593,22 +591,24 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           value: null,
           decorators: [],
           optional: false,
-          typeAnnotation: null,
+          typeAnnotation: optionalNode(_i32[(payload + 4) >> 2]),
         };
         break;
       }
       case 18: {
         const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
         const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 12) >> 2]);
         if (f_rest !== null) f_elements.push(f_rest);
-        result = { type: "ArrayPattern", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: null };
+        result = { type: "ArrayPattern", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: f_typeAnnotation };
         break;
       }
       case 19: {
         const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
         const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
+        const f_typeAnnotation = optionalNode(_i32[(payload + 12) >> 2]);
         if (f_rest !== null) f_properties.push(f_rest);
-        result = { type: "ObjectPattern", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: null };
+        result = { type: "ObjectPattern", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: f_typeAnnotation };
         break;
       }
       case 20: {
@@ -683,11 +683,9 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 28: {
         const f_id = node(_i32[(payload + 0) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
-        const f_definite = _dv.getUint8(payload + 12) !== 0;
-        f_id.typeAnnotation = f_typeAnnotation;
-        f_id.end = f_typeAnnotation?.end ?? f_id.end;
+        const f_init = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_definite = _dv.getUint8(payload + 8) !== 0;
+        f_id.end = f_id.typeAnnotation?.end ?? f_id.end;
         result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init, definite: f_definite };
         break;
       }
@@ -749,12 +747,8 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 36: {
         const f_param = optionalNode(_i32[(payload + 0) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_body = node(_i32[(payload + 8) >> 2]);
-        if (f_param !== null) {
-          f_param.typeAnnotation = f_typeAnnotation;
-          f_param.end = f_typeAnnotation?.end ?? f_param.end;
-        }
+        const f_body = node(_i32[(payload + 4) >> 2]);
+        if (f_param !== null) f_param.end = f_param.typeAnnotation?.end ?? f_param.end;
         result = { type: "CatchClause", start, end, param: f_param, body: f_body };
         break;
       }
@@ -989,20 +983,16 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         const extraId = _i32[(payload + 12) >> 2];
         const f_decorators = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
         const f_pattern = node(_i32[(payload + 0) >> 2]);
-        const f_typeAnnotation = optionalNode(_i32[(payload + 4) >> 2]);
-        const f_initializer = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
+        const f_initializer = optionalNode(_i32[(payload + 4) >> 2]);
         const f_optional = _dv.getUint8(payload + 8) !== 0;
+        f_pattern.optional = f_optional;
         if (f_initializer === null) {
-          f_pattern.optional = f_optional;
-          f_pattern.typeAnnotation = f_typeAnnotation;
           f_pattern.end = end;
           f_pattern.decorators = f_decorators;
           result = f_pattern;
         } else {
           const left = f_pattern;
-          left.optional = f_optional;
-          left.typeAnnotation = f_typeAnnotation;
-          left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);
+          left.end = left.typeAnnotation?.end ?? (left.optional ? left.end + 1 : left.end);
           result = {
             type: "AssignmentPattern", start: left.start, end,
             left, right: f_initializer,

@@ -376,6 +376,7 @@ fn exposes_conditional_type(data: TsTypeData, ast: &Ast<'_>, depth: usize) -> bo
             FormalParameterItemData::TsParameterProperty(node) => node.parameter(ast),
         };
         parameter
+            .pattern(ast)
             .type_annotation(ast)
             .is_some_and(|annotation| exposes(annotation.type_annotation(ast)))
     }) || parameters

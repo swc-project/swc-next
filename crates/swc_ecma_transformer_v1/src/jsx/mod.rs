@@ -1173,12 +1173,12 @@ impl Jsx<'_, '_> {
                 })
                 .collect::<Vec<_>>();
             let properties = ast.add_sub_range(properties);
-            let pattern = ast.binding_pattern_object_pattern(DUMMY_SP, properties, None);
+            let pattern = ast.binding_pattern_object_pattern(DUMMY_SP, properties, None, None);
             let callee = self.resolver.marked_reference(ast, "require", true);
             let source = string(ast, DUMMY_SP, source);
             let arguments = ast.add_sub_range([Argument::Expr(source)]);
             let init = ast.expr_call_expression(DUMMY_SP, callee, None, arguments, false, false);
-            let declarator = ast.variable_declarator(DUMMY_SP, pattern, None, Some(init), false);
+            let declarator = ast.variable_declarator(DUMMY_SP, pattern, Some(init), false);
             let declarations = ast.add_sub_range([declarator]);
             Stmt::Declaration(Decl::VariableDeclaration(ast.variable_declaration(
                 DUMMY_SP,

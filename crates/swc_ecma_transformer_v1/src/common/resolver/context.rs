@@ -202,7 +202,7 @@ impl Resolver {
     }
 
     pub(crate) fn binding(&mut self, ast: &mut Ast<'_>, symbol: SymbolId) -> BindingIdentifier {
-        let binding = ast.binding_identifier(DUMMY_SP, self.symbol_name(symbol));
+        let binding = ast.binding_identifier(DUMMY_SP, self.symbol_name(symbol), None);
         self.set_symbol(binding.node_id(), symbol);
         binding
     }

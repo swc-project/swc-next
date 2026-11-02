@@ -68,6 +68,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     false,
                     false,
                     context.declare,
+                    false,
                 );
                 Some(Decl::TsFunction(signature))
             }
@@ -231,7 +232,7 @@ impl<'ast> Transformer<'_, 'ast> {
         ast: &mut Ast<'ast>,
     ) {
         declarator.set_definite(ast, false);
-        if declarator.type_annotation(ast).is_some() {
+        if declarator.id(ast).type_annotation(ast).is_some() {
             declarator.set_init(ast, None);
             return;
         }
@@ -264,7 +265,9 @@ impl<'ast> Transformer<'_, 'ast> {
             ast.ts_type_ts_unknown_keyword(initializer.span(ast))
         });
         let annotation = ast.ts_type_annotation(initializer.span(ast), inferred);
-        declarator.set_type_annotation(ast, Some(annotation));
+        declarator
+            .id(ast)
+            .set_type_annotation(ast, Some(annotation));
         declarator.set_init(ast, None);
     }
 
@@ -284,6 +287,7 @@ impl<'ast> Transformer<'_, 'ast> {
                     function.this_param(ast),
                     function.params(ast),
                     return_type,
+                    false,
                     false,
                     false,
                     false,
@@ -322,7 +326,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let expression = unparenthesized(expression, ast);
         let span = expression.span(ast);
         let name = self.fresh_default_name(ast);
-        let binding = ast.binding_identifier(span, name);
+        let binding = ast.binding_identifier(span, name, None);
 
         // Only references retained by dependency analysis can escape the class's
         // original name scope. References in erased method bodies do not matter.
@@ -360,13 +364,9 @@ impl<'ast> Transformer<'_, 'ast> {
                 });
             (Some(ast.ts_type_annotation(span, ty)), None)
         };
-        let declarator = ast.variable_declarator(
-            span,
-            BindingPattern::BindingIdentifier(binding),
-            type_annotation,
-            initializer,
-            false,
-        );
+        let binding = BindingPattern::BindingIdentifier(binding);
+        binding.set_type_annotation(ast, type_annotation);
+        let declarator = ast.variable_declarator(span, binding, initializer, false);
         let declarators = ast.add_sub_range([declarator]);
         let declaration =
             ast.variable_declaration(span, VariableKind::Const, declarators, context.declare);
