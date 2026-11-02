@@ -1,14 +1,14 @@
 use crate::AstUtf8;
 use crate::Span;
 
-#[repr(u8)]
+#[repr(u16)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentKind {
     Line = 0,
     Block = 1,
 }
 
-#[repr(u8)]
+#[repr(u16)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CommentPosition {
     Leading = 0,

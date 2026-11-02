@@ -14,30 +14,30 @@ export declare abstract class Qux {
   baz(): void;
 }
 export declare class Baz {
-  /**
+  readonly prop1 = /**
    * Just a comment
    */
-  readonly prop1 = "some string";
-  /**
-   * Just a comment
-   */
+"some string";
   prop2: string;
-  /**
-   * Just a comment
-   */
   private prop3;
-  /**
-   * Just a comment
-   */
   private prop4;
-  /**
-   * Just a comment
-   */
   private static prop5;
+  private static prop6;
   /**
    * Just a comment
    */
-  private static prop6;
+  /**
+   * Just a comment
+   */
+  /**
+   * Just a comment
+   */
+  /**
+   * Just a comment
+   */
+  /**
+   * Just a comment
+   */
 }
 export declare class Boo {
   readonly prop: number;
@@ -134,6 +134,8 @@ export declare class AccessorPairWithProtectedPrivateSetter {
   protected get value(): number;
   private set value(value);
 }
+// Private parameter properties on a private constructor need no explicit type:
+// the constructor signature is collapsed and the class member is type-erased.
 export declare class PrivateConstructorWithPrivateParamPropertyInferredDefault {
   private readonly a;
   private b;

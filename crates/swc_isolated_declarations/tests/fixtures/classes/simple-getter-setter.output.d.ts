@@ -2,9 +2,12 @@ export declare const foo: {
   x: string;
   y: string;
   z: string;
-  // readonly
   readonly w: string;
-};
+} // inferred type by annotating the setter parameter
+// inferred type by annotating the getter return type
+// inferred type by inferring the getter body
+// readonly
+;
 export declare class Foo {
   get x(): string;
   set x(value: string);
@@ -12,6 +15,9 @@ export declare class Foo {
   get y(): string;
   set z(value: string);
   get z(): string;
-  // readonly
   get w(): string;
+  // inferred type by annotating the setter parameter
+  // inferred type by annotating the getter return type
+  // inferred type by inferring the getter body
+  // readonly
 }

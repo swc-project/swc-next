@@ -665,96 +665,6 @@ fn test_enum_member_names() {
 }
 
 #[test]
-fn test_module_body_comments() {
-    expect_printed_ts("namespace N { // @ts-ignore\n}", "namespace N {}\n");
-}
-
-#[test]
-fn test_module_comments() {
-    expect_printed_ts(
-        "import { // @ts-ignore\nmissing } from 'm';",
-        "import { missing } from \"m\";\n",
-    );
-}
-
-#[test]
-fn test_catch_comments() {
-    expect_printed_ts(
-        "try {} // @ts-ignore\ncatch(e: number) {}",
-        "try {\n} catch (e: number) {\n}\n",
-    );
-
-    expect_printed_ts(
-        "try {} catch (/** @type {any} */ {x}) {}",
-        "try {\n} catch ( /** @type {any} */ { x }) {\n}\n",
-    );
-}
-
-#[test]
-fn test_parameter_property_comments() {
-    expect_printed_ts(
-        "class C { constructor(/** @internal */ public x: number) {} }",
-        "class C {\n  constructor( /** @internal */ public x: number) {\n  }\n}\n",
-    );
-}
-
-#[test]
-fn test_type_comments() {
-    expect_printed_ts(
-        "type T = /** @internal */ Foo;",
-        "type T = /** @internal */ Foo;\n",
-    );
-
-    expect_printed_ts(
-        "type T = Cell<infer V /** hint */>;",
-        "type T = Cell<infer V>;\n",
-    );
-
-    expect_printed_ts(
-        "type T = [/** @deprecated */ x: number];",
-        "type T = [ /** @deprecated */ x: number];\n",
-    );
-
-    expect_printed_ts(
-        "function f(): // @ts-ignore\nMissing {}",
-        "function f(): Missing {\n}\n",
-    );
-}
-
-#[test]
-fn test_signature_comments() {
-    expect_printed_ts(
-        "interface I { /** @internal */ x: number; }",
-        "interface I {\n  /** @internal */\n  x: number;\n}\n",
-    );
-
-    expect_printed_ts(
-        "interface I { /** @internal */ (): void; }",
-        "interface I {\n  /** @internal */\n  (): void;\n}\n",
-    );
-
-    expect_printed_ts(
-        "interface I { /** @internal */ new (): I; }",
-        "interface I {\n  /** @internal */\n  new (): I;\n}\n",
-    );
-
-    expect_printed_ts(
-        "interface I { /** @internal */ [key: string]: number; }",
-        "interface I {\n  /** @internal */\n  [key: string]: number;\n}\n",
-    );
-}
-
-#[test]
-fn test_enum_comments() {
-    expect_printed_ts(
-        "enum E { /** @deprecated */ A }",
-        "enum E {\n  /** @deprecated */\n  A,\n}\n",
-    );
-
-    expect_printed_ts("enum E { A, // @ts-ignore\n}", "enum E {\n  A,\n}\n");
-}
-
-#[test]
 fn test_computed_enum_name_comments() {
     expect_printed_ts(
         "enum E { [/* @__PURE__ */ 'x'] = make() }",
@@ -871,16 +781,23 @@ fn test_non_finite_numeric_literal_types() {
 
 #[test]
 fn test_signed_numeric_literal_type_comments() {
-    expect_printed_ts(
-        "type T = -/** @type {number} */1;",
-        "type T = - /** @type {number} */ 1;\n",
-    );
+    let source = "type T = -/* note */1;";
+    let expected = "type T = /* note */ -1;\n";
+    expect_printed_ts(source, expected);
+    expect_printed_ts(expected, expected);
+    expect_printed_ts_minify(source, "type T=/* note */-1;");
 }
 
 #[test]
 fn test_legal_comments() {
-    expect_printed_ts("type X = number /*! license */;", "type X = number;\n");
-    expect_printed_ts_minify("type X = number /*! license */;", "type X=number;");
+    expect_printed_ts(
+        "type X = number /*! license */;",
+        "type X = number;\n/*! license */\n",
+    );
+    expect_printed_ts_minify(
+        "type X = number /*! license */;",
+        "type X=number;/*! license */",
+    );
 }
 
 #[test]

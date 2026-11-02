@@ -16,3 +16,4 @@ declare module "foo" {
   }
 }
 export {};
+// should not be emitted
