@@ -85,9 +85,10 @@ pub struct StripResult<'source> {
     pub code: Cow<'source, str>,
     /// Diagnostics in source order.
     ///
-    /// Contains parser diagnostics and at most one `erasableSyntaxOnly` error for
-    /// the first unsupported TypeScript construct. When non-empty, [`Self::code`]
-    /// is recovery output and may not preserve program semantics.
+    /// Contains parser diagnostics and at most one eraser error for the first
+    /// unsupported TypeScript construct or an assertion whose erasure changes
+    /// exponentiation grouping. When non-empty, [`Self::code`] is recovery output
+    /// and may not preserve program semantics.
     pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
@@ -106,6 +107,9 @@ pub struct StripResult<'source> {
 /// - Stripping is purely syntactic: names are not resolved and `const enum` values
 ///   are not inlined, so type-only imports and exports must use explicit `type`
 ///   modifiers.
+/// - An unparenthesized `as` or `satisfies` assertion between exponentiations
+///   produces a diagnostic rather than silently changing evaluation order;
+///   parenthesize the asserted expression before stripping.
 ///
 /// [`Options::lang`] must be [`Lang::Ts`] or [`Lang::Tsx`]; [`Lang::Tsx`] preserves
 /// JSX syntax without lowering it, and other [`Lang`] variants return `source`
@@ -183,6 +187,7 @@ enum ExprFrame {
     As(TsAsExpression),
     Satisfies(TsSatisfiesExpression),
     NonNull(TsNonNullExpression),
+    ExponentCheck(BinaryExpression),
 }
 
 impl ExprFrame {
@@ -209,6 +214,7 @@ impl ExprFrame {
             Self::NonNull(assertion) => {
                 eraser.erase_suffix_expression(assertion.expression(ast), assertion.span(ast));
             }
+            Self::ExponentCheck(binary) => eraser.check_exponent_assertion(binary),
         }
     }
 }
@@ -276,10 +282,18 @@ impl TypeEraser<'_, '_, '_> {
         let stack_bottom = self.expr_frames.len();
         let mut outer_frame = None;
         loop {
+            let mut exponent_check = None;
             let (next, frame) = match self.ast.expr_data(node) {
                 ExprData::IdentifierReference(_) => break,
                 ExprData::BinaryExpression(binary) => {
-                    self.check_exponent_assertion(binary);
+                    if binary.operator(self.ast) == BinaryOperator::Exponent
+                        && matches!(
+                            self.ast.expr_data(binary.left(self.ast)),
+                            ExprData::TsAsExpression(_) | ExprData::TsSatisfiesExpression(_)
+                        )
+                    {
+                        exponent_check = Some(binary);
+                    }
                     (
                         binary.left(self.ast),
                         ExprFrame::Expression(binary.right(self.ast)),
@@ -332,6 +346,9 @@ impl TypeEraser<'_, '_, '_> {
                 outer_frame = Some(frame);
             } else {
                 self.expr_frames.push(frame);
+            }
+            if let Some(binary) = exponent_check {
+                self.expr_frames.push(ExprFrame::ExponentCheck(binary));
             }
             node = next;
         }
@@ -690,8 +707,8 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_, '_> {
     }
 
     fn visit_binary_expression(&mut self, node: BinaryExpression) {
-        self.check_exponent_assertion(node);
         self.visit_chain_operand(node.left(self.ast));
+        self.check_exponent_assertion(node);
         node.right(self.ast).visit_with(self);
     }
 

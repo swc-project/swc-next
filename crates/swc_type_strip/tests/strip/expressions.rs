@@ -28,6 +28,28 @@ fn assertions() {
         "const x = value               ;",
     );
 
+    let source = "const value = (<number>2) ** 3 as number ** 2;";
+    let result = strip_types(source, options(Lang::Ts));
+    assert_eq!(result.diagnostics.len(), 1);
+    let Span { start, end } = result.diagnostics[0].span;
+    assert_eq!(source.get(start as usize..end as usize), Some("<number>"));
+
+    let result = strip_types("const value = 2 ** 3 as number ** 2;", options(Lang::Ts));
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+
+    let result = strip_types(
+        "const value = 2 ** 3 satisfies number ** 2;",
+        options(Lang::Ts),
+    );
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].severity, Severity::Error);
+
+    assert_strip(
+        "const value = (2 ** 3 as number) ** 2;",
+        "const value = (2 ** 3          ) ** 2;",
+    );
+
     assert_strip("const x = value!;", "const x = value ;");
 
     assert_strip("const value = expr!!!;", "const value = expr   ;");
@@ -68,25 +90,6 @@ fn assertions() {
         "const value = -input as number ** 2;",
         "const value = -input           ** 2;",
         Lang::Ts,
-    );
-}
-
-#[test]
-fn exponentiation_after_postfix_assertion_is_not_silently_regrouped() {
-    let result = strip_types("const value = 2 ** 3 as number ** 2;", options(Lang::Ts));
-    assert_eq!(result.diagnostics.len(), 1);
-    assert_eq!(result.diagnostics[0].severity, Severity::Error);
-
-    let result = strip_types(
-        "const value = 2 ** 3 satisfies number ** 2;",
-        options(Lang::Ts),
-    );
-    assert_eq!(result.diagnostics.len(), 1);
-    assert_eq!(result.diagnostics[0].severity, Severity::Error);
-
-    assert_strip(
-        "const value = (2 ** 3 as number) ** 2;",
-        "const value = (2 ** 3          ) ** 2;",
     );
 }
 
