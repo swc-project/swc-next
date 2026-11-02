@@ -38,7 +38,7 @@ export default async function runCase({ oracle, source, file }) {
     }));
 
     let sourceCode = fs.readFileSync(sourceFile, "utf8");
-    if (sourceCode.charCodeAt(0) === 0xfeff) sourceCode = sourceCode.slice(1);
+    if (sourceCode.charCodeAt(0) === 0xfeff) { sourceCode = sourceCode.slice(1); }
 
     const sourceUnits =
       path.extname(oracleFile) === ".md"
@@ -52,7 +52,7 @@ export default async function runCase({ oracle, source, file }) {
           ];
     const actualAsts = sourceUnits.map((sourceUnit, index) => {
       const expected = expectedUnits[index];
-      const { program: ast } = parseSync(sourceUnit.content, {
+      const ast = parseSync(sourceUnit.content, {
         comments: "none",
         // Compare recovered ASTs as well as valid inputs against the oracles.
         errorRecovery: true,
@@ -64,7 +64,7 @@ export default async function runCase({ oracle, source, file }) {
           expected?.astValue.sourceType ??
           (sourceUnit.sourceType.module ? "module" : "script"),
       });
-      return stringifyWith(ast, reorderAstFields);
+      return stringifyWith(ast.materialize(), reorderAstFields);
     });
     const passed =
       actualAsts.length === expectedUnits.length &&
@@ -93,18 +93,18 @@ function getLang(sourceUnit, oracleFile) {
   // TypeScript oracles are produced by typescript-eslint even when a test's
   // virtual `@filename` has a JavaScript extension. Preserve declaration-file
   // mode, but otherwise parse every TypeScript test unit with TS semantics.
-  if (path.extname(oracleFile) === ".md" && lang !== "dts") lang = "ts";
-  if (!sourceUnit.sourceType.jsx) return lang;
-  if (lang === "ts" || lang === "dts") return "tsx";
-  if (lang === "js") return "jsx";
+  if (path.extname(oracleFile) === ".md" && lang !== "dts") { lang = "ts"; }
+  if (!sourceUnit.sourceType.jsx) { return lang; }
+  if (lang === "ts" || lang === "dts") { return "tsx"; }
+  if (lang === "js") { return "jsx"; }
   return lang;
 }
 
 function reorderAstFields(key, value) {
-  if (typeof value === "bigint") return null;
+  if (typeof value === "bigint") { return null; }
   // JSON.stringify serializes Infinity as null. Use the oracle's placeholder
   // so stringifyWith can emit the numeric JSON token 1e+400 instead.
-  if (value === Infinity) return transformerAcorn(key, value);
+  if (value === Infinity) { return transformerAcorn(key, value); }
 
   if (
     typeof value !== "object" ||
@@ -130,11 +130,11 @@ function reorderAstFields(key, value) {
       end: value.end,
     };
   }
-  if (!keys) return value;
+  if (!keys) { return value; }
 
   const reordered = { type: value.type };
   for (const key of keys) {
-    if (Object.hasOwn(value, key)) reordered[key] = value[key];
+    if (Object.hasOwn(value, key)) { reordered[key] = value[key]; }
   }
   for (const key of Object.keys(value)) {
     if (
@@ -143,11 +143,11 @@ function reorderAstFields(key, value) {
       key === "end" ||
       keys.includes(key)
     )
-      continue;
+      { continue; }
     reordered[key] = value[key];
   }
-  if (Object.hasOwn(value, "start")) reordered.start = value.start;
-  if (Object.hasOwn(value, "end")) reordered.end = value.end;
+  if (Object.hasOwn(value, "start")) { reordered.start = value.start; }
+  if (Object.hasOwn(value, "end")) { reordered.end = value.end; }
 
   // RegExp instances are not representable in JSON. Match the serialized
   // Acorn and typescript-eslint oracles without changing parseSync's AST.

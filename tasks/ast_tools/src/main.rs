@@ -3,7 +3,7 @@ use crate::{
     generator::{
         ast_builder::ast_builder, ast_compare::ast_compare, ast_node::ast_node,
         ast_payload::ast_payload, ast_property::ast_property, ast_visitor::ast_visitor,
-        estree_decoder::estree_decoder, estree_encoder::estree_encoder, estree_types::estree_types,
+        estree_types::estree_types,
     },
     parse::parse_files,
 };
@@ -50,15 +50,10 @@ fn main() -> std::io::Result<()> {
 
     ast_compare(&schema).write_to_file()?;
 
-    for output in estree_decoder(&schema) {
-        output.write_to_file()?;
-    }
-
-    for output in estree_encoder(&schema) {
-        output.write_to_file()?;
-    }
-
     for output in generator::estree_visitor_keys::estree_visitor_keys(&schema) {
+        output.write_to_file()?;
+    }
+    for output in generator::ffi::ffi(&schema) {
         output.write_to_file()?;
     }
     Ok(())

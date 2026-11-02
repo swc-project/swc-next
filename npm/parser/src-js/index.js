@@ -1,30 +1,19 @@
-import { parseSync as __parseSync } from "./binding.js";
-import { decode } from "@swc-next/protocol/ast/decode";
+import { encodeSource } from "@swc-next/protocol/source";
 import { encodeParserConfig } from "@swc-next/protocol/parser";
-
-const textEncoder = new TextEncoder();
-let sourceBuffer = new Uint8Array();
-
+import { readAst } from "@swc-next/ast";
+export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast";
+import { parseSync as __parseSync } from "./binding.js";
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 
+export function parseBufferSync(source, options) {
+  const config = encodeParserConfig(options);
+  return __parseSync(encodeSource(source), config);
+}
+
 export function parseSync(source, options) {
-  const parserConfig = encodeParserConfig(options);
-  const capacity = source.length * 3;
-  if (sourceBuffer.length < capacity) {
-    const length = Math.max(capacity, sourceBuffer.length * 2, 4096);
-    sourceBuffer = typeof Buffer === "function"
-      ? new Uint8Array(Buffer.allocUnsafeSlow(length).buffer)
-      : new Uint8Array(length);
+  const ast = readAst(parseBufferSync(source, options));
+  if (!options?.errorRecovery && ast.diagnostics.length) {
+    throw ast.diagnostics[0];
   }
-  const { written } = textEncoder.encodeInto(source, sourceBuffer);
-  // Native parsing is synchronous. Lazy decoding reads the original string,
-  // so this scratch buffer can be overwritten by the next parse.
-  const sourceBytes = sourceBuffer.subarray(0, written);
-  const buffer = __parseSync(sourceBytes, source.length, parserConfig);
-  const result = decode(buffer, source);
-  if (!options?.errorRecovery) {
-    const diagnostics = result.diagnostics;
-    if (diagnostics.length) throw diagnostics[0];
-  }
-  return result;
+  return ast;
 }

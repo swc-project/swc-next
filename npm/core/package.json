@@ -28,14 +28,15 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:js": "pnpm -w exec rslib build --lib core",
+    "build:js": "pnpm --filter @swc-next/ast build && pnpm -w exec rslib build --lib core",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir dist",
-    "test": "pnpm -w build:js && node --test test/*.test.js && pnpm test:walk",
+    "test": "pnpm -w build:js && pnpm test:types && node --test test/*.test.js && pnpm test:walk",
     "test:walk": "rstest run --include \"test/walk/*.test.js\"",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && pnpm build:js && node ./test/estree-conformance.ts",
     "test:codec": "pnpm build --release && pnpm build:js && node ./test/codec-conformance.ts",
-    "prepack": "pnpm build:js"
+    "prepack": "pnpm build:js",
+    "test:types": "tsc -p test/tsconfig.ast-api.json"
   },
   "keywords": [],
   "author": "",
@@ -62,6 +63,7 @@
     ]
   },
   "dependencies": {
+    "@swc-next/ast": "workspace:*",
     "@swc-next/types": "workspace:*",
     "@swc-next/walker": "workspace:*"
   },

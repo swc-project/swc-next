@@ -1,34 +1,42 @@
 import { encodeSource } from "@swc-next/protocol/source";
+import { encodeParserConfig } from "@swc-next/protocol/parser";
+import { readAst, NodeView } from "@swc-next/ast";
+export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast";
 import { encodeTransformApiOptions } from "@swc-next/protocol/transform";
 import { decodeJsOutput } from "@swc-next/protocol/output";
+import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
 import {
   parseSync as __parseSync,
   generateSync as __generateSync,
   transformSync as __transformSync,
 } from "./binding.js";
-import { decode } from "@swc-next/protocol/ast/decode";
-import { encodeParserConfig } from "@swc-next/protocol/parser";
-import { encode } from "@swc-next/protocol/ast/encode";
-import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
-
 export { langFromPath, sourceTypeFromPath } from "./binding.js";
 export * from "@swc-next/walker";
 
+export function parseBufferSync(source, options) {
+  const config = encodeParserConfig(options);
+  return __parseSync(encodeSource(source), config);
+}
+
 export function parseSync(source, options) {
-  const parserConfig = encodeParserConfig(options);
-  const buffer = __parseSync(encodeSource(source), source.length, parserConfig);
-  const result = decode(buffer, source);
-  if (!options?.errorRecovery) {
-    const diagnostics = result.diagnostics;
-    if (diagnostics.length) throw diagnostics[0];
+  const ast = readAst(parseBufferSync(source, options));
+  if (!options?.errorRecovery && ast.diagnostics.length) {
+    throw ast.diagnostics[0];
   }
-  return result;
+  return ast;
 }
 
 export function generateSync(program, options) {
-  const generatorConfig = encodeGeneratorConfig(options);
-  const code = __generateSync(...encode(program), generatorConfig);
-  return { code };
+  if (!(program instanceof NodeView) || program.nodeId !== program.ast.rootId) {
+    throw new TypeError("Expected the root Program view of an AST");
+  }
+  const config = encodeGeneratorConfig(options);
+  const buffers = program.ast.encode();
+  return { code: __generateSync(...buffers, config) };
+}
+
+export function generateBuffersSync(buffer, extension = new Uint8Array(), options) {
+  return { code: __generateSync(buffer, extension ?? new Uint8Array(), encodeGeneratorConfig(options)) };
 }
 
 export function transformSync(source, options) {

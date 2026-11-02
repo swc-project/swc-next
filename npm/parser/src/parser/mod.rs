@@ -13,19 +13,14 @@ use swc_next_ecma_ast::{Lang, SourceType};
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
-/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
-pub unsafe fn parse_sync(
-    source: &[u8],
-    source_utf16_len: u32,
-    options: Option<ParserConfig>,
-) -> Vec<u8> {
-    unsafe { parse_to_buffer(source, source_utf16_len, options) }
+pub unsafe fn parse_sync(source: &[u8], options: Option<ParserConfig>) -> Vec<u8> {
+    unsafe { parse_to_buffer(source, options) }
 }
 
 #[cfg(not(target_family = "wasm"))]
 #[napi(
     js_name = "parseSync",
-    ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: number",
+    ts_args_type = "source: Uint8Array, options: number",
     ts_return_type = "Uint8Array"
 )]
 /// Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
@@ -33,16 +28,12 @@ pub unsafe fn parse_sync(
 /// # Safety
 ///
 /// The caller must ensure that `source` contains valid UTF-8.
-/// `source_utf16_len` must match the UTF-16 code unit length of `source`.
 pub unsafe fn parse_sync(
     env: napi::Env,
     source: swc_next_bridge::NativeBytes<'_>,
-    source_utf16_len: u32,
     options: u32,
 ) -> napi::Result<napi::bindgen_prelude::Buffer> {
-    unsafe {
-        swc_next::js::parser::bridge::parse_to_node_buffer(&env, &source, source_utf16_len, options)
-    }
+    unsafe { swc_next::js::parser::bridge::parse_to_node_buffer(&env, &source, options) }
 }
 
 #[bridge(ts_return_type = "SourceType")]

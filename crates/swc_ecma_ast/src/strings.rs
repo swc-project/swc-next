@@ -1,4 +1,9 @@
-use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::ArenaVec, wtf8::Wtf8};
+use swc_next_allocator::{
+    Allocator,
+    hash_map::HashMap as ArenaHashMap,
+    vec::ArenaVec,
+    wtf8::{Wtf8, extend_wtf8_from_utf16_le},
+};
 
 macro_rules! define_ast_string {
     ($name:ident) => {
@@ -116,12 +121,6 @@ impl<'a> StringPool<'a> {
         }
     }
 
-    #[cfg(target_endian = "big")]
-    pub(crate) fn initialize_extra(&mut self, bytes: &[u8]) {
-        assert!(self.extra.is_empty());
-        self.extra.extend_from_slice_copy(bytes);
-    }
-
     /// # Safety
     ///
     /// This pool must only be accessed immutably after initialization.
@@ -134,6 +133,21 @@ impl<'a> StringPool<'a> {
 
     pub(crate) fn extra_bytes(&self) -> &[u8] {
         &self.extra
+    }
+
+    /// Append validated transfer data while retaining its existing string offsets.
+    pub(crate) fn extend_extra(&mut self, bytes: &[u8]) {
+        self.extra.extend_from_slice(bytes);
+    }
+
+    /// Append a UTF-16 code-unit sequence as WTF-8 and return its span in the whole
+    /// string space. Legacy extension pools transfer code units while the pool an AST reads is
+    /// WTF-8, so a transferred string is transcoded once, here, and its handle is
+    /// rewritten to the returned span.
+    pub(crate) fn extend_wtf8_from_utf16(&mut self, units: &[u8]) -> (u32, u32) {
+        let start = (self.source.len() + self.extra.len()) as u32;
+        extend_wtf8_from_utf16_le(units, &mut self.extra);
+        (start, (self.source.len() + self.extra.len()) as u32)
     }
 
     /// Returns a UTF-8 string handle for the given source range.

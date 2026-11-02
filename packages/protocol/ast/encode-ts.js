@@ -82,6 +82,9 @@ function createBuffers(sizeHint) {
   };
 }
 
+function listAt(values, index) {
+  return values == null ? undefined : Array.isArray(values) ? values[index] : values.get(index);
+}
 function clearState() {
   // Uncached buffers must not remain reachable through the module state.
   spans = kinds = payloadBuffer = payload = extraBuffer = extra = pool = undefined;
@@ -143,7 +146,7 @@ function encArray(values, encoder, holes) {
   // Reserve the contiguous range before children allocate their own extra data.
   const start = allocExtra(length);
   for (let index = 0; index < length; index++) {
-    const value = values[index];
+    const value = listAt(values, index);
     const id = holes && value == null ? NULL : encoder(value);
     // A child may grow extraBuffer, so use the current DataView.
     setExtraU32(start + index, 0, id);
@@ -155,7 +158,7 @@ function encArraySlice(values, encoder, from, end) {
   if (from === end) return 0;
   const start = allocExtra(end - from);
   for (let index = from, slot = start; index < end; index++, slot++) {
-    const id = encoder(values[index]);
+    const id = encoder(listAt(values, index));
     setExtraU32(slot, 0, id);
   }
   return start;
@@ -165,9 +168,9 @@ function encTemplateElements(values, templateStart) {
   const length = values?.length ?? 0;
   if (!length) return 0;
   const start = allocExtra(length);
-  const delimited = values[0].start === templateStart;
+  const delimited = listAt(values, 0).start === templateStart;
   for (let index = 0; index < length; index++) {
-    const id = encTemplateElement(values[index], delimited);
+    const id = encTemplateElement(listAt(values, index), delimited);
     setExtraU32(start + index, 0, id);
   }
   return start;
@@ -310,7 +313,12 @@ function propertyKeyNode(node) {
   if (node?.type !== "Literal" ||
       (node.bigint == null && typeof node.value !== "bigint") ||
       bigIntValue(node) >= 0n) return node;
-  return { ...node, value: String(bigIntValue(node)), bigint: null, raw: "" };
+  return literalWith(node, { value: String(bigIntValue(node)), bigint: null, raw: "" });
+}
+
+function literalWith(node, overrides) {
+  return { type: node.type, start: node.start, end: node.end, value: node.value,
+    raw: node.raw, bigint: node.bigint, regex: node.regex, ...overrides };
 }
 
 function hexDigit(code) {
@@ -399,7 +407,7 @@ function encProgram(n) {
   const _length = _body?.length ?? 0;
   let _directiveCount = 0;
   while (_directiveCount < _length) {
-    const statement = _body[_directiveCount];
+    const statement = listAt(_body, _directiveCount);
     if (statement?.type !== "ExpressionStatement" ||
         typeof statement.directive !== "string" ||
         statement.expression?.type !== "Literal" ||
@@ -461,7 +469,7 @@ function encBigIntLiteral(n) {
       start: n.start,
       end: n.end,
       operator: "-",
-      argument: { ...n, value: absolute, bigint: String(absolute), raw: null },
+      argument: literalWith(n, { value: absolute, bigint: String(absolute), raw: null }),
     });
   }
   const v_0 = bigIntRaw(n);
@@ -539,8 +547,10 @@ function encPrivateIdentifier(n) {
 
 function encBindingIdentifier(n) {
   const v_0 = n.name;
+  const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(13, n.start, n.end);
   encStr(v_0, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
   return index;
 }
 
@@ -561,36 +571,42 @@ function encLabelIdentifier(n) {
 function encAssignmentPattern(n) {
   const v_0 = encBindingPattern(n.left);
   const v_1 = encExpr(n.right);
+  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(16, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
   return index;
 }
 
 function encBindingRestElement(n) {
   const v_0 = encBindingPattern(n.argument);
+  const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(17, n.start, n.end);
   setPayloadU32(index, 0, v_0);
+  setPayloadU32(index, 4, v_1);
   return index;
 }
 
 function encArrayPattern(n) {
   const _values = n.elements;
   const _length = _values?.length ?? 0;
-  const _last = _values?.[_length - 1];
+  const _last = listAt(_values, _length - 1);
   const _rest = _last?.type === "RestElement" ? _last : null;
   const _itemCount = _length - (_rest === null ? 0 : 1);
   const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
   for (let index = 0; index < _itemCount; index++) {
-    const value = _values[index];
+    const value = listAt(_values, index);
     const id = value == null ? NULL : encBindingPattern(value);
     setExtraU32(_itemsStart + index, 0, id);
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
+  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(18, n.start, n.end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
+  setPayloadU32(index, 12, v_2);
   return index;
 }
 
@@ -600,7 +616,7 @@ function encObjectPattern(n) {
   let _itemCount = _length - 0;
   let _rest = null;
   for (let i = 0; i < _length; i++) {
-    const value = _values[i];
+    const value = listAt(_values, i);
     if (value?.type === "RestElement") {
       _rest = value;
       _itemCount--;
@@ -609,7 +625,7 @@ function encObjectPattern(n) {
   const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
   let slot = _itemsStart;
   for (let i = 0; i < _length; i++) {
-    const value = _values[i];
+    const value = listAt(_values, i);
     if (value?.type !== "RestElement") {
       const id = encBindingProperty(value);
       setExtraU32(slot++, 0, id);
@@ -617,9 +633,11 @@ function encObjectPattern(n) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
+  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(19, n.start, n.end);
   writeRange(v_0, _itemCount, payload, index * 16 + 0);
   setPayloadU32(index, 8, v_1);
+  setPayloadU32(index, 12, v_2);
   return index;
 }
 
@@ -714,15 +732,13 @@ function encVariableDeclaration(n) {
 
 function encVariableDeclarator(n) {
   const v_0 = encBindingPattern(n.id);
-  const v_1 = n.id?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.id?.typeAnnotation);
-  const v_2 = n.init == null ? NULL : encExpr(n.init);
-  const v_3 = n.definite ? 1 : 0;
-  isTs |= v_3;
+  const v_1 = n.init == null ? NULL : encExpr(n.init);
+  const v_2 = n.definite ? 1 : 0;
+  isTs |= v_2;
   const index = allocNode(28, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  setPayloadU32(index, 8, v_2);
-  setPayloadU8(index, 12, v_3);
+  setPayloadU8(index, 8, v_2);
   return index;
 }
 
@@ -805,12 +821,10 @@ function encTryStatement(n) {
 
 function encCatchClause(n) {
   const v_0 = n.param == null ? NULL : encBindingPattern(n.param);
-  const v_1 = n.param?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.param?.typeAnnotation);
-  const v_2 = encBlockStatement(n.body);
+  const v_1 = encBlockStatement(n.body);
   const index = allocNode(36, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  setPayloadU32(index, 8, v_2);
   return index;
 }
 
@@ -880,7 +894,7 @@ function encDirective(n) {
     _directiveRaw.startsWith(n.directive, 1) &&
     directiveRawValue(_directiveRaw, n.directive) === n.expression?.value
       ? n.expression
-      : { ...n.expression, raw: "" };
+      : literalWith(n.expression, { raw: "" });
   const v_0 = encStringLiteral(_directiveExpression);
   const v_1 = n.directive;
   const index = allocNode(45, n.start, n.end);
@@ -1003,7 +1017,7 @@ function encStaticBlock(n) {
 }
 
 function encFunction(n, parameterKind = "formal") {
-  const _first = n.params?.[0];
+  const _first = listAt(n.params, 0);
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = enumValue(10, n.type === "FunctionExpression" ? "FunctionExpression" : "FunctionDeclaration");
@@ -1035,7 +1049,7 @@ function encFunctionBody(n) {
   const _length = _body?.length ?? 0;
   let _directiveCount = 0;
   while (_directiveCount < _length) {
-    const statement = _body[_directiveCount];
+    const statement = listAt(_body, _directiveCount);
     if (statement?.type !== "ExpressionStatement" ||
         typeof statement.directive !== "string" ||
         statement.expression?.type !== "Literal" ||
@@ -1090,18 +1104,18 @@ function encFormalParameters(n, from = 0, kind = "formal") {
   let _itemCount = _length - from;
   let _rest = null;
   for (let i = from; i < _length; i++) {
-    const value = _values[i];
+    const value = listAt(_values, i);
     if (value?.type === "RestElement") {
       _rest = value;
       _itemCount--;
     }
   }
-  const _start = _length > from ? _values[from].start : 0;
-  const _end = _length > from ? _values[_length - 1].end : 0;
+  const _start = _length > from ? listAt(_values, from).start : 0;
+  const _end = _length > from ? listAt(_values, _length - 1).end : 0;
   const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
   let slot = _itemsStart;
   for (let i = from; i < _length; i++) {
-    const value = _values[i];
+    const value = listAt(_values, i);
     if (value?.type !== "RestElement") {
       const id = encFormalParameterItem(value);
       setExtraU32(slot++, 0, id);
@@ -1123,23 +1137,21 @@ function encFormalParameter(n) {
   const _initializer = _hasInitializer ? n.right : null;
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = encFormalParameterPattern(_pattern);
-  const v_2 = _pattern.typeAnnotation == null ? NULL : encTsTypeAnnotation(_pattern.typeAnnotation);
-  const v_3 = _initializer == null ? NULL : encExpr(_initializer);
-  const v_4 = _pattern.optional ? 1 : 0;
-  isTs |= (n.decorators?.length ?? 0) | v_4;
-  if (v_4 && v_2 === NULL && v_3 !== NULL) {
+  const v_2 = _initializer == null ? NULL : encExpr(_initializer);
+  const v_3 = _pattern.optional ? 1 : 0;
+  isTs |= (n.decorators?.length ?? 0) | v_3;
+  if (v_3 && v_1.typeAnnotation == null && v_2 !== NULL) {
     const span = v_1 * 2;
     // Undo the decoder's optional-marker extension without underflowing empty spans.
     spans[span + 1] -= spans[span + 1] > spans[span];
   }
-  const extraId = allocExtra(3);
+  const extraId = allocExtra(2);
   const index = allocNode(59, n.start, n.end);
   setPayloadU32(index, 12, extraId);
   writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
   setPayloadU32(index, 0, v_1);
   setPayloadU32(index, 4, v_2);
-  setExtraU32(extraId + 2, 0, v_3);
-  setPayloadU8(index, 8, v_4);
+  setPayloadU8(index, 8, v_3);
   return index;
 }
 
@@ -1440,7 +1452,7 @@ function encHashbang(n) {
 
 function encTsFunction(n, parameterKind = "formal") {
   isTs = 1;
-  const _first = n.params?.[0];
+  const _first = listAt(n.params, 0);
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.id == null ? NULL : encBindingIdentifier(n.id);
@@ -1451,6 +1463,7 @@ function encTsFunction(n, parameterKind = "formal") {
   const v_5 = n.generator ? 1 : 0;
   const v_6 = n.async ? 1 : 0;
   const v_7 = n.declare ? 1 : 0;
+  const v_8 = n.type === "TSEmptyBodyFunctionExpression" ? 1 : 0;
   const extraId = allocExtra(3);
   const index = allocNode(87, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1462,6 +1475,7 @@ function encTsFunction(n, parameterKind = "formal") {
   setPayloadU8(index, 8, v_5);
   setPayloadU8(index, 9, v_6);
   setPayloadU8(index, 10, v_7);
+  setPayloadU8(index, 11, v_8);
   return index;
 }
 
@@ -1819,7 +1833,7 @@ function encTsParenthesizedType(n) {
 
 function encTsFunctionType(n) {
   isTs = 1;
-  const _first = n.params?.[0];
+  const _first = listAt(n.params, 0);
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
@@ -1906,7 +1920,7 @@ function encTsPropertySignature(n) {
 
 function encTsMethodSignature(n) {
   isTs = 1;
-  const _first = n.params?.[0];
+  const _first = listAt(n.params, 0);
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.computed ? encExpr(n.key) : encPropertyKey(propertyKeyNode(n.key));
@@ -1933,7 +1947,7 @@ function encTsMethodSignature(n) {
 
 function encTsCallSignatureDeclaration(n) {
   isTs = 1;
-  const _first = n.params?.[0];
+  const _first = listAt(n.params, 0);
   const _thisParam = _first?.type === "Identifier" && _first.name === "this" ? _first : null;
   const _paramStart = _thisParam === null ? 0 : 1;
   const v_0 = n.typeParameters == null ? NULL : encTsTypeParameterDeclaration(n.typeParameters);
@@ -2090,7 +2104,7 @@ function encTsModuleBlock(n) {
   const _length = _body?.length ?? 0;
   let _directiveCount = 0;
   while (_directiveCount < _length) {
-    const statement = _body[_directiveCount];
+    const statement = listAt(_body, _directiveCount);
     if (statement?.type !== "ExpressionStatement" ||
         typeof statement.directive !== "string" ||
         statement.expression?.type !== "Literal" ||
@@ -2958,7 +2972,7 @@ function encJsxAttributeItem(n) {
 }
 
 function encJsxAttributeValue(n) {
-  if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });
+  if (n.type === "Literal" && typeof n.value === "string") return encStringLiteral(literalWith(n, { raw: jsxStringRaw(n) }));
   switch (n.type) {
     case "Literal":
       return encStringLiteral(n);

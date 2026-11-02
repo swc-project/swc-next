@@ -3,7 +3,9 @@
 Code generation for SWC Next's flat AST and JavaScript bindings. The tool
 reads the [AST declarations](../../crates/swc_ecma_ast/src/ast) and their
 `#[ast]` and `#[estree]` annotations to generate Rust storage and traversal
-APIs, ESTree types, and JavaScript encoders and decoders.
+APIs, ESTree types, and the layout tables, projection metadata and node
+getters used by `@swc-next/ast`. Generated field validators protect the
+base/extension buffer boundary in Rust.
 
 Run from the workspace root:
 

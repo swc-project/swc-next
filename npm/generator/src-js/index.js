@@ -1,9 +1,16 @@
 import { generateSync as __generateSync } from "./binding.js";
-import { encode } from "@swc-next/protocol/ast/encode";
+import { NodeView } from "@swc-next/ast";
 import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
 
 export function generateSync(program, options) {
-  const generatorConfig = encodeGeneratorConfig(options);
-  const code = __generateSync(...encode(program), generatorConfig);
-  return { code };
+  if (!(program instanceof NodeView) || program.nodeId !== program.ast.rootId) {
+    throw new TypeError("Expected the root Program view of an AST");
+  }
+  const config = encodeGeneratorConfig(options);
+  const buffers = program.ast.encode();
+  return { code: __generateSync(...buffers, config) };
+}
+
+export function generateBuffersSync(buffer, extension = new Uint8Array(), options) {
+  return { code: __generateSync(buffer, extension ?? new Uint8Array(), encodeGeneratorConfig(options)) };
 }
