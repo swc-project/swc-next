@@ -9,10 +9,10 @@ use edit::{EditPlan, FixedSubstitution};
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionExpression, Ast, BinaryExpression, CallExpression, ChainExpression,
-    Class, ClassElement, Decl, DeclData, Decorator, DoWhileStatement, ExportAllDeclaration,
-    ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData, ForInStatement,
-    ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan, IfStatement,
-    ImportDeclaration, ImportOrExportKind, JsxAttribute, JsxChild, JsxClosingElement,
+    Class, ClassElement, Decl, DeclData, Decorator, Directive, DoWhileStatement,
+    ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData,
+    ForInStatement, ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan,
+    IfStatement, ImportDeclaration, ImportOrExportKind, JsxAttribute, JsxChild, JsxClosingElement,
     JsxOpeningElement, LabeledStatement, LogicalExpression, MemberExpression, MethodDefinition,
     NodeId, Program, PropertyDefinition, PropertyKey, PropertyKeyData, ReturnStatement, Stmt,
     SubRange, TaggedTemplateExpression, ThrowStatement, TsAsExpression, TsClassImplements,
@@ -87,8 +87,8 @@ pub struct StripResult<'source> {
     /// Diagnostics in source order.
     ///
     /// Contains parser diagnostics and at most one `erasableSyntaxOnly` error for
-    /// the first unsupported TypeScript construct. When non-empty, [`Self::code`]
-    /// is recovery output and may not preserve program semantics.
+    /// syntax that cannot be safely erased. When non-empty, [`Self::code`] is
+    /// recovery output and may not preserve program semantics.
     pub diagnostics: Vec<Diagnostic<'static>>,
 }
 
@@ -387,8 +387,12 @@ impl TypeEraser<'_, '_> {
     }
 
     fn report_erasable_syntax_only(&mut self, span: Span) {
+        self.report_strip_error(ERASABLE_SYNTAX_ONLY_MESSAGE, span);
+    }
+
+    fn report_strip_error(&mut self, message: &'static str, span: Span) {
         if self.diagnostic.is_none() {
-            self.diagnostic = Some(Diagnostic::error(ERASABLE_SYNTAX_ONLY_MESSAGE, span));
+            self.diagnostic = Some(Diagnostic::error(message, span));
         }
     }
 
@@ -630,24 +634,69 @@ impl TypeEraser<'_, '_> {
             .substitute(replacement_span, FixedSubstitution::Semicolon);
     }
 
+    fn unwrap_type_suffixes(&self, mut expression: Expr) -> Expr {
+        loop {
+            expression = match self.ast.expr_data(expression) {
+                ExprData::TsAsExpression(assertion) => assertion.expression(self.ast),
+                ExprData::TsSatisfiesExpression(assertion) => assertion.expression(self.ast),
+                ExprData::TsNonNullExpression(assertion) => assertion.expression(self.ast),
+                ExprData::TsInstantiationExpression(instantiation) => {
+                    instantiation.expression(self.ast)
+                }
+                _ => return expression,
+            };
+        }
+    }
+
+    fn check_directive_promotion(&mut self, statement: Stmt) {
+        let Some(statement) = statement.as_expression_statement(self.ast) else {
+            return;
+        };
+        let expression = statement.expression(self.ast);
+        if self
+            .unwrap_type_suffixes(expression)
+            .is_string_literal(self.ast)
+        {
+            self.report_strip_error(
+                "SyntaxError: Type stripping would turn this string expression into a directive",
+                expression.span(self.ast),
+            );
+        }
+    }
+
     fn visit_statement_list(
         &mut self,
         statements: SubRange<Stmt>,
-        terminates_directive_prologue: bool,
+        directives: Option<SubRange<Directive>>,
     ) {
         let saved_context = self.item_context;
         let mut previous_retained = None;
+        let mut output_prologue_open = directives.is_some();
         for (position, statement) in statements.iter().enumerate() {
             let statement = self.ast.get_node_in_sub_range(statement);
             self.item_context = ItemContext {
                 previous_retained,
-                terminates_directive_prologue: terminates_directive_prologue && position == 0,
+                terminates_directive_prologue: directives.is_some() && position == 0,
                 required_statement: false,
                 erased: false,
             };
+            if output_prologue_open && self.diagnostic.is_none() {
+                self.check_directive_promotion(statement);
+            }
             statement.visit_with(self);
             if !self.item_context.erased {
                 previous_retained = Some(statement.node_id());
+                output_prologue_open = false;
+            } else if self.item_context.terminates_directive_prologue {
+                // The inserted semicolon can terminate the previous directive
+                // instead of creating an empty statement that ends the prologue.
+                output_prologue_open = directives
+                    .and_then(|directives| directives.last())
+                    .map(|last| self.ast.get_node_in_sub_range(last))
+                    .is_some_and(|directive| {
+                        directive.span(self.ast).end
+                            == directive.expression(self.ast).span(self.ast).end
+                    });
             }
         }
         self.item_context = saved_context;
@@ -673,7 +722,7 @@ impl TypeEraser<'_, '_> {
     fn visit_required_statement(&mut self, statement: Stmt) {
         // A block is never erased and visits its statements in their own context.
         if let Some(block) = statement.as_block_statement(self.ast) {
-            self.visit_statement_list(block.body(self.ast), false);
+            self.visit_statement_list(block.body(self.ast), None);
             return;
         }
         let saved_context = self.item_context;
@@ -803,15 +852,15 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     }
 
     fn visit_program(&mut self, node: Program) {
-        self.visit_statement_list(node.body(self.ast), true);
+        self.visit_statement_list(node.body(self.ast), Some(node.directives(self.ast)));
     }
 
     fn visit_function_body(&mut self, node: FunctionBody) {
-        self.visit_statement_list(node.body(self.ast), true);
+        self.visit_statement_list(node.body(self.ast), Some(node.directives(self.ast)));
     }
 
     fn visit_stmts(&mut self, node: SubRange<Stmt>) {
-        self.visit_statement_list(node, false);
+        self.visit_statement_list(node, None);
     }
 
     fn visit_class_elements(&mut self, node: SubRange<ClassElement>) {

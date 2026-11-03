@@ -207,6 +207,43 @@ fn directive_prologues() {
         "function f() {\n{\n'custom';\ntype T = number;\n'use strict';\n}\n}",
         "function f() {\n{\n'custom';\n                \n'use strict';\n}\n}",
     );
+
+    assert_strip_error_at(
+        "'use strict' as string;",
+        "'use strict'          ;",
+        "'use strict' as string",
+    );
+
+    assert_strip_error_at(
+        "function f() { 'use strict'! satisfies string; }",
+        "function f() { 'use strict'                  ; }",
+        "'use strict'! satisfies string",
+    );
+
+    assert_strip_error_at("'use strict'<T>;", "'use strict'   ;", "'use strict'<T>");
+
+    assert_strip_error_at(
+        "'other'!; 'use strict';",
+        "'other' ; 'use strict';",
+        "'other'!",
+    );
+
+    assert_strip_error_text(
+        "function f(a = 1) { 'use strict'!; }",
+        "function f(a = 1) { 'use strict' ; }",
+    );
+
+    assert_strip_error_at(
+        "'custom'\ntype T = number;\n'use strict';",
+        "'custom'\n;               \n'use strict';",
+        "'use strict'",
+    );
+
+    assert_strip("('use strict') as string;", "('use strict')          ;");
+
+    assert_strip("0; 'use strict'!;", "0; 'use strict' ;");
+
+    assert_strip("{ 'use strict'!; }", "{ 'use strict' ; }");
 }
 
 #[test]

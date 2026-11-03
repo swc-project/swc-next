@@ -56,12 +56,18 @@ fn assert_strip_tsx(input: &str, expected: &str) {
 }
 
 #[track_caller]
-fn assert_strip_error<'a>(input: &'a str, expected: &str) -> StripResult<'a> {
+fn assert_strip_error_text<'a>(input: &'a str, expected: &str) -> StripResult<'a> {
     let result = strip_types(input, options(Lang::Ts));
     assert_utf16_len_preserved(input, &result.code);
     assert_eq!(result.code, expected);
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].severity, Severity::Error);
+    result
+}
+
+#[track_caller]
+fn assert_strip_error<'a>(input: &'a str, expected: &str) -> StripResult<'a> {
+    let result = assert_strip_error_text(input, expected);
     assert_valid_javascript(&result.code, Lang::Ts);
     result
 }
