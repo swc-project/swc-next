@@ -1,7 +1,7 @@
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     ArrowFunctionExpression, Ast, BindingIdentifier, Function, IdentifierReference, Lang, NodeId,
-    SourceType, Visit, VisitWith,
+    NodeKindData, SourceType, Visit, VisitWith,
 };
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SyntaxChecks, analyze};
@@ -175,11 +175,12 @@ fn assert_transform_semantic(ast: &Ast<'_>, semantic: &ScopeModel<'_>) {
 fn async_functions_and_await() {
     let code = transformed_code("async function load(value) { return await value; }");
     assert!(code.contains("import * as _swc_helpers from \"@swc/helpers\";"));
-    assert!(code.contains("function load(value)"));
+    assert!(code.contains("function load(_0)"), "{code}");
     assert!(
-        code.contains("_swc_helpers._async_to_generator(function* ()"),
+        code.contains("_swc_helpers._async_to_generator(function* (value)"),
         "{code}"
     );
+    assert!(code.contains(").apply(this, arguments)"), "{code}");
     assert!(code.contains("return yield value;"));
     assert!(!code.contains("async function"));
 
@@ -197,8 +198,12 @@ fn async_functions_and_await() {
     let code = transformed_code(
         "const object = { async method(value) { await value; return this; } }; class C { async method(value) { await value; return this; } }",
     );
-    assert_eq!(code.matches("_async_to_generator(function* ()").count(), 2);
-    assert_eq!(code.matches(").call(this)").count(), 2);
+    assert_eq!(
+        code.matches("_async_to_generator(function* (value)")
+            .count(),
+        2
+    );
+    assert_eq!(code.matches(").apply(this, arguments)").count(), 2);
     assert!(!code.contains("async method"));
 
     let code = transformed_code(
@@ -214,7 +219,8 @@ fn async_functions_and_await() {
     let code = transformed_typescript_code(
         "async function typed(value: number): Promise<number> { return await value; }",
     );
-    assert!(code.contains("function typed(value)"), "{code}");
+    assert!(code.contains("function typed(_0)"), "{code}");
+    assert!(code.contains("function* (value)"), "{code}");
     assert!(code.contains("return yield value"), "{code}");
 }
 
@@ -245,14 +251,18 @@ fn async_function_parameters_and_lexical_values() {
     let code = transformed_code(
         "async function safe(value = 1, callback = () => this) { return await callback(value); }",
     );
-    assert!(code.contains("function safe(value = 1, callback = () => this)"));
-    assert!(code.contains(").call(this)"), "{code}");
+    assert!(code.contains("function safe()"), "{code}");
+    assert!(
+        code.contains("function* (value = 1, callback = () => this)"),
+        "{code}"
+    );
+    assert!(code.contains(").apply(this, arguments)"), "{code}");
 
     let code = transformed_code_with_source_type(
         "async function shadow(arguments) { arguments = await arguments; return arguments; }",
         SourceType::Script,
     );
-    assert!(!code.contains(".apply(this, arguments)"), "{code}");
+    assert!(code.contains(".apply(this, arguments)"), "{code}");
 
     let code = transformed_code_with_source_type(
         "async function mutate() { arguments = []; await value; }",
@@ -266,7 +276,7 @@ fn generated_semantic_indexes() {
     let allocator = Allocator::new();
     let parsed = Parser::init(
         &allocator,
-        "class Base {} class Derived extends Base { async load(value, key) { super[key] += await value; return [arguments, this, super.result]; } }",
+        "async function declared(value) { return await value; } const expression = async function named(value) { return named(await value); }; class Base {} class Derived extends Base { async load(value, key) { super[key] += await value; return [arguments, this, super.result]; } }",
         ParserOptions {
             source_type: SourceType::Module,
             ..ParserOptions::default()
@@ -291,6 +301,20 @@ fn generated_semantic_indexes() {
         },
     )
     .semantic;
+    let original_functions: Vec<_> = semantic
+        .transform_semantic()
+        .expect("async transform semantic data")
+        .async_functions_post_order()
+        .iter()
+        .map(|info| {
+            (
+                info.node,
+                semantic
+                    .scope_of(info.node)
+                    .expect("original async function scope"),
+            )
+        })
+        .collect();
     let original_reference = semantic
         .iter_references()
         .find(|entry| ast.get_utf8(entry.reference.name) == "value")
@@ -302,7 +326,6 @@ fn generated_semantic_indexes() {
 
     struct GeneratedFunction<'ast> {
         ast: &'ast Ast<'ast>,
-        generator: Option<NodeId>,
         owners: Vec<NodeId>,
         bindings: Vec<NodeId>,
         references: Vec<NodeId>,
@@ -314,9 +337,6 @@ fn generated_semantic_indexes() {
 
         fn visit_function(&mut self, function: Function) {
             self.owners.push(function.node_id());
-            if function.generator(self.ast) {
-                self.generator = Some(function.node_id());
-            }
             function.visit_children_with(self);
         }
 
@@ -335,14 +355,18 @@ fn generated_semantic_indexes() {
     }
     let mut generated = GeneratedFunction {
         ast: &ast,
-        generator: None,
         owners: Vec::new(),
         bindings: Vec::new(),
         references: Vec::new(),
     };
     ast.root_program().visit_with(&mut generated);
-    let generator = generated.generator.expect("generated generator function");
-    assert!(transformed.semantic.scope_of(generator).is_some());
+    for (node, scope) in original_functions {
+        let NodeKindData::Function(function) = ast.kind_data(node) else {
+            panic!("original async function must remain a function");
+        };
+        assert!(function.generator(&ast));
+        assert_eq!(transformed.semantic.scope_of(node), Some(scope));
+    }
     assert!(
         transformed
             .semantic

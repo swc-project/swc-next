@@ -1,7 +1,8 @@
 //! ES2017 async-function lowering.
 //!
-//! The output shape follows SWC's async-to-generator transform: retain the
-//! original function as a wrapper and run its former body through the helper.
+//! The output shape follows SWC's async-to-generator transform: reuse the
+//! original function and its scope as the generator, then place it in a new
+//! wrapper function.
 //! The traversal state keeps `await`, `this`, and `arguments` attached to the
 //! nearest ordinary function while allowing nested arrows to inherit them.
 
@@ -9,8 +10,8 @@ use swc_next_ecma_ast::{
     Argument, ArrowFunctionBody, ArrowFunctionExpression, AssignmentOperator, AssignmentTarget,
     BinaryOperator, BindingPattern, DUMMY_SP, Expr, FormalParameterItem, FormalParameterKind,
     FormalParameterPattern, FormalParameters, Function, FunctionBody, FunctionType, GetSpan,
-    LogicalOperator, MemberExpression, NodeKindData, PropertyKey, SimpleAssignmentTarget, Stmt,
-    SubRange, TraverseAction, UpdateOperator, VariableKind,
+    LogicalOperator, MemberExpression, NodeKindData, PropertyKey, ScopeId, SimpleAssignmentTarget,
+    Stmt, SubRange, TraverseAction, UpdateOperator, VariableKind,
 };
 use swc_next_ecma_semantic::{
     ReferenceFlags, SymbolFlags,
@@ -25,6 +26,9 @@ struct FunctionState {
     use_this: bool,
     use_arguments: bool,
     has_parameter_expressions: bool,
+    wrapper: Option<Function>,
+    wrapper_scope: Option<ScopeId>,
+    helper_scope: Option<ScopeId>,
     super_helpers: Vec<SuperHelper>,
 }
 
@@ -53,42 +57,76 @@ impl AsyncToGenerator {
             .take_async_function_info(function.node_id())
             .filter(|_| function.r#async(ctx.ast()) && !function.generator(ctx.ast()));
         self.function_stack.push(self.function.take());
+        let (wrapper, wrapper_scope) = info.map_or((None, None), |_| {
+            let (wrapper, scope) = prepare_function_wrapper(function, ctx);
+            (Some(wrapper), Some(scope))
+        });
+        let function_scope = ctx.current_scope();
+        let helper_scope = wrapper_scope.unwrap_or_else(|| {
+            ctx.semantic()
+                .scope(function_scope)
+                .function_body
+                .unwrap_or(function_scope)
+        });
         self.function = Some(FunctionState {
             should_transform: info.is_some(),
             use_this: info.is_some_and(|info| info.uses_this),
             use_arguments: info.is_some_and(|info| info.uses_arguments),
             has_parameter_expressions: info.is_some_and(|info| info.has_parameter_expressions),
+            wrapper,
+            wrapper_scope,
+            helper_scope: Some(helper_scope),
             ..FunctionState::default()
         });
     }
 
-    pub(crate) fn exit_function(&mut self, function: Function, ctx: &mut TransformCtx<'_, '_>) {
-        let mut state = self.function.take().expect("matching function state");
+    pub(crate) fn exit_function(
+        &mut self,
+        function: Function,
+        ctx: &mut TransformCtx<'_, '_>,
+    ) -> TraverseAction<Function> {
+        let state = self.function.take().expect("matching function state");
         self.function = self.function_stack.pop().expect("function state stack");
         if !state.should_transform {
             prepend_super_helpers(function.body(ctx.ast()), state.super_helpers, ctx);
-            return;
+            return TraverseAction::Continue;
         }
 
         let original_params = function.params(ctx.ast());
-        let wrapper_scope = ctx.current_scope();
-        state.use_arguments |= could_potentially_throw(original_params, ctx);
-        state.use_arguments |= !state.super_helpers.is_empty();
-        let inner_params = if state.use_arguments {
-            let outer_params = if self.ignore_function_length {
-                empty_parameters(ctx)
-            } else {
-                placeholder_parameters(original_params, ctx)
-            };
-            function.set_params(ctx.ast, outer_params);
-            original_params.set_kind(ctx.ast, FormalParameterKind::FormalParameters);
-            original_params
+        let wrapper = state.wrapper.expect("prepared async wrapper");
+        let wrapper_scope = state.wrapper_scope.expect("prepared async wrapper scope");
+        let wrapper_params = if self.ignore_function_length {
+            empty_parameters_with_kind(original_params.kind(ctx.ast()), ctx)
         } else {
-            empty_parameters(ctx)
+            placeholder_parameters(original_params, wrapper_scope, ctx)
         };
+        wrapper.set_params(ctx.ast, wrapper_params);
+
         let body = function.body(ctx.ast());
         let wrapper_directives = strict_directives(body, ctx);
-        let invocation = make_async_generator_invocation(&state, inner_params, body, ctx);
+        function.set_async(ctx.ast, false);
+        function.set_generator(ctx.ast, true);
+        function.set_function_type(ctx.ast, FunctionType::FunctionExpression);
+        function.set_id(ctx.ast, None);
+        function.set_type_parameters(ctx.ast, None);
+        function.set_this_param(ctx.ast, None);
+        function.set_return_type(ctx.ast, None);
+        original_params.set_kind(ctx.ast, FormalParameterKind::FormalParameters);
+
+        let wrapped = ctx.call_async_to_generator(Expr::Function(function), wrapper_scope);
+        let forwards_arguments = !original_params.items(ctx.ast()).is_empty()
+            || original_params.rest(ctx.ast()).is_some()
+            || state.use_arguments;
+        let invocation = if forwards_arguments {
+            call_with_this_and_arguments(wrapped, wrapper_scope, ctx)
+        } else if state.use_this {
+            let this = Expr::ThisExpression(ctx.add_node(|ast| ast.this_expression(DUMMY_SP)));
+            call_member(wrapped, "call", [Argument::Expr(this)], ctx)
+        } else {
+            Expr::CallExpression(ctx.add_node(|ast| {
+                ast.call_expression(DUMMY_SP, wrapped, None, SubRange::empty(), false)
+            }))
+        };
         let statement = Stmt::ReturnStatement(
             ctx.add_node(|ast| ast.return_statement(DUMMY_SP, Some(invocation))),
         );
@@ -100,13 +138,8 @@ impl AsyncToGenerator {
         let statements = ctx.ast.add_sub_range(statements);
         let wrapper_body =
             ctx.add_node(|ast| ast.function_body(DUMMY_SP, wrapper_directives, statements));
-
-        function.set_async(ctx.ast, false);
-        function.set_generator(ctx.ast, false);
-        function.set_body(ctx.ast, wrapper_body);
-        if state.has_parameter_expressions && !state.use_arguments {
-            create_wrapper_body_scope(wrapper_scope, wrapper_body, ctx);
-        }
+        wrapper.set_body(ctx.ast, wrapper_body);
+        TraverseAction::ReplaceSkip(wrapper)
     }
 
     pub(crate) fn enter_arrow_function_expression(
@@ -120,12 +153,18 @@ impl AsyncToGenerator {
         if info.is_none() {
             return;
         }
-        self.function_stack.push(self.function.take());
+        let parent = self.function.take();
+        let helper_scope = parent
+            .as_ref()
+            .and_then(|state| state.helper_scope)
+            .unwrap_or_else(|| ctx.current_scope());
+        self.function_stack.push(parent);
         self.function = Some(FunctionState {
             should_transform: true,
             use_this: info.is_some_and(|info| info.uses_this),
             use_arguments: info.is_some_and(|info| info.uses_arguments),
             has_parameter_expressions: info.is_some_and(|info| info.has_parameter_expressions),
+            helper_scope: Some(helper_scope),
             ..FunctionState::default()
         });
     }
@@ -268,6 +307,45 @@ impl AsyncToGenerator {
     }
 }
 
+fn prepare_function_wrapper(
+    function: Function,
+    ctx: &mut TransformCtx<'_, '_>,
+) -> (Function, ScopeId) {
+    let function_scope = ctx.current_scope();
+    let parent_scope = ctx
+        .semantic()
+        .scope(function_scope)
+        .parent
+        .expect("function scope parent");
+    let flags = ctx.semantic().scope(function_scope).flags;
+    let params = empty_parameters_with_kind(function.params(ctx.ast()).kind(ctx.ast()), ctx);
+    let body =
+        ctx.add_node(|ast| ast.function_body(DUMMY_SP, SubRange::empty(), SubRange::empty()));
+    let wrapper = ctx.add_node(|ast| {
+        ast.function(
+            function.span(ast),
+            function.function_type(ast),
+            function.id(ast),
+            function.type_parameters(ast),
+            function.this_param(ast),
+            params,
+            function.return_type(ast),
+            body,
+            false,
+            false,
+        )
+    });
+    let wrapper_scope =
+        ctx.create_child_scope(parent_scope, wrapper.node_id(), ScopeKind::Function, flags);
+    ctx.reparent_scope(function_scope, wrapper_scope);
+    if function.function_type(ctx.ast()) == FunctionType::FunctionExpression
+        && let Some(id) = function.id(ctx.ast())
+    {
+        ctx.move_subtree_to_scope(id, function_scope, wrapper_scope);
+    }
+    (wrapper, wrapper_scope)
+}
+
 fn make_async_generator_invocation(
     state: &FunctionState,
     params: FormalParameters,
@@ -328,6 +406,27 @@ fn make_async_generator_invocation(
     Expr::CallExpression(call)
 }
 
+fn call_with_this_and_arguments(
+    wrapped: Expr,
+    wrapper_scope: ScopeId,
+    ctx: &mut TransformCtx<'_, '_>,
+) -> Expr {
+    let this = Expr::ThisExpression(ctx.add_node(|ast| ast.this_expression(DUMMY_SP)));
+    let name = ctx.ast.add_utf8("arguments");
+    let arguments = ctx.add_node(|ast| ast.identifier_reference(DUMMY_SP, name));
+    let target = ctx.semantic().binding(wrapper_scope, b"arguments");
+    ctx.register_reference(wrapper_scope, arguments, target, ReferenceFlags::default());
+    call_member(
+        wrapped,
+        "apply",
+        [
+            Argument::Expr(this),
+            Argument::Expr(Expr::IdentifierReference(arguments)),
+        ],
+        ctx,
+    )
+}
+
 fn create_wrapper_body_scope(
     wrapper_scope: swc_next_ecma_ast::ScopeId,
     body: FunctionBody,
@@ -378,6 +477,7 @@ fn create_super_getter_with_argument(
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     let scope = ctx.current_scope();
+    let helper_scope = state.helper_scope.expect("super helper destination scope");
     let (base, params, body, arguments) = if member.computed(ctx.ast()) {
         let property = member
             .property(ctx.ast())
@@ -422,8 +522,9 @@ fn create_super_getter_with_argument(
             Vec::new(),
         )
     };
-    let initializer = super_helper_arrow(params, body, ctx);
-    let binding = BoundIdentifier::named(ctx, scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
+    let initializer = super_helper_arrow(params, body, helper_scope, scope, ctx);
+    let binding =
+        BoundIdentifier::named(ctx, helper_scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
     let callee = Expr::IdentifierReference(binding.reference_read(ctx, scope, DUMMY_SP));
     state.super_helpers.push(SuperHelper {
         binding,
@@ -440,6 +541,7 @@ fn create_super_setter(
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     let scope = ctx.current_scope();
+    let helper_scope = state.helper_scope.expect("super helper destination scope");
     let value_parameter = BoundIdentifier::named(
         ctx,
         scope,
@@ -506,8 +608,9 @@ fn create_super_setter(
             AssignmentOperator::Assign,
         )
     }));
-    let initializer = super_helper_arrow(parameters, assignment, ctx);
-    let binding = BoundIdentifier::named(ctx, scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
+    let initializer = super_helper_arrow(parameters, assignment, helper_scope, scope, ctx);
+    let binding =
+        BoundIdentifier::named(ctx, helper_scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
     let callee = Expr::IdentifierReference(binding.reference_read(ctx, scope, DUMMY_SP));
     state.super_helpers.push(SuperHelper {
         binding,
@@ -567,6 +670,7 @@ fn create_super_update(
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
     let scope = ctx.current_scope();
+    let helper_scope = state.helper_scope.expect("super helper destination scope");
     let (base, params, target_member, arguments) = if member.computed(ctx.ast()) {
         let property = member
             .property(ctx.ast())
@@ -615,8 +719,9 @@ fn create_super_update(
     let update = Expr::UpdateExpression(
         ctx.add_node(|ast| ast.update_expression(DUMMY_SP, target, operator, prefix)),
     );
-    let initializer = super_helper_arrow(params, update, ctx);
-    let binding = BoundIdentifier::named(ctx, scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
+    let initializer = super_helper_arrow(params, update, helper_scope, scope, ctx);
+    let binding =
+        BoundIdentifier::named(ctx, helper_scope, &base, SymbolFlags::FUNCTION_SCOPED_VAR);
     let callee = Expr::IdentifierReference(binding.reference_read(ctx, scope, DUMMY_SP));
     state.super_helpers.push(SuperHelper {
         binding,
@@ -675,9 +780,10 @@ fn assignment_logical_operator(operator: AssignmentOperator) -> Option<LogicalOp
 fn super_helper_arrow(
     params: FormalParameters,
     body: Expr,
+    parent: ScopeId,
+    source: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Expr {
-    let parent = ctx.current_scope();
     let arrow = ctx.add_node(|ast| {
         ast.arrow_function_expression(
             DUMMY_SP,
@@ -699,8 +805,8 @@ fn super_helper_arrow(
             ..flags
         },
     );
-    ctx.move_subtree_to_scope(params, parent, scope);
-    ctx.move_subtree_to_scope(body, parent, scope);
+    ctx.move_subtree_to_scope(params, source, scope);
+    ctx.move_subtree_to_scope(body, source, scope);
     Expr::ArrowFunctionExpression(arrow)
 }
 
@@ -752,10 +858,10 @@ fn super_helpers_declaration(
     let declarators: Vec<_> = helpers
         .into_iter()
         .map(|helper| {
-            let source = ctx.semantic().scope_of_symbol(helper.binding.symbol);
-            if source != destination {
-                ctx.move_binding_to_scope(helper.binding.identifier, source, destination);
-            }
+            debug_assert_eq!(
+                ctx.semantic().scope_of_symbol(helper.binding.symbol),
+                destination
+            );
             let arrow = helper
                 .initializer
                 .as_arrow_function_expression(ctx.ast())
@@ -764,9 +870,7 @@ fn super_helpers_declaration(
                 .semantic()
                 .scope_of(arrow.node_id())
                 .expect("super helper arrow scope");
-            if ctx.semantic().scope(scope).parent != Some(destination) {
-                ctx.reparent_scope(scope, destination);
-            }
+            debug_assert_eq!(ctx.semantic().scope(scope).parent, Some(destination));
             ctx.add_node(|ast| {
                 ast.variable_declarator(
                     DUMMY_SP,
@@ -862,21 +966,21 @@ fn call_member_vec(
 }
 
 fn empty_parameters(ctx: &mut TransformCtx<'_, '_>) -> FormalParameters {
-    ctx.add_node(|ast| {
-        ast.formal_parameters(
-            DUMMY_SP,
-            SubRange::empty(),
-            None,
-            FormalParameterKind::FormalParameters,
-        )
-    })
+    empty_parameters_with_kind(FormalParameterKind::FormalParameters, ctx)
+}
+
+fn empty_parameters_with_kind(
+    kind: FormalParameterKind,
+    ctx: &mut TransformCtx<'_, '_>,
+) -> FormalParameters {
+    ctx.add_node(|ast| ast.formal_parameters(DUMMY_SP, SubRange::empty(), None, kind))
 }
 
 fn placeholder_parameters(
     params: FormalParameters,
+    scope: ScopeId,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> FormalParameters {
-    let scope = ctx.current_scope();
     let mut placeholders = Vec::new();
     for (index, item) in params.items(ctx.ast()).iter().enumerate() {
         let item = ctx.ast.get_node_in_sub_range(item);
@@ -906,43 +1010,4 @@ fn placeholder_parameters(
     }
     let placeholders = ctx.ast.add_sub_range(placeholders);
     ctx.add_node(|ast| ast.formal_parameters(DUMMY_SP, placeholders, None, params.kind(ast)))
-}
-
-fn could_potentially_throw(params: FormalParameters, ctx: &TransformCtx<'_, '_>) -> bool {
-    let ast = ctx.ast();
-    for item in params.items(ast).iter() {
-        let item = ast.get_node_in_sub_range(item);
-        let Some(parameter) = item.as_formal_parameter(ast) else {
-            return true;
-        };
-        if parameter.pattern(ast).as_binding_identifier(ast).is_none() {
-            return true;
-        }
-        let Some(initializer) = parameter.initializer(ast) else {
-            continue;
-        };
-        if initializer.is_null_literal(ast)
-            || initializer.is_boolean_literal(ast)
-            || initializer.is_numeric_literal(ast)
-            || initializer.is_big_int_literal(ast)
-            || initializer.is_string_literal(ast)
-            || initializer.is_function(ast)
-            || initializer.is_arrow_function_expression(ast)
-        {
-            continue;
-        }
-        if let Some(identifier) = initializer.as_identifier_reference(ast)
-            && ast.get_utf8(identifier.name(ast)) == "undefined"
-            && ctx
-                .semantic()
-                .reference_of(identifier.node_id())
-                .is_some_and(|reference| ctx.semantic().reference(reference).symbol.is_none())
-        {
-            continue;
-        }
-        return true;
-    }
-    params
-        .rest(ast)
-        .is_some_and(|rest| rest.argument(ast).as_binding_identifier(ast).is_none())
 }

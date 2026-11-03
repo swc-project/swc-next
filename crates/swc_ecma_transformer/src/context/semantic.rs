@@ -1,10 +1,10 @@
 use swc_next_ecma_ast::{
     AssignmentOperator, AssignmentTarget, Ast, AstUtf8, BindingIdentifier, DUMMY_SP, Expr,
     IdentifierReference, NodeId, NodeKindData, ReferenceId, ScopeId, SimpleAssignmentTarget, Span,
-    SymbolId, Traverse, TraverseCtx, TraverseWith,
+    SymbolId, TraverseWith,
 };
 use swc_next_ecma_semantic::{
-    Reference, ReferenceFlags, ScopeModel, SymbolFlags,
+    Reference, ReferenceFlags, SymbolFlags,
     scope::{ScopeFlags, ScopeKind},
 };
 
@@ -299,29 +299,9 @@ impl<'a> TransformCtx<'_, 'a> {
         from: ScopeId,
         to: ScopeId,
     ) {
-        debug_assert!(self.semantic().scope(from).active && self.semantic().scope(to).active);
-        if from == to {
-            return;
-        }
-        let mut mover = ScopeMover {
-            semantic: &mut self.state.semantic,
-            from,
-            to,
-        };
-        root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
-    }
-
-    /// Move one retained binding declaration without changing its symbol.
-    pub fn move_binding_to_scope(
-        &mut self,
-        binding: BindingIdentifier,
-        from: ScopeId,
-        to: ScopeId,
-    ) {
-        let name = self.ast.get_utf8(binding.name(self.ast)).as_bytes();
         self.state
             .semantic
-            .move_binding_to_scope(binding.node_id(), from, to, name);
+            .move_subtree_to_scope(self.ast, root, from, to);
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
@@ -353,36 +333,5 @@ impl<'a> TransformCtx<'_, 'a> {
     /// ```
     pub fn remove_scope(&mut self, scope: ScopeId) {
         self.state.semantic.remove_scope(scope);
-    }
-}
-
-struct ScopeMover<'c, 'a> {
-    semantic: &'c mut ScopeModel<'a>,
-    from: ScopeId,
-    to: ScopeId,
-}
-
-impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
-    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseCtx<'_, 'a>) {
-        if let Some(scope) = self.semantic.scope_of(node) {
-            // Program scopes keep their fixed outer wrapper.
-            if scope != self.to
-                && self.semantic.scope(scope).parent == Some(self.from)
-                && self.semantic.scope(self.from).node != node
-            {
-                self.semantic.reparent_scope(scope, self.to);
-            }
-        }
-        if let Some(reference) = self.semantic.reference_of(node)
-            && self.semantic.reference(reference).scope == self.from
-        {
-            self.semantic
-                .move_reference_to_scope(reference, self.from, self.to);
-        }
-        if let NodeKindData::BindingIdentifier(binding) = ctx.ast.kind_data(node) {
-            let name = ctx.ast.get_utf8(binding.name(ctx.ast)).as_bytes();
-            self.semantic
-                .move_binding_to_scope(node, self.from, self.to, name);
-        }
     }
 }

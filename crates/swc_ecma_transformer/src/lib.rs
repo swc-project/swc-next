@@ -159,11 +159,11 @@ impl<'a> TraverseMut<'a, TransformerState<'a>> for Transformer {
         ctx: &mut TraverseMutCtx<'_, 'a, TransformerState<'a>>,
     ) -> TraverseAction<Function> {
         let mut transform = TransformCtx::new(ctx);
-        self.x0_es2017.exit_function(node, &mut transform);
         let body = node.body(transform.ast).node_id();
+        let action = self.x0_es2017.exit_function(node, &mut transform);
         transform.inject_statements_to(body);
         ctx.state.scope_stack.pop().unwrap();
-        TraverseAction::Continue
+        action
     }
 
     fn enter_arrow_function_expression(

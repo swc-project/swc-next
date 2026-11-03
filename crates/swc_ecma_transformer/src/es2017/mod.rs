@@ -28,10 +28,16 @@ impl ES2017 {
         }
     }
 
-    pub(crate) fn exit_function(&mut self, function: Function, ctx: &mut TransformCtx<'_, '_>) {
-        if let Some(transform) = &mut self.async_to_generator {
-            transform.exit_function(function, ctx);
-        }
+    pub(crate) fn exit_function(
+        &mut self,
+        function: Function,
+        ctx: &mut TransformCtx<'_, '_>,
+    ) -> TraverseAction<Function> {
+        self.async_to_generator
+            .as_mut()
+            .map_or(TraverseAction::Continue, |transform| {
+                transform.exit_function(function, ctx)
+            })
     }
 
     pub(crate) fn enter_arrow_function_expression(
