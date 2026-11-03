@@ -863,6 +863,7 @@ mod tests {
             &ast,
             AnalyzeOptions {
                 check_syntax: SyntaxChecks::all(),
+                ..AnalyzeOptions::default()
             },
         );
         assert!(result.diagnostics.is_empty());

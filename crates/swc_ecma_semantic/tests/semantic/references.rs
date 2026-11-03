@@ -309,6 +309,7 @@ fn computed_key_contexts() {
     let unchecked = AnalyzeOptions::default();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
     let queried = (ReferenceSpace::Typeof, false, false);
     let typed = (ReferenceSpace::Type, false, false);
@@ -429,6 +430,7 @@ fn assert_const_assertion_references(source: &str, count: usize) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -456,7 +458,10 @@ fn assert_export_reference(source: &str, value: Option<&str>, read: bool) {
 
     for parser_options in [ts_module, ts_module_without_parens] {
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            let options = AnalyzeOptions { check_syntax };
+            let options = AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            };
             let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
             let entry = semantic
                 .iter_references()
@@ -576,7 +581,10 @@ fn export_value_references() {
 fn assert_alias_value_reference(source: &str, value: bool, read: bool) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-        let options = AnalyzeOptions { check_syntax };
+        let options = AnalyzeOptions {
+            check_syntax,
+            ..AnalyzeOptions::default()
+        };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let alias = symbol_named(&ast, &semantic, b"Alias");
@@ -647,7 +655,10 @@ fn assert_jsx_value_roots(source: &str, names: &[&[u8]]) {
                 lang: Lang::Tsx,
                 ..Options::default()
             },
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let references = semantic
             .iter_references()

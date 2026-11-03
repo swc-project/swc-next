@@ -38,6 +38,7 @@ impl<C: Case> Runner<C> for ParserRunner {
                 &ast,
                 AnalyzeOptions {
                     check_syntax: SyntaxChecks::all(),
+                    ..AnalyzeOptions::default()
                 },
             );
             let diagnostics = check_syntax(&ast, SyntaxChecks::all());

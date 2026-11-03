@@ -104,6 +104,7 @@ fn setup_minifier(source: &'static str) -> Ast<'static> {
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
         },
     );
     assert!(analysis.diagnostics.is_empty());
@@ -139,6 +140,7 @@ fn bench_syntax_check(ast: Ast<'static>) {
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
         },
     ));
 }

@@ -415,6 +415,7 @@ fn assert_decorator_target(source: &str, name: &[u8], declaration: &str) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -495,7 +496,10 @@ fn assert_type_name_targets(source: &str, name: &[u8], outer_targets: &[bool]) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, name).unwrap();
         let references = semantic
@@ -676,7 +680,10 @@ fn infer_declaration_merging() {
 
     for parser_options in [ts_module, ts_module_without_parens] {
         for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
-            let options = AnalyzeOptions { check_syntax };
+            let options = AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            };
             let (ast, semantic) = analyze_with_options(&allocator, source, parser_options, options);
             let entry = semantic
                 .iter_references()
@@ -1042,7 +1049,10 @@ fn assert_signature_references(source: &str, name: &[u8], parameters: &[bool]) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let parameter = semantic
             .iter_symbols()
@@ -1080,7 +1090,10 @@ fn assert_header_value_query(source: &str, outer: bool) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let query = semantic
             .iter_references()
