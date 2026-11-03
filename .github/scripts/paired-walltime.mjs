@@ -1,9 +1,15 @@
 // Paired wall-time comparison of the Criterion benchmarks.
 //
+//   node paired-walltime.mjs select <base-rev> <head-rev> [affected|all|<targets>]
 //   node paired-walltime.mjs build <bin-dir>
 //   node paired-walltime.mjs run <base-bin-dir> <head-bin-dir> <results.json>
 //   node paired-walltime.mjs render <results.json>
 //
+// `select` prints the comma-separated targets to measure. `affected` selects
+// the targets that depend on a file changed between the two revisions, using
+// the workspace dependency graph from `cargo metadata`. Run it in the head
+// checkout. `build` and `run` measure only the targets in
+// PAIRED_WALLTIME_TARGETS when it is set, and all targets otherwise.
 // `build` compiles the benchmark targets of the current checkout and copies the
 // executables to <bin-dir>. `run` measures every benchmark that exists in both
 // builds in rounds; each round runs the base binary and the head binary on the
@@ -18,25 +24,130 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { cpus, release } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 const PACKAGE = "benchmark";
 const TARGETS = ["parser", "visit", "semantic", "type_strip", "minifier"];
 // A change is reported only when every round agrees on its direction and the
 // median paired change is at least this large.
 const THRESHOLD = 0.02;
+// Files outside the benchmark's dependencies that change how every target is
+// built or measured.
+const GLOBAL_FILES = [
+  "Cargo.toml",
+  "Cargo.lock",
+  "rust-toolchain",
+  "rust-toolchain.toml",
+  ".github/scripts/paired-walltime.mjs",
+  ".github/workflows/profile-perf.yml",
+];
+const GLOBAL_DIRS = [".cargo/"];
 
 const env = (name, fallback) => process.env[name] || fallback;
 const read = (exe, args, options = {}) =>
   execFileSync(exe, args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], maxBuffer: 1 << 28, ...options });
 
-function build(binDir) {
+function parseTargets(list) {
+  const names = list.split(",").map(name => name.trim()).filter(Boolean);
+  for (const name of names) assert(TARGETS.includes(name), `unknown wall-time target ${name}`);
+  return TARGETS.filter(target => names.includes(target));
+}
+
+// An empty PAIRED_WALLTIME_TARGETS selects no target.
+const selectedTargets = () =>
+  process.env.PAIRED_WALLTIME_TARGETS === undefined ? TARGETS : parseTargets(process.env.PAIRED_WALLTIME_TARGETS);
+
+function workspaceMetadata() {
   const metadata = JSON.parse(read("cargo", ["metadata", "--locked", "--no-deps", "--format-version=1"]));
-  const pkg = metadata.packages.find(p => p.name === PACKAGE);
+  const members = new Set(metadata.workspace_members);
+  const packages = metadata.packages.filter(p => members.has(p.id));
+  const pkg = packages.find(p => p.name === PACKAGE);
   assert(pkg, `package ${PACKAGE} was not found`);
+  return { root: metadata.workspace_root, packages, pkg };
+}
+
+// A target is affected when a changed file is its source, a file it includes
+// with `include_str!` or `include_bytes!`, or a file in a workspace package that
+// it uses directly or through normal and build dependencies. A changed file in
+// the benchmark package that no target uses as a source or an include affects
+// every target, and so does a global file.
+function affectedTargets(base, head) {
+  const { root, packages, pkg } = workspaceMetadata();
+  const rel = path => relative(root, path).split(sep).join("/");
+  const byName = new Map(packages.map(p => [p.name, p]));
+  const dirs = new Map(packages.map(p => [p, rel(dirname(p.manifest_path))]));
+  const owner = file => {
+    let found = null;
+    for (const [p, dir] of dirs) {
+      if (file.startsWith(`${dir}/`) && (!found || dir.length > dirs.get(found).length)) found = p;
+    }
+    return found;
+  };
+  const closure = names => {
+    const seen = new Set();
+    const stack = [...names];
+    while (stack.length) {
+      const name = stack.pop();
+      if (seen.has(name)) continue;
+      seen.add(name);
+      for (const dep of byName.get(name).dependencies) {
+        if (dep.path && dep.kind !== "dev" && byName.has(dep.name)) stack.push(dep.name);
+      }
+    }
+    return seen;
+  };
+  // The identifier that a target uses to name a workspace dependency.
+  const ident = dep => {
+    const lib = byName.get(dep.name).targets.find(t => !t.kind.some(k => ["bin", "bench", "test", "example", "custom-build"].includes(k)));
+    return (dep.rename ?? lib?.name ?? dep.name).replaceAll("-", "_");
+  };
+  const workspaceDeps = pkg.dependencies.filter(dep => dep.path && byName.has(dep.name));
+  const targets = new Map(pkg.targets.map(target => {
+    const text = readFileSync(target.src_path, "utf8");
+    const includes = [...text.matchAll(/include_(?:str|bytes)!\s*\(\s*"([^"]+)"\s*\)/g)]
+      .map(m => rel(resolve(dirname(target.src_path), m[1])));
+    const direct = workspaceDeps.filter(dep => new RegExp(`\\b${ident(dep)}\\b`).test(text)).map(dep => dep.name);
+    return [target.name, { kind: target.kind, source: rel(target.src_path), includes: new Set(includes), deps: closure(direct) }];
+  }));
+  const used = new Set([...targets.values()].flatMap(t => [t.source, ...t.includes]));
+
+  const changed = read("git", ["diff", "--no-renames", "--name-only", "-z", base, head, "--"])
+    .split("\0")
+    .filter(Boolean);
+  const available = TARGETS.filter(name => targets.get(name)?.kind.includes("bench"));
+  const global = changed.filter(file =>
+    GLOBAL_FILES.includes(file) || GLOBAL_DIRS.some(dir => file.startsWith(dir)) || file === rel(pkg.manifest_path) ||
+    (owner(file) === pkg && !used.has(file)));
+  if (global.length) {
+    console.error(`All targets are affected by ${global.join(", ")}`);
+    return available;
+  }
+  return available.filter(name => {
+    const target = targets.get(name);
+    const cause = changed.find(file => {
+      if (file === target.source || target.includes.has(file)) return true;
+      const p = owner(file);
+      return p !== null && p !== pkg && target.deps.has(p.name);
+    });
+    console.error(cause ? `${name}: affected by ${cause}` : `${name}: not affected`);
+    return cause !== undefined;
+  });
+}
+
+function select(base, head, spec = "affected") {
+  const targets = spec === "affected" ? affectedTargets(base, head) : spec === "all" ? TARGETS : parseTargets(spec);
+  process.stdout.write(`${targets.join(",")}\n`);
+}
+
+function build(binDir) {
+  const { pkg } = workspaceMetadata();
   const available = new Set(pkg.targets.filter(t => t.kind.includes("bench")).map(t => t.name));
-  const targets = TARGETS.filter(t => available.has(t));
-  assert(targets.length > 0, "no benchmark targets to build");
+  const targets = selectedTargets().filter(t => available.has(t));
+  mkdirSync(binDir, { recursive: true });
+  if (targets.length === 0) {
+    console.log(`No wall-time target was selected; ${binDir} is empty`);
+    return;
+  }
 
   const args = ["bench", "--locked", "-p", PACKAGE, "--no-run", "--message-format=json"];
   for (const target of targets) args.push("--bench", target);
@@ -45,7 +156,6 @@ function build(binDir) {
     .filter(Boolean)
     .map(line => JSON.parse(line));
 
-  mkdirSync(binDir, { recursive: true });
   for (const target of targets) {
     const artifact = messages.find(m => m.executable && m.target?.name === target && m.target.kind.includes("bench"));
     assert(artifact, `executable for ${target} was not produced`);
@@ -151,10 +261,11 @@ function runComparison(baseDir, headDir, output) {
   assert(Number.isInteger(rounds) && rounds > 0 && rounds % 2 === 0, "PAIRED_WALLTIME_ROUNDS must be a positive even integer");
 
   const work = resolve(output, "..", "criterion");
+  const targets = selectedTargets();
   const benchmarks = [];
   const headOnly = [];
   const baseOnly = [];
-  for (const target of TARGETS) {
+  for (const target of targets) {
     const base = join(baseDir, target);
     const head = join(headDir, target);
     const baseIds = existsSync(base) ? listBenchmarks(base) : [];
@@ -165,7 +276,8 @@ function runComparison(baseDir, headDir, output) {
     }
     baseOnly.push(...baseIds.filter(id => !headIds.includes(id)));
   }
-  assert(benchmarks.length > 0, "no benchmark exists in both builds");
+  // A selected target can exist only in head, for example when a change adds it.
+  assert(targets.length === 0 || benchmarks.length > 0 || headOnly.length > 0, "no benchmark exists in the builds");
 
   for (let round = 1; round <= rounds; round++) {
     const order = round % 2 ? ["base", "head"] : ["head", "base"];
@@ -190,6 +302,8 @@ function runComparison(baseDir, headDir, output) {
     warm_up_seconds: Number(timing.warmUp),
     measurement_seconds: Number(timing.measurement),
     threshold: THRESHOLD,
+    targets,
+    skipped_targets: TARGETS.filter(target => !targets.includes(target)),
     benchmarks,
     head_only: headOnly,
     base_only: baseOnly,
@@ -283,9 +397,13 @@ function render(path) {
           "| --- | ---: | ---: | ---: | --- | --- |",
           ...rows.map(row => `| ${row.join(" | ")} |`),
         ]
-      : ["No benchmark changed."]),
+      : [results.benchmarks.length ? "No benchmark changed." : "No benchmark was compared."]),
     "",
   ];
+  const skipped = results.skipped_targets ?? [];
+  if (skipped.length) {
+    lines.push(`Targets not measured (not affected by the change, or not selected): ${skipped.map(target => `\`${target}\``).join(", ")}`, "");
+  }
   lines.push(...renderEnvironment(results.environment), "");
   if (results.head_only.length) lines.push(`New benchmarks (not compared): ${results.head_only.map(id => `\`${id}\``).join(", ")}`, "");
   if (results.base_only.length) lines.push(`Removed benchmarks: ${results.base_only.map(id => `\`${id}\``).join(", ")}`, "");
@@ -306,10 +424,11 @@ function render(path) {
 }
 
 const [command, ...args] = process.argv.slice(2);
-if (command === "build" && args.length === 1) build(resolve(args[0]));
+if (command === "select" && (args.length === 2 || args.length === 3)) select(...args);
+else if (command === "build" && args.length === 1) build(resolve(args[0]));
 else if (command === "run" && args.length === 3) runComparison(resolve(args[0]), resolve(args[1]), resolve(args[2]));
 else if (command === "render" && args.length === 1) render(resolve(args[0]));
 else {
-  console.error("usage: paired-walltime.mjs build <bin-dir> | run <base-bin-dir> <head-bin-dir> <results.json> | render <results.json>");
+  console.error("usage: paired-walltime.mjs select <base-rev> <head-rev> [affected|all|<targets>] | build <bin-dir> | run <base-bin-dir> <head-bin-dir> <results.json> | render <results.json>");
   process.exit(2);
 }
