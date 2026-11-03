@@ -1,9 +1,12 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    Ast, BinaryExpression, BinaryOperator, BindingPatternData, DeclData, Expr, ExprData, GetSpan,
-    NodeId, ObjectProperty, Program, Span, Stmt, StmtData, TraverseAction, TraverseMut,
-    TraverseMutCtx, TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclarator,
-    VariableKind,
+    ArrowFunctionExpression, Ast, BinaryExpression, BinaryOperator, BindingPatternData,
+    CallExpression, ConditionalExpression, DeclData, Expr, ExprData, ForStatement,
+    ForStatementInitData, Function, FunctionType, GetSpan, IfStatement, LogicalExpression,
+    LogicalOperator, NodeId, ObjectProperty, Program, Span, StaticBlock, Stmt, StmtData,
+    TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
+    UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
+    WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
@@ -11,11 +14,13 @@ use swc_next_ecma_semantic::{
 
 use crate::CompressOptions;
 
+mod dead_code;
 mod effects;
 mod value;
 
+use dead_code::{Branch, Hoisted};
 use effects::may_have_side_effects;
-use value::Value;
+use value::{Value, skip_parentheses};
 
 #[derive(Default)]
 struct Candidates {
@@ -111,6 +116,10 @@ pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions) {
         delete_depth: 0,
         primitive_bindings: FxHashSet::default(),
         pending_typeofs: Vec::new(),
+        hoisted: Vec::new(),
+        function_starts: Vec::new(),
+        branches: Vec::new(),
+        reference_positions: FxHashSet::default(),
     };
     let _ = program.traverse_mut_with(&mut compressor, &mut TraverseMutCtx::new(ast, ()));
 }
@@ -128,6 +137,16 @@ struct Compressor {
     delete_depth: u32,
     primitive_bindings: FxHashSet<NodeId>,
     pending_typeofs: Vec<TypeofRewrite>,
+    /// Hoisted declarations in open functions. Each function's entries are
+    /// dropped when it exits.
+    hoisted: Vec<Hoisted>,
+    /// Length of `hoisted` when each open function was entered.
+    function_starts: Vec<usize>,
+    /// Open statements whose branches may be removed.
+    branches: Vec<Branch>,
+    /// Conditional and logical expressions used as a callee, a tag, or a
+    /// `delete` or `typeof` operand, where a reference keeps its receiver.
+    reference_positions: FxHashSet<NodeId>,
 }
 
 struct TypeofRewrite {
@@ -218,6 +237,219 @@ impl Compressor {
         let value = *self.candidates.globals.get(&node.node_id())?;
         let span = node.span(ast);
         self.value_expr(ast, span, value)
+    }
+
+    /// Marks a conditional or logical callee, tag, or operand, whose kept
+    /// branch must not become a bare reference.
+    fn mark_reference_position(&mut self, ast: &Ast<'_>, expr: Expr) {
+        let expr = skip_parentheses(ast, expr);
+        if self.options.dead_code
+            && matches!(
+                ast.expr_data(expr),
+                ExprData::ConditionalExpression(_) | ExprData::LogicalExpression(_)
+            )
+        {
+            self.reference_positions.insert(expr.node_id());
+        }
+    }
+
+    /// Returns the branch that replaces a conditional or logical expression.
+    ///
+    /// In a reference position, a reference becomes `(0, a.b)`, so the call
+    /// receiver stays `undefined`, `delete` still sees a value, and `typeof`
+    /// still throws for an undeclared name.
+    fn kept_branch(&mut self, ast: &mut Ast<'_>, node: Expr, kept: Expr) -> Expr {
+        if !self.reference_positions.remove(&node.node_id()) || !dead_code::is_reference(ast, kept)
+        {
+            return kept;
+        }
+        let span = node.span(ast);
+        let zero = number(ast, span, 0.0);
+        let expressions = ast.add_sub_range([zero, kept]);
+        Expr::SequenceExpression(ast.sequence_expression(span, expressions))
+    }
+
+    fn conditional(
+        &mut self,
+        ast: &mut Ast<'_>,
+        node: Expr,
+        conditional: ConditionalExpression,
+    ) -> Option<Expr> {
+        let test = Value::of(ast, conditional.test(ast))?.to_boolean()?;
+        let kept = if test {
+            conditional.consequent(ast)
+        } else {
+            conditional.alternate(ast)
+        };
+        Some(self.kept_branch(ast, node, kept))
+    }
+
+    fn logical(
+        &mut self,
+        ast: &mut Ast<'_>,
+        node: Expr,
+        logical: LogicalExpression,
+    ) -> Option<Expr> {
+        let left = Value::of(ast, logical.left(ast))?;
+        let keep_left = match logical.operator(ast) {
+            LogicalOperator::And => !left.to_boolean()?,
+            LogicalOperator::Or => left.to_boolean()?,
+            LogicalOperator::NullishCoalescing => !matches!(left, Value::Undefined | Value::Null),
+        };
+        let kept = if keep_left {
+            logical.left(ast)
+        } else {
+            logical.right(ast)
+        };
+        Some(self.kept_branch(ast, node, kept))
+    }
+
+    /// Records where an `if`, `while`, or `for` statement starts, and where
+    /// the alternate of the innermost open `if` starts.
+    fn enter_branch(&mut self, ast: &Ast<'_>, node: Stmt) {
+        let start = self.hoisted.len();
+        if let Some(branch) = self.branches.last_mut()
+            && branch.alternate == Some(node.node_id())
+        {
+            branch.middle = Some(start);
+        }
+        let alternate = match ast.stmt_data(node) {
+            StmtData::IfStatement(statement) => statement.alternate(ast).map(|s| s.node_id()),
+            StmtData::WhileStatement(_) | StmtData::ForStatement(_) => None,
+            _ => return,
+        };
+        self.branches.push(Branch {
+            start,
+            alternate,
+            middle: None,
+        });
+    }
+
+    /// Replaces an `if`, `while`, or `for` statement whose condition is
+    /// constant with the statements that still run.
+    fn exit_branch(&mut self, ast: &mut Ast<'_>, node: Stmt) -> Option<Stmt> {
+        let data = ast.stmt_data(node);
+        if !matches!(
+            data,
+            StmtData::IfStatement(_) | StmtData::WhileStatement(_) | StmtData::ForStatement(_)
+        ) {
+            return None;
+        }
+        // `enter_branch` pushed this statement's entry.
+        let branch = self.branches.pop()?;
+        let span = node.span(ast);
+        match data {
+            StmtData::IfStatement(statement) => self.remove_if(ast, span, statement, &branch),
+            StmtData::WhileStatement(statement) => self.remove_while(ast, span, statement, &branch),
+            StmtData::ForStatement(statement) => self.remove_for(ast, span, statement, &branch),
+            _ => None,
+        }
+    }
+
+    fn remove_if(
+        &self,
+        ast: &mut Ast<'_>,
+        span: Span,
+        statement: IfStatement,
+        branch: &Branch,
+    ) -> Option<Stmt> {
+        let test = Value::of(ast, statement.test(ast))?.to_boolean()?;
+        let end = self.hoisted.len();
+        let (kept, removed) = if test {
+            (Some(statement.consequent(ast)), branch.alternate(end))
+        } else {
+            (statement.alternate(ast), branch.consequent(end))
+        };
+        let hoisted = self.hoist(ast, span, removed, None, Vec::new())?;
+        Some(dead_code::join(ast, span, hoisted, kept))
+    }
+
+    fn remove_while(
+        &self,
+        ast: &mut Ast<'_>,
+        span: Span,
+        statement: WhileStatement,
+        branch: &Branch,
+    ) -> Option<Stmt> {
+        if Value::of(ast, statement.test(ast))?.to_boolean()? {
+            return None;
+        }
+        let removed = branch.consequent(self.hoisted.len());
+        let hoisted = self.hoist(ast, span, removed, None, Vec::new())?;
+        Some(dead_code::join(ast, span, hoisted, None))
+    }
+
+    /// Replaces a `for` loop whose test is falsy with its initializer.
+    fn remove_for(
+        &self,
+        ast: &mut Ast<'_>,
+        span: Span,
+        statement: ForStatement,
+        branch: &Branch,
+    ) -> Option<Stmt> {
+        if Value::of(ast, statement.test(ast)?)?.to_boolean()? {
+            return None;
+        }
+        let (init, declaration) = match statement
+            .init(ast)
+            .map(|init| ast.for_statement_init_data(init))
+        {
+            None => (None, None),
+            Some(ForStatementInitData::Expr(init)) => {
+                let init = may_have_side_effects(ast, init)
+                    .then(|| ast.stmt_expression_statement(init.span(ast), init));
+                (init, None)
+            }
+            Some(ForStatementInitData::VariableDeclaration(declaration))
+                if declaration.kind(ast) == VariableKind::Var =>
+            {
+                (None, Some(declaration))
+            }
+            // A lexical initializer is scoped to the loop.
+            Some(ForStatementInitData::VariableDeclaration(_)) => return None,
+        };
+        // A `var` initializer still runs; body names join its declaration.
+        let prefix = declaration.map_or_else(Vec::new, |declaration| {
+            declaration
+                .declarators(ast)
+                .iter()
+                .map(|id| ast.get_node_in_sub_range(id))
+                .collect()
+        });
+        let removed = branch.consequent(self.hoisted.len());
+        let hoisted = self.hoist(ast, span, removed, declaration, prefix)?;
+        Some(dead_code::join(ast, span, hoisted, init))
+    }
+
+    /// Builds a `var` statement for `prefix` and the used names that the
+    /// removed `entries` declare. Returns `Some(None)` when nothing is
+    /// declared, and `None` when the entries cannot be removed.
+    fn hoist(
+        &self,
+        ast: &mut Ast<'_>,
+        span: Span,
+        entries: std::ops::Range<usize>,
+        exclude: Option<VariableDeclaration>,
+        mut prefix: Vec<VariableDeclarator>,
+    ) -> Option<Option<Stmt>> {
+        let bindings =
+            dead_code::hoisted_bindings(ast, &self.hoisted[entries], exclude, |binding| {
+                !self.candidates.unused.contains(&binding.node_id())
+            })?;
+        prefix.extend(dead_code::declarators(ast, &bindings));
+        Some((!prefix.is_empty()).then(|| dead_code::var_statement(ast, span, prefix)))
+    }
+
+    fn enter_function_scope(&mut self) {
+        if self.options.dead_code {
+            self.function_starts.push(self.hoisted.len());
+        }
+    }
+
+    fn exit_function_scope(&mut self) {
+        if let Some(start) = self.function_starts.pop() {
+            self.hoisted.truncate(start);
+        }
     }
 
     /// Folds a unary or binary expression whose operands are constant.
@@ -400,6 +632,9 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<Stmt> {
         let ast = &mut *ctx.ast;
+        if self.options.dead_code {
+            self.enter_branch(ast, node);
+        }
         let StmtData::Declaration(declaration) = ast.stmt_data(node) else {
             return TraverseAction::Continue;
         };
@@ -443,6 +678,106 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         TraverseAction::Continue
     }
 
+    fn exit_stmt(
+        &mut self,
+        node: Stmt,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<Stmt> {
+        if !self.options.dead_code {
+            return TraverseAction::Continue;
+        }
+        self.exit_branch(ctx.ast, node)
+            .map_or(TraverseAction::Continue, TraverseAction::ReplaceSkip)
+    }
+
+    fn enter_variable_declaration(
+        &mut self,
+        node: VariableDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<VariableDeclaration> {
+        if self.options.dead_code && node.kind(ctx.ast) == VariableKind::Var {
+            self.hoisted.push(Hoisted::Var(node));
+        }
+        TraverseAction::Continue
+    }
+
+    fn enter_function(
+        &mut self,
+        node: Function,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<Function> {
+        if self.options.dead_code
+            && node.function_type(ctx.ast) == FunctionType::FunctionDeclaration
+        {
+            self.hoisted.push(Hoisted::Function);
+        }
+        self.enter_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn exit_function(
+        &mut self,
+        _node: Function,
+        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<Function> {
+        self.exit_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn enter_arrow_function_expression(
+        &mut self,
+        _node: ArrowFunctionExpression,
+        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<ArrowFunctionExpression> {
+        self.enter_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn exit_arrow_function_expression(
+        &mut self,
+        _node: ArrowFunctionExpression,
+        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<ArrowFunctionExpression> {
+        self.exit_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn enter_static_block(
+        &mut self,
+        _node: StaticBlock,
+        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<StaticBlock> {
+        self.enter_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn exit_static_block(
+        &mut self,
+        _node: StaticBlock,
+        _ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<StaticBlock> {
+        self.exit_function_scope();
+        TraverseAction::Continue
+    }
+
+    fn enter_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<CallExpression> {
+        self.mark_reference_position(ctx.ast, node.callee(ctx.ast));
+        TraverseAction::Continue
+    }
+
+    fn enter_tagged_template_expression(
+        &mut self,
+        node: TaggedTemplateExpression,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<TaggedTemplateExpression> {
+        self.mark_reference_position(ctx.ast, node.tag(ctx.ast));
+        TraverseAction::Continue
+    }
+
     fn exit_object_property(
         &mut self,
         node: ObjectProperty,
@@ -465,8 +800,13 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         node: UnaryExpression,
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<UnaryExpression> {
-        if node.operator(ctx.ast) == UnaryOperator::Delete {
-            self.delete_depth += 1;
+        match node.operator(ctx.ast) {
+            UnaryOperator::Delete => {
+                self.delete_depth += 1;
+                self.mark_reference_position(ctx.ast, node.argument(ctx.ast));
+            }
+            UnaryOperator::Typeof => self.mark_reference_position(ctx.ast, node.argument(ctx.ast)),
+            _ => {}
         }
         TraverseAction::Continue
     }
@@ -499,6 +839,12 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         let ast = &mut *ctx.ast;
         let replacement = match ast.expr_data(node) {
             ExprData::IdentifierReference(_) => self.global(ast, node),
+            ExprData::ConditionalExpression(conditional) if self.options.dead_code => {
+                self.conditional(ast, node, conditional)
+            }
+            ExprData::LogicalExpression(logical) if self.options.dead_code => {
+                self.logical(ast, node, logical)
+            }
             ExprData::UnaryExpression(_) | ExprData::BinaryExpression(_)
                 if self.options.evaluate =>
             {
