@@ -212,6 +212,12 @@ test("decoder preserves literal raw source", () => {
 
     const regexp = parseSync("/\ud800/gi;", { lang }).program.body[0].expression;
     assert.equal(regexp.raw, "/\ud800/gi");
+    assert.equal(regexp.regex.pattern, "\ud800");
+    assert.equal(regexp.regex.flags, "gi");
+
+    const escaped = parseSync("/a\\/b[/]c/ig;", { lang }).program.body[0].expression;
+    assert.equal(escaped.regex.pattern, "a\\/b[/]c");
+    assert.equal(escaped.regex.flags, "gi");
   }
 });
 

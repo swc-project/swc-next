@@ -13,10 +13,6 @@ const utf8Slice = typeof Buffer !== "undefined" &&
         return decoder.decode(this.subarray(start, end));
       };
     })();
-const latin1Slice = typeof Buffer !== "undefined" &&
-  typeof Buffer.prototype.latin1Slice === "function"
-  ? Buffer.prototype.latin1Slice
-  : null;
 const fromCharCode = String.fromCharCode;
 const shortStringChars = Array(65);
 for (let length = 0; length <= 64; length++) {
@@ -122,7 +118,6 @@ export function decodeJs(buffer, source, sourceBuffer) {
   const diagnosticCount = _i32[6];
   const programIndex = _i32[7];
   const flags = _i32[8];
-  const firstNonAsciiPos = _i32[9];
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
@@ -131,32 +126,10 @@ export function decodeJs(buffer, source, sourceBuffer) {
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  let sourceLatin;
-  if (source.length !== sourceLength) {
-    sourceLatin = latin1Slice === null
-      ? new TextDecoder("latin1").decode(sourceBuffer.subarray(0, sourceLength))
-      : latin1Slice.call(sourceBuffer, 0, sourceLength);
-  }
-  const str = (start, end) => {
-    if (start === end) return "";
-    if (start < sourceLength) {
-      if (end <= firstNonAsciiPos) return source.slice(start, end);
-      const length = end - start;
-      if (length <= 64) {
-        for (let i = 0; i < length; i++) {
-          if (sourceBuffer[start + i] >= 0x80) {
-            return utf8Slice.call(sourceBuffer, start, end);
-          }
-        }
-        return sourceLatin.slice(start, end);
-      }
-      return utf8Slice.call(sourceBuffer, start, end);
-    }
-    return decodePool(bytes.subarray(
-      strings + start - sourceLength,
-      strings + end - sourceLength,
-    ));
-  };
+  const str = (start, end) => decodePool(bytes.subarray(
+    strings + start - sourceLength,
+    strings + end - sourceLength,
+  ));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
@@ -304,8 +277,9 @@ export function decodeJs(buffer, source, sourceBuffer) {
         break;
       }
       case 8: {
-        const f_pattern = str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_flags = str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
+        const separator = source.lastIndexOf("/", end - 1);
+        const f_pattern = source.slice(start + 1, separator);
+        const f_flags = source.slice(separator + 1, end);
         let value = null;
         try {
           value = new RegExp(f_pattern, f_flags);

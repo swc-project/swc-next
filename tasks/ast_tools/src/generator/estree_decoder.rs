@@ -163,6 +163,9 @@ fn write_node_case(
     is_ts: bool,
 ) {
     writeln!(output, "      case {kind}: {{").unwrap();
+    if ast.name == "RegExpLiteral" {
+        output.push_str("        const separator = source.lastIndexOf(\"/\", end - 1);\n");
+    }
 
     let layout = &ast.layout;
     let mut fields = Vec::new();
@@ -220,6 +223,8 @@ fn write_node_case(
             ("StringLiteral" | "NumericLiteral" | "TemplateElement", "raw")
             | ("JsxText", "value") => "source.slice(start, end)".into(),
             ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
+            ("RegExpLiteral", "pattern") => "source.slice(start + 1, separator)".into(),
+            ("RegExpLiteral", "flags") => "source.slice(separator + 1, end)".into(),
             _ => read_expression(field_ty, schema, &location, aligned_i32),
         };
         let field_name = estree_field_name(&ast.name, &field.name);
@@ -292,17 +297,13 @@ fn read_expression(ty: &AstType, schema: &Schema, location: &str, aligned_i32: b
                 format!("{{ start: {start}, end: {end} }}")
             }
             AstType::Primitive(primitive) if primitive.name == "AstUtf8" => {
-                let start = read_i32(location, aligned_i32);
-                let end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("{start} === NULL && {end} === 0 ? null : str({start}, {end})")
+                panic!("optional source strings need a field-specific decoder")
             }
             inner => panic!("unsupported optional decoder type: {}", inner.name()),
         },
         AstType::Primitive(primitive) => match primitive.name {
             "AstUtf8" | "AstWtf8" => {
-                let start = read_i32(location, aligned_i32);
-                let end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("str({start}, {end})")
+                panic!("source strings need a field-specific decoder")
             }
             "bool" => format!("_dv.getUint8({location}) !== 0"),
             "u8" => format!("_dv.getUint8({location})"),
@@ -875,10 +876,6 @@ const utf8Slice = typeof Buffer !== "undefined" &&
         return decoder.decode(this.subarray(start, end));
       };
     })();
-const latin1Slice = typeof Buffer !== "undefined" &&
-  typeof Buffer.prototype.latin1Slice === "function"
-  ? Buffer.prototype.latin1Slice
-  : null;
 const fromCharCode = String.fromCharCode;
 const shortStringChars = Array(65);
 for (let length = 0; length <= 64; length++) {
@@ -971,7 +968,6 @@ const DECODE_PREAMBLE: &str = r#"
   const diagnosticCount = _i32[6];
   const programIndex = _i32[7];
   const flags = _i32[8];
-  const firstNonAsciiPos = _i32[9];
 
   const spans = HEADER_SIZE;
   const kinds = spans + nodeCount * 8;
@@ -980,32 +976,10 @@ const DECODE_PREAMBLE: &str = r#"
   const strings = extra + extraCount * 8;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  let sourceLatin;
-  if (source.length !== sourceLength) {
-    sourceLatin = latin1Slice === null
-      ? new TextDecoder("latin1").decode(sourceBuffer.subarray(0, sourceLength))
-      : latin1Slice.call(sourceBuffer, 0, sourceLength);
-  }
-  const str = (start, end) => {
-    if (start === end) return "";
-    if (start < sourceLength) {
-      if (end <= firstNonAsciiPos) return source.slice(start, end);
-      const length = end - start;
-      if (length <= 64) {
-        for (let i = 0; i < length; i++) {
-          if (sourceBuffer[start + i] >= 0x80) {
-            return utf8Slice.call(sourceBuffer, start, end);
-          }
-        }
-        return sourceLatin.slice(start, end);
-      }
-      return utf8Slice.call(sourceBuffer, start, end);
-    }
-    return decodePool(bytes.subarray(
-      strings + start - sourceLength,
-      strings + end - sourceLength,
-    ));
-  };
+  const str = (start, end) => decodePool(bytes.subarray(
+    strings + start - sourceLength,
+    strings + end - sourceLength,
+  ));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
