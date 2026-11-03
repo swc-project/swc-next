@@ -1,1 +1,1 @@
-function choose(value){return value?[!0]:{flag:!1}}
+function choose(a){return a?[!0]:{flag:!1}}

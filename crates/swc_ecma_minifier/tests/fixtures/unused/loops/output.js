@@ -1,1 +1,1 @@
-function f(){for(var x=1;test();){}for(let y in source){}for(const z of source){}}
+function f(){for(var b=1;test();){}for(let a in source){}for(const a of source){}}

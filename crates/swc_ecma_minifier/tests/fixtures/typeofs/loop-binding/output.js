@@ -1,1 +1,1 @@
-function f(){for(var x of source){use(typeof x==="undefined")}}
+function f(){for(var a of source){use(typeof a==="undefined")}}

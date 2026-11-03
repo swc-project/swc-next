@@ -81,7 +81,17 @@ pub fn run_fixture(directory: &Path) -> Result<(), String> {
     };
 
     let actual = minify_source(&input, &options).map_err(|error| format!("input: {error}"))?;
-    let repeated = minify_source(&actual, &options).map_err(|error| format!("output: {error}"))?;
+    // Names are planned before compression removes references, so a second
+    // pass can choose different names. Only compression must be stable.
+    let repeat_options = FixtureOptions {
+        source_type: options.source_type,
+        minify: MinifierOptions {
+            mangle: false,
+            ..options.minify.clone()
+        },
+    };
+    let repeated =
+        minify_source(&actual, &repeat_options).map_err(|error| format!("output: {error}"))?;
     if repeated != actual {
         return Err(format!(
             "minification is not stable\nfirst:\n{actual}\nsecond:\n{repeated}"

@@ -1,1 +1,1 @@
-function f(undefined,Infinity,NaN){return[undefined,Infinity,NaN]}
+function f(a,b,c){return[a,b,c]}
