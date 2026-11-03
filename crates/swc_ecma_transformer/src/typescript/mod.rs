@@ -26,8 +26,8 @@ pub fn transform<'a>(
 
     let dependencies = analysis::jsx_dependencies(program, ast, semantic, &options.jsx);
     let analysis =
-        analysis::TypeScriptAnalysis::analyze(program, ast, semantic, &options, dependencies);
-    lower::TypeScriptLowerer::new(&options, analysis, ast, semantic).lower_program(program);
+        analysis::TypeScriptAnalysis::analyze(program, ast, semantic, options, dependencies);
+    lower::TypeScriptLowerer::new(options, analysis, ast, semantic).lower_program(program);
     let lang = match ast.lang() {
         Lang::Ts => Lang::Js,
         Lang::Tsx => Lang::Jsx,

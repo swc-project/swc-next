@@ -190,8 +190,7 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         method.set_optional(self.ast(), false);
         method.set_abstract(self.ast(), false);
         method.set_accessibility(self.ast(), Accessibility::None);
-        let replacement = method.visit_mut_children_with(self);
-        replacement
+        method.visit_mut_children_with(self)
     }
 
     fn visit_mut_property_definition(
@@ -206,8 +205,7 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         property.set_readonly(self.ast(), false);
         property.set_abstract(self.ast(), false);
         property.set_accessibility(self.ast(), Accessibility::None);
-        let replacement = property.visit_mut_children_with(self);
-        replacement
+        property.visit_mut_children_with(self)
     }
 
     fn visit_mut_function(
@@ -217,8 +215,7 @@ impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
         function.set_type_parameters(self.ast(), None);
         function.set_this_param(self.ast(), None);
         function.set_return_type(self.ast(), None);
-        let replacement = function.visit_mut_children_with(self);
-        replacement
+        function.visit_mut_children_with(self)
     }
 
     fn visit_mut_arrow_function_expression(
