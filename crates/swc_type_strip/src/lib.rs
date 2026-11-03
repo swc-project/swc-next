@@ -1288,24 +1288,24 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
         let pattern = node.id(self.ast);
         let type_annotation = node.type_annotation(self.ast);
+        let init = node.init(self.ast);
         if node.definite(self.ast) {
-            let span = pattern.span(self.ast);
-            let marker_end = type_annotation.map_or(node.span(self.ast).end, |annotation| {
+            let pattern_end = pattern.span(self.ast).end;
+            let marker_end = if let Some(annotation) = type_annotation {
                 annotation.span(self.ast).start
-            });
-            if let Some(marker) =
-                self.tokens
-                    .find_forward(span.end, marker_end, TokenTag::LogicalNot)
-            {
-                self.edits.blank(marker.span());
-            }
+            } else if let Some(initializer) = init {
+                initializer.span(self.ast).start
+            } else {
+                node.span(self.ast).end
+            };
+            self.erase_token(pattern_end, marker_end, TokenTag::LogicalNot);
         }
         // Visits the children in field order; a binding identifier has none.
         if !pattern.is_binding_identifier(self.ast) {
             pattern.visit_with(self);
         }
         type_annotation.visit_with(self);
-        node.init(self.ast).visit_with(self);
+        init.visit_with(self);
     }
 
     fn visit_formal_parameter(&mut self, node: FormalParameter) {
