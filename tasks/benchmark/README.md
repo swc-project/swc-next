@@ -23,10 +23,12 @@ uses the same triggers for paired wall time on an x86_64 GitHub runner. It build
 the base and head revisions and runs each benchmark with the base binary and the
 head binary in an even number of rounds in the same job. Base runs first in odd
 rounds and head runs first in even rounds, so the run order does not bias the
-change. It writes the change to the job summary and comments on the pull request
-or the pushed `main` commit. It does not comment on pull requests from forks. The
-summary also records the runner's CPU and system. To compare any two revisions,
-run the workflow manually with `base` and `head`.
+change. It measures only the targets that use a changed file, as determined from
+the workspace dependency graph in `cargo metadata`. It writes the change to the
+job summary and comments on the pull request or the pushed `main` commit. It does
+not comment on pull requests from forks. The summary also records the runner's CPU
+and system. To compare any two revisions, run the workflow manually with `base`
+and `head`. Set `targets` to `all` or to a list of targets to measure other targets.
 To run the wall-time comparison locally:
 
 ```sh

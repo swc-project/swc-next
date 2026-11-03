@@ -31,6 +31,10 @@ on:
         default: all
         type: choice
         options: [all, walltime, gungraun]
+      targets:
+        description: Wall-time targets (affected, all, or a comma-separated list such as parser,minifier)
+        default: affected
+        type: string
       rounds:
         description: Number of wall-time base/head rounds (even; base and head alternate running first)
         default: 6
@@ -64,6 +68,7 @@ jobs:
       base-sha: ${{ steps.revisions.outputs.base-sha }}
       head-sha: ${{ steps.revisions.outputs.head-sha }}
       walltime: ${{ steps.revisions.outputs.walltime }}
+      walltime-targets: ${{ steps.targets.outputs.targets }}
       gungraun: ${{ steps.revisions.outputs.gungraun }}
       gungraun-built: ${{ steps.gungraun-base.outcome == 'success' && steps.gungraun-head.outcome == 'success' }}
       rustc: ${{ steps.toolchain.outputs.rustc }}
@@ -159,6 +164,19 @@ jobs:
             echo "rustc=$(rustc --version)"
             echo "cargo=$(cargo --version)"
           } >> "$GITHUB_OUTPUT"
+
+      # The head revision is checked out here. `affected` keeps only the
+      # targets that depend on a file changed between base and head.
+      - name: Select wall-time targets
+        id: targets
+        if: steps.revisions.outputs.walltime == 'true'
+        env:
+          INPUT_TARGETS: ${{ inputs.targets || 'affected' }}
+        run: |
+          targets="$(node "$SCRIPT" select "$BASE_SHA" "$HEAD_SHA" "$INPUT_TARGETS")"
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "PAIRED_WALLTIME_TARGETS=$targets" >> "$GITHUB_ENV"
+          echo "Wall-time targets: ${targets:-none}"
 
       # Each revision is checked out once. Its wall-time and Gungraun benchmarks
       # use the same `bench` profile and target directory, so Cargo compiles
@@ -577,6 +595,7 @@ jobs:
       - name: Run base and head wall-time benchmarks in rounds
         env:
           PAIRED_WALLTIME_ROUNDS: ${{ inputs.rounds || 6 }}
+          PAIRED_WALLTIME_TARGETS: ${{ needs.build.outputs.walltime-targets }}
           # This job has no Rust toolchain; report the one that built both revisions.
           PAIRED_WALLTIME_RUSTC: ${{ needs.build.outputs.rustc }}
         run: |
