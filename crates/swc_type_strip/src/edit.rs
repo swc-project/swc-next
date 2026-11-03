@@ -505,25 +505,67 @@ mod tests {
             .collect()
     }
 
-    #[test]
-    fn blank_handles_every_span_length() {
-        let source: String = (0u8..=127).map(char::from).chain("abc".chars()).collect();
-        for length in 1..=40 {
-            for start in [0, 3, 9, 17, source.len() - length] {
-                let end = start + length;
-                let mut edits = EditPlan::default();
-                edits.blank(Span::new(start as u32, end as u32));
-                let output = edits.render(&source);
-                let expected = format!(
-                    "{}{}{}",
-                    &source[..start],
-                    blank_ascii(&source[start..end]),
-                    &source[end..]
-                );
+    /// 128 ASCII bytes followed by `abc`: every gap and blank fits the
+    /// block and vector paths except near the end of the source.
+    fn ascii_source() -> String {
+        (0u8..=127).map(char::from).chain("abc".chars()).collect()
+    }
 
-                assert_eq!(output, expected);
-            }
-        }
+    fn render_blank(source: &str, start: usize, end: usize) -> (String, String) {
+        let mut edits = EditPlan::default();
+        edits.blank(Span::new(start as u32, end as u32));
+        let output = edits.render(source).into_owned();
+        let expected = format!(
+            "{}{}{}",
+            &source[..start],
+            blank_ascii(&source[start..end]),
+            &source[end..]
+        );
+        (output, expected)
+    }
+
+    #[test]
+    fn blank_handles_vector_boundaries() {
+        let source = ascii_source();
+
+        let (output, expected) = render_blank(&source, 0, 1);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 0, 15);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 0, 16);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 0, 17);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 3, 36);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 17, 57);
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn blank_handles_source_end() {
+        let source = ascii_source();
+        let len = source.len();
+
+        let (output, expected) = render_blank(&source, len - 16, len);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, len - 17, len - 1);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, len - 40, len);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, len - 2, len);
+        assert_eq!(output, expected);
+
+        let (output, expected) = render_blank(&source, 100, 101);
+        assert_eq!(output, expected);
     }
 
     #[test]
