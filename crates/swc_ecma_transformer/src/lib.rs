@@ -17,7 +17,6 @@ use crate::{
 mod context;
 mod helpers;
 mod uid;
-mod used_names;
 
 pub mod assumptions;
 pub mod es2022;

@@ -1,7 +1,7 @@
 use swc_next_ecma_ast::{Ast, Diagnostic, Program, VisitMutWith};
 use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
-use crate::uid::LazyUidGenerator;
+use crate::uid::UidGenerator;
 
 mod display_name;
 mod lower;
@@ -37,7 +37,16 @@ pub fn transform<'a>(
         semantic
     };
     let implicit_roots = bindings.implicit_roots();
-    let uid = LazyUidGenerator::new(semantic, &implicit_roots);
+    let mut uid = UidGenerator::new(ast.allocator());
+    for entry in semantic.iter_symbols() {
+        uid.observe(ast.get_wtf8(entry.symbol.name).as_bytes());
+    }
+    for entry in semantic.iter_references() {
+        uid.observe(ast.get_utf8(entry.reference.name).as_bytes());
+    }
+    for name in implicit_roots.into_iter().flatten() {
+        uid.observe(name.as_bytes());
+    }
     let mut lowerer = lower::JsxLowerer::new(options, bindings, uid, source_path);
     lowerer.set_runtime_import_anchor(runtime_import_anchor);
     {

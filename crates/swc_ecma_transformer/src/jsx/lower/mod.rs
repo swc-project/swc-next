@@ -1,5 +1,5 @@
 use super::{JsxOptions, self_context::JsxSelfContext, source::SourceLocations};
-use crate::uid::LazyUidGenerator;
+use crate::uid::UidGenerator;
 pub(crate) use runtime::RuntimeBindings;
 use swc_next_ecma_ast::{AstUtf8, Diagnostic, Stmt};
 
@@ -24,7 +24,7 @@ pub(crate) struct JsxLowerer<'options, 'ast> {
     options: &'options JsxOptions,
     pure: bool,
     bindings: RuntimeBindings<'options>,
-    uid_generator: LazyUidGenerator<'options, 'ast>,
+    uid_generator: UidGenerator<'ast>,
     self_context: JsxSelfContext,
     source_locations: SourceLocations,
     source_path: &'options str,
@@ -37,7 +37,7 @@ impl<'options, 'ast> JsxLowerer<'options, 'ast> {
     pub(crate) fn new(
         options: &'options JsxOptions,
         bindings: RuntimeBindings<'options>,
-        uid_generator: LazyUidGenerator<'options, 'ast>,
+        uid_generator: UidGenerator<'ast>,
         source_path: Option<&'options str>,
     ) -> Self {
         let pure = options

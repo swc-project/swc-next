@@ -1,6 +1,6 @@
 use super::super::{JsxOptions, JsxRuntime};
 use super::{JsxEmitter, JsxLowerer, build::*};
-use crate::uid::LazyUidGenerator;
+use crate::uid::UidGenerator;
 use swc_next_ecma_ast::{Ast, AstUtf8, DUMMY_SP, Decl, Expr, Program, SourceType, Stmt};
 
 pub(crate) enum RuntimeBindings<'options> {
@@ -132,7 +132,7 @@ impl<'options> RuntimeBindings<'options> {
         &mut self,
         helper: RuntimeHelper,
         ast: &mut Ast<'ast>,
-        uid: &mut LazyUidGenerator<'_, 'ast>,
+        uid: &mut UidGenerator<'ast>,
     ) -> Expr {
         match self {
             Self::Classic(bindings) => match helper {
@@ -190,7 +190,7 @@ impl AutomaticModuleBindings<'_> {
         &mut self,
         helper: RuntimeHelper,
         ast: &mut Ast<'ast>,
-        uid: &mut LazyUidGenerator<'_, 'ast>,
+        uid: &mut UidGenerator<'ast>,
     ) -> AstUtf8 {
         let slot = match helper {
             RuntimeHelper::Jsx => &mut self.jsx,
@@ -202,7 +202,7 @@ impl AutomaticModuleBindings<'_> {
         if let Some(name) = *slot {
             return name;
         }
-        let name = uid.fresh(helper.local_base(), ast);
+        let name = ast.add_utf8(uid.next_name(helper.local_base(), 2));
         *slot = Some(name);
         if helper != RuntimeHelper::CreateElement {
             self.helper_imports.push((helper.imported_name(), name));
@@ -216,7 +216,7 @@ impl AutomaticScriptBindings<'_> {
         &mut self,
         helper: RuntimeHelper,
         ast: &mut Ast<'ast>,
-        uid: &mut LazyUidGenerator<'_, 'ast>,
+        uid: &mut UidGenerator<'ast>,
     ) -> AstUtf8 {
         let (slot, base) = if helper == RuntimeHelper::CreateElement {
             (&mut self.react_object, "_react")
@@ -231,7 +231,7 @@ impl AutomaticScriptBindings<'_> {
         if let Some(name) = *slot {
             return name;
         }
-        let name = uid.fresh(base, ast);
+        let name = ast.add_utf8(uid.next_name(base, 2));
         *slot = Some(name);
         name
     }
@@ -302,7 +302,7 @@ impl<'ast> JsxLowerer<'_, 'ast> {
         let filename = if let Some(filename) = self.filename {
             filename
         } else {
-            let filename = self.uid_generator.fresh("_jsxFileName", ast);
+            let filename = ast.add_utf8(self.uid_generator.next_name("_jsxFileName", 2));
             self.filename = Some(filename);
             filename
         };

@@ -451,7 +451,7 @@ impl<'ast> ReactRefresh<'_, 'ast> {
     }
 
     fn create_registration(&mut self, persistent_id: AstUtf8) -> AstUtf8 {
-        let binding = self.uid.fresh("_c", self.ast);
+        let binding = self.ast.add_utf8(self.uid.next_name("_c", 2));
         self.registrations.push(Registration {
             binding,
             persistent_id,

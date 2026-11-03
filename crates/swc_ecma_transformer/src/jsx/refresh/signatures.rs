@@ -127,7 +127,7 @@ impl<'visit, 'ast> SignatureTransformer<'visit, 'ast> {
             force_reset,
             custom_hooks,
         } = hooks;
-        let binding = self.uid.fresh("_s", self.ast);
+        let binding = self.ast.add_utf8(self.uid.next_name("_s", 2));
         let callee = qualified_name_expression(self.ast, &self.options.refresh_sig);
         let arguments = SubRange::empty();
         let init = self

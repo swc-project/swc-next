@@ -11,7 +11,7 @@ use swc_next_ecma_ast::{
 
 use crate::{
     context::{BoundIdentifier, ContainerOwnerChild, TransformCtx},
-    used_names::UsedNameState,
+    uid::UidGenerator,
 };
 use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
 
@@ -119,7 +119,7 @@ fn transform_supporting_non_extensible_class(
     class: Class,
     name: Option<InferredName>,
     layout: &ClassLayout,
-    names: &mut UsedNameState<'_>,
+    names: &mut UidGenerator<'_>,
     ctx: &mut TransformCtx<'_, '_>,
 ) -> Option<Expr> {
     let body = class.body(ctx.ast());
@@ -654,7 +654,7 @@ fn static_property(element: ClassElement, ast: &Ast<'_>) -> Option<PropertyDefin
 /// ```
 fn transform_class_as_private_fields(
     body: ClassBody,
-    names: &mut UsedNameState<'_>,
+    names: &mut UidGenerator<'_>,
     ctx: &mut TransformCtx<'_, '_>,
 ) {
     let mut index = 0;
@@ -815,8 +815,8 @@ impl ClassLayout {
     }
 }
 
-fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameState<'a> {
-    let mut names = UsedNameState::new(ctx.ast().allocator());
+fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UidGenerator<'a> {
+    let mut names = UidGenerator::new(ctx.ast().allocator());
     for member in ctx.container_class_body(body) {
         let key = match ctx.ast().class_element_data(member) {
             swc_next_ecma_ast::ClassElementData::PropertyDefinition(property) => {
@@ -838,7 +838,7 @@ fn private_names<'a>(body: ClassBody, ctx: &TransformCtx<'_, 'a>) -> UsedNameSta
     names
 }
 
-fn private_name(names: &mut UsedNameState<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
+fn private_name(names: &mut UidGenerator<'_>, ctx: &mut TransformCtx<'_, '_>) -> PropertyKey {
     let name = ctx.ast.add_utf8(names.next_name("_", 2));
     PropertyKey::Expr(Expr::PrivateIdentifier(
         ctx.add_node(|ast| ast.private_identifier(DUMMY_SP, name)),
