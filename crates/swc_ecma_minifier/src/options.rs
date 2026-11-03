@@ -23,6 +23,11 @@ pub struct CompressOptions {
     /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
     /// Enabled by default.
     pub booleans: bool,
+    /// Remove code that a constant condition never runs, such as the
+    /// branches of `if (0) a(); else b()` and `!0 ? a : b`, `!1 && a`, and
+    /// `while (0) a()`. `var` names declared in removed code are kept.
+    /// Enabled by default.
+    pub dead_code: bool,
     /// Fold operators applied to constants, such as `1 + 2` to `3` and
     /// `"a" + "b"` to `"ab"`, when the result prints shorter. Enabled by
     /// default.
@@ -40,6 +45,7 @@ impl Default for CompressOptions {
     fn default() -> Self {
         Self {
             booleans: true,
+            dead_code: true,
             evaluate: true,
             global_defs: true,
             typeofs: true,
