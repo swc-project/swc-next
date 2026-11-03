@@ -153,7 +153,7 @@ pub fn serialize_into(
     ];
     for (value, output) in header
         .into_iter()
-        .zip(buf[..HEADER_SIZE].chunks_exact_mut(4))
+        .zip(buf[..HEADER_SIZE].as_chunks_mut::<4>().0.iter_mut())
     {
         output.copy_from_slice(&value.to_le_bytes());
     }
@@ -174,7 +174,7 @@ pub fn serialize_into(
         for (span, output) in
             unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) }
                 .iter()
-                .zip(span_buf.chunks_exact_mut(SPAN_SIZE))
+                .zip(span_buf.as_chunks_mut::<SPAN_SIZE>().0.iter_mut())
         {
             let start = cache.convert(span.start);
             let end = cache.convert(span.end);
@@ -245,7 +245,7 @@ pub fn serialize_into(
     let comment_buf = &mut buf[pos..pos + comments_len];
     for (comment, output) in comments
         .iter()
-        .zip(comment_buf.chunks_exact_mut(COMMENT_SIZE))
+        .zip(comment_buf.as_chunks_mut::<COMMENT_SIZE>().0.iter_mut())
     {
         let start = cache.convert(comment.span.start);
         let end = cache.convert(comment.span.end);
