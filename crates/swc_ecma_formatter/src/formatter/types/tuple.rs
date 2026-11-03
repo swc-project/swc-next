@@ -120,7 +120,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     } else {
                         // A whole Source target retains its leading placement so a break
                         // cannot change an Inline ignore into an OwnLine type-head ignore.
-                        let opening = if leading_mode == ContentMode::Verbatim {
+                        let keeps_union_owner = selected_child
+                            && matches!(&element_content, PreparedTupleElement::Type(node)
+                                if node.source_owner.is_some_and(|owner| {
+                                    matches!(ast.ts_type_data(owner), swc_next_ecma_ast::TsTypeData::TsUnionType(_))
+                                }));
+                        let opening = if leading_mode == ContentMode::Verbatim || keeps_union_owner {
                             let start = leading.first().map_or(element_span.start, |comment| comment.span.start);
                             self.source_line_constraint(content.start, start)
                         } else {

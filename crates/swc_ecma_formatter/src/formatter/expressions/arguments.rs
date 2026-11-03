@@ -698,7 +698,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Some(comma) if self.diagnostic_line_is_sensitive(comma) => {
                     Some(self.terminal_comma_close_constraint(closing, end, comma))
                 }
-                None => Some(self.terminal_close_constraint(closing, end)),
+                None => {
+                    let constraint = self.terminal_close_constraint(closing, end);
+                    if release_terminal
+                        && matches!(trailing_comma, TrailingCommaPolicy::IfBreak(_))
+                        && matches!(constraint, LineConstraint::NewLine(_))
+                    {
+                        Some(LineConstraint::NewLine(1))
+                    } else {
+                        Some(constraint)
+                    }
+                }
                 Some(_) => None,
             }
         });
@@ -1014,6 +1024,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let suffix_precedes_comma =
             comma.is_none_or(|comma| boundary.last().is_some_and(|last| last.span.end <= comma));
         if required_comma {
+            if let Some(comma) = protected_comma
+                && boundary.is_empty()
+            {
+                self.source_line_constraint(content_end, comma).write(
+                    writer,
+                    FlatSeparator::Empty,
+                    |_| {},
+                );
+            }
             if !separator_coverage_released
                 && let Some(comma) = comma
                 && let Some(last) = boundary.last()

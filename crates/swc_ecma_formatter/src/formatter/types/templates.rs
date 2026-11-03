@@ -73,15 +73,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     CommentRunLayout::Leading(span.start),
                     writer,
                 )?;
-                let tail = formatter.format_prepared_type_with_layout(
-                    node,
-                    TypeContext::Root,
-                    match layout {
-                        TemplateSlotLayout::Child => TypeLayout::Root,
-                        TemplateSlotLayout::Boundaries(_) => TypeLayout::CallerIndented,
-                    },
-                    writer,
-                )?;
+                let layout = match layout {
+                    TemplateSlotLayout::Child => TypeLayout::Root,
+                    TemplateSlotLayout::Boundaries(_) => TypeLayout::CallerIndented,
+                };
+                let tail = if trailing.is_empty() {
+                    let layout = formatter.continuation_type_layout(span, layout);
+                    formatter
+                        .format_type_before_continuation(span, writer, |formatter, writer| {
+                            formatter.format_prepared_type_output(
+                                node,
+                                TypeContext::Root,
+                                layout,
+                                writer,
+                            )
+                        })?
+                        .pending
+                } else {
+                    formatter.format_prepared_type_with_layout(
+                        node,
+                        TypeContext::Root,
+                        layout,
+                        writer,
+                    )?
+                };
                 formatter.format_expression_tail(tail, writer)?;
                 formatter.format_comment_boundary(&after, writer)
             },

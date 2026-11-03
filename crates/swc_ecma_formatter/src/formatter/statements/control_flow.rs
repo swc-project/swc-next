@@ -138,8 +138,6 @@ struct Condition<'ast> {
 /// The keyword retains its source separator after its body has consumed a tail prefix.
 struct BodyKeyword {
     span: Span,
-    source_end: u32,
-    binding: CommentBinding,
     following: CommentGap,
     adjacent: bool,
     line: bool,
@@ -866,8 +864,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         BodyKeyword {
             span,
-            source_end,
-            binding: self.comment_binding(comments, Span::new(source_end, span.start), None),
             following,
             adjacent,
             line,
@@ -886,41 +882,43 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.between(span)?;
         if let Some(first) = comments.first() {
             let first = first.span.start;
-            self.line_constraint(keyword.source_end, first).write(
-                writer,
-                FlatSeparator::Space,
-                |writer| {
-                    if !keyword.binding.allows_relocation(None) {
-                        self.comment_gap(keyword.source_end, first, writer);
-                    } else if keyword.adjacent {
-                        if self.line_breaks(keyword.source_end, first) != 0 {
+            let source_end = span.start;
+            let binding = self.comment_binding(comments, span, None);
+            self.line_constraint(source_end, first)
+                .write(writer, FlatSeparator::Space, |writer| {
+                    if !binding.allows_relocation(None) {
+                        self.comment_gap(source_end, first, writer);
+                    } else {
+                        let breaks = self.line_breaks(source_end, first);
+                        if keyword.adjacent && breaks == 0 {
+                            writer.space();
+                        } else {
                             writer.hard_line();
-                            if self.line_breaks(keyword.source_end, first) == 2 {
+                            if breaks == 2 {
                                 writer.hard_line();
                             }
-                        } else {
-                            writer.space();
-                        }
-                    } else {
-                        writer.hard_line();
-                        if self.line_breaks(keyword.source_end, first) == 2 {
-                            writer.hard_line();
                         }
                     }
-                },
-            );
+                });
             self.comments.claim(comments)?;
             self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
         }
-        keyword
-            .following
-            .write(writer, FlatSeparator::Space, |writer| {
-                if keyword.line {
-                    writer.hard_line();
-                } else {
-                    writer.space();
-                }
-            });
+        let following = if !keyword.following.requires_line()
+            && comments
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        {
+            CommentGap::LineComment
+        } else {
+            keyword.following
+        };
+        following.write(writer, FlatSeparator::Space, |writer| {
+            if keyword.line {
+                writer.hard_line();
+            } else {
+                writer.space();
+            }
+        });
         writer.text(text);
         Ok(())
     }

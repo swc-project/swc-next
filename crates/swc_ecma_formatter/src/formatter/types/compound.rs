@@ -1398,10 +1398,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 let tail = self.format_union_member(last, prefix, prepared, hug, writer)?;
                 let own_line = self.type_tail_closing_gap(tail.as_ref()).is_some();
-                if (layout == TypeLayout::ContinuationRoot
-                    || layout == TypeLayout::ConditionalConsequent
-                    || enclosure == super::TypeEnclosure::Parentheses)
-                    && own_line
+                let enclosed_line_tail = enclosure == super::TypeEnclosure::Parentheses
+                    && tail.as_ref().is_some_and(|tail| {
+                        tail.comments
+                            .last()
+                            .is_some_and(|comment| comment.kind == CommentKind::Line)
+                    });
+                if enclosed_line_tail
+                    || layout == TypeLayout::ContinuationRoot
+                        && self
+                            .type_tail_continuation_gap(tail.as_ref(), true)
+                            .is_some()
+                    || layout == TypeLayout::ConditionalConsequent && own_line
                 {
                     writer.break_parent();
                 }

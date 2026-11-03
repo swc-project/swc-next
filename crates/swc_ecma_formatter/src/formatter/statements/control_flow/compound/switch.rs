@@ -439,7 +439,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         run.last()
                             .is_some_and(|comment| comment.span.end <= empty.span(ast).start)
                     });
-                    if matches!(position, SuppressionPosition::EndOfLine)
+                    let header_line = run.iter().any(|&comment| {
+                        comment.kind == CommentKind::Line && is_suppression_comment(ast, comment)
+                    });
+                    if matches!(position, SuppressionPosition::EndOfLine) && !header_line
                         || first.is_none()
                         || before_empty && matches!(position, SuppressionPosition::Inline)
                     {

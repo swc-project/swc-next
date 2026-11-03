@@ -2140,6 +2140,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source_end = pending.as_ref().map_or(span.start, |tail| tail.source_end);
         let comments = self.comments.between(Span::new(source_end, span.end))?;
         let available = comments.len();
+        let diagnostic_end = pending
+            .as_ref()
+            .and_then(|tail| tail.comments.last())
+            .filter(|last| {
+                has_following
+                    && last.span.end < boundary.source_end
+                    && self.comment_semantics(**last).diagnostic
+                    && self.line_breaks(last.span.end, boundary.source_end) != 0
+                    && self.line_breaks(boundary.source_end, span.end) == 0
+            })
+            .map(|last| last.span.end);
         let (comments, source_end) = if let Some(tail) = pending {
             // Keep the leased child tail and the parent's suffix in one packet:
             // a later block must not overtake a pending line suffix.
@@ -2161,10 +2172,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     Span::new(tail.source_end, span.end),
                     tail.source_end,
                     has_following,
-                    tail.comments.last().map(|last| ReleasedTailGap {
-                        tail_end: last.span.end,
-                        source_end: boundary.source_end,
-                    }),
+                    tail.comments
+                        .last()
+                        .filter(|_| diagnostic_end.is_none())
+                        .map(|last| ReleasedTailGap {
+                            tail_end: last.span.end,
+                            source_end: boundary.source_end,
+                        }),
                 );
                 if prefix.is_empty() && has_following {
                     return Ok((tail.source_end, None));
@@ -2173,9 +2187,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 (&comments[..count], Some(tail.source_end))
             } else {
                 let (inherited, following) = comments.split_at(tail.comments.len());
-                let start = inherited
-                    .last()
-                    .map_or(span.start, |comment| span.start.max(comment.span.end));
+                let start = diagnostic_end.unwrap_or_else(|| {
+                    inherited
+                        .last()
+                        .map_or(span.start, |comment| span.start.max(comment.span.end))
+                });
                 let following = self.trailing_comment_prefix(
                     following,
                     Span::new(start, span.end),
@@ -2215,10 +2231,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     )?;
                 }
             }
-            let following_gap = (source_end.is_some()
-                && last.kind == CommentKind::Line
-                && comments.len() < available)
-                .then(|| self.line_suffix_following_gap(last.span.end));
+            let following_gap = if source_end.is_none() {
+                None
+            } else if last.kind == CommentKind::Line {
+                (!has_following
+                    || comments.len() < available
+                    || diagnostic_end == Some(last.span.end))
+                .then(|| self.line_suffix_following_gap(last.span.end))
+            } else if diagnostic_end == Some(last.span.end) {
+                let next = self
+                    .comments
+                    .first()
+                    .map_or(span.end, |next| next.span.start);
+                match self.line_constraint(last.span.end, next.min(span.end)) {
+                    gap @ LineConstraint::NewLine(_) => Some(gap),
+                    _ => None,
+                }
+            } else {
+                None
+            };
             Ok((span.start.max(last.span.end), following_gap))
         } else {
             Ok((span.start, None))

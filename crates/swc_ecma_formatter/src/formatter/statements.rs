@@ -195,6 +195,7 @@ struct StatementLayout {
 pub(super) struct StatementSequence {
     pub(super) has_content: bool,
     end: u32,
+    closing_gap: Option<LineConstraint>,
 }
 
 #[derive(Clone, Copy)]
@@ -614,6 +615,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => None,
         };
         let mut previous = hashbang_end.map(|end| StatementBoundary::Hashbang { end });
+        let mut closing_gap = None;
         let header_barrier = match kind {
             StatementSequenceKind::Program { header_barrier, .. } => header_barrier,
             _ => None,
@@ -824,6 +826,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             let leading = self.comments.take(leading.len());
             let mut expression_start = ExpressionStart::StatementPending;
+            if first_statement
+                && matches!(kind, StatementSequenceKind::Case { .. })
+                && mode == ContentMode::Verbatim
+                && leading.iter().any(|&comment| {
+                    comment.kind == CommentKind::Line && self.comment_semantics(comment).suppression
+                })
+            {
+                // The case colon already separates this ignored expression.
+                expression_start = ExpressionStart::StatementGuarded;
+            }
             let mut header_prefix = 0;
             let first_program_statement =
                 first_statement && matches!(kind, StatementSequenceKind::Program { .. });
@@ -1090,7 +1102,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let (end, following_gap) = if let Some(tail) = omitted
                 && source_packet.is_none()
             {
-                self.format_omitted_statement_tail(tail, trailing_start, pending_tail, writer)?
+                self.format_omitted_statement_tail(
+                    tail,
+                    trailing_start,
+                    pending_tail,
+                    following.is_some(),
+                    writer,
+                )?
             } else {
                 self.format_trailing_comments(
                     Span::new(trailing_start, following.unwrap_or(span.end)),
@@ -1115,6 +1133,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             previous_span_end = statement_span.end;
             previous = Some(boundary.with_end(end));
+            closing_gap = following_gap;
             previous_omitted = omitted;
         }
         let layout = match (previous, kind) {
@@ -1138,7 +1157,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let transferred = body_leading.take_dangling();
         if !transferred.is_empty() {
             if previous.is_some() {
-                writer.hard_line();
+                closing_gap
+                    .take()
+                    .unwrap_or(LineConstraint::NewLine(1))
+                    .write(writer, FlatSeparator::Empty, |_| {});
             }
             let transferred_layout = if matches!(kind, StatementSequenceKind::Static { .. }) {
                 layout
@@ -1162,6 +1184,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 if self.next_line_is_empty(boundary.end(), first.span.start) {
                     writer.hard_line();
                 }
+            } else if let Some(gap) = closing_gap.take() {
+                gap.write(writer, FlatSeparator::Empty, |_| {});
             } else {
                 self.comment_gap(boundary.end(), first.span.start, writer);
             }
@@ -1169,6 +1193,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_comment_run(dangling, layout, writer)?;
         Ok(StatementSequence {
             has_content: !first_statement || !dangling.is_empty() || !transferred.is_empty(),
+            closing_gap,
             end: dangling.last().map_or_else(
                 || previous.map_or(span.start, StatementBoundary::end),
                 |comment| comment.span.end,
@@ -1234,6 +1259,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: OmittedStatementTail<'ast>,
         start: u32,
         pending: Option<ExpressionTail<'ast>>,
+        has_following: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<(u32, Option<LineConstraint>), FormatError> {
         let source_end = pending.as_ref().map_or(start, |pending| pending.source_end);
@@ -1248,7 +1274,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.between(Span::new(source_end, end))?;
         self.comments.claim(comments)?;
         let following_gap = comments.last().and_then(|comment| {
-            (pending.is_some() && tail.has_following_comments && comment.kind == CommentKind::Line)
+            (pending.is_some()
+                && (!has_following || tail.has_following_comments)
+                && comment.kind == CommentKind::Line)
                 .then(|| self.line_suffix_following_gap(comment.span.end))
         });
         let binding =
@@ -2155,11 +2183,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 opening.write(writer, FlatSeparator::Space, Writer::hard_line);
                 self.format_statement_sequence(items, content, kind, writer)
             })?;
-            self.line_constraint(sequence.end, content.end).write(
-                writer,
-                FlatSeparator::Space,
-                Writer::hard_line,
-            );
+            let closing = sequence
+                .closing_gap
+                .unwrap_or_else(|| self.line_constraint(sequence.end, content.end));
+            closing.write(writer, FlatSeparator::Space, Writer::hard_line);
         }
         writer.text("}");
         Ok(())

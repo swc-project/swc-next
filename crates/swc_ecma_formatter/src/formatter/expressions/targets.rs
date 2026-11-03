@@ -209,6 +209,17 @@ impl SourceTarget {
             .iter()
             .any(|layer| layer.mode != TargetLayerMode::Remove)
     }
+
+    pub(in crate::formatter) fn lexical_start(&self, ast: &Ast<'_>) -> u32 {
+        self.envelope
+            .layers
+            .iter()
+            .find(|layer| layer.mode != TargetLayerMode::Remove)
+            .map_or_else(
+                || self.envelope.target.span(ast).start,
+                |layer| layer.parentheses.outer.start,
+            )
+    }
 }
 
 /// Only walks the owner's gaps; complete target and comment bodies are excluded.
@@ -354,7 +365,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    pub(super) fn update_source_target(
+    pub(in crate::formatter) fn update_source_target(
         &self,
         update: UpdateExpression,
     ) -> Result<SourceTarget, FormatError> {

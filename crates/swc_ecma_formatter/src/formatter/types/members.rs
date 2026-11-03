@@ -433,8 +433,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             && self.line_constraint(gap_span.start, gap_span.end)
                                 == LineConstraint::SameLine);
                     let after_separator = prepared.after_separator.take();
-                    let tail = self.format_type_member(prepared, quoting, writer)?;
-                    self.format_expression_tail(tail, writer)?;
+                    let mut tail = self.format_type_member(prepared, quoting, writer)?;
+                    let emit_tail_after_separator = !source
+                        && !source_gap
+                        && self.type_tail_closing_gap(tail.as_ref()).is_some();
+                    if !emit_tail_after_separator {
+                        self.format_expression_tail(tail.take(), writer)?;
+                    }
                     if !source && !source_gap {
                         if required_separator
                             || next.is_some() && self.options.semicolons == Semicolons::Always
@@ -446,6 +451,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer.if_flat(";");
                         }
                     }
+                    self.format_expression_tail(tail, writer)?;
                     self.format_expression_tail(after_separator, writer)?;
                     if next.is_none() {
                         return match gap {

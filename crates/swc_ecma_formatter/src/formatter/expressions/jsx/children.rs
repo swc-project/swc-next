@@ -111,7 +111,7 @@ enum JsxContentEdge {
         nested_jsx: bool,
     },
     Literal {
-        leading_line: bool,
+        explicit_leading_space: bool,
         trailing_line: bool,
     },
     WhitespaceLiteral {
@@ -133,7 +133,12 @@ impl JsxChildrenStream {
     fn separator(&mut self, separator: JsxSeparator, source: Span) {
         // A lone physical line break between children has no JSX value. Keep
         // the boundary selected by those children, including after a space literal.
-        if matches!(separator, JsxSeparator::Newline { empty_line: false }) {
+        if matches!(separator, JsxSeparator::Newline { empty_line: false })
+            || matches!(separator, JsxSeparator::Newline { .. })
+                && self.previous.as_ref().is_some_and(|(edge, ..)| {
+                    matches!(edge, JsxContentEdge::WhitespaceLiteral { .. })
+                })
+        {
             return;
         }
         match (&mut self.pending, separator) {
@@ -217,7 +222,7 @@ impl JsxChildrenStream {
                     literal_line: matches!(
                         next,
                         JsxContentEdge::Literal {
-                            leading_line: true,
+                            explicit_leading_space: true,
                             ..
                         }
                     ),
@@ -255,7 +260,7 @@ impl JsxChildrenStream {
                     if matches!(
                         next,
                         JsxContentEdge::Literal {
-                            leading_line: true,
+                            explicit_leading_space: true,
                             ..
                         }
                     ) || matches!(
@@ -593,7 +598,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             .find(|byte| !matches!(byte, b' ' | b'\t'))
                             .is_some_and(|byte| matches!(byte, b'\r' | b'\n'));
                         let leading_spaces = raw.bytes().take_while(|byte| *byte == b' ').count();
-                        let raw = if leading_spaces > 0 && !leading_line {
+                        // Splitting an ASCII space from a tab would turn that tab
+                        // into indentation when the separator wraps.
+                        let raw = if leading_spaces > 0
+                            && !leading_line
+                            && raw.as_bytes().get(leading_spaces) != Some(&b'\t')
+                        {
                             let end = source.start + leading_spaces as u32;
                             stream.separator(
                                 JsxSeparator::Space {
@@ -609,7 +619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         // An opaque run owns its physical lines, so the space
                         // before its first line must survive outside that run.
                         let edge = JsxContentEdge::Literal {
-                            leading_line,
+                            explicit_leading_space: leading_line || raw.starts_with('\t'),
                             trailing_line: raw
                                 .bytes()
                                 .rev()

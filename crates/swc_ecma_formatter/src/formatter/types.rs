@@ -2756,7 +2756,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         SuppressedTypeHeadRole::ConditionalExtends
                             | SuppressedTypeHeadRole::MappedBoundary
                     ) && attachment.removable_parentheses
-                        && node.source_head.is_none())
+                        && (node.source_head.is_none()
+                            || matches!(role, SuppressedTypeHeadRole::ConditionalExtends)
+                                && node.source_head == attachment.source_barrier))
                 || attachment.union
                     && !(matches!(role, SuppressedTypeHeadRole::ConditionalExtends)
                         && marker_only
@@ -3512,11 +3514,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
         print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        self.format_type_at_continuation(span, false, writer, print)
+    }
+
+    fn format_type_at_continuation(
+        &mut self,
+        span: Span,
+        body_follows: bool,
+        writer: &mut Writer<'ast>,
+        print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
         if self.comments.in_range(span).is_empty() {
             return print(self, writer);
         }
         let (content, output) = writer.record_with_value(|writer| print(self, writer))?;
-        let Some(gap) = self.type_tail_closing_gap(output.pending.as_ref()) else {
+        let Some(gap) = self.type_tail_continuation_gap(output.pending.as_ref(), body_follows)
+        else {
             writer.write_fragment(content);
             return Ok(output);
         };
@@ -3533,11 +3546,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         })
     }
 
+    fn type_tail_continuation_gap(
+        &self,
+        tail: Option<&ExpressionTail<'ast>>,
+        keep_inline_line: bool,
+    ) -> Option<CommentGap> {
+        let tail = tail?;
+        let last = tail.comments.last()?;
+        (keep_inline_line && last.kind == CommentKind::Line
+            || self.line_breaks(tail.source_end, last.span.end) != 0)
+            .then_some(CommentGap::Source(LineConstraint::NewLine(1)))
+    }
+
     fn continuation_type_layout(&self, span: Span, layout: TypeLayout) -> TypeLayout {
-        if layout == TypeLayout::Root
+        self.type_layout_at_continuation(span, layout, false)
+    }
+
+    fn type_layout_at_continuation(
+        &self,
+        span: Span,
+        layout: TypeLayout,
+        body_follows: bool,
+    ) -> TypeLayout {
+        if matches!(layout, TypeLayout::Root | TypeLayout::SignatureParameter)
             && self.comments.in_range(span).last().is_some_and(|comment| {
-                comment.kind == CommentKind::Line
-                    && self.source_line_starts_line(comment.span.start)
+                (body_follows && comment.kind == CommentKind::Line
+                    || self.source_line_starts_line(comment.span.start)
+                    || self.line_breaks(comment.span.start, comment.span.end) != 0)
                     && self
                         .source(Span::new(comment.span.end, span.end))
                         .chars()
@@ -3717,10 +3752,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match self.ast.ts_type_name_data(name) {
             TsTypeNameData::IdentifierReference(identifier) => {
-                writer.text(self.ast.get_utf8(identifier.name(self.ast)));
+                writer.text(self.type_reference_spelling(identifier));
                 Ok(())
             }
             TsTypeNameData::TsQualifiedName(name) => self.format_qualified_type_name(name, writer),
+        }
+    }
+
+    fn type_reference_spelling(&self, identifier: IdentifierReference) -> &'ast str {
+        // The type parser distinguishes escaped keywords from grammar tokens.
+        let name = self.ast.get_utf8(identifier.name(self.ast));
+        match name {
+            "any" | "bigint" | "boolean" | "never" | "null" | "number" | "object" | "string"
+            | "symbol" | "undefined" | "unknown" | "void" | "this" | "asserts" | "keyof"
+            | "unique" | "readonly" | "infer" | "typeof" | "import" | "intrinsic" => {
+                self.source(identifier.span(self.ast))
+            }
+            _ => name,
         }
     }
 
@@ -3757,7 +3805,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         match self.ast.ts_qualified_name_left_data(left) {
             TsQualifiedNameLeftData::IdentifierReference(node) => {
-                writer.text(self.ast.get_utf8(node.name(self.ast)))
+                writer.text(self.type_reference_spelling(node))
             }
             TsQualifiedNameLeftData::IdentifierName(node) => {
                 writer.text(self.ast.get_utf8(node.name(self.ast)))
@@ -4880,7 +4928,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         if let BinaryTypeHeadLayout::TrailingNamed { name, tail } = head.0 {
             // This name has no nested token boundary to consume the leased packet.
-            writer.text(self.ast.get_utf8(name.name(self.ast)));
+            writer.text(self.type_reference_spelling(name));
             return Ok(ExpressionOutput::closed(Some(tail)));
         }
         let BinaryTypeHead(BinaryTypeHeadLayout::Caller { leading, own_line }) = head else {

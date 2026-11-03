@@ -491,6 +491,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     super::expressions::targets::SimpleTarget::new(self.ast, target).expression()
                 }
                 ExprData::UpdateExpression(update) if !update.prefix(self.ast) => {
+                    let target = self.update_source_target(update)?;
+                    let start = target.lexical_start(self.ast);
+                    if self.restricted_head_requires_envelope(comments.leading(start), start) {
+                        // The update owns these comments even when it removes its source pair.
+                        requires_envelope = true;
+                        break;
+                    }
+                    if target.has_retained_parentheses() {
+                        break;
+                    }
                     context = ExpressionContext::at(ExpressionPosition::UpdateArgument);
                     super::expressions::targets::SimpleTarget::new(
                         self.ast,

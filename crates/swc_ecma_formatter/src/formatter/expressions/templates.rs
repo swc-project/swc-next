@@ -1,7 +1,7 @@
 //! Runtime expression slots and the distinct tagged-template operand edge.
 
 use swc_next_ecma_ast::{
-    Comment, Expr, ExprData, GetSpan, Span, TaggedTemplateExpression, TemplateLiteral,
+    Comment, CommentKind, Expr, ExprData, GetSpan, Span, TaggedTemplateExpression, TemplateLiteral,
 };
 
 use super::{
@@ -284,7 +284,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if let Some(types) = head.types {
             self.format_expression_type_arguments(types, tail, writer)?;
         } else {
+            let ends_with_line_comment = tail.as_ref().is_some_and(|tail| {
+                tail.comments
+                    .last()
+                    .is_some_and(|comment| comment.kind == CommentKind::Line)
+            });
             self.format_expression_tail(tail, writer)?;
+            if ends_with_line_comment {
+                writer.hard_line();
+            }
         }
         match head.gap {
             TemplateTagGap::Source(gap) => self.format_verbatim(gap, writer)?,
