@@ -847,7 +847,12 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
         }
 
         let key_span = node.key(self.ast).span(self.ast);
-        let key_token = self.tokens.first_in_range(key_span.start, key_span.end);
+        // A computed key starts an expression, where a context-free read is unreliable.
+        let key_token = if node.computed(self.ast) {
+            None
+        } else {
+            self.tokens.first_in_range(key_span.start, key_span.end)
+        };
         let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         let mut first_erased_modifier = None;
         if node.readonly(self.ast) {
@@ -909,7 +914,12 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     fn visit_method_definition(&mut self, node: MethodDefinition) {
         let span = node.span(self.ast);
         let key_span = node.key(self.ast).span(self.ast);
-        let key_token = self.tokens.first_in_range(key_span.start, key_span.end);
+        // A computed key starts an expression, where a context-free read is unreliable.
+        let key_token = if node.computed(self.ast) {
+            None
+        } else {
+            self.tokens.first_in_range(key_span.start, key_span.end)
+        };
         let modifiers_start = modifiers_start(span.start, node.decorators(self.ast), self.ast);
         let mut first_erased_modifier = None;
         if node.r#abstract(self.ast) {
