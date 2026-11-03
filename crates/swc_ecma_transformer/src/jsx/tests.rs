@@ -36,7 +36,7 @@ fn transform_with_diagnostics(
         source_type,
         lang,
         TransformerOptions {
-            jsx: Some(Box::new(jsx)),
+            jsx: Some(jsx),
             typescript: typescript.then(TypeScriptOptions::default),
             ..TransformerOptions::default()
         },
@@ -140,13 +140,13 @@ impl<'ast> Visit<'ast> for ArrowBodies<'_, 'ast> {
 
 fn classic_development(source: &str) -> String {
     let options = TransformerOptions {
-        source_path: Some("input.jsx".to_owned()),
-        jsx: Some(Box::new(JsxOptions {
+        filename: Some("input.jsx".to_owned()),
+        jsx: Some(JsxOptions {
             runtime: JsxRuntime::Classic,
             development: true,
             source_self: true,
             ..JsxOptions::default()
-        })),
+        }),
         ..TransformerOptions::default()
     };
     let (output, diagnostics) = transform_options(source, SourceType::Module, Lang::Jsx, options);
@@ -160,12 +160,12 @@ fn display_name(source: &str) -> String {
 
 fn display_name_at(source: &str, path: &str) -> String {
     let options = TransformerOptions {
-        source_path: Some(path.to_owned()),
-        react_display_name: true,
-        jsx: Some(Box::new(JsxOptions {
+        filename: Some(path.to_owned()),
+        jsx: Some(JsxOptions {
             runtime: JsxRuntime::Classic,
+            display_name: true,
             ..JsxOptions::default()
-        })),
+        }),
         ..TransformerOptions::default()
     };
     let (output, diagnostics) = transform_options(source, SourceType::Module, Lang::Jsx, options);
@@ -317,6 +317,13 @@ fn tsx_composition() {
     let source = "import React from 'react'; const node = <div />;";
     let output = lower_tsx(source, &automatic);
     assert!(!output.contains("import React"));
+    assert!(!output.contains("export {}"));
+
+    let output = lower_tsx(
+        "import type { T } from 'types'; const node = <div />;",
+        &options,
+    );
+    assert!(output.contains("export {}"));
 
     let classic = JsxOptions {
         runtime: JsxRuntime::Classic,
@@ -340,6 +347,11 @@ fn tsx_composition() {
 
     let output = lower_tsx("import h = require('ui'); const node = <div />;", &classic);
     assert!(output.contains("import.sync(\"ui\")"));
+
+    let source = "/** @jsx import.meta.h */ import React from 'react'; const node = <div />;";
+    let output = lower_tsx(source, &classic);
+    assert!(!output.contains("from \"react\""));
+    assert!(output.contains("import.meta.h(\"div\""));
 }
 
 #[test]
@@ -375,6 +387,11 @@ fn tsx_namespaces() {
     let source = "namespace N { export const h = factory; export const Frag = fragment; export const node = <><div /></>; }";
     let output = lower_tsx(source, &options);
     assert!(output.contains("N.h(N.Frag, null, N.h(\"div\", null))"));
+
+    let source =
+        "/** @jsx h */ namespace N { export const h = factory; export const node = <div />; }";
+    let output = classic_tsx(source);
+    assert!(output.contains("N.h(\"div\", null)"));
 }
 
 #[test]

@@ -67,7 +67,7 @@ impl<'options> QualifiedName<'options> {
         }
     }
 
-    pub(super) fn create_expression(&self, ast: &mut Ast<'_>, namespace: Option<AstUtf8>) -> Expr {
+    pub(super) fn create_expression(&self, ast: &mut Ast<'_>) -> Expr {
         let mut expression = match self.root {
             NameRoot::This => ast.expr_this_expression(DUMMY_SP),
             NameRoot::ImportMeta => {
@@ -78,13 +78,8 @@ impl<'options> QualifiedName<'options> {
                 ast.expr_meta_property(DUMMY_SP, import, meta)
             }
             NameRoot::Identifier(root) => {
-                if let Some(namespace) = namespace {
-                    let object = ast.expr_identifier_reference(DUMMY_SP, namespace);
-                    static_member(ast, object, root, DUMMY_SP)
-                } else {
-                    let name = ast.add_utf8(root);
-                    ast.expr_identifier_reference(DUMMY_SP, name)
-                }
+                let name = ast.add_utf8(root);
+                ast.expr_identifier_reference(DUMMY_SP, name)
             }
         };
         if let Some(properties) = self.properties {
@@ -310,12 +305,12 @@ mod tests {
         let allocator = Allocator::new();
         let mut ast = Ast::new("", &allocator);
         let path = QualifiedName::parse(Some("import.meta.h"), "React", "createElement");
-        let expression = path.create_expression(&mut ast, None);
+        let expression = path.create_expression(&mut ast);
         let member = expression.as_member_expression(&ast).unwrap();
         assert!(member.object(&ast).is_meta_property(&ast));
 
         let path = QualifiedName::parse(Some("this.h"), "React", "createElement");
-        let expression = path.create_expression(&mut ast, None);
+        let expression = path.create_expression(&mut ast);
         let member = expression.as_member_expression(&ast).unwrap();
         assert!(member.object(&ast).is_this_expression(&ast));
     }

@@ -1,8 +1,6 @@
 use swc_next_ecma_ast::{Ast, Lang, Program, SubRange};
 use swc_next_ecma_semantic::Semantic;
 
-use crate::syntax::{FollowingTransform, Noop};
-
 mod analysis;
 mod lower;
 
@@ -16,7 +14,7 @@ pub fn transform<'a>(
     program: Program,
     ast: &mut Ast<'a>,
     semantic: &Semantic<'a>,
-    options: TypeScriptOptions,
+    options: &TypeScriptOptions,
 ) {
     if ast.lang() == Lang::Dts {
         program.set_directives(ast, SubRange::empty());
@@ -29,27 +27,13 @@ pub fn transform<'a>(
     let dependencies = analysis::jsx_dependencies(program, ast, semantic, &options.jsx);
     let analysis =
         analysis::TypeScriptAnalysis::analyze(program, ast, semantic, &options, dependencies);
-    lower::TypeScriptLowerer::new(&options, analysis, ast, semantic, &mut Noop)
-        .lower_program(program);
-}
-
-pub(crate) fn transform_with_following<'a>(
-    program: Program,
-    ast: &mut Ast<'a>,
-    semantic: &Semantic<'a>,
-    options: TypeScriptOptions,
-    following: &mut impl FollowingTransform<'a>,
-) {
-    if ast.lang() == Lang::Dts {
-        transform(program, ast, semantic, options);
-        return;
-    }
-
-    let dependencies = following.runtime_dependencies(semantic);
-    let analysis =
-        analysis::TypeScriptAnalysis::analyze(program, ast, semantic, &options, dependencies);
-    lower::TypeScriptLowerer::new(&options, analysis, ast, semantic, following)
-        .lower_program(program);
+    lower::TypeScriptLowerer::new(&options, analysis, ast, semantic).lower_program(program);
+    let lang = match ast.lang() {
+        Lang::Ts => Lang::Js,
+        Lang::Tsx => Lang::Jsx,
+        lang => lang,
+    };
+    ast.set_source_metadata(ast.source_type(), lang);
 }
 
 #[cfg(test)]

@@ -1,8 +1,5 @@
 use super::super::text;
-use super::{
-    JsxEmitter, JsxLowerer, JsxRoot, LoweringContext, NamespaceProjection, build::*,
-    runtime::RuntimeHelper,
-};
+use super::{JsxEmitter, JsxLowerer, LoweringContext, build::*, runtime::RuntimeHelper};
 use swc_next_ecma_ast::GetSpan;
 use swc_next_ecma_ast::{
     Argument, Ast, CommentKind, CommentPosition, DUMMY_SP, Diagnostic, Expr, ExprData,
@@ -12,43 +9,30 @@ use swc_next_ecma_ast::{
     PropertyKind, Span, SubRange,
 };
 
-impl<'ast, const TRACK_SELF: bool> JsxLowerer<'_, 'ast, TRACK_SELF> {
+impl<'ast> JsxLowerer<'_, 'ast> {
     pub(super) fn lower_expression(
         &mut self,
         expression: Expr,
         ast: &mut Ast<'ast>,
     ) -> Option<Expr> {
         match ast.expr_data(expression) {
-            ExprData::JsxElement(element) => Some(
-                JsxEmitter {
-                    state: self,
-                    namespace: NamespaceProjection::default(),
-                }
-                .lower_element(element, ast),
-            ),
-            ExprData::JsxFragment(fragment) => Some(
-                JsxEmitter {
-                    state: self,
-                    namespace: NamespaceProjection::default(),
-                }
-                .lower_fragment(fragment, ast),
-            ),
+            ExprData::JsxElement(element) => {
+                Some(JsxEmitter { state: self }.lower_element(element, ast))
+            }
+            ExprData::JsxFragment(fragment) => {
+                Some(JsxEmitter { state: self }.lower_fragment(fragment, ast))
+            }
             _ => None,
         }
     }
 }
 
-impl<'ast, const TRACK_SELF: bool> JsxEmitter<'_, '_, 'ast, TRACK_SELF> {
-    pub(super) fn lower_root(&mut self, root: JsxRoot, ast: &mut Ast<'ast>) -> Expr {
-        match root {
-            JsxRoot::Element(element) => self.lower_element(element, ast),
-            JsxRoot::Fragment(fragment) => self.lower_fragment(fragment, ast),
-        }
-    }
-
+impl<'ast> JsxEmitter<'_, '_, 'ast> {
     fn lower_element(&mut self, element: JsxElement, ast: &mut Ast<'ast>) -> Expr {
         let span = element.span(ast);
-        let can_add_self = TRACK_SELF && self.state.self_context.can_add_self();
+        let can_add_self = self.state.options.development
+            && self.state.options.source_self
+            && self.state.self_context.can_add_self();
         let opening = element.opening_element(ast);
         let name = self.lower_element_name(opening.name(ast), ast);
         let attributes = opening.attributes(ast);

@@ -183,7 +183,7 @@ impl TransformCase for BabelTransformCase {
             .path
             .strip_prefix(babel_root)
             .expect("Babel fixture path");
-        options.source_path = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
+        options.filename = Some(format!("<CWD>/{}", relative_path.to_string_lossy()));
         options
     }
 

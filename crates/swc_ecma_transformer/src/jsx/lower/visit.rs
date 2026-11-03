@@ -1,89 +1,57 @@
-use super::{JsxEmitter, JsxLowerer, JsxRoot};
-use crate::syntax::{FollowingTransform, NamespaceParameter};
-use rustc_hash::FxHashSet;
-use swc_next_ecma_ast::SymbolId;
+use super::JsxLowerer;
 use swc_next_ecma_ast::VisitMutWith;
 use swc_next_ecma_ast::{
-    Ast, AstUtf8, Class, Expr, Function, Lang, MethodDefinition, NodeId, NodeKindData, Program,
+    Ast, Class, Expr, Function, Lang, MethodDefinition, NodeId, NodeKindData, Program,
     PropertyDefinition, StaticBlock, VisitMut,
 };
-use swc_next_ecma_semantic::Semantic;
 
-impl<'ast, const TRACK_SELF: bool> FollowingTransform<'ast> for JsxLowerer<'_, 'ast, TRACK_SELF> {
+impl<'ast> JsxLowerer<'_, 'ast> {
     fn enter_node(&mut self, node: NodeKindData, ast: &Ast<'ast>) {
-        if TRACK_SELF {
+        if self.options.development && self.options.source_self {
             self.self_context.enter_node(node, ast);
         }
     }
 
     fn enter_expression(&mut self, expression: Expr) {
-        if TRACK_SELF {
+        if self.options.development && self.options.source_self {
             self.self_context.enter_expression(expression.node_id());
         }
     }
 
     fn leave_node(&mut self, node: NodeId) {
-        if TRACK_SELF {
+        if self.options.development && self.options.source_self {
             self.self_context.leave_node(node);
         }
     }
 
-    fn fresh_uid(&mut self, base: &'ast str, ast: &mut Ast<'ast>) -> Option<AstUtf8> {
-        Some(self.uid_generator.fresh(base, ast))
-    }
-
-    fn runtime_dependencies(&mut self, semantic: &Semantic<'_>) -> FxHashSet<SymbolId> {
-        self.bindings.runtime_dependencies(semantic)
-    }
-
-    fn exit_expression(
-        &mut self,
-        expression: Expr,
-        ast: &mut Ast<'ast>,
-        namespace_parameter: &NamespaceParameter<'_>,
-    ) -> Option<Expr> {
-        let root = JsxRoot::from_expression(expression, ast)?;
-        let namespace = self
-            .bindings
-            .project_namespace(expression, ast, namespace_parameter);
-        Some(
-            JsxEmitter {
-                state: self,
-                namespace,
-            }
-            .lower_root(root, ast),
-        )
-    }
-
-    fn finish_program(&mut self, program: Program, ast: &mut Ast<'ast>) {
-        debug_assert!(!TRACK_SELF || self.self_context.is_empty());
+    pub(in crate::jsx) fn finish_program(&mut self, program: Program, ast: &mut Ast<'ast>) {
+        debug_assert!(self.self_context.is_empty());
         self.insert_program_bindings(program, ast);
         let source_type = ast.source_type();
         let lang = match ast.lang() {
-            Lang::Jsx | Lang::Tsx => Lang::Js,
+            Lang::Jsx => Lang::Js,
+            Lang::Tsx => Lang::Ts,
             lang => lang,
         };
         ast.set_source_metadata(source_type, lang);
     }
 }
 
-pub(in crate::jsx) struct JsxVisitor<'visit, 'options, 'ast, const TRACK_SELF: bool> {
+pub(in crate::jsx) struct JsxVisitor<'visit, 'options, 'ast> {
     ast: &'visit mut Ast<'ast>,
-    lowerer: &'visit mut JsxLowerer<'options, 'ast, TRACK_SELF>,
+    lowerer: &'visit mut JsxLowerer<'options, 'ast>,
 }
 
-impl<'visit, 'options, 'ast, const TRACK_SELF: bool>
-    JsxVisitor<'visit, 'options, 'ast, TRACK_SELF>
-{
+impl<'visit, 'options, 'ast> JsxVisitor<'visit, 'options, 'ast> {
     pub(in crate::jsx) fn new(
         ast: &'visit mut Ast<'ast>,
-        lowerer: &'visit mut JsxLowerer<'options, 'ast, TRACK_SELF>,
+        lowerer: &'visit mut JsxLowerer<'options, 'ast>,
     ) -> Self {
         Self { ast, lowerer }
     }
 }
 
-impl<'ast, const TRACK_SELF: bool> VisitMut<'ast> for JsxVisitor<'_, '_, 'ast, TRACK_SELF> {
+impl<'ast> VisitMut<'ast> for JsxVisitor<'_, '_, 'ast> {
     fn ast(&mut self) -> &mut Ast<'ast> {
         self.ast
     }

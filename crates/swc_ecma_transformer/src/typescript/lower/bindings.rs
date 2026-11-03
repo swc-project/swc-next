@@ -1,6 +1,5 @@
 //! Bindings in generated statement-list scopes, shared by enums and namespaces.
 use super::TypeScriptLowerer;
-use crate::syntax::FollowingTransform;
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{
     BindingPattern, Decl, DeclData, ImportOrExportKind, Stmt, StmtData, SubRange, SymbolId,
@@ -8,7 +7,7 @@ use swc_next_ecma_ast::{
 };
 use swc_next_ecma_semantic::SymbolFlags;
 
-impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn runtime_binding_statement(
         &mut self,
         binding: swc_next_ecma_ast::BindingIdentifier,

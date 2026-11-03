@@ -1,5 +1,4 @@
 use super::TypeScriptLowerer;
-use crate::syntax::FollowingTransform;
 use swc_next_ecma_ast::{
     DUMMY_SP, Decl, DeclData, ImportOrExportKind, Program, Stmt, StmtData, SubRange,
     TsModuleNameData, VisitMut, VisitMutWith,
@@ -28,7 +27,7 @@ impl StatementExpansion {
     }
 }
 
-impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn has_module_indicator(&self, statements: SubRange<Stmt>) -> bool {
         statements.iter().any(|statement_id| {
             let statement = self.ast_ref().get_node_in_sub_range(statement_id);

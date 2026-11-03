@@ -24,6 +24,7 @@ pub struct JsxOptions {
     pub pragma_frag: Option<String>,
     pub throw_if_namespace: bool,
     pub pure: Option<bool>,
+    pub display_name: bool,
     pub refresh: Option<ReactRefreshOptions>,
 }
 
@@ -38,6 +39,7 @@ impl Default for JsxOptions {
             pragma_frag: None,
             throw_if_namespace: true,
             pure: None,
+            display_name: false,
             refresh: None,
         }
     }

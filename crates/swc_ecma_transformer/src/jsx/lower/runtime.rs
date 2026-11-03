@@ -1,11 +1,7 @@
 use super::super::{JsxOptions, JsxRuntime};
-use super::{JsxEmitter, JsxLowerer, NamespaceProjection, build::*};
-use crate::{syntax::NamespaceParameter, uid::LazyUidGenerator};
-use rustc_hash::{FxHashMap, FxHashSet};
-use swc_next_ecma_ast::{
-    Ast, AstUtf8, DUMMY_SP, Decl, Expr, NodeId, Program, SourceType, Stmt, SymbolId,
-};
-use swc_next_ecma_semantic::{ReferenceSpace, Semantic, scope::ScopeKind};
+use super::{JsxEmitter, JsxLowerer, build::*};
+use crate::uid::LazyUidGenerator;
+use swc_next_ecma_ast::{Ast, AstUtf8, DUMMY_SP, Decl, Expr, Program, SourceType, Stmt};
 
 pub(crate) enum RuntimeBindings<'options> {
     Classic(ClassicBindings<'options>),
@@ -16,7 +12,6 @@ pub(crate) enum RuntimeBindings<'options> {
 pub(crate) struct ClassicBindings<'options> {
     pragma: QualifiedName<'options>,
     pragma_frag: QualifiedName<'options>,
-    runtime_references: FxHashMap<NodeId, (Option<SymbolId>, Option<SymbolId>)>,
 }
 
 pub(crate) struct AutomaticModuleBindings<'options> {
@@ -92,7 +87,6 @@ impl<'options> RuntimeBindings<'options> {
                     "React",
                     "Fragment",
                 ),
-                runtime_references: FxHashMap::default(),
             });
         }
         let source = AutomaticSource {
@@ -139,14 +133,11 @@ impl<'options> RuntimeBindings<'options> {
         helper: RuntimeHelper,
         ast: &mut Ast<'ast>,
         uid: &mut LazyUidGenerator<'_, 'ast>,
-        namespace: &NamespaceProjection,
     ) -> Expr {
         match self {
             Self::Classic(bindings) => match helper {
-                RuntimeHelper::Fragment => bindings
-                    .pragma_frag
-                    .create_expression(ast, namespace.fragment),
-                _ => bindings.pragma.create_expression(ast, namespace.factory),
+                RuntimeHelper::Fragment => bindings.pragma_frag.create_expression(ast),
+                _ => bindings.pragma.create_expression(ast),
             },
             Self::AutomaticModule(bindings) => {
                 let name = bindings.helper(helper, ast, uid);
@@ -156,36 +147,6 @@ impl<'options> RuntimeBindings<'options> {
                 let object = bindings.object(helper, ast, uid);
                 static_member_with_name(ast, object, helper.imported_name())
             }
-        }
-    }
-
-    pub(super) fn runtime_dependencies(&mut self, semantic: &Semantic<'_>) -> FxHashSet<SymbolId> {
-        match self {
-            Self::Classic(bindings) => bindings.runtime_dependencies(semantic),
-            Self::AutomaticModule(_) | Self::AutomaticScript(_) => FxHashSet::default(),
-        }
-    }
-
-    pub(super) fn project_namespace(
-        &self,
-        expression: Expr,
-        ast: &Ast<'_>,
-        namespace_parameter: &NamespaceParameter<'_>,
-    ) -> NamespaceProjection {
-        let Self::Classic(bindings) = self else {
-            return NamespaceProjection::default();
-        };
-        let Some(&(factory, fragment)) = bindings.runtime_references.get(&expression.node_id())
-        else {
-            return NamespaceProjection::default();
-        };
-        NamespaceProjection {
-            factory: factory
-                .zip(bindings.pragma.root())
-                .and_then(|(symbol, name)| namespace_parameter(ast, name.as_bytes(), symbol)),
-            fragment: fragment
-                .zip(bindings.pragma_frag.root())
-                .and_then(|(symbol, name)| namespace_parameter(ast, name.as_bytes(), symbol)),
         }
     }
 
@@ -221,43 +182,6 @@ impl<'options> RuntimeBindings<'options> {
             }
         }
         statements
-    }
-}
-
-impl ClassicBindings<'_> {
-    fn runtime_dependencies(&mut self, semantic: &Semantic<'_>) -> FxHashSet<SymbolId> {
-        let mut dependencies = FxHashSet::default();
-        if semantic.jsx_usages().is_empty() {
-            return dependencies;
-        }
-        let has_namespaces = semantic
-            .iter_scopes()
-            .any(|entry| entry.scope.kind == ScopeKind::TsModule);
-        for (scope, usages) in semantic.jsx_usage_groups() {
-            let factory = self
-                .pragma
-                .root()
-                .and_then(|root| semantic.lookup(scope, root.as_bytes(), ReferenceSpace::Value));
-            let fragment = self
-                .pragma_frag
-                .root()
-                .and_then(|root| semantic.lookup(scope, root.as_bytes(), ReferenceSpace::Value));
-            if let Some(symbol) = factory {
-                dependencies.insert(symbol);
-            }
-            if has_namespaces && (factory.is_some() || fragment.is_some()) {
-                for usage in usages {
-                    self.runtime_references
-                        .insert(usage.node, (factory, fragment));
-                }
-            }
-            if usages.iter().any(|usage| usage.is_fragment)
-                && let Some(symbol) = fragment
-            {
-                dependencies.insert(symbol);
-            }
-        }
-        dependencies
     }
 }
 
@@ -313,15 +237,15 @@ impl AutomaticScriptBindings<'_> {
     }
 }
 
-impl<'ast, const TRACK_SELF: bool> JsxEmitter<'_, '_, 'ast, TRACK_SELF> {
+impl<'ast> JsxEmitter<'_, '_, 'ast> {
     pub(super) fn runtime_helper(&mut self, helper: RuntimeHelper, ast: &mut Ast<'ast>) -> Expr {
         self.state
             .bindings
-            .reference(helper, ast, &mut self.state.uid_generator, &self.namespace)
+            .reference(helper, ast, &mut self.state.uid_generator)
     }
 }
 
-impl<'ast, const TRACK_SELF: bool> JsxLowerer<'_, 'ast, TRACK_SELF> {
+impl<'ast> JsxLowerer<'_, 'ast> {
     pub(super) fn insert_program_bindings(&mut self, program: Program, ast: &mut Ast<'ast>) {
         if self.bindings.is_classic() && self.filename.is_none() {
             return;

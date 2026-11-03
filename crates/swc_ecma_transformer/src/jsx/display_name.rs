@@ -5,15 +5,21 @@ use swc_next_ecma_ast::{
     PropertyKey, PropertyKind, SimpleAssignmentTargetData,
 };
 
-use crate::context::TransformCtx;
+use crate::{TransformerOptions, context::TransformCtx};
 
 pub(crate) struct DisplayName {
-    source_path: Option<String>,
+    enabled: bool,
+    filename: Option<String>,
 }
 
 impl DisplayName {
-    pub(crate) fn new(source_path: Option<String>) -> Self {
-        Self { source_path }
+    pub(crate) fn new(options: &TransformerOptions, filename: Option<String>) -> Self {
+        let enabled = options
+            .jsx
+            .as_ref()
+            .map(|jsx| jsx.display_name)
+            .unwrap_or(false);
+        Self { enabled, filename }
     }
 
     pub(crate) fn exit_call_expression(
@@ -21,13 +27,17 @@ impl DisplayName {
         call: CallExpression,
         ctx: &mut TransformCtx<'_, '_>,
     ) {
+        if !self.enabled {
+            return;
+        }
+
         let Some(object) = create_class_object(call, ctx.ast) else {
             return;
         };
         if has_display_name(object, ctx.ast) {
             return;
         }
-        let Some(name) = infer_name(ctx, self.source_path.as_deref()) else {
+        let Some(name) = infer_name(ctx, self.filename.as_deref()) else {
             return;
         };
         let name = ctx.ast.add_utf8(name);

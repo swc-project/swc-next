@@ -1,15 +1,14 @@
 use super::{StatementExpansion, TypeScriptLowerer, erase::update_binding_property_shorthand};
-use crate::syntax::FollowingTransform;
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionExpression, Ast, BindingProperty, CallExpression, CatchClause,
     Class, ClassElement, DUMMY_SP, Expr, ExprData, FormalParameter, FormalParameterRest, GetSpan,
-    JsxClosingElement, JsxOpeningElement, MethodDefinition, NewExpression, NodeKindData,
-    ObjectProperty, PropertyDefinition, SimpleAssignmentTarget, SimpleAssignmentTargetData,
-    StaticBlock, Stmt, SubRange, SwitchCase, SwitchStatement, TaggedTemplateExpression,
-    VariableDeclaration, VariableDeclarator, VisitMut, VisitMutWith,
+    JsxClosingElement, JsxOpeningElement, MethodDefinition, NewExpression, ObjectProperty,
+    PropertyDefinition, SimpleAssignmentTarget, SimpleAssignmentTargetData, Stmt, SubRange,
+    SwitchCase, SwitchStatement, TaggedTemplateExpression, VariableDeclaration, VariableDeclarator,
+    VisitMut, VisitMutWith,
 };
 
-impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> VisitMut<'ast> for TypeScriptLowerer<'_, 'ast> {
     fn ast(&mut self) -> &mut Ast<'ast> {
         self.ast
     }
@@ -78,18 +77,7 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
     }
 
     fn visit_mut_expr(&mut self, expression: Expr) -> Option<Expr> {
-        self.following.enter_expression(expression);
-        let replacement = self.lower_typescript_expression(expression);
-        let current = replacement.unwrap_or(expression);
-        let namespaces = &self.namespaces;
-        let semantic = self.semantic;
-        let following_replacement =
-            self.following
-                .exit_expression(current, self.ast, &|ast, name, symbol| {
-                    namespaces.parameter_for_symbol(ast, semantic, name, symbol)
-                });
-        self.following.leave_node(expression.node_id());
-        following_replacement.or(replacement)
+        self.lower_typescript_expression(expression)
     }
 
     fn visit_mut_object_property(&mut self, property: ObjectProperty) -> Option<ObjectProperty> {
@@ -184,8 +172,6 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
     }
 
     fn visit_mut_class(&mut self, class: Class) -> Option<Class> {
-        self.following
-            .enter_node(NodeKindData::Class(class), self.ast);
         class.set_type_parameters(self.ast(), None);
         class.set_super_type_arguments(self.ast(), None);
         class.set_implements(self.ast(), SubRange::empty());
@@ -193,7 +179,6 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
         class.set_declare(self.ast(), false);
         class.visit_mut_children_with(self);
         self.lower_parameter_properties(class);
-        self.following.leave_node(class.node_id());
         None
     }
 
@@ -201,14 +186,11 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
         &mut self,
         method: MethodDefinition,
     ) -> Option<MethodDefinition> {
-        self.following
-            .enter_node(NodeKindData::MethodDefinition(method), self.ast);
         method.set_override(self.ast(), false);
         method.set_optional(self.ast(), false);
         method.set_abstract(self.ast(), false);
         method.set_accessibility(self.ast(), Accessibility::None);
         let replacement = method.visit_mut_children_with(self);
-        self.following.leave_node(method.node_id());
         replacement
     }
 
@@ -216,8 +198,6 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
         &mut self,
         property: PropertyDefinition,
     ) -> Option<PropertyDefinition> {
-        self.following
-            .enter_node(NodeKindData::PropertyDefinition(property), self.ast);
         property.set_type_annotation(self.ast(), None);
         property.set_declare(self.ast(), false);
         property.set_override(self.ast(), false);
@@ -227,7 +207,6 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
         property.set_abstract(self.ast(), false);
         property.set_accessibility(self.ast(), Accessibility::None);
         let replacement = property.visit_mut_children_with(self);
-        self.following.leave_node(property.node_id());
         replacement
     }
 
@@ -235,21 +214,10 @@ impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for TypeScriptLowerer<'_,
         &mut self,
         function: swc_next_ecma_ast::Function,
     ) -> Option<swc_next_ecma_ast::Function> {
-        self.following
-            .enter_node(NodeKindData::Function(function), self.ast);
         function.set_type_parameters(self.ast(), None);
         function.set_this_param(self.ast(), None);
         function.set_return_type(self.ast(), None);
         let replacement = function.visit_mut_children_with(self);
-        self.following.leave_node(function.node_id());
-        replacement
-    }
-
-    fn visit_mut_static_block(&mut self, block: StaticBlock) -> Option<StaticBlock> {
-        self.following
-            .enter_node(NodeKindData::StaticBlock(block), self.ast);
-        let replacement = block.visit_mut_children_with(self);
-        self.following.leave_node(block.node_id());
         replacement
     }
 

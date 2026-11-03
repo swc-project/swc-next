@@ -1,29 +1,13 @@
 use super::{JsxOptions, self_context::JsxSelfContext, source::SourceLocations};
-use crate::{syntax::SyntaxResult, uid::LazyUidGenerator};
+use crate::uid::LazyUidGenerator;
 pub(crate) use runtime::RuntimeBindings;
-use swc_next_ecma_ast::{Ast, AstUtf8, Diagnostic, Expr, ExprData, JsxElement, JsxFragment, Stmt};
+use swc_next_ecma_ast::{AstUtf8, Diagnostic, Stmt};
 
 mod build;
 mod elements;
 mod runtime;
 mod visit;
 pub(super) use visit::JsxVisitor;
-
-enum JsxRoot {
-    Element(JsxElement),
-    Fragment(JsxFragment),
-}
-
-impl JsxRoot {
-    #[inline]
-    fn from_expression(expression: Expr, ast: &Ast<'_>) -> Option<Self> {
-        match ast.expr_data(expression) {
-            ExprData::JsxElement(element) => Some(Self::Element(element)),
-            ExprData::JsxFragment(fragment) => Some(Self::Fragment(fragment)),
-            _ => None,
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 struct LoweringContext {
@@ -32,19 +16,11 @@ struct LoweringContext {
     can_add_self: bool,
 }
 
-#[derive(Default)]
-struct NamespaceProjection {
-    factory: Option<AstUtf8>,
-    fragment: Option<AstUtf8>,
+struct JsxEmitter<'lowerer, 'options, 'ast> {
+    state: &'lowerer mut JsxLowerer<'options, 'ast>,
 }
 
-/// Direct JSX children share the source namespace projection of this root.
-struct JsxEmitter<'lowerer, 'options, 'ast, const TRACK_SELF: bool> {
-    state: &'lowerer mut JsxLowerer<'options, 'ast, TRACK_SELF>,
-    namespace: NamespaceProjection,
-}
-
-pub(crate) struct JsxLowerer<'options, 'ast, const TRACK_SELF: bool> {
+pub(crate) struct JsxLowerer<'options, 'ast> {
     options: &'options JsxOptions,
     pure: bool,
     bindings: RuntimeBindings<'options>,
@@ -57,7 +33,7 @@ pub(crate) struct JsxLowerer<'options, 'ast, const TRACK_SELF: bool> {
     runtime_import_anchor: Option<Stmt>,
 }
 
-impl<'options, 'ast, const TRACK_SELF: bool> JsxLowerer<'options, 'ast, TRACK_SELF> {
+impl<'options, 'ast> JsxLowerer<'options, 'ast> {
     pub(crate) fn new(
         options: &'options JsxOptions,
         bindings: RuntimeBindings<'options>,
@@ -67,7 +43,6 @@ impl<'options, 'ast, const TRACK_SELF: bool> JsxLowerer<'options, 'ast, TRACK_SE
         let pure = options
             .pure
             .unwrap_or(options.import_source.is_none() && options.pragma.is_none());
-        debug_assert_eq!(TRACK_SELF, options.development && options.source_self);
         let self_context = JsxSelfContext::new();
         Self {
             options,
@@ -87,9 +62,7 @@ impl<'options, 'ast, const TRACK_SELF: bool> JsxLowerer<'options, 'ast, TRACK_SE
         self.runtime_import_anchor = anchor;
     }
 
-    pub(crate) fn take_result(&mut self) -> SyntaxResult {
-        SyntaxResult {
-            diagnostics: std::mem::take(&mut self.diagnostics),
-        }
+    pub(crate) fn take_diagnostics(&mut self) -> Vec<Diagnostic<'static>> {
+        std::mem::take(&mut self.diagnostics)
     }
 }

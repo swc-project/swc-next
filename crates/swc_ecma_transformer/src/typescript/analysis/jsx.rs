@@ -10,9 +10,8 @@ pub(in crate::typescript) fn dependencies(
     semantic: &Semantic<'_>,
     options: &JsxImportOptions,
 ) -> FxHashSet<SymbolId> {
-    let mut dependencies = FxHashSet::default();
     if semantic.jsx_usages().is_empty() {
-        return dependencies;
+        return FxHashSet::default();
     }
     let mut automatic = options.automatic;
     let mut pragma = options.pragma.as_deref().unwrap_or("React.createElement");
@@ -29,6 +28,16 @@ pub(in crate::typescript) fn dependencies(
             PragmaKind::ImportSource => {}
         }
     }
+    resolved_dependencies(semantic, automatic, pragma, fragment)
+}
+
+pub(in crate::typescript) fn resolved_dependencies(
+    semantic: &Semantic<'_>,
+    automatic: bool,
+    pragma: &str,
+    fragment: &str,
+) -> FxHashSet<SymbolId> {
+    let mut dependencies = FxHashSet::default();
     if automatic {
         return dependencies;
     }

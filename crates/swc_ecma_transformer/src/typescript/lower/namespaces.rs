@@ -1,4 +1,3 @@
-use crate::syntax::FollowingTransform;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::rc::Rc;
 
@@ -120,7 +119,7 @@ struct NamespacePath {
     properties: Vec<NamespacePathPart>,
 }
 
-impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_namespace(
         &mut self,
         declaration: TsModuleDeclaration,

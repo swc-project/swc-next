@@ -22,7 +22,7 @@ fn declaration_files() {
     let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
     let program = ast.root_program();
     Normalizer::normalize(program, &mut ast);
-    transform(program, &mut ast, &semantic, TypeScriptOptions::default());
+    transform(program, &mut ast, &semantic, &TypeScriptOptions::default());
 
     assert!(program.body(&ast).is_empty());
     assert!(ast.comments().is_empty());

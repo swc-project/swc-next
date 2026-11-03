@@ -1,11 +1,10 @@
 use super::TypeScriptLowerer;
-use crate::syntax::FollowingTransform;
 use swc_next_ecma_ast::{
     Ast, BindingPatternData, BindingProperty, ClassElement, Expr, ExprData, GetSpan,
     SimpleAssignmentTarget, SubRange, VisitMut, VisitMutWith,
 };
 
-impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_typescript_expression(&mut self, expression: Expr) -> Option<Expr> {
         let inner = match self.ast_ref().expr_data(expression) {
             ExprData::MemberExpression(_) => {

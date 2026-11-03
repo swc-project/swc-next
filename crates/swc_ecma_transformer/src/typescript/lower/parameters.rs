@@ -1,4 +1,3 @@
-use crate::syntax::FollowingTransform;
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionBody, AssignmentOperator, AssignmentTarget, Ast, AstUtf8,
     BindingPattern, Class, DUMMY_SP, Expr, FormalParameterItem, FormalParameterKind, Function,
@@ -14,7 +13,7 @@ struct ParameterProperty {
     span: swc_next_ecma_ast::Span,
 }
 
-impl<'ast, F: FollowingTransform<'ast>> TypeScriptLowerer<'_, 'ast, F> {
+impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn lower_parameter_properties(&mut self, class: Class) {
         let body = class.body(self.ast_ref());
         let constructor = body.body(self.ast_ref()).iter().find_map(|element_id| {
@@ -169,15 +168,15 @@ fn make_assignment(ast: &mut Ast<'_>, property: ParameterProperty) -> Expr {
 /// Keep parameter reads in the constructor's lexical environment. Direct
 /// super statements can inline them; other sites call a lazily emitted arrow
 /// defined in that environment, so nested bindings cannot capture the reads.
-struct SuperInjector<'lower, 'visit, 'ast, F> {
-    lowerer: &'lower mut TypeScriptLowerer<'visit, 'ast, F>,
+struct SuperInjector<'lower, 'visit, 'ast> {
+    lowerer: &'lower mut TypeScriptLowerer<'visit, 'ast>,
     properties: &'lower [ParameterProperty],
     initializer: Option<AstUtf8>,
 }
 
-impl<'lower, 'visit, 'ast, F: FollowingTransform<'ast>> SuperInjector<'lower, 'visit, 'ast, F> {
+impl<'lower, 'visit, 'ast> SuperInjector<'lower, 'visit, 'ast> {
     fn new(
-        lowerer: &'lower mut TypeScriptLowerer<'visit, 'ast, F>,
+        lowerer: &'lower mut TypeScriptLowerer<'visit, 'ast>,
         properties: &'lower [ParameterProperty],
     ) -> Self {
         Self {
@@ -301,7 +300,7 @@ impl<'lower, 'visit, 'ast, F: FollowingTransform<'ast>> SuperInjector<'lower, 'v
     }
 }
 
-impl<'ast, F: FollowingTransform<'ast>> VisitMut<'ast> for SuperInjector<'_, '_, 'ast, F> {
+impl<'ast> VisitMut<'ast> for SuperInjector<'_, '_, 'ast> {
     fn ast(&mut self) -> &mut Ast<'ast> {
         self.lowerer.ast()
     }
