@@ -570,15 +570,15 @@ mod tests {
 
     #[test]
     fn ascii_and_non_ascii_edits_combine() {
-        let source = "a: T; b: 文; c?: number; d as X;";
+        let source = "f(a?: T, b: 文, c?: T) {}";
         let mut edits = EditPlan::default();
-        edits.blank(Span::new(1, 4));
-        edits.blank(Span::new(7, 12));
-        edits.blank(Span::new(15, 24));
-        edits.substitute_byte(24, FixedSubstitution::LeftParenthesis);
+        edits.blank(Span::new(3, 7));
+        edits.blank(Span::new(10, 15));
+        edits.blank(Span::new(18, 22));
+        edits.substitute_byte(22, FixedSubstitution::Semicolon);
         let output = edits.render(source);
 
-        assert_eq!(output, "a   ; b   ; c         ( d as X;");
+        assert_eq!(output, "f(a    , b   , c    ; {}");
     }
 
     #[test]
