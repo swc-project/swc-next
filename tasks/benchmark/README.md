@@ -1,7 +1,7 @@
 # Benchmarks
 
 Performance benchmarks for SWC Next's parser, AST traversal, semantic analysis,
-and compiler pipelines. Run commands from the workspace root.
+type stripping, and compiler pipelines. Run commands from the workspace root.
 
 ## Wall time
 
@@ -9,7 +9,7 @@ and compiler pipelines. Run commands from the workspace root.
 cargo bench -p benchmark --bench parser
 ```
 
-Select `visit` or `semantic` instead of `parser` for those components.
+Select `visit`, `semantic`, or `type_strip` instead of `parser` for those components.
 
 The [CodSpeed workflow](../../.github/workflows/codspeed.yml) measures these
 benchmarks on CodSpeed Macro Runners for every push to `main`. Pull requests run

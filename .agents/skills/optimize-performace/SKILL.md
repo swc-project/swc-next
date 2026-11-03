@@ -42,7 +42,7 @@ Act as a performance engineer. Measure provisional changes in GitHub Actions wit
 
 ## Establish a valid CI harness
 
-Read [the paired wall-time CI reference](references/paired-walltime-ci.md) before dispatching or changing the harness. Reuse the existing workflow and harness when they cover the target. Its wall-time suite currently measures the Rust `parser`, `visit`, and `semantic` Criterion targets; it has no wall-time filter (`filter` applies only to Gungraun) and does not measure the public JavaScript API or every compiler pipeline.
+Read [the paired wall-time CI reference](references/paired-walltime-ci.md) before dispatching or changing the harness. Reuse the existing workflow and harness when they cover the target. Its wall-time suite currently measures the Rust `parser`, `visit`, `semantic`, and `type_strip` Criterion targets; it has no wall-time filter (`filter` applies only to Gungraun) and does not measure the public JavaScript API or every compiler pipeline.
 
 - Check that the frozen target and related cases exercise the changed code. For uncovered code, add the smallest representative workload on temporary PR-free measurement branches. Extend the paired workflow/script only as needed; do not substitute Gungraun counts for elapsed time.
 - Keep setup and teardown outside the measured operation unless they are part of the requested boundary. Protect inputs and results with `std::hint::black_box`.
