@@ -1,18 +1,19 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::{
-    ArrowFunctionExpression, Ast, BinaryExpression, BinaryOperator, BindingPatternData,
-    CallExpression, ConditionalExpression, DeclData, Expr, ExprData, ForStatement,
-    ForStatementInitData, Function, FunctionType, GetSpan, IfStatement, LogicalExpression,
-    LogicalOperator, NodeId, ObjectProperty, Program, Span, StaticBlock, Stmt, StmtData,
-    TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx, TraverseMutWith,
-    UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator, VariableKind,
-    WhileStatement,
+    ArrowFunctionExpression, Ast, AstUtf8, BinaryExpression, BinaryOperator, BindingIdentifier,
+    BindingPattern, BindingPatternData, BindingProperty, CallExpression, ConditionalExpression,
+    DeclData, Expr, ExprData, ForStatement, ForStatementInitData, Function, FunctionType, GetSpan,
+    IdentifierReference, IfStatement, LogicalExpression, LogicalOperator, NodeId, ObjectProperty,
+    Program, PropertyKey, PropertyKeyData, SimpleAssignmentTargetData, Span, StaticBlock, Stmt,
+    StmtData, TaggedTemplateExpression, TraverseAction, TraverseMut, TraverseMutCtx,
+    TraverseMutWith, UnaryExpression, UnaryOperator, VariableDeclaration, VariableDeclarator,
+    VariableKind, WhileStatement,
 };
 use swc_next_ecma_semantic::{
     AnalyzeOptions, NameResolution, SymbolFlags, analyze, scope::ScopeKind,
 };
 
-use crate::CompressOptions;
+use crate::{CompressOptions, mangle::Renames};
 
 mod dead_code;
 mod effects;
@@ -27,12 +28,13 @@ struct Candidates {
     globals: FxHashMap<NodeId, Value<'static>>,
     typeofs: FxHashMap<NodeId, NodeId>,
     unused: FxHashSet<NodeId>,
+    renames: Renames,
 }
 
 impl Candidates {
-    fn build(ast: &Ast<'_>, options: &CompressOptions) -> Self {
+    fn build(ast: &Ast<'_>, options: &CompressOptions, mangle: bool) -> Self {
         let mut candidates = Self::default();
-        if !options.global_defs && !options.typeofs && !options.unused {
+        if !options.global_defs && !options.typeofs && !options.unused && !mangle {
             return candidates;
         }
         let semantic = analyze(ast, AnalyzeOptions::default()).semantic;
@@ -45,6 +47,9 @@ impl Candidates {
                 .any(|entry| ast.get_utf8(entry.reference.name).as_bytes() == b"eval")
         {
             return candidates;
+        }
+        if mangle {
+            candidates.renames = Renames::build(ast, &semantic);
         }
         let mut local_vars = FxHashMap::default();
         for entry in semantic.iter_symbols() {
@@ -107,12 +112,17 @@ impl Candidates {
     }
 }
 
-pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions) {
-    let candidates = Candidates::build(ast, &options);
+pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions, mangle: bool) {
+    let mut candidates = Candidates::build(ast, &options, mangle);
+    let names = std::mem::take(&mut candidates.renames.names)
+        .iter()
+        .map(|name| ast.add_utf8(name))
+        .collect();
     let program = ast.root_program();
     let mut compressor = Compressor {
         options,
         candidates,
+        names,
         delete_depth: 0,
         primitive_bindings: FxHashSet::default(),
         pending_typeofs: Vec::new(),
@@ -124,15 +134,17 @@ pub(super) fn compress(ast: &mut Ast<'_>, options: CompressOptions) {
     let _ = program.traverse_mut_with(&mut compressor, &mut TraverseMutCtx::new(ast, ()));
 }
 
-/// Compression hooks for one traversal.
+/// Compression and mangling hooks for one traversal.
 ///
-/// Children are compressed before their parent's exit hook, so exit rewrites
-/// see final children. Rewrites return `ReplaceSkip`; `ReplaceContinue` would
-/// traverse the replacement again. Enter hooks decide from original syntax,
-/// before any child is rewritten.
+/// Children are compressed and renamed before their parent's exit hook, so
+/// exit rewrites see final children. Rewrites return `ReplaceSkip`;
+/// `ReplaceContinue` would traverse the replacement again. Enter hooks decide
+/// from original syntax, before any child is rewritten.
 struct Compressor {
     options: CompressOptions,
     candidates: Candidates,
+    /// Name of each mangling slot.
+    names: Vec<AstUtf8>,
     /// Number of enclosing `delete` operators.
     delete_depth: u32,
     primitive_bindings: FxHashSet<NodeId>,
@@ -179,7 +191,35 @@ fn is_undefined_string(ast: &Ast<'_>, expr: Expr) -> bool {
         if ast.get_wtf8(literal.value(ast)).as_bytes() == b"undefined")
 }
 
+/// The name of the identifier that a shorthand binding property binds.
+fn binding_name(ast: &Ast<'_>, pattern: BindingPattern) -> Option<AstUtf8> {
+    match ast.binding_pattern_data(pattern) {
+        BindingPatternData::BindingIdentifier(binding) => Some(binding.name(ast)),
+        BindingPatternData::SimpleAssignmentTarget(target) => {
+            match ast.simple_assignment_target_data(target) {
+                SimpleAssignmentTargetData::IdentifierReference(reference) => {
+                    Some(reference.name(ast))
+                }
+                _ => None,
+            }
+        }
+        BindingPatternData::AssignmentPattern(pattern) => binding_name(ast, pattern.left(ast)),
+        _ => None,
+    }
+}
+
+/// Whether a shorthand property's key still spells `name`.
+fn key_is(ast: &Ast<'_>, key: PropertyKey, name: Option<AstUtf8>) -> bool {
+    matches!(ast.property_key_data(key), PropertyKeyData::IdentifierName(key)
+        if name.is_some_and(|name| ast.get_utf8(name) == ast.get_utf8(key.name(ast))))
+}
+
 impl Compressor {
+    /// The mangled name of a binding or reference node.
+    fn rename(&self, node: NodeId) -> Option<AstUtf8> {
+        Some(self.names[self.candidates.renames.slot(node)?])
+    }
+
     fn removable(&self, ast: &Ast<'_>, declarator: VariableDeclarator) -> bool {
         matches!(ast.binding_pattern_data(declarator.id(ast)),
             BindingPatternData::BindingIdentifier(binding)
@@ -778,19 +818,56 @@ impl<'ast> TraverseMut<'ast> for Compressor {
         TraverseAction::Continue
     }
 
+    fn enter_binding_identifier(
+        &mut self,
+        node: BindingIdentifier,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<BindingIdentifier> {
+        if let Some(name) = self.rename(node.node_id()) {
+            node.set_name(ctx.ast, name);
+        }
+        TraverseAction::Continue
+    }
+
+    fn enter_identifier_reference(
+        &mut self,
+        node: IdentifierReference,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<IdentifierReference> {
+        if let Some(name) = self.rename(node.node_id()) {
+            node.set_name(ctx.ast, name);
+        }
+        TraverseAction::Continue
+    }
+
     fn exit_object_property(
         &mut self,
         node: ObjectProperty,
         ctx: &mut TraverseMutCtx<'_, 'ast>,
     ) -> TraverseAction<ObjectProperty> {
-        // Compression never replaces a value with an identifier.
-        if node.shorthand(ctx.ast)
-            && !matches!(
-                ctx.ast.expr_data(node.value(ctx.ast)),
-                ExprData::IdentifierReference(_)
-            )
-        {
-            node.set_shorthand(ctx.ast, false);
+        // The value may have been replaced or renamed.
+        let ast = &mut *ctx.ast;
+        if node.shorthand(ast) {
+            let name = match ast.expr_data(node.value(ast)) {
+                ExprData::IdentifierReference(reference) => Some(reference.name(ast)),
+                _ => None,
+            };
+            if !key_is(ast, node.key(ast), name) {
+                node.set_shorthand(ast, false);
+            }
+        }
+        TraverseAction::Continue
+    }
+
+    fn exit_binding_property(
+        &mut self,
+        node: BindingProperty,
+        ctx: &mut TraverseMutCtx<'_, 'ast>,
+    ) -> TraverseAction<BindingProperty> {
+        // The bound identifier may have been renamed.
+        let ast = &mut *ctx.ast;
+        if node.shorthand(ast) && !key_is(ast, node.key(ast), binding_name(ast, node.value(ast))) {
+            node.set_shorthand(ast, false);
         }
         TraverseAction::Continue
     }

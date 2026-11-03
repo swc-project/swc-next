@@ -1,1 +1,1 @@
-function f(){var b=run();return b}
+function f(){var a=run();return a}

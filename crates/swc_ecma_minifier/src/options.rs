@@ -6,12 +6,16 @@ use serde::{Deserialize, Serialize};
 pub struct MinifierOptions {
     /// Compression settings. `None` disables all compression.
     pub compress: Option<CompressOptions>,
+    /// Shorten the names of local bindings. Top-level names are kept, and a
+    /// program that uses `eval` or `with` is not mangled. Enabled by default.
+    pub mangle: bool,
 }
 
 impl Default for MinifierOptions {
     fn default() -> Self {
         Self {
             compress: Some(CompressOptions::default()),
+            mangle: true,
         }
     }
 }
@@ -50,6 +54,20 @@ impl Default for CompressOptions {
             global_defs: true,
             typeofs: true,
             unused: true,
+        }
+    }
+}
+
+impl CompressOptions {
+    /// Settings that compress nothing, for a traversal that only mangles.
+    pub(crate) fn disabled() -> Self {
+        Self {
+            booleans: false,
+            dead_code: false,
+            evaluate: false,
+            global_defs: false,
+            typeofs: false,
+            unused: false,
         }
     }
 }

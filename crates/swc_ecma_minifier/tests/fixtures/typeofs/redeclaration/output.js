@@ -1,1 +1,1 @@
-function f(x){var x;var y;var y;return typeof x==="undefined"||typeof y==="undefined"}
+function f(a){var a;var b;var b;return typeof a==="undefined"||typeof b==="undefined"}

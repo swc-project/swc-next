@@ -7,8 +7,8 @@
 //! Compression folds constant expressions, removes branches that constant
 //! conditions never run, shortens booleans, unshadowed global constants, and
 //! safe local `typeof` comparisons, and removes unused local variables.
-//! Enabled semantic optimizations share one analysis and one compression
-//! traversal.
+//! Mangling shortens the names of local bindings. Enabled semantic
+//! optimizations and mangling share one analysis and one traversal.
 
 #![deny(clippy::all)]
 #![deny(unused)]
@@ -16,6 +16,7 @@
 use swc_next_ecma_ast::Ast;
 
 mod compress;
+mod mangle;
 mod options;
 
 pub use options::{CompressOptions, MinifierOptions};
@@ -34,17 +35,22 @@ impl Minifier {
     /// Recompute semantic analysis before querying the transformed program;
     /// do not reuse a model computed before minification.
     ///
-    /// Semantic optimizations build their own model before the single compression
-    /// traversal. Dynamic lookup (`eval` references or `with`) disables them.
+    /// Semantic optimizations and mangling build their own model before the
+    /// single traversal. Dynamic lookup (`eval` references or `with`) disables
+    /// them.
     ///
-    /// With `compress: None`, the AST is left unchanged and analysis is skipped.
+    /// With `compress: None` and `mangle: false`, the AST is left unchanged and
+    /// analysis is skipped.
     ///
     /// # Panics
     ///
-    /// Panics if compression is enabled and the AST root is not a program.
+    /// Panics if compression or mangling is enabled and the AST root is not a
+    /// program.
     pub fn minify(ast: &mut Ast<'_>, options: MinifierOptions) {
-        if let Some(options) = options.compress {
-            compress::compress(ast, options);
+        if options.compress.is_none() && !options.mangle {
+            return;
         }
+        let compress = options.compress.unwrap_or_else(CompressOptions::disabled);
+        compress::compress(ast, compress, options.mangle);
     }
 }
