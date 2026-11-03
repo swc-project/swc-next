@@ -26,3 +26,18 @@ Run from the workspace root:
 cargo test -p swc_next_ecma_minifier --locked
 cargo test -p swc_next_ecma_minifier --test fixtures -- preserve/script
 ```
+
+## Output size
+
+The [minify example](examples/minify.rs) minifies scripts with the default
+options and checks that each output parses again:
+
+```sh
+cargo run --release -p swc_next_ecma_minifier --example minify -- target/minified tasks/benchmark/files/*.js
+```
+
+The [Minifier Output Size workflow](../../.github/workflows/minifier-size.yml)
+compares the raw, gzip, and Brotli output sizes of the benchmark scripts between
+the base and head revisions. It comments on a pull request or a pushed `main`
+commit only when a size changed. When a later push removes the change, it updates
+the existing pull request comment.
