@@ -181,13 +181,45 @@ fn write_node_case(
         }
         // These fields are source-backed, and node spans use UTF-16 offsets.
         let expression = match (ast.name.as_str(), field.name.as_str()) {
-            ("StringLiteral", "raw") | ("JsxText", "value") => "source.slice(start, end)".into(),
-            ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
-            ("NumericLiteral", "raw") => {
-                let raw_start = read_i32(&location, aligned_i32);
-                let raw_end = read_i32(&format!("{location} + 4"), aligned_i32);
-                format!("{raw_start} === NULL && {raw_end} === 0 ? null : source.slice(start, end)")
+            (
+                "IdentifierReference"
+                | "BindingIdentifier"
+                | "IdentifierName"
+                | "LabelIdentifier"
+                | "PrivateIdentifier"
+                | "JsxIdentifier",
+                "name",
+            ) => {
+                let name_start = read_i32(&location, aligned_i32);
+                let name_end = read_i32(&format!("{location} + 4"), aligned_i32);
+                let span_start = if ast.name == "PrivateIdentifier" {
+                    "start + 1"
+                } else {
+                    "start"
+                };
+                format!(
+                    "{name_start} === {name_end} ? \"\" : {name_start} < sourceLength ? source.slice({span_start}, end) : str({name_start}, {name_end})"
+                )
             }
+            ("StringLiteral", "value")
+            | ("TemplateElement", "cooked")
+            | ("Directive", "value")
+            | ("Hashbang", "value") => {
+                let value_start = read_i32(&location, aligned_i32);
+                let value_end = read_i32(&format!("{location} + 4"), aligned_i32);
+                let (slice_start, slice_end) = match ast.name.as_str() {
+                    "StringLiteral" => ("start + 1", "end - 1"),
+                    "Directive" => ("f_expression.start + 1", "f_expression.end - 1"),
+                    "Hashbang" => ("start + 2", "end"),
+                    _ => ("start", "end"),
+                };
+                format!(
+                    "{value_start} === {value_end} ? \"\" : {value_start} < sourceLength ? source.slice({slice_start}, {slice_end}) : str({value_start}, {value_end})"
+                )
+            }
+            ("StringLiteral" | "NumericLiteral" | "TemplateElement", "raw")
+            | ("JsxText", "value") => "source.slice(start, end)".into(),
+            ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
             _ => read_expression(field_ty, schema, &location, aligned_i32),
         };
         let field_name = estree_field_name(&ast.name, &field.name);
@@ -564,14 +596,12 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         ),
         "NumericLiteral" => output.push_str(
             r#"        const value = f_value;
-        const raw = f_raw ?? String(value);
-        result = { type: "Literal", start, end, value, raw };
+        result = { type: "Literal", start, end, value, raw: f_raw };
 "#,
         ),
         "BigIntLiteral" => output.push_str(
-            r#"        const raw = `${f_raw}n`;
-        const value = BigInt(f_raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw, bigint: value.toString() };
+            r#"        const value = BigInt(f_raw.replaceAll("_", ""));
+        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
 "#,
         ),
         "BooleanLiteral" => output.push_str(
@@ -591,7 +621,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         } catch {}
         result = {
           type: "Literal", start, end, value,
-          raw: `/${f_pattern}/${f_flags}`,
+          raw: source.slice(start, end),
           regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
         };
 "#,
@@ -1011,14 +1041,13 @@ const DECODE_PREAMBLE: &str = r#"
       const start = _i32[offset >> 2];
       const end = _i32[(offset >> 2) + 1];
       const byteStart = _i32[(offset >> 2) + 2];
-      const byteEnd = _i32[(offset >> 2) + 3];
       const first = sourceBuffer[byteStart];
       const kind = sourceBuffer[byteStart + 1] === 0x2a ? 1 : 0;
-      const valueStart = byteStart + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
-      const valueEnd = byteEnd - (kind === 1 ? 2 : 0);
+      const valueStart = start + (first === 0x3c ? 4 : first === 0x2d ? 3 : 2);
+      const valueEnd = end - (kind === 1 ? 2 : 0);
       result[index] = {
         type: kind === 1 ? "Block" : "Line",
-        value: str(valueStart, valueEnd),
+        value: source.slice(valueStart, valueEnd),
         start,
         end,
       };
