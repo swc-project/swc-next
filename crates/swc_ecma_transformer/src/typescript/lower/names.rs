@@ -1,10 +1,32 @@
 use super::TypeScriptLowerer;
+use crate::uid::UidGenerator;
 use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::SymbolId;
 
 impl<'ast> TypeScriptLowerer<'_, 'ast> {
     pub(super) fn fresh_uid(&mut self, base: &'ast str) -> swc_next_ecma_ast::AstUtf8 {
-        self.ast.add_utf8(self.uid_generator.next_name(base, 2))
+        let ast = &*self.ast;
+        let semantic = self.semantic;
+        let jsx = &self.options.jsx;
+        let uid = self.uid_generator.get_or_insert_with(|| {
+            let mut uid = UidGenerator::new(ast.allocator());
+            for entry in semantic.iter_symbols() {
+                uid.observe(ast.get_wtf8(entry.symbol.name).as_bytes());
+            }
+            for entry in semantic.iter_references() {
+                uid.observe(ast.get_utf8(entry.reference.name).as_bytes());
+            }
+            if !jsx.automatic {
+                for name in [
+                    jsx.pragma.as_deref().unwrap_or("React.createElement"),
+                    jsx.pragma_frag.as_deref().unwrap_or("React.Fragment"),
+                ] {
+                    uid.observe(name.split('.').next().unwrap().as_bytes());
+                }
+            }
+            uid
+        });
+        self.ast.add_utf8(uid.next_name(base, 2))
     }
 
     fn can_reuse_source_name(

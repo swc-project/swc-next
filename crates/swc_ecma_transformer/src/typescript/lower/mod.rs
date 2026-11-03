@@ -31,7 +31,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     namespaces: NamespaceState,
     // Lazy index; None as a map value means unresolved or conflicting owners.
     source_name_owners: Option<FxHashMap<&'ast [u8], Option<SymbolId>>>,
-    uid_generator: UidGenerator<'ast>,
+    uid_generator: Option<UidGenerator<'ast>>,
 }
 
 impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
@@ -42,29 +42,6 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
         semantic: &'visit Semantic<'ast>,
     ) -> Self {
         let semantic_node_count = ast.node_count();
-        let mut uid_generator = UidGenerator::new(ast.allocator());
-        for entry in semantic.iter_symbols() {
-            uid_generator.observe(ast.get_wtf8(entry.symbol.name).as_bytes());
-        }
-        for entry in semantic.iter_references() {
-            uid_generator.observe(ast.get_utf8(entry.reference.name).as_bytes());
-        }
-        if !options.jsx.automatic {
-            for name in [
-                options
-                    .jsx
-                    .pragma
-                    .as_deref()
-                    .unwrap_or("React.createElement"),
-                options
-                    .jsx
-                    .pragma_frag
-                    .as_deref()
-                    .unwrap_or("React.Fragment"),
-            ] {
-                uid_generator.observe(name.split('.').next().unwrap().as_bytes());
-            }
-        }
         Self {
             ast,
             options,
@@ -76,7 +53,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
             enum_member_symbols: FxHashMap::default(),
             namespaces: NamespaceState::default(),
             source_name_owners: None,
-            uid_generator,
+            uid_generator: None,
         }
     }
 
