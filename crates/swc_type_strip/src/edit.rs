@@ -182,6 +182,16 @@ fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
 
 const HIGH_BITS: u64 = 0x8080_8080_8080_8080;
 
+const BLANK_ASCII: [u8; 128] = {
+    let mut table = [b' '; 128];
+    let mut byte = b'\t';
+    while byte <= b'\r' {
+        table[byte as usize] = byte;
+        byte += 1;
+    }
+    table
+};
+
 fn push_blank(output: &mut String, source: &str) {
     debug_assert!(output.capacity() - output.len() >= source.len());
     let output_start = output.len();
@@ -238,11 +248,7 @@ fn push_blank(output: &mut String, source: &str) {
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
                 if byte.is_ascii() {
-                    let blanked = if matches!(byte, b'\t'..=b'\r') {
-                        byte
-                    } else {
-                        b' '
-                    };
+                    let blanked = BLANK_ASCII[byte as usize];
                     destination.add(written).write(blanked);
                     offset += 1;
                     written += 1;
