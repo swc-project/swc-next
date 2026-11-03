@@ -10,14 +10,17 @@ mod breaks;
 mod decode;
 mod encode;
 mod indent;
+mod normalize;
 mod printer;
 #[cfg(test)]
 mod tests;
 mod text;
 mod thin;
+mod transform;
 mod writer;
 
 pub use decode::DocumentBufferError;
+pub use printer::{CursorError, PrintResult};
 pub use writer::{FillEntry, FillSeparatorPolicy, Writer};
 
 use std::num::NonZeroU32;
@@ -26,7 +29,7 @@ use crate::PrintOptions;
 use text::{Text, Width};
 use thin::{ThinSlice, ThinStr};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GroupId(NonZeroU32);
 
 impl GroupId {
@@ -34,6 +37,21 @@ impl GroupId {
         (self.0.get() - 1) as usize
     }
 }
+
+/// Independent properties of a line instruction.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct LineOptions {
+    /// Break even in flat mode.
+    pub hard: bool,
+    /// Omit the space when printed flat. Has no effect on a hard line.
+    pub soft: bool,
+    /// Preserve trailing whitespace and resume at the root indentation.
+    pub literal: bool,
+}
+
+/// Identifies opaque metadata owned by the caller.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LabelId(pub u32);
 
 /// Conditions read either the active execution mode or an explicitly named group.
 #[derive(Debug, Clone, Copy)]
@@ -185,9 +203,17 @@ enum FormatElement<'a> {
     },
     Alternatives(&'a Alternatives<'a>),
     GroupWithStates(&'a GroupWithStates<'a>),
+    SoftLiteralLine,
+    NormalLiteralLine,
+    Trim,
+    Cursor,
+    StartLabel(LabelId),
+    EndLabel,
 }
 
 const _: () = assert!(std::mem::size_of::<FormatElement<'_>>() <= 16);
+#[cfg(target_family = "wasm")]
+const _: () = assert!(std::mem::size_of::<FormatElement<'_>>() <= 12);
 
 /// A complete immutable scope, owned by the current formatting call.
 #[derive(Debug, Clone, Copy)]
@@ -208,6 +234,7 @@ impl FragmentSummary {
     const INTRINSIC_LINES: u8 = 1 << 4;
     const GROUP_STATES: u8 = 1 << 5;
     const RICH_INDENT: u8 = 1 << 6;
+    const EXTENDED_PRINT: u8 = 1 << 7;
 
     fn new(
         effect: BreakEffect,
@@ -472,6 +499,15 @@ impl<'a> Fragment<'a> {
         self.summary.group_states()
     }
 
+    fn with_extended_print(mut self, enabled: bool) -> Self {
+        self.summary.0 |= u8::from(enabled) * FragmentSummary::EXTENDED_PRINT;
+        self
+    }
+
+    fn extended_print(self) -> bool {
+        self.summary.0 & FragmentSummary::EXTENDED_PRINT != 0
+    }
+
     fn effect(self) -> BreakEffect {
         self.summary.effect()
     }
@@ -504,6 +540,8 @@ impl<'a> Fragment<'a> {
                 };
                 match element {
                     FormatElement::SoftLine
+                    | FormatElement::SoftLiteralLine
+                    | FormatElement::NormalLiteralLine
                     | FormatElement::SoftLineIfBreak(_)
                     | FormatElement::Line
                     | FormatElement::HardLine
@@ -727,7 +765,7 @@ impl<'a> FormatElement<'a> {
     #[inline(never)]
     fn flattened(self) -> Option<Self> {
         match self {
-            Self::Line => Some(Self::text(Text::new(" "))),
+            Self::Line | Self::NormalLiteralLine => Some(Self::text(Text::new(" "))),
             Self::IfFlat { source, width } => Some(Self::Text { source, width }),
             Self::Conditional(conditional) | Self::FlatConditional(conditional) => {
                 Some(match conditional.target {
@@ -745,6 +783,10 @@ impl<'a> FormatElement<'a> {
                 ..
             } => None,
             element @ (Self::Text { .. }
+            | Self::Trim
+            | Self::Cursor
+            | Self::StartLabel(_)
+            | Self::EndLabel
             | Self::LineSuffixBoundary
             | Self::StartIndentIfBreak { .. }
             | Self::FlatFragment { .. }) => Some(element),
@@ -759,9 +801,45 @@ pub struct Doc<'a> {
     group_count: u32,
     group_states: bool,
     rich_indent: bool,
+    // The complete path handles explicit Trim and empty decoded or transformed Text.
+    extended_print: bool,
 }
 
 impl<'a> Doc<'a> {
+    /// Whether the Doc requests a break or contains a hard line in its primary
+    /// group contents. This query is independent of the print width.
+    pub fn will_break(&self) -> bool {
+        transform::will_break(self.elements)
+    }
+
+    /// Replaces ordinary lines with spaces and soft lines with empty text.
+    /// Selects the flat branch of IfBreak and retains hard lines and groups.
+    pub fn remove_lines(self) -> Self {
+        transform::remove_lines(self)
+    }
+
+    /// Replaces LF within Text with a literal line and a parent break request.
+    pub fn replace_end_of_line(self) -> Self {
+        transform::replace_end_of_line(self, None)
+    }
+
+    /// Replaces LF within Text with a separate Doc. The replacement's named
+    /// groups are scoped independently and its label IDs are preserved.
+    pub fn replace_end_of_line_with(self, replacement: Self) -> Self {
+        transform::replace_end_of_line(self, Some(replacement))
+    }
+
+    /// Cleans empty wrappers and coalesces adjacent Text in logical sequences.
+    pub fn clean(self) -> Self {
+        normalize::clean(self)
+    }
+
+    /// Cleans the Doc, then removes trailing hardline pairs and terminal
+    /// newlines from the final logical part of each eligible branch.
+    pub fn strip_trailing_hardline(self) -> Self {
+        normalize::strip_trailing_hardline(self)
+    }
+
     /// Decodes a versioned document, borrowing its text from the input buffer.
     ///
     /// Supports version 0's complete balanced fragment scopes, including
@@ -789,13 +867,14 @@ impl<'a> Doc<'a> {
     }
 
     pub fn print(self, options: PrintOptions) -> String {
-        printer::print(
-            self.elements,
-            self.allocator,
-            self.group_count,
-            self.group_states,
-            self.rich_indent,
-            options,
-        )
+        printer::print(self, options, false)
+            .expect("cursor collection is disabled")
+            .text
+    }
+
+    /// Prints the Doc and returns the UTF-8 byte range between two emitted cursors.
+    /// Zero or one cursor produces no range. More than two produces an error.
+    pub fn print_with_cursor(self, options: PrintOptions) -> Result<PrintResult, CursorError> {
+        printer::print(self, options, true)
     }
 }

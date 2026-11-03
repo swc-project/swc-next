@@ -7,7 +7,8 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 use super::{
     AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FlatFragment,
     FormatElement, Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates,
-    IndentIfBreakOptions, NeutralFragment, RecordedGroup, text::Text, thin::ThinSlice,
+    IndentIfBreakOptions, LabelId, LineOptions, NeutralFragment, RecordedGroup, text::Text,
+    thin::ThinSlice,
 };
 
 pub struct Writer<'a> {
@@ -18,6 +19,7 @@ pub struct Writer<'a> {
     group_count: u32,
     group_states: bool,
     rich_indent: bool,
+    extended_print: bool,
     conditional_lines: bool,
     intrinsic_lines: bool,
 }
@@ -53,6 +55,7 @@ impl<'a> Writer<'a> {
             group_count: 0,
             group_states: false,
             rich_indent: false,
+            extended_print: false,
             conditional_lines: false,
             intrinsic_lines: false,
         }
@@ -169,6 +172,39 @@ impl<'a> Writer<'a> {
         self.elements.push(FormatElement::Line);
     }
 
+    /// Writes a line with independent properties, without requesting a parent break.
+    pub fn line_with_options(&mut self, options: LineOptions) {
+        let element = match (options.hard, options.literal, options.soft) {
+            (true, true, _) => FormatElement::LiteralLineWithoutBreakParent,
+            (true, false, _) => FormatElement::HardLineWithoutBreakParent,
+            (false, true, true) => FormatElement::SoftLiteralLine,
+            (false, true, false) => FormatElement::NormalLiteralLine,
+            (false, false, true) => FormatElement::SoftLine,
+            (false, false, false) => FormatElement::Line,
+        };
+        self.intrinsic_lines |= options.hard;
+        self.elements.push(element);
+    }
+
+    /// Removes the spaces and tabs trailing the output at this point.
+    pub fn trim(&mut self) {
+        self.extended_print = true;
+        self.elements.push(FormatElement::Trim);
+    }
+
+    /// Marks a position for printing with cursor tracking.
+    pub fn cursor(&mut self) {
+        self.elements.push(FormatElement::Cursor);
+    }
+
+    /// Associates caller-owned metadata with a scope without affecting layout.
+    pub fn label<T>(&mut self, id: LabelId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.elements.push(FormatElement::StartLabel(id));
+        let result = write(self);
+        self.elements.push(FormatElement::EndLabel);
+        result
+    }
+
     pub fn if_break(&mut self, text: &'a str) {
         self.if_break_for(ConditionTarget::Current, text);
     }
@@ -238,6 +274,7 @@ impl<'a> Writer<'a> {
     ) {
         self.group_states |= broken.group_states() || flat.group_states();
         self.rich_indent |= broken.rich_indent() || flat.rich_indent();
+        self.extended_print |= broken.extended_print() || flat.extended_print();
         self.effect = self.effect.join(broken.effect()).join(flat.effect());
         self.conditional_lines |= broken.conditional_lines() || flat.conditional_lines();
         self.intrinsic_lines |= broken.has_intrinsic_lines() || flat.has_intrinsic_lines();
@@ -606,7 +643,8 @@ impl<'a> Writer<'a> {
             child.intrinsic_lines,
             child.group_states,
             child.rich_indent,
-        );
+        )
+        .with_extended_print(child.extended_print);
         Ok((fragment, value))
     }
 
@@ -673,6 +711,7 @@ impl<'a> Writer<'a> {
             fragment.group_states(),
             fragment.rich_indent(),
         )
+        .with_extended_print(fragment.extended_print())
     }
 
     /// Writes a group with independent contents and at least one expanded state.
@@ -691,6 +730,9 @@ impl<'a> Writer<'a> {
         self.rich_indent |= contents.rich_indent()
             || first.rich_indent()
             || rest.iter().any(|state| state.rich_indent());
+        self.extended_print |= contents.extended_print()
+            || first.extended_print()
+            || rest.iter().any(|state| state.extended_print());
         self.effect = self.effect.join(BreakEffect::from_request(request));
         self.conditional_lines |= contents.conditional_lines()
             || first.conditional_lines()
@@ -708,6 +750,7 @@ impl<'a> Writer<'a> {
     pub fn write_fragment(&mut self, fragment: Fragment<'a>) {
         self.group_states |= fragment.group_states();
         self.rich_indent |= fragment.rich_indent();
+        self.extended_print |= fragment.extended_print();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.intrinsic_lines |= fragment.has_intrinsic_lines();
@@ -717,12 +760,14 @@ impl<'a> Writer<'a> {
     pub fn write_flat_fragment(&mut self, fragment: FlatFragment<'a>) {
         self.group_states |= fragment.0.group_states();
         self.rich_indent |= fragment.0.rich_indent();
+        self.extended_print |= fragment.0.extended_print();
         self.elements.push(FormatElement::flat_fragment(fragment));
     }
 
     pub fn write_neutral_fragment(&mut self, NeutralFragment(fragment): NeutralFragment<'a>) {
         self.group_states |= fragment.group_states();
         self.rich_indent |= fragment.rich_indent();
+        self.extended_print |= fragment.extended_print();
         self.effect = self.effect.join(fragment.effect());
         self.conditional_lines |= fragment.conditional_lines();
         self.elements
@@ -736,6 +781,8 @@ impl<'a> Writer<'a> {
             fallback.group_states() || preferred.iter().any(|fragment| fragment.group_states());
         self.rich_indent |=
             fallback.rich_indent() || preferred.iter().any(|fragment| fragment.rich_indent());
+        self.extended_print |=
+            fallback.extended_print() || preferred.iter().any(|fragment| fragment.extended_print());
         let mut choices = ArenaVec::with_capacity_in(preferred.len().max(1), self.allocator);
         if preferred.is_empty() {
             choices.push(fallback);
@@ -764,6 +811,7 @@ impl<'a> Writer<'a> {
             group_count: self.group_count,
             group_states: self.group_states,
             rich_indent: self.rich_indent,
+            extended_print: self.extended_print,
         }
     }
 }

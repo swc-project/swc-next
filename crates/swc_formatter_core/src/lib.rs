@@ -11,8 +11,9 @@ mod document;
 mod options;
 
 pub use document::{
-    ConditionTarget, Doc, DocumentBufferError, FillEntry, FillSeparatorPolicy, FlatFragment,
-    Fragment, GroupId, GroupRequest, IndentIfBreakOptions, NeutralFragment, RecordedGroup, Writer,
+    ConditionTarget, CursorError, Doc, DocumentBufferError, FillEntry, FillSeparatorPolicy,
+    FlatFragment, Fragment, GroupId, GroupRequest, IndentIfBreakOptions, LabelId, LineOptions,
+    NeutralFragment, PrintResult, RecordedGroup, Writer,
 };
 pub use options::{IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding, PrintOptions};
 

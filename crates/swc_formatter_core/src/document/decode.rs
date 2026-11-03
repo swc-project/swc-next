@@ -4,7 +4,7 @@ use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
     AlignText, Alternatives, BreakEffect, ConditionTarget, Conditional, Doc, FormatElement,
-    Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, text::Text,
+    Fragment, FragmentCapabilities, GroupId, GroupRequest, GroupWithStates, LabelId, text::Text,
 };
 
 /// An invalid, unsupported, or resource-limited document buffer.
@@ -65,6 +65,7 @@ enum ScopeStart {
     AbsoluteIndent(u32),
     AlignText(u32, u32),
     RichIndent(u8),
+    Label(LabelId),
 }
 
 struct Reader<'a> {
@@ -131,7 +132,7 @@ fn parse_fragment(bytes: &[u8], count: usize) -> Result<Vec<Op>> {
             0 => Op::Text(r.word()?, r.word()?),
             2 => {
                 let kind = r.byte()?;
-                if !matches!(kind, 0..=6) {
+                if !matches!(kind, 0..=8) {
                     return Err(DocumentBufferError::InvalidDocument);
                 }
                 Op::Line(kind)
@@ -235,7 +236,11 @@ fn parse_fragment(bytes: &[u8], count: usize) -> Result<Vec<Op>> {
                 stack.push(tag);
                 Op::Start(ScopeStart::RichIndent(tag))
             }
-            15 | 16 => Op::Simple(tag),
+            15 | 16 | 27 | 28 => Op::Simple(tag),
+            29 => {
+                stack.push(tag);
+                Op::Start(ScopeStart::Label(LabelId(r.word()?)))
+            }
             17 => {
                 let end = r.byte()?;
                 let start = stack.pop().ok_or(DocumentBufferError::InvalidDocument)?;
@@ -399,6 +404,7 @@ enum ScopeFrame<'a> {
     },
     AbsoluteIndent,
     RichIndent(u8),
+    Label,
 }
 
 impl ScopeFrame<'_> {
@@ -414,6 +420,7 @@ impl ScopeFrame<'_> {
             Self::Suffix { .. } => 14,
             Self::AbsoluteIndent => 19,
             Self::RichIndent(tag) => *tag,
+            Self::Label => 29,
         }
     }
 }
@@ -527,6 +534,8 @@ fn build<'a>(
                     4 => FormatElement::LiteralLine,
                     5 => FormatElement::LiteralLineWithIndent,
                     6 => FormatElement::LiteralLineWithoutBreakParent,
+                    7 => FormatElement::NormalLiteralLine,
+                    8 => FormatElement::SoftLiteralLine,
                     _ => return Err(DocumentBufferError::InvalidDocument),
                 };
                 if matches!(kind, 2 | 4 | 5) {
@@ -540,6 +549,10 @@ fn build<'a>(
             Op::Start(scope) => {
                 let start = context.elements.len();
                 let frame = match *scope {
+                    ScopeStart::Label(id) => {
+                        context.elements.push(FormatElement::StartLabel(id));
+                        ScopeFrame::Label
+                    }
                     ScopeStart::Group { expanded, id } => {
                         let outer_effect = context.effect;
                         context.effect = BreakEffect::default();
@@ -656,6 +669,7 @@ fn build<'a>(
                     return Err(DocumentBufferError::InvalidDocument);
                 }
                 match frame {
+                    ScopeFrame::Label => context.elements.push(FormatElement::EndLabel),
                     ScopeFrame::Group {
                         start,
                         outer_effect,
@@ -831,6 +845,8 @@ fn build<'a>(
                 }
             }
             Op::Simple(15) => context.elements.push(FormatElement::LineSuffixBoundary),
+            Op::Simple(27) => context.elements.push(FormatElement::Trim),
+            Op::Simple(28) => context.elements.push(FormatElement::Cursor),
             Op::Simple(16) => {
                 context.effect = context.effect.join(BreakEffect::REQUIRED);
                 context.elements.push(FormatElement::BreakParent);
@@ -902,5 +918,6 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
         group_count,
         group_states: root.group_states(),
         rich_indent: root.rich_indent(),
+        extended_print: true,
     })
 }

@@ -168,11 +168,20 @@ impl<'a> Encoder<'a> {
                 FormatElement::Text { source, .. } => self.text(&mut output, source.as_str()),
                 FormatElement::Line => output.extend([2, 0]),
                 FormatElement::SoftLine => output.extend([2, 1]),
+                FormatElement::NormalLiteralLine => output.extend([2, 7]),
+                FormatElement::SoftLiteralLine => output.extend([2, 8]),
                 FormatElement::HardLine => output.extend([2, 2]),
                 FormatElement::HardLineWithoutBreakParent => output.extend([2, 3]),
                 FormatElement::LiteralLine => output.extend([2, 4]),
                 FormatElement::LiteralLineWithoutBreakParent => output.extend([2, 6]),
                 FormatElement::LiteralLineWithIndent => output.extend([2, 5]),
+                FormatElement::Trim => output.push(27),
+                FormatElement::Cursor => output.push(28),
+                FormatElement::StartLabel(id) => {
+                    output.push(29);
+                    word(&mut output, id.0 as usize);
+                }
+                FormatElement::EndLabel => output.extend([17, 29]),
                 FormatElement::SoftLineIfBreak(id) => {
                     output.extend([8, 1]);
                     group(&mut output, Some(id));
