@@ -1,0 +1,8 @@
+{
+  "minify": {
+    "compress": {
+      "sequences": false,
+      "join_vars": false
+    }
+  }
+}

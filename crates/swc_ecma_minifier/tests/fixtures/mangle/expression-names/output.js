@@ -1,1 +1,1 @@
-function f(){const b=function a(){return a};const c=class a{method(){return a}};return[b,c]}
+function f(){const b=function a(){return a},c=class a{method(){return a}};return[b,c]}

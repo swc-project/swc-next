@@ -24,6 +24,11 @@ impl Default for MinifierOptions {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CompressOptions {
+    /// Remove empty statements, merge blocks that declare no block-scoped
+    /// names into the enclosing statement list, and replace a block body,
+    /// such as the body of an `if` or a loop, with its only statement.
+    /// Enabled by default.
+    pub blocks: bool,
     /// Shorten boolean expressions: `true` to `!0` and `false` to `!1`.
     /// Enabled by default.
     pub booleans: bool,
@@ -38,6 +43,15 @@ pub struct CompressOptions {
     pub evaluate: bool,
     /// Shorten unshadowed global constants. Enabled by default.
     pub global_defs: bool,
+    /// Join adjacent `var`, `let`, or `const` declarations of the same kind,
+    /// such as `var a; var b` to `var a, b`, and move `var` declarations into
+    /// the initializer of a following `for` loop. Enabled by default.
+    pub join_vars: bool,
+    /// Join adjacent expression statements with the comma operator, such as
+    /// `a(); b()` to `a(), b()`, and move them into the leading expression of
+    /// a following `if`, `return`, `throw`, `switch`, or `for` statement.
+    /// Enabled by default.
+    pub sequences: bool,
     /// Shorten undefined typeof comparisons for local var bindings. Enabled by default.
     pub typeofs: bool,
     /// Remove unused local variables whose initializers have no side effects.
@@ -48,10 +62,13 @@ pub struct CompressOptions {
 impl Default for CompressOptions {
     fn default() -> Self {
         Self {
+            blocks: true,
             booleans: true,
             dead_code: true,
             evaluate: true,
             global_defs: true,
+            join_vars: true,
+            sequences: true,
             typeofs: true,
             unused: true,
         }
@@ -62,10 +79,13 @@ impl CompressOptions {
     /// Settings that compress nothing, for a traversal that only mangles.
     pub(crate) fn disabled() -> Self {
         Self {
+            blocks: false,
             booleans: false,
             dead_code: false,
             evaluate: false,
             global_defs: false,
+            join_vars: false,
+            sequences: false,
             typeofs: false,
             unused: false,
         }

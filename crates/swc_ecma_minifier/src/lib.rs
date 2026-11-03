@@ -6,7 +6,9 @@
 //!
 //! Compression folds constant expressions, removes branches that constant
 //! conditions never run, shortens booleans, unshadowed global constants, and
-//! safe local `typeof` comparisons, and removes unused local variables.
+//! safe local `typeof` comparisons, and removes unused local variables. It
+//! also joins adjacent expression statements and declarations, and removes
+//! empty statements and unneeded blocks.
 //! Mangling shortens the names of local bindings. Enabled semantic
 //! optimizations and mangling share one analysis and one traversal.
 

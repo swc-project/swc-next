@@ -1,1 +1,1 @@
-function f(){;"use strict";return this}
+function f(){return"use strict",this}

@@ -3,8 +3,10 @@
 JavaScript AST optimization for SWC Next. Compression folds constant
 expressions, removes branches that constant conditions never run, shortens
 booleans and unshadowed global constants, simplifies safe local `typeof`
-comparisons, and removes unused local variables. Mangling shortens the names
-of local bindings; top-level names are kept.
+comparisons, and removes unused local variables. It also joins adjacent
+statements: expression statements with the comma operator and declarations of
+the same kind, and it removes empty statements and unneeded blocks. Mangling
+shortens the names of local bindings; top-level names are kept.
 
 Use `Minifier::minify(&mut ast, options)` on a valid JavaScript Program AST.
 Parsing, TypeScript/JSX lowering, and printing are separate operations. Print

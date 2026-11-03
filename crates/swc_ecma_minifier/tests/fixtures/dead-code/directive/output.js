@@ -1,1 +1,1 @@
-function f(){;"use strict"}function g(){("use strict")}
+function f(){("use strict")}function g(){("use strict")}

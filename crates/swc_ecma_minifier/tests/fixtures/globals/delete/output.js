@@ -1,1 +1,1 @@
-delete undefined;delete Infinity;delete NaN;
+delete undefined,delete Infinity,delete NaN;

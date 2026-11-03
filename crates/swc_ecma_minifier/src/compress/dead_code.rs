@@ -140,7 +140,7 @@ pub(super) fn var_statement(
 
 /// Whether `statement` declares a block-scoped name. Function declarations
 /// count: in a block they are block-scoped.
-fn is_lexical(ast: &Ast<'_>, statement: Stmt) -> bool {
+pub(super) fn is_lexical(ast: &Ast<'_>, statement: Stmt) -> bool {
     let StmtData::Declaration(declaration) = ast.stmt_data(statement) else {
         return false;
     };

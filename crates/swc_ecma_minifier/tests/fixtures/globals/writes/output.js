@@ -1,1 +1,1 @@
-undefined=1;Infinity++;({NaN}=source);
+undefined=1,Infinity++,{NaN}=source;
