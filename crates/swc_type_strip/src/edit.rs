@@ -182,6 +182,16 @@ fn normalize_operations(operations: &mut [Operation]) -> Vec<Operation> {
 
 const HIGH_BITS: u64 = 0x8080_8080_8080_8080;
 
+const BLANK_ASCII: [u8; 128] = {
+    let mut table = [b' '; 128];
+    let mut byte = b'\t';
+    while byte <= b'\r' {
+        table[byte as usize] = byte;
+        byte += 1;
+    }
+    table
+};
+
 fn push_blank(output: &mut String, source: &str) {
     debug_assert!(output.capacity() - output.len() >= source.len());
     let output_start = output.len();
@@ -238,11 +248,7 @@ fn push_blank(output: &mut String, source: &str) {
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
                 if byte.is_ascii() {
-                    let blanked = if byte.is_ascii_whitespace() {
-                        byte
-                    } else {
-                        b' '
-                    };
+                    let blanked = BLANK_ASCII[byte as usize];
                     destination.add(written).write(blanked);
                     offset += 1;
                     written += 1;
@@ -321,6 +327,12 @@ fn is_ecmascript_whitespace_or_line_terminator(character: char) -> bool {
 mod tests {
     use super::*;
 
+    fn blank_source(source: &str) -> Cow<'_, str> {
+        let mut edits = EditPlan::default();
+        edits.blank(Span::new(0, source.len() as u32));
+        edits.render(source)
+    }
+
     #[test]
     fn no_edits_returns_borrowed_source() {
         let source = "const value = 1;";
@@ -341,12 +353,14 @@ mod tests {
 
     #[test]
     fn blank_preserves_ecmascript_whitespace_and_line_terminators() {
-        let source = ":\tA\r\nB\u{2028}C\u{2029}D\u{00A0}";
-        let mut edits = EditPlan::default();
-        edits.blank(Span::new(0, source.len() as u32));
-        let output = edits.render(source);
+        let output = blank_source(":\t\u{000B}\u{000C}A\r\n");
+        assert_eq!(output, " \t\u{000B}\u{000C} \r\n");
 
-        assert_eq!(output, " \t \r\n \u{2028} \u{2029} \u{00A0}");
+        let output = blank_source("12345678\u{000B}A");
+        assert_eq!(output, "        \u{000B} ");
+
+        let output = blank_source(":\tA\r\nB\u{2028}\u{000B}C\u{2029}D\u{00A0}");
+        assert_eq!(output, " \t \r\n \u{2028}\u{000B} \u{2029} \u{00A0}");
     }
 
     #[test]
@@ -386,9 +400,7 @@ mod tests {
     #[test]
     fn blank_preserves_utf16_width_for_bmp_and_astral_code_points() {
         let source = ": 文𐀀";
-        let mut edits = EditPlan::default();
-        edits.blank(Span::new(0, source.len() as u32));
-        let output = edits.render(source);
+        let output = blank_source(source);
 
         assert_eq!(output, "     ");
         assert_eq!(output.encode_utf16().count(), source.encode_utf16().count());
