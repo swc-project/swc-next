@@ -1,1 +1,1 @@
-function f(){function g(){}class C{}}
+function f(){function a(){}class b{}}

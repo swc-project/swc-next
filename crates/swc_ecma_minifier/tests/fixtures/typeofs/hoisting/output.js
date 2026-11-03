@@ -1,1 +1,1 @@
-function f(){use(x===void 0);var x}
+function f(){use(a===void 0);var a}

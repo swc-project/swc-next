@@ -3,22 +3,25 @@
 JavaScript AST optimization for SWC Next. Compression folds constant
 expressions, removes branches that constant conditions never run, shortens
 booleans and unshadowed global constants, simplifies safe local `typeof`
-comparisons, and removes unused local variables.
+comparisons, and removes unused local variables. Mangling shortens the names
+of local bindings; top-level names are kept.
 
 Use `Minifier::minify(&mut ast, options)` on a valid JavaScript Program AST.
 Parsing, TypeScript/JSX lowering, and printing are separate operations. Print
 with the code generator's `minify` option for compact output, and recompute
 semantic analysis before querying the optimized AST.
 
-See [compression options](src/options.rs) for configuration. Name mangling is
-not implemented.
+See [minifier options](src/options.rs) for configuration. A program that uses
+`eval` or `with` is neither compressed with semantic optimizations nor mangled.
 
 ## Testing
 
 Local [fixtures](tests/fixtures) check expected output and minification
 stability; they do not compare runtime behavior or require external suites.
 Each case has `input.js`, a manually maintained `output.js`, and optional
-`options.json` for source type and minifier options.
+`options.json` for source type and minifier options. The stability check
+minifies the output again without mangling, because names are chosen before
+compression removes references.
 
 Run from the workspace root:
 
