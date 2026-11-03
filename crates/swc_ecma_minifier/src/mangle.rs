@@ -139,8 +139,12 @@ fn occurrences(
     if semantic.linked_symbols(id).nth(1).is_some()
         // Top-level names are visible to other scripts and modules.
         || semantic.scope(semantic.scope_of_symbol(id)).node == program
-        // `var arguments` keeps the arguments object.
-        || ast.get_wtf8(semantic.symbol(id).name).as_bytes() == b"arguments"
+        // `var arguments` keeps the arguments object, and the shorthand `{ __proto__ }`
+        // defines an own property where `{ __proto__: a }` sets the prototype.
+        || matches!(
+            ast.get_wtf8(semantic.symbol(id).name).as_bytes(),
+            b"arguments" | b"__proto__"
+        )
     {
         return None;
     }
