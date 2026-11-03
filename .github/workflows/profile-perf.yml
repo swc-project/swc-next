@@ -85,7 +85,6 @@ jobs:
       - name: Resolve revisions and preserve the build script
         id: revisions
         env:
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HAS_CODSPEED: ${{ contains(github.event.pull_request.labels.*.name, 'Codspeed') }}
           EVENT_SHA: ${{ github.sha }}
           INPUT_BASE: ${{ inputs.base }}
@@ -107,8 +106,13 @@ jobs:
           }
 
           # A push compares the pushed commit with its first parent. A pull
-          # request compares its merge commit with the base branch commit. A
-          # manual run compares the two selected revisions.
+          # request compares its merge commit with the first parent of that
+          # merge commit. For a stacked pull request, GitHub merges the full
+          # stack into the latest default branch, so the base branch commit
+          # can be on an older default branch. The first parent contains the
+          # same default branch commits, so the comparison shows only the
+          # changes of this pull request. A manual run compares the two
+          # selected revisions.
           case "$GITHUB_EVENT_NAME" in
             push)
               base_sha="$(git rev-parse --verify "${EVENT_SHA}^1^{commit}")"
@@ -117,7 +121,7 @@ jobs:
               gungraun=false
               ;;
             pull_request)
-              base_sha="$(git rev-parse --verify "${PR_BASE_SHA}^{commit}")"
+              base_sha="$(git rev-parse --verify "${EVENT_SHA}^1^{commit}")"
               head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
               walltime="$PR_HAS_CODSPEED"
               gungraun=true

@@ -47,10 +47,18 @@ jobs:
           node-version: 24.16.0
           cache: pnpm
 
+      # Compare the merge commit with its first parent. For a stacked pull
+      # request, GitHub merges the full stack into the latest default branch,
+      # so the base branch commit can be on an older default branch. The first
+      # parent contains the same default branch commits, so the comparison
+      # shows only the changes of this pull request.
+      - name: Resolve base revision
+        env:
+          COMPARE_SHA: ${{ github.sha }}
+        run: echo "BASE_SHA=$(git rev-parse --verify "${COMPARE_SHA}^1^{commit}")" >> "$GITHUB_ENV"
+
       - name: Measure base bindings
         id: base
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           git checkout --detach "$BASE_SHA"
           pnpm install --frozen-lockfile
@@ -80,7 +88,6 @@ jobs:
           BUILD_RESULT: ${{ job.status }}
           BASE_SIZES: ${{ toJSON(steps.base.outputs) }}
           MERGE_SIZES: ${{ toJSON(steps.merge.outputs) }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           COMPARE_SHA: ${{ github.sha }}
         run: |
           node <<'NODE'
