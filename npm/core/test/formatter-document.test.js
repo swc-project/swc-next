@@ -5,7 +5,9 @@ import { decode } from "../../../packages/prettier-plugin/decode.js";
 import {
   formatDocBufferSync,
   printDocBufferSync,
+  printDocBufferWithCursorSync,
 } from "../../formatter/src-js/index.js";
+import { encodeDoc } from "../../formatter/src-js/document.js";
 
 const word = (value) => [
   value & 255,
@@ -410,7 +412,7 @@ test("v0 rejects removed extensions and malformed scopes or references", () => {
   );
   assert.throws(() =>
     decode(
-      wire(() => [[2, 7]]),
+      wire(() => [[2, 9]]),
       "",
     ),
   );
@@ -864,4 +866,96 @@ test("Rust host prints an SWCD buffer produced by Rust", () => {
   const expected = "const x = [\n  1, // comment\n  2\n];\n";
   assert.equal(print(doc), expected);
   assert.equal(printDocBufferSync(grouped), expected);
+});
+
+test("JavaScript documents print through the same wire and preserve shared groups", () => {
+  const id = Symbol("layout");
+  const shared = b.group(["alpha", b.line, "beta"], { id });
+  const doc = [
+    shared,
+    b.hardline,
+    b.fill(["foo", b.line, "bar", b.line, "baz"]),
+    b.hardline,
+    shared,
+    b.ifBreak(" expanded", " flat", { groupId: id }),
+    b.hardline,
+    b.group(["x ", b.trim, { type: "line", literal: true }, "y"]),
+  ];
+  const { buffer, labels } = encodeDoc(doc);
+  const decoded = decode(buffer, "", undefined, labels);
+  assert.equal(decoded[0], decoded[4]);
+  assert.equal(decoded[4].id, decoded[5].groupId);
+  for (const printWidth of [5, 12, 80]) {
+    const expected = print(doc, printWidth);
+    assert.equal(print(decoded, printWidth), expected);
+    assert.equal(printDocBufferSync(buffer, { printWidth }), expected);
+  }
+});
+
+test("document sidecars preserve opaque and falsy values", () => {
+  const opaque = {};
+  opaque.self = opaque;
+  const label = (label, contents) => ({ type: "label", label, contents });
+  const shared = label(opaque, "a");
+  const { buffer, labels } = encodeDoc([
+    shared,
+    shared,
+    label(0, "b"),
+    label(false, "c"),
+    label(null, "d"),
+    label(undefined, "e"),
+  ]);
+  assert.deepEqual(labels, [opaque, 0, false, null, undefined]);
+  const result = decode(buffer, "", undefined, labels);
+  assert.equal(result[0], result[1]);
+  assert.equal(result[0].label, opaque);
+  assert.equal(result[2].label, 0);
+  assert.equal(result[3].label, false);
+  assert.equal(result[4].label, null);
+  assert.equal(result[5].label, undefined);
+  assert.equal(printDocBufferSync(buffer), "aabcde");
+  assert.throws(() => decode(buffer, ""));
+  delete labels[4];
+  assert.throws(() => decode(buffer, "", undefined, labels));
+});
+
+test("document encoding rejects cycles and isolated surrogates", () => {
+  const cyclic = [];
+  cyclic.push(b.indent(cyclic));
+  assert.throws(() => encodeDoc(cyclic), /cyclic/i);
+  assert.throws(() => encodeDoc("\ud800"), /surrogate/i);
+  assert.throws(() => encodeDoc(b.align("\udc00", "x")), /surrogate/i);
+
+  let deep = "x";
+  for (let index = 0; index < 10000; index++) deep = b.indent(deep);
+  assert.equal(printDocBufferSync(encodeDoc(deep).buffer), "x");
+});
+
+test("cursor positions are reported in UTF-16 after trimming and line ending conversion", () => {
+  const doc = ["😀 ", b.cursor, b.trim, b.literalline, "中", b.cursor];
+  const { buffer } = encodeDoc(doc);
+  const options = { endOfLine: "crlf" };
+  assert.deepEqual(printDocBufferWithCursorSync(buffer, options), {
+    formatted: "😀\r\n中",
+    cursorNodeStart: 2,
+    cursorNodeText: "\r\n中",
+  });
+
+  const single = encodeDoc(["😀", b.cursor]).buffer;
+  assert.deepEqual(printDocBufferWithCursorSync(single), { formatted: "😀" });
+
+  const extra = encodeDoc([b.cursor, b.cursor, b.lineSuffix(b.cursor)]).buffer;
+  assert.throws(() => printDocBufferWithCursorSync(extra), /cursor/i);
+});
+
+test("shared wire fill entries retain their logical boundaries", () => {
+  const bytes = wire((text) => [
+    [11, ...reference(1), ...end(11)],
+    [...reference(2), ...reference(3), ...reference(2)],
+    [12, ...text("ab"), ...end(12)],
+    [12, 2, 0, ...end(12)],
+  ]);
+  const options = { printWidth: 4 };
+  assert.equal(printWire(bytes, 4), "ab\nab");
+  assert.equal(printDocBufferSync(bytes, options), "ab\nab");
 });
