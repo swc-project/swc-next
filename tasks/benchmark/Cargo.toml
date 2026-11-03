@@ -43,5 +43,9 @@ name    = "semantic"
 
 [[bench]]
 harness = false
+name    = "type_strip"
+
+[[bench]]
+harness = false
 name    = "gungraun_js"
 path    = "js/gungraun_js.rs"
