@@ -28,6 +28,9 @@ fn as_signed(lanes: [u8; 16]) -> [i8; 16] {
     unsafe { std::mem::transmute(lanes) }
 }
 
+// The vector and mask operations below use `#[inline(always)]`. Size-optimized
+// builds such as `opt-level = "z"` otherwise keep them as calls, and the
+// scalar backend then passes every 16-byte vector through memory.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct Simd<T, const N: usize>([T; N]);
@@ -35,17 +38,17 @@ pub struct Simd<T, const N: usize>([T; N]);
 impl<T: Copy, const N: usize> Simd<T, N> {
     pub const LEN: usize = N;
 
-    #[inline]
+    #[inline(always)]
     pub const fn splat(value: T) -> Self {
         Self([value; N])
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn from_array(array: [T; N]) -> Self {
         Self(array)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_slice(slice: &[T]) -> Self {
         let array = slice
             .first_chunk::<N>()
@@ -53,7 +56,7 @@ impl<T: Copy, const N: usize> Simd<T, N> {
         Self(*array)
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn to_array(self) -> [T; N] {
         self.0
     }
@@ -64,18 +67,18 @@ impl<T: Copy, const N: usize> Simd<T, N> {
 pub struct Mask<T, const N: usize>(Simd<T, N>);
 
 impl<const N: usize> Mask<i8, N> {
-    #[inline]
+    #[inline(always)]
     pub const fn splat(value: bool) -> Self {
         Self(Simd::splat(if value { -1 } else { 0 }))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn from_array(array: [bool; N]) -> Self {
         let lanes = array.map(|value| if value { -1 } else { 0 });
         Self(Simd::from_array(lanes))
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn to_array(self) -> [bool; N] {
         self.0.to_array().map(|lane| lane != 0)
     }
@@ -84,7 +87,7 @@ impl<const N: usize> Mask<i8, N> {
     ///
     /// # Panics
     /// Panics if any element is neither 0 nor -1.
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     #[must_use]
     pub fn from_simd(value: Simd<i8, N>) -> Self {
@@ -100,14 +103,14 @@ impl<const N: usize> Mask<i8, N> {
     ///
     /// # Safety
     /// Every element must be either 0 or -1.
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub unsafe fn from_simd_unchecked(value: Simd<i8, N>) -> Self {
         Self(value)
     }
 
     /// Returns the integer vector, with 0 for false and -1 for true.
-    #[inline]
+    #[inline(always)]
     pub fn to_simd(self) -> Simd<i8, N> {
         self.0
     }
@@ -119,7 +122,7 @@ pub trait Select<T> {
 }
 
 impl Select<Simd<u8, 16>> for Mask<i8, 16> {
-    #[inline]
+    #[inline(always)]
     fn select(self, true_values: Simd<u8, 16>, false_values: Simd<u8, 16>) -> Simd<u8, 16> {
         let mask = as_unsigned(self.to_simd().to_array());
         Simd::from_array(backend::select(mask, true_values.0, false_values.0))
@@ -127,14 +130,14 @@ impl Select<Simd<u8, 16>> for Mask<i8, 16> {
 }
 
 impl Mask<i8, 16> {
-    #[inline]
+    #[inline(always)]
     pub fn any(self) -> bool {
         let lanes = as_unsigned(self.to_simd().to_array());
         backend::any(lanes)
     }
 
     /// The first true lane, or `None` when every lane is false.
-    #[inline]
+    #[inline(always)]
     pub fn first_set(self) -> Option<usize> {
         let lanes = as_unsigned(self.to_simd().to_array());
         let lane = backend::first_set(lanes);
@@ -145,7 +148,7 @@ impl Mask<i8, 16> {
 impl Not for Mask<i8, 16> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn not(self) -> Self {
         let lanes = as_unsigned(self.to_simd().to_array());
         let result = as_signed(backend::eq(lanes, [0; 16]));
@@ -157,7 +160,7 @@ impl Not for Mask<i8, 16> {
 impl BitOr for Simd<u8, 16> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn bitor(self, other: Self) -> Self {
         Self(backend::or(self.0, other.0))
     }
@@ -167,7 +170,7 @@ impl Sub for Simd<u8, 16> {
     type Output = Self;
 
     /// Lane-wise wrapping subtraction, matching portable SIMD arithmetic.
-    #[inline]
+    #[inline(always)]
     fn sub(self, other: Self) -> Self {
         Self(backend::sub(self.0, other.0))
     }
@@ -176,7 +179,7 @@ impl Sub for Simd<u8, 16> {
 impl BitAnd for Mask<i8, 16> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn bitand(self, other: Self) -> Self::Output {
         let left = as_unsigned(self.to_simd().to_array());
         let right = as_unsigned(other.to_simd().to_array());
@@ -189,7 +192,7 @@ impl BitAnd for Mask<i8, 16> {
 impl BitOr for Mask<i8, 16> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn bitor(self, other: Self) -> Self::Output {
         let left = as_unsigned(self.to_simd().to_array());
         let right = as_unsigned(other.to_simd().to_array());
@@ -202,14 +205,14 @@ impl BitOr for Mask<i8, 16> {
 impl SimdPartialEq for Simd<u8, 16> {
     type Mask = Mask<i8, 16>;
 
-    #[inline]
+    #[inline(always)]
     fn simd_eq(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::eq(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
         unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn simd_ne(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::ne(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
@@ -218,28 +221,28 @@ impl SimdPartialEq for Simd<u8, 16> {
 }
 
 impl SimdPartialOrd for Simd<u8, 16> {
-    #[inline]
+    #[inline(always)]
     fn simd_lt(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::lt(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
         unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn simd_le(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::le(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
         unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn simd_gt(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::gt(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
         unsafe { Mask::from_simd_unchecked(Simd::from_array(lanes)) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn simd_ge(self, other: Self) -> Self::Mask {
         let lanes = as_signed(backend::ge(self.0, other.0));
         // SAFETY: Byte comparisons produce only 0 or -1 lanes.
