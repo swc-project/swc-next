@@ -201,7 +201,7 @@ fn write_node_case(
                     "start"
                 };
                 format!(
-                    "{name_start} === {name_end} ? \"\" : {name_start} < sourceLength ? source.slice({span_start}, end) : str({name_start}, {name_end})"
+                    "{name_start} < sourceLength ? source.slice({span_start}, end) : str({name_start}, {name_end})"
                 )
             }
             ("StringLiteral", "value")

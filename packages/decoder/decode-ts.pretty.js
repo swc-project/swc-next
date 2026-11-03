@@ -257,7 +257,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 11: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -266,7 +266,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 13: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -275,7 +275,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 14: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -539,7 +539,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 11: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -548,13 +548,13 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 12: {
         result = { type: "PrivateIdentifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 13: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -563,7 +563,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 14: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -572,7 +572,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 15: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -1877,7 +1877,7 @@ export function decodeTs(buffer, source, sourceBuffer) {
       }
       case 167: {
         result = { type: "JSXIdentifier", start, end,
-          name: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
