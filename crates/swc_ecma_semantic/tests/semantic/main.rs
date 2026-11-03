@@ -5,6 +5,7 @@ mod members;
 mod properties;
 mod references;
 mod support;
+mod transform_info;
 mod visibility;
 
 use support::*;

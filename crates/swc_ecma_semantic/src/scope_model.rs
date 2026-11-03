@@ -9,9 +9,9 @@ use swc_next_allocator::vec::{ArenaIndexVec, ArenaVec};
 use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
-    BindingIterator, Declaration, DeclarationId, DeclarationIdIterator, DeclarationIterator,
-    NodeSemanticId, Redeclarations, Reference, ReferenceIterator, ScopeIterator, ScopeMap,
-    Semantic, Symbol, SymbolFlags, SymbolIterator,
+    AsyncFunctionInfo, BindingIterator, Declaration, DeclarationId, DeclarationIdIterator,
+    DeclarationIterator, NodeSemanticId, Redeclarations, Reference, ReferenceIterator,
+    ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator, TransformInfo,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -33,6 +33,7 @@ pub struct ScopeModel<'a> {
     uses: ArenaIndexVec<'a, SymbolId, ArenaVec<'a, ReferenceId>>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
+    transform_info: TransformInfo<'a>,
 }
 
 impl<'a> ScopeModel<'a> {
@@ -63,7 +64,18 @@ impl<'a> ScopeModel<'a> {
             uses,
             scope_maps: semantic.scope_maps,
             node_semantic: semantic.node_semantic,
+            transform_info: semantic.transform_info,
         }
+    }
+
+    /// Syntax facts collected for structural transforms.
+    pub fn transform_info(&self) -> &TransformInfo<'a> {
+        &self.transform_info
+    }
+
+    /// Consume an async function fact when its owner is rewritten.
+    pub fn take_async_function_info(&mut self, node: NodeId) -> Option<AsyncFunctionInfo> {
+        self.transform_info.take_async_function(node)
     }
 
     /// The scope with the given id.
@@ -303,6 +315,46 @@ impl<'a> ScopeModel<'a> {
             self.uses[symbol].push(id);
         }
         id
+    }
+
+    /// Move one retained binding declaration between active scopes.
+    ///
+    /// The symbol and declaration identities are preserved. A symbol with
+    /// declarations in both scopes remains visible from both scope maps.
+    pub fn move_binding_to_scope(
+        &mut self,
+        node: NodeId,
+        from: ScopeId,
+        to: ScopeId,
+        name: &'a [u8],
+    ) {
+        debug_assert!(self.scope(from).active && self.scope(to).active);
+        let Some(symbol) = self.symbol_of(node) else {
+            return;
+        };
+        let Some(declaration) = self
+            .declaration_ids(symbol)
+            .find(|&declaration| self.declaration(declaration).node == node)
+        else {
+            return;
+        };
+        if self.declaration(declaration).scope != from {
+            return;
+        }
+        self.declarations[declaration].scope = to;
+
+        let remains_in_source = self
+            .declaration_ids(symbol)
+            .any(|declaration| self.declaration(declaration).scope == from);
+        if !remains_in_source && self.scope_maps[from].get(name) == Some(&symbol) {
+            self.scope_maps[from].remove(name);
+        }
+        match self.scope_maps[to].get(name).copied() {
+            Some(existing) => debug_assert_eq!(existing, symbol),
+            None => {
+                self.scope_maps[to].insert(name, symbol);
+            }
+        }
     }
 }
 

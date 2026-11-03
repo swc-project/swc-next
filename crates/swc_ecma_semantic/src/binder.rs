@@ -4437,6 +4437,7 @@ impl<'a> SymbolTracker<'a> {
                 import_aliases: self.ts_import_aliases,
                 reference_values,
             },
+            transform_info: crate::TransformInfo::empty(self.allocator),
         }
     }
 

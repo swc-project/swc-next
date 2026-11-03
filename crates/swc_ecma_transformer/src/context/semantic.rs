@@ -278,7 +278,8 @@ impl<'a> TransformCtx<'_, 'a> {
         self.state.semantic.convert_scope(scope, owner, kind, flags);
     }
 
-    /// Move a retained subtree's evaluations between scopes and reparent child scopes while preserving identities.
+    /// Move a retained subtree's bindings and evaluations between scopes and
+    /// reparent child scopes while preserving identities.
     ///
     /// Scope flags stay unchanged; the caller must maintain strictness inheritance in affected scopes.
     ///
@@ -287,9 +288,9 @@ impl<'a> TransformCtx<'_, 'a> {
     /// class C { static { use(value, () => value); } }
     /// // After: the caller reuses the whole call in the class scope.
     /// class C { static #_ = use(value, () => value); }
-    /// // Move references directly in the block scope to the class scope, preserving their identities.
+    /// // Move bindings and references directly in the block scope to the class scope,
+    /// // preserving their identities.
     /// // Reparent the nested arrow scope to the class scope without moving its internal nodes/bindings.
-    /// // Move owned bindings separately, then attach through a setter or container.
     /// // Pass the typed expression handle to reuse Traverse; NodeId alone has no traversal implementation.
     /// ```
     pub fn move_subtree_to_scope(
@@ -308,6 +309,19 @@ impl<'a> TransformCtx<'_, 'a> {
             to,
         };
         root.traverse_with(&mut mover, &mut TraverseCtx::new(self.ast, ()));
+    }
+
+    /// Move one retained binding declaration without changing its symbol.
+    pub fn move_binding_to_scope(
+        &mut self,
+        binding: BindingIdentifier,
+        from: ScopeId,
+        to: ScopeId,
+    ) {
+        let name = self.ast.get_utf8(binding.name(self.ast)).as_bytes();
+        self.state
+            .semantic
+            .move_binding_to_scope(binding.node_id(), from, to, name);
     }
 
     /// Change an active non-root scope's parent while preserving its owner and internal identities.
@@ -349,10 +363,11 @@ struct ScopeMover<'c, 'a> {
 }
 
 impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
-    fn enter_node(&mut self, node: NodeId, _ctx: &mut TraverseCtx<'_, 'a>) {
+    fn enter_node(&mut self, node: NodeId, ctx: &mut TraverseCtx<'_, 'a>) {
         if let Some(scope) = self.semantic.scope_of(node) {
             // Program scopes keep their fixed outer wrapper.
-            if self.semantic.scope(scope).parent == Some(self.from)
+            if scope != self.to
+                && self.semantic.scope(scope).parent == Some(self.from)
                 && self.semantic.scope(self.from).node != node
             {
                 self.semantic.reparent_scope(scope, self.to);
@@ -363,6 +378,11 @@ impl<'a> Traverse<'a> for ScopeMover<'_, 'a> {
         {
             self.semantic
                 .move_reference_to_scope(reference, self.from, self.to);
+        }
+        if let NodeKindData::BindingIdentifier(binding) = ctx.ast.kind_data(node) {
+            let name = ctx.ast.get_utf8(binding.name(ctx.ast)).as_bytes();
+            self.semantic
+                .move_binding_to_scope(node, self.from, self.to, name);
         }
     }
 }

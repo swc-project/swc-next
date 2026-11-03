@@ -38,6 +38,7 @@ mod ecmascript;
 pub mod scope;
 mod scope_model;
 mod syntax_checks;
+mod transform_info;
 
 pub use binder::{
     Declaration, NameResolution, Reference, ReferenceFlags, ReferenceSpace, Symbol, SymbolFlags,
@@ -45,6 +46,7 @@ pub use binder::{
 pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;
+pub use transform_info::{AsyncFunctionInfo, TransformInfo};
 
 swc_next_allocator::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -108,6 +110,7 @@ pub struct Semantic<'a> {
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
 
     ts_members: TsMemberIndex<'a>,
+    transform_info: TransformInfo<'a>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -145,6 +148,11 @@ impl NodeSemanticId {
 }
 
 impl<'a> Semantic<'a> {
+    /// Syntax facts collected for structural transforms.
+    pub fn transform_info(&self) -> &TransformInfo<'a> {
+        &self.transform_info
+    }
+
     /// JSX usage in traversal order, coalescing adjacent sites in one scope.
     /// Intrinsic tags are included; a fragment also requires an element factory.
     pub fn jsx_usages(&self) -> &[JsxUsage] {
