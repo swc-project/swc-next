@@ -1,0 +1,47 @@
+---
+source: crates/swc_ecma_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f() { throw (
+// c
+a
+)++; }
+---------- Options ----------
+{}
+---------- Output ----------
+function f() {
+  throw (
+    // c
+    a++
+  );
+}
+
+---------- Options ----------
+{"semi":false}
+---------- Output ----------
+function f() {
+  throw (
+    // c
+    a++
+  )
+}
+
+---------- Options ----------
+{"printWidth":10}
+---------- Output ----------
+function f() {
+  throw (
+    // c
+    a++
+  );
+}
+
+---------- Options ----------
+{"tabWidth":4,"useTabs":true}
+---------- Output ----------
+function f() {
+	throw (
+		// c
+		a++
+	);
+}
