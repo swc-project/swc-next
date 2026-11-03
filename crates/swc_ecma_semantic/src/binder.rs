@@ -21,8 +21,8 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    DeclarationId, Declarations, HoistingMap, NodeSemanticId, Redeclarations, ScopeMap, ScopeMaps,
-    Scopes, Semantic, Symbols,
+    DeclarationId, Declarations, HoistingMap, InternalNames, JsxUsage, NodeSemanticId,
+    Redeclarations, ScopeMap, ScopeMaps, Scopes, Semantic, Symbols,
     scope::{Scope, ScopeKind, ScopeTree},
 };
 
@@ -1873,11 +1873,11 @@ impl<'a> SymbolLinks<'a> {
 /// them into a [`Semantic`].
 pub(crate) struct SymbolTracker<'a> {
     allocator: &'a Allocator,
-    internal_names: crate::InternalNames<'a>,
+    internal_names: InternalNames<'a>,
     symbols: ArenaIndexVec<'a, SymbolId, Symbol>,
     symbol_links: SymbolLinks<'a>,
     references: ArenaIndexVec<'a, ReferenceId, Reference>,
-    jsx_usages: ArenaVec<'a, crate::JsxUsage>,
+    jsx_usages: ArenaVec<'a, JsxUsage>,
     declarations: ArenaIndexVec<'a, DeclarationId, Declaration>,
     redeclarations: Redeclarations<'a>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
@@ -2077,7 +2077,7 @@ impl<'a> SymbolTracker<'a> {
         node_semantic.resize(nodes, NodeSemanticId::None);
         let mut tracker = Self {
             allocator,
-            internal_names: crate::InternalNames::new_in(allocator),
+            internal_names: InternalNames::new_in(allocator),
             symbols: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 12), allocator),
             symbol_links: SymbolLinks::new_in(allocator),
             references: ArenaIndexVec::with_capacity_in(16usize.max(nodes / 4), allocator),
@@ -3927,7 +3927,7 @@ impl<'a> SymbolTracker<'a> {
             usage.is_fragment |= is_fragment;
             return;
         }
-        self.jsx_usages.push(crate::JsxUsage { scope, is_fragment });
+        self.jsx_usages.push(JsxUsage { scope, is_fragment });
     }
 
     pub fn add_jsx_opening_element_reference(
