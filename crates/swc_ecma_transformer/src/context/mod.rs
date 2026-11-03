@@ -72,6 +72,13 @@ impl<'c, 'a> TransformCtx<'c, 'a> {
         &self.state.semantic
     }
 
+    pub(crate) fn take_async_function_info(
+        &mut self,
+        node: NodeId,
+    ) -> Option<swc_next_ecma_semantic::AsyncFunctionInfo> {
+        self.state.semantic.take_async_function_info(node)
+    }
+
     pub(crate) fn parent(&self) -> Option<NodeId> {
         self.state.path.iter().rev().nth(1).copied()
     }

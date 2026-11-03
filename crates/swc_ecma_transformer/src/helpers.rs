@@ -9,7 +9,7 @@ use crate::context::BoundIdentifier;
 pub(crate) struct Helpers {
     require: Option<AstUtf8>,
     set_function_name: Option<PreparedHelper>,
-    to_property_key: Option<PreparedHelper>,
+    swc_helpers: Option<PreparedHelper>,
 }
 
 /// One generated helper name and its detached external declaration.
@@ -23,6 +23,8 @@ pub(crate) struct PreparedHelper {
 /// Selects the runtime package and callee shape for a supported helper.
 #[derive(Clone, Copy)]
 pub(crate) enum HelperKind {
+    /// `_swc_helpers._async_to_generator(function* () {})`.
+    AsyncToGenerator,
     /// `_set_function_name(target, name)` from Babel's default export.
     SetFunctionName,
     /// `_swc_helpers._to_property_key(value)` from the SWC namespace.
@@ -36,7 +38,7 @@ impl Helpers {
     pub(crate) fn bound_identifier(&self, helper: HelperKind) -> Option<BoundIdentifier> {
         let entry = match helper {
             HelperKind::SetFunctionName => &self.set_function_name,
-            HelperKind::ToPropertyKey => &self.to_property_key,
+            HelperKind::AsyncToGenerator | HelperKind::ToPropertyKey => &self.swc_helpers,
         };
         entry.as_ref().map(|entry| entry.bound_identifier)
     }
@@ -58,7 +60,7 @@ impl Helpers {
     pub(crate) fn insert(&mut self, helper: HelperKind, prepared: PreparedHelper) {
         let entry = match helper {
             HelperKind::SetFunctionName => &mut self.set_function_name,
-            HelperKind::ToPropertyKey => &mut self.to_property_key,
+            HelperKind::AsyncToGenerator | HelperKind::ToPropertyKey => &mut self.swc_helpers,
         };
         debug_assert!(entry.is_none());
         *entry = Some(prepared);
@@ -75,7 +77,7 @@ impl Helpers {
     /// ```
     pub(crate) fn take_statements(&mut self) -> [Option<Stmt>; 2] {
         // Keep import order stable regardless of the order of first use.
-        [self.to_property_key.take(), self.set_function_name.take()]
+        [self.swc_helpers.take(), self.set_function_name.take()]
             .map(|helper| helper.map(|helper| helper.statement))
     }
 
@@ -83,6 +85,6 @@ impl Helpers {
     /// completion to check that all helpers were handed to statement injection;
     /// the injector separately checks that its queue was flushed.
     pub(crate) fn is_empty(&self) -> bool {
-        self.set_function_name.is_none() && self.to_property_key.is_none()
+        self.set_function_name.is_none() && self.swc_helpers.is_none()
     }
 }

@@ -1,7 +1,8 @@
 # swc_ecma_transformer
 
-AST transformations for SWC Next, including TypeScript lowering and class
-static blocks. See the [transformer API](src/lib.rs) for options.
+AST transformations for SWC Next, including TypeScript lowering, async
+functions, and class static blocks. See the [transformer API](src/lib.rs) for
+options.
 
 ## Usage
 
@@ -11,7 +12,8 @@ Transform and print a file from the workspace root:
 cargo run -p swc_next_ecma_transformer --example transformer -- input.ts
 ```
 
-The example lowers TypeScript and class static blocks while preserving JSX.
+The example lowers TypeScript, async functions, and class static blocks while
+preserving JSX.
 
 ## Testing
 

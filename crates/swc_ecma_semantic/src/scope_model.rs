@@ -323,6 +323,46 @@ impl<'a> ScopeModel<'a> {
         }
         id
     }
+
+    /// Move one retained binding declaration between active scopes.
+    ///
+    /// The symbol and declaration identities are preserved. A symbol with
+    /// declarations in both scopes remains visible from both scope maps.
+    pub fn move_binding_to_scope(
+        &mut self,
+        node: NodeId,
+        from: ScopeId,
+        to: ScopeId,
+        name: &'a [u8],
+    ) {
+        debug_assert!(self.scope(from).active && self.scope(to).active);
+        let Some(symbol) = self.symbol_of(node) else {
+            return;
+        };
+        let Some(declaration) = self
+            .declaration_ids(symbol)
+            .find(|&declaration| self.declaration(declaration).node == node)
+        else {
+            return;
+        };
+        if self.declaration(declaration).scope != from {
+            return;
+        }
+        self.declarations[declaration].scope = to;
+
+        let remains_in_source = self
+            .declaration_ids(symbol)
+            .any(|declaration| self.declaration(declaration).scope == from);
+        if !remains_in_source && self.scope_maps[from].get(name) == Some(&symbol) {
+            self.scope_maps[from].remove(name);
+        }
+        match self.scope_maps[to].get(name).copied() {
+            Some(existing) => debug_assert_eq!(existing, symbol),
+            None => {
+                self.scope_maps[to].insert(name, symbol);
+            }
+        }
+    }
 }
 
 impl ScopeModel<'_> {

@@ -35,6 +35,9 @@ impl TransformCtx<'_, '_> {
             }
         };
         match helper {
+            HelperKind::AsyncToGenerator => {
+                self.external_member(bound_identifier, "_async_to_generator", scope)
+            }
             HelperKind::ToPropertyKey => {
                 self.external_member(bound_identifier, "_to_property_key", scope)
             }
@@ -55,7 +58,7 @@ impl TransformCtx<'_, '_> {
     fn prepare_helper(&mut self, helper: HelperKind) -> PreparedHelper {
         let base = match helper {
             HelperKind::SetFunctionName => "_set_function_name",
-            HelperKind::ToPropertyKey => "_swc_helpers",
+            HelperKind::AsyncToGenerator | HelperKind::ToPropertyKey => "_swc_helpers",
         };
         let flags = if self.ast.is_module() {
             SymbolFlags::IMPORT
@@ -116,6 +119,12 @@ impl TransformCtx<'_, '_> {
         self.call(callee, [Argument::Expr(argument)])
     }
 
+    /// Wrap a generator function with SWC's async-to-generator runtime helper.
+    pub(crate) fn call_async_to_generator(&mut self, function: Expr, scope: ScopeId) -> Expr {
+        let callee = self.helper_callee(HelperKind::AsyncToGenerator, scope);
+        self.call(callee, [Argument::Expr(function)])
+    }
+
     /// Wrap an existing callee and ordered arguments in a normal call expression,
     /// growing its identity indexes. The callee and
     /// arguments must already have their semantic information registered.
@@ -171,7 +180,7 @@ impl TransformCtx<'_, '_> {
     fn external_import(&mut self, local: BoundIdentifier, helper: HelperKind) -> Stmt {
         let source = match helper {
             HelperKind::SetFunctionName => "@babel/runtime/helpers/setFunctionName",
-            HelperKind::ToPropertyKey => "@swc/helpers",
+            HelperKind::AsyncToGenerator | HelperKind::ToPropertyKey => "@swc/helpers",
         };
         let scope = self.program_scope();
         if !self.ast.is_module() {
@@ -191,9 +200,11 @@ impl TransformCtx<'_, '_> {
             HelperKind::SetFunctionName => ImportDeclarationSpecifier::ImportDefaultSpecifier(
                 self.add_node(|ast| ast.import_default_specifier(DUMMY_SP, local.identifier)),
             ),
-            HelperKind::ToPropertyKey => ImportDeclarationSpecifier::ImportNamespaceSpecifier(
-                self.add_node(|ast| ast.import_namespace_specifier(DUMMY_SP, local.identifier)),
-            ),
+            HelperKind::AsyncToGenerator | HelperKind::ToPropertyKey => {
+                ImportDeclarationSpecifier::ImportNamespaceSpecifier(
+                    self.add_node(|ast| ast.import_namespace_specifier(DUMMY_SP, local.identifier)),
+                )
+            }
         };
         let specifiers = self.ast.add_sub_range([specifier]);
         let source = self.ast.add_wtf8(source.into());
