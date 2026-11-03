@@ -619,7 +619,9 @@ mod scalar {
     fn lanes(words: [u64; 2]) -> [u8; 16] {
         let [a0, a1, a2, a3, a4, a5, a6, a7] = words[0].to_le_bytes();
         let [b0, b1, b2, b3, b4, b5, b6, b7] = words[1].to_le_bytes();
-        [a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7]
+        [
+            a0, a1, a2, a3, a4, a5, a6, a7, b0, b1, b2, b3, b4, b5, b6, b7,
+        ]
     }
 
     #[inline(always)]
