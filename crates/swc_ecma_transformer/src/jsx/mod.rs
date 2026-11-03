@@ -1,14 +1,12 @@
 use swc_next_ecma_ast::{Ast, Diagnostic, Program, VisitMutWith};
 use swc_next_ecma_semantic::{AnalyzeOptions, Semantic, analyze};
 
-use crate::{
-    jsx_pragma::{PragmaKind, pragmas},
-    uid::LazyUidGenerator,
-};
+use crate::uid::LazyUidGenerator;
 
 mod display_name;
 mod lower;
 mod options;
+pub(crate) mod pragma;
 mod refresh;
 mod self_context;
 mod source;
@@ -16,6 +14,7 @@ mod text;
 
 use lower::RuntimeBindings;
 pub use options::{JsxOptions, JsxRuntime, ReactRefreshOptions};
+use pragma::{PragmaKind, pragmas};
 
 pub(crate) use display_name::DisplayName;
 

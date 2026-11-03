@@ -16,7 +16,6 @@ use crate::{
 
 mod context;
 mod helpers;
-mod jsx_pragma;
 mod uid;
 mod used_names;
 

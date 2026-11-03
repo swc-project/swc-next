@@ -1,5 +1,5 @@
 use super::super::JsxImportOptions;
-use crate::jsx_pragma::{PragmaKind, pragmas};
+use crate::jsx::pragma::{PragmaKind, pragmas};
 use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::{Ast, Program, SymbolId};
 use swc_next_ecma_semantic::{ReferenceSpace, Semantic};
