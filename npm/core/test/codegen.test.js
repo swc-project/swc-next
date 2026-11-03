@@ -28,6 +28,26 @@ test("printSync prints modified parser-produced ESTree", () => {
   assert.equal(printSync(program).code, "const changed = 42;\n");
 });
 
+test("encoder normalizes template raw line endings", () => {
+  for (const lang of ["js", "ts"]) {
+    const { program } = parseSync("tag`placeholder`;", { lang });
+    const value = program.body[0].expression.quasi.quasis[0].value;
+
+    value.raw = "a\rb\r\nc";
+    assert.equal(printSync(program, {}, { lang }).code, "tag`a\nb\nc`;\n");
+
+    value.raw = "a\\\r\nb";
+    assert.equal(printSync(program, {}, { lang }).code, "tag`a\\\nb`;\n");
+
+    value.raw = "a\\rb";
+    assert.equal(printSync(program, {}, { lang }).code, "tag`a\\rb`;\n");
+
+    value.raw = "\\xZ\r";
+    value.cooked = null;
+    assert.equal(printSync(program, {}, { lang }).code, "tag`\\xZ\n`;\n");
+  }
+});
+
 test("encoder preserves array rests", () => {
   const print = (source, lang) => printSync(parseSync(source, { errorRecovery: true }).program, {}, { lang }).code;
 

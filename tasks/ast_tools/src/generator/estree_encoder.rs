@@ -664,7 +664,7 @@ fn field_source(node: &str, field: &str) -> String {
         ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
         ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
         ("TemplateElement", "cooked") => "n.value?.cooked ?? \"\"".into(),
-        ("TemplateElement", "raw") => "n.value?.raw ?? \"\"".into(),
+        ("TemplateElement", "raw") => "templateRaw(n.value?.raw ?? \"\")".into(),
         ("TemplateElement", "is_cooked_undefined") => "n.value?.cooked == null".into(),
         ("PropertyDefinition", "accessor") => {
             "n.type === \"AccessorProperty\" || n.type === \"TSAbstractAccessorProperty\"".into()
@@ -1406,6 +1406,10 @@ function encode(program, meta = {}) {
     do poolCapacity *= 2; while (required > poolCapacity);
     const next = new Uint8Array(poolCapacity);
     next.set(pool.subarray(0, poolLength)); pool = next;
+  }
+
+  function templateRaw(raw) {
+    return raw.includes("\r") ? raw.replace(/\r\n?/g, "\n") : raw;
   }
 
   function numericKind(raw) {

@@ -162,10 +162,10 @@ pub fn serialize_into(
             tree.node_count() * SPAN_SIZE,
         )
     };
+    let mut cache = PositionCache::new(&positions, source_len);
     if positions.is_empty() && cfg!(target_endian = "little") {
         write(buf, &mut pos, spans);
     } else {
-        let mut cache = PositionCache::new(&positions, source_len);
         for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
             let start = cache.convert(span.start);
             let end = cache.convert(span.end);
@@ -231,8 +231,8 @@ pub fn serialize_into(
 
     // =================== Comments ====================
     for comment in tree.comments() {
-        let start = utf16_pos(comment.span.start, &positions, source_len);
-        let end = utf16_pos(comment.span.end, &positions, source_len);
+        let start = cache.convert(comment.span.start);
+        let end = cache.convert(comment.span.end);
         write(buf, &mut pos, &start.to_le_bytes());
         write(buf, &mut pos, &end.to_le_bytes());
         write(buf, &mut pos, &comment.span.start.to_le_bytes());
@@ -242,8 +242,8 @@ pub fn serialize_into(
     // =================== Diagnostics ====================
     for diagnostic in diagnostics {
         write(buf, &mut pos, &[diagnostic.severity as u8]);
-        let start = utf16_pos(diagnostic.span.start, &positions, source_len);
-        let end = utf16_pos(diagnostic.span.end, &positions, source_len);
+        let start = cache.convert(diagnostic.span.start);
+        let end = cache.convert(diagnostic.span.end);
         write(buf, &mut pos, &start.to_le_bytes());
         write(buf, &mut pos, &end.to_le_bytes());
         write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
@@ -255,8 +255,8 @@ pub fn serialize_into(
             u32::try_from(diagnostic.labels.len()).expect("diagnostic label count exceeds u32");
         write(buf, &mut pos, &label_count.to_le_bytes());
         for label in &diagnostic.labels {
-            let start = utf16_pos(label.span.start, &positions, source_len);
-            let end = utf16_pos(label.span.end, &positions, source_len);
+            let start = cache.convert(label.span.start);
+            let end = cache.convert(label.span.end);
             write(buf, &mut pos, &start.to_le_bytes());
             write(buf, &mut pos, &end.to_le_bytes());
             write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
@@ -583,19 +583,6 @@ fn build_pos_map(source: &str, source_utf16_len: usize) -> (PositionMap, usize) 
     (positions, first_non_ascii)
 }
 
-#[inline]
-fn utf16_pos(byte: u32, positions: &PositionMap, source_len: u32) -> u32 {
-    if byte > source_len {
-        return byte;
-    }
-    let index = positions.partition_point(|&(offset, _)| offset <= byte);
-    byte - if index == 0 {
-        0
-    } else {
-        positions[index - 1].1
-    }
-}
-
 /// Cache an interval over which the UTF-8 to UTF-16 difference is constant.
 struct PositionCache<'a> {
     positions: &'a PositionMap,
@@ -730,9 +717,7 @@ mod tests {
 
     use swc_next_allocator::Allocator;
 
-    use super::{
-        PositionCache, buffer_size, build_pos_map, deserialize_from, serialize_into, utf16_pos,
-    };
+    use super::{PositionCache, buffer_size, build_pos_map, deserialize_from, serialize_into};
     use crate::{Ast, Diagnostic, GetSpan, Label, Severity, Span, SubRange};
 
     #[test]
@@ -809,13 +794,14 @@ mod tests {
         let source = "aé中😀z";
         let (map, first) = build_pos_map(source, source.encode_utf16().count());
         assert_eq!(first, 1);
+        let mut cache = PositionCache::new(&map, source.len() as u32);
         assert_eq!(
             (0..=source.len() as u32)
-                .map(|byte| utf16_pos(byte, &map, source.len() as u32))
+                .map(|byte| cache.convert(byte))
                 .collect::<Vec<_>>(),
             vec![0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 5, 6]
         );
-        assert_eq!(utf16_pos(12, &map, source.len() as u32), 12);
+        assert_eq!(cache.convert(12), 12);
     }
 
     #[test]
