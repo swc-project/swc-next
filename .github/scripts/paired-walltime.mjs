@@ -27,7 +27,7 @@ import { cpus, release } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 const PACKAGE = "benchmark";
-const TARGETS = ["parser", "visit", "semantic", "type_strip", "minifier"];
+const TARGETS = ["parser", "visit", "semantic", "type_strip", "minifier", "transformer"];
 // A change is reported only when every round agrees on its direction and the
 // median paired change is at least this large.
 const THRESHOLD = 0.02;

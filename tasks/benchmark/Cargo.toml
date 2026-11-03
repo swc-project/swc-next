@@ -51,5 +51,9 @@ name    = "minifier"
 
 [[bench]]
 harness = false
+name    = "transformer"
+
+[[bench]]
+harness = false
 name    = "gungraun_js"
 path    = "js/gungraun_js.rs"
