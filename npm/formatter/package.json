@@ -14,11 +14,17 @@
     ".": {
       "import": "./src-js/index.js",
       "types": "./src-js/index.d.ts"
+    },
+    "./document": {
+      "types": "./src-js/document.d.ts",
+      "import": "./src-js/document.js"
     }
   },
   "files": [
     "src-js/binding.d.ts",
     "src-js/binding.js",
+    "src-js/document.d.ts",
+    "src-js/document.js",
     "src-js/index.d.ts",
     "src-js/index.js"
   ],

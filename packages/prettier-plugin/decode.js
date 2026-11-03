@@ -4,9 +4,15 @@ const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const invalid = () => new Error("Invalid SWCFMT document buffer");
 const contents = (parts) => (parts.length === 1 ? parts[0] : parts);
 
+class FillEntry {
+  constructor(contents) {
+    this.contents = contents;
+  }
+}
+
 // Private ABI v0; keep in sync with document/encode.rs. Fragments are complete
 // scopes, so their standard Docs can be shared without caller-dependent state.
-export function decode(buffer, source, options = { tabWidth: 2 }) {
+export function decode(buffer, source, options = { tabWidth: 2 }, labels = []) {
   const bytes = new Uint8Array(
     buffer.buffer,
     buffer.byteOffset,
@@ -83,10 +89,13 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
         case 24:
         case 25:
         case 26:
+        case 27:
+        case 28:
           ops.push([op]);
           break;
         case 6:
         case 19:
+        case 29:
           ops.push([op, integer()]);
           break;
         case 9:
@@ -143,8 +152,19 @@ export function decode(buffer, source, options = { tabWidth: 2 }) {
     return groups.get(id);
   };
   const docs = [];
-  for (const id of fragmentOrder(fragments))
-    docs[id] = build(fragments[id], docs, text, group, options);
+  const entryLists = new WeakSet();
+  const hasEntries = (doc) => doc instanceof FillEntry || entryLists.has(doc);
+  for (const id of fragmentOrder(fragments)) {
+    docs[id] = build(fragments[id], docs, {
+      text,
+      group,
+      options,
+      labels,
+      entryLists,
+      hasEntries,
+    });
+  }
+  if (hasEntries(docs[0])) throw invalid();
   return docs[0];
 }
 
@@ -185,7 +205,24 @@ function fragmentOrder(fragments) {
   return order;
 }
 
-function build(ops, docs, text, group, options) {
+function fillParts(parts, entryLists) {
+  const output = [];
+  const pending = [parts[Symbol.iterator]()];
+  while (pending.length !== 0) {
+    const { value, done } = pending.at(-1).next();
+    if (done) pending.pop();
+    else if (value instanceof FillEntry) output.push(value.contents);
+    else if (entryLists.has(value)) pending.push(value[Symbol.iterator]());
+    else output.push(value);
+  }
+  return output;
+}
+
+function build(
+  ops,
+  docs,
+  { text, group, options, labels, entryLists, hasEntries },
+) {
   const stack = [{ op: -1, parts: [] }];
   const append = (doc) => stack.at(-1).parts.push(doc);
   for (const [op, first, second, third, fourth] of ops) {
@@ -204,6 +241,8 @@ function build(ops, docs, text, group, options) {
           b.literalline,
           b.markAsRoot(b.literalline),
           b.literallineWithoutBreakParent,
+          { type: "line", literal: true },
+          { type: "line", literal: true, soft: true },
         ][first];
         if (!line) throw invalid();
         append(line);
@@ -222,14 +261,17 @@ function build(ops, docs, text, group, options) {
       case 24:
       case 25:
       case 26:
+      case 29:
         if ((op === 3 || op === 7 || op === 8) && first > 1) throw invalid();
-        if (op === 12 && stack.at(-1).op !== 11) throw invalid();
+        if (op === 12 && stack.length !== 1 && stack.at(-1).op !== 11)
+          throw invalid();
         stack.push({ op, first, second, parts: [] });
         break;
       case 9:
         append(docs[first]);
         break;
       case 10:
+        if (first.some((id) => hasEntries(docs[id]))) throw invalid();
         append(b.conditionalGroup(first.map((id) => docs[id])));
         break;
       case 15:
@@ -238,11 +280,25 @@ function build(ops, docs, text, group, options) {
       case 16:
         append(b.breakParent);
         break;
+      case 27:
+        append(b.trim);
+        break;
+      case 28:
+        append(b.cursor);
+        break;
       case 21:
+        if (hasEntries(docs[second]) || hasEntries(docs[third]))
+          throw invalid();
         // Both branches remain visible to Prettier's breakParent propagation.
         append(b.ifBreak(docs[second], docs[third], { groupId: group(first) }));
         break;
       case 22:
+        if (
+          hasEntries(docs[third]) ||
+          fourth?.some((id) => hasEntries(docs[id]))
+        ) {
+          throw invalid();
+        }
         append(
           b.group(docs[third], {
             id: group(second),
@@ -256,6 +312,7 @@ function build(ops, docs, text, group, options) {
         const frame = stack.pop();
         if (frame.op !== first && !(first === 4 && [7, 19].includes(frame.op)))
           throw invalid();
+        if (frame.op !== 11 && frame.parts.some(hasEntries)) throw invalid();
         const doc = contents(frame.parts);
         switch (frame.op) {
           case 3:
@@ -288,10 +345,10 @@ function build(ops, docs, text, group, options) {
             );
             break;
           case 11:
-            append(b.fill(frame.parts));
+            append(b.fill(fillParts(frame.parts, entryLists)));
             break;
           case 12:
-            append(doc);
+            append(new FillEntry(doc));
             break;
           case 14:
             append(b.lineSuffix(doc));
@@ -315,6 +372,16 @@ function build(ops, docs, text, group, options) {
           case 26:
             append(b.dedentToRoot(doc));
             break;
+          case 29:
+            if (!Array.isArray(labels) || !Object.hasOwn(labels, frame.first)) {
+              throw invalid();
+            }
+            append({
+              type: "label",
+              label: labels[frame.first],
+              contents: doc,
+            });
+            break;
           default:
             throw invalid();
         }
@@ -325,5 +392,8 @@ function build(ops, docs, text, group, options) {
     }
   }
   if (stack.length !== 1) throw invalid();
-  return contents(stack[0].parts);
+  const parts = stack[0].parts;
+  const doc = contents(parts);
+  if (Array.isArray(doc) && parts.some(hasEntries)) entryLists.add(doc);
+  return doc;
 }

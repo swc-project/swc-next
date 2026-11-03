@@ -18,3 +18,15 @@ export declare function printDocBufferSync(
   buffer: Uint8Array,
   options?: PrintDocOptions,
 ): string;
+
+export interface PrintDocResult {
+  formatted: string;
+  cursorNodeStart?: number;
+  cursorNodeText?: string;
+}
+
+/** Prints an SWCD document and reports its emitted cursor range in UTF-16. */
+export declare function printDocBufferWithCursorSync(
+  buffer: Uint8Array,
+  options?: PrintDocOptions,
+): PrintDocResult;

@@ -1,12 +1,39 @@
 import {
   formatDocBufferSync,
   printDocBufferSync as printBuffer,
+  printDocBufferWithCursorSync as printBufferWithCursor,
   wasmBinding,
 } from "./binding.js";
 
 export { formatDocBufferSync };
 
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
 export function printDocBufferSync(buffer, options = {}) {
+  return printBuffer(...printArgs(buffer, options));
+}
+
+export function printDocBufferWithCursorSync(buffer, options = {}) {
+  const result = printBufferWithCursor(...printArgs(buffer, options));
+  if (result[0] === 0) {
+    return { formatted: utf8.decode(result.subarray(1)) };
+  }
+  const view = new DataView(
+    result.buffer,
+    result.byteOffset,
+    result.byteLength,
+  );
+  const start = view.getUint32(1, true);
+  const end = view.getUint32(5, true);
+  const bytes = result.subarray(9);
+  return {
+    formatted: utf8.decode(bytes),
+    cursorNodeStart: utf8.decode(bytes.subarray(0, start)).length,
+    cursorNodeText: utf8.decode(bytes.subarray(start, end)),
+  };
+}
+
+function printArgs(buffer, options) {
   if (!(buffer instanceof Uint8Array)) {
     throw new TypeError("buffer must be a Uint8Array");
   }
@@ -50,5 +77,5 @@ export function printDocBufferSync(buffer, options = {}) {
     tabWidth,
     ending,
   );
-  return printBuffer(input, wire);
+  return [input, wire];
 }

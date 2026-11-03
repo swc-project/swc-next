@@ -17,6 +17,19 @@ pub fn print_doc(bytes: &[u8], options: &[u8]) -> Result<String, String> {
     Ok(document.print(options))
 }
 
+/// Print a versioned document and collect its emitted cursor markers.
+pub fn print_doc_with_cursor(
+    bytes: &[u8],
+    options: &[u8],
+) -> Result<swc_next_formatter_core::PrintResult, String> {
+    let options = decode_print_options(options).ok_or("invalid print options")?;
+    let allocator = Allocator::new();
+    let document = Doc::decode(&allocator, bytes).map_err(|error| error.to_string())?;
+    document
+        .print_with_cursor(options)
+        .map_err(|error| error.to_string())
+}
+
 /// Version 0: u32 version, u16 width, u8 indent style, width and line ending.
 fn decode_print_options(bytes: &[u8]) -> Option<PrintOptions> {
     let &[

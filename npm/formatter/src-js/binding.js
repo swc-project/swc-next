@@ -577,5 +577,5 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { formatDocBufferSync, printDocBufferSync } = nativeBinding
-export { formatDocBufferSync, printDocBufferSync, wasmBinding }
+const { formatDocBufferSync, printDocBufferSync, printDocBufferWithCursorSync } = nativeBinding
+export { formatDocBufferSync, printDocBufferSync, printDocBufferWithCursorSync, wasmBinding }

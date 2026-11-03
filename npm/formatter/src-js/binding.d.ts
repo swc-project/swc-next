@@ -61,3 +61,5 @@ export declare const enum SourceType {
 export declare function formatDocBufferSync(source: string, parser: ParserOptions | undefined | null, options: Buffer): Buffer
 
 export declare function printDocBufferSync(buffer: Buffer, options: Buffer): string
+
+export declare function printDocBufferWithCursorSync(buffer: Buffer, options: Buffer): Buffer
