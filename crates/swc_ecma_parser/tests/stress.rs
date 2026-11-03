@@ -117,3 +117,59 @@ fn type_argument_speculation() {
         assert!(errors.is_empty());
     }
 }
+
+#[test]
+fn binding_pattern_lookahead() {
+    fn parse(source: String, options: Options) {
+        std::thread::Builder::new()
+            .stack_size(512 << 20)
+            .spawn(move || {
+                let allocator = Allocator::new();
+                let parsed =
+                    Parser::init(&allocator, &source, options, NoTokenParserConfig).parse();
+                assert!(parsed.diagnostics.is_empty());
+                assert_eq!(parsed.ast.root_program().body(&parsed.ast).len(), 1);
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    fn nest(prefix: &str, suffix: &str, depth: usize) -> String {
+        format!("{}T{}", prefix.repeat(depth), suffix.repeat(depth))
+    }
+
+    let typescript = Options {
+        lang: Lang::Ts,
+        ..Options::default()
+    };
+    let tsx = Options {
+        lang: Lang::Tsx,
+        ..typescript
+    };
+    for options in [typescript, tsx] {
+        let source = format!("type A = {};", nest("([A<", ">])", 40));
+        parse(source, options);
+
+        let source = format!("type A = {};", nest("({a: A<", ">})", 40));
+        parse(source, options);
+
+        let source = format!("type A = {};", nest("({[x as ", "]: A})", 40));
+        parse(source, options);
+
+        let source = format!("type A = {};", nest("([a = x as ", "]) => void", 40));
+        parse(source, options);
+
+        let source = format!("{};", nest("([a = ", "]) => 0", 40));
+        parse(source, options);
+
+        let source = format!("{};", nest("({a = ", "}) => 0", 40));
+        parse(source, options);
+
+        let source = format!("{};", nest("(a,", ")", 20_000));
+        parse(source, options);
+
+        let source = format!("{};", nest("(a, [", "])", 20_000));
+        parse(source, options);
+    }
+}

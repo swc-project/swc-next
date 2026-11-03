@@ -832,6 +832,24 @@ struct ParenthesizedCover {
     has_trailing_comma: bool,
 }
 
+struct CoverParameterSuffix {
+    index: usize,
+    end: u32,
+    suffix: ParameterSuffix,
+}
+
+struct ParameterSuffix {
+    optional: bool,
+    type_annotation: Option<TsTypeAnnotation>,
+    initializer: Option<Expr>,
+}
+
+#[derive(Clone, Copy)]
+struct AsyncCover {
+    identifier: Expr,
+    escaped: bool,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DeclaratorCtx {
     Normal,
@@ -1131,13 +1149,6 @@ enum PostfixStep {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ArrowHead {
-    No,
-    Yes,
-    Maybe,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UnambiguousParseAction {
     KeepModule,
     RelabelAsCommonJs,
@@ -1203,6 +1214,7 @@ pub struct Parser<'a, C: ParserConfig = NoTokenParserConfig> {
     failed_type_arguments: FxHashMap<SpeculationKey, TypeArgumentFailures>,
     type_argument_speculation_depth: u32,
     type_argument_lookahead: TypeArgumentLookahead,
+    computed_key_lookahead: ComputedKeyLookahead,
 }
 
 pub struct ParseReturn<'a> {
@@ -1306,6 +1318,32 @@ impl<C: ParserConfig> Drop for Peek<'_, '_, C> {
             self.restore();
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct ComputedKeyBoundary {
+    expression_span: Span,
+    next: Token,
+    lexer_cursor: u32,
+    lexer_state: LexerState,
+    lexer_mode: LexerMode,
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+struct ComputedKeyContext {
+    grammar: SpeculationKey,
+    type_argument_depth: u32,
+    source_type: u8,
+    await_identifier: Option<Span>,
+}
+
+#[derive(Default)]
+struct ComputedKeyLookahead {
+    /// Active only during the disposable function-type binding probe.
+    active: bool,
+    /// Reuse only diagnostic-free expression parses in the same grammar and
+    /// type-argument speculation depth. No AST handles survive rollback.
+    expressions: FxHashMap<ComputedKeyContext, ComputedKeyBoundary>,
 }
 
 #[derive(Default)]
@@ -1501,6 +1539,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             failed_type_arguments: FxHashMap::default(),
             type_argument_speculation_depth: 0,
             type_argument_lookahead: TypeArgumentLookahead::default(),
+            computed_key_lookahead: ComputedKeyLookahead::default(),
         }
     }
 
@@ -4291,30 +4330,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             self.parse_formal_parameter_parts()
         }?;
-        let optional = IS_TYPESCRIPT && self.eat(TokenTag::Question)?;
-        let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
-            Some(self.parse_type_annotation()?)
-        } else {
-            None
-        };
-        let initializer = if self.eat(TokenTag::Assign)? {
-            let context = enter_grammar_context![&mut self.context, +In];
-            let initializer = self.parse_value_expression(Precedence::Assignment);
-            self.context = context;
-            let initializer = initializer?;
-            Some(initializer)
-        } else {
-            cover_initializer
-        };
-        if self.ts_context.ambient()
-            && let Some(initializer) = initializer
-        {
-            self.report(
-                initializer.span(&self.ast),
-                "A parameter initializer is only allowed in a function or constructor implementation",
-                ReportOptions::default(),
-            );
-        }
+        let ParameterSuffix {
+            optional,
+            type_annotation,
+            initializer,
+        } = self.parse_parameter_suffix::<IS_TYPESCRIPT>(cover_initializer)?;
         let end = self.lexer.state.prev_token_end;
         let parameter_decorators = if modifiers.present {
             SubRange::empty()
@@ -4347,6 +4367,42 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         } else {
             Some(FormalParameterItem::FormalParameter(parameter))
         }
+    }
+
+    #[inline]
+    fn parse_parameter_suffix<const IS_TYPESCRIPT: bool>(
+        &mut self,
+        cover_initializer: Option<Expr>,
+    ) -> Option<ParameterSuffix> {
+        let optional = IS_TYPESCRIPT && self.eat(TokenTag::Question)?;
+        let type_annotation = if IS_TYPESCRIPT && self.current_token.tag() == TokenTag::Colon {
+            Some(self.parse_type_annotation()?)
+        } else {
+            None
+        };
+        let initializer = if self.eat(TokenTag::Assign)? {
+            let context = enter_grammar_context![&mut self.context, +In];
+            let initializer = self.parse_value_expression(Precedence::Assignment);
+            self.context = context;
+            let initializer = initializer?;
+            Some(initializer)
+        } else {
+            cover_initializer
+        };
+        if self.ts_context.ambient()
+            && let Some(initializer) = initializer
+        {
+            self.report(
+                initializer.span(&self.ast),
+                "A parameter initializer is only allowed in a function or constructor implementation",
+                ReportOptions::default(),
+            );
+        }
+        Some(ParameterSuffix {
+            optional,
+            type_annotation,
+            initializer,
+        })
     }
 
     // Keep ordinary bindings direct while sharing parenthesized recovery.
@@ -7151,14 +7207,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
     fn is_function_type_after_pattern(&mut self) -> Option<bool> {
         let checkpoint = self.checkpoint();
+        let active = mem::replace(&mut self.computed_key_lookahead.active, true);
         let result = (|| {
             self.advance()?;
-            if self
-                .with_type_binding_context(Self::parse_binding_pattern)
-                .is_none()
-                || !self.speculation_is_clean(&checkpoint)
-            {
+            let Some(has_initializer) = self.with_type_binding_context(Self::probe_binding_pattern)
+            else {
                 return Some(false);
+            };
+            if !self.speculation_is_clean(&checkpoint) {
+                return Some(false);
+            }
+            if has_initializer {
+                return Some(true);
             }
             Some(match self.current_token.tag() {
                 TokenTag::Colon | TokenTag::Comma | TokenTag::Question | TokenTag::Assign => true,
@@ -7170,7 +7230,62 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             })
         })();
         self.rewind(checkpoint);
+        self.computed_key_lookahead.active = active;
         result
+    }
+
+    /// Stop at the first token that cannot continue a binding pattern. Parsing
+    /// an expression cover here would recursively parse nested types before
+    /// rejecting them, then parse those types again after rewinding. An
+    /// initializer proves a parameter list without parsing its expression.
+    fn probe_binding_pattern(&mut self) -> Option<bool> {
+        let close = match self.current_token.tag() {
+            TokenTag::LeftBracket => TokenTag::RightBracket,
+            TokenTag::LeftBrace => TokenTag::RightBrace,
+            tag if tag.is_identifier_like() => {
+                self.consume_identifier(IdentifierRole::Binding)?;
+                return Some(false);
+            }
+            _ => return None,
+        };
+        self.advance()?;
+        while self.current_token.tag() != close {
+            if close == TokenTag::RightBracket && self.eat(TokenTag::Comma)? {
+                continue;
+            }
+            let rest = self.eat(TokenTag::Spread)?;
+            if close == TokenTag::RightBrace {
+                if rest {
+                    self.consume_identifier(IdentifierRole::Binding)?;
+                } else {
+                    let key = self.current_token;
+                    self.parse_property_key(true)?;
+                    if self.eat(TokenTag::Colon)? {
+                        if self.probe_binding_pattern()? {
+                            return Some(true);
+                        }
+                    } else if key.tag().is_identifier_like() {
+                        self.validate_identifier(key, IdentifierRole::Binding);
+                    } else {
+                        return None;
+                    }
+                }
+            } else if self.probe_binding_pattern()? {
+                return Some(true);
+            }
+            if rest {
+                if self.current_token.tag() != close {
+                    return None;
+                }
+            } else if self.current_token.tag() == TokenTag::Assign {
+                return Some(true);
+            }
+            if self.current_token.tag() != close && !self.eat(TokenTag::Comma)? {
+                return None;
+            }
+        }
+        self.advance()?;
+        Some(false)
     }
 
     fn parse_function_or_constructor_type(&mut self) -> Option<TsType> {
@@ -9125,8 +9240,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         minimum: Precedence,
         allow_type_binding_identifiers: bool,
     ) -> Option<Expr> {
+        let left = self.parse_expression_head(minimum, allow_type_binding_identifiers)?;
+        self.parse_expr_from_left(left, minimum)
+    }
+
+    #[inline(always)]
+    fn parse_expression_head(
+        &mut self,
+        minimum: Precedence,
+        allow_type_binding_identifiers: bool,
+    ) -> Option<Expr> {
         // These primary expressions need no prefix-operator or contextual-keyword checks.
-        let left = match self.current_token.tag() {
+        Some(match self.current_token.tag() {
             TokenTag::Identifier => self.parse_plain_identifier()?,
             tag if tag.is_numeric_literal() => self.parse_numeric_literal()?,
             TokenTag::StringLiteral => Expr::StringLiteral(self.parse_string_literal()?),
@@ -9134,8 +9259,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             TokenTag::NullLiteral => self.parse_null_literal()?,
             TokenTag::This => self.parse_this_expression()?,
             _ => self.parse_prefix(allow_type_binding_identifiers, minimum)?,
-        };
-        self.parse_expr_from_left(left, minimum)
+        })
     }
 
     /// Pair candidate lifetime with role resolution, including failed recovery.
@@ -9307,9 +9431,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             // Select the grammar mode before parsing the cover so `minimum` does not
             // need to remain live across the parse.
             if minimum <= Precedence::Assignment {
-                return self.parse_parenthesized_or_arrow_function::<true>(None);
+                return self.parse_parenthesized_or_arrow_function::<true>();
             }
-            return self.parse_parenthesized_or_arrow_function::<false>(None);
+            return self.parse_parenthesized_or_arrow_function::<false>();
         }
 
         if tag == TokenTag::Await && self.context.contains(Context::AWAIT) {
@@ -9827,31 +9951,19 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_parenthesized_or_arrow_function<const CAN_BE_ARROW: bool>(
-        &mut self,
-        arrow_start: Option<u32>,
-    ) -> Option<Expr> {
-        let start = arrow_start.unwrap_or(self.current_token.start());
-        if self.lang.is_typescript() && CAN_BE_ARROW {
-            match self.classify_arrow_head() {
-                ArrowHead::Yes => {
-                    return self.parse_arrow(false, start);
-                }
-                ArrowHead::Maybe => {
-                    if let Some(arrow) = self.try_parse_arrow(false, start)? {
-                        return Some(arrow);
-                    }
-                }
-                ArrowHead::No => {}
-            }
+    fn parse_parenthesized_or_arrow_function<const CAN_BE_ARROW: bool>(&mut self) -> Option<Expr> {
+        let start = self.current_token.start();
+        if CAN_BE_ARROW && self.lang.is_typescript() {
+            return self.parse_parenthesized_head(start, true, None);
         }
         self.with_resolved_cover(|parser| {
             let cover = parser.parse_parenthesized_cover()?;
-            let is_arrow = parser.current_token.tag() == TokenTag::Arrow && CAN_BE_ARROW;
-            if is_arrow {
-                return parser.cover_to_arrow_function(cover, false, start);
+            if CAN_BE_ARROW && parser.current_token.tag() == TokenTag::Arrow {
+                let params = parser.convert_to_formal_parameters(cover, &[])?;
+                parser.build_arrow_function(start, params, false, None, None)
+            } else {
+                parser.cover_to_parenthesized_expression(cover)
             }
-            parser.cover_to_parenthesized_expression(cover)
         })
     }
 
@@ -9863,6 +9975,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     //   `(` Expression[+In, ?Yield, ?Await] `,` `...` BindingIdentifier[?Yield, ?Await] `)`
     //   `(` Expression[+In, ?Yield, ?Await] `,` `...` BindingPattern[?Yield, ?Await] `)`
     fn parse_parenthesized_cover(&mut self) -> Option<ParenthesizedCover> {
+        self.parse_parenthesized_cover_inner::<false>(&mut Vec::new())
+    }
+
+    fn parse_parenthesized_cover_inner<const ARROW_COVER: bool>(
+        &mut self,
+        suffixes: &mut Vec<CoverParameterSuffix>,
+    ) -> Option<ParenthesizedCover> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::LeftParen);
         let start = self.current_token.start();
         self.advance()?;
@@ -9876,28 +9995,49 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             while self.current_token.tag() != TokenTag::RightParen
                 && self.current_token.tag() != TokenTag::Eof
             {
-                let element = if self.eat(TokenTag::Spread)? {
-                    let spread_start = self.lexer.state.prev_token_end - 3;
-                    let argument = self.parse_expr(
-                        Precedence::Assignment,
-                        ParseExpressionOpts {
-                            allow_type_binding_identifiers: true,
-                        },
-                    )?;
-                    Argument::SpreadElement(self.ast.spread_element(
-                        Span::new(spread_start, argument.span(&self.ast).end),
-                        argument,
-                    ))
+                let spread_start = self
+                    .eat(TokenTag::Spread)?
+                    .then(|| self.lexer.state.prev_token_end - 3);
+                let (expression, suffix_end) = if ARROW_COVER {
+                    let left = self.parse_expression_head(Precedence::Assignment, true)?;
+                    let tag = self.current_token.tag();
+                    if tag == TokenTag::Colon
+                        || tag == TokenTag::Question
+                            && matches!(
+                                self.peek_ahead()?.tag(),
+                                TokenTag::Colon
+                                    | TokenTag::Comma
+                                    | TokenTag::RightParen
+                                    | TokenTag::Assign
+                            )
+                    {
+                        let suffix = self.parse_parameter_suffix::<true>(None)?;
+                        let end = self.lexer.state.prev_token_end;
+                        suffixes.push(CoverParameterSuffix {
+                            index: self.cover.scratch.items.len() - checkpoint,
+                            end,
+                            suffix,
+                        });
+                        (left, Some(end))
+                    } else {
+                        (
+                            self.parse_expr_from_left(left, Precedence::Assignment)?,
+                            None,
+                        )
+                    }
                 } else {
-                    let expression = self.parse_expr(
-                        Precedence::Assignment,
-                        ParseExpressionOpts {
-                            allow_type_binding_identifiers: true,
-                        },
-                    )?;
-                    Argument::Expr(expression)
+                    (
+                        self.parse_expression_in_cover(Precedence::Assignment)?,
+                        None,
+                    )
                 };
-                end = element.span(&self.ast).end;
+                end = suffix_end.unwrap_or_else(|| expression.span(&self.ast).end);
+                let element = match spread_start {
+                    Some(start) => Argument::SpreadElement(
+                        self.ast.spread_element(Span::new(start, end), expression),
+                    ),
+                    None => Argument::Expr(expression),
+                };
                 self.cover.scratch.append(element);
                 if self.eat(TokenTag::Comma)? {
                     has_trailing_comma = self.current_token.tag() == TokenTag::RightParen;
@@ -10016,24 +10156,22 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })
     }
 
-    fn cover_to_arrow_function(
-        &mut self,
-        cover: ParenthesizedCover,
-        is_async: bool,
-        arrow_start: u32,
-    ) -> Option<Expr> {
-        let parameters = self.convert_to_formal_parameters(cover)?;
-        self.build_arrow_function(arrow_start, parameters, is_async, None, None)
-    }
-
     fn convert_to_formal_parameters(
         &mut self,
         cover: ParenthesizedCover,
+        mut suffixes: &[CoverParameterSuffix],
     ) -> Option<FormalParameters> {
         let checkpoint = self.cover.scratch.begin();
         let result = (|| {
             let mut rest = None;
             for (index, id) in cover.elements.iter().enumerate() {
+                let suffix = match suffixes.split_first() {
+                    Some((first, rest)) if first.index == index => {
+                        suffixes = rest;
+                        Some(first)
+                    }
+                    _ => None,
+                };
                 let argument = self.ast.get_node_in_sub_range(id);
                 match self.ast.argument_data(argument) {
                     ArgumentData::Expr(expression) => {
@@ -10050,7 +10188,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             );
                             return None;
                         }
-                        let parameter = self.convert_to_formal_parameter(expression)?;
+                        let parameter = self.expression_to_parameter(expression, suffix)?;
                         self.cover.scratch.append(parameter);
                     }
                     ArgumentData::SpreadElement(spread) => {
@@ -10094,11 +10232,20 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                             );
                         }
                         let argument = self.formal_parameter_pattern(argument)?;
+                        if let Some(suffix) = suffix
+                            && (suffix.suffix.optional || suffix.suffix.initializer.is_some())
+                        {
+                            self.report(
+                                spread.span(&self.ast),
+                                "A rest parameter cannot be optional or have an initializer",
+                                ReportOptions::default(),
+                            );
+                        }
                         let temporary = self.ast.formal_parameter_rest(
                             spread.span(&self.ast),
                             SubRange::empty(),
                             argument,
-                            None,
+                            suffix.and_then(|suffix| suffix.suffix.type_annotation),
                         );
                         rest = Some(temporary);
                     }
@@ -10114,10 +10261,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         })();
         self.cover.scratch.reset(checkpoint);
         result
-    }
-
-    fn convert_to_formal_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
-        self.expression_to_parameter(expression)
     }
 
     fn parse_async_function_expression(&mut self, async_token: Token) -> Option<Expr> {
@@ -10143,11 +10286,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         match self.current_token.tag() {
             TokenTag::Function => self.parse_async_function_expression(token),
-            TokenTag::LeftParen => self.parse_async_arrow_function_or_call(
-                token.span(),
-                async_identifier,
-                minimum,
-                token.is_escaped(),
+            TokenTag::LeftParen => self.parse_parenthesized_head(
+                token.start(),
+                minimum <= Precedence::Assignment,
+                Some(AsyncCover {
+                    identifier: async_identifier,
+                    escaped: token.is_escaped(),
+                }),
             ),
             TokenTag::LessThan
                 if self.lang.is_typescript() && minimum <= Precedence::Assignment =>
@@ -10178,65 +10323,91 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         }
     }
 
-    fn parse_async_arrow_function_or_call(
+    fn parse_parenthesized_head(
         &mut self,
-        async_span: Span,
-        async_identifier: Expr,
-        minimum: Precedence,
-        escaped_async: bool,
+        start: u32,
+        can_be_arrow: bool,
+        async_cover: Option<AsyncCover>,
     ) -> Option<Expr> {
-        if self.lang.is_typescript() && minimum <= Precedence::Assignment {
-            let arrow = match self.classify_arrow_head() {
-                ArrowHead::Yes => Some(self.parse_arrow(true, async_span.start)?),
-                ArrowHead::Maybe => self.try_parse_arrow(true, async_span.start)?,
-                ArrowHead::No => None,
-            };
-            if let Some(arrow) = arrow {
-                if escaped_async {
-                    self.report_escaped_keyword(async_span);
+        self.with_resolved_cover(|parser| {
+            let typed = can_be_arrow && parser.lang.is_typescript();
+            let diagnostics_len = parser.diagnostics.len();
+            let mut suffixes = Vec::new();
+            let mut parse_cover = |parser: &mut Self| {
+                if typed {
+                    parser.parse_parenthesized_cover_inner::<true>(&mut suffixes)
+                } else {
+                    parser.parse_parenthesized_cover()
                 }
+            };
+            let (cover, await_identifier) = if async_cover.is_some() {
+                let outer_await = parser.await_identifier_in_async_head.take();
+                let cover = parser.with_scope(
+                    parser.boundary_context | BoundaryContext::ASYNC_ARROW_HEAD,
+                    parse_cover,
+                );
+                let identifier =
+                    mem::replace(&mut parser.await_identifier_in_async_head, outer_await);
+                (cover?, identifier)
+            } else {
+                (parse_cover(parser)?, None)
+            };
+            let is_async = async_cover.is_some();
+            let finish_head = |parser: &mut Self| {
+                if let Some(async_cover) = async_cover {
+                    if async_cover.escaped {
+                        parser.report_escaped_keyword(async_cover.identifier.span(&parser.ast));
+                    }
+                    if let Some(span) = await_identifier {
+                        parser.report_reserved_await(span, "an identifier");
+                    }
+                }
+                let parameters = parser.convert_to_formal_parameters(cover, &suffixes)?;
+                let return_type = if typed && parser.current_token.tag() == TokenTag::Colon {
+                    Some(parser.parse_return_type_annotation()?)
+                } else {
+                    None
+                };
+                (parser.current_token.tag() == TokenTag::Arrow).then_some(ArrowHeadResult {
+                    parameters,
+                    type_parameters: None,
+                    return_type,
+                })
+            };
+            if can_be_arrow && parser.current_token.tag() == TokenTag::Arrow {
+                let head = finish_head(parser)?;
+                return parser.build_arrow_function(start, head.parameters, is_async, None, None);
+            }
+            // An enclosing conditional may own the colon. The cover is shared
+            // with the fallback, so only the return type and body can rewind.
+            if typed
+                && parser.current_token.tag() == TokenTag::Colon
+                && (parser.ts_context.allow_arrow_return_type()
+                    || parser.diagnostics.is_clean_since(diagnostics_len))
+                && let Some(arrow) = parser.try_parse_arrow(is_async, start, finish_head)?
+            {
                 return Some(arrow);
             }
-        }
-
-        self.with_resolved_cover(|parser| {
-            let checkpoint = parser.lang.is_typescript().then(|| parser.checkpoint());
-            let outer_await = parser.await_identifier_in_async_head.take();
-            let boundary_context = parser.boundary_context;
-            let mut head_context = boundary_context;
-            if !parser.lang.is_typescript() {
-                head_context.insert(BoundaryContext::ASYNC_ARROW_HEAD);
+            if !suffixes.is_empty() {
+                parser.report_expected(
+                    parser.current_token.span(),
+                    "Expected '=>' in arrow function",
+                    ReportOptions::default(),
+                );
+                return None;
             }
-            let cover =
-                parser.with_scope(head_context, |parser| parser.parse_parenthesized_cover());
-            let await_identifier =
-                mem::replace(&mut parser.await_identifier_in_async_head, outer_await);
-            let cover = cover?;
-
-            let is_arrow =
-                parser.current_token.tag() == TokenTag::Arrow && minimum <= Precedence::Assignment;
-            if is_arrow {
-                if let Some(checkpoint) = checkpoint {
-                    parser.rewind(checkpoint);
-                    if escaped_async {
-                        parser.report_escaped_keyword(async_span);
-                    }
-                    return parser.parse_arrow(true, async_span.start);
+            if let Some(async_cover) = async_cover {
+                if parser
+                    .boundary_context
+                    .contains(BoundaryContext::ASYNC_ARROW_HEAD)
+                    && parser.await_identifier_in_async_head.is_none()
+                {
+                    parser.await_identifier_in_async_head = await_identifier;
                 }
-                if escaped_async {
-                    parser.report_escaped_keyword(async_span);
-                }
-                if let Some(span) = await_identifier {
-                    parser.report_reserved_await(span, "an identifier");
-                }
-                // Reusing the cover parses nested defaults once per arrow level.
-                return parser.cover_to_arrow_function(cover, true, async_span.start);
+                parser.cover_to_call_expression(cover, async_cover.identifier)
+            } else {
+                parser.cover_to_parenthesized_expression(cover)
             }
-            if boundary_context.contains(BoundaryContext::ASYNC_ARROW_HEAD) && outer_await.is_none()
-            {
-                parser.await_identifier_in_async_head = await_identifier;
-            }
-            parser.cover_to_call_expression(cover, async_identifier)
         })
     }
 
@@ -10246,7 +10417,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         async_function: bool,
         arrow_start: u32,
     ) -> Option<Expr> {
-        let parameter = self.expression_to_parameter(identifier)?;
+        let parameter = self.expression_to_parameter(identifier, None)?;
         let parameter_span = parameter.span(&self.ast);
         let parameters = self.ast.add_sub_range([parameter]);
         let parameters = self.ast.formal_parameters(
@@ -10271,78 +10442,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         self.identifier_to_arrow_function(left, false, start)
     }
 
-    fn classify_arrow_head(&mut self) -> ArrowHead {
-        if self.current_token.tag() != TokenTag::LeftParen {
-            return ArrowHead::No;
-        }
-        self.classify_paren_arrow_head()
-    }
-
-    fn classify_paren_arrow_head(&mut self) -> ArrowHead {
-        let mut peek = self.begin_peek();
-        let result = (|| {
-            let Some(second) = peek.next() else {
-                return ArrowHead::No;
-            };
-            match second.tag() {
-                TokenTag::Spread => ArrowHead::Yes,
-                TokenTag::LeftBracket | TokenTag::LeftBrace => ArrowHead::Maybe,
-                TokenTag::RightParen => {
-                    let Some(third) = peek.next() else {
-                        return ArrowHead::No;
-                    };
-                    if matches!(third.tag(), TokenTag::Arrow | TokenTag::Colon) {
-                        ArrowHead::Yes
-                    } else {
-                        ArrowHead::No
-                    }
-                }
-                TokenTag::This => {
-                    let Some(third) = peek.next() else {
-                        return ArrowHead::No;
-                    };
-                    if third.tag() == TokenTag::Colon {
-                        ArrowHead::Yes
-                    } else {
-                        ArrowHead::No
-                    }
-                }
-                _ if second.tag().is_identifier_like() => {
-                    let Some(third) = peek.next() else {
-                        return ArrowHead::No;
-                    };
-                    match third.tag() {
-                        TokenTag::Colon => ArrowHead::Yes,
-                        TokenTag::Question => {
-                            let Some(fourth) = peek.next() else {
-                                return ArrowHead::No;
-                            };
-                            if matches!(
-                                fourth.tag(),
-                                TokenTag::Colon
-                                    | TokenTag::Comma
-                                    | TokenTag::Assign
-                                    | TokenTag::RightParen
-                            ) {
-                                ArrowHead::Yes
-                            } else {
-                                ArrowHead::No
-                            }
-                        }
-                        TokenTag::Comma | TokenTag::Assign | TokenTag::RightParen => {
-                            ArrowHead::Maybe
-                        }
-                        _ => ArrowHead::No,
-                    }
-                }
-                _ => ArrowHead::No,
-            }
-        })();
-        peek.end();
-        result
-    }
-
-    fn try_parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Option<Expr>> {
+    fn try_parse_arrow(
+        &mut self,
+        is_async: bool,
+        start: u32,
+        parse_head: impl FnOnce(&mut Self) -> Option<ArrowHeadResult>,
+    ) -> Option<Option<Expr>> {
         let key = TsSpeculationKey::Arrow {
             context: self.speculation_key(),
             is_async,
@@ -10353,7 +10458,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
 
         let checkpoint = self.checkpoint();
         let arrow = (|| {
-            let head = self.parse_arrow_head(is_async, false)?;
+            let head = parse_head(self)?;
             let ambiguous_return_type =
                 !self.ts_context.allow_arrow_return_type() && head.return_type.is_some();
             // Only the head resolves the ambiguity with a conditional consequent.
@@ -10386,45 +10491,18 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         if !next.tag().is_identifier_like() && next.tag() != TokenTag::Const {
             return Some(None);
         }
-        self.try_parse_arrow(is_async, start)
-    }
-
-    fn parse_arrow(&mut self, is_async: bool, start: u32) -> Option<Expr> {
-        let head = self.parse_arrow_head(is_async, true)?;
-        self.build_arrow_function(
-            start,
-            head.parameters,
-            is_async,
-            head.type_parameters,
-            head.return_type,
-        )
-    }
-
-    fn parse_arrow_head(
-        &mut self,
-        is_async: bool,
-        need_diagnostics: bool,
-    ) -> Option<ArrowHeadResult> {
-        self.with_scope(self.boundary_context.arrow_head(is_async), |parser| {
-            parser.parse_arrow_head_inner(is_async, need_diagnostics)
+        self.try_parse_arrow(is_async, start, |parser| {
+            parser.with_scope(parser.boundary_context.arrow_head(is_async), |parser| {
+                parser.parse_generic_arrow_head(is_async)
+            })
         })
     }
 
-    fn parse_arrow_head_inner(
-        &mut self,
-        is_async: bool,
-        need_diagnostics: bool,
-    ) -> Option<ArrowHeadResult> {
-        let type_parameters = if is_angle_open(self.current_token.tag()) {
-            let close = if need_diagnostics {
-                AngleClose::Peel
-            } else {
-                AngleClose::SpeculativePeel
-            };
-            Some(self.parse_type_parameters(TypeParameterContext::Declaration, close)?)
-        } else {
-            None
-        };
+    fn parse_generic_arrow_head(&mut self, is_async: bool) -> Option<ArrowHeadResult> {
+        let type_parameters = Some(self.parse_type_parameters(
+            TypeParameterContext::Declaration,
+            AngleClose::SpeculativePeel,
+        )?);
         if is_async {
             // Preserve outer [Yield] so the async-arrow cover retains yield
             // expressions for the semantic Contains check.
@@ -10443,14 +10521,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             };
         if self.current_token.tag() != TokenTag::Arrow {
-            if need_diagnostics {
-                // The speculative `try_parse_arrow` path skips diagnostic formatting for performance.
-                self.report_expected(
-                    self.current_token.span(),
-                    "Expected '=>' in arrow function",
-                    ReportOptions::default(),
-                );
-            }
             return None;
         }
         Some(ArrowHeadResult {
@@ -10565,12 +10635,33 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         Some((self.formal_parameter_pattern(binding)?, initializer))
     }
 
-    fn expression_to_parameter(&mut self, expression: Expr) -> Option<FormalParameterItem> {
-        let span = expression.span(&self.ast);
-        let (pattern, initializer) = self.expression_to_parameter_parts(expression)?;
+    fn expression_to_parameter(
+        &mut self,
+        expression: Expr,
+        suffix: Option<&CoverParameterSuffix>,
+    ) -> Option<FormalParameterItem> {
+        let mut span = expression.span(&self.ast);
+        let (pattern, cover_initializer) = self.expression_to_parameter_parts(expression)?;
+        let (type_annotation, initializer, optional) = match suffix {
+            Some(suffix) => {
+                span.end = suffix.end;
+                (
+                    suffix.suffix.type_annotation,
+                    suffix.suffix.initializer.or(cover_initializer),
+                    suffix.suffix.optional,
+                )
+            }
+            None => (None, cover_initializer, false),
+        };
         Some(FormalParameterItem::FormalParameter(
-            self.ast
-                .formal_parameter(span, SubRange::empty(), pattern, None, initializer, false),
+            self.ast.formal_parameter(
+                span,
+                SubRange::empty(),
+                pattern,
+                type_annotation,
+                initializer,
+                optional,
+            ),
         ))
     }
 
@@ -11791,7 +11882,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
                 self.ts_context.remove(TsContext::IN_TYPE_BINDING);
                 let expression = (|| {
-                    let expression = self.parse_value_expression(Precedence::Assignment)?;
+                    let expression = if self.computed_key_lookahead.active {
+                        self.parse_computed_key_lookahead()
+                    } else {
+                        self.parse_value_expression(Precedence::Assignment)
+                    }?;
                     if self.current_token.tag() == TokenTag::Comma {
                         self.report(
                             self.current_token.span(),
@@ -11859,6 +11954,51 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 None
             }
         }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn parse_computed_key_lookahead(&mut self) -> Option<Expr> {
+        debug_assert!(self.computed_key_lookahead.active);
+        let key = ComputedKeyContext {
+            grammar: self.speculation_key(),
+            type_argument_depth: self.type_argument_speculation_depth,
+            source_type: self.source_type as u8,
+            await_identifier: self.await_identifier_in_async_head,
+        };
+        if let Some(cached) = self.computed_key_lookahead.expressions.get(&key).copied() {
+            self.lexer.cursor = cached.lexer_cursor;
+            self.lexer.state = cached.lexer_state;
+            self.lexer.mode = cached.lexer_mode;
+            self.current_token = cached.next;
+            // Computed keys are opaque in this disposable AST.
+            // Committed parsing always builds the original expression.
+            return Some(
+                self.ast
+                    .expr_identifier_reference(cached.expression_span, AstUtf8::EMPTY),
+            );
+        }
+        let diagnostics_len = self.diagnostics.len();
+        let module_detection = self.module_detection;
+        let expression = self.with_resolved_cover(|parser| {
+            parser.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())
+        })?;
+        if self.diagnostics.len() == diagnostics_len
+            && self.module_detection == module_detection
+            && self.await_identifier_in_async_head == key.await_identifier
+        {
+            self.computed_key_lookahead.expressions.insert(
+                key,
+                ComputedKeyBoundary {
+                    expression_span: expression.span(&self.ast),
+                    next: self.current_token,
+                    lexer_cursor: self.lexer.cursor,
+                    lexer_state: self.lexer.state,
+                    lexer_mode: self.lexer.mode,
+                },
+            );
+        }
+        Some(expression)
     }
 
     // MemberExpression[Yield, Await] :
@@ -14744,6 +14884,15 @@ mod tests {
         assert!(parsed.diagnostics.entries.is_empty());
         assert!(parsed.advance().is_none());
         assert!(!parsed.diagnostics.entries.is_empty());
+
+        let source = "type F = ({[x as ({[/* key */ y as U]: A})]: a}) => void;";
+        let parsed = parse_tokens(&allocator, source);
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(
+            token_texts(source, &parsed.tokens).join(" "),
+            "type F = ( { [ x as ( { [ y as U ] : A } ) ] : a } ) => void ;"
+        );
+        assert_eq!(parsed.ast.comments().len(), 1);
     }
 
     #[test]
@@ -19246,10 +19395,21 @@ mod tests {
             ..ts
         };
 
+        for options in [ts, tsx] {
+            let errors = has_errors("for (([a = \"p\" in obj]: any) => 0;;) {}", options);
+            assert!(!errors);
+
+            let errors = has_errors("for (({a = \"p\" in obj}: any) => 0;;) {}", options);
+            assert!(!errors);
+        }
+
         let types = parse_boundary("items.map((item): Item => item)", ts);
         assert_eq!(types, ["Item"]);
 
         let types = parse_boundary("items.map(([a, b]): Item => ({ a, b }))", ts);
+        assert_eq!(types, ["Item"]);
+
+        let types = parse_boundary("([item], limit?: number): Item => item", ts);
         assert_eq!(types, ["Item"]);
 
         let types = parse_boundary("items.map?.((item): Item => item)", ts);
