@@ -238,7 +238,7 @@ fn push_blank(output: &mut String, source: &str) {
             while offset < source.len() {
                 let byte = source.as_bytes()[offset];
                 if byte.is_ascii() {
-                    let blanked = if byte.is_ascii_whitespace() {
+                    let blanked = if matches!(byte, b'\t'..=b'\r') {
                         byte
                     } else {
                         b' '
@@ -321,6 +321,12 @@ fn is_ecmascript_whitespace_or_line_terminator(character: char) -> bool {
 mod tests {
     use super::*;
 
+    fn blank_source(source: &str) -> Cow<'_, str> {
+        let mut edits = EditPlan::default();
+        edits.blank(Span::new(0, source.len() as u32));
+        edits.render(source)
+    }
+
     #[test]
     fn no_edits_returns_borrowed_source() {
         let source = "const value = 1;";
@@ -341,12 +347,14 @@ mod tests {
 
     #[test]
     fn blank_preserves_ecmascript_whitespace_and_line_terminators() {
-        let source = ":\tA\r\nB\u{2028}C\u{2029}D\u{00A0}";
-        let mut edits = EditPlan::default();
-        edits.blank(Span::new(0, source.len() as u32));
-        let output = edits.render(source);
+        let output = blank_source(":\t\u{000B}\u{000C}A\r\n");
+        assert_eq!(output, " \t\u{000B}\u{000C} \r\n");
 
-        assert_eq!(output, " \t \r\n \u{2028} \u{2029} \u{00A0}");
+        let output = blank_source("12345678\u{000B}A");
+        assert_eq!(output, "        \u{000B} ");
+
+        let output = blank_source(":\tA\r\nB\u{2028}\u{000B}C\u{2029}D\u{00A0}");
+        assert_eq!(output, " \t \r\n \u{2028}\u{000B} \u{2029} \u{00A0}");
     }
 
     #[test]
@@ -386,9 +394,7 @@ mod tests {
     #[test]
     fn blank_preserves_utf16_width_for_bmp_and_astral_code_points() {
         let source = ": 文𐀀";
-        let mut edits = EditPlan::default();
-        edits.blank(Span::new(0, source.len() as u32));
-        let output = edits.render(source);
+        let output = blank_source(source);
 
         assert_eq!(output, "     ");
         assert_eq!(output.encode_utf16().count(), source.encode_utf16().count());
