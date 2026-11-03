@@ -300,7 +300,7 @@ export function decodeJs(buffer, source, sourceBuffer) {
       }
       case 10: {
         const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const f_raw = source.slice(start, end).replace(/\r\n?/g, "\n");
         const f_tail = _dv.getUint8(payload + 8) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
         result = { type: "TemplateElement", start, end, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };

@@ -220,6 +220,9 @@ fn write_node_case(
                     "{value_start} === {value_end} ? \"\" : {value_start} < sourceLength ? source.slice({slice_start}, {slice_end}) : str({value_start}, {value_end})"
                 )
             }
+            ("TemplateElement", "raw") if !is_ts => {
+                r#"source.slice(start, end).replace(/\r\n?/g, "\n")"#.into()
+            }
             ("StringLiteral" | "NumericLiteral" | "TemplateElement", "raw")
             | ("JsxText", "value") => "source.slice(start, end)".into(),
             ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),

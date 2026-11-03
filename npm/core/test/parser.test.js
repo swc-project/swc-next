@@ -172,7 +172,7 @@ test("parseSync decodes source-backed strings", () => {
   assert.equal(jsx.openingElement.attributes[0].value.value, "值");
 });
 
-test("decoder preserves template raw source", () => {
+test("decoder preserves template raw semantics", () => {
   function templateValue(source, lang) {
     const result = parseSync(source, { lang });
     assert.deepEqual(result.diagnostics, []);
@@ -186,17 +186,17 @@ test("decoder preserves template raw source", () => {
     });
 
     assert.deepEqual(templateValue("/* 😀 */ tag`é\r\n`;", lang), {
-      raw: "é\r\n",
+      raw: lang === "js" ? "é\n" : "é\r\n",
       cooked: "é\n",
     });
 
     assert.deepEqual(templateValue("tag`\\\r\n`;", lang), {
-      raw: "\\\r\n",
+      raw: lang === "js" ? "\\\n" : "\\\r\n",
       cooked: "",
     });
 
     assert.deepEqual(templateValue("tag`\\xZ\r`;", lang), {
-      raw: "\\xZ\r",
+      raw: lang === "js" ? "\\xZ\n" : "\\xZ\r",
       cooked: null,
     });
   }
