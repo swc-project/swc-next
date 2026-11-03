@@ -136,24 +136,28 @@ pub fn serialize_into(
     let comment_count = u32::try_from(tree.comments().len()).expect("comment count exceeds u32");
     let diag_count = u32::try_from(diagnostics.len()).expect("diagnostic count exceeds u32");
 
-    let mut pos = 0;
-    write(buf, &mut pos, &node_count.to_le_bytes());
-    write(buf, &mut pos, &extra_count.to_le_bytes());
-    write(buf, &mut pos, &string_pool_len.to_le_bytes());
-    write(buf, &mut pos, &source_len.to_le_bytes());
-    write(buf, &mut pos, &comment_count.to_le_bytes());
-    write(buf, &mut pos, &0u32.to_le_bytes()); // attached_comment_count
-    write(buf, &mut pos, &diag_count.to_le_bytes());
-    write(
-        buf,
-        &mut pos,
-        &(tree.root_node_id().index() as u32).to_le_bytes(),
-    );
     let flags = (tree.source_type() as u32) | ((tree.lang() as u32) << FLAG_LANG_SHIFT);
-    write(buf, &mut pos, &flags.to_le_bytes());
     let first_non_ascii_pos =
         u32::try_from(first_non_ascii_pos).expect("AST source length exceeds u32");
-    write(buf, &mut pos, &first_non_ascii_pos.to_le_bytes());
+    let header = [
+        node_count,
+        extra_count,
+        string_pool_len,
+        source_len,
+        comment_count,
+        0, // attached_comment_count
+        diag_count,
+        tree.root_node_id().index() as u32,
+        flags,
+        first_non_ascii_pos,
+    ];
+    for (value, output) in header
+        .into_iter()
+        .zip(buf[..HEADER_SIZE].chunks_exact_mut(4))
+    {
+        output.copy_from_slice(&value.to_le_bytes());
+    }
+    let mut pos = HEADER_SIZE;
 
     // ==================== Spans =====================
     let spans = unsafe {
@@ -166,12 +170,18 @@ pub fn serialize_into(
     if positions.is_empty() && cfg!(target_endian = "little") {
         write(buf, &mut pos, spans);
     } else {
-        for span in unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) } {
+        let span_buf = &mut buf[pos..pos + spans.len()];
+        for (span, output) in
+            unsafe { slice::from_raw_parts(tree.nodes.span.as_ptr(), tree.node_count()) }
+                .iter()
+                .zip(span_buf.chunks_exact_mut(SPAN_SIZE))
+        {
             let start = cache.convert(span.start);
             let end = cache.convert(span.end);
-            write(buf, &mut pos, &start.to_le_bytes());
-            write(buf, &mut pos, &end.to_le_bytes());
+            output[..4].copy_from_slice(&start.to_le_bytes());
+            output[4..].copy_from_slice(&end.to_le_bytes());
         }
+        pos += spans.len();
     }
 
     // ==================== Kinds =====================
@@ -230,22 +240,28 @@ pub fn serialize_into(
     pad_to_four(buf, &mut pos);
 
     // =================== Comments ====================
-    for comment in tree.comments() {
+    let comments = tree.comments();
+    let comments_len = comments.len() * COMMENT_SIZE;
+    let comment_buf = &mut buf[pos..pos + comments_len];
+    for (comment, output) in comments
+        .iter()
+        .zip(comment_buf.chunks_exact_mut(COMMENT_SIZE))
+    {
         let start = cache.convert(comment.span.start);
         let end = cache.convert(comment.span.end);
-        write(buf, &mut pos, &start.to_le_bytes());
-        write(buf, &mut pos, &end.to_le_bytes());
-        write(buf, &mut pos, &comment.span.start.to_le_bytes());
-        write(buf, &mut pos, &comment.span.end.to_le_bytes());
+        output[..4].copy_from_slice(&start.to_le_bytes());
+        output[4..8].copy_from_slice(&end.to_le_bytes());
+        output[8..12].copy_from_slice(&comment.span.start.to_le_bytes());
+        output[12..].copy_from_slice(&comment.span.end.to_le_bytes());
     }
+    pos += comments_len;
 
     // =================== Diagnostics ====================
     for diagnostic in diagnostics {
         write(buf, &mut pos, &[diagnostic.severity as u8]);
         let start = cache.convert(diagnostic.span.start);
         let end = cache.convert(diagnostic.span.end);
-        write(buf, &mut pos, &start.to_le_bytes());
-        write(buf, &mut pos, &end.to_le_bytes());
+        write_span(buf, &mut pos, start, end);
         write_bytes_with_length(buf, &mut pos, diagnostic.message.as_bytes());
         write(buf, &mut pos, &[u8::from(diagnostic.help.is_some())]);
         if let Some(help) = &diagnostic.help {
@@ -257,8 +273,7 @@ pub fn serialize_into(
         for label in &diagnostic.labels {
             let start = cache.convert(label.span.start);
             let end = cache.convert(label.span.end);
-            write(buf, &mut pos, &start.to_le_bytes());
-            write(buf, &mut pos, &end.to_le_bytes());
+            write_span(buf, &mut pos, start, end);
             write_bytes_with_length(buf, &mut pos, label.message.as_bytes());
         }
     }
@@ -680,6 +695,14 @@ fn write(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
 }
 
 #[inline]
+fn write_span(buf: &mut [u8], pos: &mut usize, start: u32, end: u32) {
+    let output = &mut buf[*pos..*pos + SPAN_SIZE];
+    output[..4].copy_from_slice(&start.to_le_bytes());
+    output[4..].copy_from_slice(&end.to_le_bytes());
+    *pos += SPAN_SIZE;
+}
+
+#[inline]
 fn read_u32(buf: &[u8], pos: usize) -> u32 {
     u32::from_le_bytes(buf[pos..pos + size_of::<u32>()].try_into().unwrap())
 }
@@ -687,8 +710,11 @@ fn read_u32(buf: &[u8], pos: usize) -> u32 {
 #[inline]
 fn write_bytes_with_length(buf: &mut [u8], pos: &mut usize, bytes: &[u8]) {
     let len = u32::try_from(bytes.len()).expect("byte sequence length exceeds u32");
-    write(buf, pos, &len.to_le_bytes());
-    write(buf, pos, bytes);
+    let size = size_of::<u32>() + bytes.len();
+    let output = &mut buf[*pos..*pos + size];
+    output[..4].copy_from_slice(&len.to_le_bytes());
+    output[4..].copy_from_slice(bytes);
+    *pos += size;
 }
 
 #[cfg(target_endian = "big")]
