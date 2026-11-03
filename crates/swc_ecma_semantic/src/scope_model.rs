@@ -5,13 +5,16 @@
 //! Index mutations take semantic records and identifiers, not an AST. Transforms
 //! read syntax and coordinate subtree edits through TransformCtx.
 
-use swc_next_allocator::vec::{ArenaIndexVec, ArenaVec};
+use swc_next_allocator::{
+    boxed::Box as ArenaBox,
+    vec::{ArenaIndexVec, ArenaVec},
+};
 use swc_next_ecma_ast::{AstUtf8, NodeId, ReferenceId, ScopeId, SymbolId};
 
 use crate::{
     AsyncFunctionInfo, BindingIterator, Declaration, DeclarationId, DeclarationIdIterator,
     DeclarationIterator, NodeSemanticId, Redeclarations, Reference, ReferenceIterator,
-    ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator, TransformInfo,
+    ScopeIterator, ScopeMap, Semantic, Symbol, SymbolFlags, SymbolIterator, TransformSemantic,
     binder::SymbolLinks,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
 };
@@ -33,7 +36,7 @@ pub struct ScopeModel<'a> {
     uses: ArenaIndexVec<'a, SymbolId, ArenaVec<'a, ReferenceId>>,
     scope_maps: ArenaIndexVec<'a, ScopeId, ScopeMap<'a>>,
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
-    transform_info: TransformInfo<'a>,
+    transform_semantic: Option<ArenaBox<'a, TransformSemantic<'a>>>,
 }
 
 impl<'a> ScopeModel<'a> {
@@ -64,18 +67,22 @@ impl<'a> ScopeModel<'a> {
             uses,
             scope_maps: semantic.scope_maps,
             node_semantic: semantic.node_semantic,
-            transform_info: semantic.transform_info,
+            transform_semantic: semantic.transform_semantic,
         }
     }
 
-    /// Syntax facts collected for structural transforms.
-    pub fn transform_info(&self) -> &TransformInfo<'a> {
-        &self.transform_info
+    /// Syntax facts collected for requested structural transforms.
+    ///
+    /// Returns `None` when analysis requested no transform features.
+    pub fn transform_semantic(&self) -> Option<&TransformSemantic<'a>> {
+        self.transform_semantic.as_deref()
     }
 
     /// Consume an async function fact when its owner is rewritten.
     pub fn take_async_function_info(&mut self, node: NodeId) -> Option<AsyncFunctionInfo> {
-        self.transform_info.take_async_function(node)
+        self.transform_semantic
+            .as_deref_mut()?
+            .take_async_function(node)
     }
 
     /// The scope with the given id.

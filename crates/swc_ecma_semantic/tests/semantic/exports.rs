@@ -5,6 +5,7 @@ fn default_exports() {
     let allocator = Allocator::new();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
     let ts = ts_module_options();
     let dts = dts_module_options();
@@ -34,6 +35,7 @@ fn default_binding_spaces() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} export default interface I { value: string } let item: f; const fn = f;";
@@ -83,6 +85,7 @@ fn default_namespace_aliases() {
     let ts = ts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} namespace f { export interface Item {} } const A = 1; type A = string; namespace Test { import A = f; export const fn: typeof A = A; export let text: A; }";
@@ -126,6 +129,7 @@ fn source_exports() {
     let dts = dts_module_options();
     let checked = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
 
     let source = "export default function f() {} export default interface I { value: string } export type f = number; let item: f;";
@@ -198,6 +202,7 @@ fn assert_forward_namespace_export(source: &str, target_name: &[u8]) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -277,7 +282,10 @@ fn assert_public_alias_conflict_meanings(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
     }
 }
@@ -291,7 +299,10 @@ fn static_composed_exports() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         assert_eq!(
@@ -325,7 +336,10 @@ fn static_values_do_not_become_namespace_locals() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let x = semantic.binding(ScopeId::MODULE, b"x").unwrap();
         assert_eq!(reference_symbol(&ast, &semantic, b"x"), Some(x));
@@ -354,7 +368,13 @@ fn assert_composed_namespace_export_recovery(source: &str, runtime_read: bool) {
         let parse =
             Parser::init(&allocator, source, ts_module_options(), NoTokenParserConfig).parse();
         assert!(parse.diagnostics.is_empty());
-        let result = analyze(&parse.ast, AnalyzeOptions { check_syntax });
+        let result = analyze(
+            &parse.ast,
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
+        );
         // These inputs can produce TS1379. Test recovery semantics,
         // without requiring either the presence or absence of diagnostics.
         let ast = &parse.ast;
@@ -405,6 +425,7 @@ fn assert_composed_namespace_export(source: &str) {
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -530,6 +551,7 @@ fn assert_namespace_export_reference(
     check(AnalyzeOptions::default());
     check(AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     });
 }
 
@@ -914,7 +936,10 @@ fn global_augmentation_exports() {
 fn assert_global_augmentation_export(source: &str, value: bool) {
     let allocator = Allocator::new();
     let check = |check_syntax| {
-        let options = AnalyzeOptions { check_syntax };
+        let options = AnalyzeOptions {
+            check_syntax,
+            ..AnalyzeOptions::default()
+        };
         let (ast, semantic) =
             analyze_with_options(&allocator, source, ts_module_options(), options);
         let target = semantic.binding(ScopeId::ROOT, b"X").unwrap();

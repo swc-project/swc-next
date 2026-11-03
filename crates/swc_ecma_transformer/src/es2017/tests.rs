@@ -7,7 +7,9 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser
 use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, SyntaxChecks, analyze};
 
 use super::ES2017Options;
-use crate::{Transformer, TransformerOptions, normalize::Normalizer};
+use crate::{
+    Transformer, TransformerOptions, normalize::Normalizer, typescript::TypeScriptOptions,
+};
 
 fn transformed_code(source: &str) -> String {
     transformed_code_with_source_type(source, SourceType::Module)
@@ -29,10 +31,17 @@ fn transformed_code_with_source_type(source: &str, source_type: SourceType) -> S
     assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
     let mut ast = parsed.ast;
     Normalizer::normalize(ast.root_program(), &mut ast);
+    let transform_options = TransformerOptions {
+        es2017: ES2017Options {
+            async_to_generator: true,
+        },
+        ..TransformerOptions::default()
+    };
     let analyzed = analyze(
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            features: transform_options.semantic_features(),
         },
     );
     assert!(
@@ -40,16 +49,7 @@ fn transformed_code_with_source_type(source: &str, source_type: SourceType) -> S
         "{:#?}",
         analyzed.diagnostics
     );
-    let transformed = Transformer::transform(
-        &mut ast,
-        analyzed.semantic,
-        TransformerOptions {
-            es2017: ES2017Options {
-                async_to_generator: true,
-            },
-            ..TransformerOptions::default()
-        },
-    );
+    let transformed = Transformer::transform(&mut ast, analyzed.semantic, transform_options);
     assert_transform_semantic(&ast, &transformed.semantic);
     let code = swc_next_ecma_codegen::print(&ast, Default::default()).code;
 
@@ -73,6 +73,7 @@ fn transformed_code_with_source_type(source: &str, source_type: SourceType) -> S
         &output.ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            ..AnalyzeOptions::default()
         },
     );
     assert!(
@@ -82,6 +83,38 @@ fn transformed_code_with_source_type(source: &str, source_type: SourceType) -> S
     );
 
     code
+}
+
+fn transformed_typescript_code(source: &str) -> String {
+    let allocator = Allocator::new();
+    let parsed = Parser::init(
+        &allocator,
+        source,
+        ParserOptions {
+            lang: Lang::Ts,
+            ..ParserOptions::default()
+        },
+        NoTokenParserConfig,
+    )
+    .parse();
+    assert!(parsed.diagnostics.is_empty(), "{:#?}", parsed.diagnostics);
+    let mut ast = parsed.ast;
+    Normalizer::normalize_runtime(ast.root_program(), &mut ast);
+    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    assert!(semantic.transform_semantic().is_none());
+    let transformed = Transformer::transform(
+        &mut ast,
+        semantic,
+        TransformerOptions {
+            es2017: ES2017Options {
+                async_to_generator: true,
+            },
+            typescript: Some(TypeScriptOptions::default()),
+            ..TransformerOptions::default()
+        },
+    );
+    assert_transform_semantic(&ast, &transformed.semantic);
+    swc_next_ecma_codegen::print(&ast, Default::default()).code
 }
 
 fn assert_transform_semantic(ast: &Ast<'_>, semantic: &ScopeModel<'_>) {
@@ -177,6 +210,12 @@ fn async_functions_and_await() {
     assert_eq!(code.matches("yield one()").count(), 1);
     assert_eq!(code.matches("yield three()").count(), 1);
     assert_eq!(code.matches("_async_to_generator(function* ()").count(), 2);
+
+    let code = transformed_typescript_code(
+        "async function typed(value: number): Promise<number> { return await value; }",
+    );
+    assert!(code.contains("function typed(value)"), "{code}");
+    assert!(code.contains("return yield value"), "{code}");
 }
 
 #[test]
@@ -238,7 +277,20 @@ fn generated_semantic_indexes() {
     assert!(parsed.diagnostics.is_empty());
     let mut ast = parsed.ast;
     Normalizer::normalize(ast.root_program(), &mut ast);
-    let semantic = analyze(&ast, AnalyzeOptions::default()).semantic;
+    let transform_options = TransformerOptions {
+        es2017: ES2017Options {
+            async_to_generator: true,
+        },
+        ..TransformerOptions::default()
+    };
+    let semantic = analyze(
+        &ast,
+        AnalyzeOptions {
+            features: transform_options.semantic_features(),
+            ..AnalyzeOptions::default()
+        },
+    )
+    .semantic;
     let original_reference = semantic
         .iter_references()
         .find(|entry| ast.get_utf8(entry.reference.name) == "value")
@@ -246,16 +298,7 @@ fn generated_semantic_indexes() {
     let original_reference_id = original_reference.id;
     let original_reference_node = original_reference.reference.node;
     let original_symbol = original_reference.reference.symbol;
-    let transformed = Transformer::transform(
-        &mut ast,
-        semantic,
-        TransformerOptions {
-            es2017: ES2017Options {
-                async_to_generator: true,
-            },
-            ..TransformerOptions::default()
-        },
-    );
+    let transformed = Transformer::transform(&mut ast, semantic, transform_options);
 
     struct GeneratedFunction<'ast> {
         ast: &'ast Ast<'ast>,
@@ -303,7 +346,8 @@ fn generated_semantic_indexes() {
     assert!(
         transformed
             .semantic
-            .transform_info()
+            .transform_semantic()
+            .expect("async transform semantic data")
             .async_functions_post_order()
             .is_empty()
     );

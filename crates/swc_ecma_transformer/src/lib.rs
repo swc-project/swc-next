@@ -7,7 +7,7 @@ use swc_next_ecma_ast::{
     TsInterfaceDeclaration, TsMethodSignature, TsModuleBlock, TsThisParameter, TsType,
     TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeParameter, TsTypeParameterDeclaration,
 };
-use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, analyze};
+use swc_next_ecma_semantic::{AnalyzeOptions, ScopeModel, Semantic, SemanticFeatureFlags, analyze};
 
 use crate::{
     assumptions::Assumptions,
@@ -35,6 +35,17 @@ pub struct TransformerOptions {
     pub typescript: Option<typescript::TypeScriptOptions>,
 }
 
+impl TransformerOptions {
+    /// Semantic facts required by the enabled transforms.
+    pub fn semantic_features(&self) -> SemanticFeatureFlags {
+        let mut features = SemanticFeatureFlags::empty();
+        if self.es2017.async_to_generator {
+            features |= SemanticFeatureFlags::ASYNC_TO_GENERATOR;
+        }
+        features
+    }
+}
+
 /// Semantic indexes for the transformed AST.
 pub struct TransformerReturn<'a> {
     pub semantic: ScopeModel<'a>,
@@ -48,6 +59,8 @@ pub struct Transformer {
 impl Transformer {
     /// Run the Semantic-based TypeScript phase, then synchronized scope transforms.
     /// Normalize runtime syntax before analysis when TypeScript is enabled, otherwise normalize all syntax.
+    /// For non-TypeScript input, collect [`TransformerOptions::semantic_features`]
+    /// in the supplied Semantic model before calling this method.
     pub fn transform<'ast>(
         ast: &mut Ast<'ast>,
         mut semantic: Semantic<'ast>,
@@ -55,7 +68,14 @@ impl Transformer {
     ) -> TransformerReturn<'ast> {
         if let Some(typescript) = options.typescript.take() {
             typescript::transform(ast.root_program(), ast, &semantic, typescript);
-            semantic = analyze(ast, AnalyzeOptions::default()).semantic;
+            semantic = analyze(
+                ast,
+                AnalyzeOptions {
+                    features: options.semantic_features(),
+                    ..AnalyzeOptions::default()
+                },
+            )
+            .semantic;
         }
 
         Self::transform_with_scopes(ast, ScopeModel::new(semantic), options)
@@ -69,6 +89,14 @@ impl Transformer {
         options: TransformerOptions,
     ) -> TransformerReturn<'ast> {
         debug_assert!(options.typescript.is_none());
+        assert!(
+            !options.es2017.async_to_generator
+                || semantic.transform_semantic().is_some_and(|info| {
+                    info.features()
+                        .contains(SemanticFeatureFlags::ASYNC_TO_GENERATOR)
+                }),
+            "async-to-generator requires SemanticFeatureFlags::ASYNC_TO_GENERATOR during analysis"
+        );
         let program = ast.root_program();
 
         let mut transformer = Self {

@@ -19,12 +19,14 @@ fn abstract_method_syntax_check() {
     // AST consumers must still be able to parse and analyze without that check.
     let options = AnalyzeOptions {
         check_syntax: SyntaxChecks::empty(),
+        ..AnalyzeOptions::default()
     };
     let unchecked = analyze(ast, options);
     assert!(unchecked.diagnostics.is_empty());
 
     let checked_options = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
     let checked = analyze(ast, checked_options);
     assert_eq!(checked.diagnostics.len(), 1);
@@ -45,6 +47,7 @@ fn assert_class_member_name_check(source: &str, parser_options: Options) {
         ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all() - SyntaxChecks::CLASS_MEMBER_NAMES,
+            ..AnalyzeOptions::default()
         },
     );
     assert!(excluded.diagnostics.is_empty());
@@ -53,6 +56,7 @@ fn assert_class_member_name_check(source: &str, parser_options: Options) {
         ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::CLASS_MEMBER_NAMES,
+            ..AnalyzeOptions::default()
         },
     );
     assert_eq!(checked.diagnostics.len(), 1);
@@ -83,7 +87,10 @@ fn assert_static_alias_spaces(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"A").unwrap();
         let alias = semantic
@@ -254,7 +261,10 @@ fn assert_exported_static_alias_member_view(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"A").unwrap();
         let references = reference_symbols(&ast, &semantic, b"A");
@@ -277,7 +287,10 @@ fn static_alias_namespace_lookup() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"A").unwrap();
         let root = semantic
@@ -314,7 +327,10 @@ fn assert_static_values_preserve_type_contributions(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         assert_eq!(
@@ -347,7 +363,10 @@ fn assert_partial_property_alias(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         let references = semantic
@@ -528,8 +547,15 @@ fn assert_unbound_expando(source: &str) {
     let allocator = Allocator::new();
     for check_syntax in [SyntaxChecks::empty(), SyntaxChecks::all()] {
         let options = ts_module_options();
-        let (ast, semantic) =
-            analyze_with_options(&allocator, source, options, AnalyzeOptions { check_syntax });
+        let (ast, semantic) = analyze_with_options(
+            &allocator,
+            source,
+            options,
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
+        );
         let reference = semantic
             .iter_references()
             .find(|entry| ast.get_utf8(entry.reference.name) == "Alias")
@@ -622,7 +648,10 @@ fn property_exports_exclude_inherited_values() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         assert_eq!(reference_symbol(&ast, &semantic, b"Alias"), Some(alias));
@@ -644,7 +673,10 @@ fn expando_receiver_identity() {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let alias = symbol_named(&ast, &semantic, b"Alias");
         assert_eq!(reference_symbol(&ast, &semantic, b"Alias"), Some(alias));

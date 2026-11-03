@@ -72,6 +72,7 @@ fn main() -> Result<(), String> {
         &ast,
         AnalyzeOptions {
             check_syntax: SyntaxChecks::all(),
+            features: options.semantic_features(),
         },
     );
     report_diagnostics(path, &analyzed.diagnostics)?;

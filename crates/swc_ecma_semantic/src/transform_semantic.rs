@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use swc_next_allocator::{Allocator, hash_map::HashMap as ArenaHashMap, vec::ArenaVec};
 use swc_next_ecma_ast::{ArrowFunctionExpression, Ast, Function, NodeId};
 
-use crate::{ReferenceSpace, Semantic};
+use crate::{ReferenceSpace, Semantic, SemanticFeatureFlags};
 
 /// Lexical-environment facts for one ordinary async function or async arrow.
 #[derive(Debug, Clone, Copy)]
@@ -21,17 +21,16 @@ pub struct AsyncFunctionInfo {
 
 /// Semantic facts shared by transforms.
 #[derive(Debug)]
-pub struct TransformInfo<'a> {
+pub struct TransformSemantic<'a> {
+    features: SemanticFeatureFlags,
     async_functions: ArenaHashMap<'a, NodeId, AsyncFunctionInfo>,
     async_functions_post_order: ArenaVec<'a, AsyncFunctionInfo>,
 }
 
-impl<'a> TransformInfo<'a> {
-    pub(crate) fn empty(allocator: &'a Allocator) -> Self {
-        Self {
-            async_functions: ArenaHashMap::new_in(allocator),
-            async_functions_post_order: ArenaVec::new_in(allocator),
-        }
+impl<'a> TransformSemantic<'a> {
+    /// Facts enabled for this object.
+    pub fn features(&self) -> SemanticFeatureFlags {
+        self.features
     }
 
     /// Facts for `node`, when it is an ordinary async function or async arrow.
@@ -52,8 +51,8 @@ impl<'a> TransformInfo<'a> {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct TransformInfoBuilder {
+pub(crate) struct TransformSemanticBuilder {
+    features: SemanticFeatureFlags,
     boundaries: Vec<Option<NodeId>>,
     async_functions: FxHashMap<NodeId, AsyncFunctionInfoBuilder>,
     async_functions_post_order: Vec<NodeId>,
@@ -68,7 +67,17 @@ struct AsyncFunctionInfoBuilder {
     has_parameter_expressions: bool,
 }
 
-impl TransformInfoBuilder {
+impl TransformSemanticBuilder {
+    pub(crate) fn new(features: SemanticFeatureFlags) -> Self {
+        debug_assert!(features.contains(SemanticFeatureFlags::ASYNC_TO_GENERATOR));
+        Self {
+            features,
+            boundaries: Vec::new(),
+            async_functions: FxHashMap::default(),
+            async_functions_post_order: Vec::new(),
+        }
+    }
+
     pub(crate) fn enter_function(&mut self, function: Function, ast: &Ast<'_>) {
         let node = function.node_id();
         let transform = function.r#async(ast) && !function.generator(ast);
@@ -152,7 +161,7 @@ impl TransformInfoBuilder {
         mut self,
         semantic: &Semantic<'a>,
         allocator: &'a Allocator,
-    ) -> TransformInfo<'a> {
+    ) -> TransformSemantic<'a> {
         debug_assert!(self.boundaries.is_empty());
         let mut async_functions = ArenaHashMap::new_in(allocator);
         let mut async_functions_post_order =
@@ -186,7 +195,8 @@ impl TransformInfoBuilder {
             async_functions_post_order.push(info);
         }
         debug_assert!(self.async_functions.is_empty());
-        TransformInfo {
+        TransformSemantic {
+            features: self.features,
             async_functions,
             async_functions_post_order,
         }

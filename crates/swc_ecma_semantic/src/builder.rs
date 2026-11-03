@@ -39,11 +39,12 @@ use swc_next_ecma_ast::{
 };
 
 use crate::{
-    ReferenceFlags, ReferenceSpace, SemanticReturn, SymbolFlags, SyntaxChecks,
+    ReferenceFlags, ReferenceSpace, SemanticFeatureFlags, SemanticReturn, SymbolFlags,
+    SyntaxChecks,
     binder::{PreparedDeclaration, SymbolTracker},
     ecmascript,
     scope::{Scope, ScopeFlags, ScopeKind, ScopeTree},
-    transform_info::TransformInfoBuilder,
+    transform_semantic::TransformSemanticBuilder,
 };
 
 pub struct SemanticBuilder<'traverse, 'a> {
@@ -61,11 +62,15 @@ pub struct SemanticBuilder<'traverse, 'a> {
     path: Vec<NodeId>,
     check_syntax: SyntaxChecks,
     in_ts_module_name: bool,
-    transform_info: TransformInfoBuilder,
+    transform_semantic: Option<TransformSemanticBuilder>,
 }
 
 impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
-    pub fn new(ast: &'traverse Ast<'a>, check_syntax: SyntaxChecks) -> Self {
+    pub fn new(
+        ast: &'traverse Ast<'a>,
+        check_syntax: SyntaxChecks,
+        features: SemanticFeatureFlags,
+    ) -> Self {
         let scope = ScopeTree::init(ast);
         let current_scope = ScopeId::from_usize(scope.list.len() - 1);
         Self {
@@ -82,15 +87,20 @@ impl<'traverse, 'a> SemanticBuilder<'traverse, 'a> {
             path: Vec::with_capacity(64),
             check_syntax,
             in_ts_module_name: false,
-            transform_info: TransformInfoBuilder::default(),
+            transform_semantic: features
+                .contains(SemanticFeatureFlags::ASYNC_TO_GENERATOR)
+                .then(|| TransformSemanticBuilder::new(features)),
         }
     }
 
     pub fn build(mut self) -> SemanticReturn<'a> {
         self.finish();
-        let transform_info = std::mem::take(&mut self.transform_info);
+        let transform_semantic = self.transform_semantic.take();
         let mut semantic = self.symbols.finalize(self.ast, self.scope);
-        semantic.transform_info = transform_info.build(&semantic, self.ast.allocator());
+        if let Some(transform_semantic) = transform_semantic {
+            let transform_semantic = transform_semantic.build(&semantic, self.ast.allocator());
+            semantic.transform_semantic = Some(self.ast.allocator().boxed(transform_semantic));
+        }
         SemanticReturn {
             semantic,
             diagnostics: self.diagnostics,
@@ -634,7 +644,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     // pending reference flags without adding an unused ancestry entry.
     #[inline]
     fn visit_this_expression(&mut self, _node: ThisExpression) {
-        self.transform_info.record_this();
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.record_this();
+        }
         self.take_reference_flags();
     }
 
@@ -649,8 +661,9 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
     }
 
     fn visit_identifier_reference(&mut self, node: IdentifierReference) {
-        self.transform_info
-            .record_identifier_reference(node, self.ast);
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.record_identifier_reference(node, self.ast);
+        }
         // This leaf has no children. Only syntax checks inspect its ancestry;
         // binding still consumes the pending reference flags in either mode.
         if self.check_syntax.identifier_references() {
@@ -913,9 +926,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
             self.current_scope,
             annex_b_if_body,
         );
-        self.transform_info.enter_function(node, self.ast);
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.enter_function(node, self.ast);
+        }
         node.visit_children_with(self);
-        self.transform_info.leave_function(node, self.ast);
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.leave_function(node, self.ast);
+        }
         self.symbols.exit_saved_context();
         self.leave_node(NodeKindData::Function(node));
         self.exit_scope(node.node_id());
@@ -952,9 +969,13 @@ impl<'a> Visit<'a> for SemanticBuilder<'_, 'a> {
         self.push_scope(ScopeKind::Function, node.node_id(), flags);
         let export_state = self.symbols.enter_arrow_function_expression();
         self.enter_node(node.node_id());
-        self.transform_info.enter_arrow(node, self.ast);
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.enter_arrow(node, self.ast);
+        }
         node.visit_children_with(self);
-        self.transform_info.leave_arrow(node, self.ast);
+        if let Some(transform_semantic) = &mut self.transform_semantic {
+            transform_semantic.leave_arrow(node, self.ast);
+        }
         self.symbols.exit_arrow_function_expression(export_state);
         self.exit_scope(node.node_id());
         self.leave_node(NodeKindData::ArrowFunctionExpression(node));

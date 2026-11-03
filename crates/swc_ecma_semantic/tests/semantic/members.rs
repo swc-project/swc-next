@@ -116,7 +116,10 @@ fn assert_namespace_type_export_does_not_shadow(source: &str) {
             &allocator,
             source,
             ts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let outer = semantic.binding(ScopeId::MODULE, b"Inner").unwrap();
         let container = symbol_named(&ast, &semantic, b"Outer");
@@ -159,7 +162,10 @@ fn global_export_aliases() {
             &allocator,
             source,
             dts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         let local = semantic.binding(ScopeId::MODULE, b"Foo").unwrap();
         let mut globals = semantic
@@ -190,7 +196,10 @@ fn global_export_aliases() {
             &allocator,
             source,
             dts_module_options(),
-            AnalyzeOptions { check_syntax },
+            AnalyzeOptions {
+                check_syntax,
+                ..AnalyzeOptions::default()
+            },
         );
         assert_eq!(
             semantic
@@ -474,6 +483,7 @@ fn enum_merging() {
     let ts_module = ts_module_options();
     let syntax_check = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
 
     let source = "enum Outer { A = (() => { enum Inner { X }; return 0; })(), B = 1, C = B }";
@@ -534,6 +544,7 @@ fn contextual_await() {
     };
     let syntax = AnalyzeOptions {
         check_syntax: SyntaxChecks::all(),
+        ..AnalyzeOptions::default()
     };
 
     let source = "enum E{await=1,A=await}";

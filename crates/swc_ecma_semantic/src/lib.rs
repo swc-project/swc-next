@@ -21,6 +21,7 @@
 
 use swc_next_allocator::{
     Idx, IndexSlice,
+    boxed::Box as ArenaBox,
     hash_map::{HashMap as ArenaHashMap, Values},
     vec::{ArenaIndexVec, ArenaVec},
 };
@@ -47,6 +48,14 @@ pub use scope_model::ScopeModel;
 pub use swc_next_ecma_ast::ReferenceId;
 pub use syntax_checks::SyntaxChecks;
 pub use transform_info::{AsyncFunctionInfo, TransformInfo};
+
+bitflags::bitflags! {
+    /// Optional semantic facts requested by transforms.
+    #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
+    pub struct SemanticFeatureFlags: u16 {
+        const ASYNC_TO_GENERATOR = 1 << 0;
+    }
+}
 
 swc_next_allocator::define_nonmax_u32_index_type! {
     /// Identifier for a declaration in a completed [`Semantic`] model.
@@ -110,7 +119,7 @@ pub struct Semantic<'a> {
     node_semantic: ArenaIndexVec<'a, NodeId, NodeSemanticId>,
 
     ts_members: TsMemberIndex<'a>,
-    transform_info: TransformInfo<'a>,
+    transform_info: Option<ArenaBox<'a, TransformInfo<'a>>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -148,9 +157,11 @@ impl NodeSemanticId {
 }
 
 impl<'a> Semantic<'a> {
-    /// Syntax facts collected for structural transforms.
-    pub fn transform_info(&self) -> &TransformInfo<'a> {
-        &self.transform_info
+    /// Syntax facts collected for requested structural transforms.
+    ///
+    /// Returns `None` when analysis requested no transform features.
+    pub fn transform_info(&self) -> Option<&TransformInfo<'a>> {
+        self.transform_info.as_deref()
     }
 
     /// JSX usage in traversal order, coalescing adjacent sites in one scope.
@@ -711,6 +722,11 @@ pub struct AnalyzeOptions {
     ///
     /// Disabled by default. Use [`SyntaxChecks::all`] to enable every check.
     pub check_syntax: SyntaxChecks,
+    /// Transform-only semantic facts to collect.
+    ///
+    /// Empty by default, so normal semantic analysis does not allocate
+    /// [`TransformInfo`].
+    pub features: SemanticFeatureFlags,
 }
 
 /// Runs semantic analysis on a tree and builds the requested [`Semantic`] model.
@@ -720,7 +736,7 @@ pub struct AnalyzeOptions {
 /// the tree's arena, so the result is valid as long as the tree is alive.
 pub fn analyze<'a>(ast: &Ast<'a>, options: AnalyzeOptions) -> SemanticReturn<'a> {
     let root = ast.root_program();
-    let mut builder = SemanticBuilder::new(ast, options.check_syntax);
+    let mut builder = SemanticBuilder::new(ast, options.check_syntax, options.features);
     root.visit_with(&mut builder);
     builder.build()
 }
@@ -736,7 +752,7 @@ pub fn check_syntax<'a>(ast: &Ast<'a>, checks: SyntaxChecks) -> Vec<Diagnostic<'
     if checks.is_empty() {
         return Vec::new();
     }
-    let mut builder = SemanticBuilder::new(ast, checks);
+    let mut builder = SemanticBuilder::new(ast, checks, SemanticFeatureFlags::empty());
     ast.root_program().visit_with(&mut builder);
     builder.into_diagnostics()
 }
