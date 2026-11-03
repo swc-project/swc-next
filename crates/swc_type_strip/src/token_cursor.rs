@@ -1,29 +1,99 @@
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{SourceType, Span};
-use swc_next_ecma_parser::{Token, TokenReader, TokenTag};
+#[cfg(debug_assertions)]
+use swc_next_allocator::vec::ArenaVec;
+use swc_next_ecma_ast::Span;
+use swc_next_ecma_parser::{Options as ParserOptions, Token, TokenReader, TokenTag};
+#[cfg(debug_assertions)]
+use swc_next_ecma_parser::{Parser, TokenParserConfig};
 
 /// Reads tokens on demand at token boundaries, typically the ends and starts of
 /// AST nodes.
+///
+/// Tokens are read without parser context, so a read must not depend on it:
+/// each read starts at a token boundary, and scans cover only gaps between AST
+/// nodes that hold punctuators, keywords, and trivia. Such gaps never contain
+/// regular expressions, template continuations, or `>` tokens that the parser
+/// splits. A `}` that continues a template reads as `}`, so no read may look
+/// for `}` there. Debug builds check every read against the parser's tokens.
 pub(crate) struct TokenCursor<'a> {
     source: &'a str,
     reader: TokenReader<'a>,
+    /// The parser's tokens, if the source parses without diagnostics.
+    #[cfg(debug_assertions)]
+    parser_tokens: Option<ArenaVec<'a, Token>>,
 }
 
 impl<'a> TokenCursor<'a> {
-    pub(crate) fn new(allocator: &'a Allocator, source: &'a str, source_type: SourceType) -> Self {
+    pub(crate) fn new(allocator: &'a Allocator, source: &'a str, options: ParserOptions) -> Self {
         Self {
             source,
-            reader: TokenReader::new(allocator, source, source_type),
+            reader: TokenReader::new(allocator, source, options.source_type),
+            #[cfg(debug_assertions)]
+            parser_tokens: {
+                let parse = Parser::init(allocator, source, options, TokenParserConfig).parse();
+                parse.diagnostics.is_empty().then_some(parse.tokens)
+            },
+        }
+    }
+
+    fn read(&mut self, position: u32) -> Option<Token> {
+        let token = self.reader.read(position);
+        #[cfg(debug_assertions)]
+        self.check_read(position, token);
+        token
+    }
+
+    /// Asserts that `token` is the parser's first token at or after `position`.
+    #[cfg(debug_assertions)]
+    fn check_read(&self, position: u32, token: Option<Token>) {
+        let Some(tokens) = &self.parser_tokens else {
+            return;
+        };
+        let index = tokens.partition_point(|token| token.start() < position);
+        let expected = tokens
+            .get(index)
+            .copied()
+            .filter(|token| token.tag() != TokenTag::Eof);
+        let (Some(token), Some(expected)) = (token, expected) else {
+            assert_eq!(
+                token, expected,
+                "context-free token read at {position} differs from the parser's token"
+            );
+            return;
+        };
+
+        let continues_template = token.tag() == TokenTag::RightBrace
+            && matches!(
+                expected.tag(),
+                TokenTag::TemplateMiddle | TokenTag::TemplateTail
+            );
+        if !continues_template {
+            assert_eq!(
+                (token.span(), token.tag()),
+                (expected.span(), expected.tag()),
+                "context-free token read at {position} differs from the parser's token"
+            );
+        }
+        assert_eq!(token.start(), expected.start());
+
+        // The line terminator flag covers only the trivia after `position`.
+        let previous_end = index.checked_sub(1).map_or(0, |index| tokens[index].end());
+        if previous_end == position {
+            assert_eq!(
+                token.has_line_terminator_before(),
+                expected.has_line_terminator_before(),
+                "context-free token read at {position} differs in its line terminator flag"
+            );
         }
     }
 
     /// Returns the first token after `start` if it ends at or before `end`.
     pub(crate) fn first_in_range(&mut self, start: u32, end: u32) -> Option<Token> {
-        self.reader.read(start).filter(|token| token.end() <= end)
+        self.read(start).filter(|token| token.end() <= end)
     }
 
     pub(crate) fn at_or_after(&mut self, position: u32) -> Option<Token> {
-        self.reader.read(position)
+        self.read(position)
     }
 
     /// Returns the first `tag` token in the token sequence from `start` to `end`.
@@ -62,11 +132,22 @@ impl<'a> TokenCursor<'a> {
 
 #[cfg(test)]
 mod tests {
+    use swc_next_ecma_ast::SourceType;
+
     use super::*;
+    use crate::{Lang, Options};
+
+    fn module_options() -> ParserOptions {
+        Options {
+            source_type: SourceType::Module,
+            lang: Lang::Ts,
+        }
+        .into()
+    }
 
     fn find(source: &str, start: u32, tag: TokenTag) -> Option<Span> {
         let allocator = Allocator::default();
-        let mut cursor = TokenCursor::new(&allocator, source, SourceType::Module);
+        let mut cursor = TokenCursor::new(&allocator, source, module_options());
         cursor
             .find_forward(start, source.len() as u32, tag)
             .map(Token::span)
@@ -74,7 +155,7 @@ mod tests {
 
     fn next(source: &str, start: u32) -> Option<(Span, bool)> {
         let allocator = Allocator::default();
-        let mut cursor = TokenCursor::new(&allocator, source, SourceType::Module);
+        let mut cursor = TokenCursor::new(&allocator, source, module_options());
         cursor
             .at_or_after(start)
             .map(|token| (token.span(), token.has_line_terminator_before()))
@@ -129,7 +210,7 @@ mod tests {
     fn find_forward_respects_end() {
         let allocator = Allocator::default();
         let source = "a , b";
-        let mut cursor = TokenCursor::new(&allocator, source, SourceType::Module);
+        let mut cursor = TokenCursor::new(&allocator, source, module_options());
 
         assert!(cursor.find_forward(1, 2, TokenTag::Comma).is_none());
     }

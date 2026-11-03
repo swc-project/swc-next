@@ -93,6 +93,8 @@ fn definite_assignments() {
     assert_strip("let value!: number;", "let value         ;");
 
     assert_strip("let value! = other!;", "let value  = other ;");
+
+    assert_strip("let value!: T = /'/;", "let value     = /'/;");
 }
 
 #[test]

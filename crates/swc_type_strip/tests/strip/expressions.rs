@@ -69,6 +69,12 @@ fn assertions() {
         "const value = -input           ** 2;",
         Lang::Ts,
     );
+
+    assert_strip("value as T\n/re/g.test(s);", "value     \n/re/g.test(s);");
+
+    assert_strip("value!\n/'re'/g;", "value \n/'re'/g;");
+
+    assert_strip("`${value as T}}`;", "`${value     }}`;");
 }
 
 #[test]

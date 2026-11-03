@@ -58,6 +58,11 @@ fn imports() {
         "import type Alias = Namespace.Member;\nrun();",
         ";                                    \nrun();",
     );
+
+    assert_strip(
+        "import { type a /* , } */, b } from 'm';",
+        "import {                   b } from 'm';",
+    );
 }
 
 #[test]

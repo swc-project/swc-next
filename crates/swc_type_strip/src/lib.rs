@@ -131,7 +131,7 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     let program = ast.root_program();
     let mut eraser = TypeEraser {
         ast: &ast,
-        tokens: TokenCursor::new(&allocator, source, options.source_type),
+        tokens: TokenCursor::new(&allocator, source, options.into()),
         restricted_argument: None,
         edits: EditPlan::default(),
         diagnostic: None,

@@ -70,6 +70,16 @@ fn heritage() {
         "export default class implements A {}",
         "export default class              {}",
     );
+
+    assert_strip(
+        "class C extends B<C<D>> implements A {}",
+        "class C extends B                    {}",
+    );
+
+    assert_strip(
+        "class C extends (/[)]/, B) implements A {}",
+        "class C extends (/[)]/, B)              {}",
+    );
 }
 
 #[test]
@@ -106,6 +116,11 @@ fn member_markers() {
     assert_strip(
         "class C { method?<T>(): void {} }",
         "class C { method    ()       {} }",
+    );
+
+    assert_strip(
+        "class C { readonly /* readonly */ [/'/.source] = 1; }",
+        "class C {          /* readonly */ [/'/.source] = 1; }",
     );
 }
 
