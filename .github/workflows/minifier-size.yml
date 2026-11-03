@@ -1,0 +1,253 @@
+name: Minifier Output Size
+
+# Builds the minify example at the base and head revisions, minifies the
+# benchmark scripts with both, and compares the raw, gzip, and Brotli sizes of
+# the output. It comments on the pull request or the pushed `main` commit only
+# when a size changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/minifier-size.yml'
+      - '.github/scripts/minifier-size.mjs'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'tasks/benchmark/files/**'
+  pull_request:
+    paths:
+      - '.github/workflows/minifier-size.yml'
+      - '.github/scripts/minifier-size.mjs'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/**'
+      - 'tasks/benchmark/files/**'
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base branch, tag, or full commit SHA
+        required: true
+        type: string
+      head:
+        description: Head branch, tag, or full commit SHA (defaults to the dispatch revision)
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: minifier-size-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.run_id) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  measure:
+    name: Measure output size
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      # The script, the example, and the inputs come from the workflow
+      # revision, so both builds minify the same files with the same example.
+      - name: Resolve revisions and preserve the measurement files
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_SHA: ${{ github.sha }}
+          INPUT_BASE: ${{ inputs.base }}
+          INPUT_HEAD: ${{ inputs.head }}
+        run: |
+          work="$RUNNER_TEMP/minifier-size"
+          mkdir -p "$work/inputs"
+          cp .github/scripts/minifier-size.mjs "$work/minifier-size.mjs"
+          cp crates/swc_ecma_minifier/examples/minify.rs "$work/minify.rs"
+          cp tasks/benchmark/files/*.js "$work/inputs/"
+
+          resolve_remote() {
+            git fetch --no-tags -- origin "$1" || return $?
+            git rev-parse --verify 'FETCH_HEAD^{commit}'
+          }
+
+          # A push compares the pushed commit with its first parent. A pull
+          # request compares its merge commit with the base branch commit. A
+          # manual run compares the two selected revisions.
+          case "$GITHUB_EVENT_NAME" in
+            push)
+              base_sha="$(git rev-parse --verify "${EVENT_SHA}^1^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              ;;
+            pull_request)
+              base_sha="$(git rev-parse --verify "${PR_BASE_SHA}^{commit}")"
+              head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              ;;
+            workflow_dispatch)
+              base_sha="$(resolve_remote "$INPUT_BASE")"
+              if [[ -n "$INPUT_HEAD" ]]
+              then
+                head_sha="$(resolve_remote "$INPUT_HEAD")"
+              else
+                head_sha="$(git rev-parse --verify "${EVENT_SHA}^{commit}")"
+              fi
+              # Use the head revision's toolchain for both builds.
+              git checkout --detach "$head_sha"
+              ;;
+          esac
+          {
+            echo "BASE_SHA=$base_sha"
+            echo "HEAD_SHA=$head_sha"
+            echo "WORK=$work"
+            echo "SCRIPT=$work/minifier-size.mjs"
+          } >> "$GITHUB_ENV"
+          echo "Base: $base_sha, head: $head_sha"
+
+      - name: Setup rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1
+        with:
+          cache-save-if: ${{ github.event_name == 'push' }}
+
+      - name: Keep the same Rust toolchain for base and head
+        run: echo "RUSTUP_TOOLCHAIN=$(rustup show active-toolchain | cut -d ' ' -f 1)" >> "$GITHUB_ENV"
+
+      - name: Build base
+        run: |
+          git checkout --detach "$BASE_SHA"
+          node "$SCRIPT" build "$WORK/minify.rs" "$WORK/bin/base"
+
+      - name: Build head
+        run: |
+          git checkout --detach "$HEAD_SHA"
+          node "$SCRIPT" build "$WORK/minify.rs" "$WORK/bin/head"
+
+      - name: Measure base and head
+        run: |
+          node "$SCRIPT" measure "$WORK/bin/base" "$WORK/inputs" "$WORK/base.json" "$WORK/output/base"
+          node "$SCRIPT" measure "$WORK/bin/head" "$WORK/inputs" "$WORK/head.json" "$WORK/output/head"
+
+      - name: Compare
+        id: compare
+        run: |
+          node "$SCRIPT" compare "$WORK/base.json" "$WORK/head.json" "$WORK/summary.md" >> "$GITHUB_OUTPUT"
+          cat "$WORK/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results and minified output
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: minifier-size
+          path: |
+            ${{ runner.temp }}/minifier-size/base.json
+            ${{ runner.temp }}/minifier-size/head.json
+            ${{ runner.temp }}/minifier-size/summary.md
+            ${{ runner.temp }}/minifier-size/output
+          if-no-files-found: error
+          retention-days: 30
+
+      # The comment jobs post this body, so this job never gets a write token.
+      - name: Prepare comment body
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          mkdir -p "$WORK/comment"
+          {
+            cat "$WORK/summary.md"
+            echo
+            echo "[Workflow run]($RUN_URL) · [Minified output]($ARTIFACT_URL) (retained for 30 days)"
+          } > "$WORK/comment/minifier-size.md"
+
+      - name: Upload comment body
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: minifier-size-comment
+          path: ${{ runner.temp }}/minifier-size/comment
+          if-no-files-found: error
+          retention-days: 7
+
+  comment-pull-request:
+    name: Comment on pull request
+    needs: measure
+    # Fork and Dependabot pull requests get only the job summary.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'
+    # Serialize updates so that two runs cannot both create a comment.
+    concurrency:
+      group: minifier-size-comment-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: minifier-size-comment
+          path: ${{ runner.temp }}/comment
+      - name: Create or update the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ needs.measure.outputs.changed }}
+        run: |
+          marker='<!-- minifier-output-size -->'
+          comment="$RUNNER_TEMP/comment.md"
+          {
+            echo "$marker"
+            cat "$RUNNER_TEMP/comment/minifier-size.md"
+          } > "$comment"
+
+          # Every push to the pull request edits the same comment.
+          comment_id="$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" |
+              jq -r --arg marker "$marker" \
+                '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith($marker))) | .id' |
+              head -n 1
+          )"
+          if [[ -n "$comment_id" ]]
+          then
+            # An earlier push changed the size, so keep the comment current
+            # even when this push no longer changes it.
+            gh api --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              -F body=@"$comment" > /dev/null
+          elif [[ "$CHANGED" == true ]]
+          then
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+              -F body=@"$comment" > /dev/null
+          else
+            echo 'The output size did not change; no comment.'
+          fi
+
+  comment-commit:
+    name: Comment on commit
+    needs: measure
+    if: github.event_name == 'push' && needs.measure.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: minifier-size-comment
+          path: ${{ runner.temp }}/comment
+      - name: Create the comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -F body=@"$RUNNER_TEMP/comment/minifier-size.md" > /dev/null
