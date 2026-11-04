@@ -1,7 +1,7 @@
 minifier * swc
 ========================
-Positive Passed: 11/766 (1.44%)
-Negative Passed: 88/88 (100.00%)
+Positive Passed: 52/766 (6.79%)
+Negative Passed: 87/88 (98.86%)
 Panicked: 0/854 (0.00%)
 Skipped: 36/854 (4.22%)
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/check/1/input.js - output differs from reference output
@@ -23,7 +23,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10425/input.j
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10466/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10473/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10532/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10539/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10539/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10630/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/10633/input.js - output differs from reference output
@@ -67,19 +66,13 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11512-exhaust
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11512-simple/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11512/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11545/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11645/child-scope-reassign-merge/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11645/control-known-arity-drop/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11645/eval-parent-scope-nested-block/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11645/for-of-rebind-arity/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11645/with-parent-scope-nested-block/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/bindings/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/class-decl/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/class-expression/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/constructor-scopes/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/disabled/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/function-decl/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/function-expression/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/identifier-disabled/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/identifier-preserved/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/identifier-reduce-vars-only/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/identifier-side-effects/input.js - output differs from reference output
@@ -90,14 +83,12 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/preserv
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/reduce-vars-only/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/scopes-and-mutations/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/side-effects/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/top-level-eval/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/unused-only/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11684/with-scope/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11730/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11730_class_expr/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11755/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11829/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11835/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11871/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11970/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/11977/input.js - output differs from reference output
@@ -106,7 +97,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12032/input.j
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12118/export/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12118/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12128/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12182/callee-contexts/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12182/callee-safety/lexical-this/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12182/callee-safety/nested-values/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12182/callee-safety/spread-overwrite/input.js - output differs from reference output
@@ -119,20 +109,16 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12184/optiona
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12185/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12186/nested-bitwise/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12186/signed-shift/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12186/unsigned-shift/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12187/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12188/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12189/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12190/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12191/binding-control/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12191/elision-only-generator/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12191/empty-pattern-iterator/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12191/iterator-errors/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12191/nested-elision-generator/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12192/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12193/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12194/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12195/calls/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12195/controls/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12195/nested-spread/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12195/spread/input.js - output differs from reference output
@@ -161,12 +147,10 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12208/non-opt
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12208/short-circuit/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12209/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12212/safe-unused-rest/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12212/with-scope/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12213/distinct/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12213/duplicate/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12213/numeric-order/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12215/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12218/dynamic-spread/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12218/leading-argument/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12218/literal-spread/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12218/no-spread/input.js - output differs from reference output
@@ -178,7 +162,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12224/input.j
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12226/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12227/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12229/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12229/no-return/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12296/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12298/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12299/input.js - output differs from reference output
@@ -194,8 +177,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12313/input.j
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12315/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12373/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12380/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12404/async-generator-prototype/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12404/generator-prototype/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12404/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12492/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/12545/fn_rest_loop/input.js - output differs from reference output
@@ -228,7 +209,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/2923/1/input.
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/2926/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3126/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3173/1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3256/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3256/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3629/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/3709/input.js - output differs from reference output
@@ -241,7 +221,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/4515/input.js
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/4841/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/4845/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/5280/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/5306/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/5343/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/5680/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/5682/input.js - output differs from reference output
@@ -280,7 +259,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/6957/2/input.
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/6957/exponential/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/6957/number-tostring/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7004/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7045/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7228/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7241/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7287/1/input.js - output differs from reference output
@@ -298,13 +276,11 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7697/1/input.
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7714/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7739/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7749/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7770/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7770/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7783/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7784/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7784/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7784/3/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7839/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7847/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/7984/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8119/input.js - output differs from reference output
@@ -323,7 +299,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8670/input.js
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8704/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8705/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8706/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8715/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8718/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8718/3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/8718/4/input.js - output differs from reference output
@@ -373,7 +348,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9628/input.js
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_collision/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_collision_function/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_disabled/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_global_objects/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_multiple_methods/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/9741_threshold/input.js - output differs from reference output
@@ -397,7 +371,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/d3-time-forma
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/d3-time-format/3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-control-flow/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-hoisted-bindings/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/completion/conditional-parent/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/completion/unused-prefix-break/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/completion/unused-prefix-continue/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/directive-barrier/input.js - output differs from reference output
@@ -407,7 +380,7 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-fals
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/rejected/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/repeated-directive/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/scope-directives/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/simple/input.js - output differs from reference output
+Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/do-while-false-terminal-jump/skipped-scopes/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/drop-console-computed/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/drop-console-es2015/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/issues/drop-console-nullish-console/input.js - output differs from reference output
@@ -527,7 +500,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/angular/5/i
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/10/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/11/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/12/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/13/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/14/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/backbone/15/input.js - output differs from reference output
@@ -566,7 +538,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/28/i
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/5/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/6/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/7/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/8/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/jquery/9/input.js - output differs from reference output
@@ -577,7 +548,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/mootools/4/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/mootools/6/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/mootools/7/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/mootools/8/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/mootools/9/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/next/archive-1/383.5942fafdbede773d29c7/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/next/archive-1/411.0fbee7df8bd8b42967ec/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/next/archive-1/808.7518829f34ebf3ce0082/input.js - output differs from reference output
@@ -630,19 +600,14 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/11/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/12/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/13/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/14/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/15/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/16/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/17/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/18/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/19/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/20/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/21/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/22/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/23/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/24/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/3/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/underscore/6/input.js - output differs from reference output
@@ -655,7 +620,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive-1/chunks/index.bf24abaa/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive-1/chunks/index.ddc4110d/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive-1/chunks/json.5609c5fa/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive-1/chunks/meta-tags.c6b3dbd5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/wmr/archive-1/chunks/prerender.93c6f601/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/yui/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/projects/yui/10/input.js - output differs from reference output
@@ -675,8 +639,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/pure-annotations-not
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/reduced/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/reduced/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/reduced/3/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/await-arrow/1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/if/block/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/if/var/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/2/input.js - output differs from reference output
@@ -684,8 +646,6 @@ Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/3/inpu
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/4/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/5/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/inline/6/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/issues/2007/1/input.js - output differs from reference output
-Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/issues/2007/2/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/order/fn/1/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/super/computed/input.js - output differs from reference output
 Failed: fixtures/swc/crates/swc_ecma_minifier/tests/fixture/simple/switch/const/call/input.js - output differs from reference output

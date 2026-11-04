@@ -114,10 +114,15 @@ fn minifier_options(config: &Map<String, Value>) -> MinifierOptions {
     };
     MinifierOptions {
         compress: Some(CompressOptions {
+            // Terser removes empty statements and unneeded blocks without an
+            // option.
+            blocks: true,
             booleans: option("booleans"),
             dead_code: option("dead_code"),
             evaluate: option("evaluate"),
             global_defs: config.get("ie8").and_then(Value::as_bool) != Some(true),
+            join_vars: option("join_vars"),
+            sequences: option("sequences"),
             typeofs: option("typeofs"),
             unused: option("unused"),
         }),
