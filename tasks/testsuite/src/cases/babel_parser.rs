@@ -64,10 +64,6 @@ struct BabelParserProgram {
 }
 
 impl BabelParserCase {
-    fn read() -> Vec<Self> {
-        Self::try_read().unwrap()
-    }
-
     fn try_read() -> io::Result<Vec<Self>> {
         let fixtures_dir = fixtures().join("babel/packages/babel-parser/test/fixtures");
         let paths = WalkDir::new(&fixtures_dir)
@@ -78,7 +74,7 @@ impl BabelParserCase {
                 (entry.file_type().is_file()
                     && INPUT_FILE_NAMES.contains(&entry.file_name().to_string_lossy().as_ref())
                     && is_supported_parser_path(&path))
-                .then(|| entry.path())
+                .then_some(path)
             })
             .collect::<Vec<_>>();
 
@@ -87,11 +83,8 @@ impl BabelParserCase {
             .map(|path| {
                 let case_dir = path.parent().unwrap();
                 let options = BabelOptions::from_test_path(case_dir);
-                let name = case_dir
-                    .strip_prefix(&fixtures_dir)
-                    .unwrap_or(case_dir)
-                    .to_string_lossy()
-                    .replace('\\', "/");
+                let relative_path = case_dir.strip_prefix(&fixtures_dir).unwrap();
+                let name = relative_path.to_string_lossy().replace('\\', "/");
                 let (expects_error, oracle_source_type) = parser_expectation(case_dir)?;
                 let input = read_to_string(&path)?;
                 Ok(Self {
@@ -119,20 +112,17 @@ impl BabelParserCase {
             "moduleBlocks",
         ];
 
-        is_supported_parser_path(&self.path)
-            && !self
-                .options
-                .plugins
-                .unsupported
-                .iter()
-                .any(|plugin| UNSUPPORTED_PLUGINS.contains(&plugin.as_str()))
-            && !self.options.allow_await_outside_function
-            && !self.options.allow_return_outside_function
-            && !self.options.allow_undeclared_exports
-            && !self.options.allow_new_target_outside_function
-            && !self.options.allow_super_outside_method
-            && !self
-                .options
+        let options = &self.options;
+        let unsupported_plugins = &options.plugins.unsupported;
+        !unsupported_plugins
+            .iter()
+            .any(|plugin| UNSUPPORTED_PLUGINS.contains(&plugin.as_str()))
+            && !options.allow_await_outside_function
+            && !options.allow_return_outside_function
+            && !options.allow_undeclared_exports
+            && !options.allow_new_target_outside_function
+            && !options.allow_super_outside_method
+            && !options
                 .plugins
                 .syntax_typescript
                 .is_some_and(|options| options.disallow_ambiguous_jsx_like)
@@ -140,11 +130,8 @@ impl BabelParserCase {
 
     fn configured_source_type(&self) -> SourceType {
         if self.options.source_type.is_none() {
-            return match self
-                .path
-                .extension()
-                .and_then(|extension| extension.to_str())
-            {
+            let extension = self.path.extension().and_then(|ext| ext.to_str());
+            return match extension {
                 Some("mjs" | "mts") => SourceType::Module,
                 Some("cjs" | "cts") => SourceType::CommonJs,
                 _ => SourceType::Script,
@@ -185,7 +172,7 @@ impl Case for BabelParserCase {
     const NAME: &'static str = "babel";
 
     fn read() -> Vec<Self> {
-        BabelParserCase::read()
+        Self::try_read().unwrap()
     }
 
     fn path(&self) -> &Path {

@@ -10,6 +10,7 @@ use swc_next_ecma_codegen::Options as CodegenOptions;
 use swc_next_ecma_transformer::TransformerOptions;
 
 use super::{Case, TransformCase, fixtures};
+use crate::util::{read_optional, with_suffix};
 mod options;
 use options::Swcrc;
 
@@ -46,11 +47,12 @@ impl SwcTransformCase {
                 {
                     continue;
                 }
+                let relative_path = path.strip_prefix(&input_dir).unwrap();
                 let output = input_dir
                     .parent()
                     .unwrap()
                     .join("output")
-                    .join(path.strip_prefix(&input_dir).unwrap());
+                    .join(relative_path);
                 paths.push((path, output));
             }
         }
@@ -62,24 +64,15 @@ impl SwcTransformCase {
                 // additional compiler products need APIs that are not yet exposed.
                 let mut unsupported_snapshot = false;
                 for suffix in [".stderr", ".map", ".d.ts", ".extra.json"] {
-                    let snapshot = PathBuf::from(format!("{}{suffix}", output.display()));
-                    if snapshot.is_file() && !fs::read(snapshot)?.is_empty() {
-                        unsupported_snapshot = true;
-                    }
+                    let snapshot = read_optional(&with_suffix(&output, suffix))?;
+                    unsupported_snapshot |= snapshot.is_some_and(|source| !source.is_empty());
                 }
-                let raw = PathBuf::from(format!("{}.raw", output.display()));
+                let raw = with_suffix(&output, ".raw");
                 let output = if raw.is_file() { raw } else { output };
-                let output = match fs::read_to_string(&output) {
-                    Ok(output) => output,
-                    Err(error) if error.kind() == io::ErrorKind::NotFound => String::new(),
-                    Err(error) => return Err(error),
-                };
+                let output = read_optional(&output)?.unwrap_or_default();
+                let relative_path = path.strip_prefix(&root).unwrap();
                 Ok(Self {
-                    name: path
-                        .strip_prefix(&root)
-                        .unwrap()
-                        .to_string_lossy()
-                        .replace('\\', "/"),
+                    name: relative_path.to_string_lossy().replace('\\', "/"),
                     input: fs::read_to_string(&path)?,
                     path,
                     output,
@@ -97,8 +90,7 @@ impl Case for SwcTransformCase {
     const NAME: &'static str = "swc";
 
     fn read() -> Vec<Self> {
-        Self::try_read()
-            .expect("failed to read SWC compiler fixtures; run ./scripts/clone_fixtures.sh")
+        Self::try_read().unwrap()
     }
 
     fn path(&self) -> &Path {

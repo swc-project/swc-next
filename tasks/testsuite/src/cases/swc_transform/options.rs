@@ -1,5 +1,6 @@
-use std::{fs, io, path::Path};
+use std::{io, path::Path};
 
+use crate::util::read_optional;
 use jsonc_parser::{ParseOptions, parse_to_serde_value};
 use regex::Regex;
 use serde::Deserialize;
@@ -166,8 +167,8 @@ impl Swcrc {
     pub fn from_test_path(path: &Path, root: &Path) -> io::Result<Option<Self>> {
         for dir in path.parent().unwrap().ancestors() {
             let config = dir.join(".swcrc");
-            if config.is_file() {
-                return Ok(Self::from_source(&fs::read_to_string(config)?, path));
+            if let Some(source) = read_optional(&config)? {
+                return Ok(Self::from_source(&source, path));
             }
             if dir == root {
                 break;
@@ -185,15 +186,13 @@ impl Swcrc {
     }
 
     fn from_source(source: &str, path: &Path) -> Option<Self> {
-        let value = parse_to_serde_value(
-            source.trim_start_matches('\u{feff}'),
-            &ParseOptions {
-                allow_comments: true,
-                allow_trailing_commas: true,
-                allow_loose_object_property_names: false,
-            },
-        )
-        .ok()??;
+        let source = source.trim_start_matches('\u{feff}');
+        let options = ParseOptions {
+            allow_comments: true,
+            allow_trailing_commas: true,
+            allow_loose_object_property_names: false,
+        };
+        let value = parse_to_serde_value(source, &options).ok()??;
         let values = match value {
             Value::Array(values) => values,
             value => vec![value],
@@ -250,30 +249,28 @@ impl Swcrc {
     }
 
     pub fn supports_options(&self) -> bool {
-        if self.jsc.assumptions.set_public_class_fields
-            || self.jsc.loose
+        let jsc = &self.jsc;
+        if jsc.assumptions.set_public_class_fields
+            || jsc.loose
             || self.env.as_ref().is_some_and(|env| env.loose)
         {
             // SWC lowers class fields in assignment mode even on modern targets.
             return false;
         }
         // Chrome 120 is the modern baseline used by SWC's standalone fixtures.
-        if let Some(env) = &self.env
-            && (self.jsc.target.is_some()
+        if let Some(env) = &self.env {
+            let mut features = env.include.iter().chain(&env.exclude);
+            if jsc.target.is_some()
                 || env.targets.as_ref() != Some(&serde_json::json!({"chrome": "120"}))
-                || env
-                    .include
-                    .iter()
-                    .chain(&env.exclude)
-                    .any(|f| f != "transform-class-static-block"))
-        {
-            return false;
+                || features.any(|feature| feature != "transform-class-static-block")
+            {
+                return false;
+            }
         }
-        let parser = &self.jsc.parser;
-        if !matches!(
-            parser.syntax.as_deref(),
-            None | Some("ecmascript" | "typescript")
-        ) || parser.decorators
+        let parser = &jsc.parser;
+        let syntax = parser.syntax.as_deref();
+        if !matches!(syntax, None | Some("ecmascript" | "typescript"))
+            || parser.decorators
             || parser.export_default_from
             || parser.function_bind
             || parser.explicit_resource_management
@@ -283,43 +280,36 @@ impl Swcrc {
         {
             return false;
         }
-        if let Some(transform) = &self.jsc.transform
-            && (transform.ts_enum_is_mutable
+        if let Some(transform) = &jsc.transform {
+            let runtime = transform.react.runtime.as_deref();
+            if transform.ts_enum_is_mutable
                 || transform.use_define_for_class_fields == Some(false)
                 || transform.legacy_decorator
                 || transform.decorator_metadata
-                || !matches!(
-                    transform.react.runtime.as_deref(),
-                    None | Some("classic" | "automatic" | "preserve")
-                ))
+                || !matches!(runtime, None | Some("classic" | "automatic" | "preserve"))
+            {
+                return false;
+            }
+        }
+        let module = self.module.as_ref();
+        let source_maps = self.source_maps.as_ref();
+        let input_source_map = self.input_source_map.as_ref();
+        let experimental = &jsc.experimental;
+        let output = &jsc.output;
+        if module.is_some_and(|module| module != &serde_json::json!({"type": "es6"}))
+            || source_maps.is_some_and(|value| value != &Value::Bool(false))
+            || input_source_map.is_some_and(|value| value != &Value::Bool(false))
+            || jsc.keep_class_names
+            || !output.preamble.is_empty()
+            || experimental.emit_assert_for_import_attributes
+            || experimental.keep_import_attributes
+            || !matches!(output.charset.as_deref(), None | Some("utf8" | "ascii"))
         {
             return false;
         }
-        if self
-            .module
-            .as_ref()
-            .is_some_and(|v| v != &serde_json::json!({"type": "es6"}))
-            || self
-                .source_maps
-                .as_ref()
-                .is_some_and(|v| v != &Value::Bool(false))
-            || self
-                .input_source_map
-                .as_ref()
-                .is_some_and(|v| v != &Value::Bool(false))
-            || self.jsc.keep_class_names
-            || !self.jsc.output.preamble.is_empty()
-            || self.jsc.experimental.emit_assert_for_import_attributes
-            || self.jsc.experimental.keep_import_attributes
-            || !matches!(
-                self.jsc.output.charset.as_deref(),
-                None | Some("utf8" | "ascii")
-            )
-        {
-            return false;
-        }
-        matches!(self.is_module.as_ref(), None | Some(Value::Bool(_)))
-            || matches!(self.is_module.as_ref(), Some(Value::String(v)) if v == "unknown" || v == "commonjs")
+        let is_module = self.is_module.as_ref();
+        matches!(is_module, None | Some(Value::Bool(_)))
+            || matches!(is_module, Some(Value::String(v)) if v == "unknown" || v == "commonjs")
     }
 
     pub fn transformer_options(&self, path: &Path) -> TransformerOptions {
@@ -331,9 +321,9 @@ impl Swcrc {
             _ => JsxRuntime::Classic,
         };
         let lang = self.lang(path);
-        let jsx = (matches!(lang, Lang::Jsx | Lang::Tsx)
-            && react.runtime.as_deref() != Some("preserve"))
-        .then(|| JsxOptions {
+        let transform_jsx =
+            matches!(lang, Lang::Jsx | Lang::Tsx) && react.runtime.as_deref() != Some("preserve");
+        let jsx = transform_jsx.then(|| JsxOptions {
             runtime,
             development: react.development,
             source_self: react.development,
@@ -354,36 +344,28 @@ impl Swcrc {
                 verbatim_module_syntax: transform.verbatim_module_syntax,
                 ..TypeScriptOptions::default()
             });
-        let static_blocks = self.env.as_ref().map_or_else(
-            || {
+        let static_blocks = match &self.env {
+            None => {
                 // SWC defaults to ES5. Use the target to enable implemented
                 // passes; missing compat passes are measured by the snapshot.
                 !matches!(
                     self.jsc.target.as_deref(),
                     Some("es2022" | "es2023" | "es2024" | "esnext")
                 )
-            },
-            |env| {
-                env.include
-                    .iter()
-                    .any(|f| f == "transform-class-static-block")
-                    && !env
-                        .exclude
-                        .iter()
-                        .any(|f| f == "transform-class-static-block")
-            },
-        );
-        let loose = self.jsc.loose || self.env.as_ref().is_some_and(|env| env.loose);
+            }
+            Some(env) => {
+                let feature = "transform-class-static-block";
+                env.include.iter().any(|f| f == feature)
+                    && !env.exclude.iter().any(|f| f == feature)
+            }
+        };
+        let filename = path.file_name().unwrap().to_string_lossy().into_owned();
         TransformerOptions {
             // SWC's fixture snapshots normalize the source file to its basename.
-            filename: Some(path.file_name().unwrap().to_string_lossy().into_owned()),
+            filename: Some(filename),
             jsx,
             typescript,
-            assumptions: if loose {
-                Assumptions::all()
-            } else {
-                self.jsc.assumptions
-            },
+            assumptions: self.jsc.assumptions,
             es2022: ES2022Options { static_blocks },
             ..TransformerOptions::default()
         }

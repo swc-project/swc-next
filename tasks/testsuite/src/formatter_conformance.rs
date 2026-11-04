@@ -384,7 +384,7 @@ pub fn run_conformance(config: ConformanceConfig) -> ConformanceOutput {
     let thread_pool = rayon::ThreadPoolBuilder::new()
         .stack_size(16 * 1024 * 1024)
         .build()
-        .expect("formatter conformance thread pool should build");
+        .unwrap();
     let mut results = thread_pool.install(|| {
         cases
             .into_par_iter()
@@ -1184,10 +1184,7 @@ fn print_debug_results(results: &[CaseResult]) {
             CaseStatus::Matched => println!("Snapshot matched"),
             CaseStatus::Mismatched => {
                 println!("Snapshot mismatch");
-                let (expected, actual) = result
-                    .debug_diff
-                    .as_ref()
-                    .expect("debug mismatch should retain its diff");
+                let (expected, actual) = result.debug_diff.as_ref().unwrap();
                 print_text_diff(expected, actual);
             }
             CaseStatus::FormatError(error) => println!("Format error: {error}"),
@@ -1207,10 +1204,7 @@ fn print_debug_results(results: &[CaseResult]) {
             Some(true) => println!("AST entry-point parity matched"),
             Some(false) => {
                 println!("AST entry-point parity mismatch");
-                let (text, ast) = result
-                    .ast_debug_diff
-                    .as_ref()
-                    .expect("debug AST mismatch should retain its diff");
+                let (text, ast) = result.ast_debug_diff.as_ref().unwrap();
                 print_ast_diff(text, ast);
             }
             None => {

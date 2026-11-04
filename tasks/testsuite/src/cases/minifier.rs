@@ -9,6 +9,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_minifier::{CompressOptions, MinifierOptions};
 
 use super::{Case, MinifierCase, fixtures};
+use crate::util::read_optional;
 
 /// Fixture root of SWC's minifier tests, including its terser port.
 fn minifier_fixtures() -> PathBuf {
@@ -52,12 +53,9 @@ impl MinifierFixture {
                 } else {
                     read_optional(&case_dir.join(reference))?
                 };
+                let relative_path = case_dir.strip_prefix(&root).unwrap();
                 cases.push(Self {
-                    name: case_dir
-                        .strip_prefix(&root)
-                        .unwrap()
-                        .to_string_lossy()
-                        .replace('\\', "/"),
+                    name: relative_path.to_string_lossy().replace('\\', "/"),
                     input: fs::read_to_string(&path)?,
                     expected,
                     options: minifier_options(&config),
@@ -89,14 +87,6 @@ fn read_config(suite_root: &Path, case_dir: &Path) -> io::Result<Map<String, Val
         }
     }
     Ok(Map::new())
-}
-
-fn read_optional(path: &Path) -> io::Result<Option<String>> {
-    match fs::read_to_string(path) {
-        Ok(source) => Ok(Some(source)),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
-    }
 }
 
 /// Maps terser compress options to this minifier's options.
@@ -143,11 +133,8 @@ macro_rules! impl_minifier_case {
             const NAME: &'static str = $name;
 
             fn read() -> Vec<Self> {
-                MinifierFixture::read_all(&$directories, $reference)
-                    .expect("failed to read minifier fixtures; run ./scripts/clone_fixtures.sh")
-                    .into_iter()
-                    .map(Self)
-                    .collect()
+                let fixtures = MinifierFixture::read_all(&$directories, $reference).unwrap();
+                fixtures.into_iter().map(Self).collect()
             }
 
             fn path(&self) -> &Path {
